@@ -17,16 +17,23 @@
 
 find_package(AdbcDriverManager)
 
-add_jar(adbc_driver_jni_jar
-        SOURCES src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeAdbc.java
-                src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeAdbcException.java
-                src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeHandle.java
-                src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeQueryResult.java
-                GENERATE_NATIVE_HEADERS
-                adbc_driver_jni_headers)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/target/headers/org_apache_arrow_adbc_driver_jni_impl_NativeAdbc.h
+                   COMMENT "Generate JNI headers"
+                   # Force Maven to actually re-run the command
+                   COMMAND rm -rf ${CMAKE_CURRENT_SOURCE_DIR}/target/headers
+                           ${CMAKE_CURRENT_SOURCE_DIR}/target/maven-status
+                   COMMAND mvn --file ${CMAKE_CURRENT_SOURCE_DIR}/../.. -Pjni,javah
+                           compile --also-make --projects :adbc-driver-jni
+                   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeAdbc.java
+)
 
-add_library(adbc_driver_jni SHARED src/main/cpp/jni_wrapper.cc)
-target_link_libraries(adbc_driver_jni adbc_driver_jni_headers JNI::JNI
+add_library(adbc_driver_jni SHARED
+            src/main/cpp/jni_wrapper.cc
+            ${CMAKE_CURRENT_SOURCE_DIR}/target/headers/org_apache_arrow_adbc_driver_jni_impl_NativeAdbc.h
+)
+target_include_directories(adbc_driver_jni
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/target/headers)
+target_link_libraries(adbc_driver_jni JNI::JNI
                       AdbcDriverManager::adbc_driver_manager_static)
 
 set(ADBC_DRIVER_JNI_C_LIBDIR "adbc_driver_jni/${ADBC_ARCH_DIR}")
