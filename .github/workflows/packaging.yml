@@ -561,8 +561,6 @@ jobs:
       fail-fast: false
       matrix:
         arch: ["amd64", "arm64v8"]
-        is_pr:
-          - ${{ startsWith(github.ref, 'refs/pull/') }}
         include:
           - arch: amd64
             platform: "linux/amd64"
