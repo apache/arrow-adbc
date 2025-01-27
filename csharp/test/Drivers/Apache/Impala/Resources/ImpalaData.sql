@@ -17,7 +17,7 @@
 DROP TABLE IF EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE};
 
 -- Note:
--- Impala supports complext type (ARRAY, MAP, STRUCT),  BUT,
+-- Impala supports complex type (ARRAY, MAP, STRUCT),  BUT,
 -- there is no way to dynamically load complex data. It needs to be imported from a PARQUET file.
 CREATE TABLE IF NOT EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
   id BIGINT,
