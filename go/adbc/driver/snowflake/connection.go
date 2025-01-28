@@ -618,11 +618,13 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	defer rows.Close()
 
 	var (
-		name, typ /* kind,*/, isnull, primary/*, unique*/ string
-		def, check, expr, comment, policyName, privDomain sql.NullString
-		fields                                            = []arrow.Field{}
+		name, typ, isnull, primary string
+		comment                    sql.NullString
+		fields                     = []arrow.Field{}
 	)
 
+	// columns are:
+	// name, type, kind, isnull, primary, unique, def, check, expr, comment, policyName, privDomain
 	dest := make([]driver.Value, len(rows.Columns()))
 	for {
 		if err := rows.Next(dest); err != nil {
@@ -634,16 +636,11 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 
 		name = dest[0].(string)
 		typ = dest[1].(string)
-		// kind = dest[2].(string)
 		isnull = dest[3].(string)
-		def.Scan(dest[4])
 		primary = dest[5].(string)
-		// unique = dest[6].(string)
-		check.Scan(dest[7])
-		expr.Scan(dest[8])
-		comment.Scan(dest[9])
-		policyName.Scan(dest[10])
-		privDomain.Scan(dest[11])
+		if err := comment.Scan(dest[9]); err != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, err)
+		}
 
 		f, err := descToField(name, typ, isnull, primary, comment)
 		if err != nil {
