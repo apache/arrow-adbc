@@ -22,7 +22,7 @@ go 1.22.7
 toolchain go1.22.9
 
 require (
-	cloud.google.com/go/bigquery v1.65.0
+	cloud.google.com/go/bigquery v1.66.0
 	github.com/apache/arrow-go/v18 v18.1.1-0.20250116162745-f533d2066dee
 	github.com/bluele/gcache v0.0.2
 	github.com/golang/protobuf v1.5.4
@@ -41,11 +41,11 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.116.0 // indirect
+	cloud.google.com/go v0.118.0 // indirect
 	cloud.google.com/go/auth v0.14.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
-	cloud.google.com/go/iam v1.2.2 // indirect
+	cloud.google.com/go/iam v1.3.1 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0 // indirect
@@ -81,7 +81,6 @@ require (
 	github.com/goccy/go-json v0.10.4 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v24.12.23+incompatible // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
@@ -103,7 +102,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
-	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.54.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.54.0 // indirect
 	go.opentelemetry.io/otel v1.32.0 // indirect
@@ -118,7 +116,7 @@ require (
 	golang.org/x/time v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241209162323-e6fa225c2576 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.55.3 // indirect
