@@ -24,6 +24,17 @@
 
 #include "arrow-adbc/adbc.h"
 
+static inline SEXP adbc_new_env() {
+  SEXP new_env_sym = PROTECT(Rf_install("new_env"));
+  SEXP new_env_call = PROTECT(Rf_lang1(new_env_sym));
+  SEXP pkg_chr = PROTECT(Rf_mkString("adbcdrivermanager"));
+  SEXP pkg_ns = PROTECT(R_FindNamespace(pkg_chr));
+  SEXP new_env = PROTECT(Rf_eval(new_env_call, pkg_ns));
+  UNPROTECT(5);
+
+  return new_env;
+}
+
 template <typename T>
 static inline const char* adbc_xptr_class();
 
@@ -89,13 +100,9 @@ static inline SEXP adbc_borrow_xptr(T* ptr, SEXP shelter_sexp = R_NilValue) {
   Rf_setAttrib(xptr, R_ClassSymbol, xptr_class);
   UNPROTECT(1);
 
-  SEXP new_env_sym = PROTECT(Rf_install("new_env"));
-  SEXP new_env_call = PROTECT(Rf_lang1(new_env_sym));
-  SEXP pkg_chr = PROTECT(Rf_mkString("adbcdrivermanager"));
-  SEXP pkg_ns = PROTECT(R_FindNamespace(pkg_chr));
-  SEXP new_env = PROTECT(Rf_eval(new_env_call, pkg_ns));
+  SEXP new_env = PROTECT(adbc_new_env());
   R_SetExternalPtrTag(xptr, new_env);
-  UNPROTECT(5);
+  UNPROTECT(1);
 
   UNPROTECT(1);
   return xptr;
