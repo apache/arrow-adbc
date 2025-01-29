@@ -22,7 +22,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Apache.Arrow.Types;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     /// <summary>
     /// Interface for the SQL type name parser.
@@ -48,43 +48,43 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         private static readonly IReadOnlyDictionary<int, ISqlTypeNameParser> s_parserMap = new Dictionary<int, ISqlTypeNameParser>()
         {
-            { (int)SparkConnection.ColumnTypeId.ARRAY, SqlArrayTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.BIGINT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.BIGINT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.BIT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.BIT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.BINARY, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.BINARY.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.BLOB, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.BLOB.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.BOOLEAN, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.BOOLEAN.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.CHAR, SqlCharTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.CLOB, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.CLOB.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.DATALINK, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.DATALINK.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.DATE, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.DATE.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.DECIMAL, SqlDecimalTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.DISTINCT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.DISTINCT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.DOUBLE, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.DOUBLE.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.FLOAT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.FLOAT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.INTEGER, SqlIntegerTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.JAVA_OBJECT, SqlMapTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.LONGNVARCHAR, SqlVarcharTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.LONGVARCHAR, SqlVarcharTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.NCHAR, SqlCharTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.NCLOB, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.NCLOB.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.NULL, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.NULL.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.NUMERIC, SqlDecimalTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.NVARCHAR, SqlVarcharTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.OTHER, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.OTHER.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.REAL, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.REAL.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.REF_CURSOR, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.REF_CURSOR.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.REF, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.REF.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.ROWID, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.ROWID.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.SMALLINT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.SMALLINT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.STRUCT, SqlStructTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.TIME, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.TIME.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.TIME_WITH_TIMEZONE, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.TIME_WITH_TIMEZONE.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.TIMESTAMP, SqlTimestampTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.TIMESTAMP_WITH_TIMEZONE, SqlTimestampTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.TINYINT, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.TINYINT.ToString()) },
-            { (int)SparkConnection.ColumnTypeId.VARCHAR, SqlVarcharTypeParser.Default },
-            { (int)SparkConnection.ColumnTypeId.SQLXML, SqlSimpleTypeParser.Default(SparkConnection.ColumnTypeId.SQLXML.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.ARRAY, SqlArrayTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.BIGINT, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.BIGINT.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.BIT, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.BIT.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.BINARY, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.BINARY.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.BLOB, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.BLOB.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.BOOLEAN, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.BOOLEAN.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.CHAR, SqlCharTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.CLOB, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.CLOB.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.DATALINK, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.DATALINK.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.DATE, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.DATE.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.DECIMAL, SqlDecimalTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.DISTINCT, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.DISTINCT.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.DOUBLE, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.DOUBLE.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.FLOAT, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.FLOAT.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.INTEGER, SqlIntegerTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.JAVA_OBJECT, SqlMapTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.LONGNVARCHAR, SqlVarcharTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.LONGVARCHAR, SqlVarcharTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.NCHAR, SqlCharTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.NCLOB, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.NCLOB.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.NULL, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.NULL.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.NUMERIC, SqlDecimalTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.NVARCHAR, SqlVarcharTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.OTHER, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.OTHER.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.REAL, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.REAL.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.REF_CURSOR, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.REF_CURSOR.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.REF, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.REF.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.ROWID, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.ROWID.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.SMALLINT, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.SMALLINT.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.STRUCT, SqlStructTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.TIME, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.TIME.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.TIME_WITH_TIMEZONE, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.TIME_WITH_TIMEZONE.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.TIMESTAMP, SqlTimestampTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.TIMESTAMP_WITH_TIMEZONE, SqlTimestampTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.TINYINT, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.TINYINT.ToString()) },
+            { (int)HiveServer2Connection.ColumnTypeId.VARCHAR, SqlVarcharTypeParser.Default },
+            { (int)HiveServer2Connection.ColumnTypeId.SQLXML, SqlSimpleTypeParser.Default(HiveServer2Connection.ColumnTypeId.SQLXML.ToString()) },
         };
 
         // Note: the INTERVAL sql type does not have an associated column type id.
@@ -127,9 +127,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected virtual T GenerateResult(string input, Match match) => (T)new SqlTypeNameParserResult(input, BaseTypeName);
 
         private static T CastResultOrThrow(string input, SqlTypeNameParserResult result) =>
-            (result is T typedResult)
+            result is T typedResult
                 ? typedResult
-                : throw new InvalidCastException($"Cannot cast return type '{result.GetType().Name}' to type '{(typeof(T)).Name}' for input SQL type name: '{input}'.");
+                : throw new InvalidCastException($"Cannot cast return type '{result.GetType().Name}' to type '{typeof(T).Name}' for input SQL type name: '{input}'.");
 
         /// <summary>
         /// Tries to parse the input string for a valid SQL type definition.

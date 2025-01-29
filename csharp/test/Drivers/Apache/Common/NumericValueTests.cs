@@ -115,9 +115,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestSmallNumberRange(string value)
         {
             string columnName = "SMALLNUMBER";
-            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(2,0)", columnName));
-            object? expectedValue = TestEnvironment.GetValueForProtocolVersion(value, new SqlDecimal(double.Parse(value)));
-            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, expectedValue);
+            string columnType = "DECIMAL(2,0)";
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
+            object? expectedValue = TestEnvironment.GetValueForProtocolVersion(value, SqlDecimal.Parse(value));
+            await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, expectedValue, $"CAST({expectedValue} as {columnType})");
         }
 
         /// <summary>
@@ -197,7 +198,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value)));
         }
 
-
         /// <summary>
         /// Tests that decimals are rounded as expected.
         /// Snowflake allows inserts of scales beyond the data type size, but storage of value will round it up or down
@@ -208,10 +208,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestRoundingNumbers(decimal input, decimal output)
         {
             string columnName = "SMALLSCALENUMBER";
-            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,2)", columnName));
+            string columnType = "DECIMAL(38,2)";
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
             SqlDecimal value = new SqlDecimal(input);
             SqlDecimal returned = new SqlDecimal(output);
-            await InsertSingleValueAsync(table.TableName, columnName, value.ToString());
+            await InsertSingleValueAsync(table.TableName, columnName, $"CAST({value} as {columnType})");
             await SelectAndValidateValuesAsync(table.TableName, columnName, TestEnvironment.GetValueForProtocolVersion(output.ToString(), returned), 1);
             string whereClause = GetWhereClause(columnName, returned);
             if (SupportsDelete) await DeleteFromTableAsync(table.TableName, whereClause, 1);
@@ -220,17 +221,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if driver can handle floating point number type correctly
         /// </summary>
-        [SkippableTheory]
-        [InlineData(0)]
-        [InlineData(0.2)]
-        [InlineData(15e-03)]
-        [InlineData(1.234E+2)]
-        [InlineData(double.NegativeInfinity)]
-        [InlineData(double.PositiveInfinity)]
-        [InlineData(double.NaN)]
-        [InlineData(double.MinValue)]
-        [InlineData(double.MaxValue)]
-        public async Task TestDoubleValuesInsertSelectDelete(double value)
+        public virtual async Task TestDoubleValuesInsertSelectDelete(double value)
         {
             string columnName = "DOUBLETYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DOUBLE", columnName));
@@ -244,20 +235,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if driver can handle floating point number type correctly
         /// </summary>
-        [SkippableTheory]
-        [InlineData(0)]
-        [InlineData(25)]
-        [InlineData(float.NegativeInfinity)]
-        [InlineData(float.PositiveInfinity)]
-        [InlineData(float.NaN)]
-        // TODO: Solve server issue when non-integer float value is used in where clause.
-        //[InlineData(25.1)]
-        //[InlineData(0.2)]
-        //[InlineData(15e-03)]
-        //[InlineData(1.234E+2)]
-        //[InlineData(float.MinValue)]
-        //[InlineData(float.MaxValue)]
-        public async Task TestFloatValuesInsertSelectDelete(float value)
+        public virtual async Task TestFloatValuesInsertSelectDelete(float value)
         {
             string columnName = "FLOATTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} FLOAT", columnName));

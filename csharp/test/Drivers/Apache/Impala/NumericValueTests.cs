@@ -19,12 +19,12 @@ using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    public class NumericValueTests : Common.NumericValueTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class NumericValueTests : Common.NumericValueTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
         public NumericValueTests(ITestOutputHelper output)
-            : base(output, new SparkTestEnvironment.Factory())
+            : base(output, new ImpalaTestEnvironment.Factory())
         {
         }
 
@@ -35,12 +35,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData(1.234E+2)]
         [InlineData(double.NegativeInfinity)]
         [InlineData(double.PositiveInfinity)]
-        [InlineData(double.NaN)]
-        [InlineData(double.MinValue)]
-        [InlineData(double.MaxValue)]
-        public override async Task TestDoubleValuesInsertSelectDelete(double value)
+        public override Task TestDoubleValuesInsertSelectDelete(double value)
         {
-            await base.TestDoubleValuesInsertSelectDelete(value);
+            return base.TestDoubleValuesInsertSelectDelete(value);
         }
 
         [SkippableTheory]
@@ -48,7 +45,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData(25)]
         [InlineData(float.NegativeInfinity)]
         [InlineData(float.PositiveInfinity)]
-        [InlineData(float.NaN)]
         // TODO: Solve server issue when non-integer float value is used in where clause.
         //[InlineData(25.1)]
         //[InlineData(0.2)]
@@ -56,9 +52,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         //[InlineData(1.234E+2)]
         //[InlineData(float.MinValue)]
         //[InlineData(float.MaxValue)]
-        public override async Task TestFloatValuesInsertSelectDelete(float value)
+        public override Task TestFloatValuesInsertSelectDelete(float value)
         {
-            await base.TestFloatValuesInsertSelectDelete(value);
+            return base.TestFloatValuesInsertSelectDelete(value);
         }
     }
 }

@@ -16,45 +16,46 @@
 
 DROP TABLE IF EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE};
 
+-- Note:
+-- Impala supports complex type (ARRAY, MAP, STRUCT),  BUT,
+-- there is no way to dynamically load complex data. It needs to be imported from a PARQUET file.
 CREATE TABLE IF NOT EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
-  id LONG,
-  byte BYTE,
-  short SHORT,
-  integer INT,
-  float FLOAT,
+  id BIGINT,
+  byte TINYINT,
+  short SMALLINT,
+  intcol INTEGER,
+  floatcol FLOAT,
   number DOUBLE,
-  decimal NUMERIC(38, 9),
+  deccol DECIMAL(38, 9),
   is_active BOOLEAN,
   name STRING,
-  data BINARY,
-  date DATE,
-  timestamp TIMESTAMP,
-  timestamp_ntz TIMESTAMP_NTZ,
-  timestamp_ltz TIMESTAMP_LTZ,
-  numbers ARRAY<LONG>,
-  person STRUCT <
-    name STRING,
-    age LONG
-  >,
-  map MAP <
-    INT,
-    STRING
-  >,
-  varchar VARCHAR(255),
-  char CHAR(10)
-);
+  bincol BINARY,
+  datacol DATE,
+  timestampcol TIMESTAMP,
+  --numbers ARRAY<BIGINT>,
+  --person STRUCT <
+  --  name: STRING,
+  --  age: BIGINT
+  -->,
+  --mapcol MAP <
+  --  INTEGER,
+  --  STRING
+  -->,
+  varcharcol VARCHAR(255),
+  charcol CHAR(10)
+) STORED AS PARQUET;
 
 INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
     id,
-    byte, short, integer, float, number, decimal,
+    byte, short, intcol, floatcol, number, deccol,
     is_active,
-    name, data,
-    date, timestamp, timestamp_ntz, timestamp_ltz,
-    numbers,
-    person,
-    map,
-    varchar,
-    char
+    name, bincol,
+    datacol, timestampcol,
+    --numbers,
+    --person,
+    --mapcol,
+    varcharcol,
+    charcol
 )
 VALUES (
     1,
@@ -62,72 +63,75 @@ VALUES (
     TRUE,
     'John Doe',
     -- hex-encoded value `abc123`
-    X'616263313233',
-    '2023-09-08', '2023-09-08 12:34:56', '2023-09-08 12:34:56', '2023-09-08 12:34:56+00:00',
-    ARRAY(1, 2, 3),
-    STRUCT('John Doe', 30),
-    MAP(1, 'John Doe'),
-    'John Doe',
-    'John Doe'
+    --X'616263313233',
+    CAST('abc123' as BINARY),
+    '2023-09-08', '2023-09-08 12:34:56',
+    --ARRAY(1, 2, 3),
+    --STRUCT('John Doe', 30),
+    --MAP(1, 'John Doe'),
+    CAST('John Doe' as VARCHAR(255)),
+    CAST('John Doe' as CHAR(10))
 );
 
 INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
     id,
-    byte, short, integer, float, number, decimal,
+    byte, short, intcol, floatcol, number, deccol,
     is_active,
-    name, data,
-    date, timestamp, timestamp_ntz, timestamp_ltz,
-    numbers,
-    person,
-    map,
-    varchar,
-    char
+    name, bincol,
+    datacol, timestampcol,
+    --numbers,
+    --person,
+    --mapcol,
+    varcharcol,
+    charcol
 )
 VALUES (
     2,
-    127, 32767, 2147483647, 3.4028234663852886e+38, 1.7976931348623157e+308, 9.99999999999999999999999999999999E+28BD,
+    127, 32767, 2147483647, CAST(3.4028234663852886e+38 as FLOAT), 1.7976931348623157e+308, 9.99999999999999999999999999999999E+28BD,
     FALSE,
     'Jane Doe',
     -- hex-encoded `def456`
-    X'646566343536',
-    '2023-09-09', '2023-09-09 13:45:57', '2023-09-09 13:45:57', '2023-09-09 13:45:57+00:00',
-    ARRAY(4, 5, 6),
-    STRUCT('Jane Doe', 40),
-    MAP(1, 'John Doe'),
-    'Jane Doe',
-    'Jane Doe'
+    --X'646566343536',
+    CAST('def456' as BINARY),
+    '2023-09-09', '2023-09-09 13:45:57',
+    --ARRAY(4, 5, 6),
+    --STRUCT('Jane Doe', 40),
+    --MAP(1, 'John Doe'),
+    CAST('Jane Doe' as VARCHAR(255)),
+    CAST('Jane Doe' as CHAR(10))
 );
 
 INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
     id,
-    byte, short, integer, float, number, decimal,
+    byte, short, intcol, floatcol, number, deccol,
     is_active,
-    name, data,
-    date, timestamp, timestamp_ntz, timestamp_ltz,
-    numbers,
-    person,
-    map,
-    varchar,
-    char
+    name, bincol,
+    datacol, timestampcol,
+    --numbers,
+    --person,
+    --mapcol,
+    varcharcol,
+    charcol
 )
 VALUES (
     3,
-    -128, -32768, -2147483648, -3.4028234663852886e+38, -1.7976931348623157e+308, -9.99999999999999999999999999999999E+28BD,
+    -128, -32768, -2147483648, CAST(-3.4028234663852886e+38 as FLOAT), -1.7976931348623157e+308, -9.99999999999999999999999999999999E+28BD,
     FALSE,
     'Jack Doe',
     -- hex-encoded `def456`
-    X'646566343536',
-    '1556-01-02', '1970-01-01 00:00:00', '1970-01-01 00:00:00', '9999-12-31 23:59:59+00:00',
-    ARRAY(7, 8, 9),
-    STRUCT('Jack Doe', 50),
-    MAP(1, 'John Doe'),
-    'Jack Doe',
-    'Jack Doe'
+    --X'646566343536',
+    CAST('def456' as BINARY),
+    '1556-01-02', '1970-01-01 00:00:00',
+    --ARRAY(7, 8, 9),
+    --STRUCT('Jack Doe', 50),
+    --MAP(1, 'John Doe'),
+    CAST('Jack Doe' as VARCHAR(255)),
+    CAST('Jack Doe' as CHAR(10))
 );
 
-UPDATE {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
-    SET short = 0
-    WHERE id = 3;
+--UPDATE {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
+--    SET short = 0
+--    WHERE id = 3;
 
-DELETE FROM {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
-    WHERE id = 3;
+--DELETE FROM {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
+--    WHERE id = 3;

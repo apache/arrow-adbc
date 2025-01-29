@@ -42,16 +42,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         [SkippableTheory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" Leading and trailing spaces ")]
+        [InlineData("你好")]
+        internal override async Task TestCharData(string? value)
+        {
+            await base.TestCharData(value);
+        }
+
+        [SkippableTheory]
         [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
         internal async Task TestCharDataDatabricks(string? value, SparkServerType serverType)
         {
             Skip.If(TestEnvironment.ServerType != serverType);
-            await TestCharData(value);
+            await base.TestCharData(value);
         }
 
         protected override async Task TestVarcharExceptionData(string value, string[] expectedTexts, string? expectedSqlState)
         {
             Skip.If(TestEnvironment.ServerType == SparkServerType.Databricks);
+            await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
+        }
+
+        [SkippableTheory]
+        [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "Exceeds", "length limitation: 10" }, null)]
+        public async Task TestVarcharExceptionDataSpark(string value, string[] expectedTexts, string? expectedSqlState)
+        {
+            Skip.If(TestEnvironment.ServerType == SparkServerType.Databricks, $"Server type: {TestEnvironment.ServerType}");
             await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
         }
 

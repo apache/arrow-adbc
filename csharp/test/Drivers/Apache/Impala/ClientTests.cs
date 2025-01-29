@@ -16,41 +16,35 @@
 */
 
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    public class ClientTests : Common.ClientTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class ClientTests : Common.ClientTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
         public ClientTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new ImpalaTestEnvironment.Factory())
         {
         }
 
         protected override IReadOnlyList<int> GetUpdateExpectedResults()
         {
             int affectedRows = ValidateAffectedRows ? 1 : -1;
-            return GetUpdateExpectedResults(affectedRows, TestEnvironment.ServerType == SparkServerType.Databricks);
+            return GetUpdateExpectedResults(affectedRows);
         }
 
-        internal static IReadOnlyList<int> GetUpdateExpectedResults(int affectedRows, bool isDatabricks)
+        internal static IReadOnlyList<int> GetUpdateExpectedResults(int affectedRows)
         {
-            return !isDatabricks
-                ? [
+            return
+                [
+                    -1, // DROP TABLE
                     -1, // CREATE TABLE
                     affectedRows,  // INSERT
                     affectedRows,  // INSERT
                     affectedRows,  // INSERT
-                  ]
-                : [
-                    -1, // CREATE TABLE
-                    affectedRows,  // INSERT
-                    affectedRows,  // INSERT
-                    affectedRows,  // INSERT
-                    affectedRows,  // UPDATE
-                    affectedRows,  // DELETE
-                  ];
+                    //affectedRows,  // UPDATE
+                    //affectedRows,  // DELETE
+                ];
         }
     }
 }

@@ -15,24 +15,17 @@
 * limitations under the License.
 */
 
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
+using Xunit;
+using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    internal class ImpalaStatement : HiveServer2Statement
+    public class StatementTests : Common.StatementTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
-        internal ImpalaStatement(ImpalaConnection connection)
-            : base(connection)
+        public StatementTests(ITestOutputHelper? outputHelper)
+            : base(outputHelper, new ImpalaTestEnvironment.Factory())
         {
-            ValidateOptions(connection.Properties);
-        }
-
-        /// <summary>
-        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
-        /// </summary>
-        public sealed class Options : ApacheParameters
-        {
-            // options specific to Impala go here
         }
     }
 }

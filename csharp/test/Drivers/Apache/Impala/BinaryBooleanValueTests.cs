@@ -15,17 +15,17 @@
 * limitations under the License.
 */
 
-using System;
+using System.Text;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    public class BinaryBooleanValueTests : Common.BinaryBooleanValueTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class BinaryBooleanValueTests : Common.BinaryBooleanValueTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
         public BinaryBooleanValueTests(ITestOutputHelper output)
-            : base(output, new SparkTestEnvironment.Factory())
+            : base(output, new ImpalaTestEnvironment.Factory())
         {
         }
 
@@ -34,8 +34,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [MemberData(nameof(AsciiArrayData), 0)]
         [MemberData(nameof(AsciiArrayData), 2)]
         [MemberData(nameof(AsciiArrayData), 1024)]
-        [MemberData(nameof(ByteArrayData), 2)]
-        [MemberData(nameof(ByteArrayData), 1024)]
         public override Task TestBinaryData(byte[]? value)
         {
             return base.TestBinaryData(value);
@@ -55,9 +53,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("CAST(NULL AS CHAR(10))")]
         [InlineData("CAST(NULL AS BOOLEAN)")]
         [InlineData("CAST(NULL AS BINARY)")]
-        [InlineData("CAST(NULL AS MAP<STRING, INT>)")]
-        [InlineData("CAST(NULL AS STRUCT<NAME: STRING>)")]
-        [InlineData("CAST(NULL AS ARRAY<INT>)")]
         public override Task TestNullData(string projectionClause)
         {
             return base.TestNullData(projectionClause);
@@ -65,7 +60,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         protected override string? GetFormattedBinaryValue(byte[]? value)
         {
-            return value != null ? $"X'{BitConverter.ToString(value).Replace("-", "")}'" : null;
+            return value != null ? $"CAST ('{Encoding.UTF8.GetString(value)}' as BINARY)" : null;
         }
     }
 }

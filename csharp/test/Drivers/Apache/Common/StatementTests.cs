@@ -145,9 +145,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// Queries the backend with various timeouts.
         /// </summary>
         /// <param name="statementWithExceptions"></param>
-        [SkippableTheory]
-        [ClassData(typeof(StatementTimeoutTestData))]
-        internal void StatementTimeoutTest(StatementWithExceptions statementWithExceptions)
+        internal virtual void StatementTimeoutTest(StatementWithExceptions statementWithExceptions)
         {
             TConfig testConfiguration = (TConfig)TestConfiguration.Clone();
 
@@ -218,20 +216,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// <summary>
     /// Collection of <see cref="StatementWithExceptions"/> for testing statement timeouts."/>
     /// </summary>
-    internal class StatementTimeoutTestData : TheoryData<StatementWithExceptions>
+    internal class ShortRunningStatementTimeoutTestData : TheoryData<StatementWithExceptions>
     {
-        public StatementTimeoutTestData()
+        public ShortRunningStatementTimeoutTestData()
         {
-            string longRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(10000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
-
             Add(new(0, null, null));
             Add(new(null, null, null));
             Add(new(1, null, typeof(TimeoutException)));
             Add(new(5, null, null));
             Add(new(30, null, null));
-            Add(new(5, longRunningQuery, typeof(TimeoutException)));
-            Add(new(null, longRunningQuery, typeof(TimeoutException)));
-            Add(new(0, longRunningQuery, null));
         }
     }
 }
