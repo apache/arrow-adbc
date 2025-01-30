@@ -15,7 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-"""A directive for code recipes with a literate programming style."""
+"""A directive for code recipes with a literate-like programming style.
+
+1. Write code recipes as normal, self-contained source files.
+2. Add comments for prose containing reStructuredText markup.
+3. Use the ``recipe`` directive to include the code in your Sphinx
+   documentation. The directive will parse out the prose and render it as
+   actual documentation, with the code blocks interspersed.
+
+Effectively, this turns the code "inside out": code with embedded prose
+comments will become prose with embedded code blocks.  The actual code remains
+valid code and can be tested and run like usual.
+"""
 
 import typing
 from pathlib import Path
@@ -31,16 +42,25 @@ __all__ = ["setup"]
 
 
 class SourceLine(typing.NamedTuple):
+    """A reference into the recipe source file."""
+
     content: str
+    #: 1-indexed.  Used for proper line numbers for code blocks.
     lineno: int
 
 
 class SourceFragment(typing.NamedTuple):
-    kind: str
+    """A run of source or prose lines in a recipe."""
+
+    kind: typing.Literal["source", "prose"]
     lines: list[SourceLine]
 
 
+#: Prepended to the Sphinx output to link to the source of the recipe.
 PREAMBLE = "Recipe source: `{name} <{url}>`_"
+START = "RECIPE STARTS HERE"
+CATEGORY_PREFIX = "RECIPE CATEGORY:"
+KEYWORDS_PREFIX = "RECIPE KEYWORDS:"
 
 
 class RecipeDirective(SphinxDirective):
@@ -49,7 +69,12 @@ class RecipeDirective(SphinxDirective):
     optional_arguments = 0
     option_spec: OptionSpec = {
         "language": directives.unchanged_required,
+        # The comment syntax (or really, line prefix) to treat as prose.
+        # Leading spaces are ignored in the code.  Multiline comments are not
+        # supported.
         "prose-prefix": directives.unchanged_required,
+        "stderr-prefix": directives.unchanged_required,
+        "stdout-prefix": directives.unchanged_required,
     }
 
     @staticmethod
@@ -57,34 +82,79 @@ class RecipeDirective(SphinxDirective):
         return {
             "cpp": "///",
             "go": "///",
+            "java": "///",
             "python": "#:",
         }.get(language, "#:")
 
+    @staticmethod
+    def default_output_prefix(language: str, output: str) -> str:
+        return {
+            "cpp": f"// {output}:",
+            "go": f"// {output}:",
+            "java": f"// {output}:",
+            "python": f"# {output}:",
+        }.get(language, f"# {output}:")
+
     def run(self):
         rel_filename, filename = self.env.relfn2path(self.arguments[0])
+        # Ask Sphinx to rebuild when either the recipe or the directive are changed
         self.env.note_dependency(rel_filename)
         self.env.note_dependency(__file__)
 
         language = self.options.get("language", "python")
         prefix = self.options.get("prose-prefix", self.default_prose_prefix(language))
+        stderr_prefix = self.options.get(
+            "prose-prefix", self.default_output_prefix(language, "STDERR")
+        )
+        stdout_prefix = self.options.get(
+            "prose-prefix", self.default_output_prefix(language, "STDOUT")
+        )
 
         # --- Split the source into runs of prose or code
 
         fragments = []
+        stdout = []
+        stderr = []
+        category = None
+        keywords = []
 
         fragment = []
         fragment_type = None
+        # "before" --> ignore code lines (e.g. for a license header)
+        # "reading" --> parse code lines
         state = "before"
         lineno = 1
         for line in open(filename):
             if state == "before":
-                if "RECIPE STARTS HERE" in line:
+                if START in line:
                     state = "reading"
+                elif CATEGORY_PREFIX in line:
+                    index = line.find(CATEGORY_PREFIX)
+                    category = line[index + len(CATEGORY_PREFIX) :].strip()
+                elif KEYWORDS_PREFIX in line:
+                    index = line.find(KEYWORDS_PREFIX)
+                    keywords = [
+                        keyword.strip()
+                        for keyword in line[index + len(KEYWORDS_PREFIX) :]
+                        .strip()
+                        .split(",")
+                    ]
             elif state == "reading":
-                if line.strip().startswith(prefix):
+                trimmed = line.lstrip()
+                if trimmed.startswith(prefix):
                     line_type = "prose"
                     # Remove prefix and next whitespace
-                    line = line.lstrip()[len(prefix) + 1 :]
+                    line = trimmed[len(prefix) + 1 :]
+                elif trimmed.startswith(stdout_prefix):
+                    line = trimmed[len(stdout_prefix) + 1 :]
+                    stdout.append(line)
+                    lineno += 1
+                    continue
+                elif trimmed.startswith(stderr_prefix):
+                    line = trimmed[len(stderr_prefix) + 1 :]
+                    stderr.append(line)
+                    lineno += 1
+                    continue
                 else:
                     line_type = "code"
 
@@ -96,7 +166,7 @@ class RecipeDirective(SphinxDirective):
                         fragment = []
                     fragment_type = line_type
 
-                # Skip blank code lines
+                # Skip blank code lines (blank lines in reST are significant)
                 if line_type != "code" or line.strip():
                     # Remove trailing newline
                     fragment.append(SourceLine(content=line[:-1], lineno=lineno))
@@ -110,6 +180,11 @@ class RecipeDirective(SphinxDirective):
         # That way, section hierarchy works properly
 
         generated_lines = []
+
+        if category and keywords:
+            generated_lines.append(".. index::")
+            for keyword in keywords:
+                generated_lines.append(f"   pair: {category}; {keyword} (recipe)")
 
         # Link to the source on GitHub
         repo_url_template = self.env.config.recipe_repo_url_template
@@ -142,7 +217,24 @@ class RecipeDirective(SphinxDirective):
                 ]
                 generated_lines.extend(lines)
             else:
-                raise RuntimeError("Unknown fragment kind")
+                raise RuntimeError(f"Unknown fragment kind {fragment.kind}")
+
+        if stdout:
+            generated_lines.append(".. code-block:: text")
+            generated_lines.append("   :caption: stdout")
+            generated_lines.append("")
+            for line in stdout:
+                # reST escapes the content of a code-block directive
+                generated_lines.append("   " + line)
+            generated_lines.append("")
+
+        if stderr:
+            generated_lines.append(".. code-block:: text")
+            generated_lines.append("   :caption: stderr")
+            generated_lines.append("")
+            for line in stderr:
+                generated_lines.append("   " + line)
+            generated_lines.append("")
 
         parsed = docutils.nodes.Element()
         nested_parse_with_titles(
