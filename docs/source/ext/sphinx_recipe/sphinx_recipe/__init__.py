@@ -51,7 +51,7 @@ class SourceLine(typing.NamedTuple):
 class SourceFragment(typing.NamedTuple):
     """A run of source or prose lines in a recipe."""
 
-    kind: typing.Literal["source", "prose"]
+    kind: typing.Literal["source", "prose", "stderr", "stdout"]
     lines: list[SourceLine]
 
 
@@ -92,6 +92,8 @@ class RecipeDirective(SphinxDirective):
             "python": "#:",
         }.get(language, "#:")
 
+    # TODO: reorganize this into blocks of language configs
+
     @staticmethod
     def default_output_prefix(language: str, output: str) -> str:
         return {
@@ -101,6 +103,15 @@ class RecipeDirective(SphinxDirective):
             "python": f"# {output}:",
         }.get(language, f"# {output}:")
 
+    @staticmethod
+    def default_continuation_prefix(language: str) -> str:
+        return {
+            "cpp": "//",
+            "go": "//",
+            "java": "//",
+            "python": "#",
+        }.get(language, "#")
+
     def run(self):
         rel_filename, filename = self.env.relfn2path(self.arguments[0])
         # Ask Sphinx to rebuild when either the recipe or the directive are changed
@@ -109,14 +120,13 @@ class RecipeDirective(SphinxDirective):
 
         language = self.default_language(filename)
         prefix = self.default_prose_prefix(language)
-        stderr_prefix = self.default_output_prefix(language, "STDERR")
-        stdout_prefix = self.default_output_prefix(language, "STDOUT")
+        stderr_prefix = self.default_output_prefix(language, "Standard Error")
+        stdout_prefix = self.default_output_prefix(language, "Output")
+        continuation_prefix = self.default_continuation_prefix(language)
 
         # --- Split the source into runs of prose or code
 
         fragments = []
-        stdout = []
-        stderr = []
         category = None
         keywords = []
 
@@ -148,15 +158,15 @@ class RecipeDirective(SphinxDirective):
                     # Remove prefix and next whitespace
                     line = trimmed[len(prefix) + 1 :]
                 elif trimmed.startswith(stdout_prefix):
+                    line_type = "stdout"
                     line = trimmed[len(stdout_prefix) + 1 :]
-                    stdout.append(line)
-                    lineno += 1
-                    continue
                 elif trimmed.startswith(stderr_prefix):
+                    line_type = "stderr"
                     line = trimmed[len(stderr_prefix) + 1 :]
-                    stderr.append(line)
-                    lineno += 1
-                    continue
+                elif fragment_type in ("stdout", "stderr") and trimmed.startswith(
+                    continuation_prefix
+                ):
+                    line = trimmed[len(continuation_prefix) + 1 :]
                 else:
                     line_type = "code"
 
@@ -177,6 +187,29 @@ class RecipeDirective(SphinxDirective):
 
         if fragment:
             fragments.append(SourceFragment(kind=fragment_type, lines=fragment))
+
+        # --- Split out output fragments, merge adjacent fragments
+        # We render output blocks at the end, so remove them here.  Merging
+        # adjacent fragments avoids odd breaks in the source code.
+
+        stdout = []
+        stderr = []
+        new_fragments = []
+        for fragment in fragments:
+            if fragment.kind == "stdout":
+                stdout.extend(line.content for line in fragment.lines)
+            elif fragment.kind == "stderr":
+                stderr.extend(line.content for line in fragment.lines)
+            else:
+                if (
+                    new_fragments
+                    and fragment.kind == "code"
+                    and new_fragments[-1].kind == fragment.kind
+                ):
+                    new_fragments[-1].lines.extend(fragment.lines)
+                else:
+                    new_fragments.append(fragment)
+        fragments = new_fragments
 
         # --- Generate the final reST as a whole and parse it
         # That way, section hierarchy works properly
