@@ -39,6 +39,6 @@ conn = adbc_driver_postgresql.dbapi.connect(uri)
 with conn.cursor() as cur:
     cur.execute("SELECT 1")
     print(cur.fetchone())
-    # STDOUT: (1,)
+    # Output: (1,)
 
 conn.close()
