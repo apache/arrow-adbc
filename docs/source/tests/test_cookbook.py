@@ -29,7 +29,17 @@ def pytest_generate_tests(metafunc) -> None:
     )
 
 
-def test_cookbook_recipe(recipe: Path) -> None:
+def test_cookbook_recipe(recipe: Path, capsys: pytest.CaptureFixture) -> None:
     spec = importlib.util.spec_from_file_location(f"cookbook.{recipe.stem}", recipe)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+
+    output = recipe.with_suffix(".stdout.txt")
+    if output.is_file():
+        with output.open("r") as source:
+            expected = [line for line in source.read().strip().splitlines() if line]
+
+        captured = [
+            line for line in capsys.readouterr().out.strip().splitlines() if line
+        ]
+        assert captured == expected
