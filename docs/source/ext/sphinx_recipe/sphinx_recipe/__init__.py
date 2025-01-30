@@ -55,11 +55,62 @@ class SourceFragment(typing.NamedTuple):
     lines: list[SourceLine]
 
 
+class SourceLanguage(typing.NamedTuple):
+    """Language-specific configuration for parsing recipes."""
+
+    #: Language name to use for syntax highlighting.
+    pygments_language: str
+    #: Prefix for prose comments.
+    prose_prefix: str
+    #: Prefix for output blocks.
+    stdout_prefix: str
+    #: Prefix for stderr blocks.
+    stderr_prefix: str
+    #: Prefix for continuation lines.
+    output_continuation_prefix: str
+
+
 #: Prepended to the Sphinx output to link to the source of the recipe.
 PREAMBLE = "Recipe source: `{name} <{url}>`_"
+#: Indicates the start of the recipe content.
 START = "RECIPE STARTS HERE"
+#: Allows you to specify the category (used in the index).
 CATEGORY_PREFIX = "RECIPE CATEGORY:"
+#: Allows you to specify comma-separated keywords (used in the index).
 KEYWORDS_PREFIX = "RECIPE KEYWORDS:"
+
+
+_LANGUAGES = {
+    (".cc", ".cpp"): SourceLanguage(
+        pygments_language="cpp",
+        prose_prefix="///",
+        stdout_prefix="// Output:",
+        stderr_prefix="// Standard Error:",
+        output_continuation_prefix="//",
+    ),
+    (".go",): SourceLanguage(
+        pygments_language="go",
+        prose_prefix="///",
+        stdout_prefix="// Output:",
+        stderr_prefix="// Standard Error:",
+        output_continuation_prefix="//",
+    ),
+    (".java",): SourceLanguage(
+        pygments_language="java",
+        prose_prefix="///",
+        stdout_prefix="// Output:",
+        stderr_prefix="// Standard Error:",
+        output_continuation_prefix="//",
+    ),
+    (".py",): SourceLanguage(
+        pygments_language="python",
+        prose_prefix="#:",
+        stdout_prefix="# Output:",
+        stderr_prefix="# Standard Error:",
+        output_continuation_prefix="#",
+    ),
+}
+LANGUAGES = {ext: lang for exts, lang in _LANGUAGES.items() for ext in exts}
 
 
 class RecipeDirective(SphinxDirective):
@@ -69,48 +120,12 @@ class RecipeDirective(SphinxDirective):
     option_spec: OptionSpec = {}
 
     @staticmethod
-    def default_language(filename: str) -> str:
+    def source_language(filename: str) -> SourceLanguage:
         path = Path(filename)
-        language = {
-            ".cpp": "cpp",
-            ".cc": "cpp",
-            ".go": "go",
-            ".java": "java",
-            ".py": "python",
-        }.get(path.suffix)
-
+        language = LANGUAGES.get(path.suffix)
         if not language:
             raise ValueError(f"Unknown language for file {filename}")
         return language
-
-    @staticmethod
-    def default_prose_prefix(language: str) -> str:
-        return {
-            "cpp": "///",
-            "go": "///",
-            "java": "///",
-            "python": "#:",
-        }.get(language, "#:")
-
-    # TODO: reorganize this into blocks of language configs
-
-    @staticmethod
-    def default_output_prefix(language: str, output: str) -> str:
-        return {
-            "cpp": f"// {output}:",
-            "go": f"// {output}:",
-            "java": f"// {output}:",
-            "python": f"# {output}:",
-        }.get(language, f"# {output}:")
-
-    @staticmethod
-    def default_continuation_prefix(language: str) -> str:
-        return {
-            "cpp": "//",
-            "go": "//",
-            "java": "//",
-            "python": "#",
-        }.get(language, "#")
 
     def run(self):
         rel_filename, filename = self.env.relfn2path(self.arguments[0])
@@ -118,11 +133,7 @@ class RecipeDirective(SphinxDirective):
         self.env.note_dependency(rel_filename)
         self.env.note_dependency(__file__)
 
-        language = self.default_language(filename)
-        prefix = self.default_prose_prefix(language)
-        stderr_prefix = self.default_output_prefix(language, "Standard Error")
-        stdout_prefix = self.default_output_prefix(language, "Output")
-        continuation_prefix = self.default_continuation_prefix(language)
+        syntax = self.source_language(filename)
 
         # --- Split the source into runs of prose or code
 
@@ -153,20 +164,20 @@ class RecipeDirective(SphinxDirective):
                     ]
             elif state == "reading":
                 trimmed = line.lstrip()
-                if trimmed.startswith(prefix):
+                if trimmed.startswith(syntax.prose_prefix):
                     line_type = "prose"
                     # Remove prefix and next whitespace
-                    line = trimmed[len(prefix) + 1 :]
-                elif trimmed.startswith(stdout_prefix):
+                    line = trimmed[len(syntax.prose_prefix) + 1 :]
+                elif trimmed.startswith(syntax.stdout_prefix):
                     line_type = "stdout"
-                    line = trimmed[len(stdout_prefix) + 1 :]
-                elif trimmed.startswith(stderr_prefix):
+                    line = trimmed[len(syntax.stdout_prefix) + 1 :]
+                elif trimmed.startswith(syntax.stderr_prefix):
                     line_type = "stderr"
-                    line = trimmed[len(stderr_prefix) + 1 :]
+                    line = trimmed[len(syntax.stderr_prefix) + 1 :]
                 elif fragment_type in ("stdout", "stderr") and trimmed.startswith(
-                    continuation_prefix
+                    syntax.output_continuation_prefix
                 ):
-                    line = trimmed[len(continuation_prefix) + 1 :]
+                    line = trimmed[len(syntax.output_continuation_prefix) + 1 :]
                 else:
                     line_type = "code"
 
@@ -251,7 +262,7 @@ class RecipeDirective(SphinxDirective):
                 line_max = fragment.lines[-1].lineno
                 lines = [
                     f".. literalinclude:: {self.arguments[0]}",
-                    f"   :language: {language}",
+                    f"   :language: {syntax.pygments_language}",
                     "   :linenos:",
                     "   :lineno-match:",
                     f"   :lines: {line_min}-{line_max}",
