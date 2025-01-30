@@ -197,7 +197,13 @@ class RecipeDirective(SphinxDirective):
         new_fragments = []
         for fragment in fragments:
             if fragment.kind == "stdout":
-                stdout.extend(line.content for line in fragment.lines)
+                lines = fragment.lines
+                if lines and lines[0].content == "":
+                    # Avoid blank line when using format like
+                    # // Output:
+                    # // theanswer = 42
+                    lines = lines[1:]
+                stdout.extend(line.content for line in lines)
             elif fragment.kind == "stderr":
                 stderr.extend(line.content for line in fragment.lines)
             else:
