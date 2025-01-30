@@ -40,7 +40,7 @@ def main() -> int:
         if not stdout:
             continue
 
-        target = path.with_suffix(".stdout.txt")
+        target = path.with_suffix(path.suffix + ".stdout.txt")
         if target.is_file():
             with target.open("r") as source:
                 if source.read().strip() == "\n".join(stdout).strip():
