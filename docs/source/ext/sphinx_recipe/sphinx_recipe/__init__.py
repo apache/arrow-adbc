@@ -187,6 +187,7 @@ class RecipeDirective(SphinxDirective):
             generated_lines.append(".. index::")
             for keyword in keywords:
                 generated_lines.append(f"   pair: {category}; {keyword} (recipe)")
+            generated_lines.append("")
 
         # Link to the source on GitHub
         repo_url_template = self.env.config.recipe_repo_url_template
