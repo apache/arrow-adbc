@@ -87,9 +87,7 @@ def test_cookbook_recipe(recipe: Recipe, capsys: pytest.CaptureFixture) -> None:
             expected = [line for line in source.read().strip().splitlines() if line]
 
         output = subprocess.check_output(recipe.executable, text=True)
-        captured = [
-            line for line in output.strip().splitlines() if line
-        ]
+        captured = [line for line in output.strip().splitlines() if line]
 
         assert captured == expected
     else:
