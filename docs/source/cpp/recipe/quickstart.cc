@@ -155,6 +155,7 @@ int main() {
   /// ahead of time, so this value will actually just be ``-1`` to
   /// indicate that the value is not known.
   std::cout << "Got " << rows_affected << " rows" << std::endl;
+  // Output: Got -1 rows affected
 
   /// We need an Arrow implementation to read the actual results.  We
   /// can use `Arrow C++`_ or `Nanoarrow`_ for that.  For simplicity,
@@ -195,10 +196,11 @@ int main() {
                 << "] = " << view.children[0]->buffer_views[1].data.as_int64[i]
                 << std::endl;
     }
+    // Output:
+    // THEANSWER[0] = 42
     ArrowArrayViewReset(&view);
   }
 
-  std::cout << "Finished reading result set" << std::endl;
   stream.release(&stream);
 
   /// Cleanup
