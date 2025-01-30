@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+"""Regenerate .stdout.txt files from recipes for the test harness."""
+
 import argparse
 import sys
 from pathlib import Path
@@ -22,7 +24,7 @@ from pathlib import Path
 from . import parser as recipe_parser
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("recipes", nargs="+", type=Path, help="Recipe files to update")
 
@@ -46,11 +48,18 @@ def main():
                     continue
 
         with target.open("w") as sink:
-            sink.writelines(stdout)
+            for line in stdout:
+                sink.write(line)
+                sink.write("\n")
         print(path, "updated")
         updated = True
 
-    return 1 if updated else 0
+    if updated:
+        print("----------------------------------------")
+        print("Some .stdout.txt files were updated.")
+        print("Please commit the result.")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

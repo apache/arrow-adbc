@@ -1,0 +1,2 @@
+Got -1 rows affected
+THEANSWER[0] = 42

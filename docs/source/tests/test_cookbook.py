@@ -22,15 +22,18 @@ import pytest
 
 
 def pytest_generate_tests(metafunc) -> None:
-    root = (Path(__file__).parent.parent / "python/recipe/").resolve()
-    recipes = root.rglob("*.py")
-    metafunc.parametrize(
-        "recipe", [pytest.param(path, id=path.stem) for path in recipes]
-    )
+    params = []
+    for root in (
+        (Path(__file__).parent.parent / "cpp/recipe_driver/").resolve(),
+        (Path(__file__).parent.parent / "python/recipe/").resolve(),
+    ):
+        recipes = root.rglob("*.py")
+        params.extend(pytest.param(path, id=path.stem) for path in recipes)
+    metafunc.parametrize("recipe", params)
 
 
 def test_cookbook_recipe(recipe: Path, capsys: pytest.CaptureFixture) -> None:
-    spec = importlib.util.spec_from_file_location(f"cookbook.{recipe.stem}", recipe)
+    spec = importlib.util.spec_from_file_location("__main__", recipe)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
