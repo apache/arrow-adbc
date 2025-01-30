@@ -32,7 +32,6 @@ import typing
 from pathlib import Path
 
 import docutils
-from docutils.parsers.rst import directives
 from docutils.statemachine import StringList
 from sphinx.util.docutils import SphinxDirective
 from sphinx.util.nodes import nested_parse_with_titles
@@ -67,15 +66,22 @@ class RecipeDirective(SphinxDirective):
     has_content = False
     required_arguments = 1
     optional_arguments = 0
-    option_spec: OptionSpec = {
-        "language": directives.unchanged_required,
-        # The comment syntax (or really, line prefix) to treat as prose.
-        # Leading spaces are ignored in the code.  Multiline comments are not
-        # supported.
-        "prose-prefix": directives.unchanged_required,
-        "stderr-prefix": directives.unchanged_required,
-        "stdout-prefix": directives.unchanged_required,
-    }
+    option_spec: OptionSpec = {}
+
+    @staticmethod
+    def default_language(filename: str) -> str:
+        path = Path(filename)
+        language = {
+            ".cpp": "cpp",
+            ".cc": "cpp",
+            ".go": "go",
+            ".java": "java",
+            ".py": "python",
+        }.get(path.suffix)
+
+        if not language:
+            raise ValueError(f"Unknown language for file {filename}")
+        return language
 
     @staticmethod
     def default_prose_prefix(language: str) -> str:
@@ -101,14 +107,10 @@ class RecipeDirective(SphinxDirective):
         self.env.note_dependency(rel_filename)
         self.env.note_dependency(__file__)
 
-        language = self.options.get("language", "python")
-        prefix = self.options.get("prose-prefix", self.default_prose_prefix(language))
-        stderr_prefix = self.options.get(
-            "prose-prefix", self.default_output_prefix(language, "STDERR")
-        )
-        stdout_prefix = self.options.get(
-            "prose-prefix", self.default_output_prefix(language, "STDOUT")
-        )
+        language = self.default_language(filename)
+        prefix = self.default_prose_prefix(language)
+        stderr_prefix = self.default_output_prefix(language, "STDERR")
+        stdout_prefix = self.default_output_prefix(language, "STDOUT")
 
         # --- Split the source into runs of prose or code
 
