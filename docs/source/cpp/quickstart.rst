@@ -20,4 +20,3 @@ Quickstart
 ==========
 
 .. recipe:: recipe/quickstart.cc
-   :language: cpp
