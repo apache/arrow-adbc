@@ -33,6 +33,7 @@ test_recipe() {
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export GOEXPERIMENT=cgocheck2
 
+    rm -rf "${build_dir}"
     mkdir -p "${build_dir}"
     pushd "${build_dir}"
 
@@ -41,11 +42,12 @@ test_recipe() {
           ${ADBC_CMAKE_ARGS} \
           -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
           -DCMAKE_INSTALL_LIBDIR=lib \
+          -DCMAKE_INSTALL_PREFIX="${install_dir}" \
           -DCMAKE_PREFIX_PATH="${install_dir}" \
           -DADBC_DRIVER_EXAMPLE_BUILD_TESTS=ON
     set +x
 
-    cmake --build . -j
+    cmake --build . --target install -j
     ctest \
         --output-on-failure \
         --no-tests=error

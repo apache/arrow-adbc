@@ -710,7 +710,18 @@ jobs:
       - name: Test Recipes (C++)
         run: |
           ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe
+      - name: Ensure recipes are up to date
+        run: |
+          pip install -e ./docs/source/ext/sphinx_recipe
+          # Exits 1 if any recipes were updated
+          python -m sphinx_recipe.update_output \
+            docs/source/cpp/recipe/*.cc \
+            docs/source/cpp/recipe_driver/driver_example.py \
+            docs/source/python/recipe/*.py
       - name: Test Recipes (Python)
         run: |
           docker compose up --detach --wait dremio dremio-init flightsql-sqlite-test postgres-test
+          export ADBC_CPP_RECIPE_BIN=~/local/bin
+          # Needed for the combined C++/Python driver example
+          export LD_LIBRARY_PATH=~/local/lib
           pytest -vvs docs/source/tests/
