@@ -26,7 +26,6 @@ import (
 	"log/slog"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -697,51 +696,6 @@ func PatternToNamedArg(name string, pattern *string) sql.NamedArg {
 		return sql.Named(name, "%")
 	}
 	return sql.Named(name, *pattern)
-}
-
-func ToXdbcDataType(dt arrow.DataType) (xdbcType internal.XdbcDataType) {
-	switch dt.ID() {
-	case arrow.EXTENSION:
-		return ToXdbcDataType(dt.(arrow.ExtensionType).StorageType())
-	case arrow.DICTIONARY:
-		return ToXdbcDataType(dt.(*arrow.DictionaryType).ValueType)
-	case arrow.RUN_END_ENCODED:
-		return ToXdbcDataType(dt.(*arrow.RunEndEncodedType).Encoded())
-	case arrow.INT8, arrow.UINT8:
-		return internal.XdbcDataType_XDBC_TINYINT
-	case arrow.INT16, arrow.UINT16:
-		return internal.XdbcDataType_XDBC_SMALLINT
-	case arrow.INT32, arrow.UINT32:
-		return internal.XdbcDataType_XDBC_SMALLINT
-	case arrow.INT64, arrow.UINT64:
-		return internal.XdbcDataType_XDBC_BIGINT
-	case arrow.FLOAT32, arrow.FLOAT16, arrow.FLOAT64:
-		return internal.XdbcDataType_XDBC_FLOAT
-	case arrow.DECIMAL, arrow.DECIMAL256:
-		return internal.XdbcDataType_XDBC_DECIMAL
-	case arrow.STRING, arrow.LARGE_STRING:
-		return internal.XdbcDataType_XDBC_VARCHAR
-	case arrow.BINARY, arrow.LARGE_BINARY:
-		return internal.XdbcDataType_XDBC_BINARY
-	case arrow.FIXED_SIZE_BINARY:
-		return internal.XdbcDataType_XDBC_BINARY
-	case arrow.BOOL:
-		return internal.XdbcDataType_XDBC_BIT
-	case arrow.TIME32, arrow.TIME64:
-		return internal.XdbcDataType_XDBC_TIME
-	case arrow.DATE32, arrow.DATE64:
-		return internal.XdbcDataType_XDBC_DATE
-	case arrow.TIMESTAMP:
-		return internal.XdbcDataType_XDBC_TIMESTAMP
-	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
-		return internal.XdbcDataType_XDBC_VARBINARY
-	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
-		return internal.XdbcDataType_XDBC_VARBINARY
-	case arrow.STRUCT, arrow.MAP:
-		return internal.XdbcDataType_XDBC_VARBINARY
-	default:
-		return internal.XdbcDataType_XDBC_UNKNOWN_TYPE
-	}
 }
 
 // Nullable wraps a value and returns a pointer to the value, which is
