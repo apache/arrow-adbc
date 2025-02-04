@@ -1,0 +1,4 @@
+Got -1 rows
+Result schema: struct<THEANSWER: int64>
+Got a batch with 1 rows
+THEANSWER[0] = 42

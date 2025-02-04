@@ -20,13 +20,11 @@ Driver Example
 ==============
 
 .. recipe:: recipe_driver/driver_example.cc
-   :language: cpp
 
 Low-level testing
 =================
 
 .. recipe:: recipe_driver/driver_example_test.cc
-   :language: cpp
 
 High-level testing
 ==================

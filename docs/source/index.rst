@@ -209,6 +209,7 @@ Why ADBC?
 
    faq
    glossary
+   genindex
 
 .. toctree::
    :maxdepth: 1
