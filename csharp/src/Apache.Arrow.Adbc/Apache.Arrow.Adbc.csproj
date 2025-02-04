@@ -6,7 +6,7 @@
     <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Apache.Arrow" Version="18.1.0" />
+    <PackageReference Include="Apache.Arrow" Version="19.0.0" />
     <PackageReference Include="OpenTelemetry" Version="1.9.0" />
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.0" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />

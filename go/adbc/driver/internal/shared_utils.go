@@ -19,11 +19,9 @@ package internal
 
 import (
 	"context"
-	"database/sql"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
@@ -58,15 +56,6 @@ type TableInfo struct {
 	Schema          *arrow.Schema
 }
 
-type Metadata struct {
-	Created                                                                                                                      time.Time
-	ColName, DataType, Dbname, Kind, Schema, TblName, TblType, IdentGen, IdentIncrement, Comment, ConstraintName, ConstraintType sql.NullString
-	OrdinalPos                                                                                                                   int
-	NumericPrec, NumericPrecRadix, NumericScale, DatetimePrec                                                                    sql.NullInt16
-	IsNullable, IsIdent                                                                                                          bool
-	CharMaxLength, CharOctetLength                                                                                               sql.NullInt32
-}
-
 type UsageSchema struct {
 	ForeignKeyCatalog, ForeignKeyDbSchema, ForeignKeyTable, ForeignKeyColName string
 }
@@ -77,9 +66,12 @@ type ConstraintSchema struct {
 	ConstraintColumnUsages         []UsageSchema
 }
 
-type GetObjDBSchemasFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, metadataRecords []Metadata) (map[string][]string, error)
-type GetObjTablesFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string, metadataRecords []Metadata) (map[CatalogAndSchema][]TableInfo, error)
+type GetObjDBSchemasFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string) (map[string][]string, error)
+type GetObjTablesFn func(ctx context.Context, depth adbc.ObjectDepth, catalog *string, schema *string, tableName *string, columnName *string, tableType []string) (map[CatalogAndSchema][]TableInfo, error)
 type SchemaToTableInfo = map[CatalogAndSchema][]TableInfo
+type MetadataToBuilders = map[string]array.Builder
+type MetadataHandlers = func(md arrow.Field, builder array.Builder)
+type MetadataToHandlers = map[string]MetadataHandlers
 
 // Helper function that compiles a SQL-style pattern (%, _) to a regex
 func PatternToRegexp(pattern *string) (*regexp.Regexp, error) {
@@ -127,7 +119,6 @@ type GetObjects struct {
 	schemaLookup      map[string][]string
 	tableLookup       map[CatalogAndSchema][]TableInfo
 	ConstraintLookup  map[CatalogSchemaTable][]ConstraintSchema
-	MetadataRecords   []Metadata
 	catalogPattern    *regexp.Regexp
 	columnNamePattern *regexp.Regexp
 
@@ -172,16 +163,18 @@ type GetObjects struct {
 	columnUsageSchemaBuilder     *array.StringBuilder
 	columnUsageTableBuilder      *array.StringBuilder
 	columnUsageColumnBuilder     *array.StringBuilder
+
+	metadataHandler XdbcMetadataBuilder
 }
 
-func (g *GetObjects) Init(mem memory.Allocator, getObj GetObjDBSchemasFn, getTbls GetObjTablesFn) error {
-	if catalogToDbSchemas, err := getObj(g.Ctx, g.Depth, g.Catalog, g.DbSchema, g.MetadataRecords); err != nil {
+func (g *GetObjects) Init(mem memory.Allocator, getObj GetObjDBSchemasFn, getTbls GetObjTablesFn, mdHandler XdbcMetadataBuilder) error {
+	if catalogToDbSchemas, err := getObj(g.Ctx, g.Depth, g.Catalog, g.DbSchema); err != nil {
 		return err
 	} else {
 		g.schemaLookup = catalogToDbSchemas
 	}
 
-	if tableLookup, err := getTbls(g.Ctx, g.Depth, g.Catalog, g.DbSchema, g.TableName, g.ColumnName, g.TableType, g.MetadataRecords); err != nil {
+	if tableLookup, err := getTbls(g.Ctx, g.Depth, g.Catalog, g.DbSchema, g.TableName, g.ColumnName, g.TableType); err != nil {
 		return err
 	} else {
 		g.tableLookup = tableLookup
@@ -246,6 +239,11 @@ func (g *GetObjects) Init(mem memory.Allocator, getObj GetObjDBSchemasFn, getTbl
 	g.columnUsageSchemaBuilder = g.constraintColumnUsageItems.FieldBuilder(1).(*array.StringBuilder)
 	g.columnUsageTableBuilder = g.constraintColumnUsageItems.FieldBuilder(2).(*array.StringBuilder)
 	g.columnUsageColumnBuilder = g.constraintColumnUsageItems.FieldBuilder(3).(*array.StringBuilder)
+
+	if mdHandler == nil {
+		mdHandler = &DefaultXdbcMetadataBuilder{}
+	}
+	g.metadataHandler = mdHandler
 
 	return nil
 }
@@ -379,128 +377,290 @@ func (g *GetObjects) appendColumnsInfo(tableInfo TableInfo) {
 		if g.columnNamePattern != nil && !g.columnNamePattern.MatchString(column.Name) {
 			continue
 		}
+
+		g.metadataHandler.SetMetadata(column.Metadata)
+
+		pos := int32(colIndex + 1)
+
 		g.columnNameBuilder.Append(column.Name)
-		if !column.HasMetadata() {
-			g.ordinalPositionBuilder.Append(int32(colIndex + 1))
-			g.remarksBuilder.AppendNull()
-
-			g.xdbcDataTypeBuilder.AppendNull()
-			g.xdbcTypeNameBuilder.AppendNull()
-			g.xdbcNullableBuilder.AppendNull()
-			g.xdbcIsNullableBuilder.AppendNull()
-			g.xdbcColumnSizeBuilder.AppendNull()
-			g.xdbcDecimalDigitsBuilder.AppendNull()
-			g.xdbcNumPrecRadixBuilder.AppendNull()
-			g.xdbcCharOctetLengthBuilder.AppendNull()
-			g.xdbcDatetimeSubBuilder.AppendNull()
-			g.xdbcSqlDataTypeBuilder.AppendNull()
-		} else {
-			if remark, ok := column.Metadata.GetValue("COMMENT"); ok {
-				g.remarksBuilder.Append(remark)
-			} else {
-				g.remarksBuilder.AppendNull()
-			}
-
-			if typeName, ok := column.Metadata.GetValue("XDBC_TYPE_NAME"); ok {
-				g.xdbcTypeNameBuilder.Append(typeName)
-			} else {
-				g.xdbcTypeNameBuilder.AppendNull()
-			}
-
-			if strNullable, ok := column.Metadata.GetValue("XDBC_NULLABLE"); ok {
-				nullable, _ := strconv.ParseBool(strNullable)
-				g.xdbcNullableBuilder.Append(boolToInt16(nullable))
-			} else {
-				g.xdbcNullableBuilder.AppendNull()
-			}
-
-			if strIsNullable, ok := column.Metadata.GetValue("XDBC_IS_NULLABLE"); ok {
-				g.xdbcIsNullableBuilder.Append(strIsNullable)
-			} else {
-				g.xdbcIsNullableBuilder.AppendNull()
-			}
-
-			if strDataTypeId, ok := column.Metadata.GetValue("XDBC_DATA_TYPE"); ok {
-				dataTypeId64, _ := strconv.ParseInt(strDataTypeId, 10, 16)
-				g.xdbcDataTypeBuilder.Append(int16(dataTypeId64))
-
-			} else {
-				g.xdbcDataTypeBuilder.AppendNull()
-			}
-
-			if strSqlDataTypeId, ok := column.Metadata.GetValue("XDBC_SQL_DATA_TYPE"); ok {
-				sqlDataTypeId64, _ := strconv.ParseInt(strSqlDataTypeId, 10, 16)
-				g.xdbcSqlDataTypeBuilder.Append(int16(sqlDataTypeId64))
-			} else {
-				g.xdbcSqlDataTypeBuilder.AppendNull()
-			}
-
-			if strPrecision, ok := column.Metadata.GetValue("XDBC_PRECISION"); ok { // for numeric values
-				precision64, _ := strconv.ParseInt(strPrecision, 10, 32)
-				g.xdbcColumnSizeBuilder.Append(int32(precision64))
-			} else if strCharLimit, ok := column.Metadata.GetValue("CHARACTER_MAXIMUM_LENGTH"); ok { // for text values
-				charLimit64, _ := strconv.ParseInt(strCharLimit, 10, 32)
-				g.xdbcColumnSizeBuilder.Append(int32(charLimit64))
-			} else {
-				g.xdbcColumnSizeBuilder.AppendNull()
-			}
-
-			if strScale, ok := column.Metadata.GetValue("XDBC_SCALE"); ok {
-				scale64, _ := strconv.ParseInt(strScale, 10, 16)
-				g.xdbcDecimalDigitsBuilder.Append(int16(scale64))
-			} else {
-				g.xdbcDecimalDigitsBuilder.AppendNull()
-			}
-
-			if strPrecRadix, ok := column.Metadata.GetValue("XDBC_NUM_PREC_RADIX"); ok {
-				precRadix64, _ := strconv.ParseInt(strPrecRadix, 10, 16)
-				g.xdbcNumPrecRadixBuilder.Append(int16(precRadix64))
-			} else {
-				g.xdbcNumPrecRadixBuilder.AppendNull()
-			}
-
-			if strCharOctetLen, ok := column.Metadata.GetValue("XDBC_CHAR_OCTET_LENGTH"); ok {
-				charOctLen64, _ := strconv.ParseInt(strCharOctetLen, 10, 32)
-				g.xdbcCharOctetLengthBuilder.Append(int32(charOctLen64))
-			} else {
-				g.xdbcCharOctetLengthBuilder.AppendNull()
-			}
-
-			if strDateTimeSub, ok := column.Metadata.GetValue("XDBC_DATETIME_SUB"); ok {
-				dateTimeSub64, _ := strconv.ParseInt(strDateTimeSub, 10, 16)
-				g.xdbcDatetimeSubBuilder.Append(int16(dateTimeSub64))
-			} else {
-				g.xdbcDatetimeSubBuilder.AppendNull()
-			}
-
-			pos := int32(colIndex + 1)
-
-			if ordinal, ok := column.Metadata.GetValue("ORDINAL_POSITION"); ok {
-				v, err := strconv.ParseInt(ordinal, 10, 32)
-				if err == nil {
-					pos = int32(v)
-				}
-			}
-			g.ordinalPositionBuilder.Append(pos)
-		}
-
-		g.xdbcColumnDefBuilder.AppendNull()
-		g.xdbcScopeCatalogBuilder.AppendNull()
-		g.xdbcScopeSchemaBuilder.AppendNull()
-		g.xdbcScopeTableBuilder.AppendNull()
-		g.xdbcIsAutoincrementBuilder.AppendNull()
-		g.xdbcIsGeneratedcolumnBuilder.AppendNull()
+		g.metadataHandler.SetOrdinalPosition(pos, g.ordinalPositionBuilder)
+		g.metadataHandler.SetRemarks(g.remarksBuilder)
+		g.metadataHandler.SetXdbcDataType(column.Type, g.xdbcDataTypeBuilder)
+		g.metadataHandler.SetXdbcTypeName(g.xdbcTypeNameBuilder)
+		g.metadataHandler.SetXdbcColumnSize(g.xdbcColumnSizeBuilder)
+		g.metadataHandler.SetXdbcDecimalDigits(g.xdbcDecimalDigitsBuilder)
+		g.metadataHandler.SetXdbcNumPrecRadix(g.xdbcNumPrecRadixBuilder)
+		g.metadataHandler.SetXdbcNullable(g.xdbcNullableBuilder)
+		g.metadataHandler.SetXdbcColumnDef(g.xdbcColumnDefBuilder)
+		g.metadataHandler.SetXdbcSqlDataType(column.Type, g.xdbcSqlDataTypeBuilder)
+		g.metadataHandler.SetXdbcDatetimeSub(g.xdbcDatetimeSubBuilder)
+		g.metadataHandler.SetXdbcCharOctetLength(g.xdbcCharOctetLengthBuilder)
+		g.metadataHandler.SetXdbcIsNullable(g.xdbcIsNullableBuilder)
+		g.metadataHandler.SetXdbcScopeCatalog(g.xdbcScopeCatalogBuilder)
+		g.metadataHandler.SetXdbcScopeSchema(g.xdbcScopeSchemaBuilder)
+		g.metadataHandler.SetXdbcScopeTable(g.xdbcScopeTableBuilder)
+		g.metadataHandler.SetXdbcIsAutoincrement(g.xdbcIsAutoincrementBuilder)
+		g.metadataHandler.SetXdbcIsAutogeneratedColumn(g.xdbcIsGeneratedcolumnBuilder)
 
 		g.tableColumnsItems.Append(true)
 	}
 }
 
-func boolToInt16(b bool) int16 {
-	if b {
-		return 1
-	}
-	return 0
+type XdbcMetadataBuilder interface {
+	Metadata() *arrow.Metadata
+	SetMetadata(md arrow.Metadata)
+	SetOrdinalPosition(defaultPos int32, b *array.Int32Builder)
+	SetRemarks(b *array.StringBuilder)
+	SetXdbcDataType(defaultType arrow.DataType, b *array.Int16Builder)
+	SetXdbcTypeName(b *array.StringBuilder)
+	SetXdbcColumnSize(b *array.Int32Builder)
+	SetXdbcDecimalDigits(b *array.Int16Builder)
+	SetXdbcNumPrecRadix(b *array.Int16Builder)
+	SetXdbcNullable(b *array.Int16Builder)
+	SetXdbcColumnDef(b *array.StringBuilder)
+	SetXdbcSqlDataType(defaultType arrow.DataType, b *array.Int16Builder)
+	SetXdbcDatetimeSub(b *array.Int16Builder)
+	SetXdbcCharOctetLength(b *array.Int32Builder)
+	SetXdbcIsNullable(b *array.StringBuilder)
+	SetXdbcScopeCatalog(b *array.StringBuilder)
+	SetXdbcScopeSchema(b *array.StringBuilder)
+	SetXdbcScopeTable(b *array.StringBuilder)
+	SetXdbcIsAutoincrement(b *array.BooleanBuilder)
+	SetXdbcIsAutogeneratedColumn(b *array.BooleanBuilder)
 }
+
+type DefaultXdbcMetadataBuilder struct {
+	Data *arrow.Metadata
+}
+
+func (c *DefaultXdbcMetadataBuilder) Metadata() *arrow.Metadata {
+	return c.Data
+}
+
+func (c *DefaultXdbcMetadataBuilder) SetMetadata(md arrow.Metadata) {
+	c.Data = &md
+}
+
+func (c *DefaultXdbcMetadataBuilder) findStrVal(key string) (string, bool) {
+	if c.Data == nil {
+		return "", false
+	}
+	idx := c.Data.FindKey(key)
+	if idx == -1 {
+		return "", false
+	}
+	return c.Data.Values()[idx], true
+}
+
+func (c *DefaultXdbcMetadataBuilder) findBoolVal(key string) (bool, bool) {
+	if c.Data == nil {
+		return false, false
+	}
+	idx := c.Data.FindKey(key)
+	if idx == -1 {
+		return false, false
+	}
+	v, err := strconv.ParseBool(c.Data.Values()[idx])
+	if err != nil {
+		return false, false
+	}
+	return v, true
+}
+
+func (c *DefaultXdbcMetadataBuilder) findInt32Val(key string) (int32, bool) {
+	if c.Data == nil {
+		return 0, false
+	}
+	idx := c.Data.FindKey(key)
+	if idx == -1 {
+		return 0, false
+	}
+	v, err := strconv.ParseInt(c.Data.Values()[idx], 10, 32)
+	if err != nil {
+		return 0, false
+	}
+	return int32(v), true
+}
+
+func (c *DefaultXdbcMetadataBuilder) findInt16Val(key string) (int16, bool) {
+	if c.Data == nil {
+		return 0, false
+	}
+	idx := c.Data.FindKey(key)
+	if idx == -1 {
+		return 0, false
+	}
+	v, err := strconv.ParseInt(c.Data.Values()[idx], 10, 32)
+	if err != nil {
+		return 0, false
+	}
+	return int16(v), true
+}
+
+func (c *DefaultXdbcMetadataBuilder) SetOrdinalPosition(defaultPos int32, b *array.Int32Builder) {
+	if v, ok := c.findInt32Val(ORDINAL_POSITION); ok {
+		b.Append(v)
+	} else {
+		b.Append(defaultPos)
+	}
+}
+func (b *DefaultXdbcMetadataBuilder) SetRemarks(builder *array.StringBuilder) {
+	if v, ok := b.findStrVal(REMARKS); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcDataType(columnType arrow.DataType, builder *array.Int16Builder) {
+	if v, ok := b.findInt16Val(XDBC_DATA_TYPE); ok {
+		builder.Append(v)
+	} else {
+		builder.Append(int16(ToXdbcDataType(columnType)))
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcTypeName(builder *array.StringBuilder) {
+	if v, ok := b.findStrVal(XDBC_TYPE_NAME); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcColumnSize(builder *array.Int32Builder) {
+	if v, ok := b.findInt32Val(XDBC_COLUMN_SIZE); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcDecimalDigits(builder *array.Int16Builder) {
+	if v, ok := b.findInt16Val(XDBC_DECIMAL_DIGITS); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcNumPrecRadix(builder *array.Int16Builder) {
+	if v, ok := b.findInt16Val(XDBC_NUM_PREC_RADIX); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcNullable(builder *array.Int16Builder) {
+	if v, ok := b.findInt16Val(XDBC_NULLABLE); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcColumnDef(builder *array.StringBuilder) {
+	if v, ok := b.findStrVal(XDBC_COLUMN_DEF); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcSqlDataType(columnType arrow.DataType, builder *array.Int16Builder) {
+	if v, ok := b.findInt16Val(XDBC_SQL_DATA_TYPE); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcDatetimeSub(builder *array.Int16Builder) {
+	if v, ok := b.findInt16Val(XDBC_DATETIME_SUB); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcCharOctetLength(builder *array.Int32Builder) {
+	if v, ok := b.findInt32Val(XDBC_CHAR_OCTET_LENGTH); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcIsNullable(builder *array.StringBuilder) {
+	if v, ok := b.findStrVal(XDBC_IS_NULLABLE); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcScopeCatalog(builder *array.StringBuilder) {
+	if v, ok := b.findStrVal(XDBC_SCOPE_CATALOG); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcScopeSchema(builder *array.StringBuilder) {
+	if v, ok := b.findStrVal(XDBC_SCOPE_SCHEMA); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcScopeTable(builder *array.StringBuilder) {
+	if v, ok := b.findStrVal(XDBC_SCOPE_TABLE); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcIsAutoincrement(builder *array.BooleanBuilder) {
+	if v, ok := b.findBoolVal(XDBC_IS_AUTOINCREMENT); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+func (b *DefaultXdbcMetadataBuilder) SetXdbcIsAutogeneratedColumn(builder *array.BooleanBuilder) {
+	if v, ok := b.findBoolVal(XDBC_IS_AUTOGENERATEDCOLUMN); ok {
+		builder.Append(v)
+	} else {
+		builder.AppendNull()
+	}
+}
+
+const (
+	COLUMN_NAME                 = "COLUMN_NAME"
+	ORDINAL_POSITION            = "ORDINAL_POSITION"
+	REMARKS                     = "REMARKS"
+	XDBC_DATA_TYPE              = "XDBC_DATA_TYPE"
+	XDBC_TYPE_NAME              = "XDBC_TYPE_NAME"
+	XDBC_COLUMN_SIZE            = "XDBC_COLUMN_SIZE"
+	XDBC_DECIMAL_DIGITS         = "XDBC_DECIMAL_DIGITS"
+	XDBC_NUM_PREC_RADIX         = "XDBC_NUM_PREC_RADIX"
+	XDBC_NULLABLE               = "XDBC_NULLABLE"
+	XDBC_COLUMN_DEF             = "XDBC_COLUMN_DEF"
+	XDBC_SQL_DATA_TYPE          = "XDBC_SQL_DATA_TYPE"
+	XDBC_DATETIME_SUB           = "XDBC_DATETIME_SUB"
+	XDBC_CHAR_OCTET_LENGTH      = "XDBC_CHAR_OCTET_LENGTH"
+	XDBC_IS_NULLABLE            = "XDBC_IS_NULLABLE"
+	XDBC_SCOPE_CATALOG          = "XDBC_SCOPE_CATALOG"
+	XDBC_SCOPE_SCHEMA           = "XDBC_SCOPE_SCHEMA"
+	XDBC_SCOPE_TABLE            = "XDBC_SCOPE_TABLE"
+	XDBC_IS_AUTOINCREMENT       = "XDBC_IS_AUTOINCREMENT"
+	XDBC_IS_AUTOGENERATEDCOLUMN = "XDBC_IS_AUTOGENERATEDCOLUMN"
+)
 
 // The JDBC/ODBC-defined type of any object.
 // All the values here are the sames as in the JDBC and ODBC specs.
@@ -532,3 +692,48 @@ const (
 	XdbcDataType_XDBC_WCHAR         XdbcDataType = -8
 	XdbcDataType_XDBC_WVARCHAR      XdbcDataType = -9
 )
+
+func ToXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
+	switch dt.ID() {
+	case arrow.EXTENSION:
+		return ToXdbcDataType(dt.(arrow.ExtensionType).StorageType())
+	case arrow.DICTIONARY:
+		return ToXdbcDataType(dt.(*arrow.DictionaryType).ValueType)
+	case arrow.RUN_END_ENCODED:
+		return ToXdbcDataType(dt.(*arrow.RunEndEncodedType).Encoded())
+	case arrow.INT8, arrow.UINT8:
+		return XdbcDataType_XDBC_TINYINT
+	case arrow.INT16, arrow.UINT16:
+		return XdbcDataType_XDBC_SMALLINT
+	case arrow.INT32, arrow.UINT32:
+		return XdbcDataType_XDBC_INTEGER
+	case arrow.INT64, arrow.UINT64:
+		return XdbcDataType_XDBC_BIGINT
+	case arrow.FLOAT32, arrow.FLOAT16, arrow.FLOAT64:
+		return XdbcDataType_XDBC_FLOAT
+	case arrow.DECIMAL, arrow.DECIMAL256:
+		return XdbcDataType_XDBC_DECIMAL
+	case arrow.STRING, arrow.LARGE_STRING:
+		return XdbcDataType_XDBC_VARCHAR
+	case arrow.BINARY, arrow.LARGE_BINARY:
+		return XdbcDataType_XDBC_BINARY
+	case arrow.FIXED_SIZE_BINARY:
+		return XdbcDataType_XDBC_BINARY
+	case arrow.BOOL:
+		return XdbcDataType_XDBC_BIT
+	case arrow.TIME32, arrow.TIME64:
+		return XdbcDataType_XDBC_TIME
+	case arrow.DATE32, arrow.DATE64:
+		return XdbcDataType_XDBC_DATE
+	case arrow.TIMESTAMP:
+		return XdbcDataType_XDBC_TIMESTAMP
+	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
+		return XdbcDataType_XDBC_VARBINARY
+	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
+		return XdbcDataType_XDBC_VARBINARY
+	case arrow.STRUCT, arrow.MAP:
+		return XdbcDataType_XDBC_VARBINARY
+	default:
+		return XdbcDataType_XDBC_UNKNOWN_TYPE
+	}
+}

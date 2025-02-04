@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Xunit;
@@ -46,25 +47,40 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             yield return new object[] { bytes };
         }
 
+        public static IEnumerable<object[]> AsciiArrayData(int size)
+        {
+            const string values = "abcdefghijklmnopqrstuvwxyz0123456789";
+            StringBuilder builder = new StringBuilder();
+            Random rnd = new();
+            byte[] bytes = new byte[size];
+            for (int i = 0; i < size; i++)
+            {
+                builder.Append(values[rnd.Next(values.Length)]);
+            }
+            yield return new object[] { Encoding.UTF8.GetBytes(builder.ToString()) };
+        }
+
         /// <summary>
         /// Validates if driver can send and receive specific Binary values correctly.
         /// </summary>
-        [SkippableTheory]
-        [InlineData(null)]
-        [MemberData(nameof(ByteArrayData), 0)]
-        [MemberData(nameof(ByteArrayData), 2)]
-        [MemberData(nameof(ByteArrayData), 1024)]
-        public async Task TestBinaryData(byte[]? value)
+        public virtual async Task TestBinaryData(byte[]? value)
         {
             string columnName = "BINARYTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BINARY"));
-            string? formattedValue = value != null ? $"X'{BitConverter.ToString(value).Replace("-", "")}'" : null;
+            string? formattedValue = GetFormattedBinaryValue(value);
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
                 value,
                 formattedValue);
         }
+
+        /// <summary>
+        /// Get the data source specific format for a binary literal.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>Null if value is null, otherwise the data source specific format for a binary literal.</returns>
+        protected abstract string? GetFormattedBinaryValue(byte[]? value);
 
         /// <summary>
         /// Validates if driver can send and receive specific Boolean values correctly.
@@ -88,24 +104,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if driver can receive specific NULL values correctly.
         /// </summary>
-        [SkippableTheory]
-        [InlineData("NULL")]
-        [InlineData("CAST(NULL AS INT)")]
-        [InlineData("CAST(NULL AS BIGINT)")]
-        [InlineData("CAST(NULL AS SMALLINT)")]
-        [InlineData("CAST(NULL AS TINYINT)")]
-        [InlineData("CAST(NULL AS FLOAT)")]
-        [InlineData("CAST(NULL AS DOUBLE)")]
-        [InlineData("CAST(NULL AS DECIMAL(38,0))")]
-        [InlineData("CAST(NULL AS STRING)")]
-        [InlineData("CAST(NULL AS VARCHAR(10))")]
-        [InlineData("CAST(NULL AS CHAR(10))")]
-        [InlineData("CAST(NULL AS BOOLEAN)")]
-        [InlineData("CAST(NULL AS BINARY)")]
-        [InlineData("CAST(NULL AS MAP<STRING, INT>)")]
-        [InlineData("CAST(NULL AS STRUCT<NAME: STRING>)")]
-        [InlineData("CAST(NULL AS ARRAY<INT>)")]
-        public async Task TestNullData(string projectionClause)
+        public virtual async Task TestNullData(string projectionClause)
         {
             string selectStatement = $"SELECT {projectionClause};";
             // Note: by default, this returns as String type, not NULL type.

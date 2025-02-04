@@ -133,6 +133,8 @@ class ADBCPackageTask < PackageTask
       # "debian-bookworm-arm64",
       "ubuntu-jammy",
       # "ubuntu-jammy-arm64",
+      "ubuntu-noble",
+      # "ubuntu-noble-arm64",
     ]
   end
 

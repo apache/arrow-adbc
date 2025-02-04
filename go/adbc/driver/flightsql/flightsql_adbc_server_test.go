@@ -38,7 +38,6 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -140,6 +139,10 @@ func TestMultiTable(t *testing.T) {
 
 func TestSessionOptions(t *testing.T) {
 	suite.Run(t, &SessionOptionTests{})
+}
+
+func TestGetObjects(t *testing.T) {
+	suite.Run(t, &GetObjectsTests{})
 }
 
 // ---- AuthN Tests --------------------
@@ -1874,106 +1877,278 @@ func (suite *SessionOptionTests) TestGetSetStringList() {
 	suite.Equal(`[]`, val)
 }
 
-type GetObjectsTests struct {
-	suite.Suite
+// ---- GetObjects Tests --------------------
 
-	Driver adbc.Driver
-	Quirks validation.DriverQuirks
-	Cnxn   adbc.Connection
-	ctx    context.Context
-	DB     adbc.Database
+type GetObjectsTestServer struct {
+	flightsql.BaseServer
+	catalogName string
+	schemaName  string
+	tableName   string
+	testData    map[string][]string
+}
+
+func (srv *GetObjectsTestServer) GetFlightInfoCatalogs(ctx context.Context, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	return srv.flightInfoForSchema(schema_ref.Catalogs, desc), nil
+}
+
+func (srv *GetObjectsTestServer) GetFlightInfoSchemas(ctx context.Context, cmd flightsql.GetDBSchemas, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	return srv.flightInfoForSchema(schema_ref.DBSchemas, desc), nil
+}
+
+func (srv *GetObjectsTestServer) GetFlightInfoTables(ctx context.Context, cmd flightsql.GetTables, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	return srv.flightInfoForSchema(schema_ref.TablesWithIncludedSchema, desc), nil
+}
+
+func (srv *GetObjectsTestServer) flightInfoForSchema(sc *arrow.Schema, desc *flight.FlightDescriptor) *flight.FlightInfo {
+	return &flight.FlightInfo{
+		Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: desc.Cmd}}},
+		FlightDescriptor: desc,
+		Schema:           flight.SerializeSchema(sc, srv.Alloc),
+		TotalRecords:     -1,
+		TotalBytes:       -1,
+	}
+}
+
+func (srv *GetObjectsTestServer) DoGetCatalogs(ctx context.Context) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	// no catalogs
+	schema := schema_ref.Catalogs
+	ch := make(chan flight.StreamChunk, 1)
+	defer close(ch)
+	return schema, ch, nil
+}
+
+func (srv *GetObjectsTestServer) DoGetTables(ctx context.Context, cmd flightsql.GetTables) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	schemaBldr := array.NewBinaryBuilder(srv.Alloc, arrow.BinaryTypes.Binary)
+
+	columnFields := make([]arrow.Field, 0)
+	for key, val := range srv.testData {
+
+		bldr := flightsql.NewColumnMetadataBuilder()
+		defer bldr.Clear()
+
+		bldr.CatalogName(srv.catalogName)
+		bldr.SchemaName(srv.schemaName)
+		bldr.TableName(srv.tableName)
+		bldr.TypeName(val[0])
+		if val, err := strconv.ParseInt(val[2], 10, 32); err != nil {
+			panic(err)
+		} else {
+			bldr.Precision(int32(val))
+		}
+		if val, err := strconv.ParseInt(val[3], 10, 32); err != nil {
+			panic(err)
+		} else {
+			bldr.Scale(int32(val))
+		}
+		bldr.IsAutoIncrement(val[4] == "true")
+		bldr.IsCaseSensitive(val[5] == "true")
+		bldr.IsReadOnly(val[6] == "true")
+		bldr.IsSearchable(val[7] == "true")
+
+		colType, err := strconv.ParseInt(val[1], 10, 32)
+		if err != nil {
+			panic(err)
+		}
+		var fieldType arrow.DataType
+		switch colType {
+		case int64(arrow.PrimitiveTypes.Int32.ID()):
+			fieldType = arrow.PrimitiveTypes.Int32
+		case int64(arrow.PrimitiveTypes.Float32.ID()):
+			fieldType = arrow.PrimitiveTypes.Float32
+		case int64(arrow.PrimitiveTypes.Float64.ID()):
+			fieldType = arrow.PrimitiveTypes.Float64
+		default:
+			panic(fmt.Errorf("unknown column type %d", colType))
+		}
+
+		columnFields = append(columnFields, arrow.Field{
+			Name:     key,
+			Type:     fieldType,
+			Nullable: false,
+			Metadata: bldr.Metadata(),
+		})
+
+	}
+
+	schemaBldr.Append(flight.SerializeSchema(arrow.NewSchema(columnFields, nil), srv.Alloc))
+	schemaCol := schemaBldr.NewArray()
+	defer schemaCol.Release()
+
+	jsonStr := fmt.Sprintf(`[{"catalog_name": "%s", "db_schema_name": "%s", "table_name": "%s", "table_type": "TABLE"}]`,
+		srv.catalogName, // variable for catalog_name
+		srv.schemaName,  // variable for db_schema_name
+		srv.tableName)   // variable for table_type
+	tablesRecord, _, _ := array.RecordFromJSON(srv.Alloc, schema_ref.Tables, strings.NewReader(jsonStr))
+	defer tablesRecord.Release()
+
+	tablesRecordWithSchema := array.NewRecord(schema_ref.TablesWithIncludedSchema, append(tablesRecord.Columns(), schemaCol), tablesRecord.NumRows())
+	defer tablesRecordWithSchema.Release()
+
+	ch := make(chan flight.StreamChunk)
+
+	rdr, err := array.NewRecordReader(schema_ref.TablesWithIncludedSchema, []arrow.Record{tablesRecordWithSchema})
+	go flight.StreamChunksFromReader(rdr, ch)
+	return schema_ref.TablesWithIncludedSchema, ch, err
+}
+
+func (srv *GetObjectsTestServer) DoGetDBSchemas(ctx context.Context, cmd flightsql.GetDBSchemas) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	schema := schema_ref.DBSchemas
+	ch := make(chan flight.StreamChunk, 1)
+	// Not really a proper match, but good enough
+	catalogs, _, err := array.FromJSON(srv.Alloc, arrow.BinaryTypes.String, strings.NewReader(fmt.Sprintf(`["%s"]`, srv.catalogName)))
+	if err != nil {
+		return nil, nil, err
+	}
+	defer catalogs.Release()
+
+	dbSchemas, _, err := array.FromJSON(srv.Alloc, arrow.BinaryTypes.String, strings.NewReader(fmt.Sprintf(`["%s"]`, srv.schemaName)))
+	if err != nil {
+		return nil, nil, err
+	}
+	defer dbSchemas.Release()
+
+	batch := array.NewRecord(schema, []arrow.Array{catalogs, dbSchemas}, 1)
+	ch <- flight.StreamChunk{Data: batch}
+	close(ch)
+	return schema, ch, nil
+}
+
+type GetObjectsTests struct {
+	ServerBasedTests
+
+	catalogName string
+	schemaName  string
+	tableName   string
 }
 
 func (suite *GetObjectsTests) SetupSuite() {
-	var err error
-	suite.Driver = suite.Quirks.SetupDriver(suite.T())
-	suite.DB, err = suite.Driver.NewDatabase(suite.Quirks.DatabaseOptions())
-	suite.NoError(err)
-
-	suite.ctx = context.Background()
-	suite.Cnxn, err = suite.DB.Open(suite.ctx)
-	suite.Require().NoError(err)
+	srv := &GetObjectsTestServer{}
+	suite.catalogName = ""
+	suite.schemaName = "test_schema"
+	suite.tableName = "test_table"
+	srv.catalogName = suite.catalogName
+	srv.schemaName = suite.schemaName
+	srv.tableName = suite.tableName
+	srv.testData = map[string][]string{
+		"intcols": {
+			arrow.PrimitiveTypes.Int32.Name(),                  // TYPE_NAME
+			strconv.Itoa(int(arrow.PrimitiveTypes.Int32.ID())), // FieldType
+			strconv.Itoa(10),          // PRECISION
+			strconv.Itoa(15),          // SCALE
+			strconv.FormatBool(true),  // IS_AUTO_INCREMENT
+			strconv.FormatBool(false), // IS_CASE_SENSITIVE
+			strconv.FormatBool(true),  // IS_READ_ONLY
+			strconv.FormatBool(true),  // IS_SEARCHABLE
+		},
+		"floatcols": {
+			arrow.PrimitiveTypes.Float32.Name(),                  // TYPE_NAME
+			strconv.Itoa(int(arrow.PrimitiveTypes.Float32.ID())), // FieldType
+			strconv.Itoa(15),          // PRECISION
+			strconv.Itoa(15),          // SCALE
+			strconv.FormatBool(false), // IS_AUTO_INCREMENT
+			strconv.FormatBool(false), // IS_CASE_SENSITIVE
+			strconv.FormatBool(false), // IS_READ_ONLY
+			strconv.FormatBool(false), // IS_SEARCHABLE
+		},
+		"currencycol": {
+			"CURRENCY", // TYPE_NAME
+			strconv.Itoa(int(arrow.PrimitiveTypes.Float64.ID())), // FieldType
+			strconv.Itoa(15),          // PRECISION
+			strconv.Itoa(15),          // SCALE
+			strconv.FormatBool(false), // IS_AUTO_INCREMENT
+			strconv.FormatBool(false), // IS_CASE_SENSITIVE
+			strconv.FormatBool(false), // IS_READ_ONLY
+			strconv.FormatBool(false), // IS_SEARCHABLE
+		},
+	}
+	srv.Alloc = memory.NewCheckedAllocator(memory.DefaultAllocator)
+	suite.DoSetupSuite(srv, nil, nil)
 }
 
+// Testing metadata from flight driver is converted to xdbc metadata.
+// Ordering is being ignored to avoid flakiness as the order of the columns is not guaranteed.
 func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
-
-	suite.Require().NoError(suite.Quirks.DropTable(suite.Cnxn, "bulk_ingest"))
-
-	mdInts := make(map[string]string)
-	mdInts["TYPE_NAME"] = "NUMERIC"
-	mdInts["ORDINAL_POSITION"] = "1"
-	mdInts["XDBC_DATA_TYPE"] = strconv.Itoa(int(arrow.PrimitiveTypes.Int64.ID()))
-	mdInts["XDBC_TYPE_NAME"] = "NUMERIC"
-	mdInts["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(internal.XdbcDataType_XDBC_BIGINT))
-	mdInts["XDBC_NULLABLE"] = strconv.FormatBool(true)
-	mdInts["XDBC_IS_NULLABLE"] = "YES"
-	mdInts["XDBC_PRECISION"] = strconv.Itoa(38)
-	mdInts["XDBC_SCALE"] = strconv.Itoa(0)
-	mdInts["XDBC_NUM_PREC_RADIX"] = strconv.Itoa(10)
-
-	mdStrings := make(map[string]string)
-	mdStrings["TYPE_NAME"] = "TEXT"
-	mdStrings["ORDINAL_POSITION"] = "2"
-	mdStrings["XDBC_DATA_TYPE"] = strconv.Itoa(int(arrow.BinaryTypes.String.ID()))
-	mdStrings["XDBC_TYPE_NAME"] = "TEXT"
-	mdStrings["XDBC_SQL_DATA_TYPE"] = strconv.Itoa(int(internal.XdbcDataType_XDBC_VARCHAR))
-	mdStrings["XDBC_IS_NULLABLE"] = "YES"
-	mdStrings["CHARACTER_MAXIMUM_LENGTH"] = strconv.Itoa(16777216)
-	mdStrings["XDBC_CHAR_OCTET_LENGTH"] = strconv.Itoa(16777216)
-
-	rec, _, err := array.RecordFromJSON(suite.Quirks.Alloc(), arrow.NewSchema(
-		[]arrow.Field{
-			{Name: "int64s", Type: arrow.PrimitiveTypes.Int64, Nullable: true, Metadata: arrow.MetadataFrom(mdInts)},
-			{Name: "strings", Type: arrow.BinaryTypes.String, Nullable: true, Metadata: arrow.MetadataFrom(mdStrings)},
-		}, nil), strings.NewReader(`[
-			{"int64s": 42, "strings": "foo"},
-			{"int64s": -42, "strings": null},
-			{"int64s": null, "strings": ""}
-		]`))
-	suite.Require().NoError(err)
-	defer rec.Release()
-
-	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest", rec))
-
 	tests := []struct {
-		name             string
-		colnames         []string
-		positions        []string
-		dataTypes        []string
-		comments         []string
-		xdbcDataType     []string
-		xdbcTypeName     []string
-		xdbcSqlDataType  []string
-		xdbcNullable     []string
-		xdbcIsNullable   []string
-		xdbcScale        []string
-		xdbcNumPrecRadix []string
-		xdbcCharMaxLen   []string
-		xdbcCharOctetLen []string
-		xdbcDateTimeSub  []string
+		name       string
+		columnName []string
+		//ordinalPosition           []string
+		remarks                   []string
+		xdbcDataType              []string
+		xdbcTypeName              []string
+		xdbcColumnSize            []string
+		xdbcDecimalDigits         []string
+		xdbcNumPrecRadix          []string
+		xdbcNullable              []string
+		xdbcColumnDef             []string
+		xdbcSqlDataType           []string
+		xdbcDatetimeSub           []string
+		xdbcCharOctetLength       []string
+		xdbcIsNullable            []string
+		xdbcScopeCatalog          []string
+		xdbcScopeSchema           []string
+		xdbcScopeTable            []string
+		xdbcIsAutoincrement       []string
+		xdbcIsAutogeneratedColumn []string
 	}{
 		{
-			"BASIC",                       // name
-			[]string{"int64s", "strings"}, // colNames
-			[]string{"1", "2"},            // positions
-			[]string{"NUMBER", "TEXT"},    // dataTypes
-			[]string{"", ""},              // comments
-			[]string{"9", "13"},           // xdbcDataType
-			[]string{"NUMBER", "TEXT"},    // xdbcTypeName
-			[]string{"-5", "12"},          // xdbcSqlDataType
-			[]string{"1", "1"},            // xdbcNullable
-			[]string{"YES", "YES"},        // xdbcIsNullable
-			[]string{"0", "0"},            // xdbcScale
-			[]string{"10", "0"},           // xdbcNumPrecRadix
-			[]string{"38", "16777216"},    // xdbcCharMaxLen (xdbcPrecision)
-			[]string{"0", "16777216"},     // xdbcCharOctetLen
-			[]string{"-5", "12", "0"},     // xdbcDateTimeSub
+			fmt.Sprintf("%s.%s.%s", suite.catalogName, suite.schemaName, suite.tableName),
+			[]string{"currencycol", "floatcols", "intcols"}, //columnName
+			//[]string{"1", "2", "3"}, //ordinalPosition
+			[]string{"currencycol_", "floatcols_", "intcols_"}, //remarks
+			[]string{ //xdbcDataType
+				"currencycol_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Float64))),
+				"floatcols_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Float32))),
+				"intcols_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Int32))),
+			},
+			[]string{ //xdbcTypeName
+				"currencycol_CURRENCY",
+				"floatcols_" + arrow.PrimitiveTypes.Float32.Name(),
+				"intcols_" + arrow.PrimitiveTypes.Int32.Name(),
+			},
+			[]string{"currencycol_0", "floatcols_0", "intcols_0"}, //xdbcColumnSize
+			[]string{"currencycol_0", "floatcols_0", "intcols_0"}, //xdbcDecimalDigits
+			[]string{"currencycol_0", "floatcols_0", "intcols_0"}, //xdbcNumPrecRadix
+			[]string{"currencycol_0", "floatcols_0", "intcols_0"}, //xdbcNullable
+			[]string{"currencycol_", "floatcols_", "intcols_"},    //xdbcColumnDef
+			[]string{ //xdbcSqlDataType
+				"currencycol_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Float64))),
+				"floatcols_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Float32))),
+				"intcols_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Int32))),
+			},
+			[]string{"currencycol_0", "floatcols_0", "intcols_0"}, //xdbcDatetimeSub
+			[]string{"currencycol_0", "floatcols_0", "intcols_0"}, //xdbcCharOctetLength
+			[]string{"currencycol_", "floatcols_", "intcols_"},    //xdbcIsNullable
+			[]string{ //xdbcScopeCatalog
+				"currencycol_" + suite.catalogName,
+				"floatcols_" + suite.catalogName,
+				"intcols_" + suite.catalogName,
+			},
+			[]string{ //xdbcScopeSchema
+				"currencycol_" + suite.schemaName,
+				"floatcols_" + suite.schemaName,
+				"intcols_" + suite.schemaName,
+			},
+			[]string{ //xdbcScopeTable
+				"currencycol_" + suite.tableName,
+				"floatcols_" + suite.tableName,
+				"intcols_" + suite.tableName,
+			},
+			[]string{ //xdbcIsAutoincrement
+				"currencycol_false",
+				"floatcols_false",
+				"intcols_true",
+			},
+			[]string{ //xdbcIsAutogeneratedColumn
+				"currencycol_false",
+				"floatcols_false",
+				"intcols_false",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			rdr, err := suite.Cnxn.GetObjects(suite.ctx, adbc.ObjectDepthColumns, nil, nil, nil, nil, nil)
+			rdr, err := suite.cnxn.GetObjects(context.Background(), adbc.ObjectDepthColumns, nil, nil, nil, nil, nil)
 			suite.Require().NoError(err)
 			defer rdr.Release()
 
@@ -1991,20 +2166,25 @@ func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
 				tableColumnsList     = dbSchemaTables.Field(2).(*array.List)
 				tableColumns         = tableColumnsList.ListValues().(*array.Struct)
 
-				colnames          = make([]string, 0)
-				positions         = make([]string, 0)
-				comments          = make([]string, 0)
-				xdbcDataTypes     = make([]string, 0)
-				dataTypes         = make([]string, 0)
-				xdbcTypeNames     = make([]string, 0)
-				xdbcCharMaxLens   = make([]string, 0)
-				xdbcScales        = make([]string, 0)
-				xdbcNumPrecRadixs = make([]string, 0)
-				xdbcNullables     = make([]string, 0)
-				xdbcSqlDataTypes  = make([]string, 0)
-				xdbcDateTimeSub   = make([]string, 0)
-				xdbcCharOctetLen  = make([]string, 0)
-				xdbcIsNullables   = make([]string, 0)
+				columnName = make([]string, 0)
+				//ordinalPosition           = make([]string, 0)
+				remarks                   = make([]string, 0)
+				xdbcDataType              = make([]string, 0)
+				xdbcTypeName              = make([]string, 0)
+				xdbcColumnSize            = make([]string, 0)
+				xdbcDecimalDigits         = make([]string, 0)
+				xdbcNumPrecRadix          = make([]string, 0)
+				xdbcNullable              = make([]string, 0)
+				xdbcColumnDef             = make([]string, 0)
+				xdbcSqlDataType           = make([]string, 0)
+				xdbcDatetimeSub           = make([]string, 0)
+				xdbcCharOctetLength       = make([]string, 0)
+				xdbcIsNullable            = make([]string, 0)
+				xdbcScopeCatalog          = make([]string, 0)
+				xdbcScopeSchema           = make([]string, 0)
+				xdbcScopeTable            = make([]string, 0)
+				xdbcIsAutoincrement       = make([]string, 0)
+				xdbcIsAutogeneratedColumn = make([]string, 0)
 			)
 			for row := 0; row < int(rec.NumRows()); row++ {
 				dbSchemaIdxStart, dbSchemaIdxEnd := catalogDbSchemasList.ValueOffsets(row)
@@ -2014,49 +2194,67 @@ func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
 					for tblIdx := tblIdxStart; tblIdx < tblIdxEnd; tblIdx++ {
 						tableName := dbSchemaTables.Field(0).(*array.String).Value(int(tblIdx))
 
-						if strings.EqualFold(schemaName, suite.Quirks.DBSchema()) && strings.EqualFold("bulk_ingest", tableName) {
+						if strings.EqualFold(schemaName, suite.schemaName) && strings.EqualFold(suite.tableName, tableName) {
 							foundExpected = true
 
 							colIdxStart, colIdxEnd := tableColumnsList.ValueOffsets(int(tblIdx))
 							for colIdx := colIdxStart; colIdx < colIdxEnd; colIdx++ {
 								name := tableColumns.Field(0).(*array.String).Value(int(colIdx))
-								colnames = append(colnames, strings.ToLower(name))
+								columnName = append(columnName, name)
 
-								pos := tableColumns.Field(1).(*array.Int32).Value(int(colIdx))
-								positions = append(positions, strconv.Itoa(int(pos)))
+								// pos := tableColumns.Field(1).(*array.Int32).Value(int(colIdx))
+								// ordinalPosition = append(ordinalPosition, strconv.Itoa(int(pos)))
 
-								comments = append(comments, tableColumns.Field(2).(*array.String).Value(int(colIdx)))
+								rm := tableColumns.Field(2).(*array.String).Value(int(colIdx))
+								remarks = append(remarks, name+"_"+rm)
 
 								xdt := tableColumns.Field(3).(*array.Int16).Value(int(colIdx))
-								xdbcDataTypes = append(xdbcDataTypes, strconv.Itoa(int(xdt)))
+								xdbcDataType = append(xdbcDataType, name+"_"+strconv.Itoa(int(xdt)))
 
 								dataType := tableColumns.Field(4).(*array.String).Value(int(colIdx))
-								dataTypes = append(dataTypes, dataType)
-								xdbcTypeNames = append(xdbcTypeNames, dataType)
+								xdbcTypeName = append(xdbcTypeName, name+"_"+dataType)
 
-								// these are column size attributes used for either precision for numbers OR the length for text
-								maxLenOrPrecision := tableColumns.Field(5).(*array.Int32).Value(int(colIdx))
-								xdbcCharMaxLens = append(xdbcCharMaxLens, strconv.Itoa(int(maxLenOrPrecision)))
+								columnSize := tableColumns.Field(5).(*array.Int32).Value(int(colIdx))
+								xdbcColumnSize = append(xdbcColumnSize, name+"_"+strconv.Itoa(int(columnSize)))
 
-								scale := tableColumns.Field(6).(*array.Int16).Value(int(colIdx))
-								xdbcScales = append(xdbcScales, strconv.Itoa(int(scale)))
+								decimalDigits := tableColumns.Field(6).(*array.Int16).Value(int(colIdx))
+								xdbcDecimalDigits = append(xdbcDecimalDigits, name+"_"+strconv.Itoa(int(decimalDigits)))
 
-								radix := tableColumns.Field(7).(*array.Int16).Value(int(colIdx))
-								xdbcNumPrecRadixs = append(xdbcNumPrecRadixs, strconv.Itoa(int(radix)))
+								numPrecRadix := tableColumns.Field(7).(*array.Int16).Value(int(colIdx))
+								xdbcNumPrecRadix = append(xdbcNumPrecRadix, name+"_"+strconv.Itoa(int(numPrecRadix)))
 
-								isnull := tableColumns.Field(8).(*array.Int16).Value(int(colIdx))
-								xdbcNullables = append(xdbcNullables, strconv.Itoa(int(isnull)))
+								nullable := tableColumns.Field(8).(*array.Int16).Value(int(colIdx))
+								xdbcNullable = append(xdbcNullable, name+"_"+strconv.Itoa(int(nullable)))
+
+								columnDef := tableColumns.Field(9).(*array.String).Value(int(colIdx))
+								xdbcColumnDef = append(xdbcColumnDef, name+"_"+columnDef)
 
 								sqlType := tableColumns.Field(10).(*array.Int16).Value(int(colIdx))
-								xdbcSqlDataTypes = append(xdbcSqlDataTypes, strconv.Itoa(int(sqlType)))
+								xdbcSqlDataType = append(xdbcSqlDataType, name+"_"+strconv.Itoa(int(sqlType)))
 
 								dtPrec := tableColumns.Field(11).(*array.Int16).Value(int(colIdx))
-								xdbcDateTimeSub = append(xdbcSqlDataTypes, strconv.Itoa(int(dtPrec)))
+								xdbcDatetimeSub = append(xdbcDatetimeSub, name+"_"+strconv.Itoa(int(dtPrec)))
 
 								charOctetLen := tableColumns.Field(12).(*array.Int32).Value(int(colIdx))
-								xdbcCharOctetLen = append(xdbcCharOctetLen, strconv.Itoa(int(charOctetLen)))
+								xdbcCharOctetLength = append(xdbcCharOctetLength, name+"_"+strconv.Itoa(int(charOctetLen)))
 
-								xdbcIsNullables = append(xdbcIsNullables, tableColumns.Field(13).(*array.String).Value(int(colIdx)))
+								isNullable := tableColumns.Field(13).(*array.String).Value(int(colIdx))
+								xdbcIsNullable = append(xdbcIsNullable, name+"_"+isNullable)
+
+								scopeCatalog := tableColumns.Field(14).(*array.String).Value(int(colIdx))
+								xdbcScopeCatalog = append(xdbcScopeCatalog, name+"_"+scopeCatalog)
+
+								scopeSchema := tableColumns.Field(15).(*array.String).Value(int(colIdx))
+								xdbcScopeSchema = append(xdbcScopeSchema, name+"_"+scopeSchema)
+
+								scopeTable := tableColumns.Field(16).(*array.String).Value(int(colIdx))
+								xdbcScopeTable = append(xdbcScopeTable, name+"_"+scopeTable)
+
+								isAutoIncrement := tableColumns.Field(17).(*array.Boolean).Value(int(colIdx))
+								xdbcIsAutoincrement = append(xdbcIsAutoincrement, name+"_"+strconv.FormatBool(isAutoIncrement))
+
+								isAutoGenerated := tableColumns.Field(18).(*array.Boolean).Value(int(colIdx))
+								xdbcIsAutogeneratedColumn = append(xdbcIsAutogeneratedColumn, name+"_"+strconv.FormatBool(isAutoGenerated))
 							}
 						}
 					}
@@ -2065,21 +2263,26 @@ func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
 
 			suite.False(rdr.Next())
 			suite.True(foundExpected)
-			suite.Equal(tt.colnames, colnames)                  // colNames
-			suite.Equal(tt.positions, positions)                // positions
-			suite.Equal(tt.comments, comments)                  // comments
-			suite.Equal(tt.xdbcDataType, xdbcDataTypes)         // xdbcDataType
-			suite.Equal(tt.dataTypes, dataTypes)                // dataTypes
-			suite.Equal(tt.xdbcTypeName, xdbcTypeNames)         // xdbcTypeName
-			suite.Equal(tt.xdbcCharMaxLen, xdbcCharMaxLens)     // xdbcCharMaxLen
-			suite.Equal(tt.xdbcScale, xdbcScales)               // xdbcScale
-			suite.Equal(tt.xdbcNumPrecRadix, xdbcNumPrecRadixs) // xdbcNumPrecRadix
-			suite.Equal(tt.xdbcNullable, xdbcNullables)         // xdbcNullable
-			suite.Equal(tt.xdbcSqlDataType, xdbcSqlDataTypes)   // xdbcSqlDataType
-			suite.Equal(tt.xdbcDateTimeSub, xdbcDateTimeSub)    // xdbcDateTimeSub
-			suite.Equal(tt.xdbcCharOctetLen, xdbcCharOctetLen)  // xdbcCharOctetLen
-			suite.Equal(tt.xdbcIsNullable, xdbcIsNullables)     // xdbcIsNullable
 
+			suite.ElementsMatch(tt.columnName, columnName, "columnName")
+			//suite.Equal(tt.ordinalPosition, ordinalPosition, "ordinalPosition")
+			suite.ElementsMatch(tt.remarks, remarks, "remarks")
+			suite.ElementsMatch(tt.xdbcDataType, xdbcDataType, "xdbcDataType")
+			suite.ElementsMatch(tt.xdbcTypeName, xdbcTypeName, "xdbcTypeName")
+			suite.ElementsMatch(tt.xdbcColumnSize, xdbcColumnSize, "xdbcColumnSize")
+			suite.ElementsMatch(tt.xdbcDecimalDigits, xdbcDecimalDigits, "xdbcDecimalDigits")
+			suite.ElementsMatch(tt.xdbcNumPrecRadix, xdbcNumPrecRadix, "xdbcNumPrecRadix")
+			suite.ElementsMatch(tt.xdbcNullable, xdbcNullable, "xdbcNullable")
+			suite.ElementsMatch(tt.xdbcColumnDef, xdbcColumnDef, "xdbcColumnDef")
+			suite.ElementsMatch(tt.xdbcSqlDataType, xdbcSqlDataType, "xdbcSqlDataType")
+			suite.ElementsMatch(tt.xdbcDatetimeSub, xdbcDatetimeSub, "xdbcDatetimeSub")
+			suite.ElementsMatch(tt.xdbcCharOctetLength, xdbcCharOctetLength, "xdbcCharOctetLength")
+			suite.ElementsMatch(tt.xdbcIsNullable, xdbcIsNullable, "xdbcIsNullable")
+			suite.ElementsMatch(tt.xdbcScopeCatalog, xdbcScopeCatalog, "xdbcScopeCatalog")
+			suite.ElementsMatch(tt.xdbcScopeSchema, xdbcScopeSchema, "xdbcScopeSchema")
+			suite.ElementsMatch(tt.xdbcScopeTable, xdbcScopeTable, "xdbcScopeTable")
+			suite.ElementsMatch(tt.xdbcIsAutoincrement, xdbcIsAutoincrement, "xdbcIsAutoincrement")
+			suite.ElementsMatch(tt.xdbcIsAutogeneratedColumn, xdbcIsAutogeneratedColumn, "xdbcIsAutogeneratedColumn")
 		})
 	}
 }

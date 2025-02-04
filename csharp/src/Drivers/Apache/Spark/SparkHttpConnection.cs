@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
@@ -37,6 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkHttpConnection : SparkConnection
     {
+        private static readonly string s_userAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault}";
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = AuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
             switch (authTypeValue)
             {
                 case SparkAuthType.Token:
@@ -138,7 +138,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(SparkParameters.Path, out string? path);
             Properties.TryGetValue(SparkParameters.Port, out string? port);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = AuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
             Properties.TryGetValue(SparkParameters.Token, out string? token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
@@ -242,27 +242,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-
-        private async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
-        {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
-
-            TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
-            if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-            {
-                throw new HiveServer2Exception(fetchResp.Status.ErrorMessage)
-                    .SetNativeError(fetchResp.Status.ErrorCode)
-                    .SetSqlState(fetchResp.Status.SqlState);
-            }
-            return fetchResp.Results;
-        }
-
-        internal static async Task<TFetchResultsResp> FetchNextAsync(TOperationHandle operationHandle, TCLIService.IAsync client, long batchSize, CancellationToken cancellationToken = default)
-        {
-            TFetchResultsReq request = new(operationHandle, TFetchOrientation.FETCH_NEXT, batchSize);
-            TFetchResultsResp response = await client.FetchResults(request, cancellationToken);
-            return response;
-        }
 
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 

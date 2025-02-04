@@ -21,11 +21,11 @@ using System.Linq;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
-    public class SparkDatabase : AdbcDatabase
+    internal class SparkDatabase : AdbcDatabase
     {
         readonly IReadOnlyDictionary<string, string> properties;
 
-        public SparkDatabase(IReadOnlyDictionary<string, string> properties)
+        internal SparkDatabase(IReadOnlyDictionary<string, string> properties)
         {
             this.properties = properties;
         }

@@ -759,3 +759,46 @@
 - **c/driver/postgresql**: Use Status instead of AdbcStatusCode/AdbcError in result helper (#2178)
 - **c/driver**: Use non-objects framework components in Postgres driver (#2166)
 - **c/driver/postgresql**: Use copy writer in BindStream for parameter binding (#2157)
+
+## ADBC Libraries 16 (2025-01-17)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.4.0
+- C#: 0.16.0
+- Java: 0.16.0
+- R: 0.16.0
+- Rust: 0.16.0
+
+### Breaking Changes
+
+- ⚠️ **rust/driver/snowflake**: return a `Result` from `Builder::from_env` when parsing fails (#2334)
+
+### New Features
+
+- **csharp/src/Client**: parse custom properties from connection string (#2352)
+- **csharp/src/Drivers**: introduce Interop.FlightSql driver (#2214)
+- **csharp/src/Drivers/Apache**: add connect and query timeout options (#2312)
+- **csharp/src/Drivers/Apache**: make Apache driver tests inheritable (#2341)
+- **rust/driver/snowflake**: add `adbc_snowflake` crate with Go driver wrapper (#2207)
+- ⚠️ **rust/driver/snowflake**: return a `Result` from `Builder::from_env` when parsing fails (#2334)
+
+### Bugfixes
+
+- **c/driver/postgresql**: don't unnecessarily COMMIT (#2412)
+- **c/driver/postgresql**: return unknown OIDs as opaque (#2450)
+- **ci**: ensure wheels are built with older manylinux (#2351)
+- **csharp/src/Apache.Arrow.Adbc/C**: export statement_execute_schema correctly (#2409)
+- **csharp/src/Drivers/Apache**: detect sever error when polling for response (#2355)
+- **csharp/src/Drivers/BigQuery**: Use job reference instead of job id to get job to avoid interference between different locations (#2433)
+- **csharp/src/Drivers/BigQuery**: ensure BigQuery DATE type is Date32 Arrow type (#2446)
+- **csharp/src/Drivers/BigQuery**: remove details to have type names match ODBC (#2431)
+- **go/adbc/driver/bigquery**: set default project and dataset for new statements (#2342)
+- **go/adbc/driver/snowflake**: update default values for fetch params (#2325)
+- **java/driver-manager**: typo (#2336)
+
+### Documentation Improvements
+
+- add related work (#2333)
+- change Flight SQL driver usage to executable example (#2395)
+- remove crosslinking to Arrow Javadocs (#2455)

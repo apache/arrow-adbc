@@ -17,13 +17,12 @@
 
 //! Schemas and data types that appear through ADBC.
 
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use arrow_schema::{DataType, Field, Schema, SchemaRef, UnionFields, UnionMode};
-use once_cell::sync::Lazy;
 
 /// Schema of the data returned by [get_table_types][crate::Connection::get_table_types].
-pub static GET_TABLE_TYPES_SCHEMA: Lazy<SchemaRef> = Lazy::new(|| {
+pub static GET_TABLE_TYPES_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     Arc::new(Schema::new(vec![Field::new(
         "table_type",
         DataType::Utf8,
@@ -32,7 +31,7 @@ pub static GET_TABLE_TYPES_SCHEMA: Lazy<SchemaRef> = Lazy::new(|| {
 });
 
 /// Schema of the data returned by [get_info][crate::Connection::get_info].
-pub static GET_INFO_SCHEMA: Lazy<SchemaRef> = Lazy::new(|| {
+pub static GET_INFO_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     let info_schema = DataType::Union(
         UnionFields::new(
             vec![0, 1, 2, 3, 4, 5],
@@ -66,14 +65,14 @@ pub static GET_INFO_SCHEMA: Lazy<SchemaRef> = Lazy::new(|| {
 });
 
 /// Schema of data returned by [get_statistic_names][crate::Connection::get_statistic_names].
-pub static GET_STATISTIC_NAMES_SCHEMA: Lazy<SchemaRef> = Lazy::new(|| {
+pub static GET_STATISTIC_NAMES_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     Arc::new(Schema::new(vec![
         Field::new("statistic_name", DataType::Utf8, false),
         Field::new("statistic_key", DataType::Int16, false),
     ]))
 });
 
-pub static STATISTIC_VALUE_SCHEMA: Lazy<DataType> = Lazy::new(|| {
+pub static STATISTIC_VALUE_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     DataType::Union(
         UnionFields::new(
             vec![0, 1, 2, 3],
@@ -88,7 +87,7 @@ pub static STATISTIC_VALUE_SCHEMA: Lazy<DataType> = Lazy::new(|| {
     )
 });
 
-pub static STATISTICS_SCHEMA: Lazy<DataType> = Lazy::new(|| {
+pub static STATISTICS_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     DataType::Struct(
         vec![
             Field::new("table_name", DataType::Utf8, false),
@@ -101,7 +100,7 @@ pub static STATISTICS_SCHEMA: Lazy<DataType> = Lazy::new(|| {
     )
 });
 
-pub static STATISTICS_DB_SCHEMA_SCHEMA: Lazy<DataType> = Lazy::new(|| {
+pub static STATISTICS_DB_SCHEMA_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     DataType::Struct(
         vec![
             Field::new("db_schema_name", DataType::Utf8, true),
@@ -116,7 +115,7 @@ pub static STATISTICS_DB_SCHEMA_SCHEMA: Lazy<DataType> = Lazy::new(|| {
 });
 
 /// Schema of data returned by [get_statistics][crate::Connection::get_statistics].
-pub static GET_STATISTICS_SCHEMA: Lazy<SchemaRef> = Lazy::new(|| {
+pub static GET_STATISTICS_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     Arc::new(Schema::new(vec![
         Field::new("catalog_name", DataType::Utf8, true),
         Field::new(
@@ -127,7 +126,7 @@ pub static GET_STATISTICS_SCHEMA: Lazy<SchemaRef> = Lazy::new(|| {
     ]))
 });
 
-pub static USAGE_SCHEMA: Lazy<DataType> = Lazy::new(|| {
+pub static USAGE_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     DataType::Struct(
         vec![
             Field::new("fk_catalog", DataType::Utf8, true),
@@ -139,7 +138,7 @@ pub static USAGE_SCHEMA: Lazy<DataType> = Lazy::new(|| {
     )
 });
 
-pub static CONSTRAINT_SCHEMA: Lazy<DataType> = Lazy::new(|| {
+pub static CONSTRAINT_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     DataType::Struct(
         vec![
             Field::new("constraint_name", DataType::Utf8, true),
@@ -159,7 +158,7 @@ pub static CONSTRAINT_SCHEMA: Lazy<DataType> = Lazy::new(|| {
     )
 });
 
-pub static COLUMN_SCHEMA: Lazy<DataType> = Lazy::new(|| {
+pub static COLUMN_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     DataType::Struct(
         vec![
             Field::new("column_name", DataType::Utf8, false),
@@ -186,7 +185,7 @@ pub static COLUMN_SCHEMA: Lazy<DataType> = Lazy::new(|| {
     )
 });
 
-pub static TABLE_SCHEMA: Lazy<DataType> = Lazy::new(|| {
+pub static TABLE_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     DataType::Struct(
         vec![
             Field::new("table_name", DataType::Utf8, false),
@@ -206,7 +205,7 @@ pub static TABLE_SCHEMA: Lazy<DataType> = Lazy::new(|| {
     )
 });
 
-pub static OBJECTS_DB_SCHEMA_SCHEMA: Lazy<DataType> = Lazy::new(|| {
+pub static OBJECTS_DB_SCHEMA_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     DataType::Struct(
         vec![
             Field::new("db_schema_name", DataType::Utf8, true),
@@ -221,7 +220,7 @@ pub static OBJECTS_DB_SCHEMA_SCHEMA: Lazy<DataType> = Lazy::new(|| {
 });
 
 /// Schema of data returned by [get_objects][crate::Connection::get_objects].
-pub static GET_OBJECTS_SCHEMA: Lazy<SchemaRef> = Lazy::new(|| {
+pub static GET_OBJECTS_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     Arc::new(Schema::new(vec![
         Field::new("catalog_name", DataType::Utf8, true),
         Field::new(

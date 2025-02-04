@@ -119,7 +119,10 @@ update_versions() {
     git add "${desc_file}"
   done
 
-  sed -i.bak -E "s/^version = \".+\"/version = \"${rust_version}\"/" "${ADBC_DIR}/rust/Cargo.toml"
+  sed -i.bak -E \
+    -e "s/^version = \".+\"/version = \"${rust_version}\"/" \
+    -e "s/^adbc_core = { path = \".\/core\", version = \".+\"/adbc_core = { path = \".\/core\", version = \"${rust_version}\"/" \
+    "${ADBC_DIR}/rust/Cargo.toml"
   rm "${ADBC_DIR}/rust/Cargo.toml.bak"
   git add "${ADBC_DIR}/rust/Cargo.toml"
 

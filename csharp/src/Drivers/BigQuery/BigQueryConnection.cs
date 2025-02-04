@@ -41,11 +41,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         readonly IReadOnlyDictionary<string, string> properties;
         BigQueryClient? client;
         GoogleCredential? credential;
+        bool includePublicProjectIds = false;
 
         const string infoDriverName = "ADBC BigQuery Driver";
         const string infoDriverVersion = "1.0.0";
         const string infoVendorName = "BigQuery";
         const string infoDriverArrowVersion = "1.0.0";
+        const string publicProjectId = "bigquery-public-data";
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
@@ -81,8 +83,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             // TODO: handle token expiration
 
+            // if the caller doesn't specify a projectId, use the default
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
-                throw new ArgumentException($"The {BigQueryParameters.ProjectId} parameter is not present");
+                projectId = BigQueryConstants.DetectProjectId;
+
+            if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectId, out string? result))
+            {
+                if (!string.IsNullOrEmpty(result))
+                    includePublicProjectIds = Convert.ToBoolean(result);
+            }
 
             if (this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out string? newAuthenticationType))
             {
@@ -308,11 +317,18 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (catalogs != null)
             {
-                foreach (CloudProject catalog in catalogs)
+                List<string> projectIds = catalogs.Select(x => x.ProjectId).ToList();
+
+                if (this.includePublicProjectIds && !projectIds.Contains(publicProjectId))
+                    projectIds.Add(publicProjectId);
+
+                projectIds.Sort();
+
+                foreach (string projectId in projectIds)
                 {
-                    if (Regex.IsMatch(catalog.ProjectId, catalogRegexp, RegexOptions.IgnoreCase))
+                    if (Regex.IsMatch(projectId, catalogRegexp, RegexOptions.IgnoreCase))
                     {
-                        catalogNameBuilder.Append(catalog.ProjectId);
+                        catalogNameBuilder.Append(projectId);
 
                         if (depth == GetObjectsDepth.Catalogs)
                         {
@@ -321,7 +337,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         else
                         {
                             catalogDbSchemasValues.Add(GetDbSchemas(
-                                depth, catalog.ProjectId, dbSchemaPattern,
+                                depth, projectId, dbSchemaPattern,
                                 tableNamePattern, tableTypes, columnNamePattern));
                         }
                     }
@@ -333,6 +349,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 catalogNameBuilder.Build(),
                 catalogDbSchemasValues.BuildListArrayForType(new StructType(StandardSchemas.DbSchemaSchema)),
             };
+
             StandardSchemas.GetObjectsSchema.Validate(dataArrays);
 
             return dataArrays;
@@ -994,7 +1011,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             if (this.credential == null)
             {
-                throw new InvalidOperationException();
+                throw new AdbcException("A credential must be set", AdbcStatusCode.Unauthenticated);
             }
 
             if (this.client == null)

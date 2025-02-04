@@ -18,13 +18,20 @@
 [package]
 name = "adbc_datafusion"
 description = "ADBC driver for Apache DataFusion"
-version = { workspace = true }
-edition = { workspace = true }
-authors = { workspace = true }
-license = { workspace = true }
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+readme.workspace = true
+documentation = "http://docs.rs/adbc_datafusion/"
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
-adbc_core = { path = "../../core" }
+adbc_core.workspace = true
 arrow-array.workspace = true
 arrow-buffer.workspace = true
 arrow-schema.workspace = true

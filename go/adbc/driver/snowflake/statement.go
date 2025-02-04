@@ -33,6 +33,7 @@ import (
 )
 
 const (
+	OptionStatementQueryTag                = "adbc.snowflake.statement.query_tag"
 	OptionStatementQueueSize               = "adbc.rpc.result_queue_size"
 	OptionStatementPrefetchConcurrency     = "adbc.snowflake.rpc.prefetch_concurrency"
 	OptionStatementIngestWriterConcurrency = "adbc.snowflake.statement.ingest_writer_concurrency"
@@ -54,9 +55,18 @@ type statement struct {
 	targetTable   string
 	ingestMode    string
 	ingestOptions *ingestOptions
+	queryTag      string
 
 	bound      arrow.Record
 	streamBind array.RecordReader
+}
+
+// setQueryContext applies the query tag if present.
+func (st *statement) setQueryContext(ctx context.Context) context.Context {
+	if st.queryTag != "" {
+		ctx = gosnowflake.WithQueryTag(ctx, st.queryTag)
+	}
+	return ctx
 }
 
 // Close releases any relevant resources associated with this statement
@@ -82,6 +92,10 @@ func (st *statement) Close() error {
 }
 
 func (st *statement) GetOption(key string) (string, error) {
+	switch key {
+	case OptionStatementQueryTag:
+		return st.queryTag, nil
+	}
 	return "", adbc.Error{
 		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
 		Code: adbc.StatusNotFound,
@@ -186,6 +200,9 @@ func (st *statement) SetOption(key string, val string) error {
 			}
 		}
 		return st.SetOptionInt(key, int64(size))
+	case OptionStatementQueryTag:
+		st.queryTag = val
+		return nil
 	case OptionUseHighPrecision:
 		switch val {
 		case adbc.OptionValueEnabled:
@@ -449,6 +466,8 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 //
 // This invalidates any prior result sets on this statement.
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	ctx = st.setQueryContext(ctx)
+
 	if st.targetTable != "" {
 		n, err := st.executeIngest(ctx)
 		return nil, n, err
@@ -500,6 +519,8 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
+	ctx = st.setQueryContext(ctx)
+
 	if st.targetTable != "" {
 		return st.executeIngest(ctx)
 	}
@@ -558,6 +579,8 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
 func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	ctx = st.setQueryContext(ctx)
+
 	if st.targetTable != "" {
 		return nil, adbc.Error{
 			Msg:  "cannot execute schema for ingestion",

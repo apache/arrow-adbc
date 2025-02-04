@@ -1696,6 +1696,29 @@ TEST_F(PostgresStatementTest, SetUseCopyFalse) {
   ASSERT_EQ(reader.array->release, nullptr);
 }
 
+TEST_F(PostgresStatementTest, UnknownOid) {
+  // Regression test for https://github.com/apache/arrow-adbc/issues/2448
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "SELECT typacl FROM pg_type WHERE oid <= 6157", &error),
+              IsOkStatus(&error));
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_EQ(1, reader.fields.size());
+  ASSERT_EQ(NANOARROW_TYPE_BINARY, reader.fields[0].type);
+  struct ArrowStringView extension_name = reader.fields[0].extension_name;
+  ASSERT_EQ("arrow.opaque",
+            std::string_view(extension_name.data,
+                             static_cast<size_t>(extension_name.size_bytes)));
+  struct ArrowStringView extension_metadata = reader.fields[0].extension_metadata;
+  ASSERT_EQ(R"({"type_name": "unnamed<oid:1034>", "vendor_name": "PostgreSQL"})",
+            std::string_view(extension_metadata.data,
+                             static_cast<size_t>(extension_metadata.size_bytes)));
+}
+
 struct TypeTestCase {
   std::string name;
   std::string sql_type;

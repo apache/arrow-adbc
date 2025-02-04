@@ -112,6 +112,9 @@ class StatementOptions(enum.Enum):
     #: Number of concurrent streams being prefetched for a result set.
     #: Defaults to 10.
     PREFETCH_CONCURRENCY = "adbc.snowflake.rpc.prefetch_concurrency"
+    #: An identifier for a query/queries that can be used to find the query in
+    #: the query history.  Use a blank string to unset the tag.
+    QUERY_TAG = "adbc.snowflake.statement.query_tag"
     #: Number of parquet files to write in parallel for bulk ingestion
     #: Defaults to NumCPU
     INGEST_WRITER_CONCURRENCY = "adbc.snowflake.statement.ingest_writer_concurrency"

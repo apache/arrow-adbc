@@ -374,8 +374,8 @@ Be sure to go through on the following checklist:
    You must be one of owners of the package.  If you aren't an owner yet, an
    existing owner can add you at https://nuget.org.
 
-   You will need to [create an API
-   key](https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package#create-an-api-key).
+   You will need to `create an API
+   key <https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package#create-an-api-key>`.
 
    An owner can upload:
 
@@ -393,7 +393,7 @@ Be sure to go through on the following checklist:
    You must be one of owners of the package.  If you aren't an owner yet, an
    existing owner can add you at https://crates.io.
 
-   You will need to [create an API token](https://crates.io/settings/tokens).
+   You will need to `create an API token <https://crates.io/settings/tokens>`.
 
    An owner can upload:
 

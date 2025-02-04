@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// <summary>
     /// Validates that specific complex structured types can be inserted, retrieved and targeted correctly
     /// </summary>
-    public class ComplexTypesValueTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
+    public abstract class ComplexTypesValueTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : TestConfiguration
         where TEnv : HiveServer2TestEnvironment<TConfig>
     {

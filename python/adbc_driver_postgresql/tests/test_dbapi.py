@@ -430,7 +430,7 @@ def test_ingest_large(postgres: dbapi.Connection) -> None:
 def test_timestamp_txn(postgres: dbapi.Connection) -> None:
     """Regression test for #2410."""
     ts = datetime.datetime.now()
-    ts_with_tz = datetime.datetime.now(tz=datetime.UTC)
+    ts_with_tz = datetime.datetime.now(tz=datetime.timezone.utc)
 
     with postgres.cursor() as cur:
         cur.execute("DROP TABLE IF EXISTS ts_txn")

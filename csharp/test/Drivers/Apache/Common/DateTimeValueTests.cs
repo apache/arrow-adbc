@@ -40,14 +40,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         const string DateTimeFormat = "yyyy-MM-dd' 'HH:mm:ss";
         protected const string DateFormat = "yyyy-MM-dd";
 
-        private static readonly DateTimeOffset[] s_timestampValues =
+        private static readonly DateTimeOffset[] s_timestampBasicValues =
         [
 #if NET5_0_OR_GREATER
             DateTimeOffset.UnixEpoch,
 #endif
-            DateTimeOffset.MinValue,
             DateTimeOffset.MaxValue,
             DateTimeOffset.UtcNow,
+        ];
+
+        private static readonly DateTimeOffset[] s_timestampExtendedValues =
+        [
+            DateTimeOffset.MinValue,
             DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(4))
         ];
 
@@ -57,9 +61,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if driver can send and receive specific Timstamp values correctly
         /// </summary>
-        [SkippableTheory]
-        [MemberData(nameof(TimestampData), "TIMESTAMP")]
-        public async Task TestTimestampData(DateTimeOffset value, string columnType)
+        public virtual async Task TestTimestampData(DateTimeOffset value, string columnType)
         {
             string columnName = "TIMESTAMPTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
@@ -73,14 +75,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 table.TableName,
                 columnName,
                 expectedValue,
-                "TO_TIMESTAMP(" + QuoteValue(formattedValue) + ")");
+                GetFormattedTimestampValue(formattedValue));
         }
+
+        protected abstract string GetFormattedTimestampValue(string value);
 
         /// <summary>
         /// Validates if driver can send and receive specific no timezone Timstamp values correctly
         /// </summary>
         [SkippableTheory]
-        [MemberData(nameof(TimestampData), "DATE")]
+        [MemberData(nameof(TimestampBasicData), "DATE")]
         public async Task TestDateData(DateTimeOffset value, string columnType)
         {
             string columnName = "DATETYPE";
@@ -98,45 +102,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 "TO_DATE(" + QuoteValue(formattedValue) + ")");
         }
 
-        /// <summary>
-        /// Tests INTERVAL data types (YEAR-MONTH and DAY-SECOND).
-        /// </summary>
-        /// <param name="intervalClause">The INTERVAL to test.</param>
-        /// <param name="value">The expected return value.</param>
-        /// <returns></returns>
-        [SkippableTheory]
-        [InlineData("INTERVAL 1 YEAR", "1-0")]
-        [InlineData("INTERVAL 1 YEAR 2 MONTH", "1-2")]
-        [InlineData("INTERVAL 2 MONTHS", "0-2")]
-        [InlineData("INTERVAL -1 YEAR", "-1-0")]
-        [InlineData("INTERVAL -1 YEAR 2 MONTH", "-0-10")]
-        [InlineData("INTERVAL -2 YEAR 2 MONTH", "-1-10")]
-        [InlineData("INTERVAL 1 YEAR -2 MONTH", "0-10")]
-        [InlineData("INTERVAL 178956970 YEAR", "178956970-0")]
-        [InlineData("INTERVAL 178956969 YEAR 11 MONTH", "178956969-11")]
-        [InlineData("INTERVAL -178956970 YEAR", "-178956970-0")]
-        [InlineData("INTERVAL 0 DAYS 0 HOURS 0 MINUTES 0 SECONDS", "0 00:00:00.000000000")]
-        [InlineData("INTERVAL 1 DAYS", "1 00:00:00.000000000")]
-        [InlineData("INTERVAL 2 HOURS", "0 02:00:00.000000000")]
-        [InlineData("INTERVAL 3 MINUTES", "0 00:03:00.000000000")]
-        [InlineData("INTERVAL 4 SECONDS", "0 00:00:04.000000000")]
-        [InlineData("INTERVAL 1 DAYS 2 HOURS", "1 02:00:00.000000000")]
-        [InlineData("INTERVAL 1 DAYS 2 HOURS 3 MINUTES", "1 02:03:00.000000000")]
-        [InlineData("INTERVAL 1 DAYS 2 HOURS 3 MINUTES 4 SECONDS", "1 02:03:04.000000000")]
-        [InlineData("INTERVAL 1 DAYS 2 HOURS 3 MINUTES 4.123123123 SECONDS", "1 02:03:04.123123000")] // Only to microseconds
-        [InlineData("INTERVAL 106751990 DAYS 23 HOURS 59 MINUTES 59.999999 SECONDS", "106751990 23:59:59.999999000")]
-        [InlineData("INTERVAL 106751991 DAYS 0 HOURS 0 MINUTES 0 SECONDS", "106751991 00:00:00.000000000")]
-        [InlineData("INTERVAL -106751991 DAYS 0 HOURS 0 MINUTES 0 SECONDS", "-106751991 00:00:00.000000000")]
-        [InlineData("INTERVAL -106751991 DAYS 23 HOURS 59 MINUTES 59.999999 SECONDS", "-106751990 00:00:00.000001000")]
-        public async Task TestIntervalData(string intervalClause, string value)
+        public static IEnumerable<object[]> TimestampBasicData(string columnType)
         {
-            string selectStatement = $"SELECT {intervalClause} AS INTERVAL_VALUE;";
-            await SelectAndValidateValuesAsync(selectStatement, value, 1);
+            foreach (DateTimeOffset timestamp in s_timestampBasicValues)
+            {
+                yield return new object[] { timestamp, columnType };
+            }
         }
 
-        public static IEnumerable<object[]> TimestampData(string columnType)
+        public static IEnumerable<object[]> TimestampExtendedData(string columnType)
         {
-            foreach (DateTimeOffset timestamp in s_timestampValues)
+            foreach (DateTimeOffset timestamp in s_timestampExtendedValues)
             {
                 yield return new object[] { timestamp, columnType };
             }

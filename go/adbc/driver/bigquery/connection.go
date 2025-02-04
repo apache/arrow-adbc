@@ -208,7 +208,7 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 					if err != nil {
 						return nil, err
 					}
-					xdbcDataType := driverbase.ToXdbcDataType(field.Type)
+					xdbcDataType := internal.ToXdbcDataType(field.Type)
 
 					columns = append(columns, driverbase.ColumnInfo{
 						ColumnName:          fieldschema.Name,

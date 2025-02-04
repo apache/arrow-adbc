@@ -27,7 +27,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         Empty = int.MaxValue,
     }
 
-    internal static class AuthTypeParser
+    internal static class SparkAuthTypeParser
     {
         internal static bool TryParse(string? authType, out SparkAuthType authTypeValue)
         {

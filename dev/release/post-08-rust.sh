@@ -42,10 +42,14 @@ main() {
 
   pushd "${SOURCE_TOP_DIR}/rust"
   cargo publish --all-features -p adbc_core
+  cargo publish --all-features -p adbc_datafusion
+  cargo publish --all-features -p adbc_snowflake
   popd
 
-  echo "Success! The released Cargo crate is available here:"
+  echo "Success! The released Cargo crates are available here:"
   echo "  https://crates.io/crates/adbc_core"
+  echo "  https://crates.io/crates/adbc_datafusion"
+  echo "  https://crates.io/crates/adbc_snowflake"
 }
 
 main "$@"

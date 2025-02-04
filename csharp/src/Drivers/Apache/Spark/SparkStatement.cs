@@ -26,19 +26,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal SparkStatement(SparkConnection connection)
             : base(connection)
         {
-            foreach (KeyValuePair<string, string> kvp in connection.Properties)
-            {
-                switch (kvp.Key)
-                {
-                    case Options.BatchSize:
-                    case Options.PollTimeMilliseconds:
-                    case Options.QueryTimeoutSeconds:
-                        {
-                            SetOption(kvp.Key, kvp.Value);
-                            break;
-                        }
-                }
-            }
+            ValidateOptions(connection.Properties);
         }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)

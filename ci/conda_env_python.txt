@@ -20,6 +20,7 @@ importlib-resources
 # nodejs is required by pyright
 nodejs >=13.0.0
 pandas
+pip
 pyarrow-all
 pyright
 pytest
