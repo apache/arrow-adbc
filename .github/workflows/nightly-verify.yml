@@ -23,6 +23,8 @@ on:
       - main
     paths:
       - ".github/workflows/nightly-verify.yml"
+      - "ci/docker/cpp-clang-latest.dockerfile"
+      - "ci/docker/cpp-gcc-latest.dockerfile"
       - "dev/release/verify-release-candidate.sh"
       - "dev/release/verify-release-candidate.ps1"
   schedule:
