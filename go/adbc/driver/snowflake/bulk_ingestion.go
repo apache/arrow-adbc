@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"compress/flate"
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
@@ -31,6 +30,7 @@ import (
 	"path"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -140,7 +140,7 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	)
 
 	// Check final row count of target table to get definitive rows affected
-	initialRows, err = countRowsInTable(ctx, st.cnxn.sqldb, target)
+	initialRows, err = countRowsInTable(ctx, st.cnxn.cn, target)
 	if err != nil {
 		st.bound.Release()
 		return
@@ -195,7 +195,7 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	}
 
 	// Check final row count of target table to get definitive rows affected
-	nrows, err = countRowsInTable(ctx, st.cnxn.sqldb, target)
+	nrows, err = countRowsInTable(ctx, st.cnxn.cn, target)
 	nrows = nrows - initialRows
 	return
 }
@@ -217,7 +217,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	)
 
 	// Check final row count of target table to get definitive rows affected
-	initialRows, err = countRowsInTable(ctx, st.cnxn.sqldb, target)
+	initialRows, err = countRowsInTable(ctx, st.cnxn.cn, target)
 	if err != nil {
 		return
 	}
@@ -225,7 +225,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	defer func() {
 		// Always check the resulting row count, even in the case of an error. We may have ingested part of the data.
 		ctx := context.WithoutCancel(ctx)
-		n, countErr := countRowsInTable(ctx, st.cnxn.sqldb, target)
+		n, countErr := countRowsInTable(ctx, st.cnxn.cn, target)
 		nrows = n - initialRows
 
 		// Ingestion, row-count check, or both could have failed
@@ -625,15 +625,20 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 	return readyFn, stopFn, cancelFn
 }
 
-func countRowsInTable(ctx context.Context, db *sql.DB, tableName string) (int64, error) {
-	var nrows int64
+func countRowsInTable(ctx context.Context, db snowflakeConn, tableName string) (int64, error) {
+	rows, err := db.QueryContext(ctx, countQuery, []driver.NamedValue{{Value: tableName}})
+	if err != nil {
+		return 0, errToAdbcErr(adbc.StatusIO, err)
+	}
+	defer rows.Close()
 
-	row := db.QueryRowContext(ctx, countQuery, tableName)
-	if err := row.Scan(&nrows); err != nil {
+	dest := make([]driver.Value, 1)
+	if err := rows.Next(dest); err != nil {
 		return 0, errToAdbcErr(adbc.StatusIO, err)
 	}
 
-	return nrows, nil
+	n, err := strconv.Atoi(dest[0].(string))
+	return int64(n), err
 }
 
 // Initializes a sync.Pool of *bytes.Buffer.
