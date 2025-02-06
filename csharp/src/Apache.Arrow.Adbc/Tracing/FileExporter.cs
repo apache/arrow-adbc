@@ -39,6 +39,7 @@ namespace Apache.Arrow.Adbc.Tracing
 
         private static readonly string s_tracingLocationDefault = TracingLocationDefault;
         private static readonly ConcurrentDictionary<string, Lazy<FileExporterInstance>> s_fileExporters = new();
+        private static readonly byte[] s_newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
 
         private readonly TracingFile _tracingFile;
         private readonly string _fileBaseName;
@@ -47,8 +48,6 @@ namespace Apache.Arrow.Adbc.Tracing
         private readonly CancellationTokenSource _cancellationTokenSource;
 
         private bool _disposed = false;
-
-        private static string GetListenerId(string sourceName, string traceFolderLocation) => $"{sourceName}{traceFolderLocation}";
 
         internal static bool TryCreate(out FileExporter? fileExporter, FileExporterOptions options)
         {
@@ -79,7 +78,7 @@ namespace Apache.Arrow.Adbc.Tracing
                 FileExporter fileExporter = new(fileBaseName, tracesDirectory, maxTraceFileSizeKb, maxTraceFiles);
                 return new FileExporterInstance(
                     fileExporter,
-                    Task.Run(async () => await WriteActivities(fileExporter, cancellationTokenSource.Token)),
+                    Task.Run(async () => await ProcessActivitiesAsync(fileExporter, cancellationTokenSource.Token)),
                     cancellationTokenSource);
             });
 
@@ -116,6 +115,28 @@ namespace Apache.Arrow.Adbc.Tracing
             IsDirectoryWritable(traceLocation, throwIfFails: true);
         }
 
+        private static string GetListenerId(string sourceName, string traceFolderLocation) => $"{sourceName}{traceFolderLocation}";
+
+        public override ExportResult Export(in Batch<Activity> batch)
+        {
+            foreach (Activity activity in batch)
+            {
+                if (activity == null) continue;
+                _activityQueue.Enqueue(activity);
+            }
+            return ExportResult.Success;
+        }
+
+        private static async Task ProcessActivitiesAsync(FileExporter fileExporter, CancellationToken cancellationToken)
+        {
+            TimeSpan delay = TimeSpan.FromMilliseconds(100);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(delay, cancellationToken);
+                await fileExporter._tracingFile.WriteLinesAsync(GetActivitiesAsync(fileExporter._activityQueue), cancellationToken);
+            }
+        }
+
         private static bool IsDirectoryWritable(string traceLocation, bool throwIfFails = false)
         {
             try
@@ -136,18 +157,6 @@ namespace Apache.Arrow.Adbc.Tracing
                     return false;
             }
         }
-
-        private static async Task WriteActivities(FileExporter fileExporter, CancellationToken cancellationToken)
-        {
-            TimeSpan delay = TimeSpan.FromMilliseconds(10);
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await Task.Delay(delay, cancellationToken);
-                await fileExporter._tracingFile.WriteLines(GetActivitiesAsync(fileExporter._activityQueue), cancellationToken);
-            }
-        }
-
-        private static readonly byte[] s_newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
 
         private static async IAsyncEnumerable<Stream> GetActivitiesAsync(ConcurrentQueue<Activity> activityQueue)
         {
@@ -171,20 +180,6 @@ namespace Apache.Arrow.Adbc.Tracing
             _tracesDirectoryFullName = fullName;
             _tracingFile = new(fileBaseName, fullName, maxTraceFileSizeKb, maxTraceFiles);
             _cancellationTokenSource = new CancellationTokenSource();
-        }
-
-        public override ExportResult Export(in Batch<Activity> batch)
-        {
-            foreach (Activity activity in batch)
-            {
-                if (activity == null) continue;
-                // Intentionally don't await the result of the call
-                //_ = WriteActivity(activity, _cancellationTokenSource.Token);
-                //Task.Run(async () => await WriteActivity(activity, _tracingFile, _cancellationTokenSource.Token));
-                //s_taskQueue.Enqueue(task);
-                _activityQueue.Enqueue(activity);
-            }
-            return ExportResult.Success;
         }
 
         internal static string TracingLocationDefault =>

@@ -58,7 +58,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="streams">The enumerable of trace lines.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        internal async Task WriteLines(IAsyncEnumerable<Stream> streams, CancellationToken cancellationToken = default)
+        internal async Task WriteLinesAsync(IAsyncEnumerable<Stream> streams, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return;
 
@@ -75,35 +75,7 @@ namespace Apache.Arrow.Adbc.Tracing
             }
 
             // Write out to the file and retry if IO errors occur.
-            await ActionWithRetryAsync<IOException>((Func<Task>)(async () =>
-            {
-                bool hasMoreData;
-                do
-                {
-                    bool newFileRequired = false;
-                    using (FileStream fileStream = _currentTraceFileInfo.OpenWrite())
-                    {
-                        hasMoreData = false;
-                        await foreach (Stream stream in streams)
-                        {
-                            await stream.CopyToAsync(fileStream);
-
-                            _currentTraceFileInfo.Refresh();
-                            if (_currentTraceFileInfo.Length >= (_maxFileSizeKb * 1024))
-                            {
-                                hasMoreData = true;
-                                newFileRequired = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (newFileRequired)
-                    {
-                        // If tracing file is maxxed-out, start a new tracing file.
-                        _currentTraceFileInfo = new FileInfo(NewFileName());
-                    }
-                } while (hasMoreData);
-            }), cancellationToken: cancellationToken);
+            await ActionWithRetryAsync<IOException>(async () => await WriteLinesAsync(streams), cancellationToken: cancellationToken);
 
             // Check if we need to remove old files
             if (_tracingDirectory.Exists)
@@ -121,14 +93,44 @@ namespace Apache.Arrow.Adbc.Tracing
             }
         }
 
-        internal static IOrderedEnumerable<FileInfo> GetTracingFiles(DirectoryInfo tracingDirectory, string searchPattern)
+        private async Task WriteLinesAsync(IAsyncEnumerable<Stream> streams) 
+        {
+            bool hasMoreData;
+            do
+            {
+                bool newFileRequired = false;
+                using (FileStream fileStream = _currentTraceFileInfo!.OpenWrite())
+                {
+                    hasMoreData = false;
+                    await foreach (Stream stream in streams)
+                    {
+                        await stream.CopyToAsync(fileStream);
+
+                        _currentTraceFileInfo.Refresh();
+                        if (_currentTraceFileInfo.Length >= (_maxFileSizeKb * 1024))
+                        {
+                            hasMoreData = true;
+                            newFileRequired = true;
+                            break;
+                        }
+                    }
+                }
+                if (newFileRequired)
+                {
+                    // If tracing file is maxxed-out, start a new tracing file.
+                    _currentTraceFileInfo = new FileInfo(NewFileName());
+                }
+            } while (hasMoreData);
+        }
+
+        private static IOrderedEnumerable<FileInfo> GetTracingFiles(DirectoryInfo tracingDirectory, string searchPattern)
         {
             return tracingDirectory
                 .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
                 .OrderByDescending(f => f.LastWriteTimeUtc);
         }
 
-        internal static async Task ActionWithRetryAsync<T>(Action action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
+        private static async Task ActionWithRetryAsync<T>(Action action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
         {
             int retryCount = 0;
             TimeSpan pauseTime = TimeSpan.FromMilliseconds(10);
@@ -161,7 +163,7 @@ namespace Apache.Arrow.Adbc.Tracing
             }
         }
 
-        internal static async Task ActionWithRetryAsync<T>(Func<Task> action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
+        private static async Task ActionWithRetryAsync<T>(Func<Task> action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
         {
             int retryCount = 0;
             TimeSpan pauseTime = TimeSpan.FromMilliseconds(10);
