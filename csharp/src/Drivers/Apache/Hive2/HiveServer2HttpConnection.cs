@@ -35,12 +35,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2HttpConnection : HiveServer2Connection
     {
-        protected const string ProductVersionDefault = "1.0.0";
-        protected const string DriverName = "ADBC Hive Driver";
+        private const string ProductVersionDefault = "1.0.0";
+        private const string DriverName = "ADBC Hive Driver";
         private const string ArrowVersion = "1.0.0";
-        private readonly Lazy<string> _productVersion;
         private const string BasicAuthenticationScheme = "Basic";
-        private const string BearerAuthenticationScheme = "Bearer";
+        private readonly Lazy<string> _productVersion;
         private static readonly string s_userAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault}";
 
         protected override string GetProductVersionDefault() => ProductVersionDefault;
