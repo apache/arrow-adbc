@@ -81,7 +81,7 @@ public final class AdbcDriverManager {
    *     fully-qualified class name of an AdbcDriverFactory class.
    * @return A function to construct an AdbcDriver from a BufferAllocator, or null if not found.
    */
-  @Nullable Function<BufferAllocator, AdbcDriver> lookupDriver(String driverFactoryName) {
+  public @Nullable Function<BufferAllocator, AdbcDriver> lookupDriver(String driverFactoryName) {
     return driverFactoryFunctions.get(driverFactoryName);
   }
 
