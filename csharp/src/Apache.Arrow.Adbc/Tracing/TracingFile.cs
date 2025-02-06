@@ -93,7 +93,7 @@ namespace Apache.Arrow.Adbc.Tracing
             }
         }
 
-        private async Task WriteLinesAsync(IAsyncEnumerable<Stream> streams) 
+        private async Task WriteLinesAsync(IAsyncEnumerable<Stream> streams)
         {
             bool hasMoreData;
             do
