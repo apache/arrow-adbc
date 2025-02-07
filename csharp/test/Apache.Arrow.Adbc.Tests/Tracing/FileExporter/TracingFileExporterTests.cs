@@ -19,15 +19,15 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
+using Apache.Arrow.Adbc.Tracing.FileExporter;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Tracing
+namespace Apache.Arrow.Adbc.Tests.Tracing.FileExporter
 {
     public class TracingFileExporterTests : IDisposable
     {

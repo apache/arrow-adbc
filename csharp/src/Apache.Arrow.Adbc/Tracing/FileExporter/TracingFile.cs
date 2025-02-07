@@ -22,7 +22,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Apache.Arrow.Adbc.Tracing
+namespace Apache.Arrow.Adbc.Tracing.FileExporter
 {
     /// <summary>
     /// Provides access to writing trace files, limiting the
@@ -107,7 +107,7 @@ namespace Apache.Arrow.Adbc.Tracing
                         await stream.CopyToAsync(fileStream);
 
                         _currentTraceFileInfo.Refresh();
-                        if (_currentTraceFileInfo.Length >= (_maxFileSizeKb * 1024))
+                        if (_currentTraceFileInfo.Length >= _maxFileSizeKb * 1024)
                         {
                             hasMoreData = true;
                             newFileRequired = true;

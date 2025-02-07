@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace Apache.Arrow.Adbc.Tracing
+namespace Apache.Arrow.Adbc.Tracing.FileExporter
 {
     /// <summary>
     /// The options an <see cref="FileExporter"/> uses to trace active to files.

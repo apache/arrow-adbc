@@ -23,12 +23,10 @@ using System.Threading;
 using OpenTelemetry;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Linq;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.Text;
 
-namespace Apache.Arrow.Adbc.Tracing
+namespace Apache.Arrow.Adbc.Tracing.FileExporter
 {
     internal class FileExporter : BaseExporter<Activity>
     {
@@ -105,7 +103,7 @@ namespace Apache.Arrow.Adbc.Tracing
                 throw new ArgumentNullException(nameof(fileBaseName));
             if (fileBaseName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                 throw new ArgumentException("Invalid or unsupported file name", nameof(fileBaseName));
-            if ((string.IsNullOrWhiteSpace(traceLocation) || (traceLocation.IndexOfAny(Path.GetInvalidPathChars()) >= 0)))
+            if (string.IsNullOrWhiteSpace(traceLocation) || traceLocation.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
                 throw new ArgumentException("Invalid or unsupported folder name", nameof(traceLocation));
             if (maxTraceFileSizeKb < 1)
                 throw new ArgumentException("maxTraceFileSizeKb must be greater than zero", nameof(maxTraceFileSizeKb));

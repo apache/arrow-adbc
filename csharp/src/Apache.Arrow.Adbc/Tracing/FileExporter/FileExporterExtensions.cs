@@ -21,7 +21,7 @@ using OpenTelemetry.Trace;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace Apache.Arrow.Adbc.Tracing
+namespace Apache.Arrow.Adbc.Tracing.FileExporter
 {
     public static class FileExporterExtensions
     {
@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Note that only one global instance of the exporter is added.
         /// If there is already an existing exporter for the same source and location, no new one is added.
         /// </remarks>
-        public static TracerProviderBuilder AddAdbcFileExporter(this TracerProviderBuilder builder,Action<FileExporterOptions>? configure = default)
+        public static TracerProviderBuilder AddAdbcFileExporter(this TracerProviderBuilder builder, Action<FileExporterOptions>? configure = default)
            => builder.AddAdbcFileExporter(null, configure);
 
         /// <summary>

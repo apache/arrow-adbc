@@ -22,6 +22,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
+using Apache.Arrow.Adbc.Tracing.FileExporter;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Mathematics;
 using BenchmarkDotNet.Reports;
@@ -31,7 +32,7 @@ using OpenTelemetry.Trace;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Tracing
+namespace Apache.Arrow.Adbc.Tests.Tracing.FileExporter
 {
     public class TracingPerformance(ITestOutputHelper outputHelper)
     {
