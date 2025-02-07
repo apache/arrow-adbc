@@ -76,6 +76,7 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
                 FileExporter fileExporter = new(fileBaseName, tracesDirectory, maxTraceFileSizeKb, maxTraceFiles);
                 return new FileExporterInstance(
                     fileExporter,
+                    // This listens/polls for activity in the queue and writes them to file
                     Task.Run(async () => await ProcessActivitiesAsync(fileExporter, cancellationTokenSource.Token)),
                     cancellationTokenSource);
             });
@@ -128,6 +129,7 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
         private static async Task ProcessActivitiesAsync(FileExporter fileExporter, CancellationToken cancellationToken)
         {
             TimeSpan delay = TimeSpan.FromMilliseconds(100);
+            // Polls for and then writes any activities in the queue
             while (!cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(delay, cancellationToken);
