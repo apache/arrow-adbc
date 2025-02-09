@@ -177,28 +177,34 @@ typedef uint8_t AdbcStatusCode;
 
 /// \brief No error.
 #define ADBC_STATUS_OK 0
+
 /// \brief An unknown error occurred.
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_UNKNOWN 1
+
 /// \brief The operation is not implemented or supported.
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_NOT_IMPLEMENTED 2
+
 /// \brief A requested resource was not found.
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_NOT_FOUND 3
+
 /// \brief A requested resource already exists.
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_ALREADY_EXISTS 4
+
 /// \brief The arguments are invalid, likely a programming error.
 ///
 /// For instance, they may be of the wrong format, or out of range.
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_INVALID_ARGUMENT 5
+
 /// \brief The preconditions for the operation are not met, likely a
 ///   programming error.
 ///
@@ -207,6 +213,7 @@ typedef uint8_t AdbcStatusCode;
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_INVALID_STATE 6
+
 /// \brief Invalid data was processed (not a programming error).
 ///
 /// For instance, a division by zero may have occurred during query
@@ -214,6 +221,7 @@ typedef uint8_t AdbcStatusCode;
 ///
 /// May indicate a database-side error only.
 #define ADBC_STATUS_INVALID_DATA 7
+
 /// \brief The database's integrity was affected.
 ///
 /// For instance, a foreign key check may have failed, or a uniqueness
@@ -221,28 +229,34 @@ typedef uint8_t AdbcStatusCode;
 ///
 /// May indicate a database-side error only.
 #define ADBC_STATUS_INTEGRITY 8
+
 /// \brief An error internal to the driver or database occurred.
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_INTERNAL 9
+
 /// \brief An I/O error occurred.
 ///
 /// For instance, a remote service may be unavailable.
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_IO 10
+
 /// \brief The operation was cancelled, not due to a timeout.
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_CANCELLED 11
+
 /// \brief The operation was cancelled due to a timeout.
 ///
 /// May indicate a driver-side or database-side error.
 #define ADBC_STATUS_TIMEOUT 12
+
 /// \brief Authentication failed.
 ///
 /// May indicate a database-side error only.
 #define ADBC_STATUS_UNAUTHENTICATED 13
+
 /// \brief The client is not authorized to perform the given operation.
 ///
 /// May indicate a database-side error only.
@@ -331,6 +345,7 @@ struct ADBC_EXPORT AdbcError {
 ///
 /// \since ADBC API revision 1.1.0
 #define ADBC_ERROR_1_0_0_SIZE (offsetof(struct AdbcError, private_data))
+
 /// \brief The size of the AdbcError structure in ADBC 1.1.0.
 ///
 /// Drivers written for ADBC 1.1.0 and later should never touch more than this
@@ -412,6 +427,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// For use as the value in SetOption calls.
 #define ADBC_OPTION_VALUE_ENABLED "true"
+
 /// \brief Canonical option value for disabling an option.
 ///
 /// For use as the value in SetOption calls.
@@ -426,6 +442,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \since ADBC API revision 1.1.0
 #define ADBC_OPTION_URI "uri"
+
 /// \brief Canonical option name for usernames.
 ///
 /// Should be used as the expected option name to specify a username
@@ -435,6 +452,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \since ADBC API revision 1.1.0
 #define ADBC_OPTION_USERNAME "username"
+
 /// \brief Canonical option name for passwords.
 ///
 /// Should be used as the expected option name to specify a password
@@ -450,28 +468,34 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_NAME 0
+
 /// \brief The database vendor/product version (type: utf8).
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_VERSION 1
+
 /// \brief The database vendor/product Arrow library version (type:
 ///   utf8).
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_ARROW_VERSION 2
+
 /// \brief Indicates whether SQL queries are supported (type: bool).
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_SQL 3
+
 /// \brief Indicates whether Substrait queries are supported (type: bool).
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_SUBSTRAIT 4
+
 /// \brief The minimum supported Substrait version, or null if
 ///   Substrait is not supported (type: utf8).
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION 5
+
 /// \brief The maximum supported Substrait version, or null if
 ///   Substrait is not supported (type: utf8).
 ///
@@ -482,14 +506,17 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_DRIVER_NAME 100
+
 /// \brief The driver version (type: utf8).
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_DRIVER_VERSION 101
+
 /// \brief The driver Arrow library version (type: utf8).
 ///
 /// \see AdbcConnectionGetInfo
 #define ADBC_INFO_DRIVER_ARROW_VERSION 102
+
 /// \brief The driver ADBC API version (type: int64).
 ///
 /// The value should be one of the ADBC_VERSION constants.
@@ -504,18 +531,22 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \see AdbcConnectionGetObjects
 #define ADBC_OBJECT_DEPTH_ALL 0
+
 /// \brief Return metadata on catalogs only.
 ///
 /// \see AdbcConnectionGetObjects
 #define ADBC_OBJECT_DEPTH_CATALOGS 1
+
 /// \brief Return metadata on catalogs and schemas.
 ///
 /// \see AdbcConnectionGetObjects
 #define ADBC_OBJECT_DEPTH_DB_SCHEMAS 2
+
 /// \brief Return metadata on catalogs, schemas, and tables.
 ///
 /// \see AdbcConnectionGetObjects
 #define ADBC_OBJECT_DEPTH_TABLES 3
+
 /// \brief Return metadata on catalogs, schemas, tables, and columns.
 ///
 /// \see AdbcConnectionGetObjects
@@ -527,42 +558,55 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 
 /// \brief The dictionary-encoded name of the average byte width statistic.
 #define ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_KEY 0
+
 /// \brief The average byte width statistic.  The average size in bytes of a
 ///   row in the column.  Value type is float64.
 ///
 /// For example, this is roughly the average length of a string for a string
 /// column.
 #define ADBC_STATISTIC_AVERAGE_BYTE_WIDTH_NAME "adbc.statistic.byte_width"
+
 /// \brief The dictionary-encoded name of the distinct value count statistic.
 #define ADBC_STATISTIC_DISTINCT_COUNT_KEY 1
+
 /// \brief The distinct value count (NDV) statistic.  The number of distinct
 ///   values in the column.  Value type is int64 (when not approximate) or
 ///   float64 (when approximate).
 #define ADBC_STATISTIC_DISTINCT_COUNT_NAME "adbc.statistic.distinct_count"
+
 /// \brief The dictionary-encoded name of the max byte width statistic.
 #define ADBC_STATISTIC_MAX_BYTE_WIDTH_KEY 2
+
 /// \brief The max byte width statistic.  The maximum size in bytes of a row
 ///   in the column.  Value type is int64 (when not approximate) or float64
 ///   (when approximate).
 ///
 /// For example, this is the maximum length of a string for a string column.
 #define ADBC_STATISTIC_MAX_BYTE_WIDTH_NAME "adbc.statistic.max_byte_width"
+
 /// \brief The dictionary-encoded name of the max value statistic.
 #define ADBC_STATISTIC_MAX_VALUE_KEY 3
+
 /// \brief The max value statistic.  Value type is column-dependent.
 #define ADBC_STATISTIC_MAX_VALUE_NAME "adbc.statistic.max_value"
+
 /// \brief The dictionary-encoded name of the min value statistic.
 #define ADBC_STATISTIC_MIN_VALUE_KEY 4
+
 /// \brief The min value statistic.  Value type is column-dependent.
 #define ADBC_STATISTIC_MIN_VALUE_NAME "adbc.statistic.min_value"
+
 /// \brief The dictionary-encoded name of the null count statistic.
 #define ADBC_STATISTIC_NULL_COUNT_KEY 5
+
 /// \brief The null count statistic.  The number of values that are null in
 ///   the column.  Value type is int64 (when not approximate) or float64
 ///   (when approximate).
 #define ADBC_STATISTIC_NULL_COUNT_NAME "adbc.statistic.null_count"
+
 /// \brief The dictionary-encoded name of the row count statistic.
 #define ADBC_STATISTIC_ROW_COUNT_KEY 6
+
 /// \brief The row count statistic.  The number of rows in the column or
 ///   table.  Value type is int64 (when not approximate) or float64 (when
 ///   approximate).
@@ -753,33 +797,41 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// The type is char*.
 #define ADBC_INGEST_OPTION_TARGET_TABLE "adbc.ingest.target_table"
+
 /// \brief Whether to create (the default) or append.
 ///
 /// The type is char*.
 #define ADBC_INGEST_OPTION_MODE "adbc.ingest.mode"
+
 /// \brief Create the table and insert data; error if the table exists.
 #define ADBC_INGEST_OPTION_MODE_CREATE "adbc.ingest.mode.create"
+
 /// \brief Do not create the table, and insert data; error if the
 ///   table does not exist (ADBC_STATUS_NOT_FOUND) or does not match
 ///   the schema of the data to append (ADBC_STATUS_ALREADY_EXISTS).
 #define ADBC_INGEST_OPTION_MODE_APPEND "adbc.ingest.mode.append"
+
 /// \brief Create the table and insert data; drop the original table
 ///   if it already exists.
 /// \since ADBC API revision 1.1.0
 #define ADBC_INGEST_OPTION_MODE_REPLACE "adbc.ingest.mode.replace"
+
 /// \brief Insert data; create the table if it does not exist, or
 ///   error if the table exists, but the schema does not match the
 ///   schema of the data to append (ADBC_STATUS_ALREADY_EXISTS).
 /// \since ADBC API revision 1.1.0
 #define ADBC_INGEST_OPTION_MODE_CREATE_APPEND "adbc.ingest.mode.create_append"
+
 /// \brief The catalog of the table for bulk insert.
 ///
 /// The type is char*.
 #define ADBC_INGEST_OPTION_TARGET_CATALOG "adbc.ingest.target_catalog"
+
 /// \brief The schema of the table for bulk insert.
 ///
 /// The type is char*.
 #define ADBC_INGEST_OPTION_TARGET_DB_SCHEMA "adbc.ingest.target_db_schema"
+
 /// \brief Use a temporary table for ingestion.
 ///
 /// The value should be ADBC_OPTION_VALUE_ENABLED or
