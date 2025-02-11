@@ -321,7 +321,7 @@ func readRecords(ctx context.Context, rdr array.RecordReader, out chan<- arrow.R
 		}
 	}
 
-	return nil
+	return rdr.Err()
 }
 
 func writeRecordToParquet(wr *pqarrow.FileWriter, rec arrow.Record) (int64, error) {
@@ -570,6 +570,15 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 		close(stopCh)
 		close(readyCh)
 
+		// wait for any currently running copies to finish before we continue
+		if err := g.Wait(); err != nil {
+			return err
+		}
+
+		if filesToCopy.Len() == 0 {
+			return nil
+		}
+
 		maxRetries := 5 // maybe make configurable?
 		for attempt := 0; attempt < maxRetries+1; attempt++ {
 			if attempt > 0 {
@@ -585,7 +594,7 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 
 			if filesToCopy.Len() == 0 {
 				// all files successfully copied
-				return g.Wait()
+				return nil
 			}
 		}
 
