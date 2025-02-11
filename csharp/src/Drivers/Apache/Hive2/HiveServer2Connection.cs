@@ -609,8 +609,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
                 StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
 
+                HashSet<string> distinctTableTypes = new HashSet<string>(tableTypes);
+
                 StringArray.Builder tableTypesBuilder = new StringArray.Builder();
-                tableTypesBuilder.AppendRange(tableTypes);
+                tableTypesBuilder.AppendRange(distinctTableTypes);
 
                 IArrowArray[] dataArrays = new IArrowArray[]
                 {

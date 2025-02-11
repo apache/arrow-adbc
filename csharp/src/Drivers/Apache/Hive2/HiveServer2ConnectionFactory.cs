@@ -24,9 +24,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         public static HiveServer2Connection NewConnection(IReadOnlyDictionary<string, string> properties)
         {
-            bool _ = properties.TryGetValue(HiveServer2Parameters.Type, out string? type) && string.IsNullOrEmpty(type);
-            bool __ = HiveServer2TypeParser.TryParse(type, out HiveServer2Type serverTypeValue);
-            return serverTypeValue switch
+            bool _ = properties.TryGetValue(HiveServer2Parameters.Type, out string? type);
+            bool __ = HiveServer2TypeParser.TryParse(type, out HiveServer2Type typeValue);
+            return typeValue switch
             {
                 HiveServer2Type.Http => new HiveServer2HttpConnection(properties),
                 HiveServer2Type.Empty => throw new ArgumentException($"Required property '{HiveServer2Parameters.Type}' is missing. Supported types: {HiveServer2TypeParser.SupportedList}", nameof(properties)),
