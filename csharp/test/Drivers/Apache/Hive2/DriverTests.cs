@@ -129,4 +129,3 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
         protected override bool TypeHasDecimalDigits(AdbcColumn column) => true;
     }
 }
-

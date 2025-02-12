@@ -103,4 +103,3 @@ INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
     'Jack Doe',
     'Jack Doe'
 ;
-
