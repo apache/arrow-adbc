@@ -43,23 +43,23 @@ CREATE TABLE IF NOT EXISTS {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE} (
 
 INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
     SELECT
-    1,                               
-    2,                               
-    3,                               
-    4,                               
-    7.89,                            
-    1.23,                            
-    4.56,                            
-    TRUE,                            
-    'John Doe',                      
-    UNHEX('616263313233'),           
-    to_date('2023-09-08'),            
+    1,
+    2,
+    3,
+    4,
+    7.89,
+    1.23,
+    4.56,
+    TRUE,
+    'John Doe',
+    UNHEX('616263313233'),
+    to_date('2023-09-08'),
     unix_timestamp('1970-01-01 00:00:00', 'yyyy-MM-dd HH:mm:ss'),
-    ARRAY(1, 2, 3),                   
-    STRUCT('John Doe', 30),           
-    MAP(1, 'John Doe'),               
-    'John Doe',                       
-    'John Doe'                        
+    ARRAY(1, 2, 3),
+    STRUCT('John Doe', 30),
+    MAP(1, 'John Doe'),
+    'John Doe',
+    'John Doe'
 ;
 
 INSERT INTO {ADBC_CATALOG}.{ADBC_DATASET}.{ADBC_TABLE}
