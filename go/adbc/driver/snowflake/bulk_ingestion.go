@@ -536,6 +536,7 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 
+	done := make(chan struct{})
 	readyCh := make(chan struct{}, 1)
 	stopCh := make(chan interface{})
 
@@ -569,6 +570,8 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 		defer cancel()
 		close(stopCh)
 		close(readyCh)
+
+		<-done
 
 		// wait for any currently running copies to finish before we continue
 		if err := g.Wait(); err != nil {
@@ -610,6 +613,7 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 	}
 
 	go func() {
+		defer close(done)
 		for {
 
 			// Block until there is at least 1 new file available for copy, or it's time to shutdown
