@@ -34,10 +34,12 @@ keywords = ["arrow"]
 categories = ["database"]
 
 [workspace.dependencies]
-adbc_core = { path = "./core", version = "0.17.0" }
-arrow-array = { version = "54.1.0", default-features = false, features = [
+# Arrow dependencies (can be older than what Datafusion requires)
+arrow-array = { package = "arrow-array", version = ">=53.1.0, <55", default-features = false, features = [
     "ffi",
 ] }
-arrow-buffer = { version = "54.1.0", default-features = false }
-arrow-schema = { version = "54.1.0", default-features = false }
-arrow-select = { version = "54.1.0", default-features = false }
+arrow-buffer = { package = "arrow-buffer", version = ">=53.1.0, <55", default-features = false }
+arrow-schema = { package = "arrow-schema", version = ">=53.1.0, <55", default-features = false }
+arrow-select = { package = "arrow-select", version = ">=53.1.0, <55", default-features = false }
+
+adbc_core = { path = "./core", version = "0.17.0" }
