@@ -27,7 +27,7 @@ This driver provides an interface to
 Dependencies: SQLite itself.  This can be installed with your favorite
 package manager.
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for details.
 
 ## Testing
 
