@@ -102,7 +102,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
@@ -180,7 +180,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
       - name: Work around ASAN issue (GH-1617)
         if: matrix.os == 'ubuntu-latest'
@@ -290,7 +290,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_cpp_lint.txt
 
@@ -336,7 +336,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             'arrow-c-glib>=10.0.1' \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_glib.txt
@@ -477,7 +477,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
@@ -556,7 +556,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
@@ -666,7 +666,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt

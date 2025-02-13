@@ -75,7 +75,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
       - name: Work around ASAN issue (GH-1617)
         run: |
@@ -125,7 +125,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
           pip install pytest-error-for-skips
@@ -194,7 +194,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
           pip install pytest-error-for-skips
@@ -294,7 +294,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
       - name: Work around ASAN issue (GH-1617)
