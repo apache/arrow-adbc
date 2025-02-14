@@ -17,6 +17,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc
@@ -26,7 +27,7 @@ namespace Apache.Arrow.Adbc
     /// may be used multiple times and can be reconfigured (e.g. they can
     /// be reused to execute multiple different queries).
     /// </summary>
-    public abstract class AdbcStatement : IDisposable
+    public abstract class AdbcStatement : TracingBase
     {
         public AdbcStatement()
         {
@@ -149,10 +150,6 @@ namespace Apache.Arrow.Adbc
         public virtual void SetOption(string key, string value)
         {
             throw AdbcException.NotImplemented("Statement does not support setting options");
-        }
-
-        public virtual void Dispose()
-        {
         }
 
         /// <summary>
