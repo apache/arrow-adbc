@@ -261,9 +261,10 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
+  <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions (FAQ)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Index</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul>
@@ -468,10 +469,10 @@
           <li><a href="python/api/adbc_driver_sqlite.html#module-adbc_driver_sqlite.dbapi">module</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.adbc_execute_partitions">adbc_execute_partitions() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.adbc_execute_schema">adbc_execute_schema() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_get_info">adbc_get_info() (adbc_driver_manager.dbapi.Connection method)</a>
@@ -524,6 +525,13 @@
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ArrowSchemaHandle">ArrowSchemaHandle (class in adbc_driver_manager)</a>
 </li>
+        <li>
+    authentication (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-0">PostgreSQL</a>
+</li>
+        </ul></li>
         <li><a href="python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.AUTHORITY">AUTHORITY (adbc_driver_flightsql.DatabaseOptions attribute)</a>
 </li>
         <li><a href="python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.AUTHORIZATION_HEADER">AUTHORIZATION_HEADER (adbc_driver_flightsql.DatabaseOptions attribute)</a>
@@ -540,14 +548,42 @@
 </li>
         <li><a href="python/api/adbc_driver_postgresql.html#adbc_driver_postgresql.StatementOptions.BATCH_SIZE_HINT_BYTES">BATCH_SIZE_HINT_BYTES (adbc_driver_postgresql.StatementOptions attribute)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.BINARY">BINARY (in module adbc_driver_manager.dbapi)</a>
 </li>
+        <li>
+    bind parameters (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-4">PostgreSQL</a>
+</li>
+        </ul></li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.bind">bind() (adbc_driver_manager.AdbcStatement method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.bind_stream">bind_stream() (adbc_driver_manager.AdbcStatement method)</a>
 </li>
+        <li>
+    bulk append (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-2">PostgreSQL</a>
+</li>
+        </ul></li>
+        <li>
+    bulk ingestion from PyArrow Dataset (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-1">PostgreSQL</a>
+</li>
+        </ul></li>
+        <li>
+    bulk ingestion to temporary table (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-3">PostgreSQL</a>
+</li>
+        </ul></li>
     </ul></td>
   </tr></table>
 </section>
@@ -608,6 +644,13 @@
         </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li>
+    connecting to Dremio (recipe)
+
+        <ul>
+          <li><a href="python/recipe/flight_sql.html#index-0">Flight SQL</a>
+</li>
+        </ul></li>
         <li><a href="glossary.html#term-connection"><strong>connection</strong></a>
 
         <ul>
@@ -616,6 +659,13 @@
         </ul></li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection">Connection (class in adbc_driver_manager.dbapi)</a>
 </li>
+        <li>
+    connection pooling (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-8">PostgreSQL</a>
+</li>
+        </ul></li>
         <li><a href="python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions">ConnectionOptions (class in adbc_driver_flightsql)</a>
 
         <ul>
@@ -654,12 +704,12 @@
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Date">Date (in module adbc_driver_manager.dbapi)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.DateFromTicks">DateFromTicks() (in module adbc_driver_manager.dbapi)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.DATETIME">DATETIME (in module adbc_driver_manager.dbapi)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.GetObjectsDepth.DB_SCHEMAS">DB_SCHEMAS (adbc_driver_manager.GetObjectsDepth attribute)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.description">description (adbc_driver_manager.dbapi.Cursor property)</a>
@@ -667,7 +717,20 @@
         <li><a href="glossary.html#term-driver"><strong>driver</strong></a>
 </li>
         <li><a href="glossary.html#term-driver-manager"><strong>driver manager</strong></a>
+
+        <ul>
+          <li><a href="python/recipe/driver_manager.html#index-0">dynamic driver loading (recipe)</a>
 </li>
+          <li><a href="python/recipe/driver_manager.html#index-1">prepared statements (recipe)</a>
+</li>
+        </ul></li>
+        <li>
+    dynamic driver loading (recipe)
+
+        <ul>
+          <li><a href="python/recipe/driver_manager.html#index-0">driver manager</a>
+</li>
+        </ul></li>
     </ul></td>
   </tr></table>
 </section>
@@ -710,16 +773,23 @@
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.fetch_record_batch">fetch_record_batch() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.fetchall">fetchall() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.fetchallarrow">fetchallarrow() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.fetchmany">fetchmany() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor.fetchone">fetchone() (adbc_driver_manager.dbapi.Cursor method)</a>
 </li>
+        <li>
+    Flight SQL
+
+        <ul>
+          <li><a href="python/recipe/flight_sql.html#index-0">connecting to Dremio (recipe)</a>
+</li>
+        </ul></li>
     </ul></td>
   </tr></table>
 </section>
@@ -728,6 +798,20 @@
   <h2>G</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li>
+    get query result set schema (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-6">PostgreSQL</a>
+</li>
+        </ul></li>
+        <li>
+    get table schema (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-5">PostgreSQL</a>
+</li>
+        </ul></li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_info">get_info() (adbc_driver_manager.AdbcConnection method)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_objects">get_objects() (adbc_driver_manager.AdbcConnection method)</a>
@@ -748,6 +832,8 @@
           <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.get_option_bytes">(adbc_driver_manager.AdbcStatement method)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_option_float">get_option_float() (adbc_driver_manager.AdbcConnection method)</a>
 
         <ul>
@@ -756,8 +842,6 @@
           <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.get_option_float">(adbc_driver_manager.AdbcStatement method)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection.get_option_int">get_option_int() (adbc_driver_manager.AdbcConnection method)</a>
 
         <ul>
@@ -925,14 +1009,62 @@
   <h2>P</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li>
+    pandas integration (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-9">PostgreSQL</a>
+</li>
+        </ul></li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.dbapi.paramstyle">paramstyle (in module adbc_driver_manager.dbapi)</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.DatabaseOptions.PASSWORD">PASSWORD (adbc_driver_manager.DatabaseOptions attribute)</a>
 </li>
+        <li>
+    polars integration (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-10">PostgreSQL</a>
+</li>
+        </ul></li>
+        <li>
+    PostgreSQL
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-0">authentication (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-4">bind parameters (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-2">bulk append (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-1">bulk ingestion from PyArrow Dataset (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-3">bulk ingestion to temporary table (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-8">connection pooling (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-6">get query result set schema (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-5">get table schema (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-9">pandas integration (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-10">polars integration (recipe)</a>
+</li>
+          <li><a href="python/recipe/postgresql.html#index-7">query catalog (recipe)</a>
+</li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement.prepare">prepare() (adbc_driver_manager.AdbcStatement method)</a>
 </li>
+        <li>
+    prepared statements (recipe)
+
+        <ul>
+          <li><a href="python/recipe/driver_manager.html#index-1">driver manager</a>
+</li>
+        </ul></li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.ProgrammingError">ProgrammingError</a>
 </li>
         <li><a href="python/api/adbc_driver_manager.html#adbc_driver_manager.StatementOptions.PROGRESS">PROGRESS (adbc_driver_manager.StatementOptions attribute)</a>
@@ -944,6 +1076,15 @@
 <section id="Q" class="genindex-section">
   <h2>Q</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li>
+    query catalog (recipe)
+
+        <ul>
+          <li><a href="python/recipe/postgresql.html#index-7">PostgreSQL</a>
+</li>
+        </ul></li>
+    </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.StatementOptions.QUEUE_SIZE">QUEUE_SIZE (adbc_driver_flightsql.StatementOptions attribute)</a>
 </li>
