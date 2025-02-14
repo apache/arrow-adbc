@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: authentication
 # RECIPE STARTS HERE
 #: To connect to a PostgreSQL database, the username and password must
 #: be provided in the URI.  For example,
@@ -36,6 +38,7 @@ conn = adbc_driver_postgresql.dbapi.connect(uri)
 
 with conn.cursor() as cur:
     cur.execute("SELECT 1")
-    assert cur.fetchone() == (1,)
+    print(cur.fetchone())
+    # Output: (1,)
 
 conn.close()

@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: Flight SQL
+# RECIPE KEYWORDS: connecting to Dremio
 # RECIPE STARTS HERE
 
 #: Dremio requires a username and password.  To connect to a Flight SQL

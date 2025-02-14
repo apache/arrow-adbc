@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: bind parameters
 # RECIPE STARTS HERE
 
 #: ADBC allows using Python and Arrow values as bind parameters.

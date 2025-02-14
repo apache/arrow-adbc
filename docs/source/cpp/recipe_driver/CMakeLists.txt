@@ -49,6 +49,8 @@ target_include_directories(driver_example PRIVATE ../../../../c ../../../../c/in
 target_link_libraries(driver_example PRIVATE adbc_driver_framework
                                              nanoarrow::nanoarrow_ipc)
 
+install(TARGETS driver_example)
+
 if(ADBC_DRIVER_EXAMPLE_BUILD_TESTS)
   fetchcontent_declare(googletest
                        URL https://github.com/google/googletest/archive/refs/tags/v1.15.1.tar.gz

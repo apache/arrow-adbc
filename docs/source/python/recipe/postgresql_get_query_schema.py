@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: get query result set schema
 # RECIPE STARTS HERE
 
 #: ADBC lets you get the schema of a result set, without executing the query.

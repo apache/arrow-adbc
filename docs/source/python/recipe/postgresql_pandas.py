@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: pandas integration
 # RECIPE STARTS HERE
 
 #: ADBC is integrated into pandas_, a popular dataframe library.  Pandas can

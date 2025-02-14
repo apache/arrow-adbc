@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: query catalog
 # RECIPE STARTS HERE
 
 #: ADBC allows listing tables, catalogs, and schemas in the database.

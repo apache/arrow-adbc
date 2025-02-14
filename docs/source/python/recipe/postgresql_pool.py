@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: connection pooling
 # RECIPE STARTS HERE
 
 #: ADBC does not implement connection pooling, as this is not generally a
