@@ -15,17 +15,11 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-===============
-Python Cookbook
-===============
+==============
+SQLite Recipes
+==============
 
-The cookbook provides task-oriented example code for using ADBC in
-Python.
+Change the batch size of the result set
+=======================================
 
-.. toctree::
-   :maxdepth: 2
-
-   driver_manager
-   flight_sql
-   postgresql
-   sqlite
+.. recipe:: sqlite_batch_rows.py
