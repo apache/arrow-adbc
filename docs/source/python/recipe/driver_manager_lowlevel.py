@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: driver manager
+# RECIPE KEYWORDS: dynamic driver loading
 # RECIPE STARTS HERE
 #: While the DB-API_ bindings are recommended for general use, the low-level
 #: bindings are also available.  These mostly mirror the ADBC C API directly.

@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# RECIPE CATEGORY: postgresql
+# RECIPE CATEGORY: PostgreSQL
 # RECIPE KEYWORDS: authentication
 # RECIPE STARTS HERE
 #: To connect to a PostgreSQL database, the username and password must

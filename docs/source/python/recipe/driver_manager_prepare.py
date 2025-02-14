@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: driver manager
+# RECIPE KEYWORDS: prepared statements
 # RECIPE STARTS HERE
 #: The DBAPI bindings prepare all statements before execution, because of this
 #: part of the `DB-API specification`_:
