@@ -124,3 +124,9 @@ require (
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.8.0 // indirect
 )
+
+// XXX: https://github.com/googleapis/google-cloud-go/issues/11344
+exclude (
+	github.com/envoyproxy/go-control-plane v0.13.1
+	github.com/envoyproxy/go-control-plane v0.13.2
+)
