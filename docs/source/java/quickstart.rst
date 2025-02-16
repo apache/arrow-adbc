@@ -55,7 +55,7 @@ Usage
 .. code-block:: java
 
    final Map<String, Object> parameters = new HashMap<>();
-   parameters.put(AdbcDriver.PARAM_URL, "jdbc:postgresql://localhost:5432/postgres");
+   parameters.put(AdbcDriver.PARAM_URI.key, "jdbc:postgresql://localhost:5432/postgres");
    try (
        BufferAllocator allocator = new RootAllocator();
        AdbcDatabase db = new JdbcDriver(allocator).open(parameters);
