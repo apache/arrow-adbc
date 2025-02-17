@@ -51,6 +51,10 @@ namespace Apache.Arrow.Adbc.Extensions
                     return ((Date32Array)arrowArray).GetDateTime(index);
                 case ArrowTypeId.Date64:
                     return ((Date64Array)arrowArray).GetDateTime(index);
+                case ArrowTypeId.Decimal32:
+                    return ((Decimal32Array)arrowArray).GetDecimal(index);
+                case ArrowTypeId.Decimal64:
+                    return ((Decimal64Array)arrowArray).GetDecimal(index);
                 case ArrowTypeId.Decimal128:
                     return ((Decimal128Array)arrowArray).GetSqlDecimal(index);
                 case ArrowTypeId.Decimal256:
@@ -169,6 +173,10 @@ namespace Apache.Arrow.Adbc.Extensions
                     return (array, index) => ((Date32Array)array).GetDateTime(index);
                 case ArrowTypeId.Date64:
                     return (array, index) => ((Date64Array)array).GetDateTime(index);
+                case ArrowTypeId.Decimal32:
+                    return (array, index) => ((Decimal32Array)array).GetDecimal(index);
+                case ArrowTypeId.Decimal64:
+                    return (array, index) => ((Decimal64Array)array).GetDecimal(index);
                 case ArrowTypeId.Decimal128:
                     return (array, index) => ((Decimal128Array)array).GetSqlDecimal(index);
                 case ArrowTypeId.Decimal256:
