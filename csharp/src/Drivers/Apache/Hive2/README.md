@@ -83,7 +83,7 @@ The following table depicts how the Hive ADBC driver converts a Hive type to an 
 
 ## Supported Variants
 
-### Apache Hive over HTPP
+### Apache Hive over HTTP
 
 Support for Hive over HTTP is the most mature.
 
