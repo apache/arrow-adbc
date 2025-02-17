@@ -5,18 +5,18 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="adbc_driver_postgresql" />
+<meta property="og:title" content="SQLite Recipes" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://arrow.apache.org/adbc/main/python/api/adbc_driver_postgresql.html" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/main/python/recipe/sqlite.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Low-Level API: DBAPI 2.0 API: DBAPI 2.0-compatible facade for the ADBC libpq driver." />
+<meta property="og:description" content="Change the batch size of the result set: Recipe source: sqlite_batch_rows.py The ADBC SQLite driver allows control over the size of batches in result sets. Because the driver performs type inferenc..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Low-Level API: DBAPI 2.0 API: DBAPI 2.0-compatible facade for the ADBC libpq driver." />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="adbc_driver_sqlite" href="adbc_driver_sqlite.html" /><link rel="prev" title="adbc_driver_flightsql" href="adbc_driver_flightsql.html" />
+<meta name="description" content="Change the batch size of the result set: Recipe source: sqlite_batch_rows.py The ADBC SQLite driver allows control over the size of batches in result sets. Because the driver performs type inferenc..." />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="R" href="../../r/index.html" /><link rel="prev" title="PostgreSQL Recipes" href="postgresql.html" />
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
-        <title>adbc_driver_postgresql - ADBC 17 (dev) documentation</title>
+        <title>SQLite Recipes - ADBC 17 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
@@ -297,18 +297,18 @@
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
-<li class="toctree-l3 current current-page"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../api/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../recipe/index.html">Python Cookbook</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python Cookbook</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../recipe/driver_manager.html">DBAPI/Driver Manager Recipes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../recipe/flight_sql.html">Flight SQL Recipes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../recipe/postgresql.html">PostgreSQL Recipes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../recipe/sqlite.html">SQLite Recipes</a></li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python Cookbook</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python Cookbook</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="driver_manager.html">DBAPI/Driver Manager Recipes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="flight_sql.html">Flight SQL Recipes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="postgresql.html">PostgreSQL Recipes</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">SQLite Recipes</a></li>
 </ul>
 </li>
 </ul>
@@ -361,12 +361,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/api/adbc_driver_postgresql.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/sqlite.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/api/adbc_driver_postgresql.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/recipe/sqlite.rst" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -385,55 +385,78 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="adbc-driver-postgresql">
-<h1><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code><a class="headerlink" href="#adbc-driver-postgresql" title="Link to this heading">¶</a></h1>
-<section id="module-adbc_driver_postgresql">
-<span id="low-level-api"></span><h2>Low-Level API<a class="headerlink" href="#module-adbc_driver_postgresql" title="Link to this heading">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="adbc_driver_postgresql.StatementOptions">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.</span></span><span class="sig-name descname"><span class="pre">StatementOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_postgresql.StatementOptions" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
-<p>Statement options specific to the PostgreSQL driver.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="adbc_driver_postgresql.StatementOptions.BATCH_SIZE_HINT_BYTES">
-<span class="sig-name descname"><span class="pre">BATCH_SIZE_HINT_BYTES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.postgresql.batch_size_hint_bytes'</span></em><a class="headerlink" href="#adbc_driver_postgresql.StatementOptions.BATCH_SIZE_HINT_BYTES" title="Link to this definition">¶</a></dt>
-<dd><p>Try to limit returned batches to this size (in bytes).</p>
-<p>This is merely a hint, and because the size is estimated, the
-actual size may differ.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="adbc_driver_postgresql.connect">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager._lib.AdbcDatabase"><span class="pre">AdbcDatabase</span></a></span></span><a class="headerlink" href="#adbc_driver_postgresql.connect" title="Link to this definition">¶</a></dt>
-<dd><p>Create a low level ADBC connection to PostgreSQL.</p>
-</dd></dl>
-
-</section>
-<section id="module-adbc_driver_postgresql.dbapi">
-<span id="dbapi-2-0-api"></span><h2>DBAPI 2.0 API<a class="headerlink" href="#module-adbc_driver_postgresql.dbapi" title="Link to this heading">¶</a></h2>
-<p>DBAPI 2.0-compatible facade for the ADBC libpq driver.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="adbc_driver_postgresql.dbapi.connect">
-<span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.dbapi.</span></span><span class="sig-name descname"><span class="pre">connect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conn_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><span class="pre">Connection</span></a></span></span><a class="headerlink" href="#adbc_driver_postgresql.dbapi.connect" title="Link to this definition">¶</a></dt>
-<dd><p>Connect to PostgreSQL via ADBC.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>uri</strong><span class="classifier">str</span></dt><dd><p>The URI to connect to.</p>
-</dd>
-<dt><strong>db_kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Initial database connection parameters.</p>
-</dd>
-<dt><strong>conn_kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Connection-specific parameters.  (ADBC differentiates between
-a ‘database’ object shared between multiple ‘connection’
-objects.)</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
+          <section id="sqlite-recipes">
+<h1>SQLite Recipes<a class="headerlink" href="#sqlite-recipes" title="Link to this heading">¶</a></h1>
+<section id="change-the-batch-size-of-the-result-set">
+<h2>Change the batch size of the result set<a class="headerlink" href="#change-the-batch-size-of-the-result-set" title="Link to this heading">¶</a></h2>
+<p id="index-0">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/sqlite_batch_rows.py">sqlite_batch_rows.py</a></p>
+<p>The ADBC SQLite driver allows control over the size of batches in result
+sets.  Because the driver performs type inference, this also controls how
+many rows the driver will look at to figure out the type.  If you know your
+result set has many NULL rows up front, you may consider increasing the
+batch size so that the driver can infer the correct types.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_sqlite.dbapi</span>
+<span class="linenos">29</span>
+<span class="linenos">30</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_sqlite</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>First we’ll set up a demo table with 1024 NULL values.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">34</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">35</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE demo (val TEXT)&quot;</span><span class="p">)</span>
+<span class="linenos">36</span>
+<span class="linenos">37</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="linenos">38</span><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">39</span><span class="sd">    WITH RECURSIVE series(n) AS (</span>
+<span class="linenos">40</span><span class="sd">        SELECT 1</span>
+<span class="linenos">41</span><span class="sd">        UNION ALL</span>
+<span class="linenos">42</span><span class="sd">        SELECT n + 1</span>
+<span class="linenos">43</span><span class="sd">        FROM series</span>
+<span class="linenos">44</span><span class="sd">        WHERE n + 1 &lt;= 1024</span>
+<span class="linenos">45</span><span class="sd">    )</span>
+<span class="linenos">46</span><span class="sd">    INSERT INTO demo (val)</span>
+<span class="linenos">47</span><span class="sd">    SELECT NULL</span>
+<span class="linenos">48</span><span class="sd">    FROM series</span>
+<span class="linenos">49</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">50</span>    <span class="p">)</span>
+<span class="linenos">51</span>
+<span class="linenos">52</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO demo VALUES (&#39;foo&#39;), (&#39;bar&#39;), (&#39;baz&#39;)&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If we query the table naively, we’ll get an error, because the driver first
+looks at the first 1024 values to determine the column type.  But since
+every value is NULL, it falls back to the default type of int64, which poses
+a problem when it then encounters a string in the next batch.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">59</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">60</span>    <span class="k">try</span><span class="p">:</span>
+<span class="linenos">61</span>        <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM demo&quot;</span><span class="p">)</span>
+<span class="linenos">62</span>        <span class="nb">print</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetchallarrow</span><span class="p">()</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+<span class="linenos">63</span>    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="linenos">64</span>        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+<span class="linenos">65</span>        <span class="c1"># Output:</span>
+<span class="linenos">66</span>        <span class="c1"># [SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY</span>
+<span class="linenos">67</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">68</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Expected an error&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can tell the driver to increase the batch size (and hence look at more
+rows).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">73</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">74</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_statement</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span>
+<span class="linenos">75</span>        <span class="o">**</span><span class="p">{</span>
+<span class="linenos">76</span>            <span class="n">adbc_driver_sqlite</span><span class="o">.</span><span class="n">StatementOptions</span><span class="o">.</span><span class="n">BATCH_ROWS</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="mi">2048</span><span class="p">,</span>
+<span class="linenos">77</span>        <span class="p">}</span>
+<span class="linenos">78</span>    <span class="p">)</span>
+<span class="linenos">79</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM demo&quot;</span><span class="p">)</span>
+<span class="linenos">80</span>    <span class="nb">print</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetchallarrow</span><span class="p">()</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">stdout</span><a class="headerlink" href="#id1" title="Link to this code">¶</a></div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY
+val: string
+</pre></div>
+</div>
+</div>
 </section>
 </section>
 
@@ -442,23 +465,23 @@ objects.)</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="adbc_driver_sqlite.html">
+          <a class="next-page" href="../../r/index.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></div>
+                <div class="title">R</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="adbc_driver_flightsql.html">
+          <a class="prev-page" href="postgresql.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></div>
+                <div class="title">PostgreSQL Recipes</div>
                 
               </div>
             </a>
@@ -495,19 +518,8 @@ United States and other countries.
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a><ul>
-<li><a class="reference internal" href="#module-adbc_driver_postgresql">Low-Level API</a><ul>
-<li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
-<li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions.BATCH_SIZE_HINT_BYTES"><code class="docutils literal notranslate"><span class="pre">StatementOptions.BATCH_SIZE_HINT_BYTES</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#adbc_driver_postgresql.connect"><code class="docutils literal notranslate"><span class="pre">connect()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-adbc_driver_postgresql.dbapi">DBAPI 2.0 API</a><ul>
-<li><a class="reference internal" href="#adbc_driver_postgresql.dbapi.connect"><code class="docutils literal notranslate"><span class="pre">connect()</span></code></a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#">SQLite Recipes</a><ul>
+<li><a class="reference internal" href="#change-the-batch-size-of-the-result-set">Change the batch size of the result set</a></li>
 </ul>
 </li>
 </ul>
