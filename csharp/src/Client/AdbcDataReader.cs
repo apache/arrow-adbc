@@ -50,8 +50,10 @@ namespace Apache.Arrow.Adbc.Client
         private RecordBatch? recordBatch;
         private int currentRowInRecordBatch;
         private readonly Schema schema;
+        private readonly Func<IArrowArray, int, object?>[] converters;
         private bool isClosed;
         private int recordsAffected = -1;
+        private Dictionary<string, int>? columnNameToIndex;
 
         /// <summary>
         /// An event that is raised when a value is read from an IArrowArray.
@@ -83,11 +85,17 @@ namespace Apache.Arrow.Adbc.Client
             this.isClosed = false;
             this.DecimalBehavior = decimalBehavior;
             this.StructBehavior = structBehavior;
+
+            this.converters = new Func<IArrowArray, int, object?>[this.schema.FieldsList.Count];
+            for (int i = 0; i < this.converters.Length; i++)
+            {
+                this.converters[i] = this.schema.FieldsList[i].DataType.GetValueConverter();
+            }
         }
 
         public override object this[int ordinal] => GetValue(ordinal);
 
-        public override object this[string name] => GetValue(this.RecordBatch.Column(name)) ?? DBNull.Value;
+        public override object this[string name] => GetOneValue(name);
 
         public override int Depth => 0;
 
@@ -165,7 +173,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override DateTime GetDateTime(int ordinal)
         {
-            return (DateTime) GetValue(ordinal);
+            return (DateTime)GetValue(ordinal);
         }
 
         public override decimal GetDecimal(int ordinal)
@@ -210,12 +218,12 @@ namespace Apache.Arrow.Adbc.Client
 
         public override float GetFloat(int ordinal)
         {
-            return (float) GetValue(ordinal);
+            return (float)GetValue(ordinal);
         }
 
         public override Guid GetGuid(int ordinal)
         {
-            return (Guid) GetValue(ordinal);
+            return (Guid)GetValue(ordinal);
         }
 
         public override short GetInt16(int ordinal)
@@ -235,7 +243,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override string GetName(int ordinal)
         {
-           return this.schema.GetFieldByIndex(ordinal)?.Name ?? string.Empty;
+            return this.schema.GetFieldByIndex(ordinal)?.Name ?? string.Empty;
         }
 
         public override int GetOrdinal(string name)
@@ -250,10 +258,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override object GetValue(int ordinal)
         {
-            object? value = GetValue(this.RecordBatch.Column(ordinal));
-
-            if (value == null)
-                return DBNull.Value;
+            object value = GetOneValue(ordinal);
 
             if (value is SqlDecimal dValue && this.DecimalBehavior == DecimalBehavior.OverflowDecimalAsString)
             {
@@ -261,7 +266,7 @@ namespace Apache.Arrow.Adbc.Client
                 {
                     return dValue.Value;
                 }
-                catch(OverflowException)
+                catch (OverflowException)
                 {
                     return dValue.ToString();
                 }
@@ -361,17 +366,33 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Gets the value from an IArrowArray at the current row index.
+        /// Gets the value from a given column at the current row index.
         /// </summary>
-        /// <param name="arrowArray"></param>
-        /// <returns></returns>
-        private object? GetValue(IArrowArray arrowArray)
+        private object GetOneValue(string columnName)
         {
+            if (this.columnNameToIndex == null)
+            {
+                this.columnNameToIndex = new Dictionary<string, int>(this.schema.FieldsList.Count);
+                for (int i = 0; i < this.schema.FieldsList.Count; i++)
+                {
+                    this.columnNameToIndex[this.schema.FieldsList[i].Name] = i;
+                }
+            }
+            return GetOneValue(this.columnNameToIndex[columnName]);
+        }
+
+        /// <summary>
+        /// Gets the value from a given column at the current row index.
+        /// </summary>
+        private object GetOneValue(int column)
+        {
+            IArrowArray arrowArray = this.RecordBatch.Column(column);
+
             // if the OnGetValue event is set, call it
             object? result = OnGetValue?.Invoke(arrowArray, this.currentRowInRecordBatch);
 
             // if the value is null, try to get the value from the ArrowArray
-            result = result ?? arrowArray.ValueAt(this.currentRowInRecordBatch);
+            result = result ?? this.converters[column](arrowArray, this.currentRowInRecordBatch) ?? DBNull.Value;
 
             return result;
         }

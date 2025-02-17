@@ -36,6 +36,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Drivers.F
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests.Drivers.FlightSql", "test\Drivers\FlightSql\Apache.Arrow.Adbc.Tests.Drivers.FlightSql.csproj", "{5B27FB02-D4AE-4ACB-AD88-5E64EEB61729}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{BAF2CF14-BA77-429E-AF54-A34B978E9F5C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -94,6 +96,10 @@ Global
 		{5B27FB02-D4AE-4ACB-AD88-5E64EEB61729}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5B27FB02-D4AE-4ACB-AD88-5E64EEB61729}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5B27FB02-D4AE-4ACB-AD88-5E64EEB61729}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BAF2CF14-BA77-429E-AF54-A34B978E9F5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BAF2CF14-BA77-429E-AF54-A34B978E9F5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BAF2CF14-BA77-429E-AF54-A34B978E9F5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BAF2CF14-BA77-429E-AF54-A34B978E9F5C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -112,6 +118,7 @@ Global
 		{C5503227-C5A7-406F-83AA-681F292EA61F} = {C7290227-E925-47E7-8B6B-A8B171645D58}
 		{77D5A92F-4136-4DE7-81F4-43B981223280} = {FEB257A0-4FD3-495E-9A47-9E1649755445}
 		{5B27FB02-D4AE-4ACB-AD88-5E64EEB61729} = {C7290227-E925-47E7-8B6B-A8B171645D58}
+		{BAF2CF14-BA77-429E-AF54-A34B978E9F5C} = {5BD04C26-CE52-4893-8C1A-479705195CEF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4795CF16-0FDB-4BE0-9768-5CF31564DC03}
