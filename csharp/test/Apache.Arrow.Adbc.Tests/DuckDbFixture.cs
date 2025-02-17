@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             _databases = new Dictionary<string, AdbcDatabase>(StringComparer.OrdinalIgnoreCase);
 
-            string root = Path.GetDirectoryName(typeof(DuckDbFixture).Assembly.Location) ?? throw new InvalidOperationException("directory");
+            string root = Directory.GetCurrentDirectory();
             string file;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 file = Path.Combine(root, "libduckdb.so");
@@ -47,7 +47,6 @@ namespace Apache.Arrow.Adbc.Tests
             else
                 file = Path.Combine(root, "libduckdb.dylib");
 
-            System.Console.WriteLine(file);
             _driver = CAdbcDriverImporter.Load(file, "duckdb_adbc_init");
         }
 
