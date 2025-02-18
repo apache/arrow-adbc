@@ -22,6 +22,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"embed"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -66,10 +67,9 @@ type snowflakeConn interface {
 type connectionImpl struct {
 	driverbase.ConnectionImplBase
 
-	cn    snowflakeConn
-	db    *databaseImpl
-	ctor  driver.Connector
-	sqldb *sql.DB
+	cn   snowflakeConn
+	db   *databaseImpl
+	ctor driver.Connector
 
 	activeTransaction bool
 	useHighPrecision  bool
@@ -103,8 +103,8 @@ func escapeSingleQuoteForLike(arg string) string {
 	}
 }
 
-func getQueryID(ctx context.Context, query string, driverConn any) (string, error) {
-	rows, err := driverConn.(driver.QueryerContext).QueryContext(ctx, query, nil)
+func getQueryID(ctx context.Context, query string, driverConn driver.QueryerContext) (string, error) {
+	rows, err := driverConn.QueryContext(ctx, query, nil)
 	if err != nil {
 		return "", err
 	}
@@ -127,42 +127,41 @@ func addLike(query string, pattern *string) string {
 	return query
 }
 
-func goGetQueryID(ctx context.Context, conn *sql.Conn, grp *errgroup.Group, objType string, catalog, dbSchema, tableName *string, outQueryID *string) {
+func goGetQueryID(ctx context.Context, conn driver.QueryerContext, grp *errgroup.Group, objType string, catalog, dbSchema, tableName *string, outQueryID *string) {
 	grp.Go(func() error {
-		return conn.Raw(func(driverConn any) (err error) {
-			query := "SHOW TERSE /* ADBC:getObjects */ " + objType
-			switch objType {
-			case objDatabases:
-				query = addLike(query, catalog)
+		query := "SHOW TERSE /* ADBC:getObjects */ " + objType
+		switch objType {
+		case objDatabases:
+			query = addLike(query, catalog)
+			query += " IN ACCOUNT"
+		case objSchemas:
+			query = addLike(query, dbSchema)
+
+			if catalog == nil || isWildcardStr(*catalog) {
 				query += " IN ACCOUNT"
-			case objSchemas:
-				query = addLike(query, dbSchema)
-
-				if catalog == nil || isWildcardStr(*catalog) {
-					query += " IN ACCOUNT"
-				} else {
-					query += " IN DATABASE " + quoteTblName(*catalog)
-				}
-			case objViews, objTables, objObjects:
-				query = addLike(query, tableName)
-
-				if catalog == nil || isWildcardStr(*catalog) {
-					query += " IN ACCOUNT"
-				} else {
-					escapedCatalog := quoteTblName(*catalog)
-					if dbSchema == nil || isWildcardStr(*dbSchema) {
-						query += " IN DATABASE " + escapedCatalog
-					} else {
-						query += " IN SCHEMA " + escapedCatalog + "." + quoteTblName(*dbSchema)
-					}
-				}
-			default:
-				return fmt.Errorf("unimplemented object type")
+			} else {
+				query += " IN DATABASE " + quoteTblName(*catalog)
 			}
+		case objViews, objTables, objObjects:
+			query = addLike(query, tableName)
 
-			*outQueryID, err = getQueryID(ctx, query, driverConn)
-			return
-		})
+			if catalog == nil || isWildcardStr(*catalog) {
+				query += " IN ACCOUNT"
+			} else {
+				escapedCatalog := quoteTblName(*catalog)
+				if dbSchema == nil || isWildcardStr(*dbSchema) {
+					query += " IN DATABASE " + escapedCatalog
+				} else {
+					query += " IN SCHEMA " + escapedCatalog + "." + quoteTblName(*dbSchema)
+				}
+			}
+		default:
+			return fmt.Errorf("unimplemented object type")
+		}
+
+		var err error
+		*outQueryID, err = getQueryID(ctx, query, conn)
+		return err
 	})
 }
 
@@ -176,12 +175,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		showSchemaQueryID, tableQueryID                     string
 	)
 
-	conn, err := c.sqldb.Conn(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
+	conn := c.cn
 	var hasViews, hasTables bool
 	for _, t := range tableType {
 		if strings.EqualFold("VIEW", t) {
@@ -253,25 +247,19 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 
 		// Detailed constraint info not available in information_schema
 		// Need to dispatch SHOW queries and use conn.Raw to extract the queryID for reuse in GetObjects query
-		gQueryIDs.Go(func() error {
-			return conn.Raw(func(driverConn any) (err error) {
-				pkQueryID, err = getQueryID(gQueryIDsCtx, "SHOW PRIMARY KEYS /* ADBC:getObjectsTables */"+suffix, driverConn)
-				return err
-			})
+		gQueryIDs.Go(func() (err error) {
+			pkQueryID, err = getQueryID(gQueryIDsCtx, "SHOW PRIMARY KEYS /* ADBC:getObjectsTables */"+suffix, conn)
+			return err
 		})
 
-		gQueryIDs.Go(func() error {
-			return conn.Raw(func(driverConn any) (err error) {
-				fkQueryID, err = getQueryID(gQueryIDsCtx, "SHOW IMPORTED KEYS /* ADBC:getObjectsTables */"+suffix, driverConn)
-				return err
-			})
+		gQueryIDs.Go(func() (err error) {
+			fkQueryID, err = getQueryID(gQueryIDsCtx, "SHOW IMPORTED KEYS /* ADBC:getObjectsTables */"+suffix, conn)
+			return err
 		})
 
-		gQueryIDs.Go(func() error {
-			return conn.Raw(func(driverConn any) (err error) {
-				uniqueQueryID, err = getQueryID(gQueryIDsCtx, "SHOW UNIQUE KEYS /* ADBC:getObjectsTables */"+suffix, driverConn)
-				return err
-			})
+		gQueryIDs.Go(func() (err error) {
+			uniqueQueryID, err = getQueryID(gQueryIDsCtx, "SHOW UNIQUE KEYS /* ADBC:getObjectsTables */"+suffix, conn)
+			return err
 		})
 
 		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
@@ -301,7 +289,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		return nil, err
 	}
 
-	args := []any{
+	args := []sql.NamedArg{
 		// Optional filter patterns
 		driverbase.PatternToNamedArg("CATALOG", catalog),
 		driverbase.PatternToNamedArg("DB_SCHEMA", dbSchema),
@@ -318,32 +306,17 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		sql.Named("SHOW_TABLE_QUERY_ID", tableQueryID),
 	}
 
-	// currently only the Columns / all case still requires a current database/schema
-	// to be propagated. The rest of the cases all solely use SHOW queries for the metadata
-	// just as done by the snowflake JDBC driver. In those cases we don't need to propagate
-	// the current session database/schema.
-	if depth == adbc.ObjectDepthColumns || depth == adbc.ObjectDepthAll {
-		dbname, err := c.GetCurrentCatalog()
-		if err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
-		}
-
-		schemaname, err := c.GetCurrentDbSchema()
-		if err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
-		}
-
-		// the connection that is used is not the same connection context where the database may have been set
-		// if the caller called SetCurrentCatalog() so need to ensure the database context is appropriate
-		multiCtx, _ := gosnowflake.WithMultiStatement(ctx, 2)
-		_, err = conn.ExecContext(multiCtx, fmt.Sprintf("USE DATABASE %s; USE SCHEMA %s;", quoteTblName(dbname), quoteTblName(schemaname)))
-		if err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
+	nvargs := make([]driver.NamedValue, len(args))
+	for i, arg := range args {
+		nvargs[i] = driver.NamedValue{
+			Name:    arg.Name,
+			Ordinal: i + 1,
+			Value:   arg.Value,
 		}
 	}
 
 	query := string(queryBytes)
-	rows, err := conn.QueryContext(ctx, query, args...)
+	rows, err := conn.QueryContext(ctx, query, nvargs)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
@@ -354,9 +327,18 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 
 	go func() {
 		defer close(catalogCh)
-		for rows.Next() {
+		dest := make([]driver.Value, len(rows.Columns()))
+		for {
+			if err := rows.Next(dest); err != nil {
+				if errors.Is(err, io.EOF) {
+					return
+				}
+				errCh <- errToAdbcErr(adbc.StatusInvalidData, err)
+				return
+			}
+
 			var getObjectsCatalog driverbase.GetObjectsInfo
-			if err := rows.Scan(&getObjectsCatalog); err != nil {
+			if err := getObjectsCatalog.Scan(dest[0]); err != nil {
 				errCh <- errToAdbcErr(adbc.StatusInvalidData, err)
 				return
 			}
@@ -630,22 +612,34 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	tblParts = append(tblParts, quoteTblName(tableName))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
-	rows, err := c.sqldb.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable)
+	rows, err := c.cn.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable, nil)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
 	defer rows.Close()
 
 	var (
-		name, typ, kind, isnull, primary, unique          string
-		def, check, expr, comment, policyName, privDomain sql.NullString
-		fields                                            = []arrow.Field{}
+		name, typ, isnull, primary string
+		comment                    sql.NullString
+		fields                     = []arrow.Field{}
 	)
 
-	for rows.Next() {
-		err := rows.Scan(&name, &typ, &kind, &isnull, &def, &primary, &unique,
-			&check, &expr, &comment, &policyName, &privDomain)
-		if err != nil {
+	// columns are:
+	// name, type, kind, isnull, primary, unique, def, check, expr, comment, policyName, privDomain
+	dest := make([]driver.Value, len(rows.Columns()))
+	for {
+		if err := rows.Next(dest); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, errToAdbcErr(adbc.StatusIO, err)
+		}
+
+		name = dest[0].(string)
+		typ = dest[1].(string)
+		isnull = dest[3].(string)
+		primary = dest[5].(string)
+		if err := comment.Scan(dest[9]); err != nil {
 			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}
 
@@ -703,14 +697,9 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 
 // Close closes this connection and releases any associated resources.
 func (c *connectionImpl) Close() error {
-	if c.sqldb == nil || c.cn == nil {
+	if c.cn == nil {
 		return adbc.Error{Code: adbc.StatusInvalidState}
 	}
-
-	if err := c.sqldb.Close(); err != nil {
-		return err
-	}
-	c.sqldb = nil
 
 	defer func() {
 		c.cn = nil
