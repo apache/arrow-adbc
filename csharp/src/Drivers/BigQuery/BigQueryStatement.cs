@@ -51,7 +51,26 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override QueryResult ExecuteQuery()
         {
-            QueryOptions? queryOptions = ValidateOptions();
+            QueryOptions queryOptions = ValidateOptions();
+
+            if (this.client.ProjectId == BigQueryConstants.DetectProjectId)
+            {
+                // An error occurs when calling CreateQueryJob without the ID set,
+                // so use the first one that is found. This does not prevent from calling
+                // to other 'project IDs' (catalogs) with a query.
+                PagedEnumerable<ProjectList, CloudProject>? projects = this.client.ListProjects();
+
+                if (projects != null)
+                {
+                    string? firstProjectId = projects.Select(x => x.ProjectId).FirstOrDefault();
+
+                    if (firstProjectId != null)
+                    {
+                        queryOptions.ProjectId = firstProjectId;
+                    }
+                }
+            }
+
             BigQueryJob job = this.client.CreateQueryJob(SqlQuery, null, queryOptions);
 
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
@@ -208,12 +227,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new ArrowStreamReader(stream);
         }
 
-        private QueryOptions? ValidateOptions()
+        private QueryOptions ValidateOptions()
         {
-            if (this.Options == null || this.Options.Count == 0)
-                return null;
-
             QueryOptions options = new QueryOptions();
+
+            if (this.Options == null || this.Options.Count == 0)
+                return options;
 
             foreach (KeyValuePair<string, string> keyValuePair in this.Options)
             {
