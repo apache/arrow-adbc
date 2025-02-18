@@ -48,7 +48,6 @@ namespace Apache.Arrow.Adbc.Benchmarks
             Connection = DuckDb.CreateConnection("test.db", null);
         }
 
-
         [Benchmark]
         public void Test()
         {
