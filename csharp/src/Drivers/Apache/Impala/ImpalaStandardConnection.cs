@@ -143,7 +143,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             return request;
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion, true);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion, enableBatchSizeStopCondition: true);
 
         internal override ImpalaServerType ServerType => ImpalaServerType.Standard;
 

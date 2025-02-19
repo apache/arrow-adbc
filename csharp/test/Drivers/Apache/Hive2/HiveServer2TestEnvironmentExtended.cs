@@ -160,17 +160,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
                             "CAST('abc123' as BINARY) as datacol, " +
                             "DATE '2023-09-08' as datecol, " +
                             "CAST('2023-09-08 12:34:56+00:00' as TIMESTAMP) as timestampcol, " +
-                            "CAST('2023-09-08 12:34:56+00:00' as TIMESTAMP) + INTERVAL 20 YEARS as intervalcol"
-                            //+ ", ARRAY(1, 2, 3) as numbers, " +
-                            //"STRUCT('John Doe' as name, 30 as age) as person," +
-                            //"MAP('name', CAST('Jane Doe' AS STRING), 'age', CAST(29 AS INT)) as map"
+                            "CAST('2023-09-08 12:34:56+00:00' as TIMESTAMP) + INTERVAL 20 YEARS as intervalcol, " +
+                            "ARRAY(1, 2, 3) as numbers, " +
+                            "named_struct('name', 'John Doe', 'age', 30) as person, " +
+                            "map('name', CAST('Jane Doe' AS STRING), 'age', CAST(29 AS INT)) as personmap"
                             ,
                     ExpectedValues =
                     [
                         new("id", typeof(long), typeof(Int64Type), 1L),
                         new("intcol", typeof(int), typeof(Int32Type), 2),
-                        new("number_float", floatNetType, floatArrowType, floatValue),
-                        new("number_double", typeof(double), typeof(DoubleType), 4.56d),
+                        new("number_float", typeof(float), typeof(FloatType), 1f),
+                        new("number_double", typeof(double), typeof(DoubleType), 4.56),
                         new("decimalcol", typeof(SqlDecimal), typeof(Decimal128Type), SqlDecimal.Parse("4.56")),
                         new("big_decimal", typeof(SqlDecimal), typeof(Decimal128Type), SqlDecimal.Parse("9.9999999999999999999999999999999999999")),
                         new("is_active", typeof(bool), typeof(BooleanType), true),
@@ -179,52 +179,42 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
                         new("datecol", typeof(DateTime), typeof(Date32Type), new DateTime(2023, 9, 8)),
                         new("timestampcol", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023, 9, 8, 12, 34, 56), TimeSpan.Zero)),
                         new("intervalcol", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2043, 9, 8, 12, 34, 56), TimeSpan.Zero)),
-                        //new("numbers", typeof(string), typeof(StringType), "[1,2,3]"),
-                        //new("person", typeof(string), typeof(StringType), """{"name":"John Doe","age":30}"""),
-                        //new("map", typeof(string), typeof(StringType), """{"age":"29","name":"Jane Doe"}""") // This is unexpected JSON. Expecting 29 to be a numeric and not string.
-                    ]
+                        new("numbers", typeof(string), typeof(StringType), "[1,2,3]"),
+                        new("person", typeof(string), typeof(StringType), """{"name":"John Doe","age":30}"""),
+                        new("personmap", typeof(string), typeof(StringType), """{"name":"Jane Doe","age":"29"}""")
+                     ]
                 });
 
             sampleDataBuilder.Samples.Add(
                 new SampleData()
                 {
-                    Query = "SELECT  " +
+                    Query = "SELECT " +
                             "CAST(NULL as BIGINT) as id, " +
                             "CAST(NULL as INTEGER) as intcol, " +
                             "CAST(NULL as FLOAT) as number_float, " +
                             "CAST(NULL as DOUBLE) as number_double, " +
-                            "CAST(NULL as DECIMAL(38,2)) as decimalcol,  " +
+                            "CAST(NULL as DECIMAL(3,2)) as decimalcol, " +
+                            "CAST(NULL as DECIMAL(38,37)) as big_decimal, " +
                             "CAST(NULL as BOOLEAN) as is_active, " +
-                            "CAST(NULL as STRING)  as name, " +
+                            "CAST(NULL as STRING) as name, " +
                             "CAST(NULL as BINARY) as datacol, " +
                             "CAST(NULL as DATE) as datecol, " +
                             "CAST(NULL as TIMESTAMP) as timestampcol"
-                            //+ ", CAST(NULL as MAP<STRING, INTEGER>) as map, " +
-                            //"CAST(NULL as ARRAY<INTEGER>) as numbers, " +
-                            //"CAST(NULL as STRUCT<field: STRING>) as person, " +
-                            //"MAP(CAST('EMPTY' as STRING), CAST(NULL as INTEGER)) as map_null, " +
-                            //"ARRAY(NULL,NULL,NULL) as numbers_null, " +
-                            //"STRUCT(CAST(NULL as STRING), CAST(NULL as INTEGER)) as person_null",
                             ,
                     ExpectedValues =
                     [
                         new("id", typeof(long), typeof(Int64Type), null),
                         new("intcol", typeof(int), typeof(Int32Type), null),
-                        new("number_float", floatNetType, floatArrowType, null),
+                        new("number_float", typeof(float), typeof(FloatType), null),
                         new("number_double", typeof(double), typeof(DoubleType), null),
                         new("decimalcol", typeof(SqlDecimal), typeof(Decimal128Type), null),
+                        new("big_decimal", typeof(SqlDecimal), typeof(Decimal128Type), null),
                         new("is_active", typeof(bool), typeof(BooleanType), null),
                         new("name", typeof(string), typeof(StringType), null),
                         new("datacol", typeof(byte[]), typeof(BinaryType), null),
                         new("datecol", typeof(DateTime), typeof(Date32Type), null),
-                        new("timestampcol", typeof(DateTimeOffset), typeof(TimestampType), null),
-                        //new("map", typeof(string), typeof(StringType), null),
-                        //new("numbers", typeof(string), typeof(StringType), null),
-                        //new("person", typeof(string), typeof(StringType), null),
-                        //new("map_null", typeof(string), typeof(StringType), """{"EMPTY":null}"""),
-                        //new("numbers_null", typeof(string), typeof(StringType), """[null,null,null]"""),
-                        //new("person_null", typeof(string), typeof(StringType), """{"col1":null,"col2":null}"""),
-                    ]
+                        new("timestampcol", typeof(DateTimeOffset), typeof(TimestampType), null)
+                     ]
                 });
 
             return sampleDataBuilder;

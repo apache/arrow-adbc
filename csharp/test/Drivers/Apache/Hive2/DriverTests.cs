@@ -151,4 +151,3 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
         }
     }
 }
-

@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
         {
             return
                 [
-                    -1, // DROP TABLE 
+                    -1, // DROP TABLE
                     -1, // CREATE TABLE
                     affectedRows,  // INSERT
                     affectedRows,  // INSERT
