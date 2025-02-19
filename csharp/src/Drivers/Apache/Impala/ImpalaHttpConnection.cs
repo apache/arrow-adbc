@@ -213,5 +213,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override ImpalaServerType ServerType => ImpalaServerType.Http;
+
+        protected override int ColumnMapIndexOffset => 0;
     }
 }

@@ -246,5 +246,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
+
+        protected override int ColumnMapIndexOffset => 1;
     }
 }

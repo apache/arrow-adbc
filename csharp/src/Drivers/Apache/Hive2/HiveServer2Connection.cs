@@ -754,10 +754,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return baseAddress;
         }
 
-        // Note data source's Position may be one-indexed or zero-indexed
         protected IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
-           .Select(t => new { Index = t.Position - PositionRequiredOffset, t.ColumnName })
+           .Select(t => new { Index = t.Position - ColumnMapIndexOffset, t.ColumnName })
            .ToDictionary(t => t.ColumnName, t => t.Index);
+
+        protected abstract int ColumnMapIndexOffset { get; }
 
         protected abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);

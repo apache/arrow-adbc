@@ -124,9 +124,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             return GetPatterns(tableName);
         }
 
-        protected override bool TypeHasColumnSize(AdbcColumn column) => true;
+        protected override bool TypeHasColumnSize(Metadata.AdbcColumn column)
+        {
+            switch (column.XdbcDataType!.Value)
+            {
+                case (short)SupportedDriverDataType.DECIMAL:
+                case (short)SupportedDriverDataType.NUMERIC:
+                case (short)SupportedDriverDataType.CHAR:
+                case (short)SupportedDriverDataType.VARCHAR:
+                    return true;
+                default:
+                    return false;
+            }
+        }
 
-        protected override bool TypeHasDecimalDigits(AdbcColumn column) => true;
+        protected override bool TypeHasDecimalDigits(Metadata.AdbcColumn column)
+        {
+            switch (column.XdbcDataType!.Value)
+            {
+                case (short)SupportedDriverDataType.DECIMAL:
+                case (short)SupportedDriverDataType.NUMERIC:
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 }
 

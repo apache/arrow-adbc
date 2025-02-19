@@ -240,10 +240,43 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             int columnSize,
             int decimalDigits)
         {
+            // Keep the original type name
             tableInfo?.TypeName.Add(typeName);
-            tableInfo?.Precision.Add(columnSize);
-            tableInfo?.Scale.Add((short)decimalDigits);
-            tableInfo?.BaseTypeName.Add(typeName);
+            switch (colType)
+            {
+                case (short)ColumnTypeId.DECIMAL:
+                case (short)ColumnTypeId.NUMERIC:
+                    {
+                        SqlDecimalParserResult result = SqlTypeNameParser<SqlDecimalParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(result.Precision);
+                        tableInfo?.Scale.Add((short)result.Scale);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
+                        break;
+                    }
+
+                case (short)ColumnTypeId.CHAR:
+                case (short)ColumnTypeId.NCHAR:
+                case (short)ColumnTypeId.VARCHAR:
+                case (short)ColumnTypeId.LONGVARCHAR:
+                case (short)ColumnTypeId.LONGNVARCHAR:
+                case (short)ColumnTypeId.NVARCHAR:
+                    {
+                        SqlCharVarcharParserResult result = SqlTypeNameParser<SqlCharVarcharParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(result.ColumnSize != -1 ? result.ColumnSize : columnSize);
+                        tableInfo?.Scale.Add(null);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
+                        break;
+                    }
+
+                default:
+                    {
+                        SqlTypeNameParserResult result = SqlTypeNameParser<SqlTypeNameParserResult>.Parse(typeName, colType);
+                        tableInfo?.Precision.Add(null);
+                        tableInfo?.Scale.Add(null);
+                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
+                        break;
+                    }
+            }
         }
 
         protected override ColumnsMetadataColumnNames GetColumnsMetadataColumnNames()
@@ -285,7 +318,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
 
-        protected internal override int PositionRequiredOffset => 1;
+        protected internal override int PositionRequiredOffset => 0;
 
         protected override string InfoDriverName => DriverName;
 
@@ -298,5 +331,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal HiveServer2Type Type => HiveServer2Type.Http;
+
+        protected override int ColumnMapIndexOffset => 1;
     }
 }
