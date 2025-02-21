@@ -385,7 +385,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             {
                 // Verify column metadata is returned/consistent.
                 AdbcColumn column = columns[i];
-                // TODO: Fix ordinal position for Hive.
                 Assert.Equal(i + 1, column.OrdinalPosition);
                 Assert.False(string.IsNullOrEmpty(column.Name));
                 Assert.False(string.IsNullOrEmpty(column.XdbcTypeName));
