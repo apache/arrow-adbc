@@ -18,8 +18,12 @@
 add_library(adbc_driver_common STATIC utils.c)
 adbc_configure_target(adbc_driver_common)
 set_target_properties(adbc_driver_common PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(adbc_driver_common PRIVATE "${REPOSITORY_ROOT}/c/include"
-                                                      "${REPOSITORY_ROOT}/c/vendor")
+target_include_directories(adbc_driver_common PRIVATE "${REPOSITORY_ROOT}/c/include")
+if(WITH_VENDORED_NANOARROW)
+  target_include_directories(adbc_driver_common PRIVATE "${REPOSITORY_ROOT}/c/vendor")
+else()
+  target_link_libraries(adbc_driver_common PRIVATE nanoarrow::nanoarrow)
+endif()
 
 if(ADBC_BUILD_TESTS)
   add_test_case(driver_common_test
