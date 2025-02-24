@@ -29,7 +29,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CTest)
 
-
 if(ADBC_WITH_VENDORED_FMT)
   add_subdirectory(vendor/fmt EXCLUDE_FROM_ALL)
   set_target_properties(fmt PROPERTIES POSITION_INDEPENDENT_CODE ON)
