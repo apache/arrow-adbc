@@ -35,9 +35,9 @@ categories = ["database"]
 
 [workspace.dependencies]
 adbc_core = { path = "./core", version = "0.17.0" }
-arrow-array = { version = "54.1.0", default-features = false, features = [
+arrow-array = { version = "54.2.0", default-features = false, features = [
     "ffi",
 ] }
 arrow-buffer = { version = "54.1.0", default-features = false }
 arrow-schema = { version = "54.1.0", default-features = false }
-arrow-select = { version = "54.1.0", default-features = false }
+arrow-select = { version = "54.2.0", default-features = false }
