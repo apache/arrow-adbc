@@ -246,6 +246,17 @@ namespace Apache.Arrow.Adbc
             throw AdbcException.NotImplemented("Statement does not support cancellation");
         }
 
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+        }
+
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting
         /// unmanaged resources asynchronously.
@@ -260,17 +271,6 @@ namespace Apache.Arrow.Adbc
         {
             Dispose();
             return default;
-        }
-
-        /// <inheritdoc />
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
         }
     }
 }

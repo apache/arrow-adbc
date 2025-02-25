@@ -151,6 +151,10 @@ namespace Apache.Arrow.Adbc
             throw AdbcException.NotImplemented("Statement does not support setting options");
         }
 
+        public virtual void Dispose()
+        {
+        }
+
         /// <summary>
         /// Attempts to cancel an in-progress operation on a connection.
         /// </summary>
@@ -163,10 +167,6 @@ namespace Apache.Arrow.Adbc
         public virtual void Cancel()
         {
             throw AdbcException.NotImplemented("Statement does not support cancellation");
-        }
-
-        public virtual void Dispose()
-        {
         }
     }
 }
