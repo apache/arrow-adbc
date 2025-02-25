@@ -15,7 +15,7 @@
 <meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The PostgreSQL driver provides access to any database that supports the PostgreSQL wire format. It wraps libpq, the client library for PostgreSQL. The..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Snowflake Driver" href="snowflake.html" /><link rel="prev" title="JDBC Adapter" href="jdbc.html" />
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
+    <!-- Generated with Sphinx 8.2.1 and Furo 2024.08.06 -->
         <title>PostgreSQL Driver - ADBC 17 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
@@ -731,7 +731,7 @@ the case.</p>
 <p>Types without direct Arrow equivalents can still be returned by the driver.
 In this case, the Arrow type will be binary, and the contents will be the raw
 bytes as provided by the PostgreSQL wire protocol.</p>
-<p>For Arrow implementations that support the <a class="reference external" href="https://arrow.apache.org/docs/format/CanonicalExtensions.html" title="(in Apache Arrow v19.0.0)"><span class="xref std std-doc">Opaque canonical
+<p>For Arrow implementations that support the <a class="reference external" href="https://arrow.apache.org/docs/format/CanonicalExtensions.html" title="(in Apache Arrow v19.0.1)"><span class="xref std std-doc">Opaque canonical
 extension type</span></a>, the extension type metadata is
 also always present.  This helps differentiate when the driver intentionally
 returned a binary column from when it returned a binary column as a fallback.</p>
