@@ -24,7 +24,7 @@ This driver provides an interface to
 
 ## Building
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for details.
 
 ## Testing
 

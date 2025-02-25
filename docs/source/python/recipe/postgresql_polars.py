@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: polars integration
 # RECIPE STARTS HERE
 
 #: ADBC can be used with Polars_, a dataframe library written in Rust.  As per

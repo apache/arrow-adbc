@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: bulk ingestion from PyArrow Dataset
 # RECIPE STARTS HERE
 
 #: ADBC makes it easy to load PyArrow datasets into your datastore.

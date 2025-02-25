@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,30 +16,33 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# RECIPE CATEGORY: PostgreSQL
-# RECIPE KEYWORDS: authentication
-# RECIPE STARTS HERE
-#: To connect to a PostgreSQL database, the username and password must
-#: be provided in the URI.  For example,
-#:
-#: .. code-block:: text
-#:
-#:    postgresql://username:password@hostname:port/dbname
-#:
-#: See the `PostgreSQL documentation
-#: <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_
-#: for full details.
+# Re-run mamba if it flakes.
 
-import os
+# set -euxo pipefail
 
-import adbc_driver_postgresql.dbapi
+main() {
+    local count=0
+    while [[ $count -lt 5 ]]; do
+        # https://stackoverflow.com/questions/12451278
+        exec 5>&1
+        MAMBA_OUTPUT=$(mamba "$@" 2>&1 | tee /dev/fd/5; exit ${PIPESTATUS[0]})
+        exit_code=$?
+        if [[ $exit_code -eq 0 ]]; then
+            echo "Mamba succeeded!"
+            return 0
+        fi
 
-uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
-conn = adbc_driver_postgresql.dbapi.connect(uri)
+        count=$((count + 1))
 
-with conn.cursor() as cur:
-    cur.execute("SELECT 1")
-    print(cur.fetchone())
-    # Output: (1,)
+        if echo $MAMBA_OUTPUT | grep "Found incorrect download" >/dev/null; then
+            echo "Mamba flaked..."
+            continue
+        fi
+        echo "Mamba failed, aborting"
+        return $exit_code
+    done
+    echo "Mamba flaked too many times, aborting"
+    exit 1
+}
 
-conn.close()
+main "$@"

@@ -83,6 +83,16 @@ namespace Apache.Arrow.Adbc.Client
                             row[SchemaTableColumn.NumericScale] = Convert.ToInt32(scaleValue);
                     }
                 }
+                else if (f.DataType is Decimal32Type decimal32Type)
+                {
+                    row[SchemaTableColumn.NumericPrecision] = decimal32Type.Precision;
+                    row[SchemaTableColumn.NumericScale] = decimal32Type.Scale;
+                }
+                else if (f.DataType is Decimal128Type decimal64Type)
+                {
+                    row[SchemaTableColumn.NumericPrecision] = decimal64Type.Precision;
+                    row[SchemaTableColumn.NumericScale] = decimal64Type.Scale;
+                }
                 else if (f.DataType is Decimal128Type decimal128Type)
                 {
                     row[SchemaTableColumn.NumericPrecision] = decimal128Type.Precision;

@@ -16,32 +16,10 @@
 .. under the License.
 
 ==============
-Driver Example
+SQLite Recipes
 ==============
 
-.. recipe:: recipe_driver/driver_example.cc
+Change the batch size of the result set
+=======================================
 
-Low-level testing
-=================
-
-.. recipe:: recipe_driver/driver_example_test.cc
-
-High-level testing
-==================
-
-.. recipe:: recipe_driver/driver_example.py
-
-High-level tests can also be written in R using the ``adbcdrivermanager``
-package.
-
-.. code-block:: r
-
-   library(adbcdrivermanager)
-
-   drv <- adbc_driver("build/libdriver_example.dylib")
-   db <- adbc_database_init(drv, uri = paste0("file://", getwd()))
-   con <- adbc_connection_init(db)
-
-   data.frame(col = 1:3) |> write_adbc(con, "example.arrows")
-   con |> read_adbc("SELECT * FROM example.arrows") |> as.data.frame()
-   unlink("example.arrows")
+.. recipe:: sqlite_batch_rows.py

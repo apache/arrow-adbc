@@ -21,7 +21,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
-	"database/sql"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -452,7 +451,6 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	conn := &connectionImpl{
 		cn: cn.(snowflakeConn),
 		db: d, ctor: connector,
-		sqldb: sql.OpenDB(connector),
 		// default enable high precision
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead

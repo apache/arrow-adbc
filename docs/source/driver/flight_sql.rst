@@ -129,7 +129,6 @@ the :c:struct:`AdbcDatabase`.
       :sync: go
 
       .. recipe:: ../../../go/adbc/driver/flightsql/example_usage_test.go
-         :language: go
 
 Supported Features
 ==================

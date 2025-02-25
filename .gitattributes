@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+*.stdout.txt linguist-generated
 c/vendor/* linguist-vendored
 go/adbc/drivermgr/adbc.h linguist-generated
 go/adbc/drivermgr/adbc_driver_manager.cc linguist-generated

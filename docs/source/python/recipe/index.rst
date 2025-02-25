@@ -28,3 +28,4 @@ Python.
    driver_manager
    flight_sql
    postgresql
+   sqlite

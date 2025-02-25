@@ -102,7 +102,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
@@ -180,7 +180,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
       - name: Work around ASAN issue (GH-1617)
         if: matrix.os == 'ubuntu-latest'
@@ -290,7 +290,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_cpp_lint.txt
 
@@ -336,7 +336,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             'arrow-c-glib>=10.0.1' \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_glib.txt
@@ -477,7 +477,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
       - uses: actions/setup-go@v5
         with:
@@ -556,7 +556,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
@@ -666,7 +666,7 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
-          mamba install -c conda-forge \
+          ./ci/scripts/remamba.sh install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_docs.txt \
             --file ci/conda_env_python.txt
@@ -710,7 +710,18 @@ jobs:
       - name: Test Recipes (C++)
         run: |
           ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe
+      - name: Ensure recipes are up to date
+        run: |
+          pip install -e ./docs/source/ext/sphinx_recipe
+          # Exits 1 if any recipes were updated
+          python -m sphinx_recipe.update_output \
+            docs/source/cpp/recipe/*.cc \
+            docs/source/cpp/recipe_driver/driver_example.py \
+            docs/source/python/recipe/*.py
       - name: Test Recipes (Python)
         run: |
           docker compose up --detach --wait dremio dremio-init flightsql-sqlite-test postgres-test
+          export ADBC_CPP_RECIPE_BIN=~/local/bin
+          # Needed for the combined C++/Python driver example
+          export LD_LIBRARY_PATH=~/local/lib
           pytest -vvs docs/source/tests/

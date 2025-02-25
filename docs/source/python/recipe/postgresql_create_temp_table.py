@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: bulk ingestion to temporary table
 # RECIPE STARTS HERE
 #: ADBC allows creating and appending to temporary tables as well.
 

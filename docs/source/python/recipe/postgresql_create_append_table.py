@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# RECIPE CATEGORY: PostgreSQL
+# RECIPE KEYWORDS: bulk append
 # RECIPE STARTS HERE
 #: ADBC allows creating and appending to database tables using Arrow
 #: tables.

@@ -45,7 +45,8 @@ def connect(uri: str):
                 driver=str(driver_lib.resolve()), db_kwargs={"uri": uri}
             )
 
-    raise RuntimeError("Can't find driver shared object")
+    # Try to find it on the dynamic loader path
+    return dbapi.connect(driver="driver_example", db_kwargs={"uri": uri})
 
 
 #: Next, we can give our driver a go! The two pieces we implemented in the driver
@@ -63,5 +64,6 @@ if __name__ == "__main__":
         with con.cursor() as cur:
             cur.execute("SELECT * FROM example.arrows")
             print(cur.fetchall())
+            # Output: [(1,), (2,), (3,)]
 
         os.unlink(Path(__file__).parent / "example.arrows")
