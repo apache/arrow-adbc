@@ -16,8 +16,11 @@
 // under the License.
 
 #include <limits>
+#include <memory>
 #include <optional>
+#include <string>
 #include <tuple>
+#include <vector>
 
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>

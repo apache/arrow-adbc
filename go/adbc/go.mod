@@ -17,9 +17,7 @@
 
 module github.com/apache/arrow-adbc/go/adbc
 
-go 1.22.7
-
-toolchain go1.22.9
+go 1.23.0
 
 require (
 	cloud.google.com/go/bigquery v1.66.2

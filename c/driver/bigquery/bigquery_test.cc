@@ -18,7 +18,9 @@
 #include <algorithm>
 #include <cstring>
 #include <random>
+#include <string>
 #include <thread>
+#include <vector>
 
 #include <arrow-adbc/adbc.h>
 #include <gmock/gmock-matchers.h>

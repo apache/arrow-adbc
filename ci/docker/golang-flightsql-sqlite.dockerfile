@@ -20,7 +20,7 @@ FROM golang:${GO}
 
 ARG ARROW_MAJOR_VERSION
 
-RUN go install github.com/apache/arrow/go/v${ARROW_MAJOR_VERSION}/arrow/flight/flightsql/example/cmd/sqlite_flightsql_server@latest
+RUN go install github.com/apache/arrow-go/v${ARROW_MAJOR_VERSION}/arrow/flight/flightsql/example/cmd/sqlite_flightsql_server@latest
 EXPOSE 8080
 
 ENTRYPOINT /go/bin/sqlite_flightsql_server -host 0.0.0.0 -port 8080

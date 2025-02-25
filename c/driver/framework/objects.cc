@@ -18,6 +18,7 @@
 #include "driver/framework/objects.h"
 
 #include <string_view>
+#include <vector>
 
 #include "nanoarrow/nanoarrow.hpp"
 
