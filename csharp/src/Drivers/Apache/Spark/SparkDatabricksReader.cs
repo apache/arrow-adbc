@@ -16,12 +16,14 @@
 */
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using static Apache.Hive.Service.Rpc.Thrift.TCLIService;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -46,41 +48,51 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            while (true)
+            return await Trace.TraceActivityAsync(async (activity) =>
             {
-                if (this.reader != null)
+                while (true)
                 {
-                    RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
-                    if (next != null)
+                    if (this.reader != null)
                     {
-                        return next;
+                        RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        if (next != null)
+                        {
+                            return next;
+                        }
+                        this.reader = null;
                     }
-                    this.reader = null;
+
+                    if (this.batches != null && this.index < this.batches.Count)
+                    {
+                        this.reader = new ArrowStreamReader(new ChunkStream(this.schema, this.batches[this.index++].Batch));
+                        continue;
+                    }
+
+                    this.batches = null;
+                    this.index = 0;
+
+                    if (this.statement == null)
+                    {
+                        return null;
+                    }
+
+                    activity?.AddEvent("db.operation.name.start", [new("db.operation.name", nameof(Client.FetchResults))]);
+                    TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+                    TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
+                    activity?.AddEvent("db.operation.name.end",
+                        [
+                            new("db.operation.name", nameof(Client.FetchResults)),
+                            new("db.response.status_code", response.Status.StatusCode.ToString()),
+                            new("db.client.response.returned_rows", response.Results.ArrowBatches.Sum(b => b.RowCount))
+                        ]);
+                    this.batches = response.Results.ArrowBatches;
+
+                    if (!response.HasMoreRows)
+                    {
+                        this.statement = null;
+                    }
                 }
-
-                if (this.batches != null && this.index < this.batches.Count)
-                {
-                    this.reader = new ArrowStreamReader(new ChunkStream(this.schema, this.batches[this.index++].Batch));
-                    continue;
-                }
-
-                this.batches = null;
-                this.index = 0;
-
-                if (this.statement == null)
-                {
-                    return null;
-                }
-
-                TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
-                TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
-                this.batches = response.Results.ArrowBatches;
-
-                if (!response.HasMoreRows)
-                {
-                    this.statement = null;
-                }
-            }
+            });
         }
 
         public void Dispose()
