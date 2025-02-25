@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
+using System;
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc
 {
@@ -27,7 +27,7 @@ namespace Apache.Arrow.Adbc
     /// For example, in-memory databases can place ownership of the actual
     /// database in this object.
     /// </summary>
-    public abstract class AdbcDatabase : TracingBase
+    public abstract class AdbcDatabase : IDisposable
     {
         /// <summary>
         /// Options are generally set before opening a database.  Some drivers may
@@ -58,5 +58,7 @@ namespace Apache.Arrow.Adbc
         /// Additional options to use when connecting.
         /// </param>
         public abstract AdbcConnection Connect(IReadOnlyDictionary<string, string>? options);
+
+        public virtual void Dispose() { }
     }
 }

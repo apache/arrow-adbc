@@ -18,6 +18,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -25,11 +26,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkDatabricksConnection : SparkHttpConnection
     {
-        public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
+            : base(properties, trace)
         {
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkDatabricksReader(statement, schema);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkDatabricksReader(statement, schema, Trace);
 
         internal override SchemaParser SchemaParser => new SparkDatabricksSchemaParser();
 

@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -32,11 +33,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         int index;
         IArrowReader? reader;
 
-        public SparkDatabricksReader(HiveServer2Statement statement, Schema schema)
+        public SparkDatabricksReader(HiveServer2Statement statement, Schema schema, ActivityTrace trace)
         {
             this.statement = statement;
             this.schema = schema;
+            this.Trace = trace;
         }
+
+        private ActivityTrace Trace { get; }
 
         public Schema Schema { get { return schema; } }
 

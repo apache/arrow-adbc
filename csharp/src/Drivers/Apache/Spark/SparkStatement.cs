@@ -17,14 +17,15 @@
 
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkStatement : HiveServer2Statement
     {
-        internal SparkStatement(SparkConnection connection)
-            : base(connection)
+        internal SparkStatement(SparkConnection connection, ActivityTrace trace)
+            : base(connection, trace)
         {
             ValidateOptions(connection.Properties);
         }

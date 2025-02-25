@@ -1,35 +1,35 @@
-﻿/*
-* Licensed to the Apache Software Foundation (ASF) under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The ASF licenses this file to You under the Apache License, Version 2.0
-* (the "License"); you may not use this file except in compliance with
-* the License.  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+﻿///*
+//* Licensed to the Apache Software Foundation (ASF) under one or more
+//* contributor license agreements.  See the NOTICE file distributed with
+//* this work for additional information regarding copyright ownership.
+//* The ASF licenses this file to You under the Apache License, Version 2.0
+//* (the "License"); you may not use this file except in compliance with
+//* the License.  You may obtain a copy of the License at
+//*
+//*    http://www.apache.org/licenses/LICENSE-2.0
+//*
+//* Unless required by applicable law or agreed to in writing, software
+//* distributed under the License is distributed on an "AS IS" BASIS,
+//* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//* See the License for the specific language governing permissions and
+//* limitations under the License.
+//*/
 
-using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
-using Apache.Arrow.Ipc;
+//using System.Diagnostics;
+//using System.Threading;
+//using System.Threading.Tasks;
+//using Apache.Arrow.Ipc;
 
-namespace Apache.Arrow.Adbc.Tracing
-{
-    /// <summary>
-    /// Provides tracing capability for objects that need to implement the <see cref="IArrowArrayStream"/> interface.
-    /// </summary>
-    /// <param name="activitySource"></param>
-    public abstract class TracingArrowArrayStream : TracingBase, IArrowArrayStream
-    {
-        public abstract ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default);
+//namespace Apache.Arrow.Adbc.Tracing
+//{
+//    /// <summary>
+//    /// Provides tracing capability for objects that need to implement the <see cref="IArrowArrayStream"/> interface.
+//    /// </summary>
+//    /// <param name="activitySource"></param>
+//    public abstract class TracingArrowArrayStream : IArrowArrayStream, ITracingBase
+//    {
+//        public abstract ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default);
 
-        public abstract Schema Schema { get; }
-    }
-}
+//        public abstract Schema Schema { get; }
+//    }
+//}

@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
@@ -28,7 +29,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkStandardConnection : SparkHttpConnection
     {
-        public SparkStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public SparkStandardConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
+            : base(properties, trace)
         {
         }
 

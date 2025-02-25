@@ -17,19 +17,20 @@
 
 using System;
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal class ImpalaConnectionFactory
     {
-        public static ImpalaConnection NewConnection(IReadOnlyDictionary<string, string> properties)
+        public static ImpalaConnection NewConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
         {
             bool _ = properties.TryGetValue(ImpalaParameters.Type, out string? type) && string.IsNullOrEmpty(type);
             bool __ = ServerTypeParser.TryParse(type, out ImpalaServerType serverTypeValue);
             return serverTypeValue switch
             {
-                ImpalaServerType.Http => new ImpalaHttpConnection(properties),
-                ImpalaServerType.Standard => new ImpalaStandardConnection(properties),
+                ImpalaServerType.Http => new ImpalaHttpConnection(properties, trace),
+                ImpalaServerType.Standard => new ImpalaStandardConnection(properties, trace),
                 ImpalaServerType.Empty => throw new ArgumentException($"Required property '{ImpalaParameters.Type}' is missing. Supported types: {ServerTypeParser.SupportedList}", nameof(properties)),
                 _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{ImpalaParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}"),
             };

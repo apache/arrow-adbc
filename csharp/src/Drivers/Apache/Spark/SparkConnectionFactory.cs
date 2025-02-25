@@ -17,19 +17,20 @@
 
 using System;
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkConnectionFactory
     {
-        public static SparkConnection NewConnection(IReadOnlyDictionary<string, string> properties)
+        public static SparkConnection NewConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
         {
             bool _ = properties.TryGetValue(SparkParameters.Type, out string? type) && string.IsNullOrEmpty(type);
             bool __ = ServerTypeParser.TryParse(type, out SparkServerType serverTypeValue);
             return serverTypeValue switch
             {
-                SparkServerType.Databricks => new SparkDatabricksConnection(properties),
-                SparkServerType.Http => new SparkHttpConnection(properties),
+                SparkServerType.Databricks => new SparkDatabricksConnection(properties, trace),
+                SparkServerType.Http => new SparkHttpConnection(properties, trace),
                 // TODO: Re-enable when properly supported
                 //SparkServerType.Standard => new SparkStandardConnection(properties),
                 SparkServerType.Empty => throw new ArgumentException($"Required property '{SparkParameters.Type}' is missing. Supported types: {ServerTypeParser.SupportedList}", nameof(properties)),

@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing.FileExporter
 
     [MinColumn, MaxColumn]
     [SimpleJob(warmupCount: 3, iterationCount: 20)]
-    public class Tracing : TracingBase
+    public class Tracing : ActivityTrace
     {
         private const string MyActivitySourceName = "MyActivitySourceName";
 

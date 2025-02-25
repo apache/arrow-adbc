@@ -267,7 +267,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             GC.SuppressFinalize(this);
         }
 
-        private class TraceInheritor : TracingBase
+        private class TraceInheritor : ActivityTrace
         {
             internal TraceInheritor(string? activitySourceName = default) : base(activitySourceName) { }
 

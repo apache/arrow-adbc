@@ -18,7 +18,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc
@@ -28,7 +27,7 @@ namespace Apache.Arrow.Adbc
     /// may be used multiple times and can be reconfigured (e.g. they can
     /// be reused to execute multiple different queries).
     /// </summary>
-    public abstract class AdbcStatement11 : TracingBase
+    public abstract class AdbcStatement11 : IDisposable
 #if NET5_0_OR_GREATER
         , IAsyncDisposable
 #endif
@@ -261,6 +260,17 @@ namespace Apache.Arrow.Adbc
         {
             Dispose();
             return default;
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
         }
     }
 }

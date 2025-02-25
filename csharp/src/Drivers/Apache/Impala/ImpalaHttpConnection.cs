@@ -27,6 +27,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
@@ -39,7 +40,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     {
         private const string BasicAuthenticationScheme = "Basic";
 
-        public ImpalaHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public ImpalaHttpConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
+            : base(properties, trace)
         {
         }
 

@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc
@@ -28,7 +27,7 @@ namespace Apache.Arrow.Adbc
     /// Provides methods for query execution, managing prepared statements,
     /// using transactions, and so on.
     /// </summary>
-    public abstract class AdbcConnection11 : TracingBase
+    public abstract class AdbcConnection11 : IDisposable
 #if NET5_0_OR_GREATER
         , IAsyncDisposable
 #endif
@@ -396,6 +395,17 @@ namespace Apache.Arrow.Adbc
         public virtual Task<IArrowArrayStream> GetStatisticsAsync(string? catalogPattern, string? schemaPattern, string tableNamePattern, bool approximate)
         {
             throw AdbcException.NotImplemented("Connection does not support statistics");
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
         }
 
         /// <summary>

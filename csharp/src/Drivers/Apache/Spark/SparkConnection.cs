@@ -22,6 +22,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -45,25 +46,31 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" }
         };
 
-        internal SparkConnection(IReadOnlyDictionary<string, string> properties)
-            : base(properties)
+        internal SparkConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
+            : base(properties, trace)
         {
-            ValidateProperties();
-            _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
+            _productVersion = Trace.TraceActivity((activity) =>
+            {
+                ValidateProperties();
+                return new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
+            });
         }
 
         private void ValidateProperties()
         {
-            ValidateAuthentication();
-            ValidateConnection();
-            ValidateOptions();
+            Trace.TraceActivity((activity) =>
+            {
+                ValidateAuthentication();
+                ValidateConnection();
+                ValidateOptions();
+            });
         }
 
         protected override string ProductVersion => _productVersion.Value;
 
         public override AdbcStatement CreateStatement()
         {
-            return new SparkStatement(this);
+            return new SparkStatement(this, Trace);
         }
 
         protected internal override int PositionRequiredOffset => 1;

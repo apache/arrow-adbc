@@ -28,18 +28,18 @@ namespace Apache.Arrow.Adbc.Tracing
     /// Provides a base implementation for a tracing source. If drivers want to enable tracing,
     /// they need to add a trace listener (e.g., <see cref="FileExporter"/>).
     /// </summary>
-    public class TracingBase : IDisposable
+    public class ActivityTrace
     {
         private const string ProductVersionDefault = "1.0.0";
         private static readonly string s_assemblyVersion = GetProductVersion();
         private bool _disposedValue;
 
         /// <summary>
-        /// Constructs a new <see cref="TracingBase"/> object. If <paramref name="activitySourceName"/> is set, it provides the
+        /// Constructs a new <see cref="ActivityTrace"/> object. If <paramref name="activitySourceName"/> is set, it provides the
         /// activity source name, otherwise the current assembly name is used as the acctivity source name.
         /// </summary>
         /// <param name="activitySourceName"></param>
-        protected TracingBase(string? activitySourceName = default)
+        public ActivityTrace(string? activitySourceName = default, string? traceParent = default)
         {
             activitySourceName ??= GetType().Assembly.GetName().Name!;
             if (string.IsNullOrWhiteSpace(activitySourceName))
@@ -49,12 +49,19 @@ namespace Apache.Arrow.Adbc.Tracing
 
             // This is required to be disposed
             ActivitySource = new(activitySourceName, s_assemblyVersion);
+            TraceParent = traceParent;
+        }
+
+        public ActivityTrace(ActivityTrace trace, string? traceParent = default)
+        {
+            ActivitySource = trace.ActivitySource;
+            TraceParent = traceParent ?? trace.TraceParent;
         }
 
         /// <summary>
         /// Gets the <see cref="ActivitySource"/>.
         /// </summary>
-        protected ActivitySource ActivitySource { get; }
+        public ActivitySource ActivitySource { get; }
 
         /// <summary>
         /// Gets the name of the <see cref="System.Diagnostics.ActivitySource"/>
@@ -74,7 +81,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// status is set to <see cref="ActivityStatusCode.Error"/> and an Activity <see cref="ActivityEvent"/> is added to the actitity
         /// and finally the exception is rethrown.
         /// </remarks>
-        protected void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
+        public void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
@@ -103,7 +110,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
+        public T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
@@ -132,7 +139,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected async Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
+        public async Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
@@ -161,7 +168,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected async Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
+        public async Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
@@ -191,7 +198,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected static async Task TraceActivityAsync(ActivitySource activitySource, Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
+        public static async Task TraceActivityAsync(ActivitySource activitySource, Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, activitySource, traceParent);
             try
@@ -221,7 +228,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
         /// </remarks>
-        protected static async Task<T> TraceActivityAsync<T>(ActivitySource activitySource, Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
+        public static async Task<T> TraceActivityAsync<T>(ActivitySource activitySource, Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, activitySource, traceParent);
             try
@@ -248,16 +255,16 @@ namespace Apache.Arrow.Adbc.Tracing
         /// For example, <c>escaped</c> should be <c>true</c> if the exception is caught and re-thrown.
         /// However, <c>escaped</c> should be set to <c>false</c> if execution continues in the current scope.
         /// </param>
-        protected static void TraceException(Exception exception, Activity? activity) =>
+        public static void TraceException(Exception exception, Activity? activity) =>
             WriteTraceException(exception, activity);
 
         /// <summary>
-        /// Starts an <see cref="Activity"/> on the <see cref="TracingBase.ActivitySource"/> if there is
+        /// Starts an <see cref="Activity"/> on the <see cref="ActivityTrace.ActivitySource"/> if there is
         /// and active listener on the source.
         /// </summary>
         /// <param name="methodName">The name of the method for the activity.</param>
         /// <returns>If there is an active listener on the source, an <see cref="Activity"/> is returned, null otherwise.</returns>
-        protected Activity? StartActivity([CallerMemberName] string? activityName = default, string? traceParent = default)
+        public Activity? StartActivity([CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             return StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
         }
@@ -265,7 +272,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <summary>
         /// Gets or sets the trace parent context.
         /// </summary>
-        protected internal virtual string? TraceParent { get; set; }
+        public virtual string? TraceParent { get; set; }
 
         /// <summary>
         /// Gets the product version from the file version of the current assembly.

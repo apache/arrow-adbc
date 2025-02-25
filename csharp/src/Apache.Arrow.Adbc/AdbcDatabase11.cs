@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc
 {
@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc
     /// For example, in-memory databases can place ownership of the actual
     /// database in this object.
     /// </summary>
-    public abstract class AdbcDatabase11 : TracingBase
+    public abstract class AdbcDatabase11 : IDisposable
     {
         ~AdbcDatabase11() => Dispose(false);
 
@@ -69,6 +69,17 @@ namespace Apache.Arrow.Adbc
         public virtual void SetOption(string key, string value)
         {
             throw AdbcException.NotImplemented("Connection does not support setting options");
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
         }
     }
 }

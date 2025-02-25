@@ -26,6 +26,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
@@ -40,7 +41,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
-        public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public SparkHttpConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
+            : base(properties, trace)
         {
         }
 
@@ -133,38 +135,45 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override TTransport CreateTransport()
         {
-            // Assumption: parameters have already been validated.
-            Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
-            Properties.TryGetValue(SparkParameters.Path, out string? path);
-            Properties.TryGetValue(SparkParameters.Port, out string? port);
-            Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
-            Properties.TryGetValue(SparkParameters.Token, out string? token);
-            Properties.TryGetValue(AdbcOptions.Username, out string? username);
-            Properties.TryGetValue(AdbcOptions.Password, out string? password);
-            Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
-
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
-            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password);
-
-            HttpClientHandler httpClientHandler = NewHttpClientHandler();
-            HttpClient httpClient = new(httpClientHandler);
-            httpClient.BaseAddress = baseAddress;
-            httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(s_userAgent);
-            httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
-            httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
-            httpClient.DefaultRequestHeaders.ExpectContinue = false;
-
-            TConfiguration config = new();
-            ThriftHttpTransport transport = new(httpClient, config)
+            return Trace.TraceActivity((activity) =>
             {
-                // This value can only be set before the first call/request. So if a new value for query timeout
-                // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
-                // to ensure cancelled correctly.
-                ConnectTimeout = int.MaxValue,
-            };
-            return transport;
+                // Assumption: parameters have already been validated.
+                Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
+                Properties.TryGetValue(SparkParameters.Path, out string? path);
+                Properties.TryGetValue(SparkParameters.Port, out string? port);
+                Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+                bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+                Properties.TryGetValue(SparkParameters.Token, out string? token);
+                Properties.TryGetValue(AdbcOptions.Username, out string? username);
+                Properties.TryGetValue(AdbcOptions.Password, out string? password);
+                Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
+
+                Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
+                AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password);
+
+                HttpClientHandler httpClientHandler = NewHttpClientHandler();
+                HttpClient httpClient = new(httpClientHandler);
+                httpClient.BaseAddress = baseAddress;
+                httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(s_userAgent);
+                httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
+                httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
+                httpClient.DefaultRequestHeaders.ExpectContinue = false;
+
+                TConfiguration config = new();
+                ThriftHttpTransport transport = new(httpClient, config)
+                {
+                    // This value can only be set before the first call/request. So if a new value for query timeout
+                    // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
+                    // to ensure cancelled correctly.
+                    ConnectTimeout = int.MaxValue,
+                };
+                activity?.AddTag("network.protocol.name", baseAddress.Scheme);
+                activity?.AddTag("server.address", baseAddress.Host);
+                activity?.AddTag("server.port", baseAddress.Port);
+                activity?.AddTag("server.authentication.type", authType);
+                return transport;
+            });
         }
 
         private HttpClientHandler NewHttpClientHandler()
