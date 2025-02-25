@@ -312,7 +312,7 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     // XXX: because we're saving the SqliteQuery, we also need to save the string builder
     columns_query.Reset();
     columns_query.Append(
-        R"(SELECT cid, name, type, "notnull", dflt_value FROM pragma_table_info("%w" , "%w") WHERE NAME LIKE ?)",
+        R"(SELECT cid, name, type, 'notnull', dflt_value FROM pragma_table_info(%Q, %Q) WHERE NAME LIKE ?)",
         table.data(), catalog.data());
     UNWRAP_RESULT(auto query, columns_query.GetString());
     assert(!query.empty());
@@ -343,7 +343,7 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     {
       SqliteStringBuilder builder;
       builder.Append(
-          R"(SELECT name FROM pragma_table_info("%w" , "%w") WHERE pk > 0 ORDER BY pk ASC)",
+          R"(SELECT name FROM pragma_table_info(%Q, %Q) WHERE pk > 0 ORDER BY pk ASC)",
           table.data(), catalog.data());
       UNWRAP_RESULT(auto pk_query, builder.GetString());
       std::vector<std::string> pk;
