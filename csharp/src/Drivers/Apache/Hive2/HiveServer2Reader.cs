@@ -78,7 +78,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             HiveServer2Statement statement,
             Schema schema,
             DataTypeConversion dataTypeConversion,
-            AcitivityTrace trace)
+            ActivityTrace trace)
         {
             _statement = statement;
             Schema = schema;
