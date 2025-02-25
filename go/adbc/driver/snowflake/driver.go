@@ -20,6 +20,7 @@ package snowflake
 import (
 	"errors"
 	"maps"
+	"net/http"
 	"runtime/debug"
 	"strings"
 
@@ -170,19 +171,30 @@ func quoteTblName(name string) string {
 	return "\"" + strings.ReplaceAll(name, "\"", "\"\"") + "\""
 }
 
+type DriverOption func(*gosnowflake.Config) error
+
+func WithTransporter(transporter http.RoundTripper) DriverOption {
+	return func(cfg *gosnowflake.Config) error {
+		cfg.Transporter = transporter
+		return nil
+	}
+}
+
 type driverImpl struct {
 	driverbase.DriverImplBase
+
+	opts []DriverOption
 }
 
 // NewDriver creates a new Snowflake driver using the given Arrow allocator.
-func NewDriver(alloc memory.Allocator) adbc.Driver {
+func NewDriver(alloc memory.Allocator, opts ...DriverOption) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("Snowflake")
 	if infoVendorVersion != "" {
 		if err := info.RegisterInfoCode(adbc.InfoVendorVersion, infoVendorVersion); err != nil {
 			panic(err)
 		}
 	}
-	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
+	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc), opts: opts})
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
@@ -193,6 +205,12 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
+	}
+
+	for _, opt := range d.opts {
+		if err := opt(db.cfg); err != nil {
+			return nil, err
+		}
 	}
 
 	return driverbase.NewDatabase(db), nil
