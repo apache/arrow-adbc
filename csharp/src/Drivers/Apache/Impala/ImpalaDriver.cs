@@ -33,5 +33,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         }
 
         protected ActivityTrace Trace { get; }
+
+        public override void Dispose()
+        {
+            Trace.Dispose();
+            base.Dispose();
+        }
     }
 }

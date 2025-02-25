@@ -49,21 +49,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal SparkConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
             : base(properties, trace)
         {
-            _productVersion = Trace.TraceActivity((activity) =>
-            {
-                ValidateProperties();
-                return new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
-            });
+            ValidateProperties();
+            _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
         }
 
         private void ValidateProperties()
         {
-            Trace.TraceActivity((activity) =>
-            {
-                ValidateAuthentication();
-                ValidateConnection();
-                ValidateOptions();
-            });
+            ValidateAuthentication();
+            ValidateConnection();
+            ValidateOptions();
         }
 
         protected override string ProductVersion => _productVersion.Value;
