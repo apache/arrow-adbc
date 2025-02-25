@@ -36,7 +36,6 @@ add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/bigquery/"
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_include_directories(${LIB_TARGET} SYSTEM
                              INTERFACE ${REPOSITORY_ROOT} ${REPOSITORY_ROOT}/c/
-                                       ${REPOSITORY_ROOT}/c/vendor
                                        ${REPOSITORY_ROOT}/c/driver)
 endforeach()
 
@@ -57,13 +56,10 @@ if(ADBC_BUILD_TESTS)
                 EXTRA_LINK_LIBS
                 adbc_driver_common
                 adbc_validation
-                nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-bigquery-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-bigquery-test SYSTEM
-                             PRIVATE ${REPOSITORY_ROOT}/c/
-                                     ${REPOSITORY_ROOT}/c/include/
-                                     ${REPOSITORY_ROOT}/c/vendor
+                             PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${REPOSITORY_ROOT}/c/driver
                                      ${REPOSITORY_ROOT}/c/driver/common)
   adbc_configure_target(adbc-driver-bigquery-test)

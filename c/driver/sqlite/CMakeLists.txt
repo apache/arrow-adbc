@@ -52,23 +52,18 @@ add_arrow_lib(adbc_driver_sqlite
               ${SQLite3_LINK_LIBRARIES}
               adbc_driver_common
               adbc_driver_framework
-              nanoarrow
               STATIC_LINK_LIBS
               ${SQLite3_LINK_LIBRARIES}
               adbc_driver_common
               adbc_driver_framework
-              nanoarrow
               ${LIBPQ_STATIC_LIBRARIES})
 
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING
                                                    ${ADBC_SQLITE_COMPILE_DEFINES})
   target_include_directories(${LIB_TARGET} SYSTEM
-                             PRIVATE ${REPOSITORY_ROOT}/c/
-                                     ${REPOSITORY_ROOT}/c/include/
-                                     ${SQLite3_INCLUDE_DIRS}
-                                     ${REPOSITORY_ROOT}/c/vendor
-                                     ${REPOSITORY_ROOT}/c/driver)
+                             PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
+                                     ${SQLite3_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
 endforeach()
 
 include(CheckTypeSize)
@@ -92,16 +87,12 @@ if(ADBC_BUILD_TESTS)
                 EXTRA_LINK_LIBS
                 adbc_driver_common
                 adbc_validation
-                nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_definitions(adbc-driver-sqlite-test
                              PRIVATE ${ADBC_SQLITE_COMPILE_DEFINES})
   target_compile_features(adbc-driver-sqlite-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-sqlite-test SYSTEM
-                             PRIVATE ${REPOSITORY_ROOT}/c/
-                                     ${REPOSITORY_ROOT}/c/include/
-                                     ${LIBPQ_INCLUDE_DIRS}
-                                     ${REPOSITORY_ROOT}/c/vendor
-                                     ${REPOSITORY_ROOT}/c/driver)
+                             PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
+                                     ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-sqlite-test)
 endif()
