@@ -41,43 +41,50 @@ namespace Apache.Arrow.Adbc.Extensions
             if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
             if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
 
-            switch (arrowArray)
+            switch (arrowArray.Data.DataType.TypeId)
             {
-                case BooleanArray booleanArray:
-                    return booleanArray.GetValue(index);
-                case Date32Array date32Array:
-                    return date32Array.GetDateTime(index);
-                case Date64Array date64Array:
-                    return date64Array.GetDateTime(index);
-                case Decimal128Array decimal128Array:
-                    return decimal128Array.GetSqlDecimal(index);
-                case Decimal256Array decimal256Array:
-                    return decimal256Array.GetString(index);
-                case DoubleArray doubleArray:
-                    return doubleArray.GetValue(index);
-                case FloatArray floatArray:
-                    return floatArray.GetValue(index);
+                case ArrowTypeId.Null:
+                    return null;
+                case ArrowTypeId.Boolean:
+                    return ((BooleanArray)arrowArray).GetValue(index);
+                case ArrowTypeId.Date32:
+                    return ((Date32Array)arrowArray).GetDateTime(index);
+                case ArrowTypeId.Date64:
+                    return ((Date64Array)arrowArray).GetDateTime(index);
+                case ArrowTypeId.Decimal32:
+                    return ((Decimal32Array)arrowArray).GetDecimal(index);
+                case ArrowTypeId.Decimal64:
+                    return ((Decimal64Array)arrowArray).GetDecimal(index);
+                case ArrowTypeId.Decimal128:
+                    return ((Decimal128Array)arrowArray).GetSqlDecimal(index);
+                case ArrowTypeId.Decimal256:
+                    return ((Decimal256Array)arrowArray).GetString(index);
+                case ArrowTypeId.Double:
+                    return ((DoubleArray)arrowArray).GetValue(index);
+                case ArrowTypeId.Float:
+                    return ((FloatArray)arrowArray).GetValue(index);
 #if NET5_0_OR_GREATER
-                case PrimitiveArray<Half> halfFloatArray:
-                    return halfFloatArray.GetValue(index);
+                case ArrowTypeId.HalfFloat:
+                    return ((HalfFloatArray)arrowArray).GetValue(index);
 #endif
-                case Int8Array int8Array:
-                    return int8Array.GetValue(index);
-                case Int16Array int16Array:
-                    return int16Array.GetValue(index);
-                case Int32Array int32Array:
-                    return int32Array.GetValue(index);
-                case Int64Array int64Array:
-                    return int64Array.GetValue(index);
-                case StringArray stringArray:
-                    return stringArray.GetString(index);
+                case ArrowTypeId.Int8:
+                    return ((Int8Array)arrowArray).GetValue(index);
+                case ArrowTypeId.Int16:
+                    return ((Int16Array)arrowArray).GetValue(index);
+                case ArrowTypeId.Int32:
+                    return ((Int32Array)arrowArray).GetValue(index);
+                case ArrowTypeId.Int64:
+                    return ((Int64Array)arrowArray).GetValue(index);
+                case ArrowTypeId.String:
+                    return ((StringArray)arrowArray).GetString(index);
 #if NET6_0_OR_GREATER
-                case Time32Array time32Array:
-                    return time32Array.GetTime(index);
-                case Time64Array time64Array:
-                    return time64Array.GetTime(index);
+                case ArrowTypeId.Time32:
+                    return ((Time32Array)arrowArray).GetTime(index);
+                case ArrowTypeId.Time64:
+                    return ((Time64Array)arrowArray).GetTime(index);
 #else
-                case Time32Array time32Array:
+                case ArrowTypeId.Time32:
+                    Time32Array time32Array = (Time32Array)arrowArray;
                     int? time32 = time32Array.GetValue(index);
                     if (time32 == null) { return null; }
                     return ((Time32Type)time32Array.Data.DataType).Unit switch
@@ -86,7 +93,8 @@ namespace Apache.Arrow.Adbc.Extensions
                         TimeUnit.Millisecond => TimeSpan.FromMilliseconds(time32.Value),
                         _ => throw new InvalidDataException("Unsupported time unit for Time32Type")
                     };
-                case Time64Array time64Array:
+                case ArrowTypeId.Time64:
+                    Time64Array time64Array = (Time64Array)arrowArray;
                     long? time64 = time64Array.GetValue(index);
                     if (time64 == null) { return null; }
                     return ((Time64Type)time64Array.Data.DataType).Unit switch
@@ -96,35 +104,159 @@ namespace Apache.Arrow.Adbc.Extensions
                         _ => throw new InvalidDataException("Unsupported time unit for Time64Type")
                     };
 #endif
-                case TimestampArray timestampArray:
-                    return timestampArray.GetTimestamp(index);
-                case UInt8Array uInt8Array:
-                    return uInt8Array.GetValue(index);
-                case UInt16Array uInt16Array:
-                    return uInt16Array.GetValue(index);
-                case UInt32Array uInt32Array:
-                    return uInt32Array.GetValue(index);
-                case UInt64Array uInt64Array:
-                    return uInt64Array.GetValue(index);
-                case DayTimeIntervalArray dayTimeIntervalArray:
-                    return dayTimeIntervalArray.GetValue(index);
-                case MonthDayNanosecondIntervalArray monthDayNanosecondIntervalArray:
-                    return monthDayNanosecondIntervalArray.GetValue(index);
-                case YearMonthIntervalArray yearMonthIntervalArray:
-                    return yearMonthIntervalArray.GetValue(index);
-                case BinaryArray binaryArray:
-                    if (!binaryArray.IsNull(index))
+                case ArrowTypeId.Timestamp:
+                    return ((TimestampArray)arrowArray).GetTimestamp(index);
+                case ArrowTypeId.UInt8:
+                    return ((UInt8Array)arrowArray).GetValue(index);
+                case ArrowTypeId.UInt16:
+                    return ((UInt16Array)arrowArray).GetValue(index);
+                case ArrowTypeId.UInt32:
+                    return ((UInt32Array)arrowArray).GetValue(index);
+                case ArrowTypeId.UInt64:
+                    return ((UInt64Array)arrowArray).GetValue(index);
+                case ArrowTypeId.Interval:
+                    switch (((IntervalType)arrowArray.Data.DataType).Unit)
                     {
-                        return binaryArray.GetBytes(index).ToArray();
+                        case IntervalUnit.DayTime:
+                            return ((DayTimeIntervalArray)arrowArray).GetValue(index);
+                        case IntervalUnit.MonthDayNanosecond:
+                            return ((MonthDayNanosecondIntervalArray)arrowArray).GetValue(index);
+                        case IntervalUnit.YearMonth:
+                            return ((YearMonthIntervalArray)arrowArray).GetValue(index);
+                        default:
+                            throw new NotSupportedException($"Unsupported interval unit: {((IntervalType)arrowArray.Data.DataType).Unit}");
+                    }
+                case ArrowTypeId.Binary:
+                    if (!arrowArray.IsNull(index))
+                    {
+                        return ((BinaryArray)arrowArray).GetBytes(index).ToArray();
                     }
                     else
                     {
                         return null;
                     }
-                case ListArray listArray:
-                    return listArray.GetSlicedValues(index);
-                case StructArray structArray:
-                    return SerializeToJson(structArray, index);
+                case ArrowTypeId.List:
+                    return ((ListArray)arrowArray).GetSlicedValues(index);
+                case ArrowTypeId.Struct:
+                    return SerializeToJson(((StructArray)arrowArray), index);
+
+                // not covered:
+                // -- map array
+                // -- dictionary array
+                // -- fixed size binary
+                // -- union array
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Helper extension to get a value from the <see cref="IArrowArray"/> at the specified index.
+        /// </summary>
+        /// <param name="arrowArray">
+        /// The Arrow array.
+        /// </param>
+        /// <param name="index">
+        /// The index in the array to get the value from.
+        /// </param>
+        public static Func<IArrowArray, int, object?> GetValueConverter(this IArrowType arrayType)
+        {
+            if (arrayType == null) throw new ArgumentNullException(nameof(arrayType));
+
+            switch (arrayType.TypeId)
+            {
+                case ArrowTypeId.Null:
+                    return (array, index) => null;
+                case ArrowTypeId.Boolean:
+                    return (array, index) => ((BooleanArray)array).GetValue(index);
+                case ArrowTypeId.Date32:
+                    return (array, index) => ((Date32Array)array).GetDateTime(index);
+                case ArrowTypeId.Date64:
+                    return (array, index) => ((Date64Array)array).GetDateTime(index);
+                case ArrowTypeId.Decimal32:
+                    return (array, index) => ((Decimal32Array)array).GetDecimal(index);
+                case ArrowTypeId.Decimal64:
+                    return (array, index) => ((Decimal64Array)array).GetDecimal(index);
+                case ArrowTypeId.Decimal128:
+                    return (array, index) => ((Decimal128Array)array).GetSqlDecimal(index);
+                case ArrowTypeId.Decimal256:
+                    return (array, index) => ((Decimal256Array)array).GetString(index);
+                case ArrowTypeId.Double:
+                    return (array, index) => ((DoubleArray)array).GetValue(index);
+                case ArrowTypeId.Float:
+                    return (array, index) => ((FloatArray)array).GetValue(index);
+#if NET5_0_OR_GREATER
+                case ArrowTypeId.HalfFloat:
+                    return (array, index) => ((HalfFloatArray)array).GetValue(index);
+#endif
+                case ArrowTypeId.Int8:
+                    return (array, index) => ((Int8Array)array).GetValue(index);
+                case ArrowTypeId.Int16:
+                    return (array, index) => ((Int16Array)array).GetValue(index);
+                case ArrowTypeId.Int32:
+                    return (array, index) => ((Int32Array)array).GetValue(index);
+                case ArrowTypeId.Int64:
+                    return (array, index) => ((Int64Array)array).GetValue(index);
+                case ArrowTypeId.String:
+                    return (array, index) => ((StringArray)array).GetString(index);
+#if NET6_0_OR_GREATER
+                case ArrowTypeId.Time32:
+                    return (array, index) => ((Time32Array)array).GetTime(index);
+                case ArrowTypeId.Time64:
+                    return (array, index) => ((Time64Array)array).GetTime(index);
+#else
+                case ArrowTypeId.Time32:
+                    Time32Type time32Type = (Time32Type)arrayType;
+                    switch (time32Type.Unit)
+                    {
+                        case TimeUnit.Second:
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromSeconds(((Time32Array)array).GetValue(index)!.Value);
+                        case TimeUnit.Millisecond:
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromMilliseconds(((Time32Array)array).GetValue(index)!.Value);
+                        default:
+                            throw new InvalidDataException("Unsupported time unit for Time32Type");
+                    }
+                case ArrowTypeId.Time64:
+                    Time64Type time64Type = (Time64Type)arrayType;
+                    switch (time64Type.Unit)
+                    {
+                        case TimeUnit.Microsecond:
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetValue(index)!.Value * 10);
+                        case TimeUnit.Nanosecond:
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetValue(index)!.Value / 100);
+                        default:
+                            throw new InvalidDataException("Unsupported time unit for Time64Type");
+                    }
+#endif
+                case ArrowTypeId.Timestamp:
+                    return (array, index) => ((TimestampArray)array).GetTimestamp(index);
+                case ArrowTypeId.UInt8:
+                    return (array, index) => ((UInt8Array)array).GetValue(index);
+                case ArrowTypeId.UInt16:
+                    return (array, index) => ((UInt16Array)array).GetValue(index);
+                case ArrowTypeId.UInt32:
+                    return (array, index) => ((UInt32Array)array).GetValue(index);
+                case ArrowTypeId.UInt64:
+                    return (array, index) => ((UInt64Array)array).GetValue(index);
+                case ArrowTypeId.Interval:
+                    IntervalType intervalType = (IntervalType)arrayType;
+                    switch (intervalType.Unit)
+                    {
+                        case IntervalUnit.DayTime:
+                            return (array, index) => ((DayTimeIntervalArray)array).GetValue(index);
+                        case IntervalUnit.MonthDayNanosecond:
+                            return (array, index) => ((MonthDayNanosecondIntervalArray)array).GetValue(index);
+                        case IntervalUnit.YearMonth:
+                            return (array, index) => ((YearMonthIntervalArray)array).GetValue(index);
+                        default:
+                            throw new NotSupportedException($"Unsupported interval unit: {intervalType.Unit}");
+                    }
+                case ArrowTypeId.Binary:
+                    return (array, index) => array.IsNull(index) ? null : ((BinaryArray)array).GetBytes(index).ToArray();
+                case ArrowTypeId.List:
+                    return (array, index) => ((ListArray)array).GetSlicedValues(index);
+                case ArrowTypeId.Struct:
+                    return (array, index) => SerializeToJson((StructArray)array, index);
 
                     // not covered:
                     // -- map array
@@ -133,7 +265,7 @@ namespace Apache.Arrow.Adbc.Extensions
                     // -- union array
             }
 
-            return null;
+            throw new NotSupportedException($"Unsupported ArrowTypeId: {arrayType.TypeId}");
         }
 
         /// <summary>

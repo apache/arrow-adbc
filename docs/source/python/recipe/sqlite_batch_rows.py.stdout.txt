@@ -1,0 +1,2 @@
+[SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY
+val: string

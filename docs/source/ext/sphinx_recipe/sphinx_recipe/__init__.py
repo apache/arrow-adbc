@@ -15,13 +15,22 @@
 # specific language governing permissions and limitations
 # under the License.
 
-"""A directive for code recipes with a literate programming style."""
+"""A directive for code recipes with a literate-like programming style.
 
-import typing
+1. Write code recipes as normal, self-contained source files.
+2. Add comments for prose containing reStructuredText markup.
+3. Use the ``recipe`` directive to include the code in your Sphinx
+   documentation. The directive will parse out the prose and render it as
+   actual documentation, with the code blocks interspersed.
+
+Effectively, this turns the code "inside out": code with embedded prose
+comments will become prose with embedded code blocks.  The actual code remains
+valid code and can be tested and run like usual.
+"""
+
 from pathlib import Path
 
 import docutils
-from docutils.parsers.rst import directives
 from docutils.statemachine import StringList
 from sphinx.util.docutils import SphinxDirective
 from sphinx.util.nodes import nested_parse_with_titles
@@ -29,120 +38,40 @@ from sphinx.util.typing import OptionSpec
 
 __all__ = ["setup"]
 
-
-class SourceLine(typing.NamedTuple):
-    content: str
-    lineno: int
-
-
-class SourceFragment(typing.NamedTuple):
-    kind: str
-    lines: list[SourceLine]
-
-
-PREAMBLE = "Recipe source: `{name} <{url}>`_"
+from . import parser
 
 
 class RecipeDirective(SphinxDirective):
     has_content = False
     required_arguments = 1
     optional_arguments = 0
-    option_spec: OptionSpec = {
-        "language": directives.unchanged_required,
-        "prose-prefix": directives.unchanged_required,
-    }
+    option_spec: OptionSpec = {}
 
     @staticmethod
-    def default_prose_prefix(language: str) -> str:
-        return {
-            "cpp": "///",
-            "go": "///",
-            "python": "#:",
-        }.get(language, "#:")
+    def source_language(filename: str) -> parser.SourceSyntax:
+        path = Path(filename)
+        language = parser.LANGUAGES.get(path.suffix)
+        if not language:
+            raise ValueError(f"Unknown language for file {filename}")
+        return language
 
     def run(self):
         rel_filename, filename = self.env.relfn2path(self.arguments[0])
+        # Ask Sphinx to rebuild when either the recipe or the directive are changed
         self.env.note_dependency(rel_filename)
         self.env.note_dependency(__file__)
 
-        language = self.options.get("language", "python")
-        prefix = self.options.get("prose-prefix", self.default_prose_prefix(language))
-
-        # --- Split the source into runs of prose or code
-
-        fragments = []
-
-        fragment = []
-        fragment_type = None
-        state = "before"
-        lineno = 1
-        for line in open(filename):
-            if state == "before":
-                if "RECIPE STARTS HERE" in line:
-                    state = "reading"
-            elif state == "reading":
-                if line.strip().startswith(prefix):
-                    line_type = "prose"
-                    # Remove prefix and next whitespace
-                    line = line.lstrip()[len(prefix) + 1 :]
-                else:
-                    line_type = "code"
-
-                if line_type != fragment_type:
-                    if fragment:
-                        fragments.append(
-                            SourceFragment(kind=fragment_type, lines=fragment)
-                        )
-                        fragment = []
-                    fragment_type = line_type
-
-                # Skip blank code lines
-                if line_type != "code" or line.strip():
-                    # Remove trailing newline
-                    fragment.append(SourceLine(content=line[:-1], lineno=lineno))
-
-            lineno += 1
-
-        if fragment:
-            fragments.append(SourceFragment(kind=fragment_type, lines=fragment))
-
-        # --- Generate the final reST as a whole and parse it
-        # That way, section hierarchy works properly
-
-        generated_lines = []
-
-        # Link to the source on GitHub
+        syntax = self.source_language(filename)
         repo_url_template = self.env.config.recipe_repo_url_template
-        if repo_url_template is not None:
-            repo_url = repo_url_template.format(rel_filename=rel_filename)
-            generated_lines.append(
-                PREAMBLE.format(
-                    name=Path(rel_filename).name,
-                    url=repo_url,
-                )
+
+        with open(filename) as source:
+            generated_lines = parser.parse_recipe_to_rest(
+                source,
+                filename=self.arguments[0],
+                rel_filename=rel_filename,
+                syntax=syntax,
+                repo_url_template=repo_url_template,
             )
-
-        # Paragraph break
-        generated_lines.append("")
-
-        for fragment in fragments:
-            if fragment.kind == "prose":
-                generated_lines.extend([line.content for line in fragment.lines])
-                generated_lines.append("")
-            elif fragment.kind == "code":
-                line_min = fragment.lines[0].lineno
-                line_max = fragment.lines[-1].lineno
-                lines = [
-                    f".. literalinclude:: {self.arguments[0]}",
-                    f"   :language: {language}",
-                    "   :linenos:",
-                    "   :lineno-match:",
-                    f"   :lines: {line_min}-{line_max}",
-                    "",
-                ]
-                generated_lines.extend(lines)
-            else:
-                raise RuntimeError("Unknown fragment kind")
 
         parsed = docutils.nodes.Element()
         nested_parse_with_titles(

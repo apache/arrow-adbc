@@ -36,7 +36,7 @@ Dependencies: libpq itself. This can be installed with your favorite
 package manager; however, you may need to set the `PKG_CONFIG_PATH`
 environment variable such that `pkg-config` can find libpq.
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for details.
 
 ## Testing
 

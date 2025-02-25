@@ -57,7 +57,7 @@ or an instance of a ``javax.sql.DataSource`` as the
       .. code-block:: java
 
          final Map<String, Object> parameters = new HashMap<>();
-         parameters.put(AdbcDriver.PARAM_URL, "jdbc:postgresql://localhost:5432/postgres");
+         AdbcDriver.PARAM_URI.set(parameters, "jdbc:postgresql://localhost:5432/postgres");
          AdbcDatabase db = new JdbcDriver(allocator).open(parameters);
 
 Supported Features

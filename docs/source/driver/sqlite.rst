@@ -104,6 +104,8 @@ shared across all connections.
          with adbc_driver_sqlite.dbapi.connect() as conn:
              pass
 
+      For more examples, see :doc:`../python/recipe/sqlite`.
+
    .. tab-item:: R
       :sync: r
 
