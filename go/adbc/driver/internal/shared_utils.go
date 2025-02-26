@@ -694,6 +694,10 @@ const (
 )
 
 func ToXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
+	if dt == nil {
+		return XdbcDataType_XDBC_UNKNOWN_TYPE
+	}
+
 	switch dt.ID() {
 	case arrow.EXTENSION:
 		return ToXdbcDataType(dt.(arrow.ExtensionType).StorageType())

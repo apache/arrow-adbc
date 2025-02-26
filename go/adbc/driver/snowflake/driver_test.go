@@ -2294,3 +2294,70 @@ ORDER BY start_time;
 	suite.False(rdr.Next())
 	suite.Require().NoError(rdr.Err())
 }
+
+func (suite *SnowflakeTests) TestGetObjectsVector() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "MYVECTORTABLE"))
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`CREATE OR REPLACE TABLE myvectortable (
+		a VECTOR(float, 3), b VECTOR(float, 3))`))
+	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO myvectortable
+		SELECT [1.1,2.2,3]::VECTOR(FLOAT,3), [1,1,1]::VECTOR(FLOAT,3)`))
+	_, err = suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	tableName := "MYVECTORTABLE"
+	rdr, err := suite.cnxn.GetObjects(suite.ctx, adbc.ObjectDepthColumns, nil, nil, &tableName, nil, nil)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.Require().True(rdr.Next())
+	rec := rdr.Record()
+
+	for i := 0; int64(i) < rec.NumRows(); i++ {
+		// list<db_schema_schema>
+		dbSchemasList := rec.Column(1).(*array.List)
+		// db_schema_schema (struct)
+		dbSchemas := dbSchemasList.ListValues().(*array.Struct)
+		// list<table_schema>
+		dbSchemaTablesList := dbSchemas.Field(1).(*array.List)
+		// table_schema (struct)
+		dbSchemaTables := dbSchemaTablesList.ListValues().(*array.Struct)
+		// list<column_schema>
+		tableColumnsList := dbSchemaTables.Field(2).(*array.List)
+		// column_schema (struct)
+		tableColumns := tableColumnsList.ListValues().(*array.Struct)
+
+		start, end := dbSchemasList.ValueOffsets(i)
+		for j := start; j < end; j++ {
+			schemaName := dbSchemas.Field(0).(*array.String).Value(int(j))
+			if !strings.EqualFold(schemaName, suite.Quirks.DBSchema()) {
+				continue
+			}
+			tblStart, tblEnd := dbSchemaTablesList.ValueOffsets(int(j))
+			for k := tblStart; k < tblEnd; k++ {
+				tblName := dbSchemaTables.Field(0).(*array.String).Value(int(k))
+				if !strings.EqualFold(tblName, tableName) {
+					continue
+				}
+
+				colStart, colEnd := tableColumnsList.ValueOffsets(int(k))
+				suite.EqualValues(2, colEnd-colStart)
+
+				for l := colStart; l < colEnd; l++ {
+					colName := tableColumns.Field(0).(*array.String).Value(int(l))
+					ordinalPos := tableColumns.Field(1).(*array.Int32).Value(int(l))
+					typeName := tableColumns.Field(4).(*array.String).Value(int(l))
+					switch ordinalPos {
+					case 1:
+						suite.Equal("A", colName)
+					case 2:
+						suite.Equal("B", colName)
+					}
+
+					suite.Equal("VECTOR", typeName)
+				}
+			}
+		}
+	}
+}
