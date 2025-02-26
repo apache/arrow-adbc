@@ -77,13 +77,22 @@ type driverImpl struct {
 	driverbase.DriverImplBase
 }
 
+type Driver interface {
+	adbc.Driver
+	NewDatabaseWithOptions(map[string]string, ...grpc.DialOption) (adbc.Database, error)
+}
+
 // NewDriver creates a new Flight SQL driver using the given Arrow allocator.
-func NewDriver(alloc memory.Allocator) adbc.Driver {
+func NewDriver(alloc memory.Allocator) Driver {
 	info := driverbase.DefaultDriverInfo("Flight SQL")
-	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
+	return &driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)}
 }
 
 // NewDatabase creates a new Flight SQL database using the given options.
+//
+// Additional grpc client options can can be passed as grpc.DialOption.
+// This enables the use of additional grpc client options not directly exposed by the options map.
+// such as grpc.WithStatsHandler() for enabling various telemetry handlers.
 func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, userDialOpts ...grpc.DialOption) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 	uri, ok := opts[adbc.OptionKeyURI]
