@@ -52,7 +52,12 @@ adbc_allocate_error <- function(shelter = NULL, use_legacy_error = NULL) {
 
 stop_for_error <- function(status, error) {
   if (!identical(status, 0L)) {
-    error <- .Call(RAdbcErrorProxy, error)
+    if (inherits(error, "adbc_error")) {
+      error <- .Call(RAdbcErrorProxy, error)
+    } else {
+      error <- list()
+    }
+
     error$status <- status
     error$status_code_message <- .Call(RAdbcStatusCodeMessage, status)
     if (!is.null(error$message)) {
@@ -76,6 +81,22 @@ stop_for_error <- function(status, error) {
     cnd$error <- error
 
     stop(cnd)
+  }
+}
+
+adbc_error_message <- function(status, error) {
+  if (!identical(status, 0L)) {
+    if (inherits(error, "adbc_error")) {
+      error <- .Call(RAdbcErrorProxy, error)
+    } else {
+      error <- list()
+    }
+
+    error$status <- status
+    error$status_code_message <- .Call(RAdbcStatusCodeMessage, status)
+    if (!is.null(error$message)) error$message else error$status_code_message
+  } else {
+    "OK"
   }
 }
 
