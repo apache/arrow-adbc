@@ -78,8 +78,6 @@ type driverImpl struct {
 }
 
 // NewDriver creates a new Flight SQL driver using the given Arrow allocator.
-//
-// It optionally accepts gRPC dial options to be used when connecting to the
 func NewDriver(alloc memory.Allocator) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("Flight SQL")
 	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
