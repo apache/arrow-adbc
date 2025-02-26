@@ -15,12 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <string>
+
 #include <arrow-adbc/adbc.h>
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
+
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 

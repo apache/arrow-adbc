@@ -19,6 +19,8 @@
 
 #include <charconv>
 #include <memory>
+#include <string>
+#include <vector>
 
 #define ADBC_FRAMEWORK_USE_FMT
 #include "driver/framework/status.h"

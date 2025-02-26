@@ -18,6 +18,9 @@
 #include "adbc_validation.h"
 
 #include <cstring>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <arrow-adbc/adbc.h>
 #include <gmock/gmock.h>

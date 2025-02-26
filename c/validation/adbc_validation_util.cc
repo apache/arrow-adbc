@@ -16,6 +16,11 @@
 // under the License.
 
 #include "adbc_validation_util.h"
+
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <arrow-adbc/adbc.h>
 
 #include "adbc_validation.h"

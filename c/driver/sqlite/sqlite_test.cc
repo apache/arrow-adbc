@@ -20,6 +20,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include <arrow-adbc/adbc.h>
 #include <gmock/gmock-matchers.h>
