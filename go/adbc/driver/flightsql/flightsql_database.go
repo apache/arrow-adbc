@@ -338,7 +338,7 @@ func (d *databaseImpl) Close() error {
 	return nil
 }
 
-func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware, userGrpcDialOpts ...grpc.DialOption) (*flightsql.Client, error) {
+func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware) (*flightsql.Client, error) {
 	middleware := []flight.ClientMiddleware{
 		{
 			Unary:  makeUnaryLoggingInterceptor(d.Logger),
@@ -372,7 +372,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	dv, _ := d.DatabaseImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	driverVersion := dv.(string)
 	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
-	dialOpts = append(dialOpts, userGrpcDialOpts...)
+	dialOpts = append(dialOpts, d.userDialOpts...)
 
 	d.Logger.DebugContext(ctx, "new client", "location", loc)
 	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)
@@ -416,7 +416,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		cookies = flight.NewCookieMiddleware()
 	}
 
-	cl, err := getFlightClient(ctx, d.uri.String(), d, authMiddle, cookies, d.userDialOpts...)
+	cl, err := getFlightClient(ctx, d.uri.String(), d, authMiddle, cookies)
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +437,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			}
 			// use the existing auth token if there is one
 			cl, err := getFlightClient(context.Background(), uri, d,
-				&bearerAuthMiddleware{hdrs: authMiddle.hdrs.Copy()}, cookieMiddleware, d.userDialOpts...)
+				&bearerAuthMiddleware{hdrs: authMiddle.hdrs.Copy()}, cookieMiddleware)
 			if err != nil {
 				return nil, err
 			}
