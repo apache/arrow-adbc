@@ -85,11 +85,13 @@ function(arrow_install_cmake_package PACKAGE_NAME EXPORT_NAME)
   set(INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PACKAGE_NAME}")
   install(FILES "${BUILT_CONFIG_CMAKE}" "${BUILT_CONFIG_VERSION_CMAKE}"
           DESTINATION "${INSTALL_CMAKEDIR}")
-  set(TARGETS_CMAKE "${PACKAGE_NAME}Targets.cmake")
-  install(EXPORT ${EXPORT_NAME}
-          DESTINATION "${INSTALL_CMAKEDIR}"
-          NAMESPACE "${PACKAGE_NAME}::"
-          FILE "${TARGETS_CMAKE}")
+  if(EXPORT_NAME)
+    set(TARGETS_CMAKE "${PACKAGE_NAME}Targets.cmake")
+    install(EXPORT ${EXPORT_NAME}
+            DESTINATION "${INSTALL_CMAKEDIR}"
+            NAMESPACE "${PACKAGE_NAME}::"
+            FILE "${TARGETS_CMAKE}")
+  endif()
 endfunction()
 
 # \arg OUTPUTS list to append built targets to

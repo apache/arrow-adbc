@@ -26,6 +26,8 @@ add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/snowflake/"
            utils.c
            BUILD_TAGS
            driverlib
+           CMAKE_PACKAGE_NAME
+           AdbcDriverSnowflake
            PKG_CONFIG_NAME
            adbc-driver-snowflake
            SHARED_LINK_FLAGS
