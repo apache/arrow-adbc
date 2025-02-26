@@ -26,6 +26,8 @@ add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
            utils.c
            BUILD_TAGS
            driverlib
+           CMAKE_PACKAGE_NAME
+           AdbcDriverFlightSQL
            PKG_CONFIG_NAME
            adbc-driver-flightsql
            SHARED_LINK_FLAGS

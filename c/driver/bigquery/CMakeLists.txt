@@ -26,6 +26,8 @@ add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/bigquery/"
            utils.c
            BUILD_TAGS
            driverlib
+           CMAKE_PACKAGE_NAME
+           AdbcDriverBigQuery
            PKG_CONFIG_NAME
            adbc-driver-bigquery
            SHARED_LINK_FLAGS
