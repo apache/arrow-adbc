@@ -18,16 +18,15 @@
 using System;
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tests.Metadata;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 {
-    public class DriverTests : Common.DriverTests<ApacheTestConfiguration, HiveServer2TestEnvironmentExtended>
+    public class DriverTests : Common.DriverTests<ApacheTestConfiguration, HiveServer2TestEnvironment>
     {
         public DriverTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new HiveServer2TestEnvironmentExtended.Factory())
+            : base(outputHelper, new HiveServer2TestEnvironment.Factory())
         {
         }
 

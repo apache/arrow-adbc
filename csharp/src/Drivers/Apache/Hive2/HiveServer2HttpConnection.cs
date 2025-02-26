@@ -252,9 +252,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case (short)ColumnTypeId.DECIMAL:
                 case (short)ColumnTypeId.NUMERIC:
                     {
+                        // Precision/scale is provide in the API call.
                         SqlDecimalParserResult result = SqlTypeNameParser<SqlDecimalParserResult>.Parse(typeName, colType);
-                        tableInfo?.Precision.Add(result.Precision);
-                        tableInfo?.Scale.Add((short)result.Scale);
+                        tableInfo?.Precision.Add(columnSize);
+                        tableInfo?.Scale.Add((short)decimalDigits);
                         tableInfo?.BaseTypeName.Add(result.BaseTypeName);
                         break;
                     }
@@ -266,8 +267,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case (short)ColumnTypeId.LONGNVARCHAR:
                 case (short)ColumnTypeId.NVARCHAR:
                     {
+                        // Precision is provide in the API call.
                         SqlCharVarcharParserResult result = SqlTypeNameParser<SqlCharVarcharParserResult>.Parse(typeName, colType);
-                        tableInfo?.Precision.Add(result.ColumnSize != -1 ? result.ColumnSize : columnSize);
+                        tableInfo?.Precision.Add(columnSize);
                         tableInfo?.Scale.Add(null);
                         tableInfo?.BaseTypeName.Add(result.BaseTypeName);
                         break;

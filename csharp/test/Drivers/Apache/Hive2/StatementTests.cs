@@ -15,34 +15,17 @@
 * limitations under the License.
 */
 
-using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 {
-    public class ClientTests : Common.ClientTests<ApacheTestConfiguration, HiveServer2TestEnvironment>
+    public class StatementTests : Common.StatementTests<ApacheTestConfiguration, HiveServer2TestEnvironment>
     {
-        public ClientTests(ITestOutputHelper? outputHelper)
+        public StatementTests(ITestOutputHelper? outputHelper)
             : base(outputHelper, new HiveServer2TestEnvironment.Factory())
         {
-        }
-
-        protected override IReadOnlyList<int> GetUpdateExpectedResults()
-        {
-            int affectedRows = ValidateAffectedRows ? 1 : -1;
-            return GetUpdateExpectedResults(affectedRows);
-        }
-
-        internal static IReadOnlyList<int> GetUpdateExpectedResults(int affectedRows)
-        {
-            return
-                [
-                    -1, // DROP TABLE
-                    -1, // CREATE TABLE
-                    affectedRows,  // INSERT
-                    affectedRows,  // INSERT
-                    affectedRows,  // INSERT
-                ];
         }
     }
 }

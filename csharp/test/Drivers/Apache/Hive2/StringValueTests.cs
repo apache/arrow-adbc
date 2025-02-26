@@ -15,34 +15,29 @@
 * limitations under the License.
 */
 
-using System.Collections.Generic;
+using System.Threading.Tasks;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 {
-    public class ClientTests : Common.ClientTests<ApacheTestConfiguration, HiveServer2TestEnvironment>
+    public class StringValueTests(ITestOutputHelper output)
+        : Common.StringValueTests<ApacheTestConfiguration, HiveServer2TestEnvironment>(output, new HiveServer2TestEnvironment.Factory())
     {
-        public ClientTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new HiveServer2TestEnvironment.Factory())
+        [SkippableTheory]
+        [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "Error while compiling statement", "ParseException", "extraneous input 'who' expecting EOF near '<EOF>'" }, "42000")]
+        protected async Task TestVarcharExceptionDataImpala(string value, string[] expectedTexts, string? expectedSqlState)
         {
+            await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
         }
 
-        protected override IReadOnlyList<int> GetUpdateExpectedResults()
+        [SkippableTheory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" Leading and trailing spaces ")]
+        internal override Task TestCharData(string? value)
         {
-            int affectedRows = ValidateAffectedRows ? 1 : -1;
-            return GetUpdateExpectedResults(affectedRows);
-        }
-
-        internal static IReadOnlyList<int> GetUpdateExpectedResults(int affectedRows)
-        {
-            return
-                [
-                    -1, // DROP TABLE
-                    -1, // CREATE TABLE
-                    affectedRows,  // INSERT
-                    affectedRows,  // INSERT
-                    affectedRows,  // INSERT
-                ];
+            return base.TestCharData(value);
         }
     }
 }

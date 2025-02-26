@@ -30,6 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal HiveServer2Statement(HiveServer2Connection connection)
         {
             Connection = connection;
+            ValidateOptions(connection.Properties);
         }
 
         protected virtual void SetStatementProperties(TExecuteStatementReq statement)

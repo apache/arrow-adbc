@@ -336,6 +336,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override string BaseTypeName => "CHAR";
 
+        private const int CharColumnSizeDefault = 255;
+
         // Allow no precision definition to be optional
         private static readonly Regex s_expression = new(
             @"^\s*(?<typeName>((CHAR)|(NCHAR)))(\s*\(\s*(?<precision>\d{1,10})\s*\))?\s*$",
@@ -350,7 +352,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             int precision = int.TryParse(precisionGroup.Value, out int candidatePrecision)
                 ? candidatePrecision
-                : -1; // precision not found
+                : CharColumnSizeDefault;
             return new SqlCharVarcharParserResult(input, BaseTypeName, precision);
         }
     }
