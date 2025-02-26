@@ -16,13 +16,14 @@
 */
 
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal class ImpalaStatement : HiveServer2Statement
     {
-        internal ImpalaStatement(ImpalaConnection connection)
-            : base(connection)
+        internal ImpalaStatement(ImpalaConnection connection, ActivityTrace trace)
+            : base(connection, trace)
         {
             ValidateOptions(connection.Properties);
         }
