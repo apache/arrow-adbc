@@ -39,6 +39,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"golang.org/x/exp/maps"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -77,12 +78,15 @@ type driverImpl struct {
 }
 
 // NewDriver creates a new Flight SQL driver using the given Arrow allocator.
+//
+// It optionally accepts gRPC dial options to be used when connecting to the
 func NewDriver(alloc memory.Allocator) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("Flight SQL")
 	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
 }
 
-func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+// NewDatabase creates a new Flight SQL database using the given options.
+func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, userDialOpts ...grpc.DialOption) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 	uri, ok := opts[adbc.OptionKeyURI]
 	if !ok {
@@ -99,7 +103,8 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 			// Match gRPC default
 			connectTimeout: time.Second * 20,
 		},
-		hdrs: make(metadata.MD),
+		hdrs:         make(metadata.MD),
+		userDialOpts: userDialOpts,
 	}
 
 	var err error
@@ -117,4 +122,9 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	}
 
 	return driverbase.NewDatabase(db), nil
+}
+
+// NewDatabase creates a new Flight SQL database using the given options.
+func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithOptions(opts)
 }
