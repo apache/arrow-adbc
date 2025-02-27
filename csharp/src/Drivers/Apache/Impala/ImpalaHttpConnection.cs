@@ -102,7 +102,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(ImpalaParameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(uri, hostName, path, port)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName)
             };
         }
 
@@ -135,7 +135,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
             HttpClientHandler httpClientHandler = NewHttpClientHandler();
@@ -213,5 +213,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override ImpalaServerType ServerType => ImpalaServerType.Http;
+
+        protected override int ColumnMapIndexOffset => 0;
     }
 }

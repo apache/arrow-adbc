@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -34,7 +33,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// </summary>
     public abstract class BinaryBooleanValueTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : TestConfiguration
-        where TEnv : HiveServer2TestEnvironment<TConfig>
+        where TEnv : CommonTestEnvironment<TConfig>
     {
         public BinaryBooleanValueTests(ITestOutputHelper output, TestEnvironment<TConfig>.Factory<TEnv> testEnvFactory)
             : base(output, testEnvFactory) { }
@@ -106,7 +105,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// </summary>
         public virtual async Task TestNullData(string projectionClause)
         {
-            string selectStatement = $"SELECT {projectionClause};";
+            string selectStatement = $"SELECT {projectionClause}";
             // Note: by default, this returns as String type, not NULL type.
             await SelectAndValidateValuesAsync(selectStatement, (object?)null, 1);
         }

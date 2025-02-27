@@ -21,7 +21,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -45,7 +44,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     [Collection("TableCreateTestCollection")]
     public abstract class DriverTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : ApacheTestConfiguration
-        where TEnv : HiveServer2TestEnvironment<TConfig>
+        where TEnv : CommonTestEnvironment<TConfig>
     {
         /// <summary>
         /// Supported data types as a subset of <see cref="ColumnTypeId"/>
@@ -445,7 +444,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             string schemaName = schema.SchemaName;
             string catalogFormatted = string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".";
             string fullTableName = $"{catalogFormatted}{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
-            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTableAsync(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)").Result;
+            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTableAsync(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)", OutputHelper).Result;
 
             using IArrowArrayStream stream = Connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,

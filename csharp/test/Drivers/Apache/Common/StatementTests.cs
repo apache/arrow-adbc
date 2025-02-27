@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
 using Xunit.Abstractions;
@@ -36,7 +35,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     [TestCaseOrderer("Apache.Arrow.Adbc.Tests.Xunit.TestOrderer", "Apache.Arrow.Adbc.Tests")]
     public abstract class StatementTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : ApacheTestConfiguration
-        where TEnv : HiveServer2TestEnvironment<TConfig>
+        where TEnv : CommonTestEnvironment<TConfig>
     {
         private static List<string> DefaultTableTypes => ["TABLE", "VIEW"];
 

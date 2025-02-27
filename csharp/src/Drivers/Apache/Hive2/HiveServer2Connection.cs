@@ -609,8 +609,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
                 StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
 
+                HashSet<string> distinctTableTypes = new HashSet<string>(tableTypes);
+
                 StringArray.Builder tableTypesBuilder = new StringArray.Builder();
-                tableTypesBuilder.AppendRange(tableTypes);
+                tableTypesBuilder.AppendRange(distinctTableTypes);
 
                 IArrowArray[] dataArrays = new IArrowArray[]
                 {
@@ -722,11 +724,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return fileVersionInfo.ProductVersion ?? GetProductVersionDefault();
         }
 
-        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
+        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName)
         {
             // Uri property takes precedent.
             if (!string.IsNullOrWhiteSpace(uri))
             {
+                if (!string.IsNullOrWhiteSpace(hostName))
+                {
+                    throw new ArgumentOutOfRangeException(
+                        AdbcOptions.Uri,
+                        hostOptionName,
+                        $"Conflicting server arguments. Please provide only one of the following options: '{Adbc.AdbcOptions.Uri}' or '{hostOptionName}'.");
+                }
+
                 var uriValue = new Uri(uri);
                 if (uriValue.Scheme != Uri.UriSchemeHttp && uriValue.Scheme != Uri.UriSchemeHttps)
                     throw new ArgumentOutOfRangeException(
@@ -752,10 +762,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return baseAddress;
         }
 
-        // Note data source's Position may be one-indexed or zero-indexed
         protected IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
-           .Select(t => new { Index = t.Position - PositionRequiredOffset, t.ColumnName })
+           .Select(t => new { Index = t.Position - ColumnMapIndexOffset, t.ColumnName })
            .ToDictionary(t => t.ColumnName, t => t.Index);
+
+        protected abstract int ColumnMapIndexOffset { get; }
 
         protected abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);

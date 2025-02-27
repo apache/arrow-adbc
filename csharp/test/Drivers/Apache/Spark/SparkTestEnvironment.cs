@@ -22,12 +22,12 @@ using System.Text;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 {
-    public class SparkTestEnvironment : HiveServer2TestEnvironment<SparkTestConfiguration>
+    public class SparkTestEnvironment : CommonTestEnvironment<SparkTestConfiguration>
     {
         public class Factory : Factory<SparkTestEnvironment>
         {
