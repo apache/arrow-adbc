@@ -338,7 +338,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private const int CharColumnSizeDefault = 255;
 
-        // Allow no precision definition to be optional
+        // Allow precision definition to be optional
         private static readonly Regex s_expression = new(
             @"^\s*(?<typeName>((CHAR)|(NCHAR)))(\s*\(\s*(?<precision>\d{1,10})\s*\))?\s*$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
