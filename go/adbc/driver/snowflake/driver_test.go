@@ -30,7 +30,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math"
-	"net"
+	"net/http"
 	"os"
 	"runtime"
 	"strconv"
@@ -351,27 +351,32 @@ func (suite *SnowflakeTests) TearDownTest() {
 	suite.driver = nil
 }
 
+type customTransport struct {
+	base   *http.Transport
+	called bool
+}
+
+func (t *customTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	t.called = true
+	return t.base.RoundTrip(r)
+}
+
 func (suite *SnowflakeTests) TestNewDatabaseWithOptions() {
 	t := suite.T()
 
-	drv := suite.Quirks.SetupDriver(suite.T()).(driver.Driver)
+	drv := suite.Quirks.SetupDriver(t).(driver.Driver)
 
-	t.Run("WithTransport", func(t *testing.T) {
-		var dialed bool
-		transport := gosnowflake.SnowflakeTransport
-		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			dialed = true
-			return (&net.Dialer{}).DialContext(ctx, network, addr)
-		}
+	t.Run("WithTransporter", func(t *testing.T) {
+		transport := &customTransport{base: gosnowflake.SnowflakeTransport}
 		db, err := drv.NewDatabaseWithOptions(suite.Quirks.DatabaseOptions(),
 			driver.WithTransporter(transport))
 		suite.NoError(err)
 		suite.NotNil(db)
 		cnxn, err := db.Open(suite.ctx)
 		suite.NoError(err)
-		suite.True(dialed) // ensure that the custom dial function was called
 		suite.NoError(db.Close())
 		suite.NoError(cnxn.Close())
+		suite.True(transport.called)
 	})
 }
 
