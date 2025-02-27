@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
@@ -22,9 +23,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     /// <summary>
     /// Configuration settings for working with BigQuery.
     /// </summary>
-    internal class BigQueryTestConfiguration : TestConfiguration
+    internal class BigQueryTestConfiguration : MultiEnvironmentTestConfiguration<BigQueryTestEnvironment>
     {
-        public BigQueryTestConfiguration()
+    }
+
+    /// <summary>
+    /// Configuration environments for working with BigQuery.
+    /// </summary>
+    internal class BigQueryTestEnvironment : TestConfiguration
+    {
+        public BigQueryTestEnvironment()
         {
             AllowLargeResults = false;
             IncludeTableConstraints = true;

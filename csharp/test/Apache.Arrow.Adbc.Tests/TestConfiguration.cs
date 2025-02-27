@@ -26,6 +26,11 @@ namespace Apache.Arrow.Adbc.Tests
     public abstract class TestConfiguration : ICloneable
     {
         /// <summary>
+        /// Optional. The name of the environment.
+        /// </summary>
+        public string? Name { get; set; }
+
+        /// <summary>
         /// The query to run.
         /// </summary>
         [JsonPropertyName("query")]
