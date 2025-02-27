@@ -724,11 +724,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return fileVersionInfo.ProductVersion ?? GetProductVersionDefault();
         }
 
-        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port)
+        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName)
         {
             // Uri property takes precedent.
             if (!string.IsNullOrWhiteSpace(uri))
             {
+                if (!string.IsNullOrWhiteSpace(hostName))
+                {
+                    throw new ArgumentOutOfRangeException(
+                        AdbcOptions.Uri,
+                        hostOptionName,
+                        $"Conflicting server arguments. Please provide only one of the following options: '{Adbc.AdbcOptions.Uri}' or '{hostOptionName}'.");
+                }
+
                 var uriValue = new Uri(uri);
                 if (uriValue.Scheme != Uri.UriSchemeHttp && uriValue.Scheme != Uri.UriSchemeHttps)
                     throw new ArgumentOutOfRangeException(

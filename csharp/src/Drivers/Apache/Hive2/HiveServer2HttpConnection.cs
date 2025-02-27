@@ -85,7 +85,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case HiveServer2AuthType.Empty:
                     if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                         throw new ArgumentException(
-                            $"Parameters must include valid authentiation settings. Please provide '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.",
+                            $"Parameters must include valid authentication settings. Please provide '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.",
                             nameof(Properties));
                     break;
                 default:
@@ -118,7 +118,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(HiveServer2Parameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(uri, hostName, path, port)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName)
             };
         }
 
@@ -142,12 +142,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return new HiveServer2Statement(this);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema)
-        {
-            var reader = new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
-            reader.EnableBatchSizeStopCondition = false;
-            return reader;
-        }
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(
+                statement,
+                schema,
+                dataTypeConversion: statement.Connection.DataTypeConversion,
+                enableBatchSizeStopCondition: false);
 
         protected override TTransport CreateTransport()
         {
@@ -161,7 +160,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
             HttpClientHandler httpClientHandler = NewHttpClientHandler();
@@ -192,7 +191,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
                 {
-
                     if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowSelfSigned)) return false;
                     if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowHostnameMismatch)) return false;
 

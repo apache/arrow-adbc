@@ -31,7 +31,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.hive.host`      | Host name for the data source. Do not include scheme or port number. Example: `hiveserver.region.cloudapp.azure.com` |  |
 | `adbc.hive.port`      | The port number the data source listens on for a new connections. | `443` |
 | `adbc.hive.path`      | The URI path on the data source server. Example: `/hive2` | |
-| `uri`                  | The full URI that includes scheme, host, port and path. If set, this property takes precedence over `adbc.hive.host`, `adbc.hive.port` and `adbc.hive.path`. | |
+| `uri`                  | The full URI that includes scheme, host, port and path. Only one of options `uri` or `adbc.hive.host` can be provided. | |
 | `username`             | The user name used for basic authentication | |
 | `password`             | The password for the user name used for basic authentication. | |
 | `adbc.hive.data_type_conv` | Comma-separated list of data conversion options. Each option indicates the type of conversion to perform on data returned from the Hive server. <br><br>Allowed values: `none`, `scalar`. <br><br>Option `none` indicates there is no conversion from Hive type to native type (i.e., no conversion from String to Timestamp for Apache Hive over HTTP). Example `adbc.hive.conv_data_type=none`. <br><br>Option `scalar` will perform conversion (if necessary) from the Hive data type to corresponding Arrow data types for types `DATE/Date32/DateTime`, `DECIMAL/Decimal128/SqlDecimal`, and `TIMESTAMP/Timestamp/DateTimeOffset`. Example `adbc.hive.conv_data_type=scalar` | `scalar` |

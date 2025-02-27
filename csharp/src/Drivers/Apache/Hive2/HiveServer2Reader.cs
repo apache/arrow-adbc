@@ -58,7 +58,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private HiveServer2Statement? _statement;
         private readonly DataTypeConversion _dataTypeConversion;
         // Flag to enable/disable stopping reading based on batch size condition
-        private bool _enableBatchSizeStopCondition = true;
+        private readonly bool _enableBatchSizeStopCondition;
         private static readonly IReadOnlyDictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>> s_arrowStringConverters =
             new Dictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>>()
             {
@@ -75,17 +75,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion)
+            DataTypeConversion dataTypeConversion,
+            bool enableBatchSizeStopCondition = true)
         {
             _statement = statement;
             Schema = schema;
             _dataTypeConversion = dataTypeConversion;
-        }
-
-        public bool EnableBatchSizeStopCondition
-        {
-            get => _enableBatchSizeStopCondition;
-            set => _enableBatchSizeStopCondition = value;
+            _enableBatchSizeStopCondition = enableBatchSizeStopCondition;
         }
 
         public Schema Schema { get; }

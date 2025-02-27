@@ -24,15 +24,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         public static HiveServer2Connection NewConnection(IReadOnlyDictionary<string, string> properties)
         {
-            bool _ = properties.TryGetValue(HiveServer2Parameters.Type, out string? type);
-            bool __ = HiveServer2TypeParser.TryParse(type, out HiveServer2Type typeValue);
-            return typeValue switch
+            if (!properties.TryGetValue(HiveServer2Parameters.Type, out string? type))
             {
-                HiveServer2Type.Http => new HiveServer2HttpConnection(properties),
-                HiveServer2Type.Empty => throw new ArgumentException($"Required property '{HiveServer2Parameters.Type}' is missing. Supported types: {HiveServer2TypeParser.SupportedList}", nameof(properties)),
-                _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{HiveServer2Parameters.Type}'. Supported types: {HiveServer2TypeParser.SupportedList}"),
-            };
-        }
 
+                throw new ArgumentException($"Required property '{HiveServer2Parameters.Type}' is missing. Supported types: {HiveServer2TypeParser.SupportedList}", nameof(properties));
+            }
+            if (!HiveServer2TypeParser.TryParse(type, out HiveServer2Type typeValue))
+            {
+                throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{HiveServer2Parameters.Type}'. Supported types: {HiveServer2TypeParser.SupportedList}");
+            }
+            return new HiveServer2HttpConnection(properties);
+        }
     }
 }
