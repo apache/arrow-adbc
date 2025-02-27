@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Client;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
 using Xunit.Abstractions;
@@ -39,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     [Collection("TableCreateTestCollection")]
     public abstract class ClientTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : TestConfiguration
-        where TEnv : HiveServer2TestEnvironment<TConfig>
+        where TEnv : CommonTestEnvironment<TConfig>
     {
         public ClientTests(ITestOutputHelper? outputHelper, TestEnvironment<TConfig>.Factory<TEnv> testEnvFactory)
             : base(outputHelper, testEnvFactory)

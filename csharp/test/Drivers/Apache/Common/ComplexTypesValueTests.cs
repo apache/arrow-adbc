@@ -16,7 +16,6 @@
 */
 
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -30,7 +29,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// </summary>
     public abstract class ComplexTypesValueTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : TestConfiguration
-        where TEnv : HiveServer2TestEnvironment<TConfig>
+        where TEnv : CommonTestEnvironment<TConfig>
     {
         public ComplexTypesValueTests(ITestOutputHelper output, TestEnvironment<TConfig>.Factory<TEnv> testEnvFactory)
             : base(output, testEnvFactory) { }

@@ -85,7 +85,7 @@ namespace Apache.Arrow.Adbc.Tests
         {
             string tableName = NewTableName();
             string sqlUpdate = TestEnvironment.GetCreateTemporaryTableStatement(tableName, columns);
-            return await TemporaryTable.NewTemporaryTableAsync(statement, tableName, sqlUpdate);
+            return await TemporaryTable.NewTemporaryTableAsync(statement, tableName, sqlUpdate, OutputHelper);
         }
 
         /// <summary>
@@ -684,9 +684,10 @@ namespace Apache.Arrow.Adbc.Tests
             /// <param name="tableName">The name of temporary table to create.</param>
             /// <param name="sqlUpdate">The SQL query to create the table in the native SQL dialect.</param>
             /// <returns></returns>
-            public static async Task<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string tableName, string sqlUpdate)
+            public static async Task<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string tableName, string sqlUpdate, ITestOutputHelper? outputHelper = default)
             {
                 statement.SqlQuery = sqlUpdate;
+                outputHelper?.WriteLine(sqlUpdate);
                 await statement.ExecuteUpdateAsync();
                 return new TemporaryTable(statement, tableName);
             }

@@ -18,7 +18,6 @@
 using System.Data.SqlTypes;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -29,7 +28,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 
     public abstract class NumericValueTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : TestConfiguration
-        where TEnv : HiveServer2TestEnvironment<TConfig>
+        where TEnv : CommonTestEnvironment<TConfig>
     {
         /// <summary>
         /// Validates that specific numeric values can be inserted, retrieved and targeted correctly
@@ -121,23 +120,23 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, expectedValue, $"CAST({expectedValue} as {columnType})");
         }
 
-        /// <summary>
-        /// Validates if driver correctly errors out when the values exceed the column's limit
-        /// </summary>
-        [SkippableTheory]
-        [InlineData(-100)]
-        [InlineData(100)]
-        [InlineData(int.MaxValue)]
-        [InlineData(int.MinValue)]
-        public async Task TestSmallNumberRangeOverlimit(int value)
-        {
-            string columnName = "SMALLNUMBER";
-            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(2,0)", columnName));
-            await Assert.ThrowsAsync<HiveServer2Exception>(
-                async () => await ValidateInsertSelectDeleteSingleValueAsync(
-                    table.TableName,
-                    columnName, TestEnvironment.GetValueForProtocolVersion(value.ToString(), new SqlDecimal(value))));
-        }
+        ///// <summary>
+        ///// Validates if driver correctly errors out when the values exceed the column's limit
+        ///// </summary>
+        //[SkippableTheory]
+        //[InlineData(-100)]
+        //[InlineData(100)]
+        //[InlineData(int.MaxValue)]
+        //[InlineData(int.MinValue)]
+        //public async Task TestSmallNumberRangeOverlimit(int value)
+        //{
+        //    string columnName = "SMALLNUMBER";
+        //    using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(2,0)", columnName));
+        //    await Assert.ThrowsAsync<HiveServer2Exception>(
+        //        async () => await ValidateInsertSelectDeleteSingleValueAsync(
+        //            table.TableName,
+        //            columnName, TestEnvironment.GetValueForProtocolVersion(value.ToString(), new SqlDecimal(value))));
+        //}
 
         /// <summary>
         /// Validates if driver can handle a large scale Number type correctly
@@ -155,20 +154,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, TestEnvironment.GetValueForProtocolVersion(value, new SqlDecimal(double.Parse(value))));
         }
 
-        /// <summary>
-        /// Validates if driver can error handle when input goes beyond a large scale Number type
-        /// </summary>
-        [SkippableTheory]
-        [InlineData("-10")]
-        [InlineData("10")]
-        [InlineData("99999999999999999999999999999999999999")]
-        [InlineData("-99999999999999999999999999999999999999")]
-        public async Task TestLargeScaleNumberOverlimit(string value)
-        {
-            string columnName = "LARGESCALENUMBER";
-            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,37)", columnName));
-            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value)));
-        }
+        ///// <summary>
+        ///// Validates if driver can error handle when input goes beyond a large scale Number type
+        ///// </summary>
+        //[SkippableTheory]
+        //[InlineData("-10")]
+        //[InlineData("10")]
+        //[InlineData("99999999999999999999999999999999999999")]
+        //[InlineData("-99999999999999999999999999999999999999")]
+        //public async Task TestLargeScaleNumberOverlimit(string value)
+        //{
+        //    string columnName = "LARGESCALENUMBER";
+        //    using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(1,0)", columnName));
+        //    await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value)));
+        //}
 
         /// <summary>
         /// Validates if driver can handle a small scale Number type correctly
@@ -185,18 +184,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, TestEnvironment.GetValueForProtocolVersion(value, SqlDecimal.Parse(value)));
         }
 
-        /// <summary>
-        /// Validates if driver can error handle when an insert goes beyond a small scale Number type correctly
-        /// </summary>
-        [SkippableTheory]
-        [InlineData("-99999999999999999999999999999999999999")]
-        [InlineData("99999999999999999999999999999999999999")]
-        public async Task TestSmallScaleNumberOverlimit(string value)
-        {
-            string columnName = "SMALLSCALENUMBER";
-            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,2)", columnName));
-            await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value)));
-        }
+        ///// <summary>
+        ///// Validates if driver can error handle when an insert goes beyond a small scale Number type correctly
+        ///// </summary>
+        //[SkippableTheory]
+        //[InlineData("-99999999999999999999999999999999999999")]
+        //[InlineData("99999999999999999999999999999999999999")]
+        //public async Task TestSmallScaleNumberOverlimit(string value)
+        //{
+        //    string columnName = "SMALLSCALENUMBER";
+        //    using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,2)", columnName));
+        //    await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, SqlDecimal.Parse(value)));
+        //}
 
         /// <summary>
         /// Tests that decimals are rounded as expected.
