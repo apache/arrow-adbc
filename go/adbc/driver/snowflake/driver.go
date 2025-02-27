@@ -175,6 +175,10 @@ type config struct {
 	*gosnowflake.Config
 }
 
+// Option is a function type to set custom driver configurations.
+//
+// It is intended for configurations that cannot be provided from the standard options map,
+// e.g. the underlying HTTP transporter.
 type Option func(*config) error
 
 // WithTransporter sets the custom transporter to use for the Snowflake connection.
@@ -186,8 +190,14 @@ func WithTransporter(transporter http.RoundTripper) Option {
 	}
 }
 
+// Driver is the Snowflake driver interface.
+//
+// It extends the base adbc.Driver to provide additional options
+// when creating the Snowflake database.
 type Driver interface {
 	adbc.Driver
+
+	// NewDatabaseWithOptions creates a new Snowflake database with the provided options.
 	NewDatabaseWithOptions(map[string]string, ...Option) (adbc.Database, error)
 }
 
