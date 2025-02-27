@@ -77,6 +77,10 @@ type driverImpl struct {
 	driverbase.DriverImplBase
 }
 
+// Driver is the extended [adbc.Driver] interface for Flight SQL.
+//
+// It adds an additional method to create a database with grpc specific options that cannot be
+// passed through the options map.
 type Driver interface {
 	adbc.Driver
 	NewDatabaseWithOptions(map[string]string, ...grpc.DialOption) (adbc.Database, error)

@@ -278,8 +278,6 @@ func (d *dialerOptionsGrpcStatsHandler) TagRPC(ctx context.Context, stat *stats.
 	return ctx
 }
 
-var _ = &dialerOptionsGrpcStatsHandler{}
-
 func (suite *DialerOptionsTests) SetupSuite() {
 	suite.statsHandler = &dialerOptionsGrpcStatsHandler{}
 	suite.DoSetupSuite(&AuthnTestServer{}, nil, nil, grpc.WithStatsHandler(suite.statsHandler))
