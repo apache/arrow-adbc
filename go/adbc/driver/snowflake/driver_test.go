@@ -30,6 +30,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"runtime"
 	"strconv"
@@ -348,6 +349,35 @@ func (suite *SnowflakeTests) TearDownTest() {
 	suite.NoError(suite.db.Close())
 	suite.db = nil
 	suite.driver = nil
+}
+
+type customTransport struct {
+	base   *http.Transport
+	called bool
+}
+
+func (t *customTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	t.called = true
+	return t.base.RoundTrip(r)
+}
+
+func (suite *SnowflakeTests) TestNewDatabaseWithOptions() {
+	t := suite.T()
+
+	drv := suite.Quirks.SetupDriver(t).(driver.Driver)
+
+	t.Run("WithTransporter", func(t *testing.T) {
+		transport := &customTransport{base: gosnowflake.SnowflakeTransport}
+		db, err := drv.NewDatabaseWithOptions(suite.Quirks.DatabaseOptions(),
+			driver.WithTransporter(transport))
+		suite.NoError(err)
+		suite.NotNil(db)
+		cnxn, err := db.Open(suite.ctx)
+		suite.NoError(err)
+		suite.NoError(db.Close())
+		suite.NoError(cnxn.Close())
+		suite.True(transport.called)
+	})
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
