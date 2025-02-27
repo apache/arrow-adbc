@@ -30,6 +30,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math"
+	"net"
 	"os"
 	"runtime"
 	"strconv"
@@ -348,6 +349,30 @@ func (suite *SnowflakeTests) TearDownTest() {
 	suite.NoError(suite.db.Close())
 	suite.db = nil
 	suite.driver = nil
+}
+
+func (suite *SnowflakeTests) TestNewDatabaseWithOptions() {
+	t := suite.T()
+
+	drv := suite.Quirks.SetupDriver(suite.T()).(driver.Driver)
+
+	t.Run("WithTransport", func(t *testing.T) {
+		var dialed bool
+		transport := gosnowflake.SnowflakeTransport
+		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dialed = true
+			return (&net.Dialer{}).DialContext(ctx, network, addr)
+		}
+		db, err := drv.NewDatabaseWithOptions(suite.Quirks.DatabaseOptions(),
+			driver.WithTransporter(transport))
+		suite.NoError(err)
+		suite.NotNil(db)
+		cnxn, err := db.Open(suite.ctx)
+		suite.NoError(err)
+		suite.True(dialed) // ensure that the custom dial function was called
+		suite.NoError(db.Close())
+		suite.NoError(cnxn.Close())
+	})
 }
 
 func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
