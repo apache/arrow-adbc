@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
@@ -25,10 +26,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     {
         readonly IReadOnlyDictionary<string, string> properties;
 
-        internal ImpalaDatabase(IReadOnlyDictionary<string, string> properties)
+        internal ImpalaDatabase(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
         {
             this.properties = properties;
+            this.Trace = trace;
         }
+
+        protected ActivityTrace Trace { get; }
 
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
@@ -37,7 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                 : options
                     .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            ImpalaConnection connection = ImpalaConnectionFactory.NewConnection(mergedProperties);
+            ImpalaConnection connection = ImpalaConnectionFactory.NewConnection(mergedProperties, Trace);
             connection.OpenAsync().Wait();
             return connection;
         }

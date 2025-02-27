@@ -16,14 +16,29 @@
 */
 
 using System.Collections.Generic;
+using System.Diagnostics;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     public class SparkDriver : AdbcDriver
     {
+        public SparkDriver(string? activitySourceName = default, string? traceParent = default)
+        {
+            Trace = new ActivityTrace(activitySourceName, traceParent);
+        }
+
         public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
         {
-            return new SparkDatabase(parameters);
+            return new SparkDatabase(parameters, Trace);
+        }
+
+        protected ActivityTrace Trace { get; }
+
+        public override void Dispose()
+        {
+            Trace.Dispose();
+            base.Dispose();
         }
     }
 }
