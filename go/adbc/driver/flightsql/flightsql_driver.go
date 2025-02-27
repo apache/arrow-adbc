@@ -39,6 +39,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"golang.org/x/exp/maps"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -76,13 +77,27 @@ type driverImpl struct {
 	driverbase.DriverImplBase
 }
 
-// NewDriver creates a new Flight SQL driver using the given Arrow allocator.
-func NewDriver(alloc memory.Allocator) adbc.Driver {
-	info := driverbase.DefaultDriverInfo("Flight SQL")
-	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
+// Driver is the extended [adbc.Driver] interface for Flight SQL.
+//
+// It adds an additional method to create a database with grpc specific options that cannot be
+// passed through the options map.
+type Driver interface {
+	adbc.Driver
+	NewDatabaseWithOptions(map[string]string, ...grpc.DialOption) (adbc.Database, error)
 }
 
-func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+// NewDriver creates a new Flight SQL driver using the given Arrow allocator.
+func NewDriver(alloc memory.Allocator) Driver {
+	info := driverbase.DefaultDriverInfo("Flight SQL")
+	return &driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)}
+}
+
+// NewDatabase creates a new Flight SQL database using the given options.
+//
+// Additional grpc client options can can be passed as grpc.DialOption.
+// This enables the use of additional grpc client options not directly exposed by the options map.
+// such as grpc.WithStatsHandler() for enabling various telemetry handlers.
+func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, userDialOpts ...grpc.DialOption) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 	uri, ok := opts[adbc.OptionKeyURI]
 	if !ok {
@@ -99,7 +114,8 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 			// Match gRPC default
 			connectTimeout: time.Second * 20,
 		},
-		hdrs: make(metadata.MD),
+		hdrs:         make(metadata.MD),
+		userDialOpts: userDialOpts,
 	}
 
 	var err error
@@ -117,4 +133,9 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	}
 
 	return driverbase.NewDatabase(db), nil
+}
+
+// NewDatabase creates a new Flight SQL database using the given options.
+func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithOptions(opts)
 }
