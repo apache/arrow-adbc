@@ -21,15 +21,24 @@ using System.Text.Json.Serialization;
 namespace Apache.Arrow.Adbc.Tests
 {
     public abstract class MultiEnvironmentTestConfiguration<T>
+        where T : TestConfiguration
     {
         /// <summary>
-        /// A comma separated list of testable environments.
+        /// List of test environments that are used when running tests.
         /// </summary>
+        /// <remarks>
+        /// Multiple environments can be defined in the Environments dictionary. This is an array
+        /// of testable environment names in the JSON file:
+        ///   "testEnvironments": [ "Environment_A", "Environment_B", "Environment_C" ]
+        ///
+        /// These names match the keys in the Environments dictionary.
+        /// </remarks>
         [JsonPropertyName("testEnvironments")]
         public List<string> TestEnvironmentNames { get; set; } = new List<string>();
 
         /// <summary>
-        /// The active test environment.
+        /// Contains the configured environments where the key is the name of the environment
+        /// and the value is the test configuration for that environment.
         /// </summary>
         [JsonPropertyName("environments")]
         public Dictionary<string, T> Environments { get; set; } = new Dictionary<string, T>();

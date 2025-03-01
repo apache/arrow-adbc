@@ -53,24 +53,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             QueryOptions queryOptions = ValidateOptions();
 
-            if (this.client.ProjectId == BigQueryConstants.DetectProjectId)
-            {
-                // An error occurs when calling CreateQueryJob without the ID set,
-                // so use the first one that is found. This does not prevent from calling
-                // to other 'project IDs' (catalogs) with a query.
-                PagedEnumerable<ProjectList, CloudProject>? projects = this.client.ListProjects();
-
-                if (projects != null)
-                {
-                    string? firstProjectId = projects.Select(x => x.ProjectId).FirstOrDefault();
-
-                    if (firstProjectId != null)
-                    {
-                        queryOptions.ProjectId = firstProjectId;
-                    }
-                }
-            }
-
             BigQueryJob job = this.client.CreateQueryJob(SqlQuery, null, queryOptions);
 
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
@@ -141,7 +123,26 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override UpdateResult ExecuteUpdate()
         {
-            BigQueryResults result = this.client.ExecuteQuery(SqlQuery, parameters: null);
+            QueryOptions options = ValidateOptions();
+            GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
+
+            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, out string? timeoutMinutes) == true)
+            {
+                if (int.TryParse(timeoutMinutes, out int minutes))
+                {
+                    if (minutes >= 0)
+                    {
+                        getQueryResultsOptions.Timeout = TimeSpan.FromMinutes(minutes);
+                    }
+                }
+            }
+
+            BigQueryResults result = this.client.ExecuteQuery(
+                SqlQuery,
+                parameters: null,
+                queryOptions: options,
+                resultsOptions: getQueryResultsOptions);
+
             long updatedRows = result.NumDmlAffectedRows == null ? -1L : result.NumDmlAffectedRows.Value;
 
             return new UpdateResult(updatedRows);
@@ -230,6 +231,24 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         private QueryOptions ValidateOptions()
         {
             QueryOptions options = new QueryOptions();
+
+            if (this.client.ProjectId == BigQueryConstants.DetectProjectId)
+            {
+                // An error occurs when calling CreateQueryJob without the ID set,
+                // so use the first one that is found. This does not prevent from calling
+                // to other 'project IDs' (catalogs) with a query.
+                PagedEnumerable<ProjectList, CloudProject>? projects = this.client.ListProjects();
+
+                if (projects != null)
+                {
+                    string? firstProjectId = projects.Select(x => x.ProjectId).FirstOrDefault();
+
+                    if (firstProjectId != null)
+                    {
+                        options.ProjectId = firstProjectId;
+                    }
+                }
+            }
 
             if (this.Options == null || this.Options.Count == 0)
                 return options;

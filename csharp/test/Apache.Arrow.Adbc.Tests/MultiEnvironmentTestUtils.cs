@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc.Tests
             }
 
             if (environments.Count == 0)
-                throw new InvalidOperationException("Could not find a configured Flight SQL environment");
+                throw new InvalidOperationException("Could not find a configured environment to execute the tests");
 
             return environments;
         }
