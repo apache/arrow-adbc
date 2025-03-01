@@ -1,15 +1,35 @@
 {
-    "projectId": "",
-    "clientId": "",
-    "clientSecret": "",
-    "refreshToken": "",
-    "maxStreamCount": 1,
-    "metadata": {
-        "catalog": "",
-        "schema": "",
-        "table": "",
-        "expectedColumnCount": 0
-    },
-    "query": "",
-    "expectedResults": 0
+    "testEnvironments": [ "", "" ],
+    "environments": {
+        "<env1>": {
+            "projectId": "",
+            "clientId": "",
+            "clientSecret": "",
+            "refreshToken": "",
+            "maxStreamCount": 1,
+            "metadata": {
+                "catalog": "",
+                "schema": "",
+                "table": "",
+                "expectedColumnCount": 0
+            },
+            "query": "",
+            "expectedResults": 0
+        },
+        "<env2>": {
+            "projectId": "",
+            "clientId": "",
+            "clientSecret": "",
+            "refreshToken": "",
+            "maxStreamCount": 1,
+            "metadata": {
+                "catalog": "",
+                "schema": "",
+                "table": "",
+                "expectedColumnCount": 0
+            },
+            "query": "",
+            "expectedResults": 0
+        }
+    }
 }
