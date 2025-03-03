@@ -19,7 +19,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal enum HiveServer2AuthType
     {
-        Invalid = 0,
         None,
         UsernameOnly,
         Basic,
@@ -46,7 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     authTypeValue = HiveServer2AuthType.Basic;
                     return true;
                 default:
-                    authTypeValue = HiveServer2AuthType.Invalid;
+                    authTypeValue = default;
                     return false;
             }
         }

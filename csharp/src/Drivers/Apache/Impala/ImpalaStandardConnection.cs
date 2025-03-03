@@ -40,7 +40,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(ImpalaParameters.AuthType, out string? authType);
-            bool isValidAuthType = ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue);
+            if (!ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(ImpalaParameters.AuthType, authType, $"Unsupported {ImpalaParameters.AuthType} value.");
+            }
             switch (authTypeValue)
             {
                 case ImpalaAuthType.None:
@@ -120,7 +123,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(ImpalaParameters.AuthType, out string? authType);
-            bool isValidAuthType = ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue);
+            if (!ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(ImpalaParameters.AuthType, authType, $"Unsupported {ImpalaParameters.AuthType} value.");
+            }
             TOpenSessionReq request = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7)
             {
                 CanUseMultipleCatalogs = true,

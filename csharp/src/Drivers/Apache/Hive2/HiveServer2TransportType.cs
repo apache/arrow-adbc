@@ -19,7 +19,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal enum HiveServer2TransportType
     {
-        Invalid = 0,
         Http,
         Empty = int.MaxValue,
     }
@@ -40,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     serverTypeValue = HiveServer2TransportType.Http;
                     return true;
                 default:
-                    serverTypeValue = HiveServer2TransportType.Invalid;
+                    serverTypeValue = default;
                     return false;
             }
         }
