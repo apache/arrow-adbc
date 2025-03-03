@@ -20,7 +20,7 @@ using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
 {
-    internal class FlightSqlTestConfiguration
+    internal class FlightSqlTestConfiguration : MultiEnvironmentTestConfiguration<FlightSqlTestEnvironment>
     {
         /// <summary>
         /// The file path location of the driver.
@@ -33,18 +33,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         /// </summary>
         [JsonPropertyName("driverEntryPoint")]
         public string? DriverEntryPoint { get; set; }
-
-        /// <summary>
-        /// A comma separated list of testable environments.
-        /// </summary>
-        [JsonPropertyName("testEnvironments")]
-        public List<string> TestableEnvironments { get; set; } = new List<string>();
-
-        /// <summary>
-        /// The active test environment.
-        /// </summary>
-        [JsonPropertyName("environments")]
-        public Dictionary<string, FlightSqlTestEnvironment> Environments { get; set; } = new Dictionary<string, FlightSqlTestEnvironment>();
     }
 
     internal enum FlightSqlTestEnvironmentType
@@ -61,11 +49,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         {
 
         }
-
-        /// <summary>
-        /// The name of the environment.
-        /// </summary>
-        public string? Name { get; set; }
 
         [JsonConverter(typeof(JsonStringEnumConverter))]
         [JsonPropertyName("type")]
