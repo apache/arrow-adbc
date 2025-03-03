@@ -133,12 +133,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.credential = ApplyScopes(GoogleCredential.FromJson(json));
             }
 
-            if (this.properties.TryGetValue(BigQueryParameters.ClientTimeout, out string? timeoutSeconds))
+            if (this.properties.TryGetValue(BigQueryParameters.ClientTimeout, out string? timeoutSeconds) &&
+                int.TryParse(timeoutSeconds, out int seconds))
             {
-                if (int.TryParse(timeoutSeconds, out int seconds))
-                {
-                    clientTimeout = TimeSpan.FromSeconds(seconds);
-                }
+                clientTimeout = TimeSpan.FromSeconds(seconds);
             }
 
             BigQueryClientBuilder bigQueryClientBuilder = new BigQueryClientBuilder()
