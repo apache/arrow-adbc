@@ -60,49 +60,34 @@ namespace Apache.Arrow.Adbc.Tests
                 throw new InvalidOperationException("There are no environments configured");
 
             List<TEnvironment> environments = new List<TEnvironment>();
+            string term = "$ref:shared.";
 
             foreach (string environmentName in GetEnvironmentNames(testConfiguration.TestEnvironmentNames))
             {
-                if (testConfiguration.Environments.TryGetValue(environmentName, out TEnvironment? testEnvironment))
+                if (!testConfiguration.Environments.TryGetValue(environmentName, out TEnvironment? testEnvironment) || testEnvironment is null)
+                    continue;
+
+                testEnvironment.Name = environmentName;
+
+                if (testConfiguration.SharedKeyValuePairs.Count > 0)
                 {
-                    if (testEnvironment != null)
+                    foreach (PropertyInfo pi in testEnvironment.GetType().GetProperties())
                     {
-                        testEnvironment.Name = environmentName;
-
-                        if (testConfiguration.SharedKeyValuePairs.Count > 0)
+                        if (pi.PropertyType == typeof(string) &&
+                            pi.GetValue(testEnvironment) is string propertyValue &&
+                            propertyValue.StartsWith(term, StringComparison.Ordinal))
                         {
-                            string term = "$ref:shared.";
+                            string lookupKey = propertyValue.AsSpan(term.Length).ToString();
 
-                            foreach (PropertyInfo pi in testEnvironment.GetType().GetProperties())
+                            if (testConfiguration.SharedKeyValuePairs.TryGetValue(lookupKey, out string? sharedValue))
                             {
-                                if (pi.PropertyType == typeof(string))
-                                {
-                                    object? value = pi.GetValue(testEnvironment);
-
-                                    if (value != null)
-                                    {
-                                        string? propertyValue = Convert.ToString(value);
-
-                                        if (string.IsNullOrEmpty(propertyValue))
-                                            continue;
-
-                                        if (propertyValue.StartsWith(term))
-                                        {
-                                            string lookupValue = propertyValue.Substring(term.Length);
-
-                                            if (testConfiguration.SharedKeyValuePairs.TryGetValue(lookupValue, out string? sharedValue))
-                                            {
-                                                pi.SetValue(testEnvironment, sharedValue);
-                                            }
-                                        }
-                                    }
-                                }
+                                pi.SetValue(testEnvironment, sharedValue);
                             }
                         }
-
-                        environments.Add(testEnvironment);
                     }
                 }
+
+                environments.Add(testEnvironment);
             }
 
             if (environments.Count == 0)
