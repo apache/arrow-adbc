@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -71,9 +72,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("includePublicProjectId")]
         public bool IncludePublicProjectId { get; set; } = false;
 
+        /// <summary>
+        /// Sets the query timeout (in minutes).
+        /// </summary>
         [JsonPropertyName("timeoutMinutes")]
         public int? TimeoutMinutes { get; set; }
 
+        /// <summary>
+        /// Sets the query timeout (in seconds).
+        /// </summary>
         [JsonPropertyName("queryTimeout")]
         public int? QueryTimeout { get; set; }
 
