@@ -58,6 +58,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.ProjectId, testConfiguration.ProjectId!);
             }
 
+            if (!string.IsNullOrEmpty(testConfiguration.BillingProjectId))
+            {
+                parameters.Add(BigQueryParameters.BillingProjectId, testConfiguration.BillingProjectId!);
+            }
+
             if (!string.IsNullOrEmpty(testConfiguration.JsonCredential))
             {
                 parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.ServiceAccountAuthenticationType);
@@ -92,7 +97,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             if (testConfiguration.TimeoutMinutes.HasValue)
             {
-                parameters.Add(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, testConfiguration.TimeoutMinutes.Value.ToString());
+                parameters.Add(BigQueryParameters.GetQueryResultsOptionsTimeout, testConfiguration.TimeoutMinutes.Value.ToString());
+            }
+
+            if (testConfiguration.ClientTimeout.HasValue)
+            {
+                parameters.Add(BigQueryParameters.ClientTimeout, testConfiguration.ClientTimeout.Value.ToString());
             }
 
             if (testConfiguration.MaxStreamCount.HasValue)

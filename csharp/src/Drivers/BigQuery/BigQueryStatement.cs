@@ -56,13 +56,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
-            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, out string? timeoutMinutes) == true)
+            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true)
             {
-                if (int.TryParse(timeoutMinutes, out int minutes))
+                if (int.TryParse(timeoutSeconds, out int seconds))
                 {
-                    if (minutes >= 0)
+                    if (seconds >= 0)
                     {
-                        getQueryResultsOptions.Timeout = TimeSpan.FromMinutes(minutes);
+                        getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
                     }
                 }
             }

@@ -33,6 +33,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("projectId")]
         public string? ProjectId { get; set; }
 
+        [JsonPropertyName("billingProjectId")]
+        public string? BillingProjectId { get; set; }
+
         [JsonPropertyName("clientId")]
         public string ClientId { get; set; } = string.Empty;
 
@@ -62,6 +65,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("timeoutMinutes")]
         public int? TimeoutMinutes { get; set; }
+
+        /// <summary>
+        /// The number of seconds to allow for the HttpClient timeout.
+        /// </summary>
+        [JsonPropertyName("clientTimeout")]
+        public int? ClientTimeout { get; set; }
 
         [JsonPropertyName("maxStreamCount")]
         public int? MaxStreamCount { get; set; }

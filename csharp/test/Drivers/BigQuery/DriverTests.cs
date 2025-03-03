@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
@@ -263,6 +264,37 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, _testConfiguration.ExpectedResultsCount);
+        }
+
+        private string longRunningQuery = "SELECT COUNT(*) FROM UNNEST(GENERATE_ARRAY(1, 1000000, 1)) AS a,  UNNEST(GENERATE_ARRAY(1, 1000000, 1)) AS b WHERE RAND() < 0.0000001";
+
+        /// <summary>
+        /// Validates the ClientTimeout parameter.
+        /// </summary>
+        [SkippableFact, Order(7)]
+        public void ConnectionTimeoutTest()
+        {
+            _testConfiguration.ClientTimeout = 1;
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(_testConfiguration);
+
+            AdbcStatement statement = adbcConnection.CreateStatement();
+            statement.SqlQuery = longRunningQuery;
+
+            Assert.Throws<TaskCanceledException>(() => { statement.ExecuteQuery(); });
+        }
+
+        /// <summary>
+        /// Validates the GetQueryResultsOptionsTimeoutMinutes parameter.
+        /// </summary>
+        [SkippableFact, Order(8)]
+        public void CommandTimeoutTest()
+        {
+            _testConfiguration.TimeoutMinutes = 1;
+            AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(_testConfiguration);
+
+            AdbcStatement statement = adbcConnection.CreateStatement();
+            statement.SqlQuery = longRunningQuery;
+            Assert.Throws<TimeoutException>(() => { statement.ExecuteQuery(); });
         }
     }
 }
