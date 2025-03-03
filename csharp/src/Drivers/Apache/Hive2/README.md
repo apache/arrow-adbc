@@ -26,7 +26,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 
 | Property               | Description | Default |
 | :---                   | :---        | :---    |
-| `adbc.hive.type`      | (Required) Indicates the Hive transport type. `http` | |
+| `adbc.hive.transport_type`      | (Required) Indicates the Hive transport type. `http` | |
 | `adbc.hive.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only` and `basic`. This property is optional. The authentication type can be inferred from `username`, and `password`. | |
 | `adbc.hive.host`      | Host name for the data source. Do not include scheme or port number. Example: `hiveserver.region.cloudapp.azure.com` |  |
 | `adbc.hive.port`      | The port number the data source listens on for a new connections. | `443` |

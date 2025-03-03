@@ -335,7 +335,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
-        internal HiveServer2Type Type => HiveServer2Type.Http;
+        internal HiveServer2TransportType Type => HiveServer2TransportType.Http;
 
         protected override int ColumnMapIndexOffset => 1;
     }

@@ -23,7 +23,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string Port = "adbc.hive.port";
         public const string Path = "adbc.hive.path";
         public const string AuthType = "adbc.hive.auth_type";
-        public const string Type = "adbc.hive.type";
+        public const string TransportType = "adbc.hive.transport_type";
         public const string DataTypeConv = "adbc.hive.data_type_conv";
         public const string TLSOptions = "adbc.hive.tls_options";
         public const string ConnectTimeoutMilliseconds = "adbc.hive.connect_timeout_ms";
@@ -36,7 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string Basic = "basic";
     }
 
-    public static class HiveServer2TypeConstants
+    public static class HiveServer2TransportTypeConstants
     {
         public const string Http = "http";
     }

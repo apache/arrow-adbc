@@ -84,7 +84,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             }
             if (!string.IsNullOrEmpty(testConfiguration.Type))
             {
-                parameters.Add(HiveServer2Parameters.Type, testConfiguration.Type!);
+                parameters.Add(HiveServer2Parameters.TransportType, testConfiguration.Type!);
             }
             if (!string.IsNullOrEmpty(testConfiguration.DataTypeConversion))
             {

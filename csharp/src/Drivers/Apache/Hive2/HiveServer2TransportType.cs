@@ -17,30 +17,30 @@
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal enum HiveServer2Type
+    internal enum HiveServer2TransportType
     {
         Invalid = 0,
         Http,
         Empty = int.MaxValue,
     }
 
-    internal static class HiveServer2TypeParser
+    internal static class HiveServer2TransportTypeParser
     {
-        internal const string SupportedList = HiveServer2TypeConstants.Http;
+        internal const string SupportedList = HiveServer2TransportTypeConstants.Http;
 
-        internal static bool TryParse(string? serverType, out HiveServer2Type serverTypeValue)
+        internal static bool TryParse(string? serverType, out HiveServer2TransportType serverTypeValue)
         {
             switch (serverType?.Trim().ToLowerInvariant())
             {
                 case null:
                 case "":
-                    serverTypeValue = HiveServer2Type.Empty;
+                    serverTypeValue = HiveServer2TransportType.Empty;
                     return true;
-                case HiveServer2TypeConstants.Http:
-                    serverTypeValue = HiveServer2Type.Http;
+                case HiveServer2TransportTypeConstants.Http:
+                    serverTypeValue = HiveServer2TransportType.Http;
                     return true;
                 default:
-                    serverTypeValue = HiveServer2Type.Invalid;
+                    serverTypeValue = HiveServer2TransportType.Invalid;
                     return false;
             }
         }
