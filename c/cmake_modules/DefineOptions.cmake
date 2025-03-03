@@ -133,6 +133,10 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
 
   define_option(ADBC_GGDB_DEBUG "Pass -ggdb flag to debug builds" ON)
 
+  define_option(ADBC_WITH_VENDORED_FMT "Use vendored copy of fmt" ON)
+
+  define_option(ADBC_WITH_VENDORED_NANOARROW "Use vendored copy of nanoarrow" ON)
+
   #----------------------------------------------------------------------
   set_option_category("Test and benchmark")
 

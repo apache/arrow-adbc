@@ -39,7 +39,6 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_include_directories(${LIB_TARGET} SYSTEM
                              INTERFACE ${REPOSITORY_ROOT}/c/
                                        ${REPOSITORY_ROOT}/c/include/
-                                       ${REPOSITORY_ROOT}/c/vendor
                                        ${REPOSITORY_ROOT}/c/driver)
 endforeach()
 
@@ -64,9 +63,7 @@ if(ADBC_BUILD_TESTS)
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-snowflake-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-snowflake-test SYSTEM
-                             PRIVATE ${REPOSITORY_ROOT}/c/
-                                     ${REPOSITORY_ROOT}/c/include/
-                                     ${REPOSITORY_ROOT}/c/vendor
+                             PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${REPOSITORY_ROOT}/c/driver
                                      ${REPOSITORY_ROOT}/c/driver/common)
   adbc_configure_target(adbc-driver-snowflake-test)

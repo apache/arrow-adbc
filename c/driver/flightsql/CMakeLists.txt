@@ -39,7 +39,6 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_include_directories(${LIB_TARGET} SYSTEM
                              INTERFACE ${REPOSITORY_ROOT}/c/
                                        ${REPOSITORY_ROOT}/c/include/
-                                       ${REPOSITORY_ROOT}/c/vendor
                                        ${REPOSITORY_ROOT}/c/driver)
 endforeach()
 
@@ -61,12 +60,10 @@ if(ADBC_BUILD_TESTS)
                 EXTRA_LINK_LIBS
                 adbc_driver_common
                 adbc_validation
-                nanoarrow
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-flightsql-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-flightsql-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
-                                     ${REPOSITORY_ROOT}/c/vendor
                                      ${REPOSITORY_ROOT}/c/driver)
   adbc_configure_target(adbc-driver-flightsql-test)
 endif()
