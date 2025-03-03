@@ -65,7 +65,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(HiveServer2Parameters.AuthType, out string? authType);
-            bool isValidAuthType = HiveServer2AuthTypeParser.TryParse(authType, out HiveServer2AuthType authTypeValue);
+            if (!HiveServer2AuthTypeParser.TryParse(authType, out HiveServer2AuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(HiveServer2Parameters.AuthType, authType, $"Unsupported {HiveServer2Parameters.AuthType} value.");
+            }
             switch (authTypeValue)
             {
                 case HiveServer2AuthType.Basic:
@@ -155,7 +158,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(HiveServer2Parameters.Path, out string? path);
             Properties.TryGetValue(HiveServer2Parameters.Port, out string? port);
             Properties.TryGetValue(HiveServer2Parameters.AuthType, out string? authType);
-            bool isValidAuthType = HiveServer2AuthTypeParser.TryParse(authType, out HiveServer2AuthType authTypeValue);
+            if (!HiveServer2AuthTypeParser.TryParse(authType, out HiveServer2AuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(HiveServer2Parameters.AuthType, authType, $"Unsupported {HiveServer2Parameters.AuthType} value.");
+            }
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);

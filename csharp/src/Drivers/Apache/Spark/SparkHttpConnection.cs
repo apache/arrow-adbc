@@ -51,7 +51,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+            if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+            }
             switch (authTypeValue)
             {
                 case SparkAuthType.Token:
@@ -138,7 +141,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(SparkParameters.Path, out string? path);
             Properties.TryGetValue(SparkParameters.Port, out string? port);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+            if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+            }
             Properties.TryGetValue(SparkParameters.Token, out string? token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);

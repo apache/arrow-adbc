@@ -19,7 +19,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal enum ImpalaServerType
     {
-        Invalid = 0,
         Http,
         Standard,
         Empty = int.MaxValue,
@@ -44,7 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                     serverTypeValue = ImpalaServerType.Standard;
                     return true;
                 default:
-                    serverTypeValue = ImpalaServerType.Invalid;
+                    serverTypeValue = default;
                     return false;
             }
         }

@@ -19,7 +19,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal enum SparkAuthType
     {
-        Invalid = 0,
         None,
         UsernameOnly,
         Basic,
@@ -50,7 +49,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     authTypeValue = SparkAuthType.Token;
                     return true;
                 default:
-                    authTypeValue = SparkAuthType.Invalid;
+                    authTypeValue = default;
                     return false;
             }
         }
