@@ -122,15 +122,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             QueryOptions options = ValidateOptions();
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
-            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true)
+            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true &&
+                int.TryParse(timeoutSeconds, out int seconds) &&
+                seconds >= 0)
             {
-                if (int.TryParse(timeoutSeconds, out int seconds))
-                {
-                    if (seconds >= 0)
-                    {
-                        getQueryResultsOptions.Timeout = TimeSpan.FromMinutes(seconds);
-                    }
-                }
+                getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
             BigQueryResults result = this.client.ExecuteQuery(

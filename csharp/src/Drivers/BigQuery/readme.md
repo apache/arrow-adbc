@@ -52,13 +52,13 @@ https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/G
 &nbsp;&nbsp;&nbsp;&nbsp;The OAuth client secret. Required for `user` authentication.
 
 **adbc.bigquery.client.timeout**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the timeout (in seconds) for the BigQueryClient. Similar to a ConnectionTimeout in ODBC.
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the timeout (in seconds) for the BigQueryClient. Similar to a ConnectionTimeout.
 
 **adbc.bigquery.auth_json_credential**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Required if using `service` authentication. This value is passed to the [GoogleCredential.FromJson](https://cloud.google.com/dotnet/docs/reference/Google.Apis/latest/Google.Apis.Auth.OAuth2.GoogleCredential#Google_Apis_Auth_OAuth2_GoogleCredential_FromJson_System_String) method.
 
 **adbc.bigquery.get_query_results_options.timeout**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the timeout (in seconds) for the GetQueryResultsOptions value. If not set, defaults to 5 minutes. Similar to a CommandTimeout in ODBC.
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the timeout (in seconds) for the GetQueryResultsOptions value. If not set, defaults to 5 minutes. Similar to a CommandTimeout.
 
 **adbc.bigquery.max_fetch_concurrency**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [maxStreamCount](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.Storage.V1/latest/Google.Cloud.BigQuery.Storage.V1.BigQueryReadClient#Google_Cloud_BigQuery_Storage_V1_BigQueryReadClient_CreateReadSession_System_String_Google_Cloud_BigQuery_Storage_V1_ReadSession_System_Int32_Google_Api_Gax_Grpc_CallSettings_) for the CreateReadSession method. If not set, defaults to 1.
