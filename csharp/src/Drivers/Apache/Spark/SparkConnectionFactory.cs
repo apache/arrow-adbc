@@ -24,16 +24,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         public static SparkConnection NewConnection(IReadOnlyDictionary<string, string> properties)
         {
-            bool _ = properties.TryGetValue(SparkParameters.Type, out string? type) && string.IsNullOrEmpty(type);
-            bool __ = ServerTypeParser.TryParse(type, out SparkServerType serverTypeValue);
+            if (!properties.TryGetValue(SparkParameters.Type, out string? type) && string.IsNullOrEmpty(type))
+            {
+                throw new ArgumentException($"Required property '{SparkParameters.Type}' is missing. Supported types: {ServerTypeParser.SupportedList}", nameof(properties));
+            }
+            if (!ServerTypeParser.TryParse(type, out SparkServerType serverTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{SparkParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}");
+            }
+
             return serverTypeValue switch
             {
                 SparkServerType.Databricks => new SparkDatabricksConnection(properties),
                 SparkServerType.Http => new SparkHttpConnection(properties),
                 // TODO: Re-enable when properly supported
                 //SparkServerType.Standard => new SparkStandardConnection(properties),
-                SparkServerType.Empty => throw new ArgumentException($"Required property '{SparkParameters.Type}' is missing. Supported types: {ServerTypeParser.SupportedList}", nameof(properties)),
                 _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{SparkParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}"),
+
             };
         }
 

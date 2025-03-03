@@ -15,23 +15,24 @@
 * limitations under the License.
 */
 
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using System;
+using System.Globalization;
+using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Xunit;
+using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 {
-    internal class ImpalaStatement : HiveServer2Statement
+    public class DateTimeValueTests : Common.DateTimeValueTests<ApacheTestConfiguration, HiveServer2TestEnvironment>
     {
-        internal ImpalaStatement(ImpalaConnection connection)
-            : base(connection)
-        {
-        }
+        public DateTimeValueTests(ITestOutputHelper output)
+            : base(output, new HiveServer2TestEnvironment.Factory())
+        { }
 
-        /// <summary>
-        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
-        /// </summary>
-        public sealed class Options : ApacheParameters
+        protected override string GetFormattedTimestampValue(string value)
         {
-            // options specific to Impala go here
+            return "TO_TIMESTAMP(" + QuoteValue(value) + ")";
         }
     }
 }
