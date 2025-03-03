@@ -57,15 +57,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
-            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, out string? timeoutMinutes) == true)
+            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true &&
+                int.TryParse(timeoutSeconds, out int seconds) &&
+                seconds >= 0)
             {
-                if (int.TryParse(timeoutMinutes, out int minutes))
-                {
-                    if (minutes >= 0)
-                    {
-                        getQueryResultsOptions.Timeout = TimeSpan.FromMinutes(minutes);
-                    }
-                }
+                getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
             BigQueryResults results = job.GetQueryResults(getQueryResultsOptions);
@@ -126,15 +122,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             QueryOptions options = ValidateOptions();
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
-            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, out string? timeoutMinutes) == true)
+            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true &&
+                int.TryParse(timeoutSeconds, out int seconds) &&
+                seconds >= 0)
             {
-                if (int.TryParse(timeoutMinutes, out int minutes))
-                {
-                    if (minutes >= 0)
-                    {
-                        getQueryResultsOptions.Timeout = TimeSpan.FromMinutes(minutes);
-                    }
-                }
+                getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
             BigQueryResults result = this.client.ExecuteQuery(

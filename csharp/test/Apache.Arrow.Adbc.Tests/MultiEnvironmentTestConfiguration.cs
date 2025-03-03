@@ -15,7 +15,9 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -42,5 +44,11 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         [JsonPropertyName("environments")]
         public Dictionary<string, T> Environments { get; set; } = new Dictionary<string, T>();
+
+        /// <summary>
+        /// Values that are shared across environments so they don't need to be repeated.
+        /// </summary>
+        [JsonPropertyName("shared")]
+        public Dictionary<string, string> SharedKeyValuePairs { get; set; } = new Dictionary<string, string>();
     }
 }
