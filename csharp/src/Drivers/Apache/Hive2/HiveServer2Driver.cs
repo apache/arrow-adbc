@@ -15,23 +15,15 @@
 * limitations under the License.
 */
 
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using System.Collections.Generic;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
+namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class ImpalaStatement : HiveServer2Statement
+    public class HiveServer2Driver : AdbcDriver
     {
-        internal ImpalaStatement(ImpalaConnection connection)
-            : base(connection)
+        public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
         {
-        }
-
-        /// <summary>
-        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
-        /// </summary>
-        public sealed class Options : ApacheParameters
-        {
-            // options specific to Impala go here
+            return new HiveServer2Database(parameters);
         }
     }
 }

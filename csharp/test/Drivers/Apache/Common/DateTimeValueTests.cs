@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -33,7 +32,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// </summary>
     public abstract class DateTimeValueTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : TestConfiguration
-        where TEnv : HiveServer2TestEnvironment<TConfig>
+        where TEnv : CommonTestEnvironment<TConfig>
     {
         // Spark handles microseconds but not nanoseconds. Truncated to 6 decimal places.
         const string DateTimeZoneFormat = "yyyy-MM-dd'T'HH:mm:ss'.'ffffffK";

@@ -57,6 +57,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const int MillisecondDecimalPlaces = 3;
         private HiveServer2Statement? _statement;
         private readonly DataTypeConversion _dataTypeConversion;
+        // Flag to enable/disable stopping reading based on batch size condition
+        private readonly bool _enableBatchSizeStopCondition;
         private static readonly IReadOnlyDictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>> s_arrowStringConverters =
             new Dictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>>()
             {
@@ -73,11 +75,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Reader(
             HiveServer2Statement statement,
             Schema schema,
-            DataTypeConversion dataTypeConversion)
+            DataTypeConversion dataTypeConversion,
+            bool enableBatchSizeStopCondition = true)
         {
             _statement = statement;
             Schema = schema;
             _dataTypeConversion = dataTypeConversion;
+            _enableBatchSizeStopCondition = enableBatchSizeStopCondition;
         }
 
         public Schema Schema { get; }
@@ -97,7 +101,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 int columnCount = GetColumnCount(response);
                 int rowCount = GetRowCount(response, columnCount);
-                if ((_statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+                if ((_enableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                 {
                     // This is the last batch
                     _statement = null;
