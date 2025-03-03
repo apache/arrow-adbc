@@ -146,10 +146,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(
-                statement,
-                schema,
-                dataTypeConversion: statement.Connection.DataTypeConversion,
-                enableBatchSizeStopCondition: false);
+            statement,
+            schema,
+            dataTypeConversion: statement.Connection.DataTypeConversion,
+            enableBatchSizeStopCondition: false);
 
         protected override TTransport CreateTransport()
         {

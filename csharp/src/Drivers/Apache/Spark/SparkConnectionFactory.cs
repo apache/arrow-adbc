@@ -40,7 +40,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 // TODO: Re-enable when properly supported
                 //SparkServerType.Standard => new SparkStandardConnection(properties),
                 _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{SparkParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}"),
-
             };
         }
 
