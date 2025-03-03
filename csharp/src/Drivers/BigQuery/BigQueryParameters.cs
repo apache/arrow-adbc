@@ -23,6 +23,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     public class BigQueryParameters
     {
         public const string ProjectId = "adbc.bigquery.project_id";
+        public const string BillingProjectId = "adbc.bigquery.billing_project_id";
         public const string ClientId = "adbc.bigquery.client_id";
         public const string ClientSecret = "adbc.bigquery.client_secret";
         public const string RefreshToken = "adbc.bigquery.refresh_token";
@@ -34,7 +35,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string LargeDecimalsAsString = "adbc.bigquery.large_decimals_as_string";
         public const string Scopes = "adbc.bigquery.scopes";
         public const string IncludeConstraintsWithGetObjects = "adbc.bigquery.include_constraints_getobjects";
-        public const string GetQueryResultsOptionsTimeoutMinutes = "adbc.bigquery.get_query_results_options.timeout";
+        public const string ClientTimeout = "adbc.bigquery.client.timeout";
+        public const string GetQueryResultsOptionsTimeout = "adbc.bigquery.get_query_results_options.timeout";
         public const string MaxFetchConcurrency = "adbc.bigquery.max_fetch_concurrency";
         public const string IncludePublicProjectId = "adbc.bigquery.include_public_project_id";
     }
