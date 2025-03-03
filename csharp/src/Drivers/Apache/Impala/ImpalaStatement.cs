@@ -25,7 +25,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal ImpalaStatement(ImpalaConnection connection, ActivityTrace trace)
             : base(connection, trace)
         {
-            ValidateOptions(connection.Properties);
         }
 
         /// <summary>

@@ -26,7 +26,7 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal abstract class HiveServer2Statement : AdbcStatement
+    internal class HiveServer2Statement : AdbcStatement
     {
         protected HiveServer2Statement(HiveServer2Connection connection, ActivityTrace trace)
         {

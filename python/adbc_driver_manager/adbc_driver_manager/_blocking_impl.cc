@@ -36,6 +36,7 @@
 #include <cstring>
 #include <iostream>
 #include <mutex>
+#include <string>
 #include <thread>
 
 namespace pyadbc_driver_manager {

@@ -310,20 +310,19 @@ const (
 )
 
 // Driver is the entry point for the interface. It is similar to
-// database/sql.Driver taking a map of keys and values as options
-// to initialize a Connection to the database. Any common connection
+// [database/sql.Driver] taking a map of keys and values as options
+// to initialize a [Connection] to the database. Any common connection
 // state can live in the Driver itself, for example an in-memory database
 // can place ownership of the actual database in this driver.
 //
 // Any connection specific options should be set using SetOptions before
 // calling Open.
 //
-// The provided context.Context is for dialing purposes only
-// (see net.DialContext) and should not be stored or used for other purposes.
+// The provided [context.Context] is for dialing purposes only.
 // A default timeout should still be used when dialing as a connection
 // pool may call Connect asynchronously to any query.
 //
-// A driver can also optionally implement io.Closer if there is a need
+// A driver can also optionally implement [io.Closer] if there is a need
 // or desire for it.
 type Driver interface {
 	NewDatabase(opts map[string]string) (Database, error)

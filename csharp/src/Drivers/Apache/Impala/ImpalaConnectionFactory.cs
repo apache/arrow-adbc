@@ -25,13 +25,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     {
         public static ImpalaConnection NewConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
         {
-            bool _ = properties.TryGetValue(ImpalaParameters.Type, out string? type) && string.IsNullOrEmpty(type);
-            bool __ = ServerTypeParser.TryParse(type, out ImpalaServerType serverTypeValue);
+            if (!properties.TryGetValue(ImpalaParameters.Type, out string? type) && string.IsNullOrEmpty(type))
+            {
+                throw new ArgumentException($"Required property '{ImpalaParameters.Type}' is missing. Supported types: {ServerTypeParser.SupportedList}", nameof(properties));
+            }
+            if (!ServerTypeParser.TryParse(type, out ImpalaServerType serverTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{ImpalaParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}");
+            }
             return serverTypeValue switch
             {
                 ImpalaServerType.Http => new ImpalaHttpConnection(properties, trace),
                 ImpalaServerType.Standard => new ImpalaStandardConnection(properties, trace),
-                ImpalaServerType.Empty => throw new ArgumentException($"Required property '{ImpalaParameters.Type}' is missing. Supported types: {ServerTypeParser.SupportedList}", nameof(properties)),
                 _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{ImpalaParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}"),
             };
         }

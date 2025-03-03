@@ -27,7 +27,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal SparkStatement(SparkConnection connection, ActivityTrace trace)
             : base(connection, trace)
         {
-            ValidateOptions(connection.Properties);
         }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)

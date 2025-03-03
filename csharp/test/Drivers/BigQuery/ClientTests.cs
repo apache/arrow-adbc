@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
@@ -34,12 +35,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     public class ClientTests
     {
         private BigQueryTestConfiguration _testConfiguration;
+        readonly List<BigQueryTestEnvironment> _environments;
+        readonly ITestOutputHelper _outputHelper;
 
-        public ClientTests()
+        public ClientTests(ITestOutputHelper outputHelper)
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE));
 
-            _testConfiguration = Utils.LoadTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+            _testConfiguration = MultiEnvironmentTestUtils.LoadMultiEnvironmentTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
+            _environments = MultiEnvironmentTestUtils.GetTestEnvironments<BigQueryTestEnvironment>(_testConfiguration);
+            _outputHelper = outputHelper;
         }
 
         /// <summary>
@@ -48,15 +53,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(1)]
         public void CanClientExecuteUpdate()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
+            foreach (BigQueryTestEnvironment environment in _environments)
             {
-                adbcConnection.Open();
+                using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(environment))
+                {
+                    adbcConnection.Open();
 
-                string[] queries = BigQueryTestingUtils.GetQueries(_testConfiguration);
+                    string[] queries = BigQueryTestingUtils.GetQueries(environment);
 
-                List<int> expectedResults = new List<int>() { -1, 1, 1 };
+                    List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
-                Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, _testConfiguration, queries, expectedResults);
+                    Tests.ClientTests.CanClientExecuteUpdate(adbcConnection, environment, queries, expectedResults);
+                }
             }
         }
 
@@ -66,9 +74,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(2)]
         public void CanClientGetSchema()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
+            foreach (BigQueryTestEnvironment environment in _environments)
             {
-                Tests.ClientTests.CanClientGetSchema(adbcConnection, _testConfiguration);
+                using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(environment))
+                {
+                    Tests.ClientTests.CanClientGetSchema(adbcConnection, environment);
+                }
             }
         }
 
@@ -79,9 +90,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(3)]
         public void CanClientExecuteQuery()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
+            foreach (BigQueryTestEnvironment environment in _environments)
             {
-                Tests.ClientTests.CanClientExecuteQuery(adbcConnection, _testConfiguration);
+                using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(environment))
+                {
+                    Tests.ClientTests.CanClientExecuteQuery(adbcConnection, environment, environmentName: environment.Name);
+                }
             }
         }
 
@@ -92,26 +106,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(4)]
         public void VerifyTypesAndValues()
         {
-            using(Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection())
+            foreach (BigQueryTestEnvironment environment in _environments)
             {
-                SampleDataBuilder sampleDataBuilder = BigQueryData.GetSampleData();
+                using (Adbc.Client.AdbcConnection dbConnection = GetAdbcConnection(environment))
+                {
+                    SampleDataBuilder sampleDataBuilder = BigQueryData.GetSampleData();
 
-                Tests.ClientTests.VerifyTypesAndValues(dbConnection, sampleDataBuilder);
+                    Tests.ClientTests.VerifyTypesAndValues(dbConnection, sampleDataBuilder, environment.Name);
+                }
             }
         }
 
         [SkippableFact]
         public void VerifySchemaTablesWithNoConstraints()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(includeTableConstraints: false))
+            foreach (BigQueryTestEnvironment environment in _environments)
             {
-                adbcConnection.Open();
+                using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(environment, includeTableConstraints: false))
+                {
+                    adbcConnection.Open();
 
-                string schema = "Tables";
+                    string schema = "Tables";
 
-                var tables = adbcConnection.GetSchema(schema);
+                    var tables = adbcConnection.GetSchema(schema);
 
-                Assert.True(tables.Rows.Count > 0, $"No tables were found in the schema '{schema}'");
+                    Assert.True(tables.Rows.Count > 0, $"No tables were found in the schema '{schema}' for environment '{environment.Name}'");
+                }
             }
         }
 
@@ -119,76 +139,82 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact]
         public void VerifySchemaTables()
         {
-            using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
+            foreach (BigQueryTestEnvironment environment in _environments)
             {
-                adbcConnection.Open();
+                using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(environment))
+                {
+                    adbcConnection.Open();
 
-                var collections = adbcConnection.GetSchema("MetaDataCollections");
-                Assert.Equal(7, collections.Rows.Count);
-                Assert.Equal(2, collections.Columns.Count);
+                    var collections = adbcConnection.GetSchema("MetaDataCollections");
+                    Assert.Equal(7, collections.Rows.Count);
+                    Assert.Equal(2, collections.Columns.Count);
 
-                var restrictions = adbcConnection.GetSchema("Restrictions");
-                Assert.Equal(11, restrictions.Rows.Count);
-                Assert.Equal(3, restrictions.Columns.Count);
+                    var restrictions = adbcConnection.GetSchema("Restrictions");
+                    Assert.Equal(11, restrictions.Rows.Count);
+                    Assert.Equal(3, restrictions.Columns.Count);
 
-                var catalogs = adbcConnection.GetSchema("Catalogs");
-                Assert.Single(catalogs.Columns);
-                var catalog = (string?)catalogs.Rows[0].ItemArray[0];
+                    var catalogs = adbcConnection.GetSchema("Catalogs");
+                    Assert.Single(catalogs.Columns);
+                    var catalog = (string?)catalogs.Rows[0].ItemArray[0];
 
-                catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
-                Assert.Equal(1, catalogs.Rows.Count);
+                    catalogs = adbcConnection.GetSchema("Catalogs", new[] { catalog });
+                    Assert.Equal(1, catalogs.Rows.Count);
 
-                string random = "X" + Guid.NewGuid().ToString("N");
+                    string random = "X" + Guid.NewGuid().ToString("N");
 
-                catalogs = adbcConnection.GetSchema("Catalogs", new[] { random });
-                Assert.Equal(0, catalogs.Rows.Count);
+                    catalogs = adbcConnection.GetSchema("Catalogs", new[] { random });
+                    Assert.Equal(0, catalogs.Rows.Count);
 
-                var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
-                Assert.Equal(2, schemas.Columns.Count);
-                var schema = (string?)schemas.Rows[0].ItemArray[1];
+                    var schemas = adbcConnection.GetSchema("Schemas", new[] { catalog });
+                    Assert.Equal(2, schemas.Columns.Count);
+                    var schema = (string?)schemas.Rows[0].ItemArray[1];
 
-                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
-                Assert.Equal(1, schemas.Rows.Count);
+                    schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, schema });
+                    Assert.Equal(1, schemas.Rows.Count);
 
-                schemas = adbcConnection.GetSchema("Schemas", new[] { random });
-                Assert.Equal(0, schemas.Rows.Count);
+                    schemas = adbcConnection.GetSchema("Schemas", new[] { random });
+                    Assert.Equal(0, schemas.Rows.Count);
 
-                schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, random });
-                Assert.Equal(0, schemas.Rows.Count);
+                    schemas = adbcConnection.GetSchema("Schemas", new[] { catalog, random });
+                    Assert.Equal(0, schemas.Rows.Count);
 
-                schemas = adbcConnection.GetSchema("Schemas", new[] { random, random });
-                Assert.Equal(0, schemas.Rows.Count);
+                    schemas = adbcConnection.GetSchema("Schemas", new[] { random, random });
+                    Assert.Equal(0, schemas.Rows.Count);
 
-                var tableTypes = adbcConnection.GetSchema("TableTypes");
-                Assert.Single(tableTypes.Columns);
+                    var tableTypes = adbcConnection.GetSchema("TableTypes");
+                    Assert.Single(tableTypes.Columns);
 
-                var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
-                Assert.Equal(4, tables.Columns.Count);
+                    var tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema });
+                    Assert.Equal(4, tables.Columns.Count);
 
-                tables = adbcConnection.GetSchema("Tables", new[] { catalog, random });
-                Assert.Equal(0, tables.Rows.Count);
+                    tables = adbcConnection.GetSchema("Tables", new[] { catalog, random });
+                    Assert.Equal(0, tables.Rows.Count);
 
-                tables = adbcConnection.GetSchema("Tables", new[] { random, schema });
-                Assert.Equal(0, tables.Rows.Count);
+                    tables = adbcConnection.GetSchema("Tables", new[] { random, schema });
+                    Assert.Equal(0, tables.Rows.Count);
 
-                tables = adbcConnection.GetSchema("Tables", new[] { random, random });
-                Assert.Equal(0, tables.Rows.Count);
+                    tables = adbcConnection.GetSchema("Tables", new[] { random, random });
+                    Assert.Equal(0, tables.Rows.Count);
 
-                tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema, random });
-                Assert.Equal(0, tables.Rows.Count);
+                    tables = adbcConnection.GetSchema("Tables", new[] { catalog, schema, random });
+                    Assert.Equal(0, tables.Rows.Count);
 
-                var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
-                Assert.Equal(16, columns.Columns.Count);
+                    var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
+                    Assert.Equal(16, columns.Columns.Count);
+                }
             }
         }
 
-        private Adbc.Client.AdbcConnection GetAdbcConnection(bool includeTableConstraints = true)
+        private Adbc.Client.AdbcConnection GetAdbcConnection(
+            BigQueryTestEnvironment environment,
+            bool includeTableConstraints = true
+        )
         {
-            _testConfiguration.IncludeTableConstraints = includeTableConstraints;
+            environment.IncludeTableConstraints = includeTableConstraints;
 
             return new Adbc.Client.AdbcConnection(
                 new BigQueryDriver(),
-                BigQueryTestingUtils.GetBigQueryParameters(_testConfiguration),
+                BigQueryTestingUtils.GetBigQueryParameters(environment),
                 new Dictionary<string, string>()
             );
         }

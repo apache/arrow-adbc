@@ -15,7 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>

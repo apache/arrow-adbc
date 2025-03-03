@@ -67,6 +67,7 @@ type databaseImpl struct {
 	dialOpts      dbDialOpts
 	enableCookies bool
 	options       map[string]string
+	userDialOpts  []grpc.DialOption
 }
 
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
@@ -371,6 +372,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	dv, _ := d.DatabaseImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	driverVersion := dv.(string)
 	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
+	dialOpts = append(dialOpts, d.userDialOpts...)
 
 	d.Logger.DebugContext(ctx, "new client", "location", loc)
 	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)

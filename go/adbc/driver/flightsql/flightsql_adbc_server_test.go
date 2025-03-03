@@ -51,6 +51,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -67,7 +68,7 @@ type ServerBasedTests struct {
 	cnxn adbc.Connection
 }
 
-func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware []flight.ServerMiddleware, dbArgs map[string]string) {
+func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware []flight.ServerMiddleware, dbArgs map[string]string, dialOpts ...grpc.DialOption) {
 	suite.s = flight.NewServerWithMiddleware(srvMiddleware)
 	suite.s.RegisterFlightService(flightsql.NewFlightServer(srv))
 	suite.Require().NoError(suite.s.Init("localhost:0"))
@@ -83,7 +84,7 @@ func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware 
 		"uri": uri,
 	}
 	maps.Copy(args, dbArgs)
-	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabase(args)
+	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabaseWithOptions(args, dialOpts...)
 	suite.Require().NoError(err)
 }
 
@@ -107,6 +108,10 @@ func (suite *ServerBasedTests) TearDownSuite() {
 
 func TestAuthn(t *testing.T) {
 	suite.Run(t, &AuthnTests{})
+}
+
+func TestGrpcDialerOptions(t *testing.T) {
+	suite.Run(t, &DialerOptionsTests{})
 }
 
 func TestErrorDetails(t *testing.T) {
@@ -242,6 +247,57 @@ func (suite *AuthnTests) TestBearerTokenUpdated() {
 	reader, _, err := stmt.ExecuteQuery(context.Background())
 	suite.NoError(err)
 	defer reader.Release()
+}
+
+// ---- Grpc Dialer Options Tests --------------
+
+type DialerOptionsTests struct {
+	ServerBasedTests
+	statsHandler *dialerOptionsGrpcStatsHandler
+}
+
+type dialerOptionsGrpcStatsHandler struct {
+	connectionsHandled int
+	rpcsHandled        int
+	connectionsTagged  int
+	rpcsTagged         int
+}
+
+func (d *dialerOptionsGrpcStatsHandler) HandleConn(ctx context.Context, stat stats.ConnStats) {
+	d.connectionsHandled++
+}
+func (d *dialerOptionsGrpcStatsHandler) HandleRPC(ctx context.Context, stat stats.RPCStats) {
+	d.rpcsHandled++
+}
+func (d *dialerOptionsGrpcStatsHandler) TagConn(ctx context.Context, stat *stats.ConnTagInfo) context.Context {
+	d.connectionsTagged++
+	return ctx
+}
+func (d *dialerOptionsGrpcStatsHandler) TagRPC(ctx context.Context, stat *stats.RPCTagInfo) context.Context {
+	d.rpcsTagged++
+	return ctx
+}
+
+func (suite *DialerOptionsTests) SetupSuite() {
+	suite.statsHandler = &dialerOptionsGrpcStatsHandler{}
+	suite.DoSetupSuite(&AuthnTestServer{}, nil, nil, grpc.WithStatsHandler(suite.statsHandler))
+}
+
+// TestGrpcObserved validates that the grpc stats handler that was passed through correctly to the underlying grpc client.
+func (suite *DialerOptionsTests) TestGrpcObserved() {
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	suite.NoError(err)
+	defer reader.Release()
+
+	suite.Less(0, suite.statsHandler.connectionsTagged)
+	suite.Less(0, suite.statsHandler.connectionsHandled)
+	suite.Less(0, suite.statsHandler.rpcsTagged)
+	suite.Less(0, suite.statsHandler.rpcsHandled)
 }
 
 // ---- Error Details Tests --------------------

@@ -15,7 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cstdio>
 #include <limits>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <arrow-adbc/adbc.h>
 #include <sqlite3.h>

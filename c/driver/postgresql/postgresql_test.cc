@@ -22,7 +22,10 @@
 #include <cstring>
 #include <limits>
 #include <optional>
+#include <string>
+#include <utility>
 #include <variant>
+#include <vector>
 
 #include <arrow-adbc/adbc.h>
 #include <gtest/gtest-param-test.h>
