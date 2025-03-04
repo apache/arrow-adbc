@@ -173,7 +173,7 @@ struct ManagedLibrary {
 
     void* handle = dlopen(library, RTLD_NOW | RTLD_LOCAL);
     if (!handle) {
-      error_message = "[DriverManager] dlopen() failed: ";
+      error_message = "dlopen() failed: ";
       error_message += dlerror();
 
       // If applicable, append the shared library prefix/extension and
