@@ -290,7 +290,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected ActivityTrace Trace { get; }
+        // internal for testing
+        protected internal ActivityTrace Trace { get; }
 
         internal TCLIService.Client Client
         {
@@ -365,6 +366,34 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal abstract SchemaParser SchemaParser { get; }
 
         internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
+
+        public override void SetOption(string key, string value)
+        {
+            switch (key.ToLowerInvariant())
+            {
+                // Since this API only allows non-null values, we'll treat empty string as null to allow the TraceParent to be unset.
+                case HiveServer2Parameters.TraceParent:
+                    Trace.TraceParent = !string.IsNullOrWhiteSpace(value)
+                        ? ActivityContext.TryParse(value, null, out _)
+                            ? value
+                            : throw new ArgumentOutOfRangeException(nameof(value), $"Invalid trace_parent '{value}'.")
+                        : null;
+                    break;
+
+                case HiveServer2Parameters.HostName:
+                case HiveServer2Parameters.Port:
+                case HiveServer2Parameters.Path:
+                case HiveServer2Parameters.AuthType:
+                case HiveServer2Parameters.TransportType:
+                case HiveServer2Parameters.DataTypeConv:
+                case HiveServer2Parameters.TLSOptions:
+                case HiveServer2Parameters.ConnectTimeoutMilliseconds:
+                    throw new InvalidOperationException($"Options '{key}' cannot be set once connection is created.");
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(key), $"Unsupported or unknown option '{key}'.");
+            }
+        }
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {

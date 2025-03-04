@@ -52,12 +52,6 @@ namespace Apache.Arrow.Adbc.Tracing
             TraceParent = traceParent;
         }
 
-        public ActivityTrace(ActivityTrace trace, string? traceParent = default)
-        {
-            ActivitySource = trace.ActivitySource;
-            TraceParent = traceParent ?? trace.TraceParent;
-        }
-
         /// <summary>
         /// Gets the <see cref="ActivitySource"/>.
         /// </summary>
@@ -272,7 +266,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <summary>
         /// Gets or sets the trace parent context.
         /// </summary>
-        public virtual string? TraceParent { get; set; }
+        public string? TraceParent { get; set; }
 
         /// <summary>
         /// Gets the product version from the file version of the current assembly.
