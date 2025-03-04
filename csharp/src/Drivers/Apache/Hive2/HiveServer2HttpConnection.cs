@@ -25,6 +25,7 @@ using System.Net.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
@@ -46,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected override string ProductVersion => _productVersion.Value;
 
-        public HiveServer2HttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public HiveServer2HttpConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace) : base(properties, trace)
         {
             ValidateProperties();
             _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
@@ -142,13 +143,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override AdbcStatement CreateStatement()
         {
-            return new HiveServer2Statement(this);
+            return new HiveServer2Statement(this, Trace);
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(
             statement,
             schema,
             dataTypeConversion: statement.Connection.DataTypeConversion,
+            trace: Trace,
             enableBatchSizeStopCondition: false);
 
         protected override TTransport CreateTransport()

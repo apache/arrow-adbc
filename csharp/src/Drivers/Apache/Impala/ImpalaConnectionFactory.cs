@@ -17,12 +17,13 @@
 
 using System;
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal class ImpalaConnectionFactory
     {
-        public static ImpalaConnection NewConnection(IReadOnlyDictionary<string, string> properties)
+        public static ImpalaConnection NewConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
         {
             if (!properties.TryGetValue(ImpalaParameters.Type, out string? type) && string.IsNullOrEmpty(type))
             {
@@ -34,8 +35,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             }
             return serverTypeValue switch
             {
-                ImpalaServerType.Http => new ImpalaHttpConnection(properties),
-                ImpalaServerType.Standard => new ImpalaStandardConnection(properties),
+                ImpalaServerType.Http => new ImpalaHttpConnection(properties, trace),
+                ImpalaServerType.Standard => new ImpalaStandardConnection(properties, trace),
                 _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{ImpalaParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}"),
             };
         }

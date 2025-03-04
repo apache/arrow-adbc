@@ -16,14 +16,28 @@
 */
 
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     public class ImpalaDriver : AdbcDriver
     {
+        public ImpalaDriver(string? activitySourceName = default, string? traceParent = default)
+        {
+            Trace = new ActivityTrace(activitySourceName, traceParent);
+        }
+
         public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
         {
-            return new ImpalaDatabase(parameters);
+            return new ImpalaDatabase(parameters, Trace);
+        }
+
+        protected ActivityTrace Trace { get; }
+
+        public override void Dispose()
+        {
+            Trace.Dispose();
+            base.Dispose();
         }
     }
 }
