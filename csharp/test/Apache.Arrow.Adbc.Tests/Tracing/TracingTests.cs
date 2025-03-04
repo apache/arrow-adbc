@@ -313,11 +313,11 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 {
                     foreach (KeyValuePair<string, object?> tag in tags)
                     {
-                        activity?.AddTag(tag.Key, tag.Value);
-                        activity?.AddBaggage(tag.Key, tag.Value?.ToString());
+                        activity?.AddTag(tag.Key, tag.Value)
+                            .AddBaggage(tag.Key, tag.Value?.ToString());
                     }
-                    activity?.AddEvent(eventName, tags);
-                    activity?.AddLink(traceParent, tags);
+                    activity?.AddEvent(eventName, tags)
+                        .AddLink(traceParent, tags);
                 }, activityName: activityName, traceParent: traceParent);
             }
 

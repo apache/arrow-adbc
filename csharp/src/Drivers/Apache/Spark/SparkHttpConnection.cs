@@ -174,10 +174,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     // to ensure cancelled correctly.
                     ConnectTimeout = int.MaxValue,
                 };
-                activity?.AddTag("network.protocol.name", baseAddress.Scheme);
-                activity?.AddTag("server.address", baseAddress.Host);
-                activity?.AddTag("server.port", baseAddress.Port);
-                activity?.AddTag("server.authentication.type", authType);
+                activity?.AddTag("network.protocol.name", baseAddress.Scheme)
+                    .AddTag("server.address", baseAddress.Host)
+                    .AddTag("server.port", baseAddress.Port)
+                    .AddTag("server.authentication.type", authType);
                 return transport;
             });
         }
