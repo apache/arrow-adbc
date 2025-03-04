@@ -17,7 +17,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
@@ -25,9 +27,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         readonly IReadOnlyDictionary<string, string> properties;
 
-        internal HiveServer2Database(IReadOnlyDictionary<string, string> properties)
+        internal HiveServer2Database(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
         {
             this.properties = properties;
+            this.Trace = trace;
         }
 
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
@@ -38,9 +41,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 : options
                     .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            HiveServer2Connection connection = HiveServer2ConnectionFactory.NewConnection(mergedProperties);
+            HiveServer2Connection connection = HiveServer2ConnectionFactory.NewConnection(mergedProperties, Trace);
             connection.OpenAsync().Wait();
             return connection;
         }
+
+        protected ActivityTrace Trace { get; }
     }
 }

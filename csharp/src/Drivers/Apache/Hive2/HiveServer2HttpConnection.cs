@@ -25,6 +25,7 @@ using System.Net.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
@@ -46,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected override string ProductVersion => _productVersion.Value;
 
-        public HiveServer2HttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public HiveServer2HttpConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace) : base(properties, trace)
         {
             ValidateProperties();
             _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
@@ -65,7 +66,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(HiveServer2Parameters.AuthType, out string? authType);
-            bool isValidAuthType = HiveServer2AuthTypeParser.TryParse(authType, out HiveServer2AuthType authTypeValue);
+            if (!HiveServer2AuthTypeParser.TryParse(authType, out HiveServer2AuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(HiveServer2Parameters.AuthType, authType, $"Unsupported {HiveServer2Parameters.AuthType} value.");
+            }
             switch (authTypeValue)
             {
                 case HiveServer2AuthType.Basic:
@@ -139,14 +143,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override AdbcStatement CreateStatement()
         {
-            return new HiveServer2Statement(this);
+            return new HiveServer2Statement(this, Trace);
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(
-                statement,
-                schema,
-                dataTypeConversion: statement.Connection.DataTypeConversion,
-                enableBatchSizeStopCondition: false);
+            statement,
+            schema,
+            dataTypeConversion: statement.Connection.DataTypeConversion,
+            trace: Trace,
+            enableBatchSizeStopCondition: false);
 
         protected override TTransport CreateTransport()
         {
@@ -155,7 +160,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(HiveServer2Parameters.Path, out string? path);
             Properties.TryGetValue(HiveServer2Parameters.Port, out string? port);
             Properties.TryGetValue(HiveServer2Parameters.AuthType, out string? authType);
-            bool isValidAuthType = HiveServer2AuthTypeParser.TryParse(authType, out HiveServer2AuthType authTypeValue);
+            if (!HiveServer2AuthTypeParser.TryParse(authType, out HiveServer2AuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(HiveServer2Parameters.AuthType, authType, $"Unsupported {HiveServer2Parameters.AuthType} value.");
+            }
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);

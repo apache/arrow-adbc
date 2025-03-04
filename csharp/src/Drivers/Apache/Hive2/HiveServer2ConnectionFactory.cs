@@ -17,12 +17,13 @@
 
 using System;
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2ConnectionFactory
     {
-        public static HiveServer2Connection NewConnection(IReadOnlyDictionary<string, string> properties)
+        public static HiveServer2Connection NewConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
         {
             if (!properties.TryGetValue(HiveServer2Parameters.TransportType, out string? type))
             {
@@ -33,7 +34,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{HiveServer2Parameters.TransportType}'. Supported types: {HiveServer2TransportTypeParser.SupportedList}");
             }
-            return new HiveServer2HttpConnection(properties);
+            return new HiveServer2HttpConnection(properties, trace);
         }
     }
 }

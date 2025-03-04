@@ -80,13 +80,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             HiveServer2Statement statement,
             Schema schema,
             DataTypeConversion dataTypeConversion,
-            bool enableBatchSizeStopCondition = true,
-            ActivityTrace trace)
+            ActivityTrace trace,
+            bool enableBatchSizeStopCondition = true)
         {
             _statement = statement;
             Schema = schema;
             _dataTypeConversion = dataTypeConversion;
             Trace = trace;
+            _enableBatchSizeStopCondition = enableBatchSizeStopCondition;
         }
 
         protected ActivityTrace Trace { get; }

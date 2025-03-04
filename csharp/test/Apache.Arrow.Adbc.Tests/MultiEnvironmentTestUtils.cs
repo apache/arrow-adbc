@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 
 namespace Apache.Arrow.Adbc.Tests
@@ -38,7 +39,6 @@ namespace Apache.Arrow.Adbc.Tests
                     {
                         // use a JSON file for the various settings
                         string json = File.ReadAllText(environmentValue);
-
                         testConfiguration = JsonSerializer.Deserialize<T>(json)!;
                     }
                 }
@@ -60,17 +60,34 @@ namespace Apache.Arrow.Adbc.Tests
                 throw new InvalidOperationException("There are no environments configured");
 
             List<TEnvironment> environments = new List<TEnvironment>();
+            string term = "$ref:shared.";
 
             foreach (string environmentName in GetEnvironmentNames(testConfiguration.TestEnvironmentNames))
             {
-                if (testConfiguration.Environments.TryGetValue(environmentName, out TEnvironment? testEnvironment))
+                if (!testConfiguration.Environments.TryGetValue(environmentName, out TEnvironment? testEnvironment) || testEnvironment is null)
+                    continue;
+
+                testEnvironment.Name = environmentName;
+
+                if (testConfiguration.SharedKeyValuePairs.Count > 0)
                 {
-                    if (testEnvironment != null)
+                    foreach (PropertyInfo pi in testEnvironment.GetType().GetProperties())
                     {
-                        testEnvironment.Name = environmentName;
-                        environments.Add(testEnvironment);
+                        if (pi.PropertyType == typeof(string) &&
+                            pi.GetValue(testEnvironment) is string propertyValue &&
+                            propertyValue.StartsWith(term, StringComparison.Ordinal))
+                        {
+                            string lookupKey = propertyValue.AsSpan(term.Length).ToString();
+
+                            if (testConfiguration.SharedKeyValuePairs.TryGetValue(lookupKey, out string? sharedValue))
+                            {
+                                pi.SetValue(testEnvironment, sharedValue);
+                            }
+                        }
                     }
                 }
+
+                environments.Add(testEnvironment);
             }
 
             if (environments.Count == 0)

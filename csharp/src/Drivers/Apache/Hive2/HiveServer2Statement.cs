@@ -28,10 +28,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2Statement : AdbcStatement
     {
-        protected HiveServer2Statement(HiveServer2Connection connection, ActivityTrace trace)
+        protected internal HiveServer2Statement(HiveServer2Connection connection, ActivityTrace trace)
         {
             Connection = connection;
             Trace = trace;
+            ValidateOptions(connection.Properties);
         }
 
         protected ActivityTrace Trace { get; }

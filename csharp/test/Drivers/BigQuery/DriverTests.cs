@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
@@ -306,6 +307,44 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
 
             return _configuredConnections[environmentName!];
+        }
+
+        /// <summary>
+        /// Validates the ClientTimeout parameter.
+        /// </summary>
+        [SkippableFact, Order(7)]
+        public void ClientTimeoutTest()
+        {
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                if (environment.RunTimeoutTests && environment.ClientTimeout.HasValue)
+                {
+                    AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(environment);
+
+                    AdbcStatement statement = adbcConnection.CreateStatement();
+                    statement.SqlQuery = environment.Query;
+
+                    Assert.Throws<TaskCanceledException>(() => { statement.ExecuteQuery(); });
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates the GetQueryResultsOptionsTimeoutMinutes parameter.
+        /// </summary>
+        [SkippableFact, Order(8)]
+        public void QueryTimeoutTest()
+        {
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                if (environment.RunTimeoutTests && (environment.QueryTimeout.HasValue || environment.TimeoutMinutes.HasValue))
+                {
+                    AdbcConnection adbcConnection = BigQueryTestingUtils.GetBigQueryAdbcConnection(environment);
+                    AdbcStatement statement = adbcConnection.CreateStatement();
+                    statement.SqlQuery = environment.Query;
+                    Assert.Throws<TimeoutException>(() => { statement.ExecuteQuery(); });
+                }
+            }
         }
     }
 }

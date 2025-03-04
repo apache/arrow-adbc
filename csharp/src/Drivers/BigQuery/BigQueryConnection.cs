@@ -73,9 +73,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         internal BigQueryClient Open()
         {
             string? projectId = null;
+            string? billingProjectId = null;
             string? clientId = null;
             string? clientSecret = null;
             string? refreshToken = null;
+            TimeSpan? clientTimeout = null;
 
             string tokenEndpoint = BigQueryConstants.TokenEndpoint;
 
@@ -86,6 +88,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             // if the caller doesn't specify a projectId, use the default
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
                 projectId = BigQueryConstants.DetectProjectId;
+
+            // the billing project can be null if it's not specified
+            this.properties.TryGetValue(BigQueryParameters.BillingProjectId, out billingProjectId);
 
             if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectId, out string? result))
             {
@@ -128,7 +133,26 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.credential = ApplyScopes(GoogleCredential.FromJson(json));
             }
 
-            BigQueryClient client = BigQueryClient.Create(projectId, this.credential);
+            if (this.properties.TryGetValue(BigQueryParameters.ClientTimeout, out string? timeoutSeconds) &&
+                int.TryParse(timeoutSeconds, out int seconds))
+            {
+                clientTimeout = TimeSpan.FromSeconds(seconds);
+            }
+
+            BigQueryClientBuilder bigQueryClientBuilder = new BigQueryClientBuilder()
+            {
+                ProjectId = projectId,
+                QuotaProject = billingProjectId,
+                GoogleCredential = this.credential
+            };
+
+            BigQueryClient client = bigQueryClientBuilder.Build();
+
+            if (clientTimeout.HasValue)
+            {
+                client.Service.HttpClient.Timeout = clientTimeout.Value;
+            }
+
             this.client = client;
             return client;
         }
@@ -1033,7 +1057,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.UseLegacySQL,
                 BigQueryParameters.LargeDecimalsAsString,
                 BigQueryParameters.LargeResultsDestinationTable,
-                BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes,
+                BigQueryParameters.GetQueryResultsOptionsTimeout,
                 BigQueryParameters.MaxFetchConcurrency
             };
 

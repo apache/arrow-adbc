@@ -39,7 +39,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+            if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+            }
             switch (authTypeValue)
             {
                 case SparkAuthType.None:
@@ -114,7 +117,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+            if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+            }
             TOpenSessionReq request = base.CreateSessionRequest();
             switch (authTypeValue)
             {
