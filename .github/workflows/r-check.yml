@@ -47,7 +47,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "${{ env.GO_VERSION }}"
-      - uses: r-lib/actions/setup-r@v2
+      - uses: r-lib/actions/setup-r@14a7e741c1cb130261263aa1593718ba42cf443b  # v2
         with:
           r-version: release
           use-public-rspm: true
@@ -94,7 +94,7 @@ jobs:
           ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
           echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
 
-      - uses: r-lib/actions/check-r-package@v2
+      - uses: r-lib/actions/check-r-package@14a7e741c1cb130261263aa1593718ba42cf443b  # v2
         env:
           ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }}
           R_KEEP_PKG_SOURCE: yes

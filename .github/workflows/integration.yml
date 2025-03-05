@@ -68,7 +68,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -118,7 +118,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -187,7 +187,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -287,7 +287,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false

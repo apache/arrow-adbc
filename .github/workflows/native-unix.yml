@@ -95,7 +95,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -173,7 +173,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -283,7 +283,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -329,7 +329,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -392,7 +392,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: 'google-github-actions/auth@v2'
+      - uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f  # v2
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -449,7 +449,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: 'google-github-actions/auth@v2'
+      - uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f  # v2
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -465,7 +465,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -549,7 +549,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -659,7 +659,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
