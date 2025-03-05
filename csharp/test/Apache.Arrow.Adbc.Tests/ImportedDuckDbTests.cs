@@ -195,6 +195,18 @@ namespace Apache.Arrow.Adbc.Tests
             statement2.ExecuteUpdate();
 
             Assert.Equal(5, GetResultCount(statement2, "SELECT * from ingested"));
+
+            // TODO: Pass a schema once the DuckDB "quoting identifiers" bug has been fixed
+            using var statement3 = connection.BulkIngest(null, null, "ingested", BulkIngestMode.Append, isTemporary: false);
+
+            recordBatch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([6]).Build(),
+                new StringArray.Builder().AppendRange(["antidisestablishmentarianism"]).Build()
+                ], 1);
+            statement3.Bind(recordBatch, schema);
+            statement3.ExecuteUpdate();
+
+            Assert.Equal(6, GetResultCount(statement3, "SELECT * from main.ingested"));
         }
 
         [Fact]
