@@ -683,6 +683,40 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            public override AdbcStatement BulkIngest(
+                string? targetCatalog,
+                string? targetDbSchema,
+                string targetTableName,
+                BulkIngestMode mode,
+                bool isTemporary)
+            {
+                AdbcStatement statement = CreateStatement();
+                bool succeeded = false;
+                try
+                {
+                    statement.SetOption(AdbcOptions.Ingest.TargetTable, targetTableName);
+                    if (targetCatalog != null)
+                    {
+                        statement.SetOption(AdbcOptions.Ingest.TargetCatalog, targetCatalog);
+                    }
+                    if (targetDbSchema != null)
+                    {
+                        statement.SetOption(AdbcOptions.Ingest.TargetDbSchema, targetDbSchema);
+                    }
+                    if (isTemporary)
+                    {
+                        statement.SetOption(AdbcOptions.Ingest.Temporary, AdbcOptions.GetEnabled(isTemporary));
+                    }
+                    statement.SetOption(AdbcOptions.Ingest.Mode, AdbcOptions.GetIngestMode(mode));
+                    succeeded = true;
+                    return statement;
+                }
+                finally
+                {
+                    if (!succeeded) { statement.Dispose(); }
+                }
+            }
+
             public unsafe override void Commit()
             {
                 using (CallHelper caller = new CallHelper())
