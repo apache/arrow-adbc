@@ -196,7 +196,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             Assert.Equal(5, GetResultCount(statement2, "SELECT * from ingested"));
 
-            // TODO: Pass a schema once the DuckDB "quoting identifiers bug has been fixed
+            // TODO: Pass a schema once the DuckDB "quoting identifiers" bug has been fixed
             using var statement3 = connection.BulkIngest(null, null, "ingested", BulkIngestMode.Append, isTemporary: false);
 
             recordBatch = new RecordBatch(schema, [
