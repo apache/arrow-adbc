@@ -519,7 +519,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
+      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -1061,7 +1061,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: conda-packages
-      - uses: conda-incubator/setup-miniconda@e5457fe695e3787d415a42160e580fd154de1899  # v3
+      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
