@@ -84,11 +84,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             Dictionary<string, string> parameters = GetDriverParameters(TestConfiguration);
 
             bool hasToken = parameters.TryGetValue(SparkParameters.Token, out var token) && !string.IsNullOrEmpty(token);
+            bool hasAccessToken = parameters.TryGetValue(SparkParameters.Token, out var access_token) && !string.IsNullOrEmpty(access_token);
             bool hasUsername = parameters.TryGetValue(AdbcOptions.Username, out var username) && !string.IsNullOrEmpty(username);
             bool hasPassword = parameters.TryGetValue(AdbcOptions.Password, out var password) && !string.IsNullOrEmpty(password);
             if (hasToken)
             {
                 parameters[SparkParameters.Token] = "invalid-token";
+            }
+            else if (hasAccessToken)
+            {
+                parameters[SparkParameters.AccessToken] = "invalid-access-token";
             }
             else if (hasUsername && hasPassword)
             {
@@ -96,7 +101,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
             else
             {
-                Assert.Fail($"Unexpected configuration. Must provide '{SparkParameters.Token}' or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.");
+                Assert.Fail($"Unexpected configuration. Must provide '{SparkParameters.Token}' or '{SparkParameters.AccessToken}' or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.");
             }
 
             AdbcDatabase database = driver.Open(parameters);
