@@ -22,12 +22,12 @@ using System.Text;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Impala;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
-    public class ImpalaTestEnvironment : HiveServer2TestEnvironment<ApacheTestConfiguration>
+    public class ImpalaTestEnvironment : CommonTestEnvironment<ApacheTestConfiguration>
     {
         public class Factory : Factory<ImpalaTestEnvironment>
         {

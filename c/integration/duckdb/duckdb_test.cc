@@ -16,6 +16,7 @@
 // under the License.
 
 #include <cstdlib>
+#include <string>
 
 #include <arrow-adbc/adbc.h>
 #include <arrow-adbc/adbc_driver_manager.h>

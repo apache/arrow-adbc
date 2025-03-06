@@ -18,7 +18,7 @@
 #include "error.h"
 
 #include <stdarg.h>
-#include <stdio.h>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>

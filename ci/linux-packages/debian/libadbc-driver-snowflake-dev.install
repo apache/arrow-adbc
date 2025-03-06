@@ -1,3 +1,4 @@
+usr/lib/*/cmake/AdbcDriverSnowflake/
 usr/lib/*/libadbc_driver_snowflake.a
 usr/lib/*/libadbc_driver_snowflake.so
 usr/lib/*/pkgconfig/adbc-driver-snowflake.pc

@@ -19,7 +19,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal enum ImpalaAuthType
     {
-        Invalid = 0,
         None,
         UsernameOnly,
         Basic,
@@ -46,7 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                     authTypeValue = ImpalaAuthType.Basic;
                     return true;
                 default:
-                    authTypeValue = ImpalaAuthType.Invalid;
+                    authTypeValue = default;
                     return false;
             }
         }

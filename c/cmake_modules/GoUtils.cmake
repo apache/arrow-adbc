@@ -18,6 +18,53 @@
 find_program(GO_BIN "go" REQUIRED)
 message(STATUS "Detecting Go executable: Found ${GO_BIN}")
 
+set(ADBC_GO_PACKAGE_INIT
+    [=[
+get_filename_component(_IMPORT_PREFIX "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(_IMPORT_PREFIX "${_IMPORT_PREFIX}" PATH)
+get_filename_component(_IMPORT_PREFIX "${_IMPORT_PREFIX}" PATH)
+get_filename_component(_IMPORT_PREFIX "${_IMPORT_PREFIX}" PATH)
+if(_IMPORT_PREFIX STREQUAL "/")
+  set(_IMPORT_PREFIX "")
+endif()
+
+function(adbc_add_shared_library target_name base_name)
+  set(shared_base_name
+    "${CMAKE_SHARED_LIBRARY_PREFIX}${base_name}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  set(prefix "${_IMPORT_PREFIX}/${ADBC_INSTALL_LIBDIR}")
+  add_library(${target_name} SHARED IMPORTED)
+  if(WINDOWS)
+    set(import_base_name
+      "${CMAKE_IMPORT_LIBRARY_PREFIX}${base_name}${CMAKE_IMPORT_LIBRARY_SUFFIX}")
+    set_target_properties(${target_name}
+      PROPERTIES
+      IMPORTED_IMPLIB "${prefix}/${import_base_name}"
+      IMPORTED_LOCATION "${_IMPORT_PREFIX}/bin/${shared_base_name}")
+  else()
+    set_target_properties(${target_name}
+      PROPERTIES
+      IMPORTED_LOCATION "${prefix}/${shared_base_name}.${ADBC_FULL_SO_VERSION}"
+      IMPORTED_SONAME "${prefix}/${shared_base_name}.${ADBC_SO_VERSION}")
+  endif()
+endfunction()
+
+function(adbc_add_static_library target_name base_name)
+  set(static_base_name
+    "${CMAKE_STATIC_LIBRARY_PREFIX}${base_name}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  add_library(${target_name} STATIC IMPORTED)
+  if(WINDOWS)
+    set_target_properties(${target_name}
+      PROPERTIES
+      IMPORTED_LOCATION "${_IMPORT_PREFIX}/bin/${static_base_name}")
+  else()
+    set(prefix "${_IMPORT_PREFIX}/${ADBC_IMPORT_LIB_DIR}")
+    set_target_properties(${target_name}
+      PROPERTIES
+      IMPORTED_LOCATION "${prefix}/${static_base_name}")
+  endif()
+endfunction()
+]=])
+
 function(add_go_lib GO_MOD_DIR GO_LIBNAME)
   set(options)
   set(one_value_args
@@ -243,6 +290,10 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     endif()
 
     install(FILES "${LIBOUT_STATIC}" TYPE LIB)
+  endif()
+
+  if(ARG_CMAKE_PACKAGE_NAME)
+    arrow_install_cmake_package(${ARG_CMAKE_PACKAGE_NAME} "")
   endif()
 
   if(ARG_PKG_CONFIG_NAME)

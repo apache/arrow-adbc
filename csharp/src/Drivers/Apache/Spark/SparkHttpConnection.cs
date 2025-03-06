@@ -52,7 +52,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
             Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
-            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+            if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+            }
             switch (authTypeValue)
             {
                 case SparkAuthType.Token:
@@ -118,7 +121,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(SparkParameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(uri, hostName, path, port)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName)
             };
         }
 
@@ -146,14 +149,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(SparkParameters.Path, out string? path);
             Properties.TryGetValue(SparkParameters.Port, out string? port);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            bool isValidAuthType = SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue);
+            if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+            }
             Properties.TryGetValue(SparkParameters.Token, out string? token);
             Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, access_token);
 
             HttpClientHandler httpClientHandler = NewHttpClientHandler();
@@ -259,5 +265,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
+
+        protected override int ColumnMapIndexOffset => 1;
     }
 }

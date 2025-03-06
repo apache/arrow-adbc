@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -33,7 +32,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// </summary>
     public abstract class StringValueTests<TConfig, TEnv> : TestBase<TConfig, TEnv>
         where TConfig : TestConfiguration
-        where TEnv : HiveServer2TestEnvironment<TConfig>
+        where TEnv : CommonTestEnvironment<TConfig>
     {
         public StringValueTests(ITestOutputHelper output, TestEnvironment<TConfig>.Factory<TEnv> testEnvFactory)
             : base(output, testEnvFactory) { }
@@ -112,6 +111,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             string columnName = "VARCHARTYPE";
             using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "VARCHAR(10)"));
             AdbcException exception = await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(
+                GetSelectSingleValueStatement(table.TableName, columnName, value.Substring(0, 10)),
                 table.TableName,
                 columnName,
                 value,

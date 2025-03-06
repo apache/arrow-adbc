@@ -19,7 +19,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal enum SparkServerType
     {
-        Invalid = 0,
         Http,
         Databricks,
         Standard,
@@ -48,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     serverTypeValue = SparkServerType.Standard;
                     return true;
                 default:
-                    serverTypeValue = SparkServerType.Invalid;
+                    serverTypeValue = default;
                     return false;
             }
         }

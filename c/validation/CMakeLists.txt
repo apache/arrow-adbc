@@ -20,23 +20,16 @@ adbc_configure_target(adbc_validation_util)
 target_compile_features(adbc_validation_util PRIVATE cxx_std_17)
 target_include_directories(adbc_validation_util SYSTEM
                            PRIVATE "${REPOSITORY_ROOT}/c/include/"
-                                   "${REPOSITORY_ROOT}/c/driver/"
-                                   "${REPOSITORY_ROOT}/c/vendor/")
-target_link_libraries(adbc_validation_util PUBLIC adbc_driver_common nanoarrow
-                                                  GTest::gtest GTest::gmock)
+                                   "${REPOSITORY_ROOT}/c/driver/")
+target_link_libraries(adbc_validation_util PUBLIC adbc_driver_common GTest::gtest
+                                                  GTest::gmock)
 
 add_library(adbc_validation OBJECT
             adbc_validation.cc adbc_validation_connection.cc adbc_validation_database.cc
             adbc_validation_statement.cc)
 adbc_configure_target(adbc_validation)
 target_compile_features(adbc_validation PRIVATE cxx_std_17)
-target_include_directories(adbc_validation SYSTEM
-                           PRIVATE "${REPOSITORY_ROOT}/c/include/"
-                                   "${REPOSITORY_ROOT}/c/driver/"
-                                   "${REPOSITORY_ROOT}/c/vendor/")
-target_link_libraries(adbc_validation
-                      PUBLIC adbc_driver_common
-                             adbc_validation_util
-                             nanoarrow
-                             GTest::gtest
-                             GTest::gmock)
+target_include_directories(adbc_validation SYSTEM PRIVATE "${REPOSITORY_ROOT}/c/include/"
+                                                          "${REPOSITORY_ROOT}/c/driver/")
+target_link_libraries(adbc_validation PUBLIC adbc_driver_common adbc_validation_util
+                                             GTest::gtest GTest::gmock)

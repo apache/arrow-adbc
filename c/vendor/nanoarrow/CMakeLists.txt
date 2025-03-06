@@ -21,6 +21,8 @@ add_library(
   nanoarrow.c
 )
 
+target_include_directories(nanoarrow PUBLIC "${CMAKE_CURRENT_LIST_DIR}/..")
 set_target_properties(
   nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON
 )
+add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
