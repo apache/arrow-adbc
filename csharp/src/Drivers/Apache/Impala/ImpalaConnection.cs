@@ -21,6 +21,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -42,8 +43,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         private const int DefaultHttpTransportPort = 28000;
         */
 
-        internal ImpalaConnection(IReadOnlyDictionary<string, string> properties)
-            : base(properties)
+        internal ImpalaConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
+            : base(properties, trace)
         {
             ValidateProperties();
             _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
@@ -62,7 +63,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         public override AdbcStatement CreateStatement()
         {
-            return new ImpalaStatement(this);
+            return new ImpalaStatement(this, Trace);
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>

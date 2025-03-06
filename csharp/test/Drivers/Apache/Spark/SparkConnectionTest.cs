@@ -133,6 +133,39 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
         }
 
+        [SkippableTheory]
+        [InlineData(HiveServer2Parameters.TraceParent, null)]
+        [InlineData(HiveServer2Parameters.TraceParent, "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01")]
+        [InlineData(HiveServer2Parameters.TraceParent, "0af7651916cd43dd8448eb211c80319c", typeof(ArgumentOutOfRangeException))]
+        [InlineData(HiveServer2Parameters.TraceParent, "invalid-traceparent", typeof(ArgumentOutOfRangeException))]
+        [InlineData(HiveServer2Parameters.AuthType, null, typeof(InvalidOperationException))]
+        [InlineData(HiveServer2Parameters.ConnectTimeoutMilliseconds, null, typeof(InvalidOperationException))]
+        [InlineData(HiveServer2Parameters.DataTypeConv, null, typeof(InvalidOperationException))]
+        [InlineData(HiveServer2Parameters.HostName, null, typeof(InvalidOperationException))]
+        [InlineData(HiveServer2Parameters.Path, null, typeof(InvalidOperationException))]
+        [InlineData(HiveServer2Parameters.Port, null, typeof(InvalidOperationException))]
+        [InlineData(HiveServer2Parameters.TLSOptions, null, typeof(InvalidOperationException))]
+        [InlineData(HiveServer2Parameters.TransportType, null, typeof(InvalidOperationException))]
+        [InlineData("invalid.option", null, typeof(ArgumentOutOfRangeException))]
+        internal void SetOptionTest(string key, string? value, Type? exceptionType = default)
+        {
+            HiveServer2Connection connection = (HiveServer2Connection)TestEnvironment.Connection;
+            if (exceptionType == null)
+            {
+                connection.SetOption(key, value!);
+                switch (key.ToLower())
+                {
+                    case HiveServer2Parameters.TraceParent:
+                        Assert.Equal(value, connection.Trace.TraceParent);
+                        break;
+                }
+            }
+            else
+            {
+                OutputHelper?.WriteLine(Assert.Throws(exceptionType, () => connection.SetOption(key, value!)).Message);
+            }
+        }
+
         /// <summary>
         /// Data type used for metadata timeout tests.
         /// </summary>

@@ -17,12 +17,13 @@
 
 using System;
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkConnectionFactory
     {
-        public static SparkConnection NewConnection(IReadOnlyDictionary<string, string> properties)
+        public static SparkConnection NewConnection(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
         {
             if (!properties.TryGetValue(SparkParameters.Type, out string? type) && string.IsNullOrEmpty(type))
             {
@@ -35,8 +36,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             return serverTypeValue switch
             {
-                SparkServerType.Databricks => new SparkDatabricksConnection(properties),
-                SparkServerType.Http => new SparkHttpConnection(properties),
+                SparkServerType.Databricks => new SparkDatabricksConnection(properties, trace),
+                SparkServerType.Http => new SparkHttpConnection(properties, trace),
                 // TODO: Re-enable when properly supported
                 //SparkServerType.Standard => new SparkStandardConnection(properties),
                 _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{SparkParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}"),

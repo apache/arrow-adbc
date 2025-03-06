@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
@@ -27,11 +28,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2Statement : AdbcStatement
     {
-        internal HiveServer2Statement(HiveServer2Connection connection)
+        protected internal HiveServer2Statement(HiveServer2Connection connection, ActivityTrace trace)
         {
             Connection = connection;
+            Trace = trace;
             ValidateOptions(connection.Properties);
         }
+
+        protected ActivityTrace Trace { get; }
 
         protected virtual void SetStatementProperties(TExecuteStatementReq statement)
         {

@@ -16,14 +16,28 @@
 */
 
 using System.Collections.Generic;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     public class HiveServer2Driver : AdbcDriver
     {
+        public HiveServer2Driver(string? activitySourceName = default, string? traceParent = default)
+        {
+            Trace = new ActivityTrace(activitySourceName, traceParent);
+        }
+
         public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
         {
-            return new HiveServer2Database(parameters);
+            return new HiveServer2Database(parameters, Trace);
+        }
+
+        protected ActivityTrace Trace { get; }
+
+        public override void Dispose()
+        {
+            Trace.Dispose();
+            base.Dispose();
         }
     }
 }

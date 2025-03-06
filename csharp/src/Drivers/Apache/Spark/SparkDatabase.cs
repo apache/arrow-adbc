@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -25,10 +26,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         readonly IReadOnlyDictionary<string, string> properties;
 
-        internal SparkDatabase(IReadOnlyDictionary<string, string> properties)
+        internal SparkDatabase(IReadOnlyDictionary<string, string> properties, ActivityTrace trace)
         {
+            Trace = trace;
             this.properties = properties;
         }
+
+        protected ActivityTrace Trace { get; }
 
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
@@ -38,7 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 : options
                     .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            SparkConnection connection = SparkConnectionFactory.NewConnection(mergedProperties); // new SparkConnection(mergedProperties);
+            SparkConnection connection = SparkConnectionFactory.NewConnection(mergedProperties, Trace);
             connection.OpenAsync().Wait();
             return connection;
         }
