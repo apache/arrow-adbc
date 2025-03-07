@@ -17,23 +17,23 @@
 
 package org.apache.arrow.adbc.driver.jni.impl;
 
+import org.apache.arrow.adbc.core.AdbcException;
+
 public class NativeAdbc {
-  static native NativeHandle openDatabase(int version, String[] parameters)
-      throws NativeAdbcException;
+  static native NativeDatabaseHandle openDatabase(int version, String[] parameters)
+      throws AdbcException;
 
-  static native void closeDatabase(long handle) throws NativeAdbcException;
+  static native void closeDatabase(long handle) throws AdbcException;
 
-  static native NativeHandle openConnection(long databaseHandle) throws NativeAdbcException;
+  static native NativeConnectionHandle openConnection(long databaseHandle) throws AdbcException;
 
-  static native void closeConnection(long handle) throws NativeAdbcException;
+  static native void closeConnection(long handle) throws AdbcException;
 
-  static native NativeHandle openStatement(long connectionHandle) throws NativeAdbcException;
+  static native NativeStatementHandle openStatement(long connectionHandle) throws AdbcException;
 
-  static native void closeStatement(long handle) throws NativeAdbcException;
+  static native void closeStatement(long handle) throws AdbcException;
 
-  static native NativeQueryResult statementExecuteQuery(long handle)
-      throws NativeAdbcException;
+  static native NativeQueryResult statementExecuteQuery(long handle) throws AdbcException;
 
-  static native void statementSetSqlQuery(long handle, String query)
-      throws NativeAdbcException;
+  static native void statementSetSqlQuery(long handle, String query) throws AdbcException;
 }

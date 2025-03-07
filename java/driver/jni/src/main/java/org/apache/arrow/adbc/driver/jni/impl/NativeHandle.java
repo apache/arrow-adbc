@@ -18,7 +18,9 @@
 package org.apache.arrow.adbc.driver.jni.impl;
 
 import java.lang.ref.Cleaner;
+import org.apache.arrow.adbc.core.AdbcException;
 
+/** A wrapper around a C-allocated ADBC resource. */
 abstract class NativeHandle implements AutoCloseable {
   static final Cleaner cleaner = Cleaner.create();
 
@@ -30,6 +32,7 @@ abstract class NativeHandle implements AutoCloseable {
     this.cleanable = cleaner.register(this, state);
   }
 
+  /** Get the native function used to free the resource. */
   abstract Closer getCloseFunction();
 
   @Override
@@ -53,8 +56,7 @@ abstract class NativeHandle implements AutoCloseable {
       nativeHandle = 0;
       try {
         closer.close(handle);
-      } catch (NativeAdbcException e) {
-        // TODO: convert to ADBC exception first
+      } catch (AdbcException e) {
         throw new RuntimeException(e);
       }
     }
@@ -62,6 +64,6 @@ abstract class NativeHandle implements AutoCloseable {
 
   @FunctionalInterface
   interface Closer {
-    void close(long handle) throws NativeAdbcException;
+    void close(long handle) throws AdbcException;
   }
 }

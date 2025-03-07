@@ -65,56 +65,32 @@ public enum JniLoader {
     }
   }
 
-  public NativeDatabaseHandle openDatabase(Map<String, String> parameters) {
+  public NativeDatabaseHandle openDatabase(Map<String, String> parameters) throws AdbcException {
     String[] nativeParameters = new String[parameters.size() * 2];
     int index = 0;
     for (Map.Entry<String, String> parameter : parameters.entrySet()) {
       nativeParameters[index++] = parameter.getKey();
       nativeParameters[index++] = parameter.getValue();
     }
-    try {
-      return (NativeDatabaseHandle) NativeAdbc.openDatabase(1001000, nativeParameters);
-    } catch (NativeAdbcException e) {
-      // TODO: convert to AdbcException
-      throw new RuntimeException(e);
-    }
+    return NativeAdbc.openDatabase(1001000, nativeParameters);
   }
 
-  public NativeConnectionHandle openConnection(NativeDatabaseHandle database) {
-    try {
-      return (NativeConnectionHandle) NativeAdbc.openConnection(database.getDatabaseHandle());
-    } catch (NativeAdbcException e) {
-      // TODO: convert to AdbcException
-      throw new RuntimeException(e);
-    }
+  public NativeConnectionHandle openConnection(NativeDatabaseHandle database) throws AdbcException {
+    return NativeAdbc.openConnection(database.getDatabaseHandle());
   }
 
-  public NativeStatementHandle openStatement(NativeConnectionHandle connection) {
-    try {
-      return (NativeStatementHandle) NativeAdbc.openStatement(connection.getConnectionHandle());
-    } catch (NativeAdbcException e) {
-      // TODO: convert to AdbcException
-      throw new RuntimeException(e);
-    }
+  public NativeStatementHandle openStatement(NativeConnectionHandle connection)
+      throws AdbcException {
+    return NativeAdbc.openStatement(connection.getConnectionHandle());
   }
 
   public NativeQueryResult statementExecuteQuery(NativeStatementHandle statement)
       throws AdbcException {
-    try {
-      return NativeAdbc.statementExecuteQuery(statement.getStatementHandle());
-    } catch (NativeAdbcException e) {
-      // TODO: convert to AdbcException
-      throw new RuntimeException(e);
-    }
+    return NativeAdbc.statementExecuteQuery(statement.getStatementHandle());
   }
 
   public void statementSetSqlQuery(NativeStatementHandle statement, String query)
       throws AdbcException {
-    try {
-      NativeAdbc.statementSetSqlQuery(statement.getStatementHandle(), query);
-    } catch (NativeAdbcException e) {
-      // TODO: convert to AdbcException
-      throw new RuntimeException(e);
-    }
+    NativeAdbc.statementSetSqlQuery(statement.getStatementHandle(), query);
   }
 }
