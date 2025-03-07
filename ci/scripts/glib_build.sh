@@ -38,7 +38,8 @@ build_subproject() {
         cmake_prefix_path="${CONDA_PREFIX}:${cmake_prefix_path}"
         pkg_config_path="${pkg_config_path}:${CONDA_PREFIX}/lib/pkgconfig"
     fi
-    if type valac > /dev/null 2>&1; then
+    if type valac > /dev/null 2>&1 && \
+            [[ -n "$(pkg-config --variable=vapidir arrow-glib)" ]]; then
         enable_vapi=true
     else
         enable_vapi=false
