@@ -37,10 +37,54 @@ struct AdbcException {
   std::string message;
 
   void ThrowJavaException(JNIEnv* env) const {
-    jclass exception_klass =
-        env->FindClass("org/apache/arrow/adbc/driver/jni/impl/NativeAdbcException");
+    jclass exception_klass = env->FindClass("org/apache/arrow/adbc/core/AdbcException");
     assert(exception_klass != nullptr);
-    env->ThrowNew(exception_klass, message.c_str());
+    jmethodID exception_ctor =
+        env->GetMethodID(exception_klass, "<init>",
+                         "(Ljava/lang/String;Ljava/lang/Throwable;"
+                         "Lorg/apache/arrow/adbc/core/AdbcStatusCode;"
+                         "Ljava/lang/String;I)V");
+    assert(exception_ctor != nullptr);
+
+    jclass status_klass = env->FindClass("org/apache/arrow/adbc/core/AdbcStatusCode");
+    assert(status_klass != nullptr);
+
+    jfieldID status_field;
+
+    const char* sig = "Lorg/apache/arrow/adbc/core/AdbcStatusCode;";
+#define CASE(name)                                                  \
+  case ADBC_STATUS_##name:                                          \
+    status_field = env->GetStaticFieldID(status_klass, #name, sig); \
+    break;
+
+    switch (code) {
+      CASE(UNKNOWN);
+      CASE(NOT_IMPLEMENTED);
+      CASE(NOT_FOUND);
+      CASE(ALREADY_EXISTS);
+      CASE(INVALID_ARGUMENT);
+      CASE(INVALID_STATE);
+      CASE(INVALID_DATA);
+      CASE(INTEGRITY);
+      CASE(INTERNAL);
+      CASE(IO);
+      CASE(CANCELLED);
+      CASE(TIMEOUT);
+      CASE(UNAUTHENTICATED);
+      CASE(UNAUTHORIZED);
+      default:
+        // uh oh
+        status_field = env->GetStaticFieldID(status_klass, "INTERNAL", sig);
+        break;
+    }
+#undef CASE
+    jobject status_jni = env->GetStaticObjectField(status_klass, status_field);
+
+    jstring message_jni = env->NewStringUTF(message.c_str());
+    auto exc = static_cast<jthrowable>(env->NewObject(
+        exception_klass, exception_ctor, message_jni, /*cause=*/nullptr, status_jni,
+        /*sqlState=*/nullptr, /*vendorCode=*/0));
+    env->Throw(exc);
   }
 };
 
