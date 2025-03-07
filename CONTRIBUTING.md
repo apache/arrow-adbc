@@ -350,6 +350,9 @@ native libraries are built for multiple platforms, they can all be copied to
 appropriate paths in the resources directory to build a single JAR that works
 across multiple platforms.
 
+You can also build and test in IntelliJ; simply edit the run/test
+configuration to add `LD_LIBRARY_PATH` to the environment.
+
 ### Python
 
 Python libraries are managed with [setuptools][setuptools].  See
