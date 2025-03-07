@@ -27,10 +27,12 @@ import java.util.Locale;
 import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcException;
 
+/** Singleton wrapper protecting access to JNI functions. */
 public enum JniLoader {
   INSTANCE;
 
   JniLoader() {
+    // The JAR may contain multiple binaries for different platforms, so load the appropriate one.
     final String libraryName = "adbc_driver_jni";
     String libraryToLoad =
         libraryName + "/" + getNormalizedArch() + "/" + System.mapLibraryName(libraryName);
@@ -38,7 +40,8 @@ public enum JniLoader {
     try {
       InputStream is = JniLoader.class.getClassLoader().getResourceAsStream(libraryToLoad);
       if (is == null) {
-        throw new FileNotFoundException(libraryToLoad);
+        throw new FileNotFoundException(
+            "No JNI library for current platform, missing from JAR: " + libraryToLoad);
       }
       File temp =
           File.createTempFile("adbc-jni-", ".tmp", new File(System.getProperty("java.io.tmpdir")));
@@ -49,11 +52,12 @@ public enum JniLoader {
       }
       Runtime.getRuntime().load(temp.getAbsolutePath());
     } catch (IOException e) {
-      throw new IllegalStateException("Error loading native library: " + e);
+      throw new IllegalStateException("Error loading native library " + libraryToLoad, e);
     }
   }
 
   private String getNormalizedArch() {
+    // Be consistent with our CMake config
     String arch = System.getProperty("os.arch").toLowerCase(Locale.US);
     switch (arch) {
       case "amd64":

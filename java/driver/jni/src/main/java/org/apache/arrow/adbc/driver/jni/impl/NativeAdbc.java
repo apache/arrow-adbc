@@ -19,7 +19,8 @@ package org.apache.arrow.adbc.driver.jni.impl;
 
 import org.apache.arrow.adbc.core.AdbcException;
 
-public class NativeAdbc {
+/** All the JNI methods. Don't use this directly, prefer {@link JniLoader}. */
+class NativeAdbc {
   static native NativeDatabaseHandle openDatabase(int version, String[] parameters)
       throws AdbcException;
 
