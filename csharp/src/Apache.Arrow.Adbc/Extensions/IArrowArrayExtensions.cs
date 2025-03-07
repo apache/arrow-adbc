@@ -150,11 +150,11 @@ namespace Apache.Arrow.Adbc.Extensions
                     StructArray structArray = (StructArray)arrowArray;
                     return resultType == StructResultType.JsonString ? SerializeToJson(structArray, index) : ParseStructArray(structArray, index);
 
-                // not covered:
-                // -- map array
-                // -- dictionary array
-                // -- fixed size binary
-                // -- union array
+                    // not covered:
+                    // -- map array
+                    // -- dictionary array
+                    // -- fixed size binary
+                    // -- union array
             }
 
             return null;
@@ -305,7 +305,7 @@ namespace Apache.Arrow.Adbc.Extensions
         }
 
         /// <summary>
-        /// Converts a StructArray to a Dictionary<String, object?>.
+        /// Converts an item in the StructArray at the index position to an ExpandoObject.
         /// </summary>
         private static ExpandoObject? ParseStructArray(StructArray structArray, int index)
         {
@@ -315,7 +315,6 @@ namespace Apache.Arrow.Adbc.Extensions
             var expando = new ExpandoObject();
             var jsonDictionary = (IDictionary<string, object?>)expando;
 
-            //Dictionary<String, object?> jsonDictionary = (Dictionary<String, object?>)d; //new Dictionary<String, object?>();
             StructType structType = (StructType)structArray.Data.DataType;
             for (int i = 0; i < structArray.Data.Children.Length; i++)
             {
@@ -324,7 +323,6 @@ namespace Apache.Arrow.Adbc.Extensions
 
                 if (value is StructArray structArray1)
                 {
-                    //List<Dictionary<string, object?>?> children = new List<Dictionary<string, object?>?>();
                     List<ExpandoObject?> children = new List<ExpandoObject?>();
 
                     for (int j = 0; j < structArray1.Length; j++)
@@ -365,7 +363,7 @@ namespace Apache.Arrow.Adbc.Extensions
                 }
             }
 
-            return expando; //jsonDictionary
+            return expando;
         }
 
         /// <summary>
