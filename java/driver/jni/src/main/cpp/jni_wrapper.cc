@@ -32,6 +32,8 @@
 
 namespace {
 
+/// Internal exception.  Meant to be used with RaiseAdbcException and
+///   CHECK_ADBC_ERROR.
 struct AdbcException {
   AdbcStatusCode code;
   std::string message;
@@ -88,6 +90,7 @@ struct AdbcException {
   }
 };
 
+/// Signal an error to Java.
 void RaiseAdbcException(AdbcStatusCode code, const AdbcError& error) {
   assert(code != ADBC_STATUS_OK);
   throw AdbcException{
@@ -96,6 +99,7 @@ void RaiseAdbcException(AdbcStatusCode code, const AdbcError& error) {
   };
 }
 
+/// Check the result of an ADBC call and raise an exception to Java if it failed.
 #define CHECK_ADBC_ERROR(expr, error)      \
   do {                                     \
     AdbcStatusCode status = (expr);        \
@@ -104,6 +108,7 @@ void RaiseAdbcException(AdbcStatusCode code, const AdbcError& error) {
     }                                      \
   } while (0)
 
+/// Require that a Java class exists or error.
 jclass RequireImplClass(JNIEnv* env, std::string_view name) {
   static std::string kPrefix = "org/apache/arrow/adbc/driver/jni/impl/";
   std::string full_name = kPrefix + std::string(name);
@@ -117,6 +122,7 @@ jclass RequireImplClass(JNIEnv* env, std::string_view name) {
   return klass;
 }
 
+/// Require that a Java method exists or error.
 jmethodID RequireMethod(JNIEnv* env, jclass klass, std::string_view name,
                         std::string_view signature) {
   jmethodID method = env->GetMethodID(klass, name.data(), signature.data());
@@ -141,11 +147,12 @@ struct JniStringView {
   explicit JniStringView(JNIEnv* env, jstring jni_string)
       : env(env), jni_string(jni_string), value(nullptr) {
     if (jni_string == nullptr) {
-      // TODO:
+      throw AdbcException{ADBC_STATUS_INTERNAL, "Java string was nullptr"};
     }
     value = env->GetStringUTFChars(jni_string, nullptr);
     if (value == nullptr) {
-      // TODO:
+      throw AdbcException{ADBC_STATUS_INTERNAL,
+                          "Java string was nullptr (could not get string contents)"};
     }
   }
 
