@@ -62,6 +62,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                    }
                });
 
+            // StructBehavior = "JsonString" (the default)
             sampleDataBuilder.Samples.Add(
                 new SampleData()
                 {
