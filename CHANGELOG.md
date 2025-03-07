@@ -802,3 +802,40 @@
 - add related work (#2333)
 - change Flight SQL driver usage to executable example (#2395)
 - remove crosslinking to Arrow Javadocs (#2455)
+
+## ADBC Libraries 17 (2025-03-03)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.5.0
+- C#: 0.17.0
+- Java: 0.17.0
+- R: 0.17.0
+- Rust: 0.17.0
+
+### New Features
+
+- **c/driver**: add support for CMake packages of Go based drivers (#2561)
+- **ci/linux-packages/apt**: add support for Ubuntu 24.04 packages (#2482)
+- **csharp/src/Apache.Arrow.Adbc**: improved performance of ValueAt helper and AdbcDataReader (#2534)
+- **csharp/src/Drivers/Apache**: Add support for Impala ADBC Driver with Refactoring and Unit Tests (#2365)
+- **csharp/src/Drivers/BigQuery**: add support for net472 (#2527)
+- **csharp/src/Drivers/BigQuery**: use a default project ID if one is not specified (#2471)
+- **go/adbc/driver/flightsql**: allow passing arbitrary grpc dial options in NewDatabase (#2563)
+- **go/adbc/driver/snowflake**: add query tag option (#2484)
+- **go/adbc/driver/snowflake**: implement WithTransporter driver option (#2558)
+
+### Bugfixes
+
+- **c/driver/sqlite**: don't rely on double-quoted strings feature (#2555)
+- **go/adbc/driver/flightsql**: Parsing column metadata in FlightSQL driver (#2481)
+- **go/adbc/driver/snowflake**: fix GetObjects for VECTOR cols (#2564)
+- **go/adbc/driver/snowflake**: use one session for connection (#2494)
+
+### Documentation Improvements
+
+- add SQLite cookbook example for batch size/inference (#2523)
+- add stdout/stderr and index support to recipe directive (#2495)
+- crosslink to Arrow Javadocs again (#2483)
+- fix references to root CONTRIBUTING.md file (#2521)
+- update java quickstart to use the PARAM_URI instead of the legacy PARAM_URL (#2530)
