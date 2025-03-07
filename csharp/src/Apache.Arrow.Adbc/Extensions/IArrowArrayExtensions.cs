@@ -19,12 +19,19 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
+using System.Dynamic;
 using System.IO;
 using System.Text.Json;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Extensions
 {
+    public enum StructResultType
+    {
+        JsonString,
+        Object
+    }
+
     public static class IArrowArrayExtensions
     {
         /// <summary>
@@ -36,7 +43,7 @@ namespace Apache.Arrow.Adbc.Extensions
         /// <param name="index">
         /// The index in the array to get the value from.
         /// </param>
-        public static object? ValueAt(this IArrowArray arrowArray, int index)
+        public static object? ValueAt(this IArrowArray arrowArray, int index, StructResultType resultType = StructResultType.JsonString)
         {
             if (arrowArray == null) throw new ArgumentNullException(nameof(arrowArray));
             if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
@@ -76,7 +83,9 @@ namespace Apache.Arrow.Adbc.Extensions
                 case ArrowTypeId.Int64:
                     return ((Int64Array)arrowArray).GetValue(index);
                 case ArrowTypeId.String:
-                    return ((StringArray)arrowArray).GetString(index);
+                    StringArray sArray = (StringArray)arrowArray;
+                    if (sArray.Length == 0) { return null; }
+                    return sArray.GetString(index);
 #if NET6_0_OR_GREATER
                 case ArrowTypeId.Time32:
                     return ((Time32Array)arrowArray).GetTime(index);
@@ -138,7 +147,8 @@ namespace Apache.Arrow.Adbc.Extensions
                 case ArrowTypeId.List:
                     return ((ListArray)arrowArray).GetSlicedValues(index);
                 case ArrowTypeId.Struct:
-                    return SerializeToJson(((StructArray)arrowArray), index);
+                    StructArray structArray = (StructArray)arrowArray;
+                    return resultType == StructResultType.JsonString ? SerializeToJson(structArray, index) : ParseStructArray(structArray, index);
 
                 // not covered:
                 // -- map array
@@ -159,7 +169,7 @@ namespace Apache.Arrow.Adbc.Extensions
         /// <param name="index">
         /// The index in the array to get the value from.
         /// </param>
-        public static Func<IArrowArray, int, object?> GetValueConverter(this IArrowType arrayType)
+        public static Func<IArrowArray, int, object?> GetValueConverter(this IArrowType arrayType, StructResultType resultType = StructResultType.JsonString)
         {
             if (arrayType == null) throw new ArgumentNullException(nameof(arrayType));
 
@@ -198,7 +208,23 @@ namespace Apache.Arrow.Adbc.Extensions
                 case ArrowTypeId.Int64:
                     return (array, index) => ((Int64Array)array).GetValue(index);
                 case ArrowTypeId.String:
-                    return (array, index) => ((StringArray)array).GetString(index);
+                    return (array, index) =>
+                    {
+                        StringArray? sArray = array as StringArray;
+
+                        if (sArray != null)
+                        {
+                            return sArray.GetString(index);
+                        }
+                        else
+                        {
+                            // some callers treat the Decimal256Array values as a string
+                            Decimal256Array? array256 = array as Decimal256Array;
+                            return array256?.GetString(index);
+                        }
+
+                        throw new AdbcException($"Cannot get the value at {index}. A String type was requested but neither a StringArray or Decimal256Array was found.", AdbcStatusCode.InvalidData);
+                    };
 #if NET6_0_OR_GREATER
                 case ArrowTypeId.Time32:
                     return (array, index) => ((Time32Array)array).GetTime(index);
@@ -256,7 +282,7 @@ namespace Apache.Arrow.Adbc.Extensions
                 case ArrowTypeId.List:
                     return (array, index) => ((ListArray)array).GetSlicedValues(index);
                 case ArrowTypeId.Struct:
-                    return (array, index) => SerializeToJson((StructArray)array, index);
+                    return (array, index) => resultType == StructResultType.JsonString ? SerializeToJson((StructArray)array, index) : ParseStructArray((StructArray)array, index) ;
 
                     // not covered:
                     // -- map array
@@ -273,20 +299,23 @@ namespace Apache.Arrow.Adbc.Extensions
         /// </summary>
         private static string SerializeToJson(StructArray structArray, int index)
         {
-            Dictionary<String, object?>? jsonDictionary = ParseStructArray(structArray, index);
+            ExpandoObject? obj = ParseStructArray(structArray, index);
 
-            return JsonSerializer.Serialize(jsonDictionary);
+            return JsonSerializer.Serialize(obj);
         }
 
         /// <summary>
         /// Converts a StructArray to a Dictionary<String, object?>.
         /// </summary>
-        private static Dictionary<String, object?>? ParseStructArray(StructArray structArray, int index)
+        private static ExpandoObject? ParseStructArray(StructArray structArray, int index)
         {
             if (structArray.IsNull(index))
                 return null;
 
-            Dictionary<String, object?> jsonDictionary = new Dictionary<String, object?>();
+            var expando = new ExpandoObject();
+            var jsonDictionary = (IDictionary<string, object?>)expando;
+
+            //Dictionary<String, object?> jsonDictionary = (Dictionary<String, object?>)d; //new Dictionary<String, object?>();
             StructType structType = (StructType)structArray.Data.DataType;
             for (int i = 0; i < structArray.Data.Children.Length; i++)
             {
@@ -295,7 +324,8 @@ namespace Apache.Arrow.Adbc.Extensions
 
                 if (value is StructArray structArray1)
                 {
-                    List<Dictionary<string, object?>?> children = new List<Dictionary<string, object?>?>();
+                    //List<Dictionary<string, object?>?> children = new List<Dictionary<string, object?>?>();
+                    List<ExpandoObject?> children = new List<ExpandoObject?>();
 
                     for (int j = 0; j < structArray1.Length; j++)
                     {
@@ -335,7 +365,7 @@ namespace Apache.Arrow.Adbc.Extensions
                 }
             }
 
-            return jsonDictionary;
+            return expando; //jsonDictionary
         }
 
         /// <summary>

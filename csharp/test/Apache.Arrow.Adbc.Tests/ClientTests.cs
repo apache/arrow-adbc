@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
+using System.Dynamic;
 using System.Linq;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Types;
@@ -171,6 +172,14 @@ namespace Apache.Arrow.Adbc.Tests
                     preQueryCommand.ExecuteNonQuery();
                 }
 
+                if (!string.IsNullOrEmpty(sample.StructBehavior))
+                {
+                    if (Enum.TryParse(sample.StructBehavior, out StructBehavior behavior))
+                    {
+                        adbcConnection.StructBehavior = behavior;
+                    }
+                }
+
                 using AdbcCommand dbCommand = adbcConnection.CreateCommand();
                 dbCommand.CommandText = sample.Query;
 
@@ -268,7 +277,25 @@ namespace Apache.Arrow.Adbc.Tests
                     }
                     else
                     {
-                        Assert.True(ctv.ExpectedValue.Equals(value), Utils.FormatMessage($"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name} for query [{query}]", environmentName));
+                        bool areEqual = false;
+
+                        if (value is ExpandoObject)
+                        {
+                            if (value == null && ctv.ExpectedValue == null)
+                            {
+                                areEqual = true;
+                            }
+                            else
+                            {
+                                areEqual = AreExpandoObjectsEqual(value as ExpandoObject, ctv.ExpectedValue as ExpandoObject);
+                            }
+                        }
+                        else
+                        {
+                            areEqual = ctv.ExpectedValue.Equals(value);
+                        }
+
+                        Assert.True(areEqual, Utils.FormatMessage($"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name} for query [{query}]", environmentName));
                     }
                 }
                 else
@@ -303,6 +330,50 @@ namespace Apache.Arrow.Adbc.Tests
             {
                 Assert.True(ctv.ExpectedValue == null, Utils.FormatMessage($"The value for {ctv.Name} is null and but it's expected value is not null for query [{query}]", environmentName));
             }
+        }
+
+        static bool AreExpandoObjectsEqual(ExpandoObject? obj1, ExpandoObject? obj2)
+        {
+            if (obj1 == null && obj2 == null)
+            {
+                return true;
+            }
+            else if (obj1 != null && obj2 == null)
+            {
+                return false;
+            }
+            else if (obj1 == null && obj2 != null)
+            {
+                return false;
+            }
+
+            var dict1 = (IDictionary<string, object?>)obj1!;
+            var dict2 = (IDictionary<string, object?>)obj2!;
+
+            if (dict1.Count != dict2.Count)
+                return false;
+
+            foreach (var key in dict1.Keys)
+            {
+                if (!dict2.ContainsKey(key))
+                    return false;
+
+                object? value1 = dict1[key];
+                object? value2 = dict2[key];
+
+                if (value1 is ExpandoObject expando1 && value2 is ExpandoObject expando2)
+                {
+                    // Recursively compare nested ExpandoObjects
+                    if (!AreExpandoObjectsEqual(expando1, expando2))
+                        return false;
+                }
+                else if (!object.Equals(value1, value2))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }
