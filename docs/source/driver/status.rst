@@ -32,21 +32,41 @@ Implementation Status
 **Beta** drivers are (mostly) feature-complete but have only been available for a short time.
 **Stable** drivers are (mostly) feature-complete (as much as possible for the underlying database) and have been available/tested for a while.
 
+.. note::
+
+   Drivers that support C/C++ can also be used from C#, GLib, Go, R, Ruby, and
+   Rust, regardless of their implementation language.
+
 .. list-table::
    :header-rows: 1
 
    * - Driver
-     - Supported Languages [#supported-languages]_
+     - Supported Languages
      - Implementation Language
      - Status
 
-   * - BigQuery
+   * - Apache DataFusion
+     - Rust
+     - Rust
+     - Experimental
+
+   * - BigQuery (C#)
      - C#
      - C#
      - Experimental
 
+   * - BigQuery (Go)
+     - C/C++
+     - Go
+     - Experimental
+
+   * - DuckDB [#duckdb]_
+     - C/C++
+     - C++
+     - Stable
+
    * - Flight SQL (Go)
-     - C, Go
+     - C/C++, C# [#wrapper]_
      - Go
      - Stable
 
@@ -55,27 +75,39 @@ Implementation Status
      - Java
      - Experimental
 
-   * - JDBC
+   * - JDBC Adapter
      - Java
      - Java
      - Experimental
 
    * - PostgreSQL
-     - C
+     - C/C++
      - C++
      - Stable
 
    * - SQLite
-     - C
+     - C/C++
      - C
      - Stable
 
    * - Snowflake
-     - C, Go
+     - C/C++, Rust [#wrapper]_
      - Go
      - Stable
 
-.. [#supported-languages] C drivers are usable from Go, Python, and Ruby as well.
+   * - Thrift protocol-based [#thrift]_
+     - C#
+     - C#
+     - Experimental
+
+.. [#duckdb] DuckDB is developed and provided by a third party.  See the
+             `DuckDB documentation
+             <https://duckdb.org/docs/stable/clients/adbc.html>`_ for details.
+
+.. [#thrift] Supports Apache Hive/Impala/Spark.
+
+.. [#wrapper] Listed separately because a wrapper package is provided that
+              combines the driver and the bindings for you.
 
 Feature Support
 ===============
