@@ -17,6 +17,9 @@
 
 namespace Apache.Arrow.Adbc.Client
 {
+    /// <summary>
+    /// Controls the behavior of how StructArrays should be handled in the results.
+    /// </summary>
     public enum StructBehavior
     {
         /// <summary>

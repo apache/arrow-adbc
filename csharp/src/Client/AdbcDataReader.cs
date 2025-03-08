@@ -86,10 +86,12 @@ namespace Apache.Arrow.Adbc.Client
             this.DecimalBehavior = decimalBehavior;
             this.StructBehavior = structBehavior;
 
+            StructResultType structResultType = this.StructBehavior == StructBehavior.JsonString ? StructResultType.JsonString : StructResultType.Object;
+
             this.converters = new Func<IArrowArray, int, object?>[this.schema.FieldsList.Count];
             for (int i = 0; i < this.converters.Length; i++)
             {
-                this.converters[i] = this.schema.FieldsList[i].DataType.GetValueConverter();
+                this.converters[i] = this.schema.FieldsList[i].DataType.GetValueConverter(structResultType);
             }
         }
 
@@ -372,7 +374,9 @@ namespace Apache.Arrow.Adbc.Client
                 }
                 else
                 {
-                    dbColumns.Add(new AdbcColumn(f.Name, t, f.DataType, f.IsNullable));
+                    IArrowType arrowType = SchemaConverter.GetArrowTypeBasedOnRequestedBehavior(f.DataType, this.StructBehavior);
+
+                    dbColumns.Add(new AdbcColumn(f.Name, t, arrowType, f.IsNullable));
                 }
             }
 
