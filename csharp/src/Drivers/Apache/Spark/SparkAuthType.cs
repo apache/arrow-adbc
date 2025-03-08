@@ -23,6 +23,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         UsernameOnly,
         Basic,
         Token,
+        OAuth,
         Empty = int.MaxValue,
     }
 
@@ -47,6 +48,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     return true;
                 case SparkAuthTypeConstants.Token:
                     authTypeValue = SparkAuthType.Token;
+                    return true;
+                case SparkAuthTypeConstants.OAuth:
+                    authTypeValue = SparkAuthType.OAuth;
                     return true;
                 default:
                     authTypeValue = default;
