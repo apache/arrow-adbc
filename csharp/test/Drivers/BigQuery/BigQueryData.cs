@@ -44,10 +44,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
 
-            ExpandoObject person = new ExpandoObject();
-            IDictionary<string, object?> keyValues = (IDictionary<string, object?>)person;
-            keyValues["name"] = "John Doe";
-            keyValues["age"] = 30L;
+            Dictionary<string, object?> person = new Dictionary<string, object?>();
+            person["name"] = "John Doe";
+            person["age"] = 30L;
 
             // StructBehavior = "Strict"
             sampleDataBuilder.Samples.Add(
@@ -58,7 +57,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                    StructBehavior = "Strict",
                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                    {
-                        new ColumnNetTypeArrowTypeValue("person", typeof(ExpandoObject), typeof(StructType), person),
+                        new ColumnNetTypeArrowTypeValue("person", typeof(Dictionary<string, object?>), typeof(StructType), person),
                    }
                });
 
@@ -116,7 +115,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                                     new ColumnNetTypeArrowTypeValue("point", typeof(string), typeof(StringType), "POINT(1 2)"),
                                     new ColumnNetTypeArrowTypeValue("numbers", typeof(Int64Array), typeof(ListType), numbersArray),
 
-                                    new ColumnNetTypeArrowTypeValue("person", typeof(ExpandoObject), typeof(StructType), person),
+                                    new ColumnNetTypeArrowTypeValue("person", typeof(Dictionary<string, object?>), typeof(StructType), person),
                                     new ColumnNetTypeArrowTypeValue("json", typeof(string), typeof(StringType), "{\"age\":29,\"name\":\"Jane Doe\"}")
                     }
                 });

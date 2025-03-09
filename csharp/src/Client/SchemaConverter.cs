@@ -16,10 +16,10 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
-using System.Dynamic;
 using Apache.Arrow.Scalars;
 using Apache.Arrow.Types;
 
@@ -194,7 +194,7 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(string);
 
                 case ArrowTypeId.Struct:
-                    return  structBehavior == StructBehavior.JsonString ? typeof(string) : typeof(ExpandoObject);
+                    return  structBehavior == StructBehavior.JsonString ? typeof(string) : typeof(Dictionary<string, object?>);
 
                 case ArrowTypeId.Timestamp:
                     return typeof(DateTimeOffset);

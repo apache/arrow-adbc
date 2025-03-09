@@ -374,7 +374,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ReadOnlyMemory<byte> currentBuffer;
             bool first;
             int position;
-            bool hasRows = true;
+            bool hasRows;
 
             public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response)
             {
@@ -383,6 +383,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (response.Current != null)
                 {
                     this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
+                    this.hasRows = true;
                 }
                 else
                 {
@@ -393,7 +394,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.first = true;
             }
 
-            public bool HasRows { get => this.hasRows; }
+            public bool HasRows => this.hasRows;
 
             public override bool CanRead => true;
 
