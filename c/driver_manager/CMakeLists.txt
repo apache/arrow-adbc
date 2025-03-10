@@ -30,16 +30,16 @@ add_arrow_lib(adbc_driver_manager
               ${CMAKE_DL_LIBS}
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS})
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/)
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/include/)
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/vendor)
-include_directories(SYSTEM ${REPOSITORY_ROOT}/c/driver)
 
 install(FILES "${REPOSITORY_ROOT}/c/include/adbc.h" DESTINATION include)
 install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/adbc.h"
         DESTINATION include/arrow-adbc)
 
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
+  target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${REPOSITORY_ROOT}/c/)
+  target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${REPOSITORY_ROOT}/c/include/)
+  target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${REPOSITORY_ROOT}/c/vendor)
+  target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${REPOSITORY_ROOT}/c/driver)
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
 
@@ -62,6 +62,9 @@ if(ADBC_BUILD_TESTS)
                 adbc_validation
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-driver-manager-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
+                                     ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
 
   add_test_case(version_100_compatibility_test
                 PREFIX
@@ -75,4 +78,7 @@ if(ADBC_BUILD_TESTS)
                 adbc_validation_util
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-version-100-compatibility-test PRIVATE cxx_std_17)
+  target_include_directories(adbc-version-100-compatibility-test SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
+                                     ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
 endif()
