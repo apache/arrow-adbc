@@ -102,9 +102,7 @@ namespace Apache.Arrow.Adbc.Extensions
                 case ArrowTypeId.Int64:
                     return ((Int64Array)arrowArray).GetValue(index);
                 case ArrowTypeId.String:
-                    StringArray sArray = (StringArray)arrowArray;
-                    if (sArray.Length == 0) { return null; }
-                    return sArray.GetString(index);
+                    return ((StringArray)arrowArray).GetString(index);
 #if NET6_0_OR_GREATER
                 case ArrowTypeId.Time32:
                     return ((Time32Array)arrowArray).GetTime(index);
@@ -336,20 +334,27 @@ namespace Apache.Arrow.Adbc.Extensions
 
                 if (value is StructArray structArray1)
                 {
-                    List<Dictionary<string, object?>?> children = new List<Dictionary<string, object?>?>();
-
-                    for (int j = 0; j < structArray1.Length; j++)
+                    if (structArray1.Length == 0)
                     {
-                        children.Add(ParseStructArray(structArray1, j));
-                    }
-
-                    if (children.Count > 0)
-                    {
-                        jsonDictionary.Add(name, children);
+                        jsonDictionary.Add(name, null);
                     }
                     else
                     {
-                        jsonDictionary.Add(name, ParseStructArray(structArray1, index));
+                        List<Dictionary<string, object?>?> children = new List<Dictionary<string, object?>?>();
+
+                        for (int j = 0; j < structArray1.Length; j++)
+                        {
+                            children.Add(ParseStructArray(structArray1, j));
+                        }
+
+                        if (children.Count > 0)
+                        {
+                            jsonDictionary.Add(name, children);
+                        }
+                        else
+                        {
+                            jsonDictionary.Add(name, ParseStructArray(structArray1, index));
+                        }
                     }
                 }
                 else if (value is IArrowArray arrowArray)
