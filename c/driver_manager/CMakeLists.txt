@@ -36,10 +36,10 @@ install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/adbc.h"
         DESTINATION include/arrow-adbc)
 
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
-  target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${REPOSITORY_ROOT}/c/)
-  target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${REPOSITORY_ROOT}/c/include/)
-  target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${REPOSITORY_ROOT}/c/vendor)
-  target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${REPOSITORY_ROOT}/c/driver)
+  target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${REPOSITORY_ROOT}/c/
+  ${REPOSITORY_ROOT}/c/include/
+  ${REPOSITORY_ROOT}/c/vendor
+  ${REPOSITORY_ROOT}/c/driver)
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
 
