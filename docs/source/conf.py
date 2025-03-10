@@ -54,6 +54,20 @@ extensions = [
 ]
 templates_path = ["_templates"]
 
+
+def on_missing_reference(app, env, node, contnode):
+    # Polars does something odd with Sphinx such that polars.DataFrame isn't
+    # xrefable; suppress the warning.
+    if str(contnode) == "polars.DataFrame":
+        return contnode
+    else:
+        return None
+
+
+def setup(app):
+    app.connect("missing-reference", on_missing_reference)
+
+
 # -- Options for autodoc ----------------------------------------------------
 
 try:
