@@ -37,7 +37,7 @@ arrow-buffer.workspace = true
 arrow-schema.workspace = true
 datafusion = "45.0.0"
 datafusion-substrait = "45.0.0"
-tokio = { version = "1.43", features = ["rt-multi-thread"] }
+tokio = { version = "1.44", features = ["rt-multi-thread"] }
 prost = "0.13.5"
 
 [dev-dependencies]
