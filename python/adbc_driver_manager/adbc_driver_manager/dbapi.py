@@ -338,9 +338,20 @@ class Connection(_Closeable):
         if self._commit_supported:
             self._conn.commit()
 
-    def cursor(self) -> "Cursor":
-        """Create a new cursor for querying the database."""
-        return Cursor(self)
+    def cursor(
+        self,
+        *,
+        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> "Cursor":
+        """
+        Create a new cursor for querying the database.
+
+        Parameters
+        ----------
+        adbc_stmt_kwargs : dict, optional
+          ADBC-specific options to pass to the underlying ADBC statement.
+        """
+        return Cursor(self, adbc_stmt_kwargs)
 
     def rollback(self) -> None:
         """Explicitly rollback."""
@@ -571,7 +582,11 @@ class Cursor(_Closeable):
     Do not create this object directly; use Connection.cursor().
     """
 
-    def __init__(self, conn: Connection) -> None:
+    def __init__(
+        self,
+        conn: Connection,
+        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         # Must be at top in case __init__ is interrupted and then __del__ is called
         self._closed = True
         self._conn = conn
@@ -582,6 +597,9 @@ class Cursor(_Closeable):
         self._results: Optional["_RowIterator"] = None
         self._arraysize = 1
         self._rowcount = -1
+
+        if adbc_stmt_kwargs:
+            self._stmt.set_options(**adbc_stmt_kwargs)
 
     @property
     def arraysize(self) -> int:

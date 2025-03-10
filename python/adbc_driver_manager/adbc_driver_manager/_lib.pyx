@@ -637,6 +637,15 @@ cdef class AdbcDatabase(_AdbcHandle):
                 c_value = value
                 status = AdbcDatabaseSetOption(
                     &self.database, c_key, c_value, &c_error)
+            elif isinstance(value, bool):
+                if value:
+                    value = ADBC_OPTION_VALUE_ENABLED
+                else:
+                    value = ADBC_OPTION_VALUE_DISABLED
+                value = _to_bytes(value, "option value")
+                c_value = value
+                status = AdbcDatabaseSetOption(
+                    &self.database, c_key, c_value, &c_error)
             elif isinstance(value, bytes):
                 c_value = value
                 status = AdbcDatabaseSetOptionBytes(
@@ -1017,6 +1026,15 @@ cdef class AdbcConnection(_AdbcHandle):
                 status = AdbcConnectionSetOption(
                     &self.connection, c_key, c_value, &c_error)
             elif isinstance(value, str):
+                value = _to_bytes(value, "option value")
+                c_value = value
+                status = AdbcConnectionSetOption(
+                    &self.connection, c_key, c_value, &c_error)
+            elif isinstance(value, bool):
+                if value:
+                    value = ADBC_OPTION_VALUE_ENABLED
+                else:
+                    value = ADBC_OPTION_VALUE_DISABLED
                 value = _to_bytes(value, "option value")
                 c_value = value
                 status = AdbcConnectionSetOption(
@@ -1463,6 +1481,15 @@ cdef class AdbcStatement(_AdbcHandle):
                 status = AdbcStatementSetOption(
                     &self.statement, c_key, c_value, &c_error)
             elif isinstance(value, str):
+                value = _to_bytes(value, "option value")
+                c_value = value
+                status = AdbcStatementSetOption(
+                    &self.statement, c_key, c_value, &c_error)
+            elif isinstance(value, bool):
+                if value:
+                    value = ADBC_OPTION_VALUE_ENABLED
+                else:
+                    value = ADBC_OPTION_VALUE_DISABLED
                 value = _to_bytes(value, "option value")
                 c_value = value
                 status = AdbcStatementSetOption(
