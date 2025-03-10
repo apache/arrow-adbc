@@ -349,14 +349,7 @@ namespace Apache.Arrow.Adbc.Extensions
                             children.Add(ParseStructArray(structArray1, j));
                         }
 
-                        if (children.Count > 0)
-                        {
-                            jsonDictionary.Add(name, children);
-                        }
-                        else
-                        {
-                            jsonDictionary.Add(name, ParseStructArray(structArray1, index));
-                        }
+                        jsonDictionary.Add(name, children);
                     }
                 }
                 else if (value is IArrowArray arrowArray)
