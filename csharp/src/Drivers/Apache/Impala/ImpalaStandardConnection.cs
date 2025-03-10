@@ -96,7 +96,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(ImpalaParameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
             Properties.TryGetValue(ImpalaParameters.TLSOptions, out string? tlsOptions);
-            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
+            TlsOptions = HiveServer2SslImpl.GetTlsOptions(Properties);
         }
 
         protected override TTransport CreateTransport()

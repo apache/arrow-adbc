@@ -90,10 +90,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             {
                 parameters.Add(HiveServer2Parameters.DataTypeConv, testConfiguration.DataTypeConversion!);
             }
-            if (!string.IsNullOrEmpty(testConfiguration.TlsOptions))
-            {
-                parameters.Add(HiveServer2Parameters.TLSOptions, testConfiguration.TlsOptions!);
-            }
             if (!string.IsNullOrEmpty(testConfiguration.BatchSize))
             {
                 parameters.Add(ApacheParameters.BatchSize, testConfiguration.BatchSize!);
