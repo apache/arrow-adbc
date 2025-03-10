@@ -330,7 +330,9 @@ namespace Apache.Arrow.Adbc.Extensions
             for (int i = 0; i < structArray.Data.Children.Length; i++)
             {
                 string name = structType.Fields[i].Name;
-                object? value = ValueAt(structArray.Fields[i], index);
+
+                // keep the results as StructArray internally
+                object? value = ValueAt(structArray.Fields[i], index, StructResultType.Object);
 
                 if (value is StructArray structArray1)
                 {
@@ -365,7 +367,7 @@ namespace Apache.Arrow.Adbc.Extensions
                     {
                         for (int j = 0; j < arrowArray.Length; j++)
                         {
-                            values.Add(ValueAt(arrowArray, j));
+                            values.Add(ValueAt(arrowArray, j, StructResultType.Object));
                         }
 
                         jsonDictionary.Add(name, values);
