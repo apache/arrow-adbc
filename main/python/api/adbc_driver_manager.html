@@ -1458,7 +1458,7 @@ cannot be disabled.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.commit" title="adbc_driver_manager.dbapi.Connection.commit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">commit</span></code></a>()</p></td>
 <td><p>Explicitly commit.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.cursor" title="adbc_driver_manager.dbapi.Connection.cursor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cursor</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.cursor" title="adbc_driver_manager.dbapi.Connection.cursor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cursor</span></code></a>(*[, adbc_stmt_kwargs])</p></td>
 <td><p>Create a new cursor for querying the database.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.rollback" title="adbc_driver_manager.dbapi.Connection.rollback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rollback</span></code></a>()</p></td>
@@ -1596,8 +1596,16 @@ connections.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Connection.cursor">
-<span class="sig-name descname"><span class="pre">cursor</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor" title="adbc_driver_manager.dbapi.Cursor"><span class="pre">Cursor</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Connection.cursor" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">cursor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">adbc_stmt_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor" title="adbc_driver_manager.dbapi.Cursor"><span class="pre">Cursor</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Connection.cursor" title="Link to this definition">¶</a></dt>
 <dd><p>Create a new cursor for querying the database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>adbc_stmt_kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>ADBC-specific options to pass to the underlying ADBC statement.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -1610,7 +1618,7 @@ connections.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">Cursor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">conn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><span class="pre">Connection</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_manager.dbapi.</span></span><span class="sig-name descname"><span class="pre">Cursor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">conn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><span class="pre">Connection</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">adbc_stmt_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#adbc_driver_manager.dbapi._Closeable" title="adbc_driver_manager.dbapi._Closeable"><code class="xref py py-class docutils literal notranslate"><span class="pre">_Closeable</span></code></a></p>
 <p>A DB-API 2.0 (PEP 249) cursor.</p>
 <p>Do not create this object directly; use Connection.cursor().</p>

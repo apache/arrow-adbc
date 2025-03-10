@@ -402,6 +402,14 @@
 actual size may differ.</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_postgresql.StatementOptions.USE_COPY">
+<span class="sig-name descname"><span class="pre">USE_COPY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.postgresql.use_copy'</span></em><a class="headerlink" href="#adbc_driver_postgresql.StatementOptions.USE_COPY" title="Link to this definition">¶</a></dt>
+<dd><p>Enable or disable the <code class="docutils literal notranslate"><span class="pre">COPY</span></code> optimization (default: enabled).</p>
+<p>This is necessary for some queries since PostgreSQL does not support
+<code class="docutils literal notranslate"><span class="pre">COPY</span></code> with those queries, e.g. queries using <code class="docutils literal notranslate"><span class="pre">SHOW</span></code>.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py function">
@@ -499,6 +507,7 @@ United States and other countries.
 <li><a class="reference internal" href="#module-adbc_driver_postgresql">Low-Level API</a><ul>
 <li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions.BATCH_SIZE_HINT_BYTES"><code class="docutils literal notranslate"><span class="pre">StatementOptions.BATCH_SIZE_HINT_BYTES</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions.USE_COPY"><code class="docutils literal notranslate"><span class="pre">StatementOptions.USE_COPY</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_postgresql.connect"><code class="docutils literal notranslate"><span class="pre">connect()</span></code></a></li>
