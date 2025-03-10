@@ -125,6 +125,9 @@ update_versions() {
     "${ADBC_DIR}/rust/Cargo.toml"
   rm "${ADBC_DIR}/rust/Cargo.toml.bak"
   git add "${ADBC_DIR}/rust/Cargo.toml"
+  # Update Cargo.lock file
+  cargo check --manifest-path "${ADBC_DIR}/rust/Cargo.toml"
+  git add "${ADBC_DIR}/rust/Cargo.lock"
 
   if [ ${type} = "release" ]; then
     pushd "${ADBC_DIR}/ci/linux-packages"
