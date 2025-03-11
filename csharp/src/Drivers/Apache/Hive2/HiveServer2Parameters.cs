@@ -27,6 +27,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string DataTypeConv = "adbc.hive.data_type_conv";
         public const string TLSOptions = "adbc.hive.tls_options";
         public const string ConnectTimeoutMilliseconds = "adbc.hive.connect_timeout_ms";
+        public const string TraceParent = "adbc.hive.trace_parent";
     }
 
     public static class HiveServer2AuthTypeConstants
