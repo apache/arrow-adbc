@@ -62,9 +62,6 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
-      - name: Install Source Link
-        shell: bash
-        run: dotnet tool install --global sourcelink
       - name: Build
         shell: bash
         run: ci/scripts/csharp_build.sh $(pwd)
