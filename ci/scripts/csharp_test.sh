@@ -23,5 +23,4 @@ source_dir=${1}/csharp/test/Apache.Arrow.Adbc.Tests
 
 pushd ${source_dir}
 dotnet test
-# TODO: consider sourcelink
 popd
