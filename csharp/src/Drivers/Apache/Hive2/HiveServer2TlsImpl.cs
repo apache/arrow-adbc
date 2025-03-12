@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public bool AllowSelfSigned { get; set; }
         public string? TrustedCertificatePath { get; set; }
     }
-    static class HiveServer2SslImpl
+    static class HiveServer2TlsImpl
     {
         static internal TlsProperties GetTlsOptions(IReadOnlyDictionary<string, string> Properties)
         {

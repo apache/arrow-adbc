@@ -23,16 +23,16 @@ using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 {
-    public class HiveServer2SslImplTest
+    public class HiveServer2TlsImplTest
     {
         [SkippableTheory]
         [MemberData(nameof(GetSslOptionsTestData))]
         internal void TestValidateTlsOptions(Dictionary<string, string>? dataTypeConversion, TlsProperties expected, Type? exceptionType = default)
         {
             if (exceptionType == default)
-                Assert.Equivalent(expected, HiveServer2SslImpl.GetTlsOptions(dataTypeConversion ?? new Dictionary<string, string>()));
+                Assert.Equivalent(expected, HiveServer2TlsImpl.GetTlsOptions(dataTypeConversion ?? new Dictionary<string, string>()));
             else
-                Assert.Throws(exceptionType, () => HiveServer2SslImpl.GetTlsOptions(dataTypeConversion ?? new Dictionary<string, string>()));
+                Assert.Throws(exceptionType, () => HiveServer2TlsImpl.GetTlsOptions(dataTypeConversion ?? new Dictionary<string, string>()));
         }
 
         public static IEnumerable<object?[]> GetSslOptionsTestData()

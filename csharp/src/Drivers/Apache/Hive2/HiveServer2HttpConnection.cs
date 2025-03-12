@@ -136,7 +136,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(HiveServer2Parameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
-            TlsOptions = HiveServer2SslImpl.GetTlsOptions(Properties);
+            TlsOptions = HiveServer2TlsImpl.GetTlsOptions(Properties);
         }
 
         public override AdbcStatement CreateStatement()
@@ -168,7 +168,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName, TlsOptions.IsSslEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
-            HttpClientHandler httpClientHandler = HiveServer2SslImpl.NewHttpClientHandler(TlsOptions);
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
             httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;

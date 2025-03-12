@@ -120,7 +120,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(ImpalaParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
-            TlsOptions = HiveServer2SslImpl.GetTlsOptions(Properties);
+            TlsOptions = HiveServer2TlsImpl.GetTlsOptions(Properties);
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
@@ -143,7 +143,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName, TlsOptions.IsSslEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
-            HttpClientHandler httpClientHandler = HiveServer2SslImpl.NewHttpClientHandler(TlsOptions);
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
