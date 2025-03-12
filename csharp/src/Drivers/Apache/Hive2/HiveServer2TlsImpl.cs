@@ -34,11 +34,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     }
     static class HiveServer2TlsImpl
     {
-        static internal TlsProperties GetTlsOptions(IReadOnlyDictionary<string, string> Properties)
+        static internal TlsProperties GetTlsOptions(IReadOnlyDictionary<string, string> properties)
         {
             TlsProperties tlsProperties = new TlsProperties();
-            Properties.TryGetValue(TlsOptions.IsSslEnabled, out string? isSslEnabled);
-            Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
+            properties.TryGetValue(TlsOptions.IsSslEnabled, out string? isSslEnabled);
+            properties.TryGetValue(AdbcOptions.Uri, out string? uri);
             if (!string.IsNullOrWhiteSpace(uri))
             {
                 var uriValue = new Uri(uri);
@@ -53,20 +53,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return tlsProperties;
             }
             tlsProperties.IsSslEnabled = true;
-            Properties.TryGetValue(TlsOptions.EnableServerCertificateValidation, out string? enableServerCertificateValidation);
+            properties.TryGetValue(TlsOptions.EnableServerCertificateValidation, out string? enableServerCertificateValidation);
             if (bool.TryParse(enableServerCertificateValidation, out bool enableServerCertificateValidationBool) && !enableServerCertificateValidationBool)
             {
                 tlsProperties.EnableServerCertificateValidation = false;
                 return tlsProperties;
             }
             tlsProperties.EnableServerCertificateValidation = true;
-            Properties.TryGetValue(TlsOptions.AllowHostnameMismatch, out string? allowHostnameMismatch);
+            properties.TryGetValue(TlsOptions.AllowHostnameMismatch, out string? allowHostnameMismatch);
             tlsProperties.AllowHostnameMismatch = bool.TryParse(allowHostnameMismatch, out bool allowHostnameMismatchBool) && allowHostnameMismatchBool;
-            Properties.TryGetValue(TlsOptions.AllowSelfSigned, out string? allowSelfSigned);
+            properties.TryGetValue(TlsOptions.AllowSelfSigned, out string? allowSelfSigned);
             tlsProperties.AllowSelfSigned = bool.TryParse(allowSelfSigned, out bool allowSelfSignedBool) && allowSelfSignedBool;
             if (tlsProperties.AllowSelfSigned)
             {
-                Properties.TryGetValue(TlsOptions.TrustedCertificatePath, out string? trustedCertificatePath);
+                properties.TryGetValue(TlsOptions.TrustedCertificatePath, out string? trustedCertificatePath);
                 if (trustedCertificatePath == null) return tlsProperties;
                 tlsProperties.TrustedCertificatePath = trustedCertificatePath != "" && File.Exists(trustedCertificatePath) ? trustedCertificatePath : throw new FileNotFoundException("Trusted certificate path is invalid or file does not exist.");
             }
