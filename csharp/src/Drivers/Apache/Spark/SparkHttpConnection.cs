@@ -51,6 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
             {
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
@@ -81,6 +82,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     if (string.IsNullOrWhiteSpace(token) && (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password)))
                         throw new ArgumentException(
                             $"Parameters must include valid authentiation settings. Please provide either '{SparkParameters.Token}'; or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.",
+                            nameof(Properties));
+                    break;
+
+                case SparkAuthType.OAuth:
+                    if (string.IsNullOrWhiteSpace(access_token))
+                        throw new ArgumentException(
+                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' but parameter '{SparkParameters.AccessToken}' is not set. Please provide a value for '{SparkParameters.AccessToken}'.",
                             nameof(Properties));
                     break;
                 default:
@@ -146,12 +154,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
             Properties.TryGetValue(SparkParameters.Token, out string? token);
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName);
-            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password);
+            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, access_token);
 
             HttpClientHandler httpClientHandler = NewHttpClientHandler();
             HttpClient httpClient = new(httpClientHandler);
@@ -191,7 +200,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return httpClientHandler;
         }
 
-        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password)
+        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password, string? access_token)
         {
             if (!string.IsNullOrEmpty(token) && (authType == SparkAuthType.Empty || authType == SparkAuthType.Token))
             {
@@ -204,6 +213,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             else if (!string.IsNullOrEmpty(username) && (authType == SparkAuthType.Empty || authType == SparkAuthType.UsernameOnly))
             {
                 return new AuthenticationHeaderValue(BasicAuthenticationScheme, Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:")));
+            }
+            else if (!string.IsNullOrEmpty(access_token) && authType == SparkAuthType.OAuth)
+            {
+                return new AuthenticationHeaderValue(BearerAuthenticationScheme, access_token);
             }
             else if (authType == SparkAuthType.None)
             {
