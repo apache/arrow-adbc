@@ -45,7 +45,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private global::Apache.Hive.Service.Rpc.Thrift.TTypeQualifiers _typeQualifiers;
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TTypeId"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TTypeId Type { get; set; }

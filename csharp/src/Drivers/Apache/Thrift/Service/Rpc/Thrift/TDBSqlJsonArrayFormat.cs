@@ -45,7 +45,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCompressionCodec _compressionCodec;
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCompressionCodec"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCompressionCodec CompressionCodec

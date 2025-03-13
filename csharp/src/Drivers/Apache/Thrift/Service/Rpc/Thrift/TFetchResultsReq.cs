@@ -50,7 +50,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle OperationHandle { get; set; }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TFetchOrientation"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TFetchOrientation Orientation { get; set; }

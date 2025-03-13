@@ -54,7 +54,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier _sessionId;
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion Client_protocol

@@ -74,7 +74,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion Client_protocol

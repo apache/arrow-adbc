@@ -69,7 +69,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public global::Apache.Hive.Service.Rpc.Thrift.TStatus Status { get; set; }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TOperationState"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationState OperationState
@@ -115,7 +115,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     /// The long-form error message. This is deprecated in DBR,
     /// however servers expecting to serve to Simba drivers should be careful
     /// to keep returning this as these drivers still depend on it.
-    /// 
+    ///
     /// Clients should avoid using this field and prefer displayMessage and diagnosticInfo if given.
     /// </summary>
     [Obsolete("This code is deprecated.")]
@@ -263,7 +263,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType IdempotencyType
@@ -293,7 +293,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TOperationTimeoutLevel"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationTimeoutLevel StatementTimeoutLevel

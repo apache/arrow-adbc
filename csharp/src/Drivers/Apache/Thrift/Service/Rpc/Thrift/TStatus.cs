@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private byte[] _responseValidation;
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TStatusCode"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TStatusCode StatusCode { get; set; }

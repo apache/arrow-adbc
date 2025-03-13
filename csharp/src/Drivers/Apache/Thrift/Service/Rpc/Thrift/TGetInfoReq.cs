@@ -47,7 +47,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle SessionHandle { get; set; }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TGetInfoType"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TGetInfoType InfoType { get; set; }

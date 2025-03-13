@@ -149,7 +149,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType IdempotencyType

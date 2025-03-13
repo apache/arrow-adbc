@@ -51,7 +51,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public global::Apache.Hive.Service.Rpc.Thrift.TStatus Status { get; set; }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion ServerProtocolVersion { get; set; }

@@ -47,7 +47,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     public global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier OperationId { get; set; }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TOperationType"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationType OperationType { get; set; }

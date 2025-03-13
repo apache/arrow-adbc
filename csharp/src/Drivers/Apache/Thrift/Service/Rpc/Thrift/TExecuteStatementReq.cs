@@ -335,7 +335,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     }
 
     /// <summary>
-    /// 
+    ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TResultPersistenceMode"/>
     /// </summary>
     public global::Apache.Hive.Service.Rpc.Thrift.TResultPersistenceMode ResultPersistenceMode
