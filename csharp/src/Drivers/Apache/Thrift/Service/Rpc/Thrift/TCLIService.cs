@@ -1020,7 +1020,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp692.Success = await _iAsync.OpenSession(tmp691.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("OpenSession", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("OpenSession", TMessageType.Reply, seqid), cancellationToken);
           await tmp692.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1051,7 +1051,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp697.Success = await _iAsync.CloseSession(tmp696.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("CloseSession", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("CloseSession", TMessageType.Reply, seqid), cancellationToken);
           await tmp697.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1082,7 +1082,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp702.Success = await _iAsync.GetInfo(tmp701.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetInfo", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetInfo", TMessageType.Reply, seqid), cancellationToken);
           await tmp702.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1113,7 +1113,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp707.Success = await _iAsync.ExecuteStatement(tmp706.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("ExecuteStatement", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("ExecuteStatement", TMessageType.Reply, seqid), cancellationToken);
           await tmp707.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1144,7 +1144,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp712.Success = await _iAsync.GetTypeInfo(tmp711.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetTypeInfo", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetTypeInfo", TMessageType.Reply, seqid), cancellationToken);
           await tmp712.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1175,7 +1175,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp717.Success = await _iAsync.GetCatalogs(tmp716.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetCatalogs", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetCatalogs", TMessageType.Reply, seqid), cancellationToken);
           await tmp717.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1206,7 +1206,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp722.Success = await _iAsync.GetSchemas(tmp721.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetSchemas", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetSchemas", TMessageType.Reply, seqid), cancellationToken);
           await tmp722.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1237,7 +1237,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp727.Success = await _iAsync.GetTables(tmp726.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetTables", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetTables", TMessageType.Reply, seqid), cancellationToken);
           await tmp727.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1268,7 +1268,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp732.Success = await _iAsync.GetTableTypes(tmp731.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetTableTypes", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetTableTypes", TMessageType.Reply, seqid), cancellationToken);
           await tmp732.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1299,7 +1299,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp737.Success = await _iAsync.GetColumns(tmp736.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetColumns", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetColumns", TMessageType.Reply, seqid), cancellationToken);
           await tmp737.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1330,7 +1330,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp742.Success = await _iAsync.GetFunctions(tmp741.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetFunctions", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetFunctions", TMessageType.Reply, seqid), cancellationToken);
           await tmp742.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1361,7 +1361,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp747.Success = await _iAsync.GetPrimaryKeys(tmp746.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetPrimaryKeys", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetPrimaryKeys", TMessageType.Reply, seqid), cancellationToken);
           await tmp747.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1392,7 +1392,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp752.Success = await _iAsync.GetCrossReference(tmp751.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetCrossReference", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetCrossReference", TMessageType.Reply, seqid), cancellationToken);
           await tmp752.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1423,7 +1423,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp757.Success = await _iAsync.GetOperationStatus(tmp756.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetOperationStatus", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetOperationStatus", TMessageType.Reply, seqid), cancellationToken);
           await tmp757.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1454,7 +1454,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp762.Success = await _iAsync.CancelOperation(tmp761.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("CancelOperation", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("CancelOperation", TMessageType.Reply, seqid), cancellationToken);
           await tmp762.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1485,7 +1485,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp767.Success = await _iAsync.CloseOperation(tmp766.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("CloseOperation", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("CloseOperation", TMessageType.Reply, seqid), cancellationToken);
           await tmp767.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1516,7 +1516,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp772.Success = await _iAsync.GetResultSetMetadata(tmp771.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetResultSetMetadata", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetResultSetMetadata", TMessageType.Reply, seqid), cancellationToken);
           await tmp772.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1547,7 +1547,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp777.Success = await _iAsync.FetchResults(tmp776.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("FetchResults", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("FetchResults", TMessageType.Reply, seqid), cancellationToken);
           await tmp777.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1578,7 +1578,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp782.Success = await _iAsync.GetDelegationToken(tmp781.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("GetDelegationToken", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("GetDelegationToken", TMessageType.Reply, seqid), cancellationToken);
           await tmp782.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1609,7 +1609,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp787.Success = await _iAsync.CancelDelegationToken(tmp786.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("CancelDelegationToken", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("CancelDelegationToken", TMessageType.Reply, seqid), cancellationToken);
           await tmp787.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
@@ -1640,7 +1640,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         try
         {
           tmp792.Success = await _iAsync.RenewDelegationToken(tmp791.Req, cancellationToken);
-          await oprot.WriteMessageBeginAsync(new TMessage("RenewDelegationToken", TMessageType.Reply, seqid), cancellationToken); 
+          await oprot.WriteMessageBeginAsync(new TMessage("RenewDelegationToken", TMessageType.Reply, seqid), cancellationToken);
           await tmp792.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
