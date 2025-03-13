@@ -32,13 +32,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             // TODO: Ensure this is set dynamically depending on server capabilities.
             statement.EnforceResultPersistenceMode = false;
-            statement.ResultPersistenceMode = 2;
+            statement.ResultPersistenceMode = TResultPersistenceMode.ALL_RESULTS;
             // This seems like a good idea to have the server timeout so it doesn't keep processing unnecessarily.
             // Set in combination with a CancellationToken.
             statement.QueryTimeout = QueryTimeoutSeconds;
             statement.CanReadArrowResult = true;
             statement.CanDownloadResult = true;
+#pragma warning disable CS0618 // Type or member is obsolete
             statement.ConfOverlay = SparkConnection.timestampConfig;
+#pragma warning restore CS0618 // Type or member is obsolete
             statement.UseArrowNativeTypes = new TSparkArrowTypes
             {
                 TimestampAsArrow = true,

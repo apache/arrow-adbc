@@ -37,8 +37,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            var req = new TOpenSessionReq(TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7)
+            var req = new TOpenSessionReq
             {
+                Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
                 CanUseMultipleCatalogs = true,
             };
             return req;

@@ -210,8 +210,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            return new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7)
+            return new TOpenSessionReq
             {
+                Client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7,
                 CanUseMultipleCatalogs = true,
             };
         }
