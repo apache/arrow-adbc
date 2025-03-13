@@ -50,6 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 ComplexTypesAsArrow = false,
                 IntervalTypesAsArrow = false,
             };
+            statement.TrimArrowBatchesToLimit = true;
         }
 
         /// <summary>
