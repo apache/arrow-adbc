@@ -49,8 +49,13 @@ for component in ${COMPONENTS}; do
         echo "NOTE: assuming wheels are already installed"
     fi
 done
-pip install importlib-resources pytest pyarrow pandas protobuf
+pip install importlib-resources pytest pyarrow pandas polars protobuf
 
 
 echo "=== (${PYTHON_VERSION}) Testing wheels ==="
 test_packages
+
+echo "=== (${PYTHON_VERSION}) Testing wheels (no PyArrow) ==="
+pip uninstall -y pyarrow
+export PYTEST_ADDOPTS="${PYTEST_ADDOPTS} -k pyarrowless"
+test_packages_pyarrowless

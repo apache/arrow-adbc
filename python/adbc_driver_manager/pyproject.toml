@@ -41,6 +41,7 @@ build-backend = "setuptools.build_meta"
 markers = [
     "duckdb: tests that require DuckDB",
     "panicdummy: tests that require the testing-only panicdummy driver",
+    "pyarrowless: tests of functionality when PyArrow is NOT installed",
     "sqlite: tests that require the SQLite driver",
 ]
 xfail_strict = true
