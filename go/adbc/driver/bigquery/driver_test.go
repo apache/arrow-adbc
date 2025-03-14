@@ -604,11 +604,12 @@ func (suite *BigQueryTests) TestDropSchema() {
 	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("CREATE SCHEMA %s", schema)))
 	rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
+	rdr.Release()
 
 	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("DROP SCHEMA %s CASCADE", schema)))
 	rdr, _, err = suite.stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
-	defer rdr.Release()
+	rdr.Release()
 
 	// We expect at error as the schema should not exist
 	suite.Require().Error(suite.Quirks.client.Dataset(schema).DeleteWithContents(suite.Quirks.ctx))
