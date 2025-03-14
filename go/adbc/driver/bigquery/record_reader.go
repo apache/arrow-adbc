@@ -18,8 +18,10 @@
 package bigquery
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log"
 	"sync/atomic"
 
 	"cloud.google.com/go/bigquery"
@@ -66,9 +68,16 @@ func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool) (b
 	if err != nil {
 		return nil, -1, err
 	}
-	arrowIterator, err := iter.ArrowIterator()
-	if err != nil {
-		return nil, -1, err
+
+	var arrowIterator bigquery.ArrowIterator
+	// If there is no schema in the row iterator, then arrow
+	// iterator should be empty (#2173)
+	if len(iter.Schema) > 0 {
+		if arrowIterator, err = iter.ArrowIterator(); err != nil {
+			return nil, -1, err
+		}
+	} else {
+		arrowIterator = emptyArrowIterator{}
 	}
 	totalRows := int64(iter.TotalRows)
 	return arrowIterator, totalRows, nil
@@ -275,4 +284,28 @@ func (r *reader) Schema() *arrow.Schema {
 
 func (r *reader) Record() arrow.Record {
 	return r.rec
+}
+
+type emptyArrowIterator struct{}
+
+func (e emptyArrowIterator) Next() (*bigquery.ArrowRecordBatch, error) {
+	return nil, errors.New("Next should never be invoked on an empty iterator")
+}
+
+func (e emptyArrowIterator) Schema() bigquery.Schema {
+	return bigquery.Schema{}
+}
+
+func (e emptyArrowIterator) SerializedArrowSchema() []byte {
+	emptySchema := arrow.NewSchema([]arrow.Field{}, nil)
+
+	var buf bytes.Buffer
+	writer := ipc.NewWriter(&buf, ipc.WithSchema(emptySchema))
+
+	err := writer.Close()
+	if err != nil {
+		log.Fatalf("Error serializing an empty schema: %v", err)
+	}
+
+	return buf.Bytes()
 }

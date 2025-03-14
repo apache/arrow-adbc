@@ -596,6 +596,25 @@ func (suite *BigQueryTests) TearDownTest() {
 	suite.driver = nil
 }
 
+func (suite *BigQueryTests) TestDropSchema() {
+	// Unique schema name
+	schema := fmt.Sprintf("%s_x", suite.Quirks.DBSchema())
+
+	// Create unique schema to drop via a query
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("CREATE SCHEMA %s", schema)))
+	rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	rdr.Release()
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("DROP SCHEMA %s CASCADE", schema)))
+	rdr, _, err = suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	rdr.Release()
+
+	// We expect at error as the schema should not exist
+	suite.Require().Error(suite.Quirks.client.Dataset(schema).DeleteWithContents(suite.Quirks.ctx))
+}
+
 func (suite *BigQueryTests) TestNewDatabaseGetSetOptions() {
 	key1, val1 := driver.OptionStringProjectID, "val1"
 	key2, val2 := driver.OptionStringDatasetID, "val2"
