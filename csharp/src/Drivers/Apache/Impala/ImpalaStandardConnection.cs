@@ -127,8 +127,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             {
                 throw new ArgumentOutOfRangeException(ImpalaParameters.AuthType, authType, $"Unsupported {ImpalaParameters.AuthType} value.");
             }
-            TOpenSessionReq request = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7)
+            TOpenSessionReq request = new TOpenSessionReq
             {
+                Client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7,
                 CanUseMultipleCatalogs = true,
             };
             switch (authTypeValue)
