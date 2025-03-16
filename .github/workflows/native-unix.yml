@@ -221,7 +221,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y libpq-dev ninja-build
+          sudo apt install -y libpq-dev ninja-build clang-19
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
@@ -249,7 +249,7 @@ jobs:
           python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
       - name: Build
         run: |
-          meson setup \
+          env CXX=/usr/bin/clang++-19 meson setup \
             -Db_sanitize=address,undefined \
             -Ddriver_manager=true \
             -Dflightsql=true \
