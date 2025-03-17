@@ -235,8 +235,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
+            var req = new TOpenSessionReq
             {
+                Client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11,
                 CanUseMultipleCatalogs = true,
             };
             return req;
