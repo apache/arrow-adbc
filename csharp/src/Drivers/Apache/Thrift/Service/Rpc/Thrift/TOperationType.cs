@@ -32,5 +32,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
     GET_COLUMNS = 6,
     GET_FUNCTIONS = 7,
     UNKNOWN = 8,
+    PROCEDURAL_SQL = 9,
   }
 }

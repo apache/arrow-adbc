@@ -60,6 +60,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       PRIMITIVE_TYPES.Add(global::Apache.Hive.Service.Rpc.Thrift.TTypeId.CHAR_TYPE);
       PRIMITIVE_TYPES.Add(global::Apache.Hive.Service.Rpc.Thrift.TTypeId.INTERVAL_YEAR_MONTH_TYPE);
       PRIMITIVE_TYPES.Add(global::Apache.Hive.Service.Rpc.Thrift.TTypeId.INTERVAL_DAY_TIME_TYPE);
+      PRIMITIVE_TYPES.Add(global::Apache.Hive.Service.Rpc.Thrift.TTypeId.TIMESTAMPLOCALTZ_TYPE);
       COMPLEX_TYPES.Add(global::Apache.Hive.Service.Rpc.Thrift.TTypeId.ARRAY_TYPE);
       COMPLEX_TYPES.Add(global::Apache.Hive.Service.Rpc.Thrift.TTypeId.MAP_TYPE);
       COMPLEX_TYPES.Add(global::Apache.Hive.Service.Rpc.Thrift.TTypeId.STRUCT_TYPE);
@@ -84,6 +85,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       TYPE_NAMES[global::Apache.Hive.Service.Rpc.Thrift.TTypeId.SMALLINT_TYPE] = "SMALLINT";
       TYPE_NAMES[global::Apache.Hive.Service.Rpc.Thrift.TTypeId.STRING_TYPE] = "STRING";
       TYPE_NAMES[global::Apache.Hive.Service.Rpc.Thrift.TTypeId.STRUCT_TYPE] = "STRUCT";
+      TYPE_NAMES[global::Apache.Hive.Service.Rpc.Thrift.TTypeId.TIMESTAMPLOCALTZ_TYPE] = "TIMESTAMP WITH LOCAL TIME ZONE";
       TYPE_NAMES[global::Apache.Hive.Service.Rpc.Thrift.TTypeId.TIMESTAMP_TYPE] = "TIMESTAMP";
       TYPE_NAMES[global::Apache.Hive.Service.Rpc.Thrift.TTypeId.TINYINT_TYPE] = "TINYINT";
       TYPE_NAMES[global::Apache.Hive.Service.Rpc.Thrift.TTypeId.UNION_TYPE] = "UNIONTYPE";

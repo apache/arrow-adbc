@@ -237,7 +237,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             var req = new TOpenSessionReq
             {
-                Client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V10,
+                Client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11,
                 CanUseMultipleCatalogs = true,
             };
             return req;

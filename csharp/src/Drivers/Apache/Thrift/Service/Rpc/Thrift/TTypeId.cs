@@ -45,5 +45,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
     CHAR_TYPE = 19,
     INTERVAL_YEAR_MONTH_TYPE = 20,
     INTERVAL_DAY_TIME_TYPE = 21,
+    TIMESTAMPLOCALTZ_TYPE = 22,
   }
 }

@@ -85,6 +85,14 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TRenewDelegationTokenResp> RenewDelegationToken(global::Apache.Hive.Service.Rpc.Thrift.TRenewDelegationTokenReq @req, CancellationToken cancellationToken = default);
 
+      global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdResp> GetQueryId(global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdReq @req, CancellationToken cancellationToken = default);
+
+      global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoResp> SetClientInfo(global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoReq @req, CancellationToken cancellationToken = default);
+
+      global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TUploadDataResp> UploadData(global::Apache.Hive.Service.Rpc.Thrift.TUploadDataReq @req, CancellationToken cancellationToken = default);
+
+      global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataResp> DownloadData(global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataReq @req, CancellationToken cancellationToken = default);
+
     }
 
 
@@ -108,11 +116,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("OpenSession", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp607 = new InternalStructs.OpenSession_args() {
+        var tmp649 = new InternalStructs.OpenSession_args() {
           Req = @req,
         };
 
-        await tmp607.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp649.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -120,20 +128,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TOpenSessionResp> recv_OpenSession(CancellationToken cancellationToken = default)
       {
 
-        var tmp608 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp608.Type == TMessageType.Exception)
+        var tmp650 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp650.Type == TMessageType.Exception)
         {
-          var tmp609 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp651 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp609;
+          throw tmp651;
         }
 
-        var tmp610 = new InternalStructs.OpenSession_result();
-        await tmp610.ReadAsync(InputProtocol, cancellationToken);
+        var tmp652 = new InternalStructs.OpenSession_result();
+        await tmp652.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp610.__isset.success)
+        if (tmp652.__isset.success)
         {
-          return tmp610.Success;
+          return tmp652.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "OpenSession failed: unknown result");
       }
@@ -148,11 +156,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("CloseSession", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp611 = new InternalStructs.CloseSession_args() {
+        var tmp653 = new InternalStructs.CloseSession_args() {
           Req = @req,
         };
 
-        await tmp611.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp653.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -160,20 +168,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TCloseSessionResp> recv_CloseSession(CancellationToken cancellationToken = default)
       {
 
-        var tmp612 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp612.Type == TMessageType.Exception)
+        var tmp654 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp654.Type == TMessageType.Exception)
         {
-          var tmp613 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp655 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp613;
+          throw tmp655;
         }
 
-        var tmp614 = new InternalStructs.CloseSession_result();
-        await tmp614.ReadAsync(InputProtocol, cancellationToken);
+        var tmp656 = new InternalStructs.CloseSession_result();
+        await tmp656.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp614.__isset.success)
+        if (tmp656.__isset.success)
         {
-          return tmp614.Success;
+          return tmp656.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "CloseSession failed: unknown result");
       }
@@ -188,11 +196,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetInfo", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp615 = new InternalStructs.GetInfo_args() {
+        var tmp657 = new InternalStructs.GetInfo_args() {
           Req = @req,
         };
 
-        await tmp615.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp657.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -200,20 +208,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetInfoResp> recv_GetInfo(CancellationToken cancellationToken = default)
       {
 
-        var tmp616 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp616.Type == TMessageType.Exception)
+        var tmp658 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp658.Type == TMessageType.Exception)
         {
-          var tmp617 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp659 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp617;
+          throw tmp659;
         }
 
-        var tmp618 = new InternalStructs.GetInfo_result();
-        await tmp618.ReadAsync(InputProtocol, cancellationToken);
+        var tmp660 = new InternalStructs.GetInfo_result();
+        await tmp660.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp618.__isset.success)
+        if (tmp660.__isset.success)
         {
-          return tmp618.Success;
+          return tmp660.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetInfo failed: unknown result");
       }
@@ -228,11 +236,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("ExecuteStatement", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp619 = new InternalStructs.ExecuteStatement_args() {
+        var tmp661 = new InternalStructs.ExecuteStatement_args() {
           Req = @req,
         };
 
-        await tmp619.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp661.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -240,20 +248,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TExecuteStatementResp> recv_ExecuteStatement(CancellationToken cancellationToken = default)
       {
 
-        var tmp620 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp620.Type == TMessageType.Exception)
+        var tmp662 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp662.Type == TMessageType.Exception)
         {
-          var tmp621 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp663 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp621;
+          throw tmp663;
         }
 
-        var tmp622 = new InternalStructs.ExecuteStatement_result();
-        await tmp622.ReadAsync(InputProtocol, cancellationToken);
+        var tmp664 = new InternalStructs.ExecuteStatement_result();
+        await tmp664.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp622.__isset.success)
+        if (tmp664.__isset.success)
         {
-          return tmp622.Success;
+          return tmp664.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "ExecuteStatement failed: unknown result");
       }
@@ -268,11 +276,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetTypeInfo", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp623 = new InternalStructs.GetTypeInfo_args() {
+        var tmp665 = new InternalStructs.GetTypeInfo_args() {
           Req = @req,
         };
 
-        await tmp623.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp665.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -280,20 +288,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetTypeInfoResp> recv_GetTypeInfo(CancellationToken cancellationToken = default)
       {
 
-        var tmp624 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp624.Type == TMessageType.Exception)
+        var tmp666 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp666.Type == TMessageType.Exception)
         {
-          var tmp625 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp667 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp625;
+          throw tmp667;
         }
 
-        var tmp626 = new InternalStructs.GetTypeInfo_result();
-        await tmp626.ReadAsync(InputProtocol, cancellationToken);
+        var tmp668 = new InternalStructs.GetTypeInfo_result();
+        await tmp668.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp626.__isset.success)
+        if (tmp668.__isset.success)
         {
-          return tmp626.Success;
+          return tmp668.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetTypeInfo failed: unknown result");
       }
@@ -308,11 +316,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetCatalogs", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp627 = new InternalStructs.GetCatalogs_args() {
+        var tmp669 = new InternalStructs.GetCatalogs_args() {
           Req = @req,
         };
 
-        await tmp627.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp669.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -320,20 +328,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetCatalogsResp> recv_GetCatalogs(CancellationToken cancellationToken = default)
       {
 
-        var tmp628 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp628.Type == TMessageType.Exception)
+        var tmp670 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp670.Type == TMessageType.Exception)
         {
-          var tmp629 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp671 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp629;
+          throw tmp671;
         }
 
-        var tmp630 = new InternalStructs.GetCatalogs_result();
-        await tmp630.ReadAsync(InputProtocol, cancellationToken);
+        var tmp672 = new InternalStructs.GetCatalogs_result();
+        await tmp672.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp630.__isset.success)
+        if (tmp672.__isset.success)
         {
-          return tmp630.Success;
+          return tmp672.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetCatalogs failed: unknown result");
       }
@@ -348,11 +356,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetSchemas", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp631 = new InternalStructs.GetSchemas_args() {
+        var tmp673 = new InternalStructs.GetSchemas_args() {
           Req = @req,
         };
 
-        await tmp631.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp673.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -360,20 +368,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetSchemasResp> recv_GetSchemas(CancellationToken cancellationToken = default)
       {
 
-        var tmp632 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp632.Type == TMessageType.Exception)
+        var tmp674 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp674.Type == TMessageType.Exception)
         {
-          var tmp633 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp675 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp633;
+          throw tmp675;
         }
 
-        var tmp634 = new InternalStructs.GetSchemas_result();
-        await tmp634.ReadAsync(InputProtocol, cancellationToken);
+        var tmp676 = new InternalStructs.GetSchemas_result();
+        await tmp676.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp634.__isset.success)
+        if (tmp676.__isset.success)
         {
-          return tmp634.Success;
+          return tmp676.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetSchemas failed: unknown result");
       }
@@ -388,11 +396,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetTables", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp635 = new InternalStructs.GetTables_args() {
+        var tmp677 = new InternalStructs.GetTables_args() {
           Req = @req,
         };
 
-        await tmp635.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp677.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -400,20 +408,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetTablesResp> recv_GetTables(CancellationToken cancellationToken = default)
       {
 
-        var tmp636 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp636.Type == TMessageType.Exception)
+        var tmp678 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp678.Type == TMessageType.Exception)
         {
-          var tmp637 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp679 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp637;
+          throw tmp679;
         }
 
-        var tmp638 = new InternalStructs.GetTables_result();
-        await tmp638.ReadAsync(InputProtocol, cancellationToken);
+        var tmp680 = new InternalStructs.GetTables_result();
+        await tmp680.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp638.__isset.success)
+        if (tmp680.__isset.success)
         {
-          return tmp638.Success;
+          return tmp680.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetTables failed: unknown result");
       }
@@ -428,11 +436,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetTableTypes", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp639 = new InternalStructs.GetTableTypes_args() {
+        var tmp681 = new InternalStructs.GetTableTypes_args() {
           Req = @req,
         };
 
-        await tmp639.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp681.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -440,20 +448,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetTableTypesResp> recv_GetTableTypes(CancellationToken cancellationToken = default)
       {
 
-        var tmp640 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp640.Type == TMessageType.Exception)
+        var tmp682 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp682.Type == TMessageType.Exception)
         {
-          var tmp641 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp683 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp641;
+          throw tmp683;
         }
 
-        var tmp642 = new InternalStructs.GetTableTypes_result();
-        await tmp642.ReadAsync(InputProtocol, cancellationToken);
+        var tmp684 = new InternalStructs.GetTableTypes_result();
+        await tmp684.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp642.__isset.success)
+        if (tmp684.__isset.success)
         {
-          return tmp642.Success;
+          return tmp684.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetTableTypes failed: unknown result");
       }
@@ -468,11 +476,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetColumns", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp643 = new InternalStructs.GetColumns_args() {
+        var tmp685 = new InternalStructs.GetColumns_args() {
           Req = @req,
         };
 
-        await tmp643.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp685.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -480,20 +488,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetColumnsResp> recv_GetColumns(CancellationToken cancellationToken = default)
       {
 
-        var tmp644 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp644.Type == TMessageType.Exception)
+        var tmp686 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp686.Type == TMessageType.Exception)
         {
-          var tmp645 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp687 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp645;
+          throw tmp687;
         }
 
-        var tmp646 = new InternalStructs.GetColumns_result();
-        await tmp646.ReadAsync(InputProtocol, cancellationToken);
+        var tmp688 = new InternalStructs.GetColumns_result();
+        await tmp688.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp646.__isset.success)
+        if (tmp688.__isset.success)
         {
-          return tmp646.Success;
+          return tmp688.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetColumns failed: unknown result");
       }
@@ -508,11 +516,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetFunctions", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp647 = new InternalStructs.GetFunctions_args() {
+        var tmp689 = new InternalStructs.GetFunctions_args() {
           Req = @req,
         };
 
-        await tmp647.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp689.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -520,20 +528,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetFunctionsResp> recv_GetFunctions(CancellationToken cancellationToken = default)
       {
 
-        var tmp648 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp648.Type == TMessageType.Exception)
+        var tmp690 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp690.Type == TMessageType.Exception)
         {
-          var tmp649 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp691 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp649;
+          throw tmp691;
         }
 
-        var tmp650 = new InternalStructs.GetFunctions_result();
-        await tmp650.ReadAsync(InputProtocol, cancellationToken);
+        var tmp692 = new InternalStructs.GetFunctions_result();
+        await tmp692.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp650.__isset.success)
+        if (tmp692.__isset.success)
         {
-          return tmp650.Success;
+          return tmp692.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetFunctions failed: unknown result");
       }
@@ -548,11 +556,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetPrimaryKeys", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp651 = new InternalStructs.GetPrimaryKeys_args() {
+        var tmp693 = new InternalStructs.GetPrimaryKeys_args() {
           Req = @req,
         };
 
-        await tmp651.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp693.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -560,20 +568,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetPrimaryKeysResp> recv_GetPrimaryKeys(CancellationToken cancellationToken = default)
       {
 
-        var tmp652 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp652.Type == TMessageType.Exception)
+        var tmp694 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp694.Type == TMessageType.Exception)
         {
-          var tmp653 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp695 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp653;
+          throw tmp695;
         }
 
-        var tmp654 = new InternalStructs.GetPrimaryKeys_result();
-        await tmp654.ReadAsync(InputProtocol, cancellationToken);
+        var tmp696 = new InternalStructs.GetPrimaryKeys_result();
+        await tmp696.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp654.__isset.success)
+        if (tmp696.__isset.success)
         {
-          return tmp654.Success;
+          return tmp696.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetPrimaryKeys failed: unknown result");
       }
@@ -588,11 +596,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetCrossReference", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp655 = new InternalStructs.GetCrossReference_args() {
+        var tmp697 = new InternalStructs.GetCrossReference_args() {
           Req = @req,
         };
 
-        await tmp655.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp697.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -600,20 +608,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetCrossReferenceResp> recv_GetCrossReference(CancellationToken cancellationToken = default)
       {
 
-        var tmp656 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp656.Type == TMessageType.Exception)
+        var tmp698 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp698.Type == TMessageType.Exception)
         {
-          var tmp657 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp699 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp657;
+          throw tmp699;
         }
 
-        var tmp658 = new InternalStructs.GetCrossReference_result();
-        await tmp658.ReadAsync(InputProtocol, cancellationToken);
+        var tmp700 = new InternalStructs.GetCrossReference_result();
+        await tmp700.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp658.__isset.success)
+        if (tmp700.__isset.success)
         {
-          return tmp658.Success;
+          return tmp700.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetCrossReference failed: unknown result");
       }
@@ -628,11 +636,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetOperationStatus", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp659 = new InternalStructs.GetOperationStatus_args() {
+        var tmp701 = new InternalStructs.GetOperationStatus_args() {
           Req = @req,
         };
 
-        await tmp659.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp701.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -640,20 +648,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetOperationStatusResp> recv_GetOperationStatus(CancellationToken cancellationToken = default)
       {
 
-        var tmp660 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp660.Type == TMessageType.Exception)
+        var tmp702 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp702.Type == TMessageType.Exception)
         {
-          var tmp661 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp703 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp661;
+          throw tmp703;
         }
 
-        var tmp662 = new InternalStructs.GetOperationStatus_result();
-        await tmp662.ReadAsync(InputProtocol, cancellationToken);
+        var tmp704 = new InternalStructs.GetOperationStatus_result();
+        await tmp704.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp662.__isset.success)
+        if (tmp704.__isset.success)
         {
-          return tmp662.Success;
+          return tmp704.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetOperationStatus failed: unknown result");
       }
@@ -668,11 +676,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("CancelOperation", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp663 = new InternalStructs.CancelOperation_args() {
+        var tmp705 = new InternalStructs.CancelOperation_args() {
           Req = @req,
         };
 
-        await tmp663.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp705.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -680,20 +688,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TCancelOperationResp> recv_CancelOperation(CancellationToken cancellationToken = default)
       {
 
-        var tmp664 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp664.Type == TMessageType.Exception)
+        var tmp706 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp706.Type == TMessageType.Exception)
         {
-          var tmp665 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp707 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp665;
+          throw tmp707;
         }
 
-        var tmp666 = new InternalStructs.CancelOperation_result();
-        await tmp666.ReadAsync(InputProtocol, cancellationToken);
+        var tmp708 = new InternalStructs.CancelOperation_result();
+        await tmp708.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp666.__isset.success)
+        if (tmp708.__isset.success)
         {
-          return tmp666.Success;
+          return tmp708.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "CancelOperation failed: unknown result");
       }
@@ -708,11 +716,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("CloseOperation", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp667 = new InternalStructs.CloseOperation_args() {
+        var tmp709 = new InternalStructs.CloseOperation_args() {
           Req = @req,
         };
 
-        await tmp667.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp709.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -720,20 +728,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TCloseOperationResp> recv_CloseOperation(CancellationToken cancellationToken = default)
       {
 
-        var tmp668 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp668.Type == TMessageType.Exception)
+        var tmp710 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp710.Type == TMessageType.Exception)
         {
-          var tmp669 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp711 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp669;
+          throw tmp711;
         }
 
-        var tmp670 = new InternalStructs.CloseOperation_result();
-        await tmp670.ReadAsync(InputProtocol, cancellationToken);
+        var tmp712 = new InternalStructs.CloseOperation_result();
+        await tmp712.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp670.__isset.success)
+        if (tmp712.__isset.success)
         {
-          return tmp670.Success;
+          return tmp712.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "CloseOperation failed: unknown result");
       }
@@ -748,11 +756,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetResultSetMetadata", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp671 = new InternalStructs.GetResultSetMetadata_args() {
+        var tmp713 = new InternalStructs.GetResultSetMetadata_args() {
           Req = @req,
         };
 
-        await tmp671.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp713.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -760,20 +768,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp> recv_GetResultSetMetadata(CancellationToken cancellationToken = default)
       {
 
-        var tmp672 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp672.Type == TMessageType.Exception)
+        var tmp714 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp714.Type == TMessageType.Exception)
         {
-          var tmp673 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp715 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp673;
+          throw tmp715;
         }
 
-        var tmp674 = new InternalStructs.GetResultSetMetadata_result();
-        await tmp674.ReadAsync(InputProtocol, cancellationToken);
+        var tmp716 = new InternalStructs.GetResultSetMetadata_result();
+        await tmp716.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp674.__isset.success)
+        if (tmp716.__isset.success)
         {
-          return tmp674.Success;
+          return tmp716.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetResultSetMetadata failed: unknown result");
       }
@@ -788,11 +796,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("FetchResults", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp675 = new InternalStructs.FetchResults_args() {
+        var tmp717 = new InternalStructs.FetchResults_args() {
           Req = @req,
         };
 
-        await tmp675.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp717.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -800,20 +808,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TFetchResultsResp> recv_FetchResults(CancellationToken cancellationToken = default)
       {
 
-        var tmp676 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp676.Type == TMessageType.Exception)
+        var tmp718 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp718.Type == TMessageType.Exception)
         {
-          var tmp677 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp719 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp677;
+          throw tmp719;
         }
 
-        var tmp678 = new InternalStructs.FetchResults_result();
-        await tmp678.ReadAsync(InputProtocol, cancellationToken);
+        var tmp720 = new InternalStructs.FetchResults_result();
+        await tmp720.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp678.__isset.success)
+        if (tmp720.__isset.success)
         {
-          return tmp678.Success;
+          return tmp720.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "FetchResults failed: unknown result");
       }
@@ -828,11 +836,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetDelegationToken", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp679 = new InternalStructs.GetDelegationToken_args() {
+        var tmp721 = new InternalStructs.GetDelegationToken_args() {
           Req = @req,
         };
 
-        await tmp679.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp721.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -840,20 +848,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetDelegationTokenResp> recv_GetDelegationToken(CancellationToken cancellationToken = default)
       {
 
-        var tmp680 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp680.Type == TMessageType.Exception)
+        var tmp722 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp722.Type == TMessageType.Exception)
         {
-          var tmp681 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp723 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp681;
+          throw tmp723;
         }
 
-        var tmp682 = new InternalStructs.GetDelegationToken_result();
-        await tmp682.ReadAsync(InputProtocol, cancellationToken);
+        var tmp724 = new InternalStructs.GetDelegationToken_result();
+        await tmp724.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp682.__isset.success)
+        if (tmp724.__isset.success)
         {
-          return tmp682.Success;
+          return tmp724.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetDelegationToken failed: unknown result");
       }
@@ -868,11 +876,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("CancelDelegationToken", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp683 = new InternalStructs.CancelDelegationToken_args() {
+        var tmp725 = new InternalStructs.CancelDelegationToken_args() {
           Req = @req,
         };
 
-        await tmp683.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp725.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -880,20 +888,20 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TCancelDelegationTokenResp> recv_CancelDelegationToken(CancellationToken cancellationToken = default)
       {
 
-        var tmp684 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp684.Type == TMessageType.Exception)
+        var tmp726 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp726.Type == TMessageType.Exception)
         {
-          var tmp685 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp727 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp685;
+          throw tmp727;
         }
 
-        var tmp686 = new InternalStructs.CancelDelegationToken_result();
-        await tmp686.ReadAsync(InputProtocol, cancellationToken);
+        var tmp728 = new InternalStructs.CancelDelegationToken_result();
+        await tmp728.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp686.__isset.success)
+        if (tmp728.__isset.success)
         {
-          return tmp686.Success;
+          return tmp728.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "CancelDelegationToken failed: unknown result");
       }
@@ -908,11 +916,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         await OutputProtocol.WriteMessageBeginAsync(new TMessage("RenewDelegationToken", TMessageType.Call, SeqId), cancellationToken);
 
-        var tmp687 = new InternalStructs.RenewDelegationToken_args() {
+        var tmp729 = new InternalStructs.RenewDelegationToken_args() {
           Req = @req,
         };
 
-        await tmp687.WriteAsync(OutputProtocol, cancellationToken);
+        await tmp729.WriteAsync(OutputProtocol, cancellationToken);
         await OutputProtocol.WriteMessageEndAsync(cancellationToken);
         await OutputProtocol.Transport.FlushAsync(cancellationToken);
       }
@@ -920,22 +928,182 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TRenewDelegationTokenResp> recv_RenewDelegationToken(CancellationToken cancellationToken = default)
       {
 
-        var tmp688 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
-        if (tmp688.Type == TMessageType.Exception)
+        var tmp730 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp730.Type == TMessageType.Exception)
         {
-          var tmp689 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          var tmp731 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
           await InputProtocol.ReadMessageEndAsync(cancellationToken);
-          throw tmp689;
+          throw tmp731;
         }
 
-        var tmp690 = new InternalStructs.RenewDelegationToken_result();
-        await tmp690.ReadAsync(InputProtocol, cancellationToken);
+        var tmp732 = new InternalStructs.RenewDelegationToken_result();
+        await tmp732.ReadAsync(InputProtocol, cancellationToken);
         await InputProtocol.ReadMessageEndAsync(cancellationToken);
-        if (tmp690.__isset.success)
+        if (tmp732.__isset.success)
         {
-          return tmp690.Success;
+          return tmp732.Success;
         }
         throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "RenewDelegationToken failed: unknown result");
+      }
+
+      public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdResp> GetQueryId(global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdReq @req, CancellationToken cancellationToken = default)
+      {
+        await send_GetQueryId(@req, cancellationToken);
+        return await recv_GetQueryId(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task send_GetQueryId(global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdReq @req, CancellationToken cancellationToken = default)
+      {
+        await OutputProtocol.WriteMessageBeginAsync(new TMessage("GetQueryId", TMessageType.Call, SeqId), cancellationToken);
+
+        var tmp733 = new InternalStructs.GetQueryId_args() {
+          Req = @req,
+        };
+
+        await tmp733.WriteAsync(OutputProtocol, cancellationToken);
+        await OutputProtocol.WriteMessageEndAsync(cancellationToken);
+        await OutputProtocol.Transport.FlushAsync(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdResp> recv_GetQueryId(CancellationToken cancellationToken = default)
+      {
+
+        var tmp734 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp734.Type == TMessageType.Exception)
+        {
+          var tmp735 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          await InputProtocol.ReadMessageEndAsync(cancellationToken);
+          throw tmp735;
+        }
+
+        var tmp736 = new InternalStructs.GetQueryId_result();
+        await tmp736.ReadAsync(InputProtocol, cancellationToken);
+        await InputProtocol.ReadMessageEndAsync(cancellationToken);
+        if (tmp736.__isset.success)
+        {
+          return tmp736.Success;
+        }
+        throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "GetQueryId failed: unknown result");
+      }
+
+      public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoResp> SetClientInfo(global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoReq @req, CancellationToken cancellationToken = default)
+      {
+        await send_SetClientInfo(@req, cancellationToken);
+        return await recv_SetClientInfo(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task send_SetClientInfo(global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoReq @req, CancellationToken cancellationToken = default)
+      {
+        await OutputProtocol.WriteMessageBeginAsync(new TMessage("SetClientInfo", TMessageType.Call, SeqId), cancellationToken);
+
+        var tmp737 = new InternalStructs.SetClientInfo_args() {
+          Req = @req,
+        };
+
+        await tmp737.WriteAsync(OutputProtocol, cancellationToken);
+        await OutputProtocol.WriteMessageEndAsync(cancellationToken);
+        await OutputProtocol.Transport.FlushAsync(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoResp> recv_SetClientInfo(CancellationToken cancellationToken = default)
+      {
+
+        var tmp738 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp738.Type == TMessageType.Exception)
+        {
+          var tmp739 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          await InputProtocol.ReadMessageEndAsync(cancellationToken);
+          throw tmp739;
+        }
+
+        var tmp740 = new InternalStructs.SetClientInfo_result();
+        await tmp740.ReadAsync(InputProtocol, cancellationToken);
+        await InputProtocol.ReadMessageEndAsync(cancellationToken);
+        if (tmp740.__isset.success)
+        {
+          return tmp740.Success;
+        }
+        throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "SetClientInfo failed: unknown result");
+      }
+
+      public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TUploadDataResp> UploadData(global::Apache.Hive.Service.Rpc.Thrift.TUploadDataReq @req, CancellationToken cancellationToken = default)
+      {
+        await send_UploadData(@req, cancellationToken);
+        return await recv_UploadData(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task send_UploadData(global::Apache.Hive.Service.Rpc.Thrift.TUploadDataReq @req, CancellationToken cancellationToken = default)
+      {
+        await OutputProtocol.WriteMessageBeginAsync(new TMessage("UploadData", TMessageType.Call, SeqId), cancellationToken);
+
+        var tmp741 = new InternalStructs.UploadData_args() {
+          Req = @req,
+        };
+
+        await tmp741.WriteAsync(OutputProtocol, cancellationToken);
+        await OutputProtocol.WriteMessageEndAsync(cancellationToken);
+        await OutputProtocol.Transport.FlushAsync(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TUploadDataResp> recv_UploadData(CancellationToken cancellationToken = default)
+      {
+
+        var tmp742 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp742.Type == TMessageType.Exception)
+        {
+          var tmp743 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          await InputProtocol.ReadMessageEndAsync(cancellationToken);
+          throw tmp743;
+        }
+
+        var tmp744 = new InternalStructs.UploadData_result();
+        await tmp744.ReadAsync(InputProtocol, cancellationToken);
+        await InputProtocol.ReadMessageEndAsync(cancellationToken);
+        if (tmp744.__isset.success)
+        {
+          return tmp744.Success;
+        }
+        throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "UploadData failed: unknown result");
+      }
+
+      public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataResp> DownloadData(global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataReq @req, CancellationToken cancellationToken = default)
+      {
+        await send_DownloadData(@req, cancellationToken);
+        return await recv_DownloadData(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task send_DownloadData(global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataReq @req, CancellationToken cancellationToken = default)
+      {
+        await OutputProtocol.WriteMessageBeginAsync(new TMessage("DownloadData", TMessageType.Call, SeqId), cancellationToken);
+
+        var tmp745 = new InternalStructs.DownloadData_args() {
+          Req = @req,
+        };
+
+        await tmp745.WriteAsync(OutputProtocol, cancellationToken);
+        await OutputProtocol.WriteMessageEndAsync(cancellationToken);
+        await OutputProtocol.Transport.FlushAsync(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataResp> recv_DownloadData(CancellationToken cancellationToken = default)
+      {
+
+        var tmp746 = await InputProtocol.ReadMessageBeginAsync(cancellationToken);
+        if (tmp746.Type == TMessageType.Exception)
+        {
+          var tmp747 = await TApplicationException.ReadAsync(InputProtocol, cancellationToken);
+          await InputProtocol.ReadMessageEndAsync(cancellationToken);
+          throw tmp747;
+        }
+
+        var tmp748 = new InternalStructs.DownloadData_result();
+        await tmp748.ReadAsync(InputProtocol, cancellationToken);
+        await InputProtocol.ReadMessageEndAsync(cancellationToken);
+        if (tmp748.__isset.success)
+        {
+          return tmp748.Success;
+        }
+        throw new TApplicationException(TApplicationException.ExceptionType.MissingResult, "DownloadData failed: unknown result");
       }
 
     }
@@ -970,6 +1138,10 @@ namespace Apache.Hive.Service.Rpc.Thrift
         processMap_["GetDelegationToken"] = GetDelegationToken_ProcessAsync;
         processMap_["CancelDelegationToken"] = CancelDelegationToken_ProcessAsync;
         processMap_["RenewDelegationToken"] = RenewDelegationToken_ProcessAsync;
+        processMap_["GetQueryId"] = GetQueryId_ProcessAsync;
+        processMap_["SetClientInfo"] = SetClientInfo_ProcessAsync;
+        processMap_["UploadData"] = UploadData_ProcessAsync;
+        processMap_["DownloadData"] = DownloadData_ProcessAsync;
       }
 
       protected delegate global::System.Threading.Tasks.Task ProcessFunction(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken);
@@ -1013,30 +1185,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task OpenSession_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp691 = new InternalStructs.OpenSession_args();
-        await tmp691.ReadAsync(iprot, cancellationToken);
+        var tmp749 = new InternalStructs.OpenSession_args();
+        await tmp749.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp692 = new InternalStructs.OpenSession_result();
+        var tmp750 = new InternalStructs.OpenSession_result();
         try
         {
-          tmp692.Success = await _iAsync.OpenSession(tmp691.Req, cancellationToken);
+          tmp750.Success = await _iAsync.OpenSession(tmp749.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("OpenSession", TMessageType.Reply, seqid), cancellationToken);
-          await tmp692.WriteAsync(oprot, cancellationToken);
+          await tmp750.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp693)
+        catch (Exception tmp751)
         {
-          var tmp694 = $"Error occurred in {GetType().FullName}: {tmp693.Message}";
+          var tmp752 = $"Error occurred in {GetType().FullName}: {tmp751.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp693, tmp694);
+            _logger.LogError("{Exception}, {Message}", tmp751, tmp752);
           else
-            Console.Error.WriteLine(tmp694);
-          var tmp695 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp752);
+          var tmp753 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("OpenSession", TMessageType.Exception, seqid), cancellationToken);
-          await tmp695.WriteAsync(oprot, cancellationToken);
+          await tmp753.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1044,30 +1216,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task CloseSession_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp696 = new InternalStructs.CloseSession_args();
-        await tmp696.ReadAsync(iprot, cancellationToken);
+        var tmp754 = new InternalStructs.CloseSession_args();
+        await tmp754.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp697 = new InternalStructs.CloseSession_result();
+        var tmp755 = new InternalStructs.CloseSession_result();
         try
         {
-          tmp697.Success = await _iAsync.CloseSession(tmp696.Req, cancellationToken);
+          tmp755.Success = await _iAsync.CloseSession(tmp754.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("CloseSession", TMessageType.Reply, seqid), cancellationToken);
-          await tmp697.WriteAsync(oprot, cancellationToken);
+          await tmp755.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp698)
+        catch (Exception tmp756)
         {
-          var tmp699 = $"Error occurred in {GetType().FullName}: {tmp698.Message}";
+          var tmp757 = $"Error occurred in {GetType().FullName}: {tmp756.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp698, tmp699);
+            _logger.LogError("{Exception}, {Message}", tmp756, tmp757);
           else
-            Console.Error.WriteLine(tmp699);
-          var tmp700 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp757);
+          var tmp758 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("CloseSession", TMessageType.Exception, seqid), cancellationToken);
-          await tmp700.WriteAsync(oprot, cancellationToken);
+          await tmp758.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1075,30 +1247,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetInfo_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp701 = new InternalStructs.GetInfo_args();
-        await tmp701.ReadAsync(iprot, cancellationToken);
+        var tmp759 = new InternalStructs.GetInfo_args();
+        await tmp759.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp702 = new InternalStructs.GetInfo_result();
+        var tmp760 = new InternalStructs.GetInfo_result();
         try
         {
-          tmp702.Success = await _iAsync.GetInfo(tmp701.Req, cancellationToken);
+          tmp760.Success = await _iAsync.GetInfo(tmp759.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetInfo", TMessageType.Reply, seqid), cancellationToken);
-          await tmp702.WriteAsync(oprot, cancellationToken);
+          await tmp760.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp703)
+        catch (Exception tmp761)
         {
-          var tmp704 = $"Error occurred in {GetType().FullName}: {tmp703.Message}";
+          var tmp762 = $"Error occurred in {GetType().FullName}: {tmp761.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp703, tmp704);
+            _logger.LogError("{Exception}, {Message}", tmp761, tmp762);
           else
-            Console.Error.WriteLine(tmp704);
-          var tmp705 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp762);
+          var tmp763 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetInfo", TMessageType.Exception, seqid), cancellationToken);
-          await tmp705.WriteAsync(oprot, cancellationToken);
+          await tmp763.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1106,30 +1278,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task ExecuteStatement_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp706 = new InternalStructs.ExecuteStatement_args();
-        await tmp706.ReadAsync(iprot, cancellationToken);
+        var tmp764 = new InternalStructs.ExecuteStatement_args();
+        await tmp764.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp707 = new InternalStructs.ExecuteStatement_result();
+        var tmp765 = new InternalStructs.ExecuteStatement_result();
         try
         {
-          tmp707.Success = await _iAsync.ExecuteStatement(tmp706.Req, cancellationToken);
+          tmp765.Success = await _iAsync.ExecuteStatement(tmp764.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("ExecuteStatement", TMessageType.Reply, seqid), cancellationToken);
-          await tmp707.WriteAsync(oprot, cancellationToken);
+          await tmp765.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp708)
+        catch (Exception tmp766)
         {
-          var tmp709 = $"Error occurred in {GetType().FullName}: {tmp708.Message}";
+          var tmp767 = $"Error occurred in {GetType().FullName}: {tmp766.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp708, tmp709);
+            _logger.LogError("{Exception}, {Message}", tmp766, tmp767);
           else
-            Console.Error.WriteLine(tmp709);
-          var tmp710 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp767);
+          var tmp768 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("ExecuteStatement", TMessageType.Exception, seqid), cancellationToken);
-          await tmp710.WriteAsync(oprot, cancellationToken);
+          await tmp768.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1137,30 +1309,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetTypeInfo_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp711 = new InternalStructs.GetTypeInfo_args();
-        await tmp711.ReadAsync(iprot, cancellationToken);
+        var tmp769 = new InternalStructs.GetTypeInfo_args();
+        await tmp769.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp712 = new InternalStructs.GetTypeInfo_result();
+        var tmp770 = new InternalStructs.GetTypeInfo_result();
         try
         {
-          tmp712.Success = await _iAsync.GetTypeInfo(tmp711.Req, cancellationToken);
+          tmp770.Success = await _iAsync.GetTypeInfo(tmp769.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetTypeInfo", TMessageType.Reply, seqid), cancellationToken);
-          await tmp712.WriteAsync(oprot, cancellationToken);
+          await tmp770.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp713)
+        catch (Exception tmp771)
         {
-          var tmp714 = $"Error occurred in {GetType().FullName}: {tmp713.Message}";
+          var tmp772 = $"Error occurred in {GetType().FullName}: {tmp771.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp713, tmp714);
+            _logger.LogError("{Exception}, {Message}", tmp771, tmp772);
           else
-            Console.Error.WriteLine(tmp714);
-          var tmp715 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp772);
+          var tmp773 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetTypeInfo", TMessageType.Exception, seqid), cancellationToken);
-          await tmp715.WriteAsync(oprot, cancellationToken);
+          await tmp773.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1168,30 +1340,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetCatalogs_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp716 = new InternalStructs.GetCatalogs_args();
-        await tmp716.ReadAsync(iprot, cancellationToken);
+        var tmp774 = new InternalStructs.GetCatalogs_args();
+        await tmp774.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp717 = new InternalStructs.GetCatalogs_result();
+        var tmp775 = new InternalStructs.GetCatalogs_result();
         try
         {
-          tmp717.Success = await _iAsync.GetCatalogs(tmp716.Req, cancellationToken);
+          tmp775.Success = await _iAsync.GetCatalogs(tmp774.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetCatalogs", TMessageType.Reply, seqid), cancellationToken);
-          await tmp717.WriteAsync(oprot, cancellationToken);
+          await tmp775.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp718)
+        catch (Exception tmp776)
         {
-          var tmp719 = $"Error occurred in {GetType().FullName}: {tmp718.Message}";
+          var tmp777 = $"Error occurred in {GetType().FullName}: {tmp776.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp718, tmp719);
+            _logger.LogError("{Exception}, {Message}", tmp776, tmp777);
           else
-            Console.Error.WriteLine(tmp719);
-          var tmp720 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp777);
+          var tmp778 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetCatalogs", TMessageType.Exception, seqid), cancellationToken);
-          await tmp720.WriteAsync(oprot, cancellationToken);
+          await tmp778.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1199,30 +1371,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetSchemas_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp721 = new InternalStructs.GetSchemas_args();
-        await tmp721.ReadAsync(iprot, cancellationToken);
+        var tmp779 = new InternalStructs.GetSchemas_args();
+        await tmp779.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp722 = new InternalStructs.GetSchemas_result();
+        var tmp780 = new InternalStructs.GetSchemas_result();
         try
         {
-          tmp722.Success = await _iAsync.GetSchemas(tmp721.Req, cancellationToken);
+          tmp780.Success = await _iAsync.GetSchemas(tmp779.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetSchemas", TMessageType.Reply, seqid), cancellationToken);
-          await tmp722.WriteAsync(oprot, cancellationToken);
+          await tmp780.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp723)
+        catch (Exception tmp781)
         {
-          var tmp724 = $"Error occurred in {GetType().FullName}: {tmp723.Message}";
+          var tmp782 = $"Error occurred in {GetType().FullName}: {tmp781.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp723, tmp724);
+            _logger.LogError("{Exception}, {Message}", tmp781, tmp782);
           else
-            Console.Error.WriteLine(tmp724);
-          var tmp725 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp782);
+          var tmp783 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetSchemas", TMessageType.Exception, seqid), cancellationToken);
-          await tmp725.WriteAsync(oprot, cancellationToken);
+          await tmp783.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1230,30 +1402,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetTables_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp726 = new InternalStructs.GetTables_args();
-        await tmp726.ReadAsync(iprot, cancellationToken);
+        var tmp784 = new InternalStructs.GetTables_args();
+        await tmp784.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp727 = new InternalStructs.GetTables_result();
+        var tmp785 = new InternalStructs.GetTables_result();
         try
         {
-          tmp727.Success = await _iAsync.GetTables(tmp726.Req, cancellationToken);
+          tmp785.Success = await _iAsync.GetTables(tmp784.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetTables", TMessageType.Reply, seqid), cancellationToken);
-          await tmp727.WriteAsync(oprot, cancellationToken);
+          await tmp785.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp728)
+        catch (Exception tmp786)
         {
-          var tmp729 = $"Error occurred in {GetType().FullName}: {tmp728.Message}";
+          var tmp787 = $"Error occurred in {GetType().FullName}: {tmp786.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp728, tmp729);
+            _logger.LogError("{Exception}, {Message}", tmp786, tmp787);
           else
-            Console.Error.WriteLine(tmp729);
-          var tmp730 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp787);
+          var tmp788 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetTables", TMessageType.Exception, seqid), cancellationToken);
-          await tmp730.WriteAsync(oprot, cancellationToken);
+          await tmp788.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1261,30 +1433,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetTableTypes_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp731 = new InternalStructs.GetTableTypes_args();
-        await tmp731.ReadAsync(iprot, cancellationToken);
+        var tmp789 = new InternalStructs.GetTableTypes_args();
+        await tmp789.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp732 = new InternalStructs.GetTableTypes_result();
+        var tmp790 = new InternalStructs.GetTableTypes_result();
         try
         {
-          tmp732.Success = await _iAsync.GetTableTypes(tmp731.Req, cancellationToken);
+          tmp790.Success = await _iAsync.GetTableTypes(tmp789.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetTableTypes", TMessageType.Reply, seqid), cancellationToken);
-          await tmp732.WriteAsync(oprot, cancellationToken);
+          await tmp790.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp733)
+        catch (Exception tmp791)
         {
-          var tmp734 = $"Error occurred in {GetType().FullName}: {tmp733.Message}";
+          var tmp792 = $"Error occurred in {GetType().FullName}: {tmp791.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp733, tmp734);
+            _logger.LogError("{Exception}, {Message}", tmp791, tmp792);
           else
-            Console.Error.WriteLine(tmp734);
-          var tmp735 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp792);
+          var tmp793 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetTableTypes", TMessageType.Exception, seqid), cancellationToken);
-          await tmp735.WriteAsync(oprot, cancellationToken);
+          await tmp793.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1292,30 +1464,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetColumns_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp736 = new InternalStructs.GetColumns_args();
-        await tmp736.ReadAsync(iprot, cancellationToken);
+        var tmp794 = new InternalStructs.GetColumns_args();
+        await tmp794.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp737 = new InternalStructs.GetColumns_result();
+        var tmp795 = new InternalStructs.GetColumns_result();
         try
         {
-          tmp737.Success = await _iAsync.GetColumns(tmp736.Req, cancellationToken);
+          tmp795.Success = await _iAsync.GetColumns(tmp794.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetColumns", TMessageType.Reply, seqid), cancellationToken);
-          await tmp737.WriteAsync(oprot, cancellationToken);
+          await tmp795.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp738)
+        catch (Exception tmp796)
         {
-          var tmp739 = $"Error occurred in {GetType().FullName}: {tmp738.Message}";
+          var tmp797 = $"Error occurred in {GetType().FullName}: {tmp796.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp738, tmp739);
+            _logger.LogError("{Exception}, {Message}", tmp796, tmp797);
           else
-            Console.Error.WriteLine(tmp739);
-          var tmp740 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp797);
+          var tmp798 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetColumns", TMessageType.Exception, seqid), cancellationToken);
-          await tmp740.WriteAsync(oprot, cancellationToken);
+          await tmp798.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1323,30 +1495,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetFunctions_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp741 = new InternalStructs.GetFunctions_args();
-        await tmp741.ReadAsync(iprot, cancellationToken);
+        var tmp799 = new InternalStructs.GetFunctions_args();
+        await tmp799.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp742 = new InternalStructs.GetFunctions_result();
+        var tmp800 = new InternalStructs.GetFunctions_result();
         try
         {
-          tmp742.Success = await _iAsync.GetFunctions(tmp741.Req, cancellationToken);
+          tmp800.Success = await _iAsync.GetFunctions(tmp799.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetFunctions", TMessageType.Reply, seqid), cancellationToken);
-          await tmp742.WriteAsync(oprot, cancellationToken);
+          await tmp800.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp743)
+        catch (Exception tmp801)
         {
-          var tmp744 = $"Error occurred in {GetType().FullName}: {tmp743.Message}";
+          var tmp802 = $"Error occurred in {GetType().FullName}: {tmp801.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp743, tmp744);
+            _logger.LogError("{Exception}, {Message}", tmp801, tmp802);
           else
-            Console.Error.WriteLine(tmp744);
-          var tmp745 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp802);
+          var tmp803 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetFunctions", TMessageType.Exception, seqid), cancellationToken);
-          await tmp745.WriteAsync(oprot, cancellationToken);
+          await tmp803.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1354,30 +1526,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetPrimaryKeys_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp746 = new InternalStructs.GetPrimaryKeys_args();
-        await tmp746.ReadAsync(iprot, cancellationToken);
+        var tmp804 = new InternalStructs.GetPrimaryKeys_args();
+        await tmp804.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp747 = new InternalStructs.GetPrimaryKeys_result();
+        var tmp805 = new InternalStructs.GetPrimaryKeys_result();
         try
         {
-          tmp747.Success = await _iAsync.GetPrimaryKeys(tmp746.Req, cancellationToken);
+          tmp805.Success = await _iAsync.GetPrimaryKeys(tmp804.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetPrimaryKeys", TMessageType.Reply, seqid), cancellationToken);
-          await tmp747.WriteAsync(oprot, cancellationToken);
+          await tmp805.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp748)
+        catch (Exception tmp806)
         {
-          var tmp749 = $"Error occurred in {GetType().FullName}: {tmp748.Message}";
+          var tmp807 = $"Error occurred in {GetType().FullName}: {tmp806.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp748, tmp749);
+            _logger.LogError("{Exception}, {Message}", tmp806, tmp807);
           else
-            Console.Error.WriteLine(tmp749);
-          var tmp750 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp807);
+          var tmp808 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetPrimaryKeys", TMessageType.Exception, seqid), cancellationToken);
-          await tmp750.WriteAsync(oprot, cancellationToken);
+          await tmp808.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1385,30 +1557,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetCrossReference_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp751 = new InternalStructs.GetCrossReference_args();
-        await tmp751.ReadAsync(iprot, cancellationToken);
+        var tmp809 = new InternalStructs.GetCrossReference_args();
+        await tmp809.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp752 = new InternalStructs.GetCrossReference_result();
+        var tmp810 = new InternalStructs.GetCrossReference_result();
         try
         {
-          tmp752.Success = await _iAsync.GetCrossReference(tmp751.Req, cancellationToken);
+          tmp810.Success = await _iAsync.GetCrossReference(tmp809.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetCrossReference", TMessageType.Reply, seqid), cancellationToken);
-          await tmp752.WriteAsync(oprot, cancellationToken);
+          await tmp810.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp753)
+        catch (Exception tmp811)
         {
-          var tmp754 = $"Error occurred in {GetType().FullName}: {tmp753.Message}";
+          var tmp812 = $"Error occurred in {GetType().FullName}: {tmp811.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp753, tmp754);
+            _logger.LogError("{Exception}, {Message}", tmp811, tmp812);
           else
-            Console.Error.WriteLine(tmp754);
-          var tmp755 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp812);
+          var tmp813 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetCrossReference", TMessageType.Exception, seqid), cancellationToken);
-          await tmp755.WriteAsync(oprot, cancellationToken);
+          await tmp813.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1416,30 +1588,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetOperationStatus_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp756 = new InternalStructs.GetOperationStatus_args();
-        await tmp756.ReadAsync(iprot, cancellationToken);
+        var tmp814 = new InternalStructs.GetOperationStatus_args();
+        await tmp814.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp757 = new InternalStructs.GetOperationStatus_result();
+        var tmp815 = new InternalStructs.GetOperationStatus_result();
         try
         {
-          tmp757.Success = await _iAsync.GetOperationStatus(tmp756.Req, cancellationToken);
+          tmp815.Success = await _iAsync.GetOperationStatus(tmp814.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetOperationStatus", TMessageType.Reply, seqid), cancellationToken);
-          await tmp757.WriteAsync(oprot, cancellationToken);
+          await tmp815.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp758)
+        catch (Exception tmp816)
         {
-          var tmp759 = $"Error occurred in {GetType().FullName}: {tmp758.Message}";
+          var tmp817 = $"Error occurred in {GetType().FullName}: {tmp816.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp758, tmp759);
+            _logger.LogError("{Exception}, {Message}", tmp816, tmp817);
           else
-            Console.Error.WriteLine(tmp759);
-          var tmp760 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp817);
+          var tmp818 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetOperationStatus", TMessageType.Exception, seqid), cancellationToken);
-          await tmp760.WriteAsync(oprot, cancellationToken);
+          await tmp818.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1447,30 +1619,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task CancelOperation_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp761 = new InternalStructs.CancelOperation_args();
-        await tmp761.ReadAsync(iprot, cancellationToken);
+        var tmp819 = new InternalStructs.CancelOperation_args();
+        await tmp819.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp762 = new InternalStructs.CancelOperation_result();
+        var tmp820 = new InternalStructs.CancelOperation_result();
         try
         {
-          tmp762.Success = await _iAsync.CancelOperation(tmp761.Req, cancellationToken);
+          tmp820.Success = await _iAsync.CancelOperation(tmp819.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("CancelOperation", TMessageType.Reply, seqid), cancellationToken);
-          await tmp762.WriteAsync(oprot, cancellationToken);
+          await tmp820.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp763)
+        catch (Exception tmp821)
         {
-          var tmp764 = $"Error occurred in {GetType().FullName}: {tmp763.Message}";
+          var tmp822 = $"Error occurred in {GetType().FullName}: {tmp821.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp763, tmp764);
+            _logger.LogError("{Exception}, {Message}", tmp821, tmp822);
           else
-            Console.Error.WriteLine(tmp764);
-          var tmp765 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp822);
+          var tmp823 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("CancelOperation", TMessageType.Exception, seqid), cancellationToken);
-          await tmp765.WriteAsync(oprot, cancellationToken);
+          await tmp823.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1478,30 +1650,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task CloseOperation_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp766 = new InternalStructs.CloseOperation_args();
-        await tmp766.ReadAsync(iprot, cancellationToken);
+        var tmp824 = new InternalStructs.CloseOperation_args();
+        await tmp824.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp767 = new InternalStructs.CloseOperation_result();
+        var tmp825 = new InternalStructs.CloseOperation_result();
         try
         {
-          tmp767.Success = await _iAsync.CloseOperation(tmp766.Req, cancellationToken);
+          tmp825.Success = await _iAsync.CloseOperation(tmp824.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("CloseOperation", TMessageType.Reply, seqid), cancellationToken);
-          await tmp767.WriteAsync(oprot, cancellationToken);
+          await tmp825.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp768)
+        catch (Exception tmp826)
         {
-          var tmp769 = $"Error occurred in {GetType().FullName}: {tmp768.Message}";
+          var tmp827 = $"Error occurred in {GetType().FullName}: {tmp826.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp768, tmp769);
+            _logger.LogError("{Exception}, {Message}", tmp826, tmp827);
           else
-            Console.Error.WriteLine(tmp769);
-          var tmp770 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp827);
+          var tmp828 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("CloseOperation", TMessageType.Exception, seqid), cancellationToken);
-          await tmp770.WriteAsync(oprot, cancellationToken);
+          await tmp828.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1509,30 +1681,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetResultSetMetadata_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp771 = new InternalStructs.GetResultSetMetadata_args();
-        await tmp771.ReadAsync(iprot, cancellationToken);
+        var tmp829 = new InternalStructs.GetResultSetMetadata_args();
+        await tmp829.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp772 = new InternalStructs.GetResultSetMetadata_result();
+        var tmp830 = new InternalStructs.GetResultSetMetadata_result();
         try
         {
-          tmp772.Success = await _iAsync.GetResultSetMetadata(tmp771.Req, cancellationToken);
+          tmp830.Success = await _iAsync.GetResultSetMetadata(tmp829.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetResultSetMetadata", TMessageType.Reply, seqid), cancellationToken);
-          await tmp772.WriteAsync(oprot, cancellationToken);
+          await tmp830.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp773)
+        catch (Exception tmp831)
         {
-          var tmp774 = $"Error occurred in {GetType().FullName}: {tmp773.Message}";
+          var tmp832 = $"Error occurred in {GetType().FullName}: {tmp831.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp773, tmp774);
+            _logger.LogError("{Exception}, {Message}", tmp831, tmp832);
           else
-            Console.Error.WriteLine(tmp774);
-          var tmp775 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp832);
+          var tmp833 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetResultSetMetadata", TMessageType.Exception, seqid), cancellationToken);
-          await tmp775.WriteAsync(oprot, cancellationToken);
+          await tmp833.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1540,30 +1712,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task FetchResults_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp776 = new InternalStructs.FetchResults_args();
-        await tmp776.ReadAsync(iprot, cancellationToken);
+        var tmp834 = new InternalStructs.FetchResults_args();
+        await tmp834.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp777 = new InternalStructs.FetchResults_result();
+        var tmp835 = new InternalStructs.FetchResults_result();
         try
         {
-          tmp777.Success = await _iAsync.FetchResults(tmp776.Req, cancellationToken);
+          tmp835.Success = await _iAsync.FetchResults(tmp834.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("FetchResults", TMessageType.Reply, seqid), cancellationToken);
-          await tmp777.WriteAsync(oprot, cancellationToken);
+          await tmp835.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp778)
+        catch (Exception tmp836)
         {
-          var tmp779 = $"Error occurred in {GetType().FullName}: {tmp778.Message}";
+          var tmp837 = $"Error occurred in {GetType().FullName}: {tmp836.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp778, tmp779);
+            _logger.LogError("{Exception}, {Message}", tmp836, tmp837);
           else
-            Console.Error.WriteLine(tmp779);
-          var tmp780 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp837);
+          var tmp838 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("FetchResults", TMessageType.Exception, seqid), cancellationToken);
-          await tmp780.WriteAsync(oprot, cancellationToken);
+          await tmp838.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1571,30 +1743,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task GetDelegationToken_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp781 = new InternalStructs.GetDelegationToken_args();
-        await tmp781.ReadAsync(iprot, cancellationToken);
+        var tmp839 = new InternalStructs.GetDelegationToken_args();
+        await tmp839.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp782 = new InternalStructs.GetDelegationToken_result();
+        var tmp840 = new InternalStructs.GetDelegationToken_result();
         try
         {
-          tmp782.Success = await _iAsync.GetDelegationToken(tmp781.Req, cancellationToken);
+          tmp840.Success = await _iAsync.GetDelegationToken(tmp839.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("GetDelegationToken", TMessageType.Reply, seqid), cancellationToken);
-          await tmp782.WriteAsync(oprot, cancellationToken);
+          await tmp840.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp783)
+        catch (Exception tmp841)
         {
-          var tmp784 = $"Error occurred in {GetType().FullName}: {tmp783.Message}";
+          var tmp842 = $"Error occurred in {GetType().FullName}: {tmp841.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp783, tmp784);
+            _logger.LogError("{Exception}, {Message}", tmp841, tmp842);
           else
-            Console.Error.WriteLine(tmp784);
-          var tmp785 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp842);
+          var tmp843 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("GetDelegationToken", TMessageType.Exception, seqid), cancellationToken);
-          await tmp785.WriteAsync(oprot, cancellationToken);
+          await tmp843.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1602,30 +1774,30 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task CancelDelegationToken_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp786 = new InternalStructs.CancelDelegationToken_args();
-        await tmp786.ReadAsync(iprot, cancellationToken);
+        var tmp844 = new InternalStructs.CancelDelegationToken_args();
+        await tmp844.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp787 = new InternalStructs.CancelDelegationToken_result();
+        var tmp845 = new InternalStructs.CancelDelegationToken_result();
         try
         {
-          tmp787.Success = await _iAsync.CancelDelegationToken(tmp786.Req, cancellationToken);
+          tmp845.Success = await _iAsync.CancelDelegationToken(tmp844.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("CancelDelegationToken", TMessageType.Reply, seqid), cancellationToken);
-          await tmp787.WriteAsync(oprot, cancellationToken);
+          await tmp845.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp788)
+        catch (Exception tmp846)
         {
-          var tmp789 = $"Error occurred in {GetType().FullName}: {tmp788.Message}";
+          var tmp847 = $"Error occurred in {GetType().FullName}: {tmp846.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp788, tmp789);
+            _logger.LogError("{Exception}, {Message}", tmp846, tmp847);
           else
-            Console.Error.WriteLine(tmp789);
-          var tmp790 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp847);
+          var tmp848 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("CancelDelegationToken", TMessageType.Exception, seqid), cancellationToken);
-          await tmp790.WriteAsync(oprot, cancellationToken);
+          await tmp848.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1633,30 +1805,154 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
       public async global::System.Threading.Tasks.Task RenewDelegationToken_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
       {
-        var tmp791 = new InternalStructs.RenewDelegationToken_args();
-        await tmp791.ReadAsync(iprot, cancellationToken);
+        var tmp849 = new InternalStructs.RenewDelegationToken_args();
+        await tmp849.ReadAsync(iprot, cancellationToken);
         await iprot.ReadMessageEndAsync(cancellationToken);
-        var tmp792 = new InternalStructs.RenewDelegationToken_result();
+        var tmp850 = new InternalStructs.RenewDelegationToken_result();
         try
         {
-          tmp792.Success = await _iAsync.RenewDelegationToken(tmp791.Req, cancellationToken);
+          tmp850.Success = await _iAsync.RenewDelegationToken(tmp849.Req, cancellationToken);
           await oprot.WriteMessageBeginAsync(new TMessage("RenewDelegationToken", TMessageType.Reply, seqid), cancellationToken);
-          await tmp792.WriteAsync(oprot, cancellationToken);
+          await tmp850.WriteAsync(oprot, cancellationToken);
         }
         catch (TTransportException)
         {
           throw;
         }
-        catch (Exception tmp793)
+        catch (Exception tmp851)
         {
-          var tmp794 = $"Error occurred in {GetType().FullName}: {tmp793.Message}";
+          var tmp852 = $"Error occurred in {GetType().FullName}: {tmp851.Message}";
           if(_logger != null)
-            _logger.LogError("{Exception}, {Message}", tmp793, tmp794);
+            _logger.LogError("{Exception}, {Message}", tmp851, tmp852);
           else
-            Console.Error.WriteLine(tmp794);
-          var tmp795 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+            Console.Error.WriteLine(tmp852);
+          var tmp853 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
           await oprot.WriteMessageBeginAsync(new TMessage("RenewDelegationToken", TMessageType.Exception, seqid), cancellationToken);
-          await tmp795.WriteAsync(oprot, cancellationToken);
+          await tmp853.WriteAsync(oprot, cancellationToken);
+        }
+        await oprot.WriteMessageEndAsync(cancellationToken);
+        await oprot.Transport.FlushAsync(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task GetQueryId_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
+      {
+        var tmp854 = new InternalStructs.GetQueryId_args();
+        await tmp854.ReadAsync(iprot, cancellationToken);
+        await iprot.ReadMessageEndAsync(cancellationToken);
+        var tmp855 = new InternalStructs.GetQueryId_result();
+        try
+        {
+          tmp855.Success = await _iAsync.GetQueryId(tmp854.Req, cancellationToken);
+          await oprot.WriteMessageBeginAsync(new TMessage("GetQueryId", TMessageType.Reply, seqid), cancellationToken);
+          await tmp855.WriteAsync(oprot, cancellationToken);
+        }
+        catch (TTransportException)
+        {
+          throw;
+        }
+        catch (Exception tmp856)
+        {
+          var tmp857 = $"Error occurred in {GetType().FullName}: {tmp856.Message}";
+          if(_logger != null)
+            _logger.LogError("{Exception}, {Message}", tmp856, tmp857);
+          else
+            Console.Error.WriteLine(tmp857);
+          var tmp858 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+          await oprot.WriteMessageBeginAsync(new TMessage("GetQueryId", TMessageType.Exception, seqid), cancellationToken);
+          await tmp858.WriteAsync(oprot, cancellationToken);
+        }
+        await oprot.WriteMessageEndAsync(cancellationToken);
+        await oprot.Transport.FlushAsync(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task SetClientInfo_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
+      {
+        var tmp859 = new InternalStructs.SetClientInfo_args();
+        await tmp859.ReadAsync(iprot, cancellationToken);
+        await iprot.ReadMessageEndAsync(cancellationToken);
+        var tmp860 = new InternalStructs.SetClientInfo_result();
+        try
+        {
+          tmp860.Success = await _iAsync.SetClientInfo(tmp859.Req, cancellationToken);
+          await oprot.WriteMessageBeginAsync(new TMessage("SetClientInfo", TMessageType.Reply, seqid), cancellationToken);
+          await tmp860.WriteAsync(oprot, cancellationToken);
+        }
+        catch (TTransportException)
+        {
+          throw;
+        }
+        catch (Exception tmp861)
+        {
+          var tmp862 = $"Error occurred in {GetType().FullName}: {tmp861.Message}";
+          if(_logger != null)
+            _logger.LogError("{Exception}, {Message}", tmp861, tmp862);
+          else
+            Console.Error.WriteLine(tmp862);
+          var tmp863 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+          await oprot.WriteMessageBeginAsync(new TMessage("SetClientInfo", TMessageType.Exception, seqid), cancellationToken);
+          await tmp863.WriteAsync(oprot, cancellationToken);
+        }
+        await oprot.WriteMessageEndAsync(cancellationToken);
+        await oprot.Transport.FlushAsync(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task UploadData_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
+      {
+        var tmp864 = new InternalStructs.UploadData_args();
+        await tmp864.ReadAsync(iprot, cancellationToken);
+        await iprot.ReadMessageEndAsync(cancellationToken);
+        var tmp865 = new InternalStructs.UploadData_result();
+        try
+        {
+          tmp865.Success = await _iAsync.UploadData(tmp864.Req, cancellationToken);
+          await oprot.WriteMessageBeginAsync(new TMessage("UploadData", TMessageType.Reply, seqid), cancellationToken);
+          await tmp865.WriteAsync(oprot, cancellationToken);
+        }
+        catch (TTransportException)
+        {
+          throw;
+        }
+        catch (Exception tmp866)
+        {
+          var tmp867 = $"Error occurred in {GetType().FullName}: {tmp866.Message}";
+          if(_logger != null)
+            _logger.LogError("{Exception}, {Message}", tmp866, tmp867);
+          else
+            Console.Error.WriteLine(tmp867);
+          var tmp868 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+          await oprot.WriteMessageBeginAsync(new TMessage("UploadData", TMessageType.Exception, seqid), cancellationToken);
+          await tmp868.WriteAsync(oprot, cancellationToken);
+        }
+        await oprot.WriteMessageEndAsync(cancellationToken);
+        await oprot.Transport.FlushAsync(cancellationToken);
+      }
+
+      public async global::System.Threading.Tasks.Task DownloadData_ProcessAsync(int seqid, TProtocol iprot, TProtocol oprot, CancellationToken cancellationToken)
+      {
+        var tmp869 = new InternalStructs.DownloadData_args();
+        await tmp869.ReadAsync(iprot, cancellationToken);
+        await iprot.ReadMessageEndAsync(cancellationToken);
+        var tmp870 = new InternalStructs.DownloadData_result();
+        try
+        {
+          tmp870.Success = await _iAsync.DownloadData(tmp869.Req, cancellationToken);
+          await oprot.WriteMessageBeginAsync(new TMessage("DownloadData", TMessageType.Reply, seqid), cancellationToken);
+          await tmp870.WriteAsync(oprot, cancellationToken);
+        }
+        catch (TTransportException)
+        {
+          throw;
+        }
+        catch (Exception tmp871)
+        {
+          var tmp872 = $"Error occurred in {GetType().FullName}: {tmp871.Message}";
+          if(_logger != null)
+            _logger.LogError("{Exception}, {Message}", tmp871, tmp872);
+          else
+            Console.Error.WriteLine(tmp872);
+          var tmp873 = new TApplicationException(TApplicationException.ExceptionType.InternalError," Internal error.");
+          await oprot.WriteMessageBeginAsync(new TMessage("DownloadData", TMessageType.Exception, seqid), cancellationToken);
+          await tmp873.WriteAsync(oprot, cancellationToken);
         }
         await oprot.WriteMessageEndAsync(cancellationToken);
         await oprot.Transport.FlushAsync(cancellationToken);
@@ -1744,15 +2040,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp796 = new TStruct("OpenSession_args");
-            await oprot.WriteStructBeginAsync(tmp796, cancellationToken);
-            var tmp797 = new TField();
+            var tmp874 = new TStruct("OpenSession_args");
+            await oprot.WriteStructBeginAsync(tmp874, cancellationToken);
+            var tmp875 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp797.Name = "req";
-              tmp797.Type = TType.Struct;
-              tmp797.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp797, cancellationToken);
+              tmp875.Name = "req";
+              tmp875.Type = TType.Struct;
+              tmp875.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp875, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -1785,16 +2081,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp798 = new StringBuilder("OpenSession_args(");
-          int tmp799 = 0;
+          var tmp876 = new StringBuilder("OpenSession_args(");
+          int tmp877 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp799++) { tmp798.Append(", "); }
-            tmp798.Append("Req: ");
-            Req.ToString(tmp798);
+            if(0 < tmp877++) { tmp876.Append(", "); }
+            tmp876.Append("Req: ");
+            Req.ToString(tmp876);
           }
-          tmp798.Append(')');
-          return tmp798.ToString();
+          tmp876.Append(')');
+          return tmp876.ToString();
         }
       }
 
@@ -1876,18 +2172,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp800 = new TStruct("OpenSession_result");
-            await oprot.WriteStructBeginAsync(tmp800, cancellationToken);
-            var tmp801 = new TField();
+            var tmp878 = new TStruct("OpenSession_result");
+            await oprot.WriteStructBeginAsync(tmp878, cancellationToken);
+            var tmp879 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp801.Name = "Success";
-                tmp801.Type = TType.Struct;
-                tmp801.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp801, cancellationToken);
+                tmp879.Name = "Success";
+                tmp879.Type = TType.Struct;
+                tmp879.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp879, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -1921,16 +2217,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp802 = new StringBuilder("OpenSession_result(");
-          int tmp803 = 0;
+          var tmp880 = new StringBuilder("OpenSession_result(");
+          int tmp881 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp803++) { tmp802.Append(", "); }
-            tmp802.Append("Success: ");
-            Success.ToString(tmp802);
+            if(0 < tmp881++) { tmp880.Append(", "); }
+            tmp880.Append("Success: ");
+            Success.ToString(tmp880);
           }
-          tmp802.Append(')');
-          return tmp802.ToString();
+          tmp880.Append(')');
+          return tmp880.ToString();
         }
       }
 
@@ -2012,15 +2308,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp804 = new TStruct("CloseSession_args");
-            await oprot.WriteStructBeginAsync(tmp804, cancellationToken);
-            var tmp805 = new TField();
+            var tmp882 = new TStruct("CloseSession_args");
+            await oprot.WriteStructBeginAsync(tmp882, cancellationToken);
+            var tmp883 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp805.Name = "req";
-              tmp805.Type = TType.Struct;
-              tmp805.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp805, cancellationToken);
+              tmp883.Name = "req";
+              tmp883.Type = TType.Struct;
+              tmp883.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp883, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -2053,16 +2349,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp806 = new StringBuilder("CloseSession_args(");
-          int tmp807 = 0;
+          var tmp884 = new StringBuilder("CloseSession_args(");
+          int tmp885 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp807++) { tmp806.Append(", "); }
-            tmp806.Append("Req: ");
-            Req.ToString(tmp806);
+            if(0 < tmp885++) { tmp884.Append(", "); }
+            tmp884.Append("Req: ");
+            Req.ToString(tmp884);
           }
-          tmp806.Append(')');
-          return tmp806.ToString();
+          tmp884.Append(')');
+          return tmp884.ToString();
         }
       }
 
@@ -2144,18 +2440,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp808 = new TStruct("CloseSession_result");
-            await oprot.WriteStructBeginAsync(tmp808, cancellationToken);
-            var tmp809 = new TField();
+            var tmp886 = new TStruct("CloseSession_result");
+            await oprot.WriteStructBeginAsync(tmp886, cancellationToken);
+            var tmp887 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp809.Name = "Success";
-                tmp809.Type = TType.Struct;
-                tmp809.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp809, cancellationToken);
+                tmp887.Name = "Success";
+                tmp887.Type = TType.Struct;
+                tmp887.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp887, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -2189,16 +2485,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp810 = new StringBuilder("CloseSession_result(");
-          int tmp811 = 0;
+          var tmp888 = new StringBuilder("CloseSession_result(");
+          int tmp889 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp811++) { tmp810.Append(", "); }
-            tmp810.Append("Success: ");
-            Success.ToString(tmp810);
+            if(0 < tmp889++) { tmp888.Append(", "); }
+            tmp888.Append("Success: ");
+            Success.ToString(tmp888);
           }
-          tmp810.Append(')');
-          return tmp810.ToString();
+          tmp888.Append(')');
+          return tmp888.ToString();
         }
       }
 
@@ -2280,15 +2576,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp812 = new TStruct("GetInfo_args");
-            await oprot.WriteStructBeginAsync(tmp812, cancellationToken);
-            var tmp813 = new TField();
+            var tmp890 = new TStruct("GetInfo_args");
+            await oprot.WriteStructBeginAsync(tmp890, cancellationToken);
+            var tmp891 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp813.Name = "req";
-              tmp813.Type = TType.Struct;
-              tmp813.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp813, cancellationToken);
+              tmp891.Name = "req";
+              tmp891.Type = TType.Struct;
+              tmp891.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp891, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -2321,16 +2617,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp814 = new StringBuilder("GetInfo_args(");
-          int tmp815 = 0;
+          var tmp892 = new StringBuilder("GetInfo_args(");
+          int tmp893 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp815++) { tmp814.Append(", "); }
-            tmp814.Append("Req: ");
-            Req.ToString(tmp814);
+            if(0 < tmp893++) { tmp892.Append(", "); }
+            tmp892.Append("Req: ");
+            Req.ToString(tmp892);
           }
-          tmp814.Append(')');
-          return tmp814.ToString();
+          tmp892.Append(')');
+          return tmp892.ToString();
         }
       }
 
@@ -2412,18 +2708,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp816 = new TStruct("GetInfo_result");
-            await oprot.WriteStructBeginAsync(tmp816, cancellationToken);
-            var tmp817 = new TField();
+            var tmp894 = new TStruct("GetInfo_result");
+            await oprot.WriteStructBeginAsync(tmp894, cancellationToken);
+            var tmp895 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp817.Name = "Success";
-                tmp817.Type = TType.Struct;
-                tmp817.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp817, cancellationToken);
+                tmp895.Name = "Success";
+                tmp895.Type = TType.Struct;
+                tmp895.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp895, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -2457,16 +2753,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp818 = new StringBuilder("GetInfo_result(");
-          int tmp819 = 0;
+          var tmp896 = new StringBuilder("GetInfo_result(");
+          int tmp897 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp819++) { tmp818.Append(", "); }
-            tmp818.Append("Success: ");
-            Success.ToString(tmp818);
+            if(0 < tmp897++) { tmp896.Append(", "); }
+            tmp896.Append("Success: ");
+            Success.ToString(tmp896);
           }
-          tmp818.Append(')');
-          return tmp818.ToString();
+          tmp896.Append(')');
+          return tmp896.ToString();
         }
       }
 
@@ -2548,15 +2844,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp820 = new TStruct("ExecuteStatement_args");
-            await oprot.WriteStructBeginAsync(tmp820, cancellationToken);
-            var tmp821 = new TField();
+            var tmp898 = new TStruct("ExecuteStatement_args");
+            await oprot.WriteStructBeginAsync(tmp898, cancellationToken);
+            var tmp899 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp821.Name = "req";
-              tmp821.Type = TType.Struct;
-              tmp821.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp821, cancellationToken);
+              tmp899.Name = "req";
+              tmp899.Type = TType.Struct;
+              tmp899.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp899, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -2589,16 +2885,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp822 = new StringBuilder("ExecuteStatement_args(");
-          int tmp823 = 0;
+          var tmp900 = new StringBuilder("ExecuteStatement_args(");
+          int tmp901 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp823++) { tmp822.Append(", "); }
-            tmp822.Append("Req: ");
-            Req.ToString(tmp822);
+            if(0 < tmp901++) { tmp900.Append(", "); }
+            tmp900.Append("Req: ");
+            Req.ToString(tmp900);
           }
-          tmp822.Append(')');
-          return tmp822.ToString();
+          tmp900.Append(')');
+          return tmp900.ToString();
         }
       }
 
@@ -2680,18 +2976,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp824 = new TStruct("ExecuteStatement_result");
-            await oprot.WriteStructBeginAsync(tmp824, cancellationToken);
-            var tmp825 = new TField();
+            var tmp902 = new TStruct("ExecuteStatement_result");
+            await oprot.WriteStructBeginAsync(tmp902, cancellationToken);
+            var tmp903 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp825.Name = "Success";
-                tmp825.Type = TType.Struct;
-                tmp825.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp825, cancellationToken);
+                tmp903.Name = "Success";
+                tmp903.Type = TType.Struct;
+                tmp903.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp903, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -2725,16 +3021,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp826 = new StringBuilder("ExecuteStatement_result(");
-          int tmp827 = 0;
+          var tmp904 = new StringBuilder("ExecuteStatement_result(");
+          int tmp905 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp827++) { tmp826.Append(", "); }
-            tmp826.Append("Success: ");
-            Success.ToString(tmp826);
+            if(0 < tmp905++) { tmp904.Append(", "); }
+            tmp904.Append("Success: ");
+            Success.ToString(tmp904);
           }
-          tmp826.Append(')');
-          return tmp826.ToString();
+          tmp904.Append(')');
+          return tmp904.ToString();
         }
       }
 
@@ -2816,15 +3112,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp828 = new TStruct("GetTypeInfo_args");
-            await oprot.WriteStructBeginAsync(tmp828, cancellationToken);
-            var tmp829 = new TField();
+            var tmp906 = new TStruct("GetTypeInfo_args");
+            await oprot.WriteStructBeginAsync(tmp906, cancellationToken);
+            var tmp907 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp829.Name = "req";
-              tmp829.Type = TType.Struct;
-              tmp829.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp829, cancellationToken);
+              tmp907.Name = "req";
+              tmp907.Type = TType.Struct;
+              tmp907.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp907, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -2857,16 +3153,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp830 = new StringBuilder("GetTypeInfo_args(");
-          int tmp831 = 0;
+          var tmp908 = new StringBuilder("GetTypeInfo_args(");
+          int tmp909 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp831++) { tmp830.Append(", "); }
-            tmp830.Append("Req: ");
-            Req.ToString(tmp830);
+            if(0 < tmp909++) { tmp908.Append(", "); }
+            tmp908.Append("Req: ");
+            Req.ToString(tmp908);
           }
-          tmp830.Append(')');
-          return tmp830.ToString();
+          tmp908.Append(')');
+          return tmp908.ToString();
         }
       }
 
@@ -2948,18 +3244,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp832 = new TStruct("GetTypeInfo_result");
-            await oprot.WriteStructBeginAsync(tmp832, cancellationToken);
-            var tmp833 = new TField();
+            var tmp910 = new TStruct("GetTypeInfo_result");
+            await oprot.WriteStructBeginAsync(tmp910, cancellationToken);
+            var tmp911 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp833.Name = "Success";
-                tmp833.Type = TType.Struct;
-                tmp833.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp833, cancellationToken);
+                tmp911.Name = "Success";
+                tmp911.Type = TType.Struct;
+                tmp911.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp911, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -2993,16 +3289,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp834 = new StringBuilder("GetTypeInfo_result(");
-          int tmp835 = 0;
+          var tmp912 = new StringBuilder("GetTypeInfo_result(");
+          int tmp913 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp835++) { tmp834.Append(", "); }
-            tmp834.Append("Success: ");
-            Success.ToString(tmp834);
+            if(0 < tmp913++) { tmp912.Append(", "); }
+            tmp912.Append("Success: ");
+            Success.ToString(tmp912);
           }
-          tmp834.Append(')');
-          return tmp834.ToString();
+          tmp912.Append(')');
+          return tmp912.ToString();
         }
       }
 
@@ -3084,15 +3380,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp836 = new TStruct("GetCatalogs_args");
-            await oprot.WriteStructBeginAsync(tmp836, cancellationToken);
-            var tmp837 = new TField();
+            var tmp914 = new TStruct("GetCatalogs_args");
+            await oprot.WriteStructBeginAsync(tmp914, cancellationToken);
+            var tmp915 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp837.Name = "req";
-              tmp837.Type = TType.Struct;
-              tmp837.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp837, cancellationToken);
+              tmp915.Name = "req";
+              tmp915.Type = TType.Struct;
+              tmp915.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp915, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -3125,16 +3421,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp838 = new StringBuilder("GetCatalogs_args(");
-          int tmp839 = 0;
+          var tmp916 = new StringBuilder("GetCatalogs_args(");
+          int tmp917 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp839++) { tmp838.Append(", "); }
-            tmp838.Append("Req: ");
-            Req.ToString(tmp838);
+            if(0 < tmp917++) { tmp916.Append(", "); }
+            tmp916.Append("Req: ");
+            Req.ToString(tmp916);
           }
-          tmp838.Append(')');
-          return tmp838.ToString();
+          tmp916.Append(')');
+          return tmp916.ToString();
         }
       }
 
@@ -3216,18 +3512,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp840 = new TStruct("GetCatalogs_result");
-            await oprot.WriteStructBeginAsync(tmp840, cancellationToken);
-            var tmp841 = new TField();
+            var tmp918 = new TStruct("GetCatalogs_result");
+            await oprot.WriteStructBeginAsync(tmp918, cancellationToken);
+            var tmp919 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp841.Name = "Success";
-                tmp841.Type = TType.Struct;
-                tmp841.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp841, cancellationToken);
+                tmp919.Name = "Success";
+                tmp919.Type = TType.Struct;
+                tmp919.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp919, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -3261,16 +3557,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp842 = new StringBuilder("GetCatalogs_result(");
-          int tmp843 = 0;
+          var tmp920 = new StringBuilder("GetCatalogs_result(");
+          int tmp921 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp843++) { tmp842.Append(", "); }
-            tmp842.Append("Success: ");
-            Success.ToString(tmp842);
+            if(0 < tmp921++) { tmp920.Append(", "); }
+            tmp920.Append("Success: ");
+            Success.ToString(tmp920);
           }
-          tmp842.Append(')');
-          return tmp842.ToString();
+          tmp920.Append(')');
+          return tmp920.ToString();
         }
       }
 
@@ -3352,15 +3648,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp844 = new TStruct("GetSchemas_args");
-            await oprot.WriteStructBeginAsync(tmp844, cancellationToken);
-            var tmp845 = new TField();
+            var tmp922 = new TStruct("GetSchemas_args");
+            await oprot.WriteStructBeginAsync(tmp922, cancellationToken);
+            var tmp923 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp845.Name = "req";
-              tmp845.Type = TType.Struct;
-              tmp845.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp845, cancellationToken);
+              tmp923.Name = "req";
+              tmp923.Type = TType.Struct;
+              tmp923.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp923, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -3393,16 +3689,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp846 = new StringBuilder("GetSchemas_args(");
-          int tmp847 = 0;
+          var tmp924 = new StringBuilder("GetSchemas_args(");
+          int tmp925 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp847++) { tmp846.Append(", "); }
-            tmp846.Append("Req: ");
-            Req.ToString(tmp846);
+            if(0 < tmp925++) { tmp924.Append(", "); }
+            tmp924.Append("Req: ");
+            Req.ToString(tmp924);
           }
-          tmp846.Append(')');
-          return tmp846.ToString();
+          tmp924.Append(')');
+          return tmp924.ToString();
         }
       }
 
@@ -3484,18 +3780,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp848 = new TStruct("GetSchemas_result");
-            await oprot.WriteStructBeginAsync(tmp848, cancellationToken);
-            var tmp849 = new TField();
+            var tmp926 = new TStruct("GetSchemas_result");
+            await oprot.WriteStructBeginAsync(tmp926, cancellationToken);
+            var tmp927 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp849.Name = "Success";
-                tmp849.Type = TType.Struct;
-                tmp849.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp849, cancellationToken);
+                tmp927.Name = "Success";
+                tmp927.Type = TType.Struct;
+                tmp927.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp927, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -3529,16 +3825,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp850 = new StringBuilder("GetSchemas_result(");
-          int tmp851 = 0;
+          var tmp928 = new StringBuilder("GetSchemas_result(");
+          int tmp929 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp851++) { tmp850.Append(", "); }
-            tmp850.Append("Success: ");
-            Success.ToString(tmp850);
+            if(0 < tmp929++) { tmp928.Append(", "); }
+            tmp928.Append("Success: ");
+            Success.ToString(tmp928);
           }
-          tmp850.Append(')');
-          return tmp850.ToString();
+          tmp928.Append(')');
+          return tmp928.ToString();
         }
       }
 
@@ -3620,15 +3916,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp852 = new TStruct("GetTables_args");
-            await oprot.WriteStructBeginAsync(tmp852, cancellationToken);
-            var tmp853 = new TField();
+            var tmp930 = new TStruct("GetTables_args");
+            await oprot.WriteStructBeginAsync(tmp930, cancellationToken);
+            var tmp931 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp853.Name = "req";
-              tmp853.Type = TType.Struct;
-              tmp853.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp853, cancellationToken);
+              tmp931.Name = "req";
+              tmp931.Type = TType.Struct;
+              tmp931.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp931, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -3661,16 +3957,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp854 = new StringBuilder("GetTables_args(");
-          int tmp855 = 0;
+          var tmp932 = new StringBuilder("GetTables_args(");
+          int tmp933 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp855++) { tmp854.Append(", "); }
-            tmp854.Append("Req: ");
-            Req.ToString(tmp854);
+            if(0 < tmp933++) { tmp932.Append(", "); }
+            tmp932.Append("Req: ");
+            Req.ToString(tmp932);
           }
-          tmp854.Append(')');
-          return tmp854.ToString();
+          tmp932.Append(')');
+          return tmp932.ToString();
         }
       }
 
@@ -3752,18 +4048,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp856 = new TStruct("GetTables_result");
-            await oprot.WriteStructBeginAsync(tmp856, cancellationToken);
-            var tmp857 = new TField();
+            var tmp934 = new TStruct("GetTables_result");
+            await oprot.WriteStructBeginAsync(tmp934, cancellationToken);
+            var tmp935 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp857.Name = "Success";
-                tmp857.Type = TType.Struct;
-                tmp857.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp857, cancellationToken);
+                tmp935.Name = "Success";
+                tmp935.Type = TType.Struct;
+                tmp935.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp935, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -3797,16 +4093,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp858 = new StringBuilder("GetTables_result(");
-          int tmp859 = 0;
+          var tmp936 = new StringBuilder("GetTables_result(");
+          int tmp937 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp859++) { tmp858.Append(", "); }
-            tmp858.Append("Success: ");
-            Success.ToString(tmp858);
+            if(0 < tmp937++) { tmp936.Append(", "); }
+            tmp936.Append("Success: ");
+            Success.ToString(tmp936);
           }
-          tmp858.Append(')');
-          return tmp858.ToString();
+          tmp936.Append(')');
+          return tmp936.ToString();
         }
       }
 
@@ -3888,15 +4184,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp860 = new TStruct("GetTableTypes_args");
-            await oprot.WriteStructBeginAsync(tmp860, cancellationToken);
-            var tmp861 = new TField();
+            var tmp938 = new TStruct("GetTableTypes_args");
+            await oprot.WriteStructBeginAsync(tmp938, cancellationToken);
+            var tmp939 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp861.Name = "req";
-              tmp861.Type = TType.Struct;
-              tmp861.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp861, cancellationToken);
+              tmp939.Name = "req";
+              tmp939.Type = TType.Struct;
+              tmp939.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp939, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -3929,16 +4225,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp862 = new StringBuilder("GetTableTypes_args(");
-          int tmp863 = 0;
+          var tmp940 = new StringBuilder("GetTableTypes_args(");
+          int tmp941 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp863++) { tmp862.Append(", "); }
-            tmp862.Append("Req: ");
-            Req.ToString(tmp862);
+            if(0 < tmp941++) { tmp940.Append(", "); }
+            tmp940.Append("Req: ");
+            Req.ToString(tmp940);
           }
-          tmp862.Append(')');
-          return tmp862.ToString();
+          tmp940.Append(')');
+          return tmp940.ToString();
         }
       }
 
@@ -4020,18 +4316,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp864 = new TStruct("GetTableTypes_result");
-            await oprot.WriteStructBeginAsync(tmp864, cancellationToken);
-            var tmp865 = new TField();
+            var tmp942 = new TStruct("GetTableTypes_result");
+            await oprot.WriteStructBeginAsync(tmp942, cancellationToken);
+            var tmp943 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp865.Name = "Success";
-                tmp865.Type = TType.Struct;
-                tmp865.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp865, cancellationToken);
+                tmp943.Name = "Success";
+                tmp943.Type = TType.Struct;
+                tmp943.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp943, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -4065,16 +4361,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp866 = new StringBuilder("GetTableTypes_result(");
-          int tmp867 = 0;
+          var tmp944 = new StringBuilder("GetTableTypes_result(");
+          int tmp945 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp867++) { tmp866.Append(", "); }
-            tmp866.Append("Success: ");
-            Success.ToString(tmp866);
+            if(0 < tmp945++) { tmp944.Append(", "); }
+            tmp944.Append("Success: ");
+            Success.ToString(tmp944);
           }
-          tmp866.Append(')');
-          return tmp866.ToString();
+          tmp944.Append(')');
+          return tmp944.ToString();
         }
       }
 
@@ -4156,15 +4452,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp868 = new TStruct("GetColumns_args");
-            await oprot.WriteStructBeginAsync(tmp868, cancellationToken);
-            var tmp869 = new TField();
+            var tmp946 = new TStruct("GetColumns_args");
+            await oprot.WriteStructBeginAsync(tmp946, cancellationToken);
+            var tmp947 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp869.Name = "req";
-              tmp869.Type = TType.Struct;
-              tmp869.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp869, cancellationToken);
+              tmp947.Name = "req";
+              tmp947.Type = TType.Struct;
+              tmp947.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp947, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -4197,16 +4493,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp870 = new StringBuilder("GetColumns_args(");
-          int tmp871 = 0;
+          var tmp948 = new StringBuilder("GetColumns_args(");
+          int tmp949 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp871++) { tmp870.Append(", "); }
-            tmp870.Append("Req: ");
-            Req.ToString(tmp870);
+            if(0 < tmp949++) { tmp948.Append(", "); }
+            tmp948.Append("Req: ");
+            Req.ToString(tmp948);
           }
-          tmp870.Append(')');
-          return tmp870.ToString();
+          tmp948.Append(')');
+          return tmp948.ToString();
         }
       }
 
@@ -4288,18 +4584,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp872 = new TStruct("GetColumns_result");
-            await oprot.WriteStructBeginAsync(tmp872, cancellationToken);
-            var tmp873 = new TField();
+            var tmp950 = new TStruct("GetColumns_result");
+            await oprot.WriteStructBeginAsync(tmp950, cancellationToken);
+            var tmp951 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp873.Name = "Success";
-                tmp873.Type = TType.Struct;
-                tmp873.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp873, cancellationToken);
+                tmp951.Name = "Success";
+                tmp951.Type = TType.Struct;
+                tmp951.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp951, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -4333,16 +4629,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp874 = new StringBuilder("GetColumns_result(");
-          int tmp875 = 0;
+          var tmp952 = new StringBuilder("GetColumns_result(");
+          int tmp953 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp875++) { tmp874.Append(", "); }
-            tmp874.Append("Success: ");
-            Success.ToString(tmp874);
+            if(0 < tmp953++) { tmp952.Append(", "); }
+            tmp952.Append("Success: ");
+            Success.ToString(tmp952);
           }
-          tmp874.Append(')');
-          return tmp874.ToString();
+          tmp952.Append(')');
+          return tmp952.ToString();
         }
       }
 
@@ -4424,15 +4720,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp876 = new TStruct("GetFunctions_args");
-            await oprot.WriteStructBeginAsync(tmp876, cancellationToken);
-            var tmp877 = new TField();
+            var tmp954 = new TStruct("GetFunctions_args");
+            await oprot.WriteStructBeginAsync(tmp954, cancellationToken);
+            var tmp955 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp877.Name = "req";
-              tmp877.Type = TType.Struct;
-              tmp877.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp877, cancellationToken);
+              tmp955.Name = "req";
+              tmp955.Type = TType.Struct;
+              tmp955.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp955, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -4465,16 +4761,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp878 = new StringBuilder("GetFunctions_args(");
-          int tmp879 = 0;
+          var tmp956 = new StringBuilder("GetFunctions_args(");
+          int tmp957 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp879++) { tmp878.Append(", "); }
-            tmp878.Append("Req: ");
-            Req.ToString(tmp878);
+            if(0 < tmp957++) { tmp956.Append(", "); }
+            tmp956.Append("Req: ");
+            Req.ToString(tmp956);
           }
-          tmp878.Append(')');
-          return tmp878.ToString();
+          tmp956.Append(')');
+          return tmp956.ToString();
         }
       }
 
@@ -4556,18 +4852,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp880 = new TStruct("GetFunctions_result");
-            await oprot.WriteStructBeginAsync(tmp880, cancellationToken);
-            var tmp881 = new TField();
+            var tmp958 = new TStruct("GetFunctions_result");
+            await oprot.WriteStructBeginAsync(tmp958, cancellationToken);
+            var tmp959 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp881.Name = "Success";
-                tmp881.Type = TType.Struct;
-                tmp881.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp881, cancellationToken);
+                tmp959.Name = "Success";
+                tmp959.Type = TType.Struct;
+                tmp959.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp959, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -4601,16 +4897,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp882 = new StringBuilder("GetFunctions_result(");
-          int tmp883 = 0;
+          var tmp960 = new StringBuilder("GetFunctions_result(");
+          int tmp961 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp883++) { tmp882.Append(", "); }
-            tmp882.Append("Success: ");
-            Success.ToString(tmp882);
+            if(0 < tmp961++) { tmp960.Append(", "); }
+            tmp960.Append("Success: ");
+            Success.ToString(tmp960);
           }
-          tmp882.Append(')');
-          return tmp882.ToString();
+          tmp960.Append(')');
+          return tmp960.ToString();
         }
       }
 
@@ -4692,15 +4988,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp884 = new TStruct("GetPrimaryKeys_args");
-            await oprot.WriteStructBeginAsync(tmp884, cancellationToken);
-            var tmp885 = new TField();
+            var tmp962 = new TStruct("GetPrimaryKeys_args");
+            await oprot.WriteStructBeginAsync(tmp962, cancellationToken);
+            var tmp963 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp885.Name = "req";
-              tmp885.Type = TType.Struct;
-              tmp885.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp885, cancellationToken);
+              tmp963.Name = "req";
+              tmp963.Type = TType.Struct;
+              tmp963.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp963, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -4733,16 +5029,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp886 = new StringBuilder("GetPrimaryKeys_args(");
-          int tmp887 = 0;
+          var tmp964 = new StringBuilder("GetPrimaryKeys_args(");
+          int tmp965 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp887++) { tmp886.Append(", "); }
-            tmp886.Append("Req: ");
-            Req.ToString(tmp886);
+            if(0 < tmp965++) { tmp964.Append(", "); }
+            tmp964.Append("Req: ");
+            Req.ToString(tmp964);
           }
-          tmp886.Append(')');
-          return tmp886.ToString();
+          tmp964.Append(')');
+          return tmp964.ToString();
         }
       }
 
@@ -4824,18 +5120,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp888 = new TStruct("GetPrimaryKeys_result");
-            await oprot.WriteStructBeginAsync(tmp888, cancellationToken);
-            var tmp889 = new TField();
+            var tmp966 = new TStruct("GetPrimaryKeys_result");
+            await oprot.WriteStructBeginAsync(tmp966, cancellationToken);
+            var tmp967 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp889.Name = "Success";
-                tmp889.Type = TType.Struct;
-                tmp889.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp889, cancellationToken);
+                tmp967.Name = "Success";
+                tmp967.Type = TType.Struct;
+                tmp967.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp967, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -4869,16 +5165,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp890 = new StringBuilder("GetPrimaryKeys_result(");
-          int tmp891 = 0;
+          var tmp968 = new StringBuilder("GetPrimaryKeys_result(");
+          int tmp969 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp891++) { tmp890.Append(", "); }
-            tmp890.Append("Success: ");
-            Success.ToString(tmp890);
+            if(0 < tmp969++) { tmp968.Append(", "); }
+            tmp968.Append("Success: ");
+            Success.ToString(tmp968);
           }
-          tmp890.Append(')');
-          return tmp890.ToString();
+          tmp968.Append(')');
+          return tmp968.ToString();
         }
       }
 
@@ -4960,15 +5256,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp892 = new TStruct("GetCrossReference_args");
-            await oprot.WriteStructBeginAsync(tmp892, cancellationToken);
-            var tmp893 = new TField();
+            var tmp970 = new TStruct("GetCrossReference_args");
+            await oprot.WriteStructBeginAsync(tmp970, cancellationToken);
+            var tmp971 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp893.Name = "req";
-              tmp893.Type = TType.Struct;
-              tmp893.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp893, cancellationToken);
+              tmp971.Name = "req";
+              tmp971.Type = TType.Struct;
+              tmp971.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp971, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -5001,16 +5297,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp894 = new StringBuilder("GetCrossReference_args(");
-          int tmp895 = 0;
+          var tmp972 = new StringBuilder("GetCrossReference_args(");
+          int tmp973 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp895++) { tmp894.Append(", "); }
-            tmp894.Append("Req: ");
-            Req.ToString(tmp894);
+            if(0 < tmp973++) { tmp972.Append(", "); }
+            tmp972.Append("Req: ");
+            Req.ToString(tmp972);
           }
-          tmp894.Append(')');
-          return tmp894.ToString();
+          tmp972.Append(')');
+          return tmp972.ToString();
         }
       }
 
@@ -5092,18 +5388,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp896 = new TStruct("GetCrossReference_result");
-            await oprot.WriteStructBeginAsync(tmp896, cancellationToken);
-            var tmp897 = new TField();
+            var tmp974 = new TStruct("GetCrossReference_result");
+            await oprot.WriteStructBeginAsync(tmp974, cancellationToken);
+            var tmp975 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp897.Name = "Success";
-                tmp897.Type = TType.Struct;
-                tmp897.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp897, cancellationToken);
+                tmp975.Name = "Success";
+                tmp975.Type = TType.Struct;
+                tmp975.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp975, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -5137,16 +5433,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp898 = new StringBuilder("GetCrossReference_result(");
-          int tmp899 = 0;
+          var tmp976 = new StringBuilder("GetCrossReference_result(");
+          int tmp977 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp899++) { tmp898.Append(", "); }
-            tmp898.Append("Success: ");
-            Success.ToString(tmp898);
+            if(0 < tmp977++) { tmp976.Append(", "); }
+            tmp976.Append("Success: ");
+            Success.ToString(tmp976);
           }
-          tmp898.Append(')');
-          return tmp898.ToString();
+          tmp976.Append(')');
+          return tmp976.ToString();
         }
       }
 
@@ -5228,15 +5524,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp900 = new TStruct("GetOperationStatus_args");
-            await oprot.WriteStructBeginAsync(tmp900, cancellationToken);
-            var tmp901 = new TField();
+            var tmp978 = new TStruct("GetOperationStatus_args");
+            await oprot.WriteStructBeginAsync(tmp978, cancellationToken);
+            var tmp979 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp901.Name = "req";
-              tmp901.Type = TType.Struct;
-              tmp901.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp901, cancellationToken);
+              tmp979.Name = "req";
+              tmp979.Type = TType.Struct;
+              tmp979.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp979, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -5269,16 +5565,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp902 = new StringBuilder("GetOperationStatus_args(");
-          int tmp903 = 0;
+          var tmp980 = new StringBuilder("GetOperationStatus_args(");
+          int tmp981 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp903++) { tmp902.Append(", "); }
-            tmp902.Append("Req: ");
-            Req.ToString(tmp902);
+            if(0 < tmp981++) { tmp980.Append(", "); }
+            tmp980.Append("Req: ");
+            Req.ToString(tmp980);
           }
-          tmp902.Append(')');
-          return tmp902.ToString();
+          tmp980.Append(')');
+          return tmp980.ToString();
         }
       }
 
@@ -5360,18 +5656,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp904 = new TStruct("GetOperationStatus_result");
-            await oprot.WriteStructBeginAsync(tmp904, cancellationToken);
-            var tmp905 = new TField();
+            var tmp982 = new TStruct("GetOperationStatus_result");
+            await oprot.WriteStructBeginAsync(tmp982, cancellationToken);
+            var tmp983 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp905.Name = "Success";
-                tmp905.Type = TType.Struct;
-                tmp905.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp905, cancellationToken);
+                tmp983.Name = "Success";
+                tmp983.Type = TType.Struct;
+                tmp983.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp983, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -5405,16 +5701,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp906 = new StringBuilder("GetOperationStatus_result(");
-          int tmp907 = 0;
+          var tmp984 = new StringBuilder("GetOperationStatus_result(");
+          int tmp985 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp907++) { tmp906.Append(", "); }
-            tmp906.Append("Success: ");
-            Success.ToString(tmp906);
+            if(0 < tmp985++) { tmp984.Append(", "); }
+            tmp984.Append("Success: ");
+            Success.ToString(tmp984);
           }
-          tmp906.Append(')');
-          return tmp906.ToString();
+          tmp984.Append(')');
+          return tmp984.ToString();
         }
       }
 
@@ -5496,15 +5792,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp908 = new TStruct("CancelOperation_args");
-            await oprot.WriteStructBeginAsync(tmp908, cancellationToken);
-            var tmp909 = new TField();
+            var tmp986 = new TStruct("CancelOperation_args");
+            await oprot.WriteStructBeginAsync(tmp986, cancellationToken);
+            var tmp987 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp909.Name = "req";
-              tmp909.Type = TType.Struct;
-              tmp909.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp909, cancellationToken);
+              tmp987.Name = "req";
+              tmp987.Type = TType.Struct;
+              tmp987.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp987, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -5537,16 +5833,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp910 = new StringBuilder("CancelOperation_args(");
-          int tmp911 = 0;
+          var tmp988 = new StringBuilder("CancelOperation_args(");
+          int tmp989 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp911++) { tmp910.Append(", "); }
-            tmp910.Append("Req: ");
-            Req.ToString(tmp910);
+            if(0 < tmp989++) { tmp988.Append(", "); }
+            tmp988.Append("Req: ");
+            Req.ToString(tmp988);
           }
-          tmp910.Append(')');
-          return tmp910.ToString();
+          tmp988.Append(')');
+          return tmp988.ToString();
         }
       }
 
@@ -5628,18 +5924,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp912 = new TStruct("CancelOperation_result");
-            await oprot.WriteStructBeginAsync(tmp912, cancellationToken);
-            var tmp913 = new TField();
+            var tmp990 = new TStruct("CancelOperation_result");
+            await oprot.WriteStructBeginAsync(tmp990, cancellationToken);
+            var tmp991 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp913.Name = "Success";
-                tmp913.Type = TType.Struct;
-                tmp913.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp913, cancellationToken);
+                tmp991.Name = "Success";
+                tmp991.Type = TType.Struct;
+                tmp991.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp991, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -5673,16 +5969,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp914 = new StringBuilder("CancelOperation_result(");
-          int tmp915 = 0;
+          var tmp992 = new StringBuilder("CancelOperation_result(");
+          int tmp993 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp915++) { tmp914.Append(", "); }
-            tmp914.Append("Success: ");
-            Success.ToString(tmp914);
+            if(0 < tmp993++) { tmp992.Append(", "); }
+            tmp992.Append("Success: ");
+            Success.ToString(tmp992);
           }
-          tmp914.Append(')');
-          return tmp914.ToString();
+          tmp992.Append(')');
+          return tmp992.ToString();
         }
       }
 
@@ -5764,15 +6060,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp916 = new TStruct("CloseOperation_args");
-            await oprot.WriteStructBeginAsync(tmp916, cancellationToken);
-            var tmp917 = new TField();
+            var tmp994 = new TStruct("CloseOperation_args");
+            await oprot.WriteStructBeginAsync(tmp994, cancellationToken);
+            var tmp995 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp917.Name = "req";
-              tmp917.Type = TType.Struct;
-              tmp917.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp917, cancellationToken);
+              tmp995.Name = "req";
+              tmp995.Type = TType.Struct;
+              tmp995.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp995, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -5805,16 +6101,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp918 = new StringBuilder("CloseOperation_args(");
-          int tmp919 = 0;
+          var tmp996 = new StringBuilder("CloseOperation_args(");
+          int tmp997 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp919++) { tmp918.Append(", "); }
-            tmp918.Append("Req: ");
-            Req.ToString(tmp918);
+            if(0 < tmp997++) { tmp996.Append(", "); }
+            tmp996.Append("Req: ");
+            Req.ToString(tmp996);
           }
-          tmp918.Append(')');
-          return tmp918.ToString();
+          tmp996.Append(')');
+          return tmp996.ToString();
         }
       }
 
@@ -5896,18 +6192,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp920 = new TStruct("CloseOperation_result");
-            await oprot.WriteStructBeginAsync(tmp920, cancellationToken);
-            var tmp921 = new TField();
+            var tmp998 = new TStruct("CloseOperation_result");
+            await oprot.WriteStructBeginAsync(tmp998, cancellationToken);
+            var tmp999 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp921.Name = "Success";
-                tmp921.Type = TType.Struct;
-                tmp921.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp921, cancellationToken);
+                tmp999.Name = "Success";
+                tmp999.Type = TType.Struct;
+                tmp999.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp999, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -5941,16 +6237,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp922 = new StringBuilder("CloseOperation_result(");
-          int tmp923 = 0;
+          var tmp1000 = new StringBuilder("CloseOperation_result(");
+          int tmp1001 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp923++) { tmp922.Append(", "); }
-            tmp922.Append("Success: ");
-            Success.ToString(tmp922);
+            if(0 < tmp1001++) { tmp1000.Append(", "); }
+            tmp1000.Append("Success: ");
+            Success.ToString(tmp1000);
           }
-          tmp922.Append(')');
-          return tmp922.ToString();
+          tmp1000.Append(')');
+          return tmp1000.ToString();
         }
       }
 
@@ -6032,15 +6328,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp924 = new TStruct("GetResultSetMetadata_args");
-            await oprot.WriteStructBeginAsync(tmp924, cancellationToken);
-            var tmp925 = new TField();
+            var tmp1002 = new TStruct("GetResultSetMetadata_args");
+            await oprot.WriteStructBeginAsync(tmp1002, cancellationToken);
+            var tmp1003 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp925.Name = "req";
-              tmp925.Type = TType.Struct;
-              tmp925.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp925, cancellationToken);
+              tmp1003.Name = "req";
+              tmp1003.Type = TType.Struct;
+              tmp1003.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp1003, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -6073,16 +6369,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp926 = new StringBuilder("GetResultSetMetadata_args(");
-          int tmp927 = 0;
+          var tmp1004 = new StringBuilder("GetResultSetMetadata_args(");
+          int tmp1005 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp927++) { tmp926.Append(", "); }
-            tmp926.Append("Req: ");
-            Req.ToString(tmp926);
+            if(0 < tmp1005++) { tmp1004.Append(", "); }
+            tmp1004.Append("Req: ");
+            Req.ToString(tmp1004);
           }
-          tmp926.Append(')');
-          return tmp926.ToString();
+          tmp1004.Append(')');
+          return tmp1004.ToString();
         }
       }
 
@@ -6164,18 +6460,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp928 = new TStruct("GetResultSetMetadata_result");
-            await oprot.WriteStructBeginAsync(tmp928, cancellationToken);
-            var tmp929 = new TField();
+            var tmp1006 = new TStruct("GetResultSetMetadata_result");
+            await oprot.WriteStructBeginAsync(tmp1006, cancellationToken);
+            var tmp1007 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp929.Name = "Success";
-                tmp929.Type = TType.Struct;
-                tmp929.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp929, cancellationToken);
+                tmp1007.Name = "Success";
+                tmp1007.Type = TType.Struct;
+                tmp1007.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp1007, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -6209,16 +6505,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp930 = new StringBuilder("GetResultSetMetadata_result(");
-          int tmp931 = 0;
+          var tmp1008 = new StringBuilder("GetResultSetMetadata_result(");
+          int tmp1009 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp931++) { tmp930.Append(", "); }
-            tmp930.Append("Success: ");
-            Success.ToString(tmp930);
+            if(0 < tmp1009++) { tmp1008.Append(", "); }
+            tmp1008.Append("Success: ");
+            Success.ToString(tmp1008);
           }
-          tmp930.Append(')');
-          return tmp930.ToString();
+          tmp1008.Append(')');
+          return tmp1008.ToString();
         }
       }
 
@@ -6300,15 +6596,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp932 = new TStruct("FetchResults_args");
-            await oprot.WriteStructBeginAsync(tmp932, cancellationToken);
-            var tmp933 = new TField();
+            var tmp1010 = new TStruct("FetchResults_args");
+            await oprot.WriteStructBeginAsync(tmp1010, cancellationToken);
+            var tmp1011 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp933.Name = "req";
-              tmp933.Type = TType.Struct;
-              tmp933.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp933, cancellationToken);
+              tmp1011.Name = "req";
+              tmp1011.Type = TType.Struct;
+              tmp1011.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp1011, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -6341,16 +6637,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp934 = new StringBuilder("FetchResults_args(");
-          int tmp935 = 0;
+          var tmp1012 = new StringBuilder("FetchResults_args(");
+          int tmp1013 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp935++) { tmp934.Append(", "); }
-            tmp934.Append("Req: ");
-            Req.ToString(tmp934);
+            if(0 < tmp1013++) { tmp1012.Append(", "); }
+            tmp1012.Append("Req: ");
+            Req.ToString(tmp1012);
           }
-          tmp934.Append(')');
-          return tmp934.ToString();
+          tmp1012.Append(')');
+          return tmp1012.ToString();
         }
       }
 
@@ -6432,18 +6728,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp936 = new TStruct("FetchResults_result");
-            await oprot.WriteStructBeginAsync(tmp936, cancellationToken);
-            var tmp937 = new TField();
+            var tmp1014 = new TStruct("FetchResults_result");
+            await oprot.WriteStructBeginAsync(tmp1014, cancellationToken);
+            var tmp1015 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp937.Name = "Success";
-                tmp937.Type = TType.Struct;
-                tmp937.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp937, cancellationToken);
+                tmp1015.Name = "Success";
+                tmp1015.Type = TType.Struct;
+                tmp1015.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp1015, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -6477,16 +6773,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp938 = new StringBuilder("FetchResults_result(");
-          int tmp939 = 0;
+          var tmp1016 = new StringBuilder("FetchResults_result(");
+          int tmp1017 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp939++) { tmp938.Append(", "); }
-            tmp938.Append("Success: ");
-            Success.ToString(tmp938);
+            if(0 < tmp1017++) { tmp1016.Append(", "); }
+            tmp1016.Append("Success: ");
+            Success.ToString(tmp1016);
           }
-          tmp938.Append(')');
-          return tmp938.ToString();
+          tmp1016.Append(')');
+          return tmp1016.ToString();
         }
       }
 
@@ -6568,15 +6864,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp940 = new TStruct("GetDelegationToken_args");
-            await oprot.WriteStructBeginAsync(tmp940, cancellationToken);
-            var tmp941 = new TField();
+            var tmp1018 = new TStruct("GetDelegationToken_args");
+            await oprot.WriteStructBeginAsync(tmp1018, cancellationToken);
+            var tmp1019 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp941.Name = "req";
-              tmp941.Type = TType.Struct;
-              tmp941.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp941, cancellationToken);
+              tmp1019.Name = "req";
+              tmp1019.Type = TType.Struct;
+              tmp1019.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp1019, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -6609,16 +6905,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp942 = new StringBuilder("GetDelegationToken_args(");
-          int tmp943 = 0;
+          var tmp1020 = new StringBuilder("GetDelegationToken_args(");
+          int tmp1021 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp943++) { tmp942.Append(", "); }
-            tmp942.Append("Req: ");
-            Req.ToString(tmp942);
+            if(0 < tmp1021++) { tmp1020.Append(", "); }
+            tmp1020.Append("Req: ");
+            Req.ToString(tmp1020);
           }
-          tmp942.Append(')');
-          return tmp942.ToString();
+          tmp1020.Append(')');
+          return tmp1020.ToString();
         }
       }
 
@@ -6700,18 +6996,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp944 = new TStruct("GetDelegationToken_result");
-            await oprot.WriteStructBeginAsync(tmp944, cancellationToken);
-            var tmp945 = new TField();
+            var tmp1022 = new TStruct("GetDelegationToken_result");
+            await oprot.WriteStructBeginAsync(tmp1022, cancellationToken);
+            var tmp1023 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp945.Name = "Success";
-                tmp945.Type = TType.Struct;
-                tmp945.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp945, cancellationToken);
+                tmp1023.Name = "Success";
+                tmp1023.Type = TType.Struct;
+                tmp1023.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp1023, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -6745,16 +7041,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp946 = new StringBuilder("GetDelegationToken_result(");
-          int tmp947 = 0;
+          var tmp1024 = new StringBuilder("GetDelegationToken_result(");
+          int tmp1025 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp947++) { tmp946.Append(", "); }
-            tmp946.Append("Success: ");
-            Success.ToString(tmp946);
+            if(0 < tmp1025++) { tmp1024.Append(", "); }
+            tmp1024.Append("Success: ");
+            Success.ToString(tmp1024);
           }
-          tmp946.Append(')');
-          return tmp946.ToString();
+          tmp1024.Append(')');
+          return tmp1024.ToString();
         }
       }
 
@@ -6836,15 +7132,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp948 = new TStruct("CancelDelegationToken_args");
-            await oprot.WriteStructBeginAsync(tmp948, cancellationToken);
-            var tmp949 = new TField();
+            var tmp1026 = new TStruct("CancelDelegationToken_args");
+            await oprot.WriteStructBeginAsync(tmp1026, cancellationToken);
+            var tmp1027 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp949.Name = "req";
-              tmp949.Type = TType.Struct;
-              tmp949.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp949, cancellationToken);
+              tmp1027.Name = "req";
+              tmp1027.Type = TType.Struct;
+              tmp1027.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp1027, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -6877,16 +7173,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp950 = new StringBuilder("CancelDelegationToken_args(");
-          int tmp951 = 0;
+          var tmp1028 = new StringBuilder("CancelDelegationToken_args(");
+          int tmp1029 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp951++) { tmp950.Append(", "); }
-            tmp950.Append("Req: ");
-            Req.ToString(tmp950);
+            if(0 < tmp1029++) { tmp1028.Append(", "); }
+            tmp1028.Append("Req: ");
+            Req.ToString(tmp1028);
           }
-          tmp950.Append(')');
-          return tmp950.ToString();
+          tmp1028.Append(')');
+          return tmp1028.ToString();
         }
       }
 
@@ -6968,18 +7264,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp952 = new TStruct("CancelDelegationToken_result");
-            await oprot.WriteStructBeginAsync(tmp952, cancellationToken);
-            var tmp953 = new TField();
+            var tmp1030 = new TStruct("CancelDelegationToken_result");
+            await oprot.WriteStructBeginAsync(tmp1030, cancellationToken);
+            var tmp1031 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp953.Name = "Success";
-                tmp953.Type = TType.Struct;
-                tmp953.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp953, cancellationToken);
+                tmp1031.Name = "Success";
+                tmp1031.Type = TType.Struct;
+                tmp1031.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp1031, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -7013,16 +7309,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp954 = new StringBuilder("CancelDelegationToken_result(");
-          int tmp955 = 0;
+          var tmp1032 = new StringBuilder("CancelDelegationToken_result(");
+          int tmp1033 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp955++) { tmp954.Append(", "); }
-            tmp954.Append("Success: ");
-            Success.ToString(tmp954);
+            if(0 < tmp1033++) { tmp1032.Append(", "); }
+            tmp1032.Append("Success: ");
+            Success.ToString(tmp1032);
           }
-          tmp954.Append(')');
-          return tmp954.ToString();
+          tmp1032.Append(')');
+          return tmp1032.ToString();
         }
       }
 
@@ -7104,15 +7400,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp956 = new TStruct("RenewDelegationToken_args");
-            await oprot.WriteStructBeginAsync(tmp956, cancellationToken);
-            var tmp957 = new TField();
+            var tmp1034 = new TStruct("RenewDelegationToken_args");
+            await oprot.WriteStructBeginAsync(tmp1034, cancellationToken);
+            var tmp1035 = new TField();
             if((Req != null) && __isset.@req)
             {
-              tmp957.Name = "req";
-              tmp957.Type = TType.Struct;
-              tmp957.ID = 1;
-              await oprot.WriteFieldBeginAsync(tmp957, cancellationToken);
+              tmp1035.Name = "req";
+              tmp1035.Type = TType.Struct;
+              tmp1035.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp1035, cancellationToken);
               await Req.WriteAsync(oprot, cancellationToken);
               await oprot.WriteFieldEndAsync(cancellationToken);
             }
@@ -7145,16 +7441,16 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp958 = new StringBuilder("RenewDelegationToken_args(");
-          int tmp959 = 0;
+          var tmp1036 = new StringBuilder("RenewDelegationToken_args(");
+          int tmp1037 = 0;
           if((Req != null) && __isset.@req)
           {
-            if(0 < tmp959++) { tmp958.Append(", "); }
-            tmp958.Append("Req: ");
-            Req.ToString(tmp958);
+            if(0 < tmp1037++) { tmp1036.Append(", "); }
+            tmp1036.Append("Req: ");
+            Req.ToString(tmp1036);
           }
-          tmp958.Append(')');
-          return tmp958.ToString();
+          tmp1036.Append(')');
+          return tmp1036.ToString();
         }
       }
 
@@ -7236,18 +7532,18 @@ namespace Apache.Hive.Service.Rpc.Thrift
           oprot.IncrementRecursionDepth();
           try
           {
-            var tmp960 = new TStruct("RenewDelegationToken_result");
-            await oprot.WriteStructBeginAsync(tmp960, cancellationToken);
-            var tmp961 = new TField();
+            var tmp1038 = new TStruct("RenewDelegationToken_result");
+            await oprot.WriteStructBeginAsync(tmp1038, cancellationToken);
+            var tmp1039 = new TField();
 
             if(this.__isset.@success)
             {
               if (Success != null)
               {
-                tmp961.Name = "Success";
-                tmp961.Type = TType.Struct;
-                tmp961.ID = 0;
-                await oprot.WriteFieldBeginAsync(tmp961, cancellationToken);
+                tmp1039.Name = "Success";
+                tmp1039.Type = TType.Struct;
+                tmp1039.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp1039, cancellationToken);
                 await Success.WriteAsync(oprot, cancellationToken);
                 await oprot.WriteFieldEndAsync(cancellationToken);
               }
@@ -7281,16 +7577,1088 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         public override string ToString()
         {
-          var tmp962 = new StringBuilder("RenewDelegationToken_result(");
-          int tmp963 = 0;
+          var tmp1040 = new StringBuilder("RenewDelegationToken_result(");
+          int tmp1041 = 0;
           if((Success != null) && __isset.@success)
           {
-            if(0 < tmp963++) { tmp962.Append(", "); }
-            tmp962.Append("Success: ");
-            Success.ToString(tmp962);
+            if(0 < tmp1041++) { tmp1040.Append(", "); }
+            tmp1040.Append("Success: ");
+            Success.ToString(tmp1040);
           }
-          tmp962.Append(')');
-          return tmp962.ToString();
+          tmp1040.Append(')');
+          return tmp1040.ToString();
+        }
+      }
+
+
+      public partial class GetQueryId_args : TBase
+      {
+        private global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdReq _req;
+
+        public global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdReq Req
+        {
+          get
+          {
+            return _req;
+          }
+          set
+          {
+            __isset.@req = true;
+            this._req = value;
+          }
+        }
+
+
+        public Isset __isset;
+        public struct Isset
+        {
+          public bool @req;
+        }
+
+        public GetQueryId_args()
+        {
+        }
+
+        public async global::System.Threading.Tasks.Task ReadAsync(TProtocol iprot, CancellationToken cancellationToken)
+        {
+          iprot.IncrementRecursionDepth();
+          try
+          {
+            TField field;
+            await iprot.ReadStructBeginAsync(cancellationToken);
+            while (true)
+            {
+              field = await iprot.ReadFieldBeginAsync(cancellationToken);
+              if (field.Type == TType.Stop)
+              {
+                break;
+              }
+
+              switch (field.ID)
+              {
+                case 1:
+                  if (field.Type == TType.Struct)
+                  {
+                    Req = new global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdReq();
+                    await Req.ReadAsync(iprot, cancellationToken);
+                  }
+                  else
+                  {
+                    await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  }
+                  break;
+                default:
+                  await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  break;
+              }
+
+              await iprot.ReadFieldEndAsync(cancellationToken);
+            }
+
+            await iprot.ReadStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            iprot.DecrementRecursionDepth();
+          }
+        }
+
+        public async global::System.Threading.Tasks.Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
+        {
+          oprot.IncrementRecursionDepth();
+          try
+          {
+            var tmp1042 = new TStruct("GetQueryId_args");
+            await oprot.WriteStructBeginAsync(tmp1042, cancellationToken);
+            var tmp1043 = new TField();
+            if((Req != null) && __isset.@req)
+            {
+              tmp1043.Name = "req";
+              tmp1043.Type = TType.Struct;
+              tmp1043.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp1043, cancellationToken);
+              await Req.WriteAsync(oprot, cancellationToken);
+              await oprot.WriteFieldEndAsync(cancellationToken);
+            }
+            await oprot.WriteFieldStopAsync(cancellationToken);
+            await oprot.WriteStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            oprot.DecrementRecursionDepth();
+          }
+        }
+
+        public override bool Equals(object that)
+        {
+          if (!(that is GetQueryId_args other)) return false;
+          if (ReferenceEquals(this, other)) return true;
+          return ((__isset.@req == other.__isset.@req) && ((!__isset.@req) || (global::System.Object.Equals(Req, other.Req))));
+        }
+
+        public override int GetHashCode() {
+          int hashcode = 157;
+          unchecked {
+            if((Req != null) && __isset.@req)
+            {
+              hashcode = (hashcode * 397) + Req.GetHashCode();
+            }
+          }
+          return hashcode;
+        }
+
+        public override string ToString()
+        {
+          var tmp1044 = new StringBuilder("GetQueryId_args(");
+          int tmp1045 = 0;
+          if((Req != null) && __isset.@req)
+          {
+            if(0 < tmp1045++) { tmp1044.Append(", "); }
+            tmp1044.Append("Req: ");
+            Req.ToString(tmp1044);
+          }
+          tmp1044.Append(')');
+          return tmp1044.ToString();
+        }
+      }
+
+
+      public partial class GetQueryId_result : TBase
+      {
+        private global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdResp _success;
+
+        public global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdResp Success
+        {
+          get
+          {
+            return _success;
+          }
+          set
+          {
+            __isset.@success = true;
+            this._success = value;
+          }
+        }
+
+
+        public Isset __isset;
+        public struct Isset
+        {
+          public bool @success;
+        }
+
+        public GetQueryId_result()
+        {
+        }
+
+        public async global::System.Threading.Tasks.Task ReadAsync(TProtocol iprot, CancellationToken cancellationToken)
+        {
+          iprot.IncrementRecursionDepth();
+          try
+          {
+            TField field;
+            await iprot.ReadStructBeginAsync(cancellationToken);
+            while (true)
+            {
+              field = await iprot.ReadFieldBeginAsync(cancellationToken);
+              if (field.Type == TType.Stop)
+              {
+                break;
+              }
+
+              switch (field.ID)
+              {
+                case 0:
+                  if (field.Type == TType.Struct)
+                  {
+                    Success = new global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdResp();
+                    await Success.ReadAsync(iprot, cancellationToken);
+                  }
+                  else
+                  {
+                    await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  }
+                  break;
+                default:
+                  await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  break;
+              }
+
+              await iprot.ReadFieldEndAsync(cancellationToken);
+            }
+
+            await iprot.ReadStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            iprot.DecrementRecursionDepth();
+          }
+        }
+
+        public async global::System.Threading.Tasks.Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
+        {
+          oprot.IncrementRecursionDepth();
+          try
+          {
+            var tmp1046 = new TStruct("GetQueryId_result");
+            await oprot.WriteStructBeginAsync(tmp1046, cancellationToken);
+            var tmp1047 = new TField();
+
+            if(this.__isset.@success)
+            {
+              if (Success != null)
+              {
+                tmp1047.Name = "Success";
+                tmp1047.Type = TType.Struct;
+                tmp1047.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp1047, cancellationToken);
+                await Success.WriteAsync(oprot, cancellationToken);
+                await oprot.WriteFieldEndAsync(cancellationToken);
+              }
+            }
+            await oprot.WriteFieldStopAsync(cancellationToken);
+            await oprot.WriteStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            oprot.DecrementRecursionDepth();
+          }
+        }
+
+        public override bool Equals(object that)
+        {
+          if (!(that is GetQueryId_result other)) return false;
+          if (ReferenceEquals(this, other)) return true;
+          return ((__isset.@success == other.__isset.@success) && ((!__isset.@success) || (global::System.Object.Equals(Success, other.Success))));
+        }
+
+        public override int GetHashCode() {
+          int hashcode = 157;
+          unchecked {
+            if((Success != null) && __isset.@success)
+            {
+              hashcode = (hashcode * 397) + Success.GetHashCode();
+            }
+          }
+          return hashcode;
+        }
+
+        public override string ToString()
+        {
+          var tmp1048 = new StringBuilder("GetQueryId_result(");
+          int tmp1049 = 0;
+          if((Success != null) && __isset.@success)
+          {
+            if(0 < tmp1049++) { tmp1048.Append(", "); }
+            tmp1048.Append("Success: ");
+            Success.ToString(tmp1048);
+          }
+          tmp1048.Append(')');
+          return tmp1048.ToString();
+        }
+      }
+
+
+      public partial class SetClientInfo_args : TBase
+      {
+        private global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoReq _req;
+
+        public global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoReq Req
+        {
+          get
+          {
+            return _req;
+          }
+          set
+          {
+            __isset.@req = true;
+            this._req = value;
+          }
+        }
+
+
+        public Isset __isset;
+        public struct Isset
+        {
+          public bool @req;
+        }
+
+        public SetClientInfo_args()
+        {
+        }
+
+        public async global::System.Threading.Tasks.Task ReadAsync(TProtocol iprot, CancellationToken cancellationToken)
+        {
+          iprot.IncrementRecursionDepth();
+          try
+          {
+            TField field;
+            await iprot.ReadStructBeginAsync(cancellationToken);
+            while (true)
+            {
+              field = await iprot.ReadFieldBeginAsync(cancellationToken);
+              if (field.Type == TType.Stop)
+              {
+                break;
+              }
+
+              switch (field.ID)
+              {
+                case 1:
+                  if (field.Type == TType.Struct)
+                  {
+                    Req = new global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoReq();
+                    await Req.ReadAsync(iprot, cancellationToken);
+                  }
+                  else
+                  {
+                    await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  }
+                  break;
+                default:
+                  await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  break;
+              }
+
+              await iprot.ReadFieldEndAsync(cancellationToken);
+            }
+
+            await iprot.ReadStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            iprot.DecrementRecursionDepth();
+          }
+        }
+
+        public async global::System.Threading.Tasks.Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
+        {
+          oprot.IncrementRecursionDepth();
+          try
+          {
+            var tmp1050 = new TStruct("SetClientInfo_args");
+            await oprot.WriteStructBeginAsync(tmp1050, cancellationToken);
+            var tmp1051 = new TField();
+            if((Req != null) && __isset.@req)
+            {
+              tmp1051.Name = "req";
+              tmp1051.Type = TType.Struct;
+              tmp1051.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp1051, cancellationToken);
+              await Req.WriteAsync(oprot, cancellationToken);
+              await oprot.WriteFieldEndAsync(cancellationToken);
+            }
+            await oprot.WriteFieldStopAsync(cancellationToken);
+            await oprot.WriteStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            oprot.DecrementRecursionDepth();
+          }
+        }
+
+        public override bool Equals(object that)
+        {
+          if (!(that is SetClientInfo_args other)) return false;
+          if (ReferenceEquals(this, other)) return true;
+          return ((__isset.@req == other.__isset.@req) && ((!__isset.@req) || (global::System.Object.Equals(Req, other.Req))));
+        }
+
+        public override int GetHashCode() {
+          int hashcode = 157;
+          unchecked {
+            if((Req != null) && __isset.@req)
+            {
+              hashcode = (hashcode * 397) + Req.GetHashCode();
+            }
+          }
+          return hashcode;
+        }
+
+        public override string ToString()
+        {
+          var tmp1052 = new StringBuilder("SetClientInfo_args(");
+          int tmp1053 = 0;
+          if((Req != null) && __isset.@req)
+          {
+            if(0 < tmp1053++) { tmp1052.Append(", "); }
+            tmp1052.Append("Req: ");
+            Req.ToString(tmp1052);
+          }
+          tmp1052.Append(')');
+          return tmp1052.ToString();
+        }
+      }
+
+
+      public partial class SetClientInfo_result : TBase
+      {
+        private global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoResp _success;
+
+        public global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoResp Success
+        {
+          get
+          {
+            return _success;
+          }
+          set
+          {
+            __isset.@success = true;
+            this._success = value;
+          }
+        }
+
+
+        public Isset __isset;
+        public struct Isset
+        {
+          public bool @success;
+        }
+
+        public SetClientInfo_result()
+        {
+        }
+
+        public async global::System.Threading.Tasks.Task ReadAsync(TProtocol iprot, CancellationToken cancellationToken)
+        {
+          iprot.IncrementRecursionDepth();
+          try
+          {
+            TField field;
+            await iprot.ReadStructBeginAsync(cancellationToken);
+            while (true)
+            {
+              field = await iprot.ReadFieldBeginAsync(cancellationToken);
+              if (field.Type == TType.Stop)
+              {
+                break;
+              }
+
+              switch (field.ID)
+              {
+                case 0:
+                  if (field.Type == TType.Struct)
+                  {
+                    Success = new global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoResp();
+                    await Success.ReadAsync(iprot, cancellationToken);
+                  }
+                  else
+                  {
+                    await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  }
+                  break;
+                default:
+                  await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  break;
+              }
+
+              await iprot.ReadFieldEndAsync(cancellationToken);
+            }
+
+            await iprot.ReadStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            iprot.DecrementRecursionDepth();
+          }
+        }
+
+        public async global::System.Threading.Tasks.Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
+        {
+          oprot.IncrementRecursionDepth();
+          try
+          {
+            var tmp1054 = new TStruct("SetClientInfo_result");
+            await oprot.WriteStructBeginAsync(tmp1054, cancellationToken);
+            var tmp1055 = new TField();
+
+            if(this.__isset.@success)
+            {
+              if (Success != null)
+              {
+                tmp1055.Name = "Success";
+                tmp1055.Type = TType.Struct;
+                tmp1055.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp1055, cancellationToken);
+                await Success.WriteAsync(oprot, cancellationToken);
+                await oprot.WriteFieldEndAsync(cancellationToken);
+              }
+            }
+            await oprot.WriteFieldStopAsync(cancellationToken);
+            await oprot.WriteStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            oprot.DecrementRecursionDepth();
+          }
+        }
+
+        public override bool Equals(object that)
+        {
+          if (!(that is SetClientInfo_result other)) return false;
+          if (ReferenceEquals(this, other)) return true;
+          return ((__isset.@success == other.__isset.@success) && ((!__isset.@success) || (global::System.Object.Equals(Success, other.Success))));
+        }
+
+        public override int GetHashCode() {
+          int hashcode = 157;
+          unchecked {
+            if((Success != null) && __isset.@success)
+            {
+              hashcode = (hashcode * 397) + Success.GetHashCode();
+            }
+          }
+          return hashcode;
+        }
+
+        public override string ToString()
+        {
+          var tmp1056 = new StringBuilder("SetClientInfo_result(");
+          int tmp1057 = 0;
+          if((Success != null) && __isset.@success)
+          {
+            if(0 < tmp1057++) { tmp1056.Append(", "); }
+            tmp1056.Append("Success: ");
+            Success.ToString(tmp1056);
+          }
+          tmp1056.Append(')');
+          return tmp1056.ToString();
+        }
+      }
+
+
+      public partial class UploadData_args : TBase
+      {
+        private global::Apache.Hive.Service.Rpc.Thrift.TUploadDataReq _req;
+
+        public global::Apache.Hive.Service.Rpc.Thrift.TUploadDataReq Req
+        {
+          get
+          {
+            return _req;
+          }
+          set
+          {
+            __isset.@req = true;
+            this._req = value;
+          }
+        }
+
+
+        public Isset __isset;
+        public struct Isset
+        {
+          public bool @req;
+        }
+
+        public UploadData_args()
+        {
+        }
+
+        public async global::System.Threading.Tasks.Task ReadAsync(TProtocol iprot, CancellationToken cancellationToken)
+        {
+          iprot.IncrementRecursionDepth();
+          try
+          {
+            TField field;
+            await iprot.ReadStructBeginAsync(cancellationToken);
+            while (true)
+            {
+              field = await iprot.ReadFieldBeginAsync(cancellationToken);
+              if (field.Type == TType.Stop)
+              {
+                break;
+              }
+
+              switch (field.ID)
+              {
+                case 1:
+                  if (field.Type == TType.Struct)
+                  {
+                    Req = new global::Apache.Hive.Service.Rpc.Thrift.TUploadDataReq();
+                    await Req.ReadAsync(iprot, cancellationToken);
+                  }
+                  else
+                  {
+                    await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  }
+                  break;
+                default:
+                  await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  break;
+              }
+
+              await iprot.ReadFieldEndAsync(cancellationToken);
+            }
+
+            await iprot.ReadStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            iprot.DecrementRecursionDepth();
+          }
+        }
+
+        public async global::System.Threading.Tasks.Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
+        {
+          oprot.IncrementRecursionDepth();
+          try
+          {
+            var tmp1058 = new TStruct("UploadData_args");
+            await oprot.WriteStructBeginAsync(tmp1058, cancellationToken);
+            var tmp1059 = new TField();
+            if((Req != null) && __isset.@req)
+            {
+              tmp1059.Name = "req";
+              tmp1059.Type = TType.Struct;
+              tmp1059.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp1059, cancellationToken);
+              await Req.WriteAsync(oprot, cancellationToken);
+              await oprot.WriteFieldEndAsync(cancellationToken);
+            }
+            await oprot.WriteFieldStopAsync(cancellationToken);
+            await oprot.WriteStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            oprot.DecrementRecursionDepth();
+          }
+        }
+
+        public override bool Equals(object that)
+        {
+          if (!(that is UploadData_args other)) return false;
+          if (ReferenceEquals(this, other)) return true;
+          return ((__isset.@req == other.__isset.@req) && ((!__isset.@req) || (global::System.Object.Equals(Req, other.Req))));
+        }
+
+        public override int GetHashCode() {
+          int hashcode = 157;
+          unchecked {
+            if((Req != null) && __isset.@req)
+            {
+              hashcode = (hashcode * 397) + Req.GetHashCode();
+            }
+          }
+          return hashcode;
+        }
+
+        public override string ToString()
+        {
+          var tmp1060 = new StringBuilder("UploadData_args(");
+          int tmp1061 = 0;
+          if((Req != null) && __isset.@req)
+          {
+            if(0 < tmp1061++) { tmp1060.Append(", "); }
+            tmp1060.Append("Req: ");
+            Req.ToString(tmp1060);
+          }
+          tmp1060.Append(')');
+          return tmp1060.ToString();
+        }
+      }
+
+
+      public partial class UploadData_result : TBase
+      {
+        private global::Apache.Hive.Service.Rpc.Thrift.TUploadDataResp _success;
+
+        public global::Apache.Hive.Service.Rpc.Thrift.TUploadDataResp Success
+        {
+          get
+          {
+            return _success;
+          }
+          set
+          {
+            __isset.@success = true;
+            this._success = value;
+          }
+        }
+
+
+        public Isset __isset;
+        public struct Isset
+        {
+          public bool @success;
+        }
+
+        public UploadData_result()
+        {
+        }
+
+        public async global::System.Threading.Tasks.Task ReadAsync(TProtocol iprot, CancellationToken cancellationToken)
+        {
+          iprot.IncrementRecursionDepth();
+          try
+          {
+            TField field;
+            await iprot.ReadStructBeginAsync(cancellationToken);
+            while (true)
+            {
+              field = await iprot.ReadFieldBeginAsync(cancellationToken);
+              if (field.Type == TType.Stop)
+              {
+                break;
+              }
+
+              switch (field.ID)
+              {
+                case 0:
+                  if (field.Type == TType.Struct)
+                  {
+                    Success = new global::Apache.Hive.Service.Rpc.Thrift.TUploadDataResp();
+                    await Success.ReadAsync(iprot, cancellationToken);
+                  }
+                  else
+                  {
+                    await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  }
+                  break;
+                default:
+                  await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  break;
+              }
+
+              await iprot.ReadFieldEndAsync(cancellationToken);
+            }
+
+            await iprot.ReadStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            iprot.DecrementRecursionDepth();
+          }
+        }
+
+        public async global::System.Threading.Tasks.Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
+        {
+          oprot.IncrementRecursionDepth();
+          try
+          {
+            var tmp1062 = new TStruct("UploadData_result");
+            await oprot.WriteStructBeginAsync(tmp1062, cancellationToken);
+            var tmp1063 = new TField();
+
+            if(this.__isset.@success)
+            {
+              if (Success != null)
+              {
+                tmp1063.Name = "Success";
+                tmp1063.Type = TType.Struct;
+                tmp1063.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp1063, cancellationToken);
+                await Success.WriteAsync(oprot, cancellationToken);
+                await oprot.WriteFieldEndAsync(cancellationToken);
+              }
+            }
+            await oprot.WriteFieldStopAsync(cancellationToken);
+            await oprot.WriteStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            oprot.DecrementRecursionDepth();
+          }
+        }
+
+        public override bool Equals(object that)
+        {
+          if (!(that is UploadData_result other)) return false;
+          if (ReferenceEquals(this, other)) return true;
+          return ((__isset.@success == other.__isset.@success) && ((!__isset.@success) || (global::System.Object.Equals(Success, other.Success))));
+        }
+
+        public override int GetHashCode() {
+          int hashcode = 157;
+          unchecked {
+            if((Success != null) && __isset.@success)
+            {
+              hashcode = (hashcode * 397) + Success.GetHashCode();
+            }
+          }
+          return hashcode;
+        }
+
+        public override string ToString()
+        {
+          var tmp1064 = new StringBuilder("UploadData_result(");
+          int tmp1065 = 0;
+          if((Success != null) && __isset.@success)
+          {
+            if(0 < tmp1065++) { tmp1064.Append(", "); }
+            tmp1064.Append("Success: ");
+            Success.ToString(tmp1064);
+          }
+          tmp1064.Append(')');
+          return tmp1064.ToString();
+        }
+      }
+
+
+      public partial class DownloadData_args : TBase
+      {
+        private global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataReq _req;
+
+        public global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataReq Req
+        {
+          get
+          {
+            return _req;
+          }
+          set
+          {
+            __isset.@req = true;
+            this._req = value;
+          }
+        }
+
+
+        public Isset __isset;
+        public struct Isset
+        {
+          public bool @req;
+        }
+
+        public DownloadData_args()
+        {
+        }
+
+        public async global::System.Threading.Tasks.Task ReadAsync(TProtocol iprot, CancellationToken cancellationToken)
+        {
+          iprot.IncrementRecursionDepth();
+          try
+          {
+            TField field;
+            await iprot.ReadStructBeginAsync(cancellationToken);
+            while (true)
+            {
+              field = await iprot.ReadFieldBeginAsync(cancellationToken);
+              if (field.Type == TType.Stop)
+              {
+                break;
+              }
+
+              switch (field.ID)
+              {
+                case 1:
+                  if (field.Type == TType.Struct)
+                  {
+                    Req = new global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataReq();
+                    await Req.ReadAsync(iprot, cancellationToken);
+                  }
+                  else
+                  {
+                    await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  }
+                  break;
+                default:
+                  await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  break;
+              }
+
+              await iprot.ReadFieldEndAsync(cancellationToken);
+            }
+
+            await iprot.ReadStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            iprot.DecrementRecursionDepth();
+          }
+        }
+
+        public async global::System.Threading.Tasks.Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
+        {
+          oprot.IncrementRecursionDepth();
+          try
+          {
+            var tmp1066 = new TStruct("DownloadData_args");
+            await oprot.WriteStructBeginAsync(tmp1066, cancellationToken);
+            var tmp1067 = new TField();
+            if((Req != null) && __isset.@req)
+            {
+              tmp1067.Name = "req";
+              tmp1067.Type = TType.Struct;
+              tmp1067.ID = 1;
+              await oprot.WriteFieldBeginAsync(tmp1067, cancellationToken);
+              await Req.WriteAsync(oprot, cancellationToken);
+              await oprot.WriteFieldEndAsync(cancellationToken);
+            }
+            await oprot.WriteFieldStopAsync(cancellationToken);
+            await oprot.WriteStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            oprot.DecrementRecursionDepth();
+          }
+        }
+
+        public override bool Equals(object that)
+        {
+          if (!(that is DownloadData_args other)) return false;
+          if (ReferenceEquals(this, other)) return true;
+          return ((__isset.@req == other.__isset.@req) && ((!__isset.@req) || (global::System.Object.Equals(Req, other.Req))));
+        }
+
+        public override int GetHashCode() {
+          int hashcode = 157;
+          unchecked {
+            if((Req != null) && __isset.@req)
+            {
+              hashcode = (hashcode * 397) + Req.GetHashCode();
+            }
+          }
+          return hashcode;
+        }
+
+        public override string ToString()
+        {
+          var tmp1068 = new StringBuilder("DownloadData_args(");
+          int tmp1069 = 0;
+          if((Req != null) && __isset.@req)
+          {
+            if(0 < tmp1069++) { tmp1068.Append(", "); }
+            tmp1068.Append("Req: ");
+            Req.ToString(tmp1068);
+          }
+          tmp1068.Append(')');
+          return tmp1068.ToString();
+        }
+      }
+
+
+      public partial class DownloadData_result : TBase
+      {
+        private global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataResp _success;
+
+        public global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataResp Success
+        {
+          get
+          {
+            return _success;
+          }
+          set
+          {
+            __isset.@success = true;
+            this._success = value;
+          }
+        }
+
+
+        public Isset __isset;
+        public struct Isset
+        {
+          public bool @success;
+        }
+
+        public DownloadData_result()
+        {
+        }
+
+        public async global::System.Threading.Tasks.Task ReadAsync(TProtocol iprot, CancellationToken cancellationToken)
+        {
+          iprot.IncrementRecursionDepth();
+          try
+          {
+            TField field;
+            await iprot.ReadStructBeginAsync(cancellationToken);
+            while (true)
+            {
+              field = await iprot.ReadFieldBeginAsync(cancellationToken);
+              if (field.Type == TType.Stop)
+              {
+                break;
+              }
+
+              switch (field.ID)
+              {
+                case 0:
+                  if (field.Type == TType.Struct)
+                  {
+                    Success = new global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataResp();
+                    await Success.ReadAsync(iprot, cancellationToken);
+                  }
+                  else
+                  {
+                    await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  }
+                  break;
+                default:
+                  await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
+                  break;
+              }
+
+              await iprot.ReadFieldEndAsync(cancellationToken);
+            }
+
+            await iprot.ReadStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            iprot.DecrementRecursionDepth();
+          }
+        }
+
+        public async global::System.Threading.Tasks.Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
+        {
+          oprot.IncrementRecursionDepth();
+          try
+          {
+            var tmp1070 = new TStruct("DownloadData_result");
+            await oprot.WriteStructBeginAsync(tmp1070, cancellationToken);
+            var tmp1071 = new TField();
+
+            if(this.__isset.@success)
+            {
+              if (Success != null)
+              {
+                tmp1071.Name = "Success";
+                tmp1071.Type = TType.Struct;
+                tmp1071.ID = 0;
+                await oprot.WriteFieldBeginAsync(tmp1071, cancellationToken);
+                await Success.WriteAsync(oprot, cancellationToken);
+                await oprot.WriteFieldEndAsync(cancellationToken);
+              }
+            }
+            await oprot.WriteFieldStopAsync(cancellationToken);
+            await oprot.WriteStructEndAsync(cancellationToken);
+          }
+          finally
+          {
+            oprot.DecrementRecursionDepth();
+          }
+        }
+
+        public override bool Equals(object that)
+        {
+          if (!(that is DownloadData_result other)) return false;
+          if (ReferenceEquals(this, other)) return true;
+          return ((__isset.@success == other.__isset.@success) && ((!__isset.@success) || (global::System.Object.Equals(Success, other.Success))));
+        }
+
+        public override int GetHashCode() {
+          int hashcode = 157;
+          unchecked {
+            if((Success != null) && __isset.@success)
+            {
+              hashcode = (hashcode * 397) + Success.GetHashCode();
+            }
+          }
+          return hashcode;
+        }
+
+        public override string ToString()
+        {
+          var tmp1072 = new StringBuilder("DownloadData_result(");
+          int tmp1073 = 0;
+          if((Success != null) && __isset.@success)
+          {
+            if(0 < tmp1073++) { tmp1072.Append(", "); }
+            tmp1072.Append("Success: ");
+            Success.ToString(tmp1072);
+          }
+          tmp1072.Append(')');
+          return tmp1072.ToString();
         }
       }
 

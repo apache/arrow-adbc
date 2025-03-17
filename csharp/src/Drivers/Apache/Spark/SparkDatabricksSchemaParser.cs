@@ -50,6 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 or TTypeId.STRUCT_TYPE
                 or TTypeId.UNION_TYPE
                 or TTypeId.USER_DEFINED_TYPE => StringType.Default,
+                TTypeId.TIMESTAMPLOCALTZ_TYPE => throw new NotImplementedException(),
                 _ => throw new NotImplementedException(),
             };
         }
