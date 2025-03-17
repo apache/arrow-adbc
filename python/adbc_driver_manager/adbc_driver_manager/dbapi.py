@@ -65,7 +65,7 @@ if typing.TYPE_CHECKING:
     import pandas
     import polars
     import pyarrow
-    from typing_extensions import Self
+    from typing_extensions import CapsuleType, Self
 
 # ----------------------------------------------------------
 # Globals
@@ -667,17 +667,8 @@ class Cursor(_Closeable):
             self._stmt.bind(parameters)
         elif _lib.is_pycapsule(parameters, b"arrow_array_stream"):
             self._stmt.bind_stream(parameters)
-        elif _has_pyarrow and isinstance(parameters, pyarrow.RecordBatch):
-            arr_handle = _lib.ArrowArrayHandle()
-            sch_handle = _lib.ArrowSchemaHandle()
-            parameters._export_to_c(arr_handle.address, sch_handle.address)
-            self._stmt.bind(arr_handle, sch_handle)
         else:
-            if _has_pyarrow and isinstance(parameters, pyarrow.Table):
-                parameters = parameters.to_reader()
-            stream_handle = _lib.ArrowArrayStreamHandle()
-            parameters._export_to_c(stream_handle.address)
-            self._stmt.bind_stream(stream_handle)
+            raise TypeError(f"Cannot bind {type(parameters)}")
 
     def _prepare_execute(self, operation, parameters=None) -> None:
         self._results = None
@@ -845,7 +836,10 @@ class Cursor(_Closeable):
         self,
         table_name: str,
         data: Union[
-            "pyarrow.RecordBatch", "pyarrow.Table", "pyarrow.RecordBatchReader"
+            "pyarrow.RecordBatch",
+            "pyarrow.Table",
+            "pyarrow.RecordBatchReader",
+            "CapsuleType",
         ],
         mode: Literal["append", "create", "replace", "create_append"] = "create",
         *,
@@ -946,25 +940,22 @@ class Cursor(_Closeable):
             self._stmt.bind(data)
         elif _lib.is_pycapsule(data, b"arrow_array_stream"):
             self._stmt.bind_stream(data)
-        elif _has_pyarrow and isinstance(data, pyarrow.RecordBatch):
-            array = _lib.ArrowArrayHandle()
-            schema = _lib.ArrowSchemaHandle()
-            data._export_to_c(array.address, schema.address)
-            self._stmt.bind(array, schema)
         else:
             _requires_pyarrow()
-            if isinstance(data, pyarrow.Table):
-                data = data.to_reader()
-            elif isinstance(data, pyarrow.dataset.Dataset):
-                data = data.scanner().to_reader()
+            if isinstance(data, pyarrow.dataset.Dataset):
+                data = typing.cast(pyarrow.dataset.Dataset, data).scanner().to_reader()
             elif isinstance(data, pyarrow.dataset.Scanner):
-                data = data.to_reader()
+                data = typing.cast(pyarrow.dataset.Scanner, data).to_reader()
             elif not hasattr(data, "_export_to_c"):
-                data = pyarrow.Table.from_batches(data)
-                data = data.to_reader()
-            handle = _lib.ArrowArrayStreamHandle()
-            data._export_to_c(handle.address)
-            self._stmt.bind_stream(handle)
+                data = pyarrow.Table.from_batches(data).to_reader()
+            if hasattr(data, "_export_to_c"):
+                handle = _lib.ArrowArrayStreamHandle()
+                # pyright doesn't seem to handle flow-sensitive typing here
+                data._export_to_c(handle.address)  # type: ignore
+                self._stmt.bind_stream(handle)
+            else:
+                # Should be impossible from above but let's be explicit
+                raise TypeError(f"Cannot bind {type(data)}")
 
         self._last_query = None
         return _blocking_call(self._stmt.execute_update, (), {}, self._stmt.cancel)
@@ -1326,16 +1317,13 @@ def _warn_unclosed(name):
 
 
 def _is_arrow_data(data):
+    # No need to check for PyArrow types explicitly since they support the
+    # dunder methods
     return (
         hasattr(data, "__arrow_c_array__")
         or hasattr(data, "__arrow_c_stream__")
+        or _lib.is_pycapsule(data, b"arrow_array")
         or _lib.is_pycapsule(data, b"arrow_array_stream")
-        or (
-            _has_pyarrow
-            and isinstance(
-                data, (pyarrow.RecordBatch, pyarrow.Table, pyarrow.RecordBatchReader)
-            )
-        )
     )
 
 
