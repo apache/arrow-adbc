@@ -56,9 +56,12 @@ templates_path = ["_templates"]
 
 
 def on_missing_reference(app, env, node, contnode):
-    # Polars does something odd with Sphinx such that polars.DataFrame isn't
-    # xrefable; suppress the warning.
     if str(contnode) == "polars.DataFrame":
+        # Polars does something odd with Sphinx such that polars.DataFrame
+        # isn't xrefable; suppress the warning.
+        return contnode
+    elif str(contnode) == "CapsuleType":
+        # CapsuleType is only in 3.13+
         return contnode
     else:
         return None
