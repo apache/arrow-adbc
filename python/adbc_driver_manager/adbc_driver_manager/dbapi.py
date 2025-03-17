@@ -1169,7 +1169,7 @@ class Cursor(_Closeable):
 
     def fetch_pycapsule(self) -> _lib.ArrowArrayStreamHandle:
         """
-        Fetch the result as a PyCapsule.
+        Fetch the result as an object implementing the Arrow PyCapsule interface.
 
         This can only be called once.  It must be called before any other
         method that inspect the data (e.g. description, fetchone,
