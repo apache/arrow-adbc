@@ -72,7 +72,7 @@ def test_ingest(sqlite: dbapi.Connection, data: typing.Any) -> None:
 def test_query(sqlite: dbapi.Connection) -> None:
     with sqlite.cursor() as cursor:
         cursor.execute("SELECT 1 AS theresult")
-        capsule = cursor.fetch_pycapsule()
+        capsule = cursor.fetch_arrow()
         df = typing.cast(polars.DataFrame, polars.from_arrow(capsule))
         polars.testing.assert_frame_equal(
             df,
@@ -141,7 +141,7 @@ def test_query_not_permitted(sqlite: dbapi.Connection) -> None:
         with pytest.raises(dbapi.ProgrammingError, match="requires PyArrow"):
             cursor.fetch_df()
 
-        capsule = cursor.fetch_pycapsule()
+        capsule = cursor.fetch_arrow()
         # Import the result to free memory
         polars.from_arrow(capsule)
 
@@ -150,11 +150,11 @@ def test_query_double_capsule(sqlite: dbapi.Connection) -> None:
     with sqlite.cursor() as cursor:
         cursor.execute("SELECT 1 AS theresult")
 
-        capsule = cursor.fetch_pycapsule()
+        capsule = cursor.fetch_arrow()
 
         # TODO: test new method with pyarrow installed too
         with pytest.raises(dbapi.ProgrammingError, match="has been closed"):
-            cursor.fetch_pycapsule()
+            cursor.fetch_arrow()
 
         # Import the result to free memory
         polars.from_arrow(capsule)

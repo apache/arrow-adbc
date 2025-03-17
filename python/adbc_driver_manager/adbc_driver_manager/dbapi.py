@@ -1167,7 +1167,7 @@ class Cursor(_Closeable):
         # reader pointer
         return self._results.reader._reader
 
-    def fetch_pycapsule(self) -> _lib.ArrowArrayStreamHandle:
+    def fetch_arrow(self) -> _lib.ArrowArrayStreamHandle:
         """
         Fetch the result as an object implementing the Arrow PyCapsule interface.
 
@@ -1182,10 +1182,10 @@ class Cursor(_Closeable):
         """
         if self._results is None:
             raise ProgrammingError(
-                "Cannot fetch_pycapsule() before execute()",
+                "Cannot fetch_arrow() before execute()",
                 status_code=_lib.AdbcStatusCode.INVALID_STATE,
             )
-        return self._results.fetch_pycapsule()
+        return self._results.fetch_arrow()
 
 
 # ----------------------------------------------------------
@@ -1284,14 +1284,14 @@ class _RowIterator(_Closeable):
         return _blocking_call(
             lambda: typing.cast(
                 polars.DataFrame,
-                polars.from_arrow(self.fetch_pycapsule()),
+                polars.from_arrow(self.fetch_arrow()),
             ),
             (),
             {},
             self._stmt.cancel,
         )
 
-    def fetch_pycapsule(self) -> _lib.ArrowArrayStreamHandle:
+    def fetch_arrow(self) -> _lib.ArrowArrayStreamHandle:
         if self._handle is None:
             raise ProgrammingError(
                 "Result set has been closed or consumed",
