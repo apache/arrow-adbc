@@ -210,6 +210,33 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public void PrepareAndBind()
+        {
+            using var database = _duckDb.OpenDatabase("bind.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "select ?, ?";
+            statement.Prepare();
+            var schema = statement.GetParameterSchema();
+            Assert.Equal(2, schema.FieldsList.Count);
+            Assert.Equal("0", schema.FieldsList[0].Name);
+            Assert.Equal(ArrowTypeId.Null, schema.FieldsList[0].DataType.TypeId);
+            Assert.Equal("1", schema.FieldsList[1].Name);
+            Assert.Equal(ArrowTypeId.Null, schema.FieldsList[1].DataType.TypeId);
+
+            schema = new Schema([new Field("0", Int32Type.Default, false), new Field("1", StringType.Default, false)], null);
+            RecordBatch recordBatch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([1]).Build(),
+                new StringArray.Builder().AppendRange(["foo"]).Build()
+                ], 1);
+            statement.Bind(recordBatch, schema);
+
+            var results = statement.ExecuteQuery();
+            Assert.Equal(1, GetResultCount(results));
+        }
+
+        [Fact]
         public async Task GetTableTypes()
         {
             using var database = _duckDb.OpenDatabase("tabletypes.db");
@@ -255,6 +282,11 @@ namespace Apache.Arrow.Adbc.Tests
         {
             statement.SqlQuery = query;
             var results = statement.ExecuteQuery();
+            return GetResultCount(results);
+        }
+
+        private static long GetResultCount(QueryResult results)
+        {
             long count = 0;
             using (var stream = results.Stream ?? throw new InvalidOperationException("no results found"))
             {

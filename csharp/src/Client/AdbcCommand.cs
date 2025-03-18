@@ -483,12 +483,61 @@ namespace Apache.Arrow.Adbc.Client
             }
         }
 
+        public override void Prepare()
+        {
+            _adbcStatement.Prepare();
+            var schema = _adbcStatement.GetParameterSchema();
+
+            DbParameterCollection.Clear();
+
+            foreach (Field field in schema.FieldsList)
+            {
+                AdbcParameter parameter = new AdbcParameter
+                {
+                    ParameterName = field.Name,
+                    IsNullable = field.IsNullable,
+                    DbType = field.DataType.TypeId switch
+                    {
+                        ArrowTypeId.UInt8 => DbType.Byte,
+                        ArrowTypeId.UInt16 => DbType.UInt16,
+                        ArrowTypeId.UInt32 => DbType.UInt32,
+                        ArrowTypeId.UInt64 => DbType.UInt64,
+                        ArrowTypeId.Int8 => DbType.SByte,
+                        ArrowTypeId.Int16 => DbType.Int16,
+                        ArrowTypeId.Int32 => DbType.Int32,
+                        ArrowTypeId.Int64 => DbType.Int64,
+                        ArrowTypeId.Float => DbType.Single,
+                        ArrowTypeId.Double => DbType.Double,
+                        ArrowTypeId.Boolean => DbType.Boolean,
+                        ArrowTypeId.String => DbType.String,
+                        ArrowTypeId.Date32 => DbType.Date,
+                        ArrowTypeId.Date64 => DbType.DateTime,
+                        ArrowTypeId.Time32 => DbType.Time,
+                        ArrowTypeId.Time64 => DbType.Time,
+                        ArrowTypeId.Timestamp => DbType.DateTime,
+                        ArrowTypeId.Decimal32 or
+                        ArrowTypeId.Decimal64 or
+                        ArrowTypeId.Decimal128 or
+                        ArrowTypeId.Decimal256 => DbType.Decimal,
+                        _ => DbType.Object,
+                    },
+                };
+                DbParameterCollection.Add(parameter);
+            }
+        }
+
+        protected override DbParameter CreateDbParameter()
+        {
+            return new AdbcParameter();
+        }
+
 #if NET5_0_OR_GREATER
         public override ValueTask DisposeAsync()
         {
             return base.DisposeAsync();
         }
 #endif
+
         #region NOT_IMPLEMENTED
 
         public override bool DesignTimeVisible { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -505,16 +554,6 @@ namespace Apache.Arrow.Adbc.Client
         public override object ExecuteScalar()
         {
             throw new NotImplementedException();
-        }
-
-        public override void Prepare()
-        {
-            throw new NotImplementedException();
-        }
-
-        protected override DbParameter CreateDbParameter()
-        {
-            return new AdbcParameter();
         }
 
         #endregion
