@@ -182,7 +182,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return transport;
         }
 
-        private HttpClientHandler NewHttpClientHandler()
+        internal HttpClientHandler NewHttpClientHandler()
         {
             HttpClientHandler httpClientHandler = new();
             if (TlsOptions != HiveServer2TlsOption.Empty)
@@ -200,7 +200,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return httpClientHandler;
         }
 
-        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password, string? access_token)
+        internal static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password, string? access_token)
         {
             if (!string.IsNullOrEmpty(token) && (authType == SparkAuthType.Empty || authType == SparkAuthType.Token))
             {
