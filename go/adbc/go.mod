@@ -32,7 +32,7 @@ require (
 	golang.org/x/oauth2 v0.28.0
 	golang.org/x/sync v0.12.0
 	golang.org/x/tools v0.31.0
-	google.golang.org/api v0.225.0
+	google.golang.org/api v0.226.0
 	google.golang.org/grpc v1.71.0
 	google.golang.org/protobuf v1.36.5
 	modernc.org/sqlite v1.36.1
