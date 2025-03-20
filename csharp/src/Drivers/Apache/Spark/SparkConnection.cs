@@ -63,7 +63,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override AdbcStatement CreateStatement()
         {
-            return new SparkStatement(this);
+            SparkStatement statement = new SparkStatement(this);
+            return statement;
         }
 
         protected internal override int PositionRequiredOffset => 1;
@@ -121,6 +122,46 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override bool GetObjectsPatternsRequireLowerCase => false;
 
         protected override bool IsColumnSizeValidForDecimal => false;
+
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema)
+        {
+            // Check if the statement is a SparkStatement
+            if (statement is SparkStatement sparkStatement)
+            {
+                try
+                {
+                    // Check if we have a TGetResultSetMetadataResp with URL_BASED_SET type
+                    TGetResultSetMetadataResp? resultSetMetadata = GetResultSetMetadataAsync(
+                        sparkStatement.OperationHandle!, 
+                        Client, 
+                        CancellationToken.None).Result;
+                    
+                    // Check if we have URL-based results (CloudFetch) and CloudFetch is enabled
+                    if (sparkStatement.UseCloudFetch && 
+                        resultSetMetadata.__isset.resultFormat && 
+                        resultSetMetadata.ResultFormat == TSparkRowSetType.URL_BASED_SET)
+                    {
+                        // Create a CloudFetch reader
+                        bool isLz4Compressed = resultSetMetadata.__isset.lz4Compressed && resultSetMetadata.Lz4Compressed && sparkStatement.CanDecompressLz4;
+                        return new CloudFetch.SparkCloudFetchReader(statement, schema, isLz4Compressed);
+                    }
+                    
+                    // Check if we have Arrow-based results
+                    if (resultSetMetadata.__isset.resultFormat && resultSetMetadata.ResultFormat == TSparkRowSetType.ARROW_BASED_SET)
+                    {
+                        return new SparkDatabricksReader(statement, schema);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the error and fall back to the default reader
+                    Console.WriteLine($"Error creating CloudFetch reader: {ex.Message}. Falling back to default reader.");
+                }
+            }
+            
+            // Fall back to the default reader
+            return new HiveServer2Reader(statement, schema, DataTypeConversion);
+        }
 
         protected override bool AreResultsAvailableDirectly() => true;
 
