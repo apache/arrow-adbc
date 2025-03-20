@@ -39,6 +39,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string GetQueryResultsOptionsTimeout = "adbc.bigquery.get_query_results_options.timeout";
         public const string MaxFetchConcurrency = "adbc.bigquery.max_fetch_concurrency";
         public const string IncludePublicProjectId = "adbc.bigquery.include_public_project_id";
+        public const string StatementType = "adbc.bigquery.multiple_statement.statement_type";
+        public const string StatementIndex = "adbc.bigquery.multiple_statement.statement_index";
     }
 
     /// <summary>

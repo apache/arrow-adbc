@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -51,52 +52,63 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override QueryResult ExecuteQuery()
         {
+            // Create job
             QueryOptions queryOptions = ValidateOptions();
-
             BigQueryJob job = this.client.CreateQueryJob(SqlQuery, null, queryOptions);
 
+            // Get results
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
-
             if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true &&
                 int.TryParse(timeoutSeconds, out int seconds) &&
                 seconds >= 0)
             {
                 getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
-
             BigQueryResults results = job.GetQueryResults(getQueryResultsOptions);
 
-            BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
-            readClientBuilder.Credential = this.credential;
-            BigQueryReadClient readClient = readClientBuilder.Build();
-
+            // For multi-statement queries, the results.TableReference is null
             if (results.TableReference == null)
             {
+                string statementType = string.Empty;
+                if (this.Options?.TryGetValue(BigQueryParameters.StatementType, out string? statementTypeString) == true)
+                {
+                    statementType = statementTypeString;
+                }
+                int statementIndex = 1;
+                if (this.Options?.TryGetValue(BigQueryParameters.StatementIndex, out string? statementIndexString) == true &&
+                    int.TryParse(statementIndexString, out int statementIndexInt) &&
+                    statementIndexInt > 0)
+                {
+                    statementIndex = statementIndexInt;
+                }
+                
                 // To get the results of all statements in a multi-statement query, enumerate the child jobs and call jobs.getQueryResults on each of them.
                 // Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements
                 ListJobsOptions listJobsOptions = new ListJobsOptions();
                 listJobsOptions.ParentJobId = results.JobReference.JobId;
-                PagedEnumerable<JobList, BigQueryJob> joblist = client.ListJobs(listJobsOptions);
-                BigQueryJob firstQueryJob = new BigQueryJob(client, job.Resource);
-                foreach (BigQueryJob childJob in joblist)
-                {
-                    var tempJob = client.GetJob(childJob.Reference);
-                    var query = tempJob.Resource?.Configuration?.Query;
-                    if (query != null && query.DestinationTable != null && query.DestinationTable.ProjectId != null && query.DestinationTable.DatasetId != null && query.DestinationTable.TableId != null)
-                    {
-                        firstQueryJob = tempJob;
-                    }
-                }
-                results = firstQueryJob.GetQueryResults();
-            }
+                var joblist = client.ListJobs(listJobsOptions)
+                    .Select(job => client.GetJob(job.Reference))
+                    .Where(job => string.IsNullOrEmpty(statementType) || job.Statistics.Query.StatementType.Equals(statementType,StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(job => job.Resource.Statistics.CreationTime)
+                    .ToList();
 
+                if(statementIndex < 1 || statementIndex > joblist.Count)
+                {
+                    throw new ArgumentOutOfRangeException($"The specified index {statementIndex} is out of range. There are {joblist.Count} jobs available.");
+                }
+
+                results = joblist[statementIndex - 1].GetQueryResults(getQueryResultsOptions);
+            }
             if (results.TableReference == null)
             {
                 throw new AdbcException("There is no query statement");
             }
 
+            // BigQuery Read Client for streaming
+            BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
+            readClientBuilder.Credential = this.credential;
+            BigQueryReadClient readClient = readClientBuilder.Build();
             string table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
-
             int maxStreamCount = 1;
             if (this.Options?.TryGetValue(BigQueryParameters.MaxFetchConcurrency, out string? maxStreamCountString) == true)
             {
@@ -110,16 +122,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
             ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
             ReadSession rrs = readClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, maxStreamCount);
-
             long totalRows = results.TotalRows == null ? -1L : (long)results.TotalRows.Value;
-
             var readers = rrs.Streams
                              .Select(s => ReadChunk(readClient, s.Name))
                              .Where(chunk => chunk != null)
                              .Cast<IArrowReader>();
-
             IArrowArrayStream stream = new MultiArrowReader(TranslateSchema(results.Schema), readers);
-
             return new QueryResult(totalRows, stream);
         }
 
