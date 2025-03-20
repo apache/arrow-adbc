@@ -88,20 +88,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 // If we have a current reader, try to read the next batch
                 if (this.currentReader != null)
                 {
-                    try
+                    RecordBatch? next = await this.currentReader.ReadNextRecordBatchAsync(cancellationToken);
+                    if (next != null)
                     {
-                        RecordBatch? next = await this.currentReader.ReadNextRecordBatchAsync(cancellationToken);
-                        if (next != null)
-                        {
-                            return next;
-                        }
+                        return next;
                     }
-                    catch (Exception ex)
-                    {
-                        // Log the error and continue to the next link
-                        Console.WriteLine($"Error reading batch: {ex.Message}");
-                    }
-                    finally
+                    else
                     {
                         this.currentReader.Dispose();
                         this.currentReader = null;

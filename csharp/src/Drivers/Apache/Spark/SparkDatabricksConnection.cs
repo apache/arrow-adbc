@@ -27,10 +27,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkDatabricksConnection : SparkHttpConnection
     {
-        // Track the result format and compression for the current query
-        private TSparkRowSetType currentResultFormat = TSparkRowSetType.ARROW_BASED_SET;
-        private bool isLz4Compressed = false;
-
         public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
@@ -38,9 +34,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema)
         {
             // Choose the appropriate reader based on the result format
-            if (currentResultFormat == TSparkRowSetType.URL_BASED_SET)
+            if (statement.currentResultFormat == TSparkRowSetType.URL_BASED_SET)
             {
-                return new SparkCloudFetchReader(statement as HiveServer2Statement, schema, isLz4Compressed);
+                return new SparkCloudFetchReader(statement as HiveServer2Statement, schema, statement.isLz4Compressed);
             }
             else
             {
@@ -63,33 +59,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
-        /// <summary>
-        /// Process the result set metadata to determine the result format and compression.
-        /// </summary>
-        /// <param name="metadata">The result set metadata.</param>
-        internal void ProcessResultSetMetadata(TGetResultSetMetadataResp metadata)
-        {
-            // Check if the result format is specified
-            if (metadata.__isset.resultFormat)
-            {
-                currentResultFormat = metadata.ResultFormat;
-            }
-            else
-            {
-                currentResultFormat = TSparkRowSetType.ARROW_BASED_SET;
-            }
-
-            // Check if the results are LZ4 compressed
-            isLz4Compressed = metadata.__isset.lz4Compressed && metadata.Lz4Compressed;
-        }
-
-        // Add method to process metadata from execute statement response
-        internal async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TExecuteStatementResp response, CancellationToken cancellationToken = default)
-        {
-            var metadata = await HiveServer2Connection.GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-            ProcessResultSetMetadata(metadata);
-            return metadata;
-        }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
