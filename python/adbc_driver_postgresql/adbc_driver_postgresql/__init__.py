@@ -34,6 +34,12 @@ class StatementOptions(enum.Enum):
     #: actual size may differ.
     BATCH_SIZE_HINT_BYTES = "adbc.postgresql.batch_size_hint_bytes"
 
+    #: Enable or disable the ``COPY`` optimization (default: enabled).
+    #:
+    #: This is necessary for some queries since PostgreSQL does not support
+    #: ``COPY`` with those queries, e.g. queries using ``SHOW``.
+    USE_COPY = "adbc.postgresql.use_copy"
+
 
 def connect(uri: str) -> adbc_driver_manager.AdbcDatabase:
     """Create a low level ADBC connection to PostgreSQL."""

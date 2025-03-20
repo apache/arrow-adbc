@@ -40,12 +40,12 @@ repos:
     - id: trailing-whitespace
       exclude: "^r/.*?/_snaps/.*?.md$"
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: "v18.1.7"
+    rev: deec0115cd2847f837ac9180c4b7d1edb423fe02  # v18.1.7
     hooks:
       - id: clang-format
         types_or: [c, c++]
   - repo: https://github.com/cheshirekow/cmake-format-precommit
-    rev: v0.6.13
+    rev: e2c2116d86a80e72e7146a06e68b7c228afc6319  # v0.6.13
     hooks:
     - id: cmake-format
       args: [--in-place]
@@ -60,13 +60,13 @@ repos:
         - "--linelength=90"
         - "--verbose=2"
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.64.5
+    rev: 0a603e49e5e9870f5f9f2035bcbe42cd9620a9d5  # v1.64.5
     hooks:
     - id: golangci-lint
       entry: bash -c 'cd go/adbc && golangci-lint run --fix --timeout 5m'
       types_or: [go, go-mod]
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: v2.14.0
+    rev: a6273196190bb0f68caf1dc68073cf62c719f725  # v2.14.0
     hooks:
     - id: pretty-format-golang
       args: [--autofix]
@@ -75,22 +75,22 @@ repos:
       args: [--autofix]
       types_or: [java]
   - repo: https://github.com/psf/black
-    rev: 25.1.0
+    rev: 8a737e727ac5ab2f1d4cf5876720ed276dc8dc4b  # 25.1.0
     hooks:
     - id: black
       types_or: [pyi, python]
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.2
+    rev: bddd87797f8dfc07d2a10c894776018d9bec590b  # 7.1.2
     hooks:
     - id: flake8
       types_or: [python]
   - repo: https://github.com/PyCQA/isort
-    rev: 6.0.0
+    rev: 0a0b7a830386ba6a31c2ec8316849ae4d1b8240d  # 6.0.0
     hooks:
     - id: isort
       types_or: [python]
   - repo: https://github.com/MarcoGorelli/cython-lint
-    rev: v0.16.2
+    rev: 9247866fce7128f2c0eaf4a09f437880397d4689  # v0.16.2
     hooks:
     - id: cython-lint
   - repo: https://github.com/vala-lang/vala-lint
@@ -110,8 +110,17 @@ repos:
       pass_filenames: true
       files: '^c/include/arrow-adbc/.*\.h$'
       entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
+    # https://infra.apache.org/github-actions-policy.html
+    - id: check-pin
+      name: Ensure GitHub Actions and pre-commit hooks are pinned to a specific SHA
+      language: python
+      additional_dependencies:
+        - "ruamel.yaml==0.18.7"
+      pass_filenames: true
+      files: '(^\.pre-commit-config\.yaml$)|(^\.github/workflows/.*\.(yml|yaml)$)'
+      entry: "./ci/scripts/run_pre_commit_pin.py"
   - repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
+    rev: eeee35a89e69d5772bdee97db1a6a898467b686e  # v1.0
     hooks:
     - id: fmt
       name: rustfmt

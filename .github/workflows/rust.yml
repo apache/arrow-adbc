@@ -122,7 +122,7 @@ jobs:
       - name: Clippy
         run: |
           pushd rust
-          cargo clippy --workspace --all-targets --all-features -- -Dwarnings
+          cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
           popd
       - name: Test
         run: |

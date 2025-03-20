@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
@@ -212,11 +213,43 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             environment.IncludeTableConstraints = includeTableConstraints;
 
-            return new Adbc.Client.AdbcConnection(
-                new BigQueryDriver(),
-                BigQueryTestingUtils.GetBigQueryParameters(environment),
-                new Dictionary<string, string>()
-            );
+            if (string.IsNullOrEmpty(environment.StructBehavior))
+            {
+                Dictionary<string, string> connectionParameters = BigQueryTestingUtils.GetBigQueryParameters(environment);
+
+                return new Adbc.Client.AdbcConnection(
+                    new BigQueryDriver(),
+                    connectionParameters,
+                    new Dictionary<string, string>()
+                );
+            }
+            else
+            {
+                return GetAdbcConnectionUsingConnectionString(environment, includeTableConstraints);
+            }
+        }
+
+        private Adbc.Client.AdbcConnection GetAdbcConnectionUsingConnectionString(
+            BigQueryTestEnvironment environment,
+            bool includeTableConstraints = true
+        )
+        {
+            Dictionary<string, string> connectionParameters = BigQueryTestingUtils.GetBigQueryParameters(environment);
+
+            if (!string.IsNullOrEmpty(environment.StructBehavior))
+                connectionParameters.Add("StructBehavior", environment.StructBehavior!);
+
+            DbConnectionStringBuilder builder = new DbConnectionStringBuilder(true);
+
+            foreach (string key in connectionParameters.Keys)
+            {
+                builder[key] = connectionParameters[key];
+            }
+
+            return new Adbc.Client.AdbcConnection(builder.ConnectionString)
+            {
+                AdbcDriver = new BigQueryDriver()
+            };
         }
     }
 }

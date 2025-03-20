@@ -57,6 +57,14 @@ namespace Apache.Arrow.Adbc.Tests
         /// </summary>
         public List<string> PostQueryCommands { get; set; } = new List<string>();
 
+        /// <summary>
+        /// Optional value to indicate how structs should be treated in the sample data.
+        /// </summary>
+        /// <example>
+        /// JsonString
+        /// Strict
+        /// </example>
+        public string? StructBehavior { get; set; }
 
         /// <summary>
         /// The expected values.

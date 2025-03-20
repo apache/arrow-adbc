@@ -20,10 +20,10 @@ name = "adbc_datafusion"
 description = "ADBC driver for Apache DataFusion"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
+rust-version = "1.81" # datafusion mrsv
 authors.workspace = true
 license.workspace = true
-readme.workspace = true
+readme = "README.md"
 documentation = "http://docs.rs/adbc_datafusion/"
 homepage.workspace = true
 repository.workspace = true
@@ -35,9 +35,9 @@ adbc_core.workspace = true
 arrow-array.workspace = true
 arrow-buffer.workspace = true
 arrow-schema.workspace = true
-datafusion = "45.0.0"
-datafusion-substrait = "45.0.0"
-tokio = { version = "1.43", features = ["rt-multi-thread"] }
+datafusion = "46.0.0"
+datafusion-substrait = "46.0.0"
+tokio = { version = "1.44", features = ["rt-multi-thread"] }
 prost = "0.13.5"
 
 [dev-dependencies]

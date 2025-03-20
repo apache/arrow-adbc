@@ -342,7 +342,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@922ebc4c5262cd14e07bb0e1db020984b6c064fe  # v1.226.0
         with:
           ruby-version: ruby
 
@@ -354,7 +354,7 @@ jobs:
           restore-keys: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772  # v3.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -519,7 +519,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -1061,7 +1061,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: conda-packages
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
         with:
           miniforge-version: latest
           use-only-tar-bz2: false

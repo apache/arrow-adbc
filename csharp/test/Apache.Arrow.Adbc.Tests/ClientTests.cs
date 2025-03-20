@@ -171,6 +171,14 @@ namespace Apache.Arrow.Adbc.Tests
                     preQueryCommand.ExecuteNonQuery();
                 }
 
+                if (!string.IsNullOrEmpty(sample.StructBehavior))
+                {
+                    if (Enum.TryParse(sample.StructBehavior, out StructBehavior behavior))
+                    {
+                        adbcConnection.StructBehavior = behavior;
+                    }
+                }
+
                 using AdbcCommand dbCommand = adbcConnection.CreateCommand();
                 dbCommand.CommandText = sample.Query;
 
@@ -268,7 +276,25 @@ namespace Apache.Arrow.Adbc.Tests
                     }
                     else
                     {
-                        Assert.True(ctv.ExpectedValue.Equals(value), Utils.FormatMessage($"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name} for query [{query}]", environmentName));
+                        bool areEqual = false;
+
+                        if (value is Dictionary<string, object?>)
+                        {
+                            if (value == null && ctv.ExpectedValue == null)
+                            {
+                                areEqual = true;
+                            }
+                            else
+                            {
+                                areEqual = AreDictionariesEqual(value as Dictionary<string, object?>, ctv.ExpectedValue as Dictionary<string, object?>);
+                            }
+                        }
+                        else
+                        {
+                            areEqual = ctv.ExpectedValue.Equals(value);
+                        }
+
+                        Assert.True(areEqual, Utils.FormatMessage($"Expected value [{ctv.ExpectedValue}] does not match actual value [{value}] for {ctv.Name} for query [{query}]", environmentName));
                     }
                 }
                 else
@@ -303,6 +329,45 @@ namespace Apache.Arrow.Adbc.Tests
             {
                 Assert.True(ctv.ExpectedValue == null, Utils.FormatMessage($"The value for {ctv.Name} is null and but it's expected value is not null for query [{query}]", environmentName));
             }
+        }
+
+        static bool AreDictionariesEqual(Dictionary<string, object?>? dict1, Dictionary<string, object?>? dict2)
+        {
+            if (dict1 == null && dict2 == null)
+            {
+                return true;
+            }
+            else if (dict1 != null && dict2 == null)
+            {
+                return false;
+            }
+            else if (dict1 == null && dict2 != null)
+            {
+                return false;
+            }
+
+            if (dict1!.Count != dict2!.Count)
+                return false;
+
+            foreach (var key in dict1.Keys)
+            {
+                if (!dict2.TryGetValue(key, out object? value2))
+                    return false;
+
+                object? value1 = dict1[key];
+
+                if (value1 is Dictionary<string, object?> nextObj1 && value2 is Dictionary<string, object?> nextObj2)
+                {
+                    if (!AreDictionariesEqual(nextObj1, nextObj2))
+                        return false;
+                }
+                else if (!object.Equals(value1, value2))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

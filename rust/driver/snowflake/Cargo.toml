@@ -23,7 +23,7 @@ edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
-readme.workspace = true
+readme = "README.md"
 documentation = "http://docs.rs/adbc_snowflake/"
 homepage.workspace = true
 repository.workspace = true
@@ -50,4 +50,4 @@ regex = { version = "1.11.1", default-features = false, optional = true }
 url = "2.5.4"
 
 [dev-dependencies]
-test-with = { version = "0.14.7", default-features = false }
+test-with = { version = "0.14.8", default-features = false }

@@ -18,7 +18,9 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
+using System.Dynamic;
 using System.Text;
+using System.Text.Json;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
@@ -42,6 +44,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
 
+            Dictionary<string, object?> person = new Dictionary<string, object?>();
+            person["name"] = "John Doe";
+            person["age"] = 30L;
+
+            // StructBehavior = "Strict"
+            sampleDataBuilder.Samples.Add(
+               new SampleData()
+               {
+                   Query = "SELECT " +
+                           "STRUCT('John Doe' as name, 30 as age) as person",
+                   StructBehavior = "Strict",
+                   ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                   {
+                        new ColumnNetTypeArrowTypeValue("person", typeof(Dictionary<string, object?>), typeof(StructType), person),
+                   }
+               });
+
+            // StructBehavior = "JsonString" (the default)
+            sampleDataBuilder.Samples.Add(
+                new SampleData()
+                {
+                    Query = "SELECT " +
+                            "STRUCT('John Doe' as name, 30 as age) as person",
+                    StructBehavior = "JsonString",
+                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                    {
+                        new ColumnNetTypeArrowTypeValue("person", typeof(string), typeof(StringType), JsonSerializer.Serialize(person)),
+                    }
+                });
 
             // standard values
             sampleDataBuilder.Samples.Add(
@@ -63,6 +94,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                             "ARRAY[1, 2, 3] as numbers, " +
                             "STRUCT('John Doe' as name, 30 as age) as person," +
                             "PARSE_JSON('{\"name\":\"Jane Doe\",\"age\":29}') as json",
+                    StructBehavior = "Strict",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {
                                     new ColumnNetTypeArrowTypeValue("id", typeof(long), typeof(Int64Type), 1L),
@@ -82,7 +114,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                                     new ColumnNetTypeArrowTypeValue("timestamp", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023, 9, 8, 12, 34, 56), TimeSpan.Zero)),
                                     new ColumnNetTypeArrowTypeValue("point", typeof(string), typeof(StringType), "POINT(1 2)"),
                                     new ColumnNetTypeArrowTypeValue("numbers", typeof(Int64Array), typeof(ListType), numbersArray),
-                                    new ColumnNetTypeArrowTypeValue("person", typeof(string), typeof(StringType), "{\"name\":\"John Doe\",\"age\":30}"),
+
+                                    new ColumnNetTypeArrowTypeValue("person", typeof(Dictionary<string, object?>), typeof(StructType), person),
                                     new ColumnNetTypeArrowTypeValue("json", typeof(string), typeof(StringType), "{\"age\":29,\"name\":\"Jane Doe\"}")
                     }
                 });
@@ -125,6 +158,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                             "ST_GEOGPOINT(NULL, NULL) as point, " +
                             "CAST(NULL as ARRAY<INT64>) as numbers, " +
                             "STRUCT(CAST(NULL as STRING) as name, CAST(NULL as INT64) as age) as person",
+                    StructBehavior = "JsonString",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {
                                     new ColumnNetTypeArrowTypeValue("id", typeof(long), typeof(Int64Type), null),
@@ -148,62 +182,61 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     }
                 });
 
-
             // complex struct
             sampleDataBuilder.Samples.Add(
-            new SampleData()
-            {
-                Query = "SELECT " +
-                         "STRUCT(" +
-                         "\"Iron Man\" as name," +
-                         "\"Avengers\" as team," +
-                         "[\"Genius\", \"Billionaire\", \"Playboy\", \"Philanthropist\"] as powers," +
-                         "[" +
-                         "  STRUCT(" +
-                         "    \"Captain America\" as name, " +
-                         "    \"Avengers\" as team, " +
-                         "    [\"Super Soldier Serum\", \"Vibranium Shield\"] as powers, " +
-                         "    [" +
-                         "     STRUCT(" +
-                         "       \"Thanos\" as name, " +
-                         "       \"Black Order\" as team, " +
-                         "       [\"Infinity Gauntlet\", \"Super Strength\", \"Teleportation\"] as powers, " +
-                         "       [" +
-                         "         STRUCT(" +
-                         "           \"Loki\" as name, " +
-                         "           \"Asgard\" as team, " +
-                         "           [\"Magic\", \"Shapeshifting\", \"Trickery\"] as powers " +
-                         "          )" +
-                         "        ] as allies" +
-                         "      )" +
-                         "    ] as enemies" +
-                         " )," +
-                         " STRUCT(" +
-                         "    \"Spider-Man\" as name, " +
-                         "    \"Avengers\" as team, " +
-                         "    [\"Spider-Sense\", \"Web-Shooting\", \"Wall-Crawling\"] as powers, " +
-                         "    [" +
-                         "      STRUCT(" +
-                         "        \"Green Goblin\" as name, " +
-                         "        \"Sinister Six\" as team, " +
-                         "        [\"Glider\", \"Pumpkin Bombs\", \"Super Strength\"] as powers, " +
-                         "         [" +
-                         "          STRUCT(" +
-                         "            \"Doctor Octopus\" as name, " +
-                         "            \"Sinister Six\" as team, " +
-                         "            [\"Mechanical Arms\", \"Genius\", \"Madness\"] as powers " +
-                         "          )" +
-                         "        ] as allies" +
-                         "      )" +
-                         "    ] as enemies" +
-                         "  )" +
-                         " ] as friends" +
-                         ") as iron_man",
-                ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
-                   {
+                new SampleData()
+                {
+                    Query = "SELECT " +
+                                "STRUCT(" +
+                                "\"Iron Man\" as name," +
+                                "\"Avengers\" as team," +
+                                "[\"Genius\", \"Billionaire\", \"Playboy\", \"Philanthropist\"] as powers," +
+                                "[" +
+                                "  STRUCT(" +
+                                "    \"Captain America\" as name, " +
+                                "    \"Avengers\" as team, " +
+                                "    [\"Super Soldier Serum\", \"Vibranium Shield\"] as powers, " +
+                                "    [" +
+                                "     STRUCT(" +
+                                "       \"Thanos\" as name, " +
+                                "       \"Black Order\" as team, " +
+                                "       [\"Infinity Gauntlet\", \"Super Strength\", \"Teleportation\"] as powers, " +
+                                "       [" +
+                                "         STRUCT(" +
+                                "           \"Loki\" as name, " +
+                                "           \"Asgard\" as team, " +
+                                "           [\"Magic\", \"Shapeshifting\", \"Trickery\"] as powers " +
+                                "          )" +
+                                "        ] as allies" +
+                                "      )" +
+                                "    ] as enemies" +
+                                " )," +
+                                " STRUCT(" +
+                                "    \"Spider-Man\" as name, " +
+                                "    \"Avengers\" as team, " +
+                                "    [\"Spider-Sense\", \"Web-Shooting\", \"Wall-Crawling\"] as powers, " +
+                                "    [" +
+                                "      STRUCT(" +
+                                "        \"Green Goblin\" as name, " +
+                                "        \"Sinister Six\" as team, " +
+                                "        [\"Glider\", \"Pumpkin Bombs\", \"Super Strength\"] as powers, " +
+                                "         [" +
+                                "          STRUCT(" +
+                                "            \"Doctor Octopus\" as name, " +
+                                "            \"Sinister Six\" as team, " +
+                                "            [\"Mechanical Arms\", \"Genius\", \"Madness\"] as powers " +
+                                "          )" +
+                                "        ] as allies" +
+                                "      )" +
+                                "    ] as enemies" +
+                                "  )" +
+                                " ] as friends" +
+                                ") as iron_man",
+                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                    {
                         new ColumnNetTypeArrowTypeValue("iron_man", typeof(string), typeof(StringType), "{\"name\":\"Iron Man\",\"team\":\"Avengers\",\"powers\":[\"Genius\",\"Billionaire\",\"Playboy\",\"Philanthropist\"],\"friends\":[{\"name\":\"Captain America\",\"team\":\"Avengers\",\"powers\":[\"Super Soldier Serum\",\"Vibranium Shield\"],\"enemies\":[{\"name\":\"Thanos\",\"team\":\"Black Order\",\"powers\":[\"Infinity Gauntlet\",\"Super Strength\",\"Teleportation\"],\"allies\":[{\"name\":\"Loki\",\"team\":\"Asgard\",\"powers\":[\"Magic\",\"Shapeshifting\",\"Trickery\"]}]}]},{\"name\":\"Spider-Man\",\"team\":\"Avengers\",\"powers\":[\"Spider-Sense\",\"Web-Shooting\",\"Wall-Crawling\"],\"enemies\":[{\"name\":\"Green Goblin\",\"team\":\"Sinister Six\",\"powers\":[\"Glider\",\"Pumpkin Bombs\",\"Super Strength\"],\"allies\":[{\"name\":\"Doctor Octopus\",\"team\":\"Sinister Six\",\"powers\":[\"Mechanical Arms\",\"Genius\",\"Madness\"]}]}]}]}")
-                   }
-            });
+                    }
+                });
 
             return sampleDataBuilder;
         }

@@ -279,16 +279,6 @@ install_dotnet() {
     show_info "Installed C# at $(which csharp) (.NET $(dotnet --version))"
   fi
 
-  # Ensure to have sourcelink installed
-  if ! dotnet tool list | grep sourcelink > /dev/null 2>&1; then
-    dotnet new tool-manifest
-    dotnet tool install --local sourcelink
-    PATH=${csharp_bin}:${PATH}
-    if ! dotnet tool run sourcelink --help > /dev/null 2>&1; then
-      export DOTNET_ROOT=${csharp_bin}
-    fi
-  fi
-
   DOTNET_ALREADY_INSTALLED=1
 }
 

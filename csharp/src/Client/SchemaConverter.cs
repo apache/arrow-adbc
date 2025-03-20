@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
@@ -60,7 +61,7 @@ namespace Apache.Arrow.Adbc.Client
                 row[SchemaTableColumn.ColumnName] = f.Name;
                 row[SchemaTableColumn.ColumnOrdinal] = columnOrdinal;
                 row[SchemaTableColumn.AllowDBNull] = f.IsNullable;
-                row[SchemaTableColumn.ProviderType] = f.DataType;
+                row[SchemaTableColumn.ProviderType] = SchemaConverter.GetArrowTypeBasedOnRequestedBehavior(f.DataType, structBehavior);
                 Type t = ConvertArrowType(f, decimalBehavior, structBehavior);
 
                 row[SchemaTableColumn.DataType] = t;
@@ -193,10 +194,7 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(string);
 
                 case ArrowTypeId.Struct:
-                    if (structBehavior == StructBehavior.JsonString)
-                        return typeof(string);
-                    else
-                        goto default;
+                    return  structBehavior == StructBehavior.JsonString ? typeof(string) : typeof(Dictionary<string, object?>);
 
                 case ArrowTypeId.Timestamp:
                     return typeof(DateTimeOffset);
@@ -270,6 +268,19 @@ namespace Apache.Arrow.Adbc.Client
             }
 
             throw new InvalidCastException($"Cannot determine the array type for {dataType.Name}");
+        }
+
+        /// <summary>
+        /// Get the IArrowType based on the input IArrowType and the desired <see cref="StructBehavior"/>.
+        /// If it's a StructType and the desired behavior is a JsonString then this returns StringType.
+        /// Otherwise, it returns the input IArrowType.
+        /// </summary>
+        /// <param name="defaultType">The default IArrowType to return.</param>
+        /// <param name="structBehavior">Desired behavior if the IArrowType is a StructType.</param>
+        /// <returns></returns>
+        public static IArrowType GetArrowTypeBasedOnRequestedBehavior(IArrowType defaultType, StructBehavior structBehavior)
+        {
+            return defaultType.TypeId == ArrowTypeId.Struct && structBehavior == StructBehavior.JsonString ? StringType.Default : defaultType;
         }
     }
 }

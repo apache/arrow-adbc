@@ -77,6 +77,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 parameters.Add(SparkParameters.Token, testConfiguration.Token!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.AccessToken))
+            {
+                parameters.Add(SparkParameters.AccessToken, testConfiguration.AccessToken);
+            }
             if (!string.IsNullOrEmpty(testConfiguration.Username))
             {
                 parameters.Add(AdbcOptions.Username, testConfiguration.Username!);

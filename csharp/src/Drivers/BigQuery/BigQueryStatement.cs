@@ -112,7 +112,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ReadSession rrs = readClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, maxStreamCount);
 
             long totalRows = results.TotalRows == null ? -1L : (long)results.TotalRows.Value;
-            IArrowArrayStream stream = new MultiArrowReader(TranslateSchema(results.Schema), rrs.Streams.Select(s => ReadChunk(readClient, s.Name)));
+
+            var readers = rrs.Streams
+                             .Select(s => ReadChunk(readClient, s.Name))
+                             .Where(chunk => chunk != null)
+                             .Cast<IArrowReader>();
+
+            IArrowArrayStream stream = new MultiArrowReader(TranslateSchema(results.Schema), readers);
 
             return new QueryResult(totalRows, stream);
         }
@@ -175,8 +181,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "DATE":
                     return GetType(field, Date32Type.Default);
                 case "RECORD" or "STRUCT":
-                    // its a json string
-                    return GetType(field, StringType.Default);
+                    return GetType(field, BuildStructType(field));
 
                 // treat these values as strings
                 case "GEOGRAPHY" or "JSON":
@@ -200,6 +205,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
+        private StructType BuildStructType(TableFieldSchema field)
+        {
+            List<Field> arrowFields = new List<Field>();
+
+            foreach (TableFieldSchema subfield in field.Fields)
+            {
+                Field arrowField = TranslateField(subfield);
+                arrowFields.Add(arrowField);
+            }
+
+            return new StructType(arrowFields.AsReadOnly());
+        }
+
         private IArrowType GetType(TableFieldSchema field, IArrowType type)
         {
             if (field.Mode == "REPEATED")
@@ -208,7 +226,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return type;
         }
 
-        static IArrowReader ReadChunk(BigQueryReadClient readClient, string streamName)
+        static IArrowReader? ReadChunk(BigQueryReadClient readClient, string streamName)
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
@@ -217,7 +235,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             ReadRowsStream stream = new ReadRowsStream(enumerator);
 
-            return new ArrowStreamReader(stream);
+            if (stream.HasRows)
+            {
+                return new ArrowStreamReader(stream);
+            }
+            else
+            {
+                return null;
+            }
         }
 
         private QueryOptions ValidateOptions()
@@ -349,14 +374,27 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ReadOnlyMemory<byte> currentBuffer;
             bool first;
             int position;
+            bool hasRows;
 
             public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response)
             {
                 if (!response.MoveNextAsync().Result) { }
-                this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
+
+                if (response.Current != null)
+                {
+                    this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
+                    this.hasRows = true;
+                }
+                else
+                {
+                    this.hasRows = false;
+                }
+
                 this.response = response;
                 this.first = true;
             }
+
+            public bool HasRows => this.hasRows;
 
             public override bool CanRead => true;
 
