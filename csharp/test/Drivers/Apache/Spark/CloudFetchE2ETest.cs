@@ -34,7 +34,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     /// </summary>
     public class CloudFetchE2ETest : TestBase<SparkTestConfiguration, SparkTestEnvironment>
     {
-        public CloudFetchE2ETest(ITestOutputHelper? outputHelper) 
+        public CloudFetchE2ETest(ITestOutputHelper? outputHelper)
             : base(outputHelper, new SparkTestEnvironment.Factory())
         {
             // Skip the test if the SPARK_TEST_CONFIG_FILE environment variable is not set

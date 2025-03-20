@@ -132,20 +132,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     // Check if we have a TGetResultSetMetadataResp with URL_BASED_SET type
                     TGetResultSetMetadataResp? resultSetMetadata = GetResultSetMetadataAsync(
-                        sparkStatement.OperationHandle!, 
-                        Client, 
+                        sparkStatement.OperationHandle!,
+                        Client,
                         CancellationToken.None).Result;
-                    
+
                     // Check if we have URL-based results (CloudFetch) and CloudFetch is enabled
-                    if (sparkStatement.UseCloudFetch && 
-                        resultSetMetadata.__isset.resultFormat && 
+                    if (sparkStatement.UseCloudFetch &&
+                        resultSetMetadata.__isset.resultFormat &&
                         resultSetMetadata.ResultFormat == TSparkRowSetType.URL_BASED_SET)
                     {
                         // Create a CloudFetch reader
                         bool isLz4Compressed = resultSetMetadata.__isset.lz4Compressed && resultSetMetadata.Lz4Compressed && sparkStatement.CanDecompressLz4;
                         return new CloudFetch.SparkCloudFetchReader(statement, schema, isLz4Compressed);
                     }
-                    
+
                     // Check if we have Arrow-based results
                     if (resultSetMetadata.__isset.resultFormat && resultSetMetadata.ResultFormat == TSparkRowSetType.ARROW_BASED_SET)
                     {
@@ -158,7 +158,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     Console.WriteLine($"Error creating CloudFetch reader: {ex.Message}. Falling back to default reader.");
                 }
             }
-            
+
             // Fall back to the default reader
             return new HiveServer2Reader(statement, schema, DataTypeConversion);
         }

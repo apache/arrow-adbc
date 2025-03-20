@@ -26,7 +26,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         // Default maximum bytes per file for CloudFetch
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
-        
+
         // CloudFetch configuration
         private bool useCloudFetch = true;
         private bool canDecompressLz4 = true;
@@ -46,12 +46,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // Set in combination with a CancellationToken.
             statement.QueryTimeout = QueryTimeoutSeconds;
             statement.CanReadArrowResult = true;
-            
+
             // Set CloudFetch capabilities
             statement.CanDownloadResult = useCloudFetch;
             statement.CanDecompressLZ4Result = canDecompressLz4;
             statement.MaxBytesPerFile = maxBytesPerFile;
-            
+
 #pragma warning disable CS0618 // Type or member is obsolete
             statement.ConfOverlay = SparkConnection.timestampConfig;
 #pragma warning restore CS0618 // Type or member is obsolete

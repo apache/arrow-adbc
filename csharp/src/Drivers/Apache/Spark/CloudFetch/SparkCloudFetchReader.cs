@@ -44,9 +44,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         private ArrowStreamReader? currentReader;
         private readonly bool isLz4Compressed;
         private long startOffset;
-        
+
         // Lazy initialization of HttpClient
-        private readonly Lazy<HttpClient> _httpClient = new Lazy<HttpClient>(() => 
+        private readonly Lazy<HttpClient> _httpClient = new Lazy<HttpClient>(() =>
         {
             var client = new HttpClient();
             client.Timeout = TimeSpan.FromMinutes(5); // Set a reasonable timeout for large downloads
@@ -70,9 +70,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         /// Gets the Arrow schema.
         /// </summary>
         public Schema Schema { get { return schema; } }
-        
-        private HttpClient HttpClient 
-        { 
+
+        private HttpClient HttpClient
+        {
             get { return _httpClient.Value; }
         }
 
@@ -105,7 +105,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 {
                     var link = this.resultLinks[this.linkIndex++];
                     byte[]? fileData = null;
-                    
+
                     // Retry logic for downloading files
                     for (int retry = 0; retry < MaxRetries; retry++)
                     {
@@ -121,16 +121,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                             await Task.Delay(RetryDelayMs * (retry + 1), cancellationToken);
                         }
                     }
-                    
+
                     if (fileData == null)
                     {
                         // All retries failed, continue to the next link or fetch more links
                         continue;
                     }
-                    
+
                     // Process the downloaded file data
                     MemoryStream dataStream;
-                    
+
                     // If the data is LZ4 compressed, decompress it
                     if (this.isLz4Compressed)
                     {
@@ -154,7 +154,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                     {
                         dataStream = new MemoryStream(fileData);
                     }
-                    
+
                     try
                     {
                         this.currentReader = new ArrowStreamReader(dataStream);
@@ -179,13 +179,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
                 // Fetch more results from the server
                 TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
-                
+
                 // Set the start row offset if we have processed some links already
                 if (this.startOffset > 0)
                 {
                     request.StartRowOffset = this.startOffset;
                 }
-                
+
                 TFetchResultsResp response;
                 try
                 {
@@ -197,21 +197,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                     this.statement = null; // Mark as done due to error
                     return null;
                 }
-                
+
                 // Check if we have URL-based results
-                if (response.Results.__isset.resultLinks && 
-                    response.Results.ResultLinks != null && 
+                if (response.Results.__isset.resultLinks &&
+                    response.Results.ResultLinks != null &&
                     response.Results.ResultLinks.Count > 0)
                 {
                     this.resultLinks = response.Results.ResultLinks;
-                    
+
                     // Update the start offset for the next fetch by calculating it from the links
                     if (this.resultLinks.Count > 0)
                     {
                         var lastLink = this.resultLinks[this.resultLinks.Count - 1];
                         this.startOffset = lastLink.StartRowOffset + lastLink.RowCount;
                     }
-                    
+
                     // If the server indicates there are no more rows, we can close the statement
                     if (!response.HasMoreRows)
                     {
@@ -237,14 +237,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         {
             using HttpResponseMessage response = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             // Get the content length if available
             long? contentLength = response.Content.Headers.ContentLength;
             if (contentLength.HasValue && contentLength.Value > 0)
             {
                 Console.WriteLine($"Downloading file of size: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
             }
-            
+
             return await response.Content.ReadAsByteArrayAsync();
         }
 
@@ -258,7 +258,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 this.currentReader.Dispose();
                 this.currentReader = null;
             }
-            
+
             // Dispose the HttpClient if it was created
             if (_httpClient.IsValueCreated)
             {
