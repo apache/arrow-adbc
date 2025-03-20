@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -34,6 +35,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/bluele/gcache"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -61,6 +63,7 @@ type databaseImpl struct {
 
 	uri           *url.URL
 	creds         credentials.TransportCredentials
+	token         string
 	user, pass    string
 	hdrs          metadata.MD
 	timeout       timeoutOption
@@ -68,7 +71,193 @@ type databaseImpl struct {
 	enableCookies bool
 	options       map[string]string
 	userDialOpts  []grpc.DialOption
+	tokenExchange *tokenExchangeFlow
 }
+
+type OauthFlow int32
+
+const (
+	Anonymous     OauthFlow = iota
+	AuthPKCE      OauthFlow = 1
+	Confidential  OauthFlow = 2
+	TokenExchange OauthFlow = 5
+)
+
+type clientCredentials struct {
+	conf  *oauth2.Config
+	token *oauth2.Token
+}
+
+func newClientCredentials(clientId string, clientSecret string, endpoint string) *clientCredentials {
+	return &clientCredentials{
+		conf: &oauth2.Config{
+			ClientID:     clientId,
+			ClientSecret: clientSecret,
+			Endpoint: oauth2.Endpoint{
+				TokenURL: fmt.Sprintf("%s/token", endpoint),
+			},
+		},
+	}
+}
+
+type confidentialFlow struct {
+	conf  *oauth2.Config
+	token *oauth2.Token
+}
+
+func newConfidentialFlow(clientId string, clientSecret string, endpoint string) *confidentialFlow {
+	return &confidentialFlow{
+		conf: &oauth2.Config{
+			ClientID:     clientId,
+			ClientSecret: clientSecret,
+			Endpoint: oauth2.Endpoint{
+				TokenURL: fmt.Sprintf("%s/token", endpoint),
+			},
+		},
+	}
+}
+
+func (c *confidentialFlow) GetToken(ctx context.Context) (string, error) {
+	token, err := c.conf.TokenSource(ctx, c.token).Token()
+	if err != nil {
+		return "", err
+	}
+	return token.AccessToken, nil
+}
+
+type tokenExchangeFlow struct {
+	conf      *oauth2.Config
+	origToken *oauth2.Token
+	token     *oauth2.Token
+}
+
+func newTokenExchangeFlow(origToken *oauth2.Token, endpoint string, scopes []string) *tokenExchangeFlow {
+	return &tokenExchangeFlow{
+		origToken: origToken,
+		conf: &oauth2.Config{
+			Endpoint: oauth2.Endpoint{
+				TokenURL: fmt.Sprintf("%s/oauth/token", endpoint),
+			},
+		},
+	}
+}
+
+func (f *tokenExchangeFlow) GetToken(ctx context.Context) (string, error) {
+
+	if f.token == nil {
+		if f.origToken == nil {
+			return "", fmt.Errorf("no token to exchange")
+		}
+
+		options := []oauth2.AuthCodeOption{
+			oauth2.SetAuthURLParam("subject_token", f.origToken.AccessToken),
+			oauth2.SetAuthURLParam("subject_token_type", "urn:ietf:params:oauth:token-type:jwt"),
+			oauth2.SetAuthURLParam("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
+		}
+
+		options = append(options, oauth2.SetAuthURLParam("scope", "dremio.all"))
+
+		tok, err := f.conf.Exchange(ctx, "", options...)
+		if err != nil {
+			return "", err
+		}
+
+		f.token = tok
+		return tok.AccessToken, nil
+	}
+
+	token, err := f.conf.TokenSource(ctx, f.token).Token()
+	if err != nil {
+		return "", err
+	}
+	return token.AccessToken, nil
+}
+
+// conf2 := &oauth2.Config{
+// 	// ClientID: "dremio-backend",
+// 	// ClientSecret:
+// 	// RedirectURL: "http://localhost:8555/",
+// 	Scopes: scopes,
+// 	Endpoint: oauth2.Endpoint{
+// 		AuthURL:  "http://localhost:9047/oauth/auth",
+// 		TokenURL: "http://localhost:9047/oauth/token",
+// 	},
+// }
+
+// options := []oauth2.AuthCodeOption{
+// 	oauth2.SetAuthURLParam("subject_token", access_token.AccessToken),
+// 	oauth2.SetAuthURLParam("subject_token_type", "urn:ietf:params:oauth:token-type:jwt"),
+// 	oauth2.SetAuthURLParam("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
+// }
+// if len(scopes) > 0 {
+// 	options = append(options, oauth2.SetAuthURLParam("scope", "dremio.all")) // offline_access"))
+// }
+
+// tok, err := conf2.Exchange(ctx, "", options...)
+
+// type authPKCEAuthenticator struct {
+// 	token *oauth2.Token
+// }
+
+// func newTokenAuthenticator() *authPKCEAuthenticator {
+// 	conf := &oauth2.Config{
+// 		ClientID: "dremio-backend",
+// 		// ClientSecret:
+// 		RedirectURL: "http://localhost:8555/",
+// 		// Scopes:
+// 		Endpoint: oauth2.Endpoint{
+// 			TokenURL:      "http://localhost:8080/realms/dremio-realm/protocol/openid-connect/token",
+// 			AuthURL:       "http://localhost:8080/realms/dremio-realm/protocol/openid-connect/auth",
+// 			DeviceAuthURL: "http://localhost:8080/realms/dremio-realm/protocol/openid-connect/auth/device",
+// 			// AuthStyle:
+// 		},
+// 	}
+
+// 	// use PKCE to protect against CSRF attacks
+// 	// https://www.ietf.org/archive/id/draft-ietf-oauth-security-topics-22.html#name-countermeasures-6
+// 	verifier := oauth2.GenerateVerifier()
+
+// 	// Redirect user to consent page to ask for permission
+// 	// for the scopes specified above.
+// 	url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline, oauth2.S256ChallengeOption(verifier))
+// 	fmt.Printf("Visit the URL for the auth dialog: %v", url)
+
+// 	http.HandleFunc("/", redirectHandler)
+
+// 	// Start the HTTP server on port 8080
+// 	srv := &http.Server{Addr: ":8555"}
+
+// 	// Start the server in a goroutine
+// 	go func() {
+// 		fmt.Println("Starting server on port 8080")
+// 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+// 			fmt.Printf("Error starting server: %v\n", err)
+// 		}
+// 	}()
+
+// 	// Wait for the stop signal
+// 	code := <-stopChan
+
+// 	// Create a context with a timeout to allow the server to shut down gracefully
+// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+// 	defer cancel()
+
+// 	// Shutdown the server
+// 	if err := srv.Shutdown(ctx); err != nil {
+// 		fmt.Printf("Server forced to shutdown: %v\n", err)
+// 	}
+
+// 	fmt.Println("Server stopped")
+
+// 	return &authPKCEAuthenticator{
+// 		token: &oauth2.Token{},
+// 	}
+// }
+
+// func (t *authPKCEAuthenticator) GetToken(ctx context.Context) (string, error) {
+// 	//Check if the token is expired
+// 	return t.token.AccessToken, nil
+// }
 
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	var tlsConfig tls.Config
@@ -149,7 +338,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	if u, ok := cnOptions[adbc.OptionKeyUsername]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authorization header already provided, do not provide user/pass also",
+				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter",
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -160,12 +349,26 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	if p, ok := cnOptions[adbc.OptionKeyPassword]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authorization header already provided, do not provide user/pass also",
+				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter",
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
 		d.pass = p
 		delete(cnOptions, adbc.OptionKeyPassword)
+	}
+
+	if p, ok := cnOptions[adbc.OptionKeyToken]; ok {
+		if d.hdrs.Len() > 0 {
+			return adbc.Error{
+				Msg:  "Authentication conflict: Use either Authorization header OR token parameter",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
+		// d.tokenExchange = newTokenExchangeFlow(&oauth2.Token{AccessToken: p}, "http://autorelease.drem.io:9047", []string{"dremio.all"})
+		d.tokenExchange = newTokenExchangeFlow(&oauth2.Token{AccessToken: p}, "http://localhost:9047", []string{"dremio.all"})
+		// d.token = p
+		delete(cnOptions, adbc.OptionKeyToken)
 	}
 
 	var err error
@@ -338,6 +541,123 @@ func (d *databaseImpl) Close() error {
 	return nil
 }
 
+func redirectHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract query parameters from the redirect URI
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+
+	// Print the received code and state
+	fmt.Printf("Received code: %s\n", code)
+	fmt.Printf("Received state: %s\n", state)
+
+	// Respond to the client
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Authorization code received. You can close this window."))
+	stopChan <- code
+}
+
+var stopChan = make(chan string)
+
+func getRefreshToken(ctx context.Context) (string, error) {
+
+	conf := &oauth2.Config{
+		ClientID: "dremio-backend",
+		// ClientSecret:
+		RedirectURL: "http://localhost:8555/",
+		// Scopes:
+		Endpoint: oauth2.Endpoint{
+			TokenURL:      "http://localhost:8080/realms/dremio-realm/protocol/openid-connect/token",
+			AuthURL:       "http://localhost:8080/realms/dremio-realm/protocol/openid-connect/auth",
+			DeviceAuthURL: "http://localhost:8080/realms/dremio-realm/protocol/openid-connect/auth/device",
+			// AuthStyle:
+		},
+	}
+
+	// use PKCE to protect against CSRF attacks
+	// https://www.ietf.org/archive/id/draft-ietf-oauth-security-topics-22.html#name-countermeasures-6
+	verifier := oauth2.GenerateVerifier()
+
+	// Redirect user to consent page to ask for permission
+	// for the scopes specified above.
+	url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline, oauth2.S256ChallengeOption(verifier))
+	fmt.Printf("Visit the URL for the auth dialog: %v", url)
+
+	http.HandleFunc("/", redirectHandler)
+
+	// Start the HTTP server on port 8080
+	srv := &http.Server{Addr: ":8555"}
+
+	// Start the server in a goroutine
+	go func() {
+		fmt.Println("Starting server on port 8080")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Printf("Error starting server: %v\n", err)
+		}
+	}()
+
+	// Wait for the stop signal
+	code := <-stopChan
+
+	// Create a context with a timeout to allow the server to shut down gracefully
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Shutdown the server
+	if err := srv.Shutdown(ctx); err != nil {
+		fmt.Printf("Server forced to shutdown: %v\n", err)
+	}
+
+	fmt.Println("Server stopped")
+
+	// Use the authorization code that is pushed to the redirect
+	// URL. Exchange will do the handshake to retrieve the
+	// initial access token. The HTTP Client returned by
+	// conf.Client will refresh the token as necessary.
+	// if _, err := fmt.Scan(&code); err != nil {
+	// 	fmt.Errorf("%s", err)
+	// }
+
+	// options := []oauth2.AuthCodeOption {
+	//     oauth2.SetAuthURLParam("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
+	//     oauth2.SetAuthURLParam("subject_token", "a-token-jwt"),
+	//     oauth2.SetAuthURLParam("subject_token_type", "urn:ietf:params:oauth:token-type:jwt"),
+	// }
+
+	// https://github.com/apache/arrow/issues/38565
+	// https://github.com/apache/arrow/issues/41919
+
+	access_token, err := conf.Exchange(ctx, code, oauth2.VerifierOption(verifier))
+
+	var scopes = []string{"dremio.all", "offline_access"}
+
+	conf2 := &oauth2.Config{
+		// ClientID: "dremio-backend",
+		// ClientSecret:
+		// RedirectURL: "http://localhost:8555/",
+		Scopes: scopes,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "http://localhost:9047/oauth/auth",
+			TokenURL: "http://localhost:9047/oauth/token",
+		},
+	}
+
+	options := []oauth2.AuthCodeOption{
+		oauth2.SetAuthURLParam("subject_token", access_token.AccessToken),
+		oauth2.SetAuthURLParam("subject_token_type", "urn:ietf:params:oauth:token-type:jwt"),
+		oauth2.SetAuthURLParam("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
+	}
+	if len(scopes) > 0 {
+		options = append(options, oauth2.SetAuthURLParam("scope", "dremio.all")) // offline_access"))
+	}
+
+	tok, err := conf2.Exchange(ctx, "", options...)
+	if err != nil {
+		return "", err
+	}
+
+	return tok.AccessToken, nil
+}
+
 func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware) (*flightsql.Client, error) {
 	middleware := []flight.ClientMiddleware{
 		{
@@ -375,6 +695,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	dialOpts = append(dialOpts, d.userDialOpts...)
 
 	d.Logger.DebugContext(ctx, "new client", "location", loc)
+	// cl, err := flightsql.NewClient(target, &clientAuth{}, middleware, dialOpts...)
 	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)
 	if err != nil {
 		return nil, adbc.Error{
@@ -387,7 +708,19 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	if len(authMiddle.hdrs.Get("authorization")) > 0 {
 		d.Logger.DebugContext(ctx, "reusing auth token", "location", loc)
 	} else {
-		if d.user != "" || d.pass != "" {
+		if d.tokenExchange != nil {
+			token, err := d.tokenExchange.GetToken(ctx)
+			if err != nil {
+				return nil, adbcFromFlightStatusWithDetails(err, nil, nil, "Authenticate TokenExchange")
+			}
+			authMiddle.hdrs.Set("authorization", "Bearer "+token)
+		} else if d.token != "" {
+			token, err := getRefreshToken(ctx)
+			if err != nil {
+				return nil, adbcFromFlightStatusWithDetails(err, nil, nil, "Authenticate")
+			}
+			authMiddle.hdrs.Set("authorization", "Bearer "+token)
+		} else if d.user != "" || d.pass != "" {
 			var header, trailer metadata.MD
 			ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
 			if err != nil {
