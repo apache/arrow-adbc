@@ -1278,6 +1278,14 @@ the type of the corresponding field will be NA (NullType).</p>
 <section id="module-adbc_driver_manager.dbapi">
 <span id="dbapi-2-0-api"></span><h2>DBAPI 2.0 API<a class="headerlink" href="#module-adbc_driver_manager.dbapi" title="Link to this heading">¶</a></h2>
 <p>PEP 249 (DB-API 2.0) API wrapper for the ADBC Driver Manager.</p>
+<section id="pyarrow-requirement">
+<h3>PyArrow Requirement<a class="headerlink" href="#pyarrow-requirement" title="Link to this heading">¶</a></h3>
+<p>This module requires PyArrow for full functionality.  If PyArrow is not
+installed, all functionality that actually reads/writes data will be missing.
+You can still execute queries and get the result as a PyCapsule, but many
+other methods will raise.  Also, the DB-API type definitions (<code class="docutils literal notranslate"><span class="pre">BINARY</span></code>,
+<code class="docutils literal notranslate"><span class="pre">DATETIME</span></code>, etc) will be present, but invalid.</p>
+</section>
 <section id="resource-management">
 <h3>Resource Management<a class="headerlink" href="#resource-management" title="Link to this heading">¶</a></h3>
 <p>You must <code class="docutils literal notranslate"><span class="pre">close()</span></code> Connection and Cursor objects, or else driver
@@ -1677,11 +1685,17 @@ connections.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executescript" title="adbc_driver_manager.dbapi.Cursor.executescript"><code class="xref py py-obj docutils literal notranslate"><span class="pre">executescript</span></code></a>(operation)</p></td>
 <td><p>Execute multiple statements.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table" title="adbc_driver_manager.dbapi.Cursor.fetch_arrow_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_arrow_table</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow" title="adbc_driver_manager.dbapi.Cursor.fetch_arrow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_arrow</span></code></a>()</p></td>
+<td><p>Fetch the result as an object implementing the Arrow PyCapsule interface.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table" title="adbc_driver_manager.dbapi.Cursor.fetch_arrow_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_arrow_table</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result as a PyArrow Table.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_df" title="adbc_driver_manager.dbapi.Cursor.fetch_df"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_df</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_df" title="adbc_driver_manager.dbapi.Cursor.fetch_df"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_df</span></code></a>()</p></td>
 <td><p>Fetch all rows of the result as a Pandas DataFrame.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_polars" title="adbc_driver_manager.dbapi.Cursor.fetch_polars"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_polars</span></code></a>()</p></td>
+<td><p>Fetch all rows of the result as a Polars DataFrame.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_record_batch" title="adbc_driver_manager.dbapi.Cursor.fetch_record_batch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fetch_record_batch</span></code></a>()</p></td>
 <td><p>Fetch the result as a PyArrow RecordBatchReader.</p></td>
@@ -1759,7 +1773,7 @@ execution is enabled and the server has not returned a schema.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.adbc_ingest">
-<span class="sig-name descname"><span class="pre">adbc_ingest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html#pyarrow.RecordBatch" title="(in Apache Arrow v19.0.1)"><span class="pre">RecordBatch</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table" title="(in Apache Arrow v19.0.1)"><span class="pre">Table</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v19.0.1)"><span class="pre">RecordBatchReader</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'append'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'create'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'replace'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'create_append'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'create'</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalog_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_schema_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">adbc_ingest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html#pyarrow.RecordBatch" title="(in Apache Arrow v19.0.1)"><span class="pre">pyarrow.RecordBatch</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table" title="(in Apache Arrow v19.0.1)"><span class="pre">pyarrow.Table</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v19.0.1)"><span class="pre">pyarrow.RecordBatchReader</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">CapsuleType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'append'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'create'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'replace'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'create_append'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'create'</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalog_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_schema_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.adbc_ingest" title="Link to this definition">¶</a></dt>
 <dd><p>Ingest Arrow data into a database table.</p>
 <p>Depending on the driver, this can avoid per-row overhead that
 would result from a typical prepare-bind-insert loop.</p>
@@ -1924,6 +1938,18 @@ be executed once per row.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.fetch_arrow">
+<span class="sig-name descname"><span class="pre">fetch_arrow</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle" title="adbc_driver_manager._lib.ArrowArrayStreamHandle"><span class="pre">ArrowArrayStreamHandle</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow" title="Link to this definition">¶</a></dt>
+<dd><p>Fetch the result as an object implementing the Arrow PyCapsule interface.</p>
+<p>This can only be called once.  It must be called before any other
+method that inspect the data (e.g. description, fetchone,
+fetch_arrow_table, etc.).  Once this is called, other methods that
+inspect the data may not be called.</p>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.fetch_arrow_table">
 <span class="sig-name descname"><span class="pre">fetch_arrow_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table" title="(in Apache Arrow v19.0.1)"><span class="pre">Table</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table" title="Link to this definition">¶</a></dt>
 <dd><p>Fetch all rows of the result as a PyArrow Table.</p>
@@ -1937,6 +1963,14 @@ be executed once per row.</p>
 <span class="sig-name descname"><span class="pre">fetch_df</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.2.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.fetch_df" title="Link to this definition">¶</a></dt>
 <dd><p>Fetch all rows of the result as a Pandas DataFrame.</p>
 <p>This implements a similar API as DuckDB.</p>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.fetch_polars">
+<span class="sig-name descname"><span class="pre">fetch_polars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">polars.DataFrame</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.fetch_polars" title="Link to this definition">¶</a></dt>
+<dd><p>Fetch all rows of the result as a Polars DataFrame.</p>
 <p class="rubric">Notes</p>
 <p>This is an extension and not part of the DBAPI standard.</p>
 </dd></dl>
@@ -2312,6 +2346,7 @@ United States and other countries.
 </ul>
 </li>
 <li><a class="reference internal" href="#module-adbc_driver_manager.dbapi">DBAPI 2.0 API</a><ul>
+<li><a class="reference internal" href="#pyarrow-requirement">PyArrow Requirement</a></li>
 <li><a class="reference internal" href="#resource-management">Resource Management</a></li>
 <li><a class="reference internal" href="#id1">Constants &amp; Enums</a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.apilevel"><code class="docutils literal notranslate"><span class="pre">apilevel</span></code></a></li>
@@ -2368,8 +2403,10 @@ United States and other countries.
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.execute"><code class="docutils literal notranslate"><span class="pre">Cursor.execute()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executemany"><code class="docutils literal notranslate"><span class="pre">Cursor.executemany()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.executescript"><code class="docutils literal notranslate"><span class="pre">Cursor.executescript()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_arrow()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_arrow_table"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_arrow_table()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_df"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_df()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_polars"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_polars()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetch_record_batch"><code class="docutils literal notranslate"><span class="pre">Cursor.fetch_record_batch()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchall"><code class="docutils literal notranslate"><span class="pre">Cursor.fetchall()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor.fetchallarrow"><code class="docutils literal notranslate"><span class="pre">Cursor.fetchallarrow()</span></code></a></li>
