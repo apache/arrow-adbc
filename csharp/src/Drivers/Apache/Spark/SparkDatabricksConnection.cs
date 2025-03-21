@@ -18,6 +18,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -29,7 +31,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkDatabricksReader(statement, schema);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema)
+        {
+            // Choose the appropriate reader based on the result format
+            if (statement.currentResultFormat == TSparkRowSetType.URL_BASED_SET)
+            {
+                return new SparkCloudFetchReader(statement as HiveServer2Statement, schema, statement.isLz4Compressed);
+            }
+            else
+            {
+                return new SparkDatabricksReader(statement as HiveServer2Statement, schema);
+            }
+        }
 
         internal override SchemaParser SchemaParser => new SparkDatabricksSchemaParser();
 
@@ -40,6 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             var req = new TOpenSessionReq
             {
                 Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
+                Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
                 CanUseMultipleCatalogs = true,
             };
             return req;

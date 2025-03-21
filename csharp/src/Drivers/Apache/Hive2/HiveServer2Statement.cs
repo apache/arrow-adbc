@@ -27,6 +27,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2Statement : AdbcStatement
     {
+        internal TSparkRowSetType currentResultFormat = TSparkRowSetType.ARROW_BASED_SET;
+        // Track the result format and compression for the current query
+        internal bool isLz4Compressed = false;
+
+
         internal HiveServer2Statement(HiveServer2Connection connection)
         {
             Connection = connection;
@@ -84,7 +89,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // take QueryTimeoutSeconds (but this could be restricting)
             await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
             await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-            Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken); // + get the result, up to QueryTimeout
+            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
+            Schema schema = Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
+
+            // Check if the result format is specified
+            if (response.__isset.resultFormat)
+            {
+                currentResultFormat = response.ResultFormat;
+            }
+
+            if(response.__isset.lz4Compressed)
+            {
+                isLz4Compressed = response.Lz4Compressed;
+            }
 
             return new QueryResult(-1, Connection.NewReader(this, schema));
         }
