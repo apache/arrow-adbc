@@ -161,10 +161,33 @@ import $component.dbapi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
         if [[ "${component}" = "adbc_driver_manager" ]]; then
-            export PYTEST_ADDOPTS="-k 'not duckdb and not sqlite'"
-        elif [[ "${component}" = "adbc_driver_postgresql" ]]; then
-            export PYTEST_ADDOPTS="-k 'not polars'"
+            export PYTEST_ADDOPTS="${PYTEST_ADDOPTS} -k 'not duckdb and not sqlite'"
         fi
         python -m pytest -vvx --import-mode append ${source_dir}/python/$component/tests
+    done
+}
+
+function test_packages_pyarrowless {
+    local -r driver_path=$(python -c "import os; import adbc_driver_sqlite; print(os.path.dirname(adbc_driver_sqlite._driver_path()))")
+    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${driver_path}"
+    export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${driver_path}"
+    # For macOS (because we name the file ".so" on every platform regardless of the actual type)
+    ln -s "${driver_path}/libadbc_driver_sqlite.so" "${driver_path}/libadbc_driver_sqlite.dylib"
+    for component in ${COMPONENTS}; do
+        echo "=== Testing $component (no PyArrow) ==="
+
+        python -c "
+import $component
+import $component.dbapi
+"
+
+        local test_files=$(find ${source_dir}/python/$component/tests -type f |
+                               grep -e 'nopyarrow\.py$')
+        if [[ -z "${test_files}" ]]; then
+            continue
+        fi
+
+        # --import-mode required, else tries to import from the source dir instead of installed package
+        python -m pytest -vvx --import-mode append "${test_files[@]}"
     done
 }
