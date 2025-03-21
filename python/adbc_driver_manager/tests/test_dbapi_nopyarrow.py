@@ -108,13 +108,12 @@ def test_query_bind(sqlite: dbapi.Connection, parameters: typing.Any) -> None:
     with sqlite.cursor() as cursor:
         cursor.execute("SELECT 1 + ? AS theresult", parameters=parameters)
 
-        cursor.execute("SELECT 1 AS theresult")
         df = cursor.fetch_polars()
         polars.testing.assert_frame_equal(
             df,
             polars.DataFrame(
                 {
-                    "theresult": [1],
+                    "theresult": [2],
                 }
             ),
         )
