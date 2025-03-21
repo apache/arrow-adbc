@@ -663,8 +663,6 @@ class Cursor(_Closeable):
             self._stmt.bind(parameters)
         elif hasattr(parameters, "__arrow_c_stream__"):
             self._stmt.bind_stream(parameters)
-        elif _lib.is_pycapsule(parameters, b"arrow_array"):
-            self._stmt.bind(parameters)
         elif _lib.is_pycapsule(parameters, b"arrow_array_stream"):
             self._stmt.bind_stream(parameters)
         else:
@@ -936,8 +934,6 @@ class Cursor(_Closeable):
             self._stmt.bind(data)
         elif hasattr(data, "__arrow_c_stream__"):
             self._stmt.bind_stream(data)
-        elif _lib.is_pycapsule(data, b"arrow_array"):
-            self._stmt.bind(data)
         elif _lib.is_pycapsule(data, b"arrow_array_stream"):
             self._stmt.bind_stream(data)
         else:

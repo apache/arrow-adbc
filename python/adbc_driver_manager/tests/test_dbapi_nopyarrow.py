@@ -51,7 +51,6 @@ def sqlite() -> typing.Generator[dbapi.Connection, None, None]:
             polars.DataFrame({"theresult": [1]}).__arrow_c_stream__(),
             id="PyCapsule_Stream",
         ),
-        # TODO: It seems we can't get an array capsule from a series
     ],
 )
 def test_ingest(sqlite: dbapi.Connection, data: typing.Any) -> None:
@@ -103,7 +102,6 @@ def test_query(sqlite: dbapi.Connection) -> None:
         pytest.param(
             polars.DataFrame({"$0": [1]}).__arrow_c_stream__(), id="PyCapsule_Stream"
         ),
-        # TODO: It seems we can't get an array capsule from a series
     ],
 )
 def test_query_bind(sqlite: dbapi.Connection, parameters: typing.Any) -> None:
@@ -152,7 +150,6 @@ def test_query_double_capsule(sqlite: dbapi.Connection) -> None:
 
         capsule = cursor.fetch_arrow()
 
-        # TODO: test new method with pyarrow installed too
         with pytest.raises(dbapi.ProgrammingError, match="has been closed"):
             cursor.fetch_arrow()
 
