@@ -25,7 +25,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string AuthType = "adbc.hive.auth_type";
         public const string TransportType = "adbc.hive.transport_type";
         public const string DataTypeConv = "adbc.hive.data_type_conv";
-        public const string TLSOptions = "adbc.hive.tls_options";
         public const string ConnectTimeoutMilliseconds = "adbc.hive.connect_timeout_ms";
     }
 
@@ -49,7 +48,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
     public static class TlsOptions
     {
-        public const string AllowSelfSigned = "allow_self_signed";
-        public const string AllowHostnameMismatch = "allow_hostname_mismatch";
+        public const string IsSslEnabled = "adbc.apache.ssl";
+        public const string AllowSelfSigned = "adbc.apache.allow_self_signed";
+        public const string AllowHostnameMismatch = "adbc.apache.allow_hostname_mismatch";
+        public const string TrustedCertificatePath = "adbc.apache.trusted_certificate_path";
+        public const string EnableServerCertificateValidation = "adbc.apache.enable_server_certificate_validation";
     }
 }
