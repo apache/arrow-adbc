@@ -258,7 +258,7 @@ func (suite *AuthnTests) TestBearerTokenUpdated() {
 type OAuthTests struct {
 	ServerBasedTests
 
-	server          *httptest.Server
+	oauthServer     *httptest.Server
 	mockOAuthServer *MockOAuthServer
 }
 
@@ -339,22 +339,28 @@ func oauthTestUnary(ctx context.Context, req interface{}, info *grpc.UnaryServer
 
 func (suite *OAuthTests) SetupSuite() {
 	suite.mockOAuthServer = &MockOAuthServer{}
-	suite.server = httptest.NewServer(http.HandlerFunc(suite.mockOAuthServer.handleTokenRequest))
-}
-
-func (suite *OAuthTests) TearDownSuite() {
-	suite.server.Close()
-}
-
-func (suite *OAuthTests) SetupTest() {
-	// override inherited setup to reset db and open the database during test execution
+	suite.oauthServer = httptest.NewServer(http.HandlerFunc(suite.mockOAuthServer.handleTokenRequest))
 	suite.DoSetupSuite(&AuthnTestServer{}, []flight.ServerMiddleware{
 		{Unary: oauthTestUnary},
 	}, map[string]string{})
 }
 
+func (suite *OAuthTests) TearDownSuite() {
+	suite.oauthServer.Close()
+}
+
+func (suite *OAuthTests) SetupTest() {
+	// override inherited setup to reset db and open the database during test execution
+	var err error
+	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabaseWithOptions(
+		map[string]string{
+			"uri": "grpc+tcp://" + suite.s.Addr().String(),
+		})
+	suite.Require().NoError(err)
+}
+
 func (suite *OAuthTests) TearDownTest() {
-	// override inherited teardown close the database during test execution
+	suite.db.Close()
 }
 
 func (suite *OAuthTests) TestToken() {
@@ -371,7 +377,7 @@ func (suite *OAuthTests) TestTokenExchangeFlow() {
 		driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
 		adbc.OptionKeyToken:              "test-subject-token",
 		driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
-		driver.OptionKeyTokenURI:         suite.server.URL,
+		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
 	})
 	suite.Require().NoError(err)
 
@@ -385,7 +391,7 @@ func (suite *OAuthTests) TestClientCredentialsFlow() {
 		driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
 		driver.OptionKeyClientId:     "test-client",
 		driver.OptionKeyClientSecret: "test-secret",
-		driver.OptionKeyTokenURI:     suite.server.URL,
+		driver.OptionKeyTokenURI:     suite.oauthServer.URL,
 	})
 	suite.Require().NoError(err)
 
@@ -427,7 +433,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
 			options: map[string]string{
 				driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
 				driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
-				driver.OptionKeyTokenURI:         suite.server.URL,
+				driver.OptionKeyTokenURI:         suite.oauthServer.URL,
 			},
 			expectedErrorMsg: "Not Implemented: oauth flow not implemented: 4",
 		},
@@ -436,7 +442,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
 			options: map[string]string{
 				driver.OptionKeyOauthFlow: strconv.Itoa(driver.TokenExchange),
 				adbc.OptionKeyToken:       "test-subject-token",
-				driver.OptionKeyTokenURI:  suite.server.URL,
+				driver.OptionKeyTokenURI:  suite.oauthServer.URL,
 			},
 			expectedErrorMsg: "token Exchange grant requires subject token type",
 		},
@@ -471,7 +477,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
 			options: map[string]string{
 				driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
 				driver.OptionKeyClientSecret: "test-secret",
-				driver.OptionKeyTokenURI:     suite.server.URL,
+				driver.OptionKeyTokenURI:     suite.oauthServer.URL,
 			},
 			expectedErrorMsg: "client credentials grant requires client_id",
 		},
@@ -480,7 +486,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
 			options: map[string]string{
 				driver.OptionKeyOauthFlow: strconv.Itoa(driver.ClientCredentials),
 				driver.OptionKeyClientId:  "test-client",
-				driver.OptionKeyTokenURI:  suite.server.URL,
+				driver.OptionKeyTokenURI:  suite.oauthServer.URL,
 			},
 			expectedErrorMsg: "client credentials grant requires client_secret",
 		},
