@@ -59,14 +59,22 @@ func newClientCredentials(options map[string]string) (*clientCredentials, error)
 	delete(options, OptionKeyClientId)
 	delete(options, OptionKeyClientSecret)
 	delete(options, OptionKeyTokenURI)
-	return &clientCredentials{
-		conf: &oauth2.Config{
-			ClientID:     clientId,
-			ClientSecret: clientSecret,
-			Endpoint: oauth2.Endpoint{
-				TokenURL: tokenURI,
-			},
+	conf := &oauth2.Config{
+		ClientID:     clientId,
+		ClientSecret: clientSecret,
+		Endpoint: oauth2.Endpoint{
+			TokenURL: tokenURI,
 		},
+	}
+
+	scopes := options[OptionKeyScope]
+	if scopes != "" {
+		conf.Scopes = []string{scopes}
+		delete(options, OptionKeyScope)
+	}
+
+	return &clientCredentials{
+		conf: conf,
 	}, nil
 }
 
