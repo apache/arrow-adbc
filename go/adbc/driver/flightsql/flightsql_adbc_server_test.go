@@ -288,11 +288,12 @@ func (m *MockOAuthServer) handleTokenRequest(w http.ResponseWriter, r *http.Requ
 		if clientID == "test-client" && clientSecret == "test-secret" {
 			// Return a valid token response
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"access_token": "test-client-token",
 				"token_type": "bearer",
 				"expires_in": 3600
 			}`))
+
 			return
 		}
 
@@ -306,7 +307,7 @@ func (m *MockOAuthServer) handleTokenRequest(w http.ResponseWriter, r *http.Requ
 			subjectTokenType == "urn:ietf:params:oauth:token-type:jwt" {
 			// Return a valid token response
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"access_token": "test-exchanged-token",
 				"token_type": "bearer",
 				"expires_in": 3600
@@ -357,34 +358,37 @@ func (suite *OAuthTests) TearDownTest() {
 }
 
 func (suite *OAuthTests) TestToken() {
-	suite.db.SetOptions(map[string]string{
+	err := suite.db.SetOptions(map[string]string{
 		adbc.OptionKeyToken: "test-client-token",
 	})
+	suite.Require().NoError(err)
 
 	suite.openAndExecuteQuery("a-query")
 }
 
 func (suite *OAuthTests) TestTokenExchangeFlow() {
-	suite.db.SetOptions(map[string]string{
+	err := suite.db.SetOptions(map[string]string{
 		driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
 		adbc.OptionKeyToken:              "test-subject-token",
 		driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 		driver.OptionKeyTokenURI:         suite.server.URL,
 	})
+	suite.Require().NoError(err)
 
 	suite.openAndExecuteQuery("a-query")
 	suite.Equal(1, suite.mockOAuthServer.tokenExchangeCalls, "Token exchange flow should be called once")
 }
 
 func (suite *OAuthTests) TestClientCredentialsFlow() {
-	suite.db.SetOptions(map[string]string{
+	var err error
+	err = suite.db.SetOptions(map[string]string{
 		driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
 		driver.OptionKeyClientId:     "test-client",
 		driver.OptionKeyClientSecret: "test-secret",
 		driver.OptionKeyTokenURI:     suite.server.URL,
 	})
+	suite.Require().NoError(err)
 
-	var err error
 	suite.cnxn, err = suite.db.Open(context.Background())
 	suite.Require().NoError(err)
 	defer suite.cnxn.Close()
