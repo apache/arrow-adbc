@@ -25,6 +25,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/textproto"
 	"os"
 	"strconv"
@@ -150,6 +152,10 @@ func TestGetObjects(t *testing.T) {
 	suite.Run(t, &GetObjectsTests{})
 }
 
+func TestOauth(t *testing.T) {
+	suite.Run(t, &OAuthTests{})
+}
+
 // ---- AuthN Tests --------------------
 
 type AuthnTestServer struct {
@@ -247,6 +253,284 @@ func (suite *AuthnTests) TestBearerTokenUpdated() {
 	reader, _, err := stmt.ExecuteQuery(context.Background())
 	suite.NoError(err)
 	defer reader.Release()
+}
+
+type OAuthTests struct {
+	ServerBasedTests
+
+	server          *httptest.Server
+	mockOAuthServer *MockOAuthServer
+}
+
+// MockOAuthServer simulates an OAuth 2.0 server for testing
+type MockOAuthServer struct {
+	// Track calls to validate server behavior
+	clientCredentialsCalls int
+	tokenExchangeCalls     int
+}
+
+func (m *MockOAuthServer) handleTokenRequest(w http.ResponseWriter, r *http.Request) {
+	// Parse the form to get the request parameters
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	grantType := r.FormValue("grant_type")
+
+	switch grantType {
+	case "client_credentials":
+		m.clientCredentialsCalls++
+		// Validate client credentials
+		clientID := r.FormValue("client_id")
+		clientSecret := r.FormValue("client_secret")
+
+		if clientID == "test-client" && clientSecret == "test-secret" {
+			// Return a valid token response
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{
+				"access_token": "test-client-token",
+				"token_type": "bearer",
+				"expires_in": 3600
+			}`))
+			return
+		}
+
+	case "urn:ietf:params:oauth:grant-type:token-exchange":
+		m.tokenExchangeCalls++
+		// Validate token exchange parameters
+		subjectToken := r.FormValue("subject_token")
+		subjectTokenType := r.FormValue("subject_token_type")
+
+		if subjectToken == "test-subject-token" &&
+			subjectTokenType == "urn:ietf:params:oauth:token-type:jwt" {
+			// Return a valid token response
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{
+				"access_token": "test-exchanged-token",
+				"token_type": "bearer",
+				"expires_in": 3600
+			}`))
+			return
+		}
+	}
+
+	// Default: return error for invalid request
+	http.Error(w, "Invalid request", http.StatusBadRequest)
+}
+
+func oauthTestUnary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "Could not get metadata")
+	}
+	auth := md.Get("authorization")
+	if len(auth) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "No token")
+	} else if auth[0] != "Bearer test-exchanged-token" && auth[0] != "Bearer test-client-token" {
+		return nil, status.Error(codes.Unauthenticated, "Invalid token for unary call: "+auth[0])
+	}
+
+	md.Set("authorization", "Bearer final")
+	ctx = metadata.NewOutgoingContext(ctx, md)
+	return handler(ctx, req)
+}
+
+func (suite *OAuthTests) SetupSuite() {
+	suite.mockOAuthServer = &MockOAuthServer{}
+	suite.server = httptest.NewServer(http.HandlerFunc(suite.mockOAuthServer.handleTokenRequest))
+}
+
+func (suite *OAuthTests) TearDownSuite() {
+	suite.server.Close()
+}
+
+func (suite *OAuthTests) SetupTest() {
+	// override inherited setup to reset db and open the database during test execution
+	suite.DoSetupSuite(&AuthnTestServer{}, []flight.ServerMiddleware{
+		{Unary: oauthTestUnary},
+	}, map[string]string{})
+}
+
+func (suite *OAuthTests) TearDownTest() {
+	// override inherited teardown close the database during test execution
+}
+
+func (suite *OAuthTests) TestToken() {
+	suite.db.SetOptions(map[string]string{
+		adbc.OptionKeyToken: "test-client-token",
+	})
+
+	suite.openAndExecuteQuery("a-query")
+}
+
+func (suite *OAuthTests) TestTokenExchangeFlow() {
+	suite.db.SetOptions(map[string]string{
+		driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
+		adbc.OptionKeyToken:              "test-subject-token",
+		driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
+		driver.OptionKeyTokenURI:         suite.server.URL,
+	})
+
+	suite.openAndExecuteQuery("a-query")
+	suite.Equal(1, suite.mockOAuthServer.tokenExchangeCalls, "Token exchange flow should be called once")
+}
+
+func (suite *OAuthTests) TestClientCredentialsFlow() {
+	suite.db.SetOptions(map[string]string{
+		driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
+		driver.OptionKeyClientId:     "test-client",
+		driver.OptionKeyClientSecret: "test-secret",
+		driver.OptionKeyTokenURI:     suite.server.URL,
+	})
+
+	var err error
+	suite.cnxn, err = suite.db.Open(context.Background())
+	suite.Require().NoError(err)
+	defer suite.cnxn.Close()
+
+	suite.openAndExecuteQuery("a-query")
+	// golang/oauth2 tries to call the token endpoint sending the client credentials in the authentication header,
+	// if it fails, it retries sending the client credentials in the request body.
+	// See https://code.google.com/p/goauth2/issues/detail?id=31 for background.
+	suite.Equal(2, suite.mockOAuthServer.clientCredentialsCalls, "Client credentials flow should be called once")
+}
+
+func (suite *OAuthTests) openAndExecuteQuery(query string) {
+	var err error
+	suite.cnxn, err = suite.db.Open(context.Background())
+	suite.Require().NoError(err)
+	defer suite.cnxn.Close()
+
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	suite.NoError(err)
+	defer reader.Release()
+}
+
+func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
+	testCases := []struct {
+		name             string
+		options          map[string]string
+		expectedErrorMsg string
+	}{
+		{
+			name: "Missing token",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
+				driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
+				driver.OptionKeyTokenURI:         suite.server.URL,
+			},
+			expectedErrorMsg: "Not Implemented: oauth flow not implemented: 4",
+		},
+		{
+			name: "Missing subject token type",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow: strconv.Itoa(driver.TokenExchange),
+				adbc.OptionKeyToken:       "test-subject-token",
+				driver.OptionKeyTokenURI:  suite.server.URL,
+			},
+			expectedErrorMsg: "token Exchange grant requires subject token type",
+		},
+		{
+			name: "Missing token URI",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
+				adbc.OptionKeyToken:              "test-subject-token",
+				driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
+			},
+			expectedErrorMsg: "token exchange grant requires token URI",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// We need to set options with the driver's SetOptions method
+			err := suite.db.SetOptions(tc.options)
+			suite.Error(err, "Expected error for missing parameters")
+			suite.Contains(err.Error(), tc.expectedErrorMsg)
+		})
+	}
+}
+func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
+	testCases := []struct {
+		name             string
+		options          map[string]string
+		expectedErrorMsg string
+	}{
+		{
+			name: "Missing client ID",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
+				driver.OptionKeyClientSecret: "test-secret",
+				driver.OptionKeyTokenURI:     suite.server.URL,
+			},
+			expectedErrorMsg: "client credentials grant requires client_id",
+		},
+		{
+			name: "Missing client secret",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow: strconv.Itoa(driver.ClientCredentials),
+				driver.OptionKeyClientId:  "test-client",
+				driver.OptionKeyTokenURI:  suite.server.URL,
+			},
+			expectedErrorMsg: "client credentials grant requires client_secret",
+		},
+		{
+			name: "Missing token URI",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
+				driver.OptionKeyClientId:     "test-client",
+				driver.OptionKeyClientSecret: "test-secret",
+			},
+			expectedErrorMsg: "client credentials grant requires token_uri",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// We need to set options with the driver's SetOptions method
+			err := suite.db.SetOptions(tc.options)
+			suite.Error(err, "Expected error for missing parameters")
+			suite.Contains(err.Error(), tc.expectedErrorMsg)
+		})
+	}
+}
+
+func (suite *OAuthTests) TestInvalidOAuthFlow() {
+	testCases := []struct {
+		name             string
+		options          map[string]string
+		expectedErrorMsg string
+	}{
+		{
+			name: "Invalid flow value",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow: "invalid-flow",
+				adbc.OptionKeyToken:       "test-token",
+			},
+			expectedErrorMsg: "Invalid Argument: unsupported option",
+		},
+		{
+			name: "Unsupported flow type",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow: "99", // Using a number that doesn't map to a defined flow
+			},
+			expectedErrorMsg: "Not Implemented: oauth flow not implemented: 99",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			err := suite.db.SetOptions(tc.options)
+			suite.Error(err, "Expected error for invalid OAuth flow")
+			suite.Contains(err.Error(), tc.expectedErrorMsg)
+		})
+	}
 }
 
 // ---- Grpc Dialer Options Tests --------------
