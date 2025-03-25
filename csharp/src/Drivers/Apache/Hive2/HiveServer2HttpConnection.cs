@@ -121,7 +121,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(HiveServer2Parameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName, TlsOptions.IsTlsEnabled)
             };
         }
 
@@ -129,8 +129,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             Properties.TryGetValue(HiveServer2Parameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
-            Properties.TryGetValue(HiveServer2Parameters.TLSOptions, out string? tlsOptions);
-            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
             Properties.TryGetValue(HiveServer2Parameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
             if (connectTimeoutMs != null)
             {
@@ -138,6 +136,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(HiveServer2Parameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
+            TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
         public override AdbcStatement CreateStatement()
@@ -166,10 +165,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName, TlsOptions.IsTlsEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
-            HttpClientHandler httpClientHandler = NewHttpClientHandler();
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
             httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
@@ -188,23 +187,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ConnectTimeout = int.MaxValue,
             };
             return transport;
-        }
-
-        private HttpClientHandler NewHttpClientHandler()
-        {
-            HttpClientHandler httpClientHandler = new();
-            if (TlsOptions != HiveServer2TlsOption.Empty)
-            {
-                httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
-                {
-                    if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowSelfSigned)) return false;
-                    if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowHostnameMismatch)) return false;
-
-                    return true;
-                };
-            }
-
-            return httpClientHandler;
         }
 
         private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(HiveServer2AuthType authType, string? username, string? password)

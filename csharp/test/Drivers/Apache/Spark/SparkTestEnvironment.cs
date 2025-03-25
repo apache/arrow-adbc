@@ -101,10 +101,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 parameters.Add(SparkParameters.DataTypeConv, testConfiguration.DataTypeConversion!);
             }
-            if (!string.IsNullOrEmpty(testConfiguration.TlsOptions))
-            {
-                parameters.Add(SparkParameters.TLSOptions, testConfiguration.TlsOptions!);
-            }
             if (!string.IsNullOrEmpty(testConfiguration.BatchSize))
             {
                 parameters.Add(ApacheParameters.BatchSize, testConfiguration.BatchSize!);

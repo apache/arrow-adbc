@@ -342,7 +342,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal DataTypeConversion DataTypeConversion { get; set; } = DataTypeConversion.None;
 
-        protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
+        protected internal TlsProperties TlsOptions { get; set; } = new TlsProperties();
 
         protected internal int ConnectTimeoutMilliseconds { get; set; } = ConnectTimeoutMillisecondsDefault;
 
@@ -731,7 +731,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return fileVersionInfo.ProductVersion ?? GetProductVersionDefault();
         }
 
-        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName)
+        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName, bool isTlsEnabled)
         {
             // Uri property takes precedent.
             if (!string.IsNullOrWhiteSpace(uri))
@@ -755,8 +755,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             bool isPortSet = !string.IsNullOrEmpty(port);
             bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
-            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
-            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+            string uriScheme = isTlsEnabled ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
             int uriPort;
             if (!isPortSet)
                 uriPort = -1;
