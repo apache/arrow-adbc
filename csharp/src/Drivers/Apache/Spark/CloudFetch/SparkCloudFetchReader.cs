@@ -133,7 +133,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                         try
                         {
                             dataStream = new MemoryStream();
-                            using (var inputStream = new MemoryStream(fileData))
+                            using (var inputStream = new MemoryStream(fileData!))
                             using (var decompressor = LZ4Stream.Decode(inputStream))
                             {
                                 await decompressor.CopyToAsync(dataStream);
@@ -148,7 +148,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                     }
                     else
                     {
-                        dataStream = new MemoryStream(fileData);
+                        dataStream = new MemoryStream(fileData!);
                     }
 
                     try
@@ -174,7 +174,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 }
 
                 // Fetch more results from the server
-                TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+                TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
 
                 // Set the start row offset if we have processed some links already
                 if (this.startOffset > 0)
