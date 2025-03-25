@@ -731,7 +731,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return fileVersionInfo.ProductVersion ?? GetProductVersionDefault();
         }
 
-        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName, bool isSslEnabled)
+        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName, bool isTlsEnabled)
         {
             // Uri property takes precedent.
             if (!string.IsNullOrWhiteSpace(uri))
@@ -755,7 +755,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             bool isPortSet = !string.IsNullOrEmpty(port);
             bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
-            string uriScheme = isSslEnabled ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+            string uriScheme = isTlsEnabled ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
             int uriPort;
             if (!isPortSet)
                 uriPort = -1;

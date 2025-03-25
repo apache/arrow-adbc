@@ -46,12 +46,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string Scalar = "scalar";
     }
 
-    public static class TlsOptions
+    public static class HttpTlsOptions
     {
-        public const string IsSslEnabled = "adbc.apache.ssl";
-        public const string AllowSelfSigned = "adbc.apache.allow_self_signed";
-        public const string AllowHostnameMismatch = "adbc.apache.allow_hostname_mismatch";
-        public const string TrustedCertificatePath = "adbc.apache.trusted_certificate_path";
-        public const string EnableServerCertificateValidation = "adbc.apache.enable_server_certificate_validation";
+        public const string IsTlsEnabled = "adbc.http_options.tls.enabled";
+        public const string AllowSelfSigned = "adbc.http_options.tls.allow_self_signed";
+        public const string AllowHostnameMismatch = "adbc.http_options.tls.allow_hostname_mismatch";
+        public const string TrustedCertificatePath = "adbc.http_options.tls.trusted_certificate_path";
+        public const string DisableServerCertificateValidation = "adbc.http_options.tls.disable_server_certificate_validation";
     }
 }

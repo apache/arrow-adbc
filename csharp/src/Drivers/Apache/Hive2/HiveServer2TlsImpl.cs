@@ -26,48 +26,43 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     class TlsProperties
     {
-        public bool IsSslEnabled { get; set; }
-        public bool EnableServerCertificateValidation { get; set; }
+        public bool IsTlsEnabled { get; set; }
+        public bool DisableServerCertificateValidation { get; set; }
         public bool AllowHostnameMismatch { get; set; }
         public bool AllowSelfSigned { get; set; }
         public string? TrustedCertificatePath { get; set; }
     }
+
     static class HiveServer2TlsImpl
     {
-        static internal TlsProperties GetTlsOptions(IReadOnlyDictionary<string, string> properties)
+        static internal TlsProperties GetHttpTlsOptions(IReadOnlyDictionary<string, string> properties)
         {
             TlsProperties tlsProperties = new TlsProperties();
-            properties.TryGetValue(TlsOptions.IsSslEnabled, out string? isSslEnabled);
-            properties.TryGetValue(AdbcOptions.Uri, out string? uri);
-            if (!string.IsNullOrWhiteSpace(uri))
+            if (properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrWhiteSpace(uri))
             {
                 var uriValue = new Uri(uri);
-                tlsProperties.IsSslEnabled = uriValue.Scheme == Uri.UriSchemeHttps || (bool.TryParse(isSslEnabled, out bool isSslEnabledBool) && isSslEnabledBool);
+                tlsProperties.IsTlsEnabled = uriValue.Scheme == Uri.UriSchemeHttps || (properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled) && bool.TryParse(isSslEnabled, out bool isSslEnabledBool) && isSslEnabledBool);
             }
             else
             {
-                tlsProperties.IsSslEnabled = bool.TryParse(isSslEnabled, out bool isSslEnabledBool) && isSslEnabledBool;
+                tlsProperties.IsTlsEnabled = properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled) && bool.TryParse(isSslEnabled, out bool isSslEnabledBool) && isSslEnabledBool;
             }
-            if (!tlsProperties.IsSslEnabled)
+            if (!tlsProperties.IsTlsEnabled)
             {
                 return tlsProperties;
             }
-            tlsProperties.IsSslEnabled = true;
-            properties.TryGetValue(TlsOptions.EnableServerCertificateValidation, out string? enableServerCertificateValidation);
-            if (bool.TryParse(enableServerCertificateValidation, out bool enableServerCertificateValidationBool) && !enableServerCertificateValidationBool)
+            tlsProperties.IsTlsEnabled = true;
+            if (properties.TryGetValue(HttpTlsOptions.DisableServerCertificateValidation, out string? disableServerCertificateValidation) && bool.TryParse(disableServerCertificateValidation, out bool disableServerCertificateValidationBool) && disableServerCertificateValidationBool)
             {
-                tlsProperties.EnableServerCertificateValidation = false;
+                tlsProperties.DisableServerCertificateValidation = true;
                 return tlsProperties;
             }
-            tlsProperties.EnableServerCertificateValidation = true;
-            properties.TryGetValue(TlsOptions.AllowHostnameMismatch, out string? allowHostnameMismatch);
-            tlsProperties.AllowHostnameMismatch = bool.TryParse(allowHostnameMismatch, out bool allowHostnameMismatchBool) && allowHostnameMismatchBool;
-            properties.TryGetValue(TlsOptions.AllowSelfSigned, out string? allowSelfSigned);
-            tlsProperties.AllowSelfSigned = bool.TryParse(allowSelfSigned, out bool allowSelfSignedBool) && allowSelfSignedBool;
+            tlsProperties.DisableServerCertificateValidation = false;
+            tlsProperties.AllowHostnameMismatch = properties.TryGetValue(HttpTlsOptions.AllowHostnameMismatch, out string? allowHostnameMismatch) && bool.TryParse(allowHostnameMismatch, out bool allowHostnameMismatchBool) && allowHostnameMismatchBool;
+            tlsProperties.AllowSelfSigned = properties.TryGetValue(HttpTlsOptions.AllowSelfSigned, out string? allowSelfSigned) && bool.TryParse(allowSelfSigned, out bool allowSelfSignedBool) && allowSelfSignedBool;
             if (tlsProperties.AllowSelfSigned)
             {
-                properties.TryGetValue(TlsOptions.TrustedCertificatePath, out string? trustedCertificatePath);
-                if (trustedCertificatePath == null) return tlsProperties;
+                if (!properties.TryGetValue(HttpTlsOptions.TrustedCertificatePath, out string? trustedCertificatePath)) return tlsProperties;
                 tlsProperties.TrustedCertificatePath = trustedCertificatePath != "" && File.Exists(trustedCertificatePath) ? trustedCertificatePath : throw new FileNotFoundException("Trusted certificate path is invalid or file does not exist.");
             }
             return tlsProperties;
@@ -76,11 +71,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         static internal HttpClientHandler NewHttpClientHandler(TlsProperties tlsProperties)
         {
             HttpClientHandler httpClientHandler = new();
-            if (tlsProperties.IsSslEnabled)
+            if (tlsProperties.IsTlsEnabled)
             {
                 httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
                 {
-                    if (policyErrors == SslPolicyErrors.None || !tlsProperties.EnableServerCertificateValidation) return true;
+                    if (policyErrors == SslPolicyErrors.None || tlsProperties.DisableServerCertificateValidation) return true;
                     if (string.IsNullOrEmpty(tlsProperties.TrustedCertificatePath))
                     {
                         return
