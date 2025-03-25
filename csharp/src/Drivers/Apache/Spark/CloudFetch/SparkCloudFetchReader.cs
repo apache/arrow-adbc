@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
@@ -36,6 +37,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
     {
         private const int MaxRetries = 3;
         private const int RetryDelayMs = 500;
+        private const int DefaultTimeoutMinutes = 5;
 
         private HiveServer2Statement? statement;
         private readonly Schema schema;
@@ -46,10 +48,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         private long startOffset;
 
         // Lazy initialization of HttpClient
-        private readonly Lazy<HttpClient> _httpClient = new Lazy<HttpClient>(() =>
+        private readonly Lazy<HttpClient> httpClient = new Lazy<HttpClient>(() =>
         {
             var client = new HttpClient();
-            client.Timeout = TimeSpan.FromMinutes(5); // Set a reasonable timeout for large downloads
+            client.Timeout = TimeSpan.FromMinutes(DefaultTimeoutMinutes); // Set a reasonable timeout for large downloads
             return client;
         });
 
@@ -73,7 +75,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
         private HttpClient HttpClient
         {
-            get { return _httpClient.Value; }
+            get { return httpClient.Value; }
         }
 
         /// <summary>
@@ -117,15 +119,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                         catch (Exception ex) when (retry < MaxRetries - 1)
                         {
                             // Log the error and retry
-                            Console.WriteLine($"Error downloading file (attempt {retry + 1}/{MaxRetries}): {ex.Message}");
+                            Debug.WriteLine($"Error downloading file (attempt {retry + 1}/{MaxRetries}): {ex.Message}");
                             await Task.Delay(RetryDelayMs * (retry + 1), cancellationToken);
                         }
-                    }
-
-                    if (fileData == null)
-                    {
-                        // All retries failed, continue to the next link or fetch more links
-                        continue;
                     }
 
                     // Process the downloaded file data
@@ -146,7 +142,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error decompressing data: {ex.Message}");
+                            Debug.WriteLine($"Error decompressing data: {ex.Message}");
                             continue; // Skip this link and try the next one
                         }
                     }
@@ -162,7 +158,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error creating Arrow reader: {ex.Message}");
+                        Debug.WriteLine($"Error creating Arrow reader: {ex.Message}");
                         dataStream.Dispose();
                         continue; // Skip this link and try the next one
                     }
@@ -193,7 +189,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error fetching results from server: {ex.Message}");
+                    Debug.WriteLine($"Error fetching results from server: {ex.Message}");
                     this.statement = null; // Mark as done due to error
                     return null;
                 }
@@ -242,7 +238,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
             long? contentLength = response.Content.Headers.ContentLength;
             if (contentLength.HasValue && contentLength.Value > 0)
             {
-                Console.WriteLine($"Downloading file of size: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
+                Debug.WriteLine($"Downloading file of size: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
             }
 
             return await response.Content.ReadAsByteArrayAsync();
@@ -260,9 +256,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
             }
 
             // Dispose the HttpClient if it was created
-            if (_httpClient.IsValueCreated)
+            if (httpClient.IsValueCreated)
             {
-                _httpClient.Value.Dispose();
+                httpClient.Value.Dispose();
             }
         }
     }

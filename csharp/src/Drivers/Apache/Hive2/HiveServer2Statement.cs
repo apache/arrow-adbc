@@ -27,11 +27,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2Statement : AdbcStatement
     {
-        internal TSparkRowSetType currentResultFormat = TSparkRowSetType.ARROW_BASED_SET;
-        // Track the result format and compression for the current query
-        internal bool isLz4Compressed = false;
-
-
         internal HiveServer2Statement(HiveServer2Connection connection)
         {
             Connection = connection;
@@ -92,18 +87,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
             Schema schema = Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
 
-            // Check if the result format is specified
-            if (response.__isset.resultFormat)
-            {
-                currentResultFormat = response.ResultFormat;
-            }
-
-            if(response.__isset.lz4Compressed)
-            {
-                isLz4Compressed = response.Lz4Compressed;
-            }
-
-            return new QueryResult(-1, Connection.NewReader(this, schema));
+            // Store metadata for use in readers
+            return new QueryResult(-1, Connection.NewReader(this, schema, response));
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
@@ -123,12 +108,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
             }
-        }
-
-        private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
-        {
-            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
-            return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
         }
 
         public async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)

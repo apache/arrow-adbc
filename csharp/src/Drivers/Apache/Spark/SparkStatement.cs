@@ -73,9 +73,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             switch (key)
             {
                 case Options.UseCloudFetch:
-                    if (bool.TryParse(value, out bool useCloudFetch))
+                    if (bool.TryParse(value, out bool useCloudFetchValue))
                     {
-                        SetUseCloudFetch(useCloudFetch);
+                        this.useCloudFetch = useCloudFetchValue;
                     }
                     else
                     {
@@ -83,9 +83,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     }
                     break;
                 case Options.CanDecompressLz4:
-                    if (bool.TryParse(value, out bool canDecompressLz4))
+                    if (bool.TryParse(value, out bool canDecompressLz4Value))
                     {
-                        SetCanDecompressLz4(canDecompressLz4);
+                        this.canDecompressLz4 = canDecompressLz4Value;
                     }
                     else
                     {
@@ -93,9 +93,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     }
                     break;
                 case Options.MaxBytesPerFile:
-                    if (long.TryParse(value, out long maxBytesPerFile))
+                    if (long.TryParse(value, out long maxBytesPerFileValue))
                     {
-                        SetMaxBytesPerFile(maxBytesPerFile);
+                        this.maxBytesPerFile = maxBytesPerFileValue;
                     }
                     else
                     {

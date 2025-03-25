@@ -31,16 +31,33 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema)
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {
-            // Choose the appropriate reader based on the result format
-            if (statement.currentResultFormat == TSparkRowSetType.URL_BASED_SET)
+            // Get result format from metadata response if available
+            TSparkRowSetType resultFormat = TSparkRowSetType.ARROW_BASED_SET;
+            bool isLz4Compressed = false;
+            
+            if (metadataResp != null)
             {
-                return new SparkCloudFetchReader(statement as HiveServer2Statement, schema, statement.isLz4Compressed);
+                if (metadataResp.__isset.resultFormat)
+                {
+                    resultFormat = metadataResp.ResultFormat;
+                }
+                
+                if (metadataResp.__isset.lz4Compressed)
+                {
+                    isLz4Compressed = metadataResp.Lz4Compressed;
+                }
+            }
+
+            // Choose the appropriate reader based on the result format
+            if (resultFormat == TSparkRowSetType.URL_BASED_SET)
+            {
+                return new SparkCloudFetchReader(statement, schema, isLz4Compressed);
             }
             else
             {
-                return new SparkDatabricksReader(statement as HiveServer2Statement, schema);
+                return new SparkDatabricksReader(statement, schema);
             }
         }
 

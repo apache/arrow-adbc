@@ -140,7 +140,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected override TTransport CreateTransport()
         {
