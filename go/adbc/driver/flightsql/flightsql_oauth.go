@@ -113,6 +113,32 @@ func newTokenExchangeFlow(options map[string]string) (*tokenExchange, error) {
 		oauth2.SetAuthURLParam("subject_token_type", subjectTokenType),
 	}
 
+	if actor, ok := options[OptionKeyActorToken]; ok {
+		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("actor_token", actor))
+		delete(options, OptionKeyActorToken)
+		if actorTokenType, ok := options[OptionKeyActorTokenType]; ok {
+			tokOptions = append(tokOptions, oauth2.SetAuthURLParam("actor_token_type", actorTokenType))
+			delete(options, OptionKeyActorTokenType)
+		} else {
+			return nil, fmt.Errorf("token exchange grant requires actor_token_type")
+		}
+	}
+
+	if reqTokenType, ok := options[OptionKeyReqTokenType]; ok {
+		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("requested_token_type", reqTokenType))
+		delete(options, OptionKeyReqTokenType)
+	}
+
+	if aud, ok := options[OptionKeyExchangeAud]; ok {
+		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("audience", aud))
+		delete(options, OptionKeyExchangeAud)
+	}
+
+	if resource, ok := options[OptionKeyExchangeResource]; ok {
+		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("resource", resource))
+		delete(options, OptionKeyExchangeResource)
+	}
+
 	if scope, ok := options[OptionKeyExchangeScope]; ok {
 		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("scope", scope))
 		delete(options, OptionKeyExchangeScope)
