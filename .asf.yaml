@@ -21,16 +21,22 @@ github:
   collaborators:
     - krlmlr
     - nbenn
-    - ywc88
   enabled_merge_buttons:
     merge: false
     rebase: false
     squash: true
   features:
+    discussions: true
     issues: true
+  labels:
+    - arrow
+    - database
+  protected_branches:
+    main: {}
 
 notifications:
   commits:      commits@arrow.apache.org
+  discussions:  user@arrow.apache.org
   issues_status: issues@arrow.apache.org
   issues:       github@arrow.apache.org
   pullrequests: github@arrow.apache.org
