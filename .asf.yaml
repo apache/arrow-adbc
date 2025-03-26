@@ -28,7 +28,6 @@ github:
   features:
     discussions: true
     issues: true
-    projects: true
   labels:
     - arrow
     - database
