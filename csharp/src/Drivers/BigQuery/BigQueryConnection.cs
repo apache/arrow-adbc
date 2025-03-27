@@ -23,6 +23,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
@@ -39,10 +40,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     public class BigQueryConnection : AdbcConnection
     {
         readonly IReadOnlyDictionary<string, string> properties;
+        readonly HttpClient httpClient;
         BigQueryClient? client;
         GoogleCredential? credential;
         bool includePublicProjectIds = false;
-
         const string infoDriverName = "ADBC BigQuery Driver";
         const string infoDriverVersion = "1.0.0";
         const string infoVendorName = "BigQuery";
@@ -64,6 +65,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             Dictionary<string, string> modifiedProperties = this.properties.ToDictionary(k => k.Key, v => v.Value);
             modifiedProperties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
             this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);
+            httpClient = new HttpClient();
         }
 
         /// <summary>
@@ -78,12 +80,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string? clientSecret = null;
             string? refreshToken = null;
             TimeSpan? clientTimeout = null;
+            string? accessToken = null;
+            string? audienceUri = null;
+            string? authenticationType = null;
 
             string tokenEndpoint = BigQueryConstants.TokenEndpoint;
 
-            string? authenticationType = BigQueryConstants.UserAuthenticationType;
-
             // TODO: handle token expiration
+
+            if (!this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
+                throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter is not present");
 
             // if the caller doesn't specify a projectId, use the default
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
@@ -104,7 +110,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     authenticationType = newAuthenticationType;
 
                 if (!authenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase) &&
-                    !authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
+                    !authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase) &&
+                    !authenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter can only be `{BigQueryConstants.UserAuthenticationType}` or `{BigQueryConstants.ServiceAccountAuthenticationType}`");
                 }
@@ -123,7 +130,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 this.credential = ApplyScopes(GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint)));
             }
-            else
+            else if (!string.IsNullOrEmpty(authenticationType) && authenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!this.properties.TryGetValue(BigQueryParameters.AccessToken, out accessToken))
+                    throw new ArgumentException($"The {BigQueryParameters.AccessToken} parameter is not present");
+
+                if (!this.properties.TryGetValue(BigQueryParameters.AudienceUri, out audienceUri))
+                    throw new ArgumentException($"The {BigQueryParameters.AudienceUri} parameter is not present");
+
+                this.credential = ApplyScopes(GoogleCredential.FromAccessToken(TradeEntraIdTokenForBigQueryToken(audienceUri, accessToken)));
+            }
+            else if (!string.IsNullOrEmpty(authenticationType) && authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
             {
                 string? json = string.Empty;
 
@@ -131,6 +148,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     throw new ArgumentException($"The {BigQueryParameters.JsonCredential} parameter is not present");
 
                 this.credential = ApplyScopes(GoogleCredential.FromJson(json));
+            }
+            else
+            {
+                throw new ArgumentException($"{authenticationType} is not a valid authenticationType");
             }
 
             if (this.properties.TryGetValue(BigQueryParameters.ClientTimeout, out string? timeoutSeconds) &&
@@ -1122,6 +1143,37 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string responseBody = response.Content.ReadAsStringAsync().Result;
 
             BigQueryTokenResponse? bigQueryTokenResponse = JsonSerializer.Deserialize<BigQueryTokenResponse>(responseBody);
+
+            return bigQueryTokenResponse?.AccessToken;
+        }
+
+        /// <summary>
+        /// Gets the access token from the sts endpoint.
+        /// </summary>
+        /// <param name="audience"></param>
+        /// <param name="entraAccessToken"></param>
+        /// <returns></returns>
+        private string? TradeEntraIdTokenForBigQueryToken(string audience, string entraAccessToken)
+        {
+            var requestBody = new
+            {
+                scope = BigQueryConstants.EntraIdScope,
+                subjectToken = entraAccessToken,
+                audience = audience,
+                grantType = BigQueryConstants.GrantType,
+                subjectTokenType = BigQueryConstants.SubjectTokenType,
+                requestedTokenType = BigQueryConstants.RequestedTokenType
+            };
+
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestBody);
+            StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            HttpResponseMessage response = httpClient.PostAsync(BigQueryConstants.StsTokenEndpoint, content).Result;
+            response.EnsureSuccessStatusCode();
+
+            string responseBody = response.Content.ReadAsStringAsync().Result;
+
+            BigQueryStsTokenResponse? bigQueryTokenResponse = JsonSerializer.Deserialize<BigQueryStsTokenResponse>(responseBody);
 
             return bigQueryTokenResponse?.AccessToken;
         }

@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -51,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// <returns></returns>
         internal static Dictionary<string, string> GetBigQueryParameters(BigQueryTestEnvironment testEnvironment)
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>{};
+            Dictionary<string, string> parameters = new Dictionary<string, string> { };
 
             if (!string.IsNullOrEmpty(testEnvironment.ProjectId))
             {
@@ -63,12 +64,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.BillingProjectId, testEnvironment.BillingProjectId!);
             }
 
+            if (testEnvironment.AuthenticationType != null)
+            {
+                if (testEnvironment.AuthenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
+                {
+                    parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.ServiceAccountAuthenticationType);
+                    parameters.Add(BigQueryParameters.JsonCredential, testEnvironment.JsonCredential);
+                }
+                else if (testEnvironment.AuthenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
+                {
+                    parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.EntraIdAuthenticationType);
+                    parameters.Add(BigQueryParameters.AccessToken, testEnvironment.AccessToken);
+                    parameters.Add(BigQueryParameters.AudienceUri, testEnvironment.Audience);
+                }
+                else
+                {
+                    parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.UserAuthenticationType);
+                    parameters.Add(BigQueryParameters.ClientId, testEnvironment.ClientId);
+                    parameters.Add(BigQueryParameters.ClientSecret, testEnvironment.ClientSecret);
+                    parameters.Add(BigQueryParameters.RefreshToken, testEnvironment.RefreshToken);
+                }
+            }
+
             if (!string.IsNullOrEmpty(testEnvironment.JsonCredential))
             {
                 parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.ServiceAccountAuthenticationType);
                 parameters.Add(BigQueryParameters.JsonCredential, testEnvironment.JsonCredential);
             }
-            else
+            else if ((testEnvironment.AuthenticationType != null) && (testEnvironment.AuthenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase)))
             {
                 parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.UserAuthenticationType);
                 parameters.Add(BigQueryParameters.ClientId, testEnvironment.ClientId);

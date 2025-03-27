@@ -40,6 +40,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("projectId")]
         public string? ProjectId { get; set; }
 
+        [JsonPropertyName("authenticationType")]
+        public string AuthenticationType { get; set; } = string.Empty;
+
+        [JsonPropertyName("accessToken")]
+        public string AccessToken { get; set; } = string.Empty;
+
+        [JsonPropertyName("audience")]
+        public string Audience { get; set; } = string.Empty;
+
         [JsonPropertyName("billingProjectId")]
         public string? BillingProjectId { get; set; }
 
