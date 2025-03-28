@@ -61,6 +61,7 @@ type databaseImpl struct {
 
 	uri           *url.URL
 	creds         credentials.TransportCredentials
+	token         string
 	user, pass    string
 	hdrs          metadata.MD
 	timeout       timeoutOption
@@ -68,6 +69,7 @@ type databaseImpl struct {
 	enableCookies bool
 	options       map[string]string
 	userDialOpts  []grpc.DialOption
+	oauthFlow     OauthAuthFlow
 }
 
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
@@ -149,7 +151,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	if u, ok := cnOptions[adbc.OptionKeyUsername]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authorization header already provided, do not provide user/pass also",
+				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter",
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -160,12 +162,76 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	if p, ok := cnOptions[adbc.OptionKeyPassword]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authorization header already provided, do not provide user/pass also",
+				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter",
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
 		d.pass = p
 		delete(cnOptions, adbc.OptionKeyPassword)
+	}
+
+	// if token exists it can by pass or apply token exchange
+	// else check oauth flow
+	if t, ok := cnOptions[adbc.OptionKeyToken]; ok {
+		if d.hdrs.Len() > 0 {
+			return adbc.Error{
+				Msg:  "Authentication conflict: Use either Authorization header OR token parameter",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
+		// if contains token. it can bypass or use token exchange
+		if flow, ok := cnOptions[OptionKeyOauthFlow]; ok {
+			var flowVal int
+			var err error
+			if flowVal, err = strconv.Atoi(flow); err != nil || flowVal != TokenExchange {
+				return adbc.Error{
+					Msg:  "unsupported option",
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+
+			tokExchange, err := newTokenExchangeFlow(cnOptions)
+			if err != nil {
+				return err
+			}
+			d.oauthFlow = tokExchange
+			delete(cnOptions, OptionKeyOauthFlow)
+		} else {
+			d.token = t
+			delete(cnOptions, adbc.OptionKeyToken)
+		}
+	}
+
+	if flow, ok := cnOptions[OptionKeyOauthFlow]; ok {
+		if d.token != "" {
+			return adbc.Error{
+				Msg:  "Authentication conflict: Use either token parameter or OAuth flow",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		var flowVal int
+		var err error
+		if flowVal, err = strconv.Atoi(flow); err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("invalid OAuth flow option: %s", flow),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		switch flowVal {
+		case ClientCredentials:
+			cl, err := newClientCredentials(cnOptions)
+			if err != nil {
+				return err
+			}
+			d.oauthFlow = cl
+			delete(cnOptions, OptionKeyOauthFlow)
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("oauth flow not implemented: %s", flow),
+				Code: adbc.StatusNotImplemented,
+			}
+		}
 	}
 
 	var err error
@@ -387,7 +453,19 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	if len(authMiddle.hdrs.Get("authorization")) > 0 {
 		d.Logger.DebugContext(ctx, "reusing auth token", "location", loc)
 	} else {
-		if d.user != "" || d.pass != "" {
+		if d.token != "" {
+			authMiddle.mutex.Lock()
+			defer authMiddle.mutex.Unlock()
+			authMiddle.hdrs.Set("authorization", "Bearer "+d.token)
+		} else if d.oauthFlow != nil {
+			token, err := d.oauthFlow.GetToken(ctx)
+			if err != nil {
+				return nil, adbcFromFlightStatusWithDetails(err, nil, nil, "Authenticate Oauth")
+			}
+			authMiddle.mutex.Lock()
+			defer authMiddle.mutex.Unlock()
+			authMiddle.hdrs.Set("authorization", "Bearer "+token.AccessToken)
+		} else if d.user != "" || d.pass != "" {
 			var header, trailer metadata.MD
 			ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
 			if err != nil {
