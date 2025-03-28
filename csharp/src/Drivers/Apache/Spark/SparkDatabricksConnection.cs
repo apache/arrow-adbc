@@ -36,14 +36,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // Get result format from metadata response if available
             TSparkRowSetType resultFormat = TSparkRowSetType.ARROW_BASED_SET;
             bool isLz4Compressed = false;
-            
+
             if (metadataResp != null)
             {
                 if (metadataResp.__isset.resultFormat)
                 {
                     resultFormat = metadataResp.ResultFormat;
                 }
-                
+
                 if (metadataResp.__isset.lz4Compressed)
                 {
                     isLz4Compressed = metadataResp.Lz4Compressed;

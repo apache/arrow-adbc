@@ -66,14 +66,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
             this.statement = statement;
             this.schema = schema;
             this.isLz4Compressed = isLz4Compressed;
-            
+
             // Get configuration values from connection properties or use defaults
             var connectionProps = statement.Connection.Properties;
-            
+
             // Parse max retries
             int parsedMaxRetries = DefaultMaxRetries;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchMaxRetries, out string? maxRetriesStr) && 
-                int.TryParse(maxRetriesStr, out parsedMaxRetries) && 
+            if (connectionProps.TryGetValue(SparkParameters.CloudFetchMaxRetries, out string? maxRetriesStr) &&
+                int.TryParse(maxRetriesStr, out parsedMaxRetries) &&
                 parsedMaxRetries > 0)
             {
                 // Value was successfully parsed
@@ -83,11 +83,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 parsedMaxRetries = DefaultMaxRetries;
             }
             this.maxRetries = parsedMaxRetries;
-            
+
             // Parse retry delay
             int parsedRetryDelay = DefaultRetryDelayMs;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchRetryDelayMs, out string? retryDelayStr) && 
-                int.TryParse(retryDelayStr, out parsedRetryDelay) && 
+            if (connectionProps.TryGetValue(SparkParameters.CloudFetchRetryDelayMs, out string? retryDelayStr) &&
+                int.TryParse(retryDelayStr, out parsedRetryDelay) &&
                 parsedRetryDelay > 0)
             {
                 // Value was successfully parsed
@@ -97,11 +97,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 parsedRetryDelay = DefaultRetryDelayMs;
             }
             this.retryDelayMs = parsedRetryDelay;
-            
+
             // Parse timeout minutes
             int parsedTimeout = DefaultTimeoutMinutes;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchTimeoutMinutes, out string? timeoutStr) && 
-                int.TryParse(timeoutStr, out parsedTimeout) && 
+            if (connectionProps.TryGetValue(SparkParameters.CloudFetchTimeoutMinutes, out string? timeoutStr) &&
+                int.TryParse(timeoutStr, out parsedTimeout) &&
                 parsedTimeout > 0)
             {
                 // Value was successfully parsed
@@ -111,7 +111,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 parsedTimeout = DefaultTimeoutMinutes;
             }
             this.timeoutMinutes = parsedTimeout;
-            
+
             // Initialize HttpClient with the configured timeout
             this.httpClient = new Lazy<HttpClient>(() =>
             {
