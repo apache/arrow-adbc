@@ -35,9 +35,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
     /// </summary>
     internal sealed class SparkCloudFetchReader : IArrowArrayStream
     {
-        private const int MaxRetries = 3;
-        private const int RetryDelayMs = 500;
+        // Default values used if not specified in connection properties
+        private const int DefaultMaxRetries = 3;
+        private const int DefaultRetryDelayMs = 500;
         private const int DefaultTimeoutMinutes = 5;
+
+        private readonly int maxRetries;
+        private readonly int retryDelayMs;
+        private readonly int timeoutMinutes;
 
         private HiveServer2Statement? statement;
         private readonly Schema schema;
@@ -48,12 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         private long startOffset;
 
         // Lazy initialization of HttpClient
-        private readonly Lazy<HttpClient> httpClient = new Lazy<HttpClient>(() =>
-        {
-            var client = new HttpClient();
-            client.Timeout = TimeSpan.FromMinutes(DefaultTimeoutMinutes); // Set a reasonable timeout for large downloads
-            return client;
-        });
+        private readonly Lazy<HttpClient> httpClient;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SparkCloudFetchReader"/> class.
@@ -66,6 +66,59 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
             this.statement = statement;
             this.schema = schema;
             this.isLz4Compressed = isLz4Compressed;
+            
+            // Get configuration values from connection properties or use defaults
+            var connectionProps = statement.Connection.Properties;
+            
+            // Parse max retries
+            int parsedMaxRetries = DefaultMaxRetries;
+            if (connectionProps.TryGetValue(SparkParameters.CloudFetchMaxRetries, out string? maxRetriesStr) && 
+                int.TryParse(maxRetriesStr, out parsedMaxRetries) && 
+                parsedMaxRetries > 0)
+            {
+                // Value was successfully parsed
+            }
+            else
+            {
+                parsedMaxRetries = DefaultMaxRetries;
+            }
+            this.maxRetries = parsedMaxRetries;
+            
+            // Parse retry delay
+            int parsedRetryDelay = DefaultRetryDelayMs;
+            if (connectionProps.TryGetValue(SparkParameters.CloudFetchRetryDelayMs, out string? retryDelayStr) && 
+                int.TryParse(retryDelayStr, out parsedRetryDelay) && 
+                parsedRetryDelay > 0)
+            {
+                // Value was successfully parsed
+            }
+            else
+            {
+                parsedRetryDelay = DefaultRetryDelayMs;
+            }
+            this.retryDelayMs = parsedRetryDelay;
+            
+            // Parse timeout minutes
+            int parsedTimeout = DefaultTimeoutMinutes;
+            if (connectionProps.TryGetValue(SparkParameters.CloudFetchTimeoutMinutes, out string? timeoutStr) && 
+                int.TryParse(timeoutStr, out parsedTimeout) && 
+                parsedTimeout > 0)
+            {
+                // Value was successfully parsed
+            }
+            else
+            {
+                parsedTimeout = DefaultTimeoutMinutes;
+            }
+            this.timeoutMinutes = parsedTimeout;
+            
+            // Initialize HttpClient with the configured timeout
+            this.httpClient = new Lazy<HttpClient>(() =>
+            {
+                var client = new HttpClient();
+                client.Timeout = TimeSpan.FromMinutes(this.timeoutMinutes);
+                return client;
+            });
         }
 
         /// <summary>
@@ -109,18 +162,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                     byte[]? fileData = null;
 
                     // Retry logic for downloading files
-                    for (int retry = 0; retry < MaxRetries; retry++)
+                    for (int retry = 0; retry < this.maxRetries; retry++)
                     {
                         try
                         {
                             fileData = await DownloadFileAsync(link.FileLink, cancellationToken);
                             break; // Success, exit retry loop
                         }
-                        catch (Exception ex) when (retry < MaxRetries - 1)
+                        catch (Exception ex) when (retry < this.maxRetries - 1)
                         {
                             // Log the error and retry
-                            Debug.WriteLine($"Error downloading file (attempt {retry + 1}/{MaxRetries}): {ex.Message}");
-                            await Task.Delay(RetryDelayMs * (retry + 1), cancellationToken);
+                            Debug.WriteLine($"Error downloading file (attempt {retry + 1}/{this.maxRetries}): {ex.Message}");
+                            await Task.Delay(this.retryDelayMs * (retry + 1), cancellationToken);
                         }
                     }
 
