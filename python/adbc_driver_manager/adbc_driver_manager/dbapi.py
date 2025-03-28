@@ -415,14 +415,13 @@ class Connection(_Closeable):
         reader = pyarrow.RecordBatchReader._import_from_c(handle.address)
         table = _blocking_call(reader.read_all, (), {}, self._conn.cancel)
         info = table.to_pylist()
-        return dict(
-            {
-                _KNOWN_INFO_VALUES.get(row["info_name"], row["info_name"]): row[
-                    "info_value"
-                ]
-                for row in info
-            }
-        )
+        # try to help the type checker a bit here
+        result: Dict[Union[str, int], Any] = {}
+        for row in info:
+            info_name: int = row["info_name"]
+            key: Union[str, int] = _KNOWN_INFO_VALUES.get(info_name, info_name)
+            result[key] = row["info_value"]
+        return result
 
     def adbc_get_objects(
         self,
