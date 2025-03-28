@@ -84,9 +84,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // take QueryTimeoutSeconds (but this could be restricting)
             await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
             await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-            Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken); // + get the result, up to QueryTimeout
+            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
+            Schema schema = Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
 
-            return new QueryResult(-1, Connection.NewReader(this, schema));
+            // Store metadata for use in readers
+            return new QueryResult(-1, Connection.NewReader(this, schema, response));
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
@@ -106,12 +108,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
             }
-        }
-
-        private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
-        {
-            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
-            return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
         }
 
         public async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
@@ -195,7 +191,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
-            TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery);
+            TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle!, SqlQuery!);
             SetStatementProperties(executeRequest);
             TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)

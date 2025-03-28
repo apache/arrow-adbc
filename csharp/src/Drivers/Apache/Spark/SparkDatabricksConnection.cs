@@ -18,6 +18,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -29,7 +31,35 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new SparkDatabricksReader(statement, schema);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
+        {
+            // Get result format from metadata response if available
+            TSparkRowSetType resultFormat = TSparkRowSetType.ARROW_BASED_SET;
+            bool isLz4Compressed = false;
+
+            if (metadataResp != null)
+            {
+                if (metadataResp.__isset.resultFormat)
+                {
+                    resultFormat = metadataResp.ResultFormat;
+                }
+
+                if (metadataResp.__isset.lz4Compressed)
+                {
+                    isLz4Compressed = metadataResp.Lz4Compressed;
+                }
+            }
+
+            // Choose the appropriate reader based on the result format
+            if (resultFormat == TSparkRowSetType.URL_BASED_SET)
+            {
+                return new SparkCloudFetchReader(statement, schema, isLz4Compressed);
+            }
+            else
+            {
+                return new SparkDatabricksReader(statement, schema);
+            }
+        }
 
         internal override SchemaParser SchemaParser => new SparkDatabricksSchemaParser();
 
@@ -40,6 +70,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             var req = new TOpenSessionReq
             {
                 Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
+                Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
                 CanUseMultipleCatalogs = true,
             };
             return req;

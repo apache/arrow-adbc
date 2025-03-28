@@ -68,7 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     return null;
                 }
 
-                TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+                TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
                 TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
                 this.batches = response.Results.ArrowBatches;
 
