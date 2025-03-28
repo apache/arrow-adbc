@@ -220,6 +220,11 @@ void TupleReader::Release() {
   row_id_ = -1;
 }
 
+// Instead of directly exporting the TupleReader, which is tied to the
+// lifetime of the Statement, we export a weak_ptr reference instead.  That
+// way if the user accidentally closes the Statement before the
+// ArrowArrayStream, we can avoid a crash.
+// See https://github.com/apache/arrow-adbc/issues/2629
 struct ExportedTupleReader {
   std::weak_ptr<TupleReader> self;
 };
