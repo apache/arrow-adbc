@@ -22,6 +22,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// </summary>
     public class BigQueryParameters
     {
+        public const string AccessToken = "adbc.bigquery.access_token";
+        public const string AudienceUri = "adbc.bigquery.audience_uri";
         public const string ProjectId = "adbc.bigquery.project_id";
         public const string BillingProjectId = "adbc.bigquery.billing_project_id";
         public const string ClientId = "adbc.bigquery.client_id";
@@ -47,9 +49,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     public class BigQueryConstants
     {
         public const string UserAuthenticationType = "user";
+        public const string EntraIdAuthenticationType = "entraId";
         public const string ServiceAccountAuthenticationType = "service";
         public const string TokenEndpoint = "https://accounts.google.com/o/oauth2/token";
         public const string TreatLargeDecimalAsString = "true";
+
+        // Entra ID / Azure AD constants
+        public const string GrantType = "urn:ietf:params:oauth:grant-type:token-exchange";
+        public const string SubjectTokenType = "urn:ietf:params:oauth:token-type:id_token";
+        public const string RequestedTokenType = "urn:ietf:params:oauth:token-type:access_token";
+        public const string EntraIdScope = "https://www.googleapis.com/auth/cloud-platform";
+        public const string StsTokenEndpoint = "https://sts.googleapis.com/v1/token";
 
         // default value per https://pkg.go.dev/cloud.google.com/go/bigquery#section-readme
         public const string DetectProjectId = "*detect-project-id*";
