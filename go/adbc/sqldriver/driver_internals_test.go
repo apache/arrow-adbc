@@ -139,14 +139,12 @@ var (
 	tz          = time.FixedZone("North Idaho", -int((8 * time.Hour).Seconds()))
 	testTime    = time.Date(2023, time.January, 26, 15, 40, 39, 123456789, tz)
 	stringField = arrow.Field{
-		Name:     "str",
-		Type:     arrow.BinaryTypes.String,
-		Nullable: true,
+		Name: "str",
+		Type: arrow.BinaryTypes.String,
 	}
 	int32Field = arrow.Field{
-		Name:     "int",
-		Type:     arrow.PrimitiveTypes.Int32,
-		Nullable: true,
+		Name: "int",
+		Type: arrow.PrimitiveTypes.Int32,
 	}
 )
 
