@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -358,33 +359,43 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             StringArray.Builder catalogNameBuilder = new StringArray.Builder();
             List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
             string catalogRegexp = PatternToRegEx(catalogPattern);
-            PagedEnumerable<ProjectList, CloudProject>? catalogs = this.client?.ListProjects();
+            PagedEnumerable<ProjectList, CloudProject>? catalogs;
+            List<string> projectIds = new List<string>();
 
-            if (catalogs != null)
+            try
             {
-                List<string> projectIds = catalogs.Select(x => x.ProjectId).ToList();
+                catalogs = this.client?.ListProjects();
 
-                if (this.includePublicProjectIds && !projectIds.Contains(publicProjectId))
-                    projectIds.Add(publicProjectId);
-
-                projectIds.Sort();
-
-                foreach (string projectId in projectIds)
+                if (catalogs != null)
                 {
-                    if (Regex.IsMatch(projectId, catalogRegexp, RegexOptions.IgnoreCase))
-                    {
-                        catalogNameBuilder.Append(projectId);
+                    projectIds = catalogs.Select(x => x.ProjectId).ToList();
+                }
+            }
+            catch
+            {
+                // TODO: Logging
+            }
 
-                        if (depth == GetObjectsDepth.Catalogs)
-                        {
-                            catalogDbSchemasValues.Add(null);
-                        }
-                        else
-                        {
-                            catalogDbSchemasValues.Add(GetDbSchemas(
-                                depth, projectId, dbSchemaPattern,
-                                tableNamePattern, tableTypes, columnNamePattern));
-                        }
+            if (this.includePublicProjectIds && !projectIds.Contains(publicProjectId))
+                projectIds.Add(publicProjectId);
+
+            projectIds.Sort();
+
+            foreach (string projectId in projectIds)
+            {
+                if (Regex.IsMatch(projectId, catalogRegexp, RegexOptions.IgnoreCase))
+                {
+                    catalogNameBuilder.Append(projectId);
+
+                    if (depth == GetObjectsDepth.Catalogs)
+                    {
+                        catalogDbSchemasValues.Add(null);
+                    }
+                    else
+                    {
+                        catalogDbSchemasValues.Add(GetDbSchemas(
+                            depth, projectId, dbSchemaPattern,
+                            tableNamePattern, tableTypes, columnNamePattern));
                     }
                 }
             }

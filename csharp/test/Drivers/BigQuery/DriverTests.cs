@@ -17,12 +17,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
+using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions.Interfaces;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -298,6 +300,39 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount, environment.Name);
             }
         }
+
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        [SkippableFact, Order(6)]
+        public void CanExecuteQueryWithEntraId()
+        {
+            bool atleastOneEnvWithEntraId = false;
+
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                if (environment.AuthenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
+                {
+                    atleastOneEnvWithEntraId = true;
+                    AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
+
+                    AdbcStatement statement = adbcConnection.CreateStatement();
+                    statement.SqlQuery = environment.Query;
+
+                    QueryResult queryResult = statement.ExecuteQuery();
+
+                    Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount, environment.Name);
+                }
+            }
+
+            if (!atleastOneEnvWithEntraId)
+            {
+                this._outputHelper?.WriteLine("Did not find any environments containing Entra configuration");
+            }
+        }
+
 
         private AdbcConnection GetAdbcConnection(string? environmentName)
         {
