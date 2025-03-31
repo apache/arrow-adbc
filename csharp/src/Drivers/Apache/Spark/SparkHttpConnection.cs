@@ -44,6 +44,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
         }
 
+        /// <summary>
+        /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
+        /// </summary>
+        protected bool TemporarilyUnavailableRetry { get; private set; } = true;
+
+        /// <summary>
+        /// Gets the maximum total time in seconds to retry 503 responses before failing.
+        /// </summary>
+        protected int TemporarilyUnavailableRetryTimeout { get; private set; } = 900;
+
         protected override void ValidateAuthentication()
         {
             // Validate authentication parameters
@@ -136,6 +146,33 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(SparkParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
+            
+            // Parse retry configuration parameters
+            Properties.TryGetValue(SparkParameters.TemporarilyUnavailableRetry, out string? tempUnavailableRetryStr);
+            int tempUnavailableRetryValue = 1; // Default to enabled
+            if (tempUnavailableRetryStr != null && !int.TryParse(tempUnavailableRetryStr, out tempUnavailableRetryValue))
+            {
+                throw new ArgumentOutOfRangeException(SparkParameters.TemporarilyUnavailableRetry, tempUnavailableRetryStr, 
+                    $"must be a value of 0 (disabled) or 1 (enabled). Default is 1.");
+            }
+            TemporarilyUnavailableRetry = tempUnavailableRetryValue != 0;
+            
+            Properties.TryGetValue(SparkParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr);
+            if (tempUnavailableRetryTimeoutStr != null)
+            {
+                if (!int.TryParse(tempUnavailableRetryTimeoutStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int tempUnavailableRetryTimeoutValue) || 
+                    tempUnavailableRetryTimeoutValue < 0)
+                {
+                    throw new ArgumentOutOfRangeException(SparkParameters.TemporarilyUnavailableRetryTimeout, tempUnavailableRetryTimeoutStr,
+                        $"must be a value of 0 (retry indefinitely) or a positive integer representing seconds. Default is 900 seconds (15 minutes).");
+                }
+                TemporarilyUnavailableRetryTimeout = tempUnavailableRetryTimeoutValue;
+            }
+            else
+            {
+                TemporarilyUnavailableRetryTimeout = 900; // Default to 15 minutes
+            }
+            
             TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
@@ -162,7 +199,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, access_token);
 
             HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
-            HttpClient httpClient = new(httpClientHandler);
+            
+            // Create a RetryHttpHandler that wraps the HttpClientHandler to handle 503 responses
+            var retryHandler = new RetryHttpHandler(
+                httpClientHandler, 
+                TemporarilyUnavailableRetry, 
+                TemporarilyUnavailableRetryTimeout);
+                
+            HttpClient httpClient = new(retryHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(s_userAgent);
