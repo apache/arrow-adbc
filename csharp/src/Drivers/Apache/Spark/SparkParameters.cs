@@ -33,6 +33,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Type = "adbc.spark.type";
         public const string DataTypeConv = "adbc.spark.data_type_conv";
         public const string ConnectTimeoutMilliseconds = "adbc.spark.connect_timeout_ms";
+        
+        /// <summary>
+        /// Controls whether to retry requests that receive a 503 response with a Retry-After header.
+        /// Default value is 1 (enabled). Set to 0 to disable retry behavior.
+        /// </summary>
+        public const string TemporarilyUnavailableRetry = "adbc.spark.temporarily_unavailable_retry";
+        
+        /// <summary>
+        /// Maximum total time in seconds to retry 503 responses before failing.
+        /// Default value is 900 seconds (15 minutes). Set to 0 to retry indefinitely.
+        /// </summary>
+        public const string TemporarilyUnavailableRetryTimeout = "adbc.spark.temporarily_unavailable_retry_timeout";
     }
 
     public static class SparkAuthTypeConstants
