@@ -49,7 +49,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     public class BigQueryConstants
     {
         public const string UserAuthenticationType = "user";
-        public const string EntraIdAuthenticationType = "entraId";
+        public const string EntraIdAuthenticationType = "aad";
         public const string ServiceAccountAuthenticationType = "service";
         public const string TokenEndpoint = "https://accounts.google.com/o/oauth2/token";
         public const string TreatLargeDecimalAsString = "true";

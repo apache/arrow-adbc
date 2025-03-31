@@ -17,14 +17,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
-using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions.Interfaces;
 using Xunit;
 using Xunit.Abstractions;
 

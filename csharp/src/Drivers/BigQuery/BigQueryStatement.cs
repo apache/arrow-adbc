@@ -19,10 +19,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
+using Google;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
@@ -36,24 +38,43 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// BigQuery-specific implementation of <see cref="AdbcStatement"/>
     /// </summary>
-    public class BigQueryStatement : AdbcStatement
+    class BigQueryStatement : AdbcStatement, ITokenProtectedResource, IDisposable
     {
-        readonly BigQueryClient client;
-        readonly GoogleCredential credential;
+        readonly BigQueryConnection bigQueryConnection;
 
-        public BigQueryStatement(BigQueryClient client, GoogleCredential credential)
+        public BigQueryStatement(BigQueryConnection bigQueryConnection)
         {
-            this.client = client;
-            this.credential = credential;
+            if (bigQueryConnection == null) { throw new AdbcException($"{nameof(bigQueryConnection)} cannot be null", AdbcStatusCode.InvalidArgument); }
+
+            this.bigQueryConnection = bigQueryConnection;
+
+            UpdateToken = () => Task.Run(() => bigQueryConnection.UpdateClientToken());
+            CheckIfTokenRequiresUpdate = (e) => { return bigQueryConnection.CheckIfClientTokenNeedsRenewal(e); };
         }
+
+        public Func<Task> UpdateToken { get; set; }
+
+        public Func<Exception, bool> CheckIfTokenRequiresUpdate { get; set; }
 
         public IReadOnlyDictionary<string, string>? Options { get; set; }
 
+        private BigQueryClient Client => this.bigQueryConnection.Client ?? throw new AdbcException("Client cannot be null");
+
+        private GoogleCredential Credential => this.bigQueryConnection.Credential ?? throw new AdbcException("Credential cannot be null");
+
         public override QueryResult ExecuteQuery()
+        {
+            //return ExecuteQueryInternal();
+
+            Func<Task<QueryResult>> func = () => Task.Run(() => ExecuteQueryInternal());
+            return AdbcRetryManager.ExecuteWithRetriesAsync<QueryResult>(this, func).Result;
+        }
+
+        private QueryResult ExecuteQueryInternal()
         {
             QueryOptions queryOptions = ValidateOptions();
 
-            BigQueryJob job = this.client.CreateQueryJob(SqlQuery, null, queryOptions);
+            BigQueryJob job = this.Client.CreateQueryJob(SqlQuery, null, queryOptions);
 
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
@@ -64,10 +85,37 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
-            BigQueryResults results = job.GetQueryResults(getQueryResultsOptions);
+            Func<Task<BigQueryResults>> func = () => Task.Run(() =>
+            {
+                BigQueryResults? results = null;
+                while (true)
+                {
+                    results = job.GetQueryResults(getQueryResultsOptions);
+
+                    if (job.State == JobState.Done)
+                    {
+                        break;
+                    }
+                }
+
+                if (results == null)
+                {
+                    throw new AdbcException("Could not retrieve query results.");
+                }
+
+                if (job.Status.Errors?.Count > 0)
+                {
+                    // TODO: Log these (but they dont necessarily mean the job didn't complete)
+                }
+
+                return results;
+            });
+
+            // only try two times because it's called as part of a larger retryable method
+            BigQueryResults results = AdbcRetryManager.ExecuteWithRetriesAsync<BigQueryResults>(this, func, 2).Result;
 
             BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
-            readClientBuilder.Credential = this.credential;
+            readClientBuilder.Credential = this.Credential;
             BigQueryReadClient readClient = readClientBuilder.Build();
 
             if (results.TableReference == null)
@@ -76,11 +124,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 // Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements
                 ListJobsOptions listJobsOptions = new ListJobsOptions();
                 listJobsOptions.ParentJobId = results.JobReference.JobId;
-                PagedEnumerable<JobList, BigQueryJob> joblist = client.ListJobs(listJobsOptions);
-                BigQueryJob firstQueryJob = new BigQueryJob(client, job.Resource);
+                PagedEnumerable<JobList, BigQueryJob> joblist = this.Client.ListJobs(listJobsOptions);
+                BigQueryJob firstQueryJob = new BigQueryJob(this.Client, job.Resource);
                 foreach (BigQueryJob childJob in joblist)
                 {
-                    var tempJob = client.GetJob(childJob.Reference);
+                    var tempJob = this.Client.GetJob(childJob.Reference);
                     var query = tempJob.Resource?.Configuration?.Query;
                     if (query != null && query.DestinationTable != null && query.DestinationTable.ProjectId != null && query.DestinationTable.DatasetId != null && query.DestinationTable.TableId != null)
                     {
@@ -125,6 +173,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override UpdateResult ExecuteUpdate()
         {
+            Func<Task<UpdateResult>> func = () => Task.Run(() => ExecuteUpdateInternal());
+            return AdbcRetryManager.ExecuteWithRetriesAsync<UpdateResult>(this,func).Result;
+        }
+
+        private UpdateResult ExecuteUpdateInternal()
+        {
             QueryOptions options = ValidateOptions();
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
@@ -135,7 +189,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
-            BigQueryResults result = this.client.ExecuteQuery(
+            BigQueryResults result = this.Client.ExecuteQuery(
                 SqlQuery,
                 parameters: null,
                 queryOptions: options,
@@ -249,12 +303,23 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             QueryOptions options = new QueryOptions();
 
-            if (this.client.ProjectId == BigQueryConstants.DetectProjectId)
+            if (this.Client.ProjectId == BigQueryConstants.DetectProjectId)
             {
                 // An error occurs when calling CreateQueryJob without the ID set,
                 // so use the first one that is found. This does not prevent from calling
                 // to other 'project IDs' (catalogs) with a query.
-                PagedEnumerable<ProjectList, CloudProject>? projects = this.client.ListProjects();
+                //PagedEnumerable<ProjectList, CloudProject>? projects = this.Client.ListProjects();
+
+                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = new(
+                    () => {
+                        return Task.Run(
+                            () => { return this.Client?.ListProjects(); }
+                         );
+                    }
+                );
+
+                PagedEnumerable<ProjectList, CloudProject>? projects =
+                    AdbcRetryManager.ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(this, func).Result;
 
                 if (projects != null)
                 {
