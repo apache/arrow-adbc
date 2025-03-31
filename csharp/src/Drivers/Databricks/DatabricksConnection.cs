@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
@@ -39,6 +40,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
+        private const bool DefaultRetryOnUnavailable= true;
+        private const int DefaultTemporarilyUnavailableRetryTimeout = 500;
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -121,6 +124,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the maximum bytes per file for CloudFetch.
         /// </summary>
         internal long MaxBytesPerFile => _maxBytesPerFile;
+
+        /// <summary>
+        /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
+        /// </summary>
+        protected bool TemporarilyUnavailableRetry { get; private set; } = DefaultRetryOnUnavailable;
+
+        /// <summary>
+        /// Gets the maximum total time in seconds to retry 503 responses before failing.
+        /// </summary>
+        protected int TemporarilyUnavailableRetryTimeout { get; private set; } = DefaultTemporarilyUnavailableRetryTimeout;
+
+        protected override HttpMessageHandler CreateHttpHandler()
+        {
+            var baseHandler = base.CreateHttpHandler();
+            if (TemporarilyUnavailableRetry)
+            {
+                return new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
+            }
+            return baseHandler;
+        }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {
@@ -257,6 +280,34 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string EscapeSqlString(string value)
         {
             return "`" + value.Replace("`", "``") + "`";
+        }
+
+        protected override void ValidateOptions()
+        {
+             base.ValidateOptions();
+
+            if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetry, out string? tempUnavailableRetryStr))
+            {
+                if (!bool.TryParse(tempUnavailableRetryStr, out bool tempUnavailableRetryValue))
+                {
+                    throw new ArgumentOutOfRangeException(DatabricksParameters.TemporarilyUnavailableRetry, tempUnavailableRetryStr,
+                        $"must be a value of false (disabled) or true (enabled). Default is true.");
+                }
+
+                TemporarilyUnavailableRetry = tempUnavailableRetryValue;
+            }
+
+
+            if(Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
+            {
+                if (!int.TryParse(tempUnavailableRetryTimeoutStr, out int tempUnavailableRetryTimeoutValue) ||
+                    tempUnavailableRetryTimeoutValue < 0)
+                {
+                    throw new ArgumentOutOfRangeException(DatabricksParameters.TemporarilyUnavailableRetryTimeout, tempUnavailableRetryTimeoutStr,
+                        $"must be a value of 0 (retry indefinitely) or a positive integer representing seconds. Default is 900 seconds (15 minutes).");
+                }
+                TemporarilyUnavailableRetryTimeout = tempUnavailableRetryTimeoutValue;
+            }
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
