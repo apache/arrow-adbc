@@ -63,7 +63,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override AdbcStatement CreateStatement()
         {
-            return new SparkStatement(this);
+            SparkStatement statement = new SparkStatement(this);
+            return statement;
         }
 
         protected internal override int PositionRequiredOffset => 1;
