@@ -142,12 +142,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             // Create a custom exception with the SQL state code and last error message
             var exception = new AdbcException(
-                lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded", 
+                lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded",
                 AdbcStatusCode.IOError);
-                
+
             // Add SQL state as part of the message since we can't set it directly
             throw new AdbcException(
-                $"[SQLState: 08001] {exception.Message}", 
+                $"[SQLState: 08001] {exception.Message}",
                 AdbcStatusCode.IOError);
         }
 
