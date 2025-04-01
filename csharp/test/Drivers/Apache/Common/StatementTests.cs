@@ -184,12 +184,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             await ValidateInsertSelectDeleteSingleValueAsync(temporaryTable.TableName, columnName, 1);
         }
 
-        protected delegate void PrepareCreateTableWithPrimaryKeysDelegate(
-            out string sqlUpdate,
-            out string tableNameParent,
-            out string fullTableNameParent,
-            out IReadOnlyList<string> primaryKeys);
-
         /// <summary>
         /// Validates if the driver can execute GetPrimaryKeys metadata command.
         /// </summary>
@@ -210,10 +204,112 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             AdbcStatement statement = Connection.CreateStatement();
             statement.SetOption(ApacheParameters.CatalogName, catalogName ?? string.Empty);
             statement.SetOption(ApacheParameters.SchemaName, schemaName ?? string.Empty);
-            statement.SetOption(ApacheParameters.TableName, tableName ?? string.Empty);
+            statement.SetOption(ApacheParameters.TableName, tableName);
             statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
             statement.SqlQuery = "GetPrimaryKeys";
 
+            await ValidateGetPrimaryKeys(catalogName, schemaName, tableName, primaryKeys, statement);
+        }
+
+        /// <summary>
+        /// Validates if the driver can execute GetCrossReference metadata command.
+        /// </summary>
+        protected async Task CanGetCrossReferenceFromChildTable(string? catalogName, string? schemaName)
+        {
+            PrepareCreateTableWithPrimaryKeys(
+                out string sqlUpdate,
+                out string tableNameParent,
+                out string fullTableNameParent,
+                out IReadOnlyList<string> primaryKeys);
+            using TemporaryTable temporaryTableParent = await TemporaryTable.NewTemporaryTableAsync(
+                Statement,
+                fullTableNameParent,
+                sqlUpdate,
+                OutputHelper);
+
+            PrepareCreateTableWithForeignKeys(
+                fullTableNameParent,
+                out sqlUpdate,
+                out string tableNameChild,
+                out string fullTableNameChild,
+                out IReadOnlyList<string> foreignKeys);
+            using TemporaryTable temporaryTableChild = await TemporaryTable.NewTemporaryTableAsync(
+                Statement,
+                fullTableNameChild,
+                sqlUpdate,
+                OutputHelper);
+
+            // Note: create a new statement to do metadata calls so it does not reuse the existing 'this.Statement'
+            AdbcStatement statement = Connection.CreateStatement();
+            // Either or both the parent and child namespace can be provided
+            statement.SetOption(ApacheParameters.ForeignCatalogName, catalogName ?? string.Empty);
+            statement.SetOption(ApacheParameters.ForeignSchemaName, schemaName ?? string.Empty);
+            statement.SetOption(ApacheParameters.ForeignTableName, tableNameChild);
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetCrossReference";
+
+            await ValidateGetCrossReference(catalogName, schemaName, tableNameParent, primaryKeys, foreignKeys, statement);
+        }
+
+        /// <summary>
+        /// Validates if the driver can execute GetCrossReference metadata command.
+        /// </summary>
+        protected async Task CanGetCrossReferenceFromParentTable(string? catalogName, string? schemaName)
+        {
+            PrepareCreateTableWithPrimaryKeys(
+                out string sqlUpdate,
+                out string tableNameParent,
+                out string fullTableNameParent,
+                out IReadOnlyList<string> primaryKeys);
+            using TemporaryTable temporaryTableParent = await TemporaryTable.NewTemporaryTableAsync(
+                Statement,
+                fullTableNameParent,
+                sqlUpdate,
+                OutputHelper);
+
+            PrepareCreateTableWithForeignKeys(
+                fullTableNameParent,
+                out sqlUpdate,
+                out string tableNameChild,
+                out string fullTableNameChild,
+                out IReadOnlyList<string> foreignKeys);
+            using TemporaryTable temporaryTableChild = await TemporaryTable.NewTemporaryTableAsync(
+                Statement,
+                fullTableNameChild,
+                sqlUpdate,
+                OutputHelper);
+
+            // Note: create a new statement to do metadata calls so it does not reuse the existing 'this.Statement'
+            AdbcStatement statement = Connection.CreateStatement();
+            // Either or both the parent and child namespace can be provided
+            statement.SetOption(ApacheParameters.CatalogName, catalogName ?? string.Empty);
+            statement.SetOption(ApacheParameters.SchemaName, schemaName ?? string.Empty);
+            statement.SetOption(ApacheParameters.TableName, tableNameParent);
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetCrossReference";
+
+            await ValidateGetCrossReference(catalogName, schemaName, tableNameParent, primaryKeys, foreignKeys, statement);
+        }
+
+        protected virtual void PrepareCreateTableWithForeignKeys(string fullTableNameParent, out string sqlUpdate, out string tableNameChild, out string fullTableNameChild, out IReadOnlyList<string> foreignKeys)
+        {
+            CreateNewTableName(out tableNameChild, out fullTableNameChild);
+            sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameChild} \n"
+                + "  (INDEX INT, USERINDEX INT, USERNAME STRING, ADDRESS STRING, \n"
+                + "  PRIMARY KEY (INDEX) disable novalidate, \n"
+                + $"  FOREIGN KEY (USERINDEX, USERNAME) REFERENCES {fullTableNameParent} (INDEX, NAME) disable novalidate)";
+            foreignKeys = ["userindex", "username"];
+        }
+
+        protected virtual void PrepareCreateTableWithPrimaryKeys(out string sqlUpdate, out string tableNameParent, out string fullTableNameParent, out IReadOnlyList<string> primaryKeys)
+        {
+            CreateNewTableName(out tableNameParent, out fullTableNameParent);
+            sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameParent} (INDEX INT, NAME STRING, PRIMARY KEY (INDEX, NAME) disable novalidate)";
+            primaryKeys = ["index", "name"];
+        }
+
+        private static async Task ValidateGetPrimaryKeys(string? catalogName, string? schemaName, string tableName, IReadOnlyList<string> primaryKeys, AdbcStatement statement)
+        {
             int expectedBatchLength = primaryKeys.Count;
             int actualBatchLength = 0;
 
@@ -259,104 +355,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             Assert.Equal(expectedBatchLength, actualBatchLength);
         }
 
-        /// <summary>
-        /// Validates if the driver can execute GetCrossReference metadata command.
-        /// </summary>
-        protected async Task CanGetCrossReferenceFromChildTable(string? catalogName, string? schemaName)
+        private static async Task ValidateGetCrossReference(string? catalogName, string? schemaName, string tableNameParent, IReadOnlyList<string> primaryKeys, IReadOnlyList<string> foreignKeys, AdbcStatement statement)
         {
-            PrepareCreateTableWithPrimaryKeys(
-                out string sqlUpdate,
-                out string tableNameParent,
-                out string fullTableNameParent,
-                out IReadOnlyList<string> primaryKeys);
-            using TemporaryTable temporaryTableParent = await TemporaryTable.NewTemporaryTableAsync(
-                Statement,
-                fullTableNameParent,
-                sqlUpdate,
-                OutputHelper);
-
-            PrepareCreateTableWithForeignKeys(
-                fullTableNameParent,
-                out sqlUpdate,
-                out string tableNameChild,
-                out string fullTableNameChild,
-                out IReadOnlyList<string> foreignKeys);
-            using TemporaryTable temporaryTableChild = await TemporaryTable.NewTemporaryTableAsync(
-                Statement,
-                fullTableNameChild,
-                sqlUpdate,
-                OutputHelper);
-
-            // Note: create a new statement to do metadata calls so it does not reuse the existing 'this.Statement'
-            AdbcStatement statement = Connection.CreateStatement();
-            // Either or both the parent and child namespace can be provided
-            statement.SetOption(ApacheParameters.ForeignCatalogName, catalogName ?? string.Empty);
-            statement.SetOption(ApacheParameters.ForeignSchemaName, schemaName ?? string.Empty);
-            statement.SetOption(ApacheParameters.ForeignTableName, tableNameChild);
-
-            await ValidateCrossReference(catalogName, schemaName, tableNameParent, primaryKeys, foreignKeys, statement);
-        }
-
-        /// <summary>
-        /// Validates if the driver can execute GetCrossReference metadata command.
-        /// </summary>
-        protected async Task CanGetCrossReferenceFromParentTable(string? catalogName, string? schemaName)
-        {
-            PrepareCreateTableWithPrimaryKeys(
-                out string sqlUpdate,
-                out string tableNameParent,
-                out string fullTableNameParent,
-                out IReadOnlyList<string> primaryKeys);
-            using TemporaryTable temporaryTableParent = await TemporaryTable.NewTemporaryTableAsync(
-                Statement,
-                fullTableNameParent,
-                sqlUpdate,
-                OutputHelper);
-
-            PrepareCreateTableWithForeignKeys(
-                fullTableNameParent,
-                out sqlUpdate,
-                out string tableNameChild,
-                out string fullTableNameChild,
-                out IReadOnlyList<string> foreignKeys);
-            using TemporaryTable temporaryTableChild = await TemporaryTable.NewTemporaryTableAsync(
-                Statement,
-                fullTableNameChild,
-                sqlUpdate,
-                OutputHelper);
-
-            // Note: create a new statement to do metadata calls so it does not reuse the existing 'this.Statement'
-            AdbcStatement statement = Connection.CreateStatement();
-            // Either or both the parent and child namespace can be provided
-            statement.SetOption(ApacheParameters.CatalogName, catalogName ?? string.Empty);
-            statement.SetOption(ApacheParameters.SchemaName, schemaName ?? string.Empty);
-            statement.SetOption(ApacheParameters.TableName, tableNameParent);
-
-            await ValidateCrossReference(catalogName, schemaName, tableNameParent, primaryKeys, foreignKeys, statement);
-        }
-
-        protected virtual void PrepareCreateTableWithForeignKeys(string fullTableNameParent, out string sqlUpdate, out string tableNameChild, out string fullTableNameChild, out IReadOnlyList<string> foreignKeys)
-        {
-            CreateNewTableName(out tableNameChild, out fullTableNameChild);
-            sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameChild} \n"
-                + "  (INDEX INT, USERINDEX INT, USERNAME STRING, ADDRESS STRING, \n"
-                + "  PRIMARY KEY (INDEX) disable novalidate, \n"
-                + $"  FOREIGN KEY (USERINDEX, USERNAME) REFERENCES {fullTableNameParent} (INDEX, NAME) disable novalidate)";
-            foreignKeys = ["userindex", "username"];
-        }
-
-        protected virtual void PrepareCreateTableWithPrimaryKeys(out string sqlUpdate, out string tableNameParent, out string fullTableNameParent, out IReadOnlyList<string> primaryKeys)
-        {
-            CreateNewTableName(out tableNameParent, out fullTableNameParent);
-            sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameParent} (INDEX INT, NAME STRING, PRIMARY KEY (INDEX, NAME) disable novalidate)";
-            primaryKeys = ["index", "name"];
-        }
-
-        private static async Task ValidateCrossReference(string? catalogName, string? schemaName, string tableNameParent, IReadOnlyList<string> primaryKeys, IReadOnlyList<string> foreignKeys, AdbcStatement statement)
-        {
-            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
-            statement.SqlQuery = "GetCrossReference";
-
             int expectedBatchLength = primaryKeys.Count;
             int actualBatchLength = 0;
 
