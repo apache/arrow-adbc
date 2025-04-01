@@ -135,6 +135,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = sparkGetDirectResults;
 
+        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = sparkGetDirectResults;
+
+        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = sparkGetDirectResults;
+
         protected abstract void ValidateConnection();
         protected abstract void ValidateAuthentication();
         protected abstract void ValidateOptions();

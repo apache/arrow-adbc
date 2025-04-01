@@ -798,6 +798,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected virtual void SetDirectResults(TGetTableTypesReq request) => throw new System.NotImplementedException();
 
+        protected virtual void SetDirectResults(TGetPrimaryKeysReq request) => throw new System.NotImplementedException();
+
+        protected virtual void SetDirectResults(TGetCrossReferenceReq request) => throw new System.NotImplementedException();
+
         protected internal abstract int PositionRequiredOffset { get; }
 
         protected abstract string InfoDriverName { get; }
@@ -1059,6 +1063,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetPrimaryKeysReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly())
+            {
+                SetDirectResults(req);
+            }
             if (!string.IsNullOrWhiteSpace(catalogName))
             {
                 req.CatalogName = catalogName!;
@@ -1098,6 +1106,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetCrossReferenceReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly())
+            {
+                SetDirectResults(req);
+            }
             if (!string.IsNullOrWhiteSpace(catalogName))
             {
                 req.ParentCatalogName = catalogName!;
