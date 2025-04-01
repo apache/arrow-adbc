@@ -786,7 +786,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
         protected internal abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default);
 
-        protected virtual bool AreResultsAvailableDirectly() => false;
+        protected internal virtual bool AreResultsAvailableDirectly() => false;
 
         protected virtual void SetDirectResults(TGetColumnsReq request) => throw new System.NotImplementedException();
 
@@ -909,6 +909,142 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 length,
                 dataArrays,
                 nullBitmapBuffer.Build());
+        }
+
+        internal async Task<TGetCatalogsResp> GetCatalogsAsync(CancellationToken cancellationToken)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetCatalogsReq req = new TGetCatalogsReq(SessionHandle);
+            if (AreResultsAvailableDirectly())
+            {
+                SetDirectResults(req);
+            }
+
+            TGetCatalogsResp resp = await Client.GetCatalogs(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
+        }
+
+        internal async Task<TGetSchemasResp> GetSchemasAsync(string? catalogName, string? schemaName, CancellationToken cancellationToken)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetSchemasReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly())
+            {
+                SetDirectResults(req);
+            }
+            if (!string.IsNullOrEmpty(catalogName))
+            {
+                req.CatalogName = catalogName;
+            }
+            if (!string.IsNullOrEmpty(schemaName))
+            {
+                req.SchemaName = schemaName;
+            }
+
+            TGetSchemasResp resp = await Client.GetSchemas(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
+        }
+
+        internal async Task<TGetTablesResp> GetTablesAsync(string? catalogName, string? schemaName, string? tableName, List<string>? tableTypes, CancellationToken cancellationToken)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetTablesReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly())
+            {
+                SetDirectResults(req);
+            }
+            if (!string.IsNullOrEmpty(catalogName))
+            {
+                req.CatalogName = catalogName;
+            }
+            if (!string.IsNullOrEmpty(schemaName))
+            {
+                req.SchemaName = schemaName;
+            }
+            if (!string.IsNullOrEmpty(tableName))
+            {
+                req.TableName = tableName;
+            }
+            if (tableTypes != null && tableTypes.Count > 0)
+            {
+                req.TableTypes = tableTypes;
+            }
+
+            TGetTablesResp resp = await Client.GetTables(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
+        }
+
+        internal async Task<TGetColumnsResp> GetColumnsAsync(string? catalogName, string? schemaName, string? tableName, string? columnName, CancellationToken cancellationToken)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetColumnsReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly())
+            {
+                SetDirectResults(req);
+            }
+            if (!string.IsNullOrEmpty(catalogName))
+            {
+                req.CatalogName = catalogName;
+            }
+            if (!string.IsNullOrEmpty(schemaName))
+            {
+                req.SchemaName = schemaName;
+            }
+            if (!string.IsNullOrEmpty(tableName))
+            {
+                req.TableName = tableName;
+            }
+            if (!string.IsNullOrEmpty(columnName))
+            {
+                req.ColumnName = columnName;
+            }
+
+            TGetColumnsResp resp = await Client.GetColumns(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
         }
 
         internal async Task<TGetPrimaryKeysResp> GetPrimaryKeysAsync(

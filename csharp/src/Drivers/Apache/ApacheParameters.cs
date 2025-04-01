@@ -31,6 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         public const string SchemaName = "adbc.apache.schema_name";
         public const string TableName = "adbc.apache.table_name";
         public const string TableTypes = "adbc.apache.table_types";
+        public const string ColumnName = "adbc.apache.column_name";
         public const string ForeignCatalogName = "adbc.apache.cross_reference.foreign_catalog_name";
         public const string ForeignSchemaName = "adbc.apache.cross_reference.foreign_schema_name";
         public const string ForeignTableName = "adbc.apache.cross_reference.foreign_table_name";

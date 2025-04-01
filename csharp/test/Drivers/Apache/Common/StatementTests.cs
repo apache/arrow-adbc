@@ -184,6 +184,38 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             await ValidateInsertSelectDeleteSingleValueAsync(temporaryTable.TableName, columnName, 1);
         }
 
+        [SkippableFact]
+        public async Task CanGetCatalogs()
+        {
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetCatalogs";
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            Assert.Single(queryResult.Stream.Schema.FieldsList);
+            int actualBatchLength = 0;
+
+            while (queryResult.Stream != null)
+            {
+                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                {
+                    break;
+                }
+                actualBatchLength += batch.Length;
+            }
+            if (TestEnvironment.SupportCatalogName)
+            {
+                Assert.True(actualBatchLength > 0);
+            }
+            else
+            {
+                Assert.True(actualBatchLength == 0);
+            }
+        }
+
         /// <summary>
         /// Validates if the driver can execute GetPrimaryKeys metadata command.
         /// </summary>
@@ -212,7 +244,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         }
 
         /// <summary>
-        /// Validates if the driver can execute GetCrossReference metadata command.
+        /// Validates if the driver can execute GetCrossReference metadata command referencing the child table.
         /// </summary>
         protected async Task CanGetCrossReferenceFromChildTable(string? catalogName, string? schemaName)
         {
@@ -252,7 +284,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         }
 
         /// <summary>
-        /// Validates if the driver can execute GetCrossReference metadata command.
+        /// Validates if the driver can execute GetCrossReference metadata command referencing the parent table.
         /// </summary>
         protected async Task CanGetCrossReferenceFromParentTable(string? catalogName, string? schemaName)
         {

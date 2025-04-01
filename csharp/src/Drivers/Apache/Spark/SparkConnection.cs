@@ -123,7 +123,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override bool IsColumnSizeValidForDecimal => false;
 
-        protected override bool AreResultsAvailableDirectly() => true;
+        protected internal override bool AreResultsAvailableDirectly() => true;
 
         protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = sparkGetDirectResults;
 
