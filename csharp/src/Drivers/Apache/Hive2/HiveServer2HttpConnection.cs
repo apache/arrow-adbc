@@ -301,6 +301,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
@@ -310,6 +312,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
 
         protected internal override int PositionRequiredOffset => 0;

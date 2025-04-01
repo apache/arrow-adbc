@@ -18,7 +18,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -84,6 +83,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Task.FromResult(response.DirectResults.ResultSetMetadata);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSetMetadata);
+        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSetMetadata);
 
         protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
@@ -94,6 +95,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
     }
 }

@@ -74,6 +74,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             }
         }
 
+        public static bool BooleanIsValid(string key, string value, out bool booleanValue)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                // Treat like an indicator that when key is present and value is blank, it indicates a 'true'.
+                booleanValue = true;
+                return true;
+            }
+            else if (bool.TryParse(value, out booleanValue))
+            {
+                return true;
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(key, nameof(value), $"Invalid value for {key}: {value}. Expected a boolean value.");
+            }
+        }
+
         public static bool ContainsException<T>(Exception exception, out T? containedException) where T : Exception
         {
             if (exception is AggregateException aggregateException)

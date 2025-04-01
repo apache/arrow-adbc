@@ -83,7 +83,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             public string TableName { get; internal set; }
             public string ColumnName { get; internal set; }
             public string DataType { get; internal set; }
-            public string TypeName {  get; internal set; }
+            public string TypeName { get; internal set; }
             public string Nullable { get; internal set; }
             public string ColumnDef { get; internal set; }
             public string OrdinalPosition { get; internal set; }
@@ -779,10 +779,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp, CancellationToken cancellationToken = default);
         protected abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp, CancellationToken cancellationToken = default);
+        protected internal abstract Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
+        protected internal abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default);
 
         protected virtual bool AreResultsAvailableDirectly() => false;
 
@@ -804,7 +806,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected abstract string ProductVersion { get; }
 
-        protected abstract bool GetObjectsPatternsRequireLowerCase {  get; }
+        protected abstract bool GetObjectsPatternsRequireLowerCase { get; }
 
         protected abstract bool IsColumnSizeValidForDecimal { get; }
 
@@ -907,6 +909,93 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 length,
                 dataArrays,
                 nullBitmapBuffer.Build());
+        }
+
+        internal async Task<TGetPrimaryKeysResp> GetPrimaryKeysAsync(
+            string? catalogName,
+            string? schemaName,
+            string? tableName,
+            CancellationToken cancellationToken = default)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetPrimaryKeysReq req = new(SessionHandle);
+            if (!string.IsNullOrWhiteSpace(catalogName))
+            {
+                req.CatalogName = catalogName!;
+            }
+            if (!string.IsNullOrWhiteSpace(schemaName))
+            {
+                req.SchemaName = schemaName!;
+            }
+            if (!string.IsNullOrWhiteSpace(tableName))
+            {
+                req.TableName = tableName!;
+            }
+
+            TGetPrimaryKeysResp resp = await Client.GetPrimaryKeys(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
+        }
+
+        internal async Task<TGetCrossReferenceResp> GetCrossReferenceAsync(
+            string? catalogName,
+            string? schemaName,
+            string? tableName,
+            string? foreignCatalogName,
+            string? foreignSchemaName,
+            string? foreignTableName,
+            CancellationToken cancellationToken = default)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetCrossReferenceReq req = new(SessionHandle);
+            if (!string.IsNullOrWhiteSpace(catalogName))
+            {
+                req.ParentCatalogName = catalogName!;
+            }
+            if (!string.IsNullOrWhiteSpace(schemaName))
+            {
+                req.ParentSchemaName = schemaName!;
+            }
+            if (!string.IsNullOrWhiteSpace(tableName))
+            {
+                req.ParentTableName = tableName!;
+            }
+            if (!string.IsNullOrWhiteSpace(foreignCatalogName))
+            {
+                req.ForeignCatalogName = foreignCatalogName!;
+            }
+            if (!string.IsNullOrWhiteSpace(schemaName))
+            {
+                req.ForeignSchemaName = foreignSchemaName!;
+            }
+            if (!string.IsNullOrWhiteSpace(tableName))
+            {
+                req.ForeignTableName = foreignTableName!;
+            }
+
+
+            TGetCrossReferenceResp resp = await Client.GetCrossReference(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+            return resp;
         }
 
         private static StructArray GetColumnSchema(TableInfo tableInfo)

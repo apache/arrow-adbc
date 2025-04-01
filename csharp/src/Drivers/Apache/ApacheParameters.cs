@@ -25,5 +25,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         public const string PollTimeMilliseconds = "adbc.apache.statement.polltime_ms";
         public const string BatchSize = "adbc.apache.statement.batch_size";
         public const string QueryTimeoutSeconds = "adbc.apache.statement.query_timeout_s";
+        public const string IsMetadataCommand = "adbc.apache.statement.is_metadata_command";
+
+        public const string CatalogName = "adbc.apache.catalog_name";
+        public const string SchemaName = "adbc.apache.schema_name";
+        public const string TableName = "adbc.apache.table_name";
+        public const string TableTypes = "adbc.apache.table_types";
+        public const string ForeignCatalogName = "adbc.apache.cross_reference.foreign_catalog_name";
+        public const string ForeignSchemaName = "adbc.apache.cross_reference.foreign_schema_name";
+        public const string ForeignTableName = "adbc.apache.cross_reference.foreign_table_name";
     }
 }
