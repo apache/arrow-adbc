@@ -35,8 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private IArrowReader? reader;
         private Task<TFetchResultsResp>? prefetchTask;
         private bool isEndOfData = false;
-        private long totalRowsRead = 0;
-        private readonly Stopwatch fetchTimer = new Stopwatch();
 
         public SparkDatabricksReader(HiveServer2Statement statement, Schema schema)
         {
@@ -55,10 +53,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
 
             // Create the fetch request
-            TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+            TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
 
             // Start the async fetch
-            this.fetchTimer.Restart();
             this.prefetchTask = this.statement.Connection.Client!.FetchResults(request, cancellationToken);
         }
 
@@ -97,10 +94,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 var nextBatch = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
                 if (nextBatch != null)
                 {
-                    this.totalRowsRead += nextBatch.Length;
                     return nextBatch;
                 }
-                //this.reader.Dispose();
                 this.reader = null;
             }
             return null;
@@ -154,7 +149,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     response = await this.prefetchTask;
                     this.prefetchTask = null;
-                    this.fetchTimer.Stop();
                 }
                 else
                 {
@@ -162,10 +156,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     {
                         return;
                     }
-                    this.fetchTimer.Restart();
                     TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
                     response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
-                    this.fetchTimer.Stop();
                 }
                 this.batches = response.Results.ArrowBatches;
 
@@ -190,7 +182,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public void Dispose()
         {
-            //this.reader?.Dispose();
             this.reader = null;
             this.prefetchTask = null;
             this.batches = null;
