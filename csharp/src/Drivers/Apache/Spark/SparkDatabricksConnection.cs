@@ -34,7 +34,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void ValidateOptions()
         {
-            ValidateTlsEnabledOption();
+            ValidateTlsOptions();
             base.ValidateOptions();
         }
 
@@ -103,7 +103,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
 
-        private void ValidateTlsEnabledOption()
+        private void ValidateTlsOptions()
         {
             if (!Properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled))
             {
@@ -124,6 +124,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     throw new ArgumentOutOfRangeException(HttpTlsOptions.IsTlsEnabled, isSslEnabled, "Expecting boolean value.");
                 }
+            }
+            HashSet<string> unsupportedBooleanOptions = [
+                HttpTlsOptions.AllowHostnameMismatch,
+                HttpTlsOptions.AllowSelfSigned,
+                HttpTlsOptions.DisableServerCertificateValidation,
+            ];
+            foreach (string unsupportedOption in unsupportedBooleanOptions)
+            {
+                if (Properties.TryGetValue(unsupportedOption, out string? isEnabledValue)
+                    && bool.TryParse(isEnabledValue, out bool isEnabled)
+                    && isEnabled)
+                {
+                    throw new ArgumentOutOfRangeException(unsupportedOption, isEnabledValue, $"Option is not suppored for driver type {SparkServerTypeConstants.Databricks}.");
+                }
+            }
+            if (Properties.TryGetValue(HttpTlsOptions.TrustedCertificatePath, out string? value) && !string.IsNullOrEmpty(value))
+            {
+                throw new ArgumentOutOfRangeException(HttpTlsOptions.TrustedCertificatePath, value, $"Option is not suppored for driver type {SparkServerTypeConstants.Databricks}.");
             }
         }
     }
