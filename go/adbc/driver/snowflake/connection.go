@@ -169,7 +169,7 @@ func isWildcardStr(ident string) bool {
 	return strings.ContainsAny(ident, "_%")
 }
 
-func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (array.RecordReader, error) {
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (rdr array.RecordReader, err error) {
 	var (
 		pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
 		showSchemaQueryID, tableQueryID                     string
@@ -320,7 +320,9 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
-	defer rows.Close()
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
 
 	catalogCh := make(chan driverbase.GetObjectsInfo, runtime.NumCPU())
 	errCh := make(chan error)
@@ -367,10 +369,10 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 
 // PrepareDriverInfo implements driverbase.DriverInfoPreparer.
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
-	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
+	if err := c.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
 		return err
 	}
-	return c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSubstrait, false)
+	return c.DriverInfo.RegisterInfoCode(adbc.InfoVendorSubstrait, false)
 }
 
 // ListTableTypes implements driverbase.TableTypeLister.
@@ -572,12 +574,14 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 	return
 }
 
-func (c *connectionImpl) getStringQuery(query string) (string, error) {
+func (c *connectionImpl) getStringQuery(query string) (value string, err error) {
 	result, err := c.cn.QueryContext(context.Background(), query, nil)
 	if err != nil {
 		return "", errToAdbcErr(adbc.StatusInternal, err)
 	}
-	defer result.Close()
+	defer func() {
+		err = errors.Join(err, result.Close())
+	}()
 
 	if len(result.Columns()) != 1 {
 		return "", adbc.Error{
@@ -608,7 +612,7 @@ func (c *connectionImpl) getStringQuery(query string) (string, error) {
 	return value, nil
 }
 
-func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (*arrow.Schema, error) {
+func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (sc *arrow.Schema, err error) {
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
 		tblParts = append(tblParts, quoteTblName(*catalog))
@@ -623,7 +627,9 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
-	defer rows.Close()
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
 
 	var (
 		name, typ, isnull, primary string
@@ -657,7 +663,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 		fields = append(fields, f)
 	}
 
-	sc := arrow.NewSchema(fields, nil)
+	sc = arrow.NewSchema(fields, nil)
 	return sc, nil
 }
 

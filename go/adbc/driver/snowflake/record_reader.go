@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -510,18 +511,20 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 					Code: adbc.StatusInternal,
 				}
 			}
-			defer rdr.Close()
 
 			// the "JSON" data returned isn't valid JSON. Instead it is a list of
 			// comma-delimited JSON lists containing every value as a string, except
 			// for a JSON null to represent nulls. Thus we can't just use the existing
 			// JSON parsing code in Arrow.
 			data, err := io.ReadAll(rdr)
+			rdrErr := rdr.Close()
 			if err != nil {
 				return nil, adbc.Error{
 					Msg:  err.Error(),
 					Code: adbc.StatusInternal,
 				}
+			} else if rdrErr != nil {
+				return nil, rdrErr
 			}
 
 			if cap(rawData) >= int(b.NumRows()) {
@@ -616,9 +619,11 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	var recTransform recordTransformer
 	rdr.schema, recTransform = getTransformer(rr.Schema(), ld, useHighPrecision)
 
-	group.Go(func() error {
+	group.Go(func() (err error) {
 		defer rr.Release()
-		defer r.Close()
+		defer func() {
+			err = errors.Join(err, r.Close())
+		}()
 		if len(batches) > 1 {
 			defer close(ch)
 		}
@@ -641,7 +646,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		for i, b := range batches[1:] {
 			batch, batchIdx := b, i+1
 			chs[batchIdx] = make(chan arrow.Record, bufferSize)
-			group.Go(func() error {
+			group.Go(func() (err error) {
 				// close channels (except the last) so that Next can move on to the next channel properly
 				if batchIdx != lastChannelIndex {
 					defer close(chs[batchIdx])
@@ -651,7 +656,9 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 				if err != nil {
 					return err
 				}
-				defer rdr.Close()
+				defer func() {
+					err = errors.Join(err, rdr.Close())
+				}()
 
 				rr, err := ipc.NewReader(rdr, ipc.WithAllocator(alloc))
 				if err != nil {

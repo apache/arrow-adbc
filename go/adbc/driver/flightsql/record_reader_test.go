@@ -19,6 +19,7 @@ package flightsql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"testing"
@@ -49,7 +50,7 @@ type testFlightService struct {
 	failureCount int
 }
 
-func (f *testFlightService) DoGet(request *flight.Ticket, stream flight.FlightService_DoGetServer) error {
+func (f *testFlightService) DoGet(request *flight.Ticket, stream flight.FlightService_DoGetServer) (err error) {
 	// Crude way to make requests fail until retried enough times
 	if f.failureCount > 0 {
 		f.failureCount--
@@ -58,7 +59,9 @@ func (f *testFlightService) DoGet(request *flight.Ticket, stream flight.FlightSe
 
 	schema := orderingSchema()
 	wr := flight.NewRecordWriter(stream, ipc.WithSchema(schema))
-	defer wr.Close()
+	defer func() {
+		err = errors.Join(err, wr.Close())
+	}()
 
 	builder := array.NewRecordBuilder(f.alloc, schema)
 	defer builder.Release()
@@ -133,12 +136,12 @@ func (suite *RecordReaderTests) SetupSuite() {
 		}).
 		EvictedFunc(func(_, client interface{}) {
 			conn := client.(*flightsql.Client)
-			conn.Close()
+			suite.NoError(conn.Close())
 		}).Build()
 }
 
 func (suite *RecordReaderTests) TearDownSuite() {
-	suite.cl.Close()
+	suite.NoError(suite.cl.Close())
 	suite.clCache.Purge()
 	suite.server.Shutdown()
 	suite.alloc.AssertSize(suite.T(), 0)

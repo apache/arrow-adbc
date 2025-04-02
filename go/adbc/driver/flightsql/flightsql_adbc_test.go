@@ -29,8 +29,10 @@ import (
 	"crypto/x509/pkix"
 	"database/sql"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"net"
 	"os"
@@ -147,27 +149,27 @@ func (s srvQuery) GetTransactionId() []byte { return nil }
 func writeTo(arr arrow.Array, idx int, w io.Writer) {
 	switch arr := arr.(type) {
 	case *array.Int8:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.Uint8:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.Int16:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.Uint16:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.Int32:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.Uint32:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.Int64:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.Uint64:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.Float32:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.Float64:
-		fmt.Fprint(w, arr.Value(idx))
+		_, _ = fmt.Fprint(w, arr.Value(idx))
 	case *array.String:
-		fmt.Fprintf(w, `"%s"`, arr.Value(idx))
+		_, _ = fmt.Fprintf(w, `"%s"`, arr.Value(idx))
 	}
 }
 
@@ -216,12 +218,14 @@ func (s *FlightSQLQuirks) CreateSampleTable(tableName string, r arrow.Record) er
 	return nil
 }
 
-func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) error {
+func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) (err error) {
 	stmt, err := cnxn.NewStatement()
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() {
+		err = errors.Join(err, stmt.Close())
+	}()
 
 	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + tblname); err != nil {
 		return err
@@ -290,7 +294,7 @@ func (s *FlightSQLQuirks) DBSchema() string { return "" }
 func TestADBCFlightSQL(t *testing.T) {
 	db, err := example.CreateDB()
 	require.NoError(t, err)
-	defer db.Close()
+	defer validation.CheckedClose(t, db)
 
 	q := &FlightSQLQuirks{db: db}
 	suite.Run(t, &validation.DatabaseTests{Quirks: q})
@@ -368,7 +372,7 @@ func TestADBCFlightSQLWithHeader(t *testing.T) {
 	// XXX: arrow-go uses a shared DB so CreateDB can't be called more than once in a process
 	db, err := sql.Open("sqlite", "file:adbcwithheader?mode=memory&cache=private")
 	require.NoError(t, err)
-	defer db.Close()
+	defer validation.CheckedClose(t, db)
 
 	q := &FlightSQLWithHeaderQuirks{FlightSQLQuirks{db: db}}
 	suite.Run(t, &validation.DatabaseTests{Quirks: q})
@@ -401,11 +405,11 @@ func (suite *DefaultDialOptionsTests) SetupSuite() {
 
 	cnxn, err := suite.DB.Open(suite.ctx)
 	suite.NoError(err)
-	defer cnxn.Close()
+	defer validation.CheckedClose(suite.T(), cnxn)
 
 	stmt, err := cnxn.NewStatement()
 	suite.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	// Construct huge table
 	suite.NoError(stmt.SetSqlQuery("CREATE TABLE huge (str)"))
@@ -437,15 +441,15 @@ func (suite *DefaultDialOptionsTests) TestMaxIncomingMessageSizeDefault() {
 	opts["adbc.flight.sql.client_option.with_max_msg_size"] = "1000000"
 	db, err := suite.Driver.NewDatabase(opts)
 	suite.NoError(err)
-	defer suite.NoError(db.Close())
+	defer validation.CheckedClose(suite.T(), db)
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.NoError(err)
-	defer cnxn.Close()
+	defer validation.CheckedClose(suite.T(), cnxn)
 
 	stmt, err := cnxn.NewStatement()
 	suite.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.NoError(stmt.SetSqlQuery("SELECT * FROM huge"))
 	reader, _, err := stmt.ExecuteQuery(suite.ctx)
@@ -460,11 +464,11 @@ func (suite *DefaultDialOptionsTests) TestMaxIncomingMessageSizeDefault() {
 func (suite *DefaultDialOptionsTests) TestMaxIncomingMessageSizeLow() {
 	cnxn, err := suite.DB.Open(suite.ctx)
 	suite.NoError(err)
-	defer cnxn.Close()
+	defer validation.CheckedClose(suite.T(), cnxn)
 
 	stmt, err := cnxn.NewStatement()
 	suite.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.NoError(stmt.SetSqlQuery("SELECT * FROM huge"))
 	reader, _, err := stmt.ExecuteQuery(suite.ctx)
@@ -590,7 +594,7 @@ func (suite *PartitionTests) TearDownTest() {
 func (suite *PartitionTests) TestIntrospectPartitions() {
 	stmt, err := suite.Cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery("SELECT 42"))
 
@@ -726,7 +730,7 @@ func (suite *HeaderTests) TearDownTest() {
 func (suite *HeaderTests) TestDatabaseOptAuthorization() {
 	stmt, err := suite.Cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
@@ -738,9 +742,7 @@ func (suite *HeaderTests) TestDatabaseOptAuthorization() {
 func (suite *HeaderTests) TestUserAgent() {
 	stmt, err := suite.Cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer func() {
-		suite.Require().NoError(stmt.Close())
-	}()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
 	_, _, err = stmt.ExecuteQuery(suite.ctx)
@@ -764,7 +766,7 @@ func (suite *HeaderTests) TestConnection() {
 
 	stmt, err := suite.Cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
 		SetOption("adbc.flight.sql.rpc.call_header.x-user-agent", "Flight SQL ADBC"))
@@ -788,7 +790,7 @@ func (suite *HeaderTests) TestStatement() {
 
 	stmt, err := suite.Cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	// changes do not propagate to previously created statements
 	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
@@ -823,7 +825,7 @@ func (suite *HeaderTests) TestCombined() {
 
 	stmt, err := suite.Cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.(adbc.PostInitOptions).
 		SetOption("adbc.flight.sql.rpc.call_header.x-header-three", "value 3"))
@@ -944,7 +946,7 @@ func (suite *TLSTests) TestInvalidOptions() {
 		"adbc.flight.sql.client_option.tls_skip_verify": "false",
 	})
 	suite.Require().NoError(err)
-	defer suite.NoError(db.Close())
+	defer validation.CheckedClose(suite.T(), db)
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.Require().NoError(err)
@@ -1067,7 +1069,12 @@ func (suite *DomainSocketTests) SetupSuite() {
 
 	tempDir, err := os.MkdirTemp("", "adbc-flight-sql-tests-*")
 	suite.NoError(err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		err := os.RemoveAll(tempDir)
+		if err != nil {
+			log.Printf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	listenSocket := filepath.Join(tempDir, "adbc.sock")
 

@@ -608,7 +608,7 @@ func (c *connectionImpl) SetOptionDouble(key string, value float64) error {
 }
 
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
-	driverInfo := c.ConnectionImplBase.DriverInfo
+	driverInfo := c.DriverInfo
 
 	if len(infoCodes) == 0 {
 		infoCodes = driverInfo.InfoSupportedCodes()
