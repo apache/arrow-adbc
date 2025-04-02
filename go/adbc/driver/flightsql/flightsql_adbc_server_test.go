@@ -506,6 +506,10 @@ func (srv *ExecuteSchemaTestServer) CreatePreparedStatement(ctx context.Context,
 	return flightsql.ActionCreatePreparedStatementResult{}, status.Error(codes.Unimplemented, "CreatePreparedStatement not implemented")
 }
 
+func (srv *ExecuteSchemaTestServer) ClosePreparedStatement(ctx context.Context, req flightsql.ActionClosePreparedStatementRequest) error {
+	return nil
+}
+
 type ExecuteSchemaTests struct {
 	ServerBasedTests
 }
