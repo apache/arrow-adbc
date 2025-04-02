@@ -55,11 +55,11 @@ func (dm *DriverMgrSuite) SetupSuite() {
 
 	cnxn, err := dm.db.Open(dm.ctx)
 	dm.NoError(err)
-	defer cnxn.Close()
+	defer dm.NoError(cnxn.Close())
 
 	stmt, err := cnxn.NewStatement()
 	dm.NoError(err)
-	defer stmt.Close()
+	defer dm.NoError(stmt.Close())
 
 	dm.NoError(stmt.SetSqlQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)"))
 
@@ -425,7 +425,7 @@ func (dm *DriverMgrSuite) TestSqlExecute() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer st.Close()
+	defer dm.NoError(st.Close())
 
 	rdr, _, err := st.ExecuteQuery(dm.ctx)
 	dm.NoError(err)
@@ -446,7 +446,7 @@ func (dm *DriverMgrSuite) TestSqlExecuteInvalid() {
 	query := "INVALID"
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
-	defer st.Close()
+	defer dm.NoError(st.Close())
 
 	dm.Require().NoError(st.SetSqlQuery(query))
 
@@ -465,7 +465,7 @@ func (dm *DriverMgrSuite) TestSqlPrepare() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer st.Close()
+	defer dm.NoError(st.Close())
 
 	dm.Require().NoError(st.Prepare(dm.ctx))
 	rdr, _, err := st.ExecuteQuery(dm.ctx)
@@ -500,7 +500,7 @@ func (dm *DriverMgrSuite) TestSqlPrepareMultipleParams() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer st.Close()
+	defer dm.NoError(st.Close())
 
 	dm.NoError(st.Prepare(dm.ctx))
 	dm.NoError(st.Bind(dm.ctx, params))
@@ -520,7 +520,7 @@ func (dm *DriverMgrSuite) TestGetParameterSchema() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer st.Close()
+	defer dm.NoError(st.Close())
 	dm.Require().NoError(st.Prepare(context.Background()))
 
 	expSchema := arrow.NewSchema([]arrow.Field{
@@ -539,7 +539,7 @@ func (dm *DriverMgrSuite) TestBindStream() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer st.Close()
+	defer dm.NoError(st.Close())
 
 	schema := arrow.NewSchema([]arrow.Field{
 		{Name: "1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},

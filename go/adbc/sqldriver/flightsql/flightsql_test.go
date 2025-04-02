@@ -100,7 +100,7 @@ func (suite *SQLDriverFlightSQLSuite) dsn() string {
 func (suite *SQLDriverFlightSQLSuite) TestQuery() {
 	db, err := sql.Open("flightsql", suite.dsn())
 	suite.Require().NoError(err)
-	defer db.Close()
+	defer suite.NoError(db.Close())
 
 	_, err = db.Exec("CREATE TABLE t (k, v)")
 	suite.Require().NoError(err)
@@ -111,7 +111,7 @@ func (suite *SQLDriverFlightSQLSuite) TestQuery() {
 	suite.Require().NoError(err)
 	suite.EqualValues(2, n)
 
-	var expected int = 2
+	var expected = 2
 	var actual int
 	row := db.QueryRow("SELECT count(*) FROM t")
 	err = row.Scan(&actual)

@@ -187,7 +187,7 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 	// is enabled, and return INVALID_STATE if the client tries to
 	// commit or rollback
 	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	defer c.NoError(cnxn.Close())
 
 	if getset, ok := cnxn.(adbc.GetSetOptions); ok {
 		value, err := getset.GetOption(adbc.OptionKeyAutoCommit)
@@ -214,7 +214,7 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 func (c *ConnectionTests) TestAutocommitToggle() {
 	ctx := context.Background()
 	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	defer c.NoError(cnxn.Close())
 
 	if !c.Quirks.SupportsTransactions() {
 		return
@@ -250,7 +250,7 @@ func (c *ConnectionTests) TestAutocommitToggle() {
 func (c *ConnectionTests) TestMetadataCurrentCatalog() {
 	ctx := context.Background()
 	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	defer c.NoError(cnxn.Close())
 	getset, ok := cnxn.(adbc.GetSetOptions)
 
 	if !c.Quirks.SupportsGetSetOptions() {
@@ -270,7 +270,7 @@ func (c *ConnectionTests) TestMetadataCurrentCatalog() {
 func (c *ConnectionTests) TestMetadataCurrentDbSchema() {
 	ctx := context.Background()
 	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	defer c.NoError(cnxn.Close())
 	getset, ok := cnxn.(adbc.GetSetOptions)
 
 	if !c.Quirks.SupportsGetSetOptions() {
@@ -290,7 +290,7 @@ func (c *ConnectionTests) TestMetadataCurrentDbSchema() {
 func (c *ConnectionTests) TestMetadataGetInfo() {
 	ctx := context.Background()
 	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	defer c.NoError(cnxn.Close())
 
 	info := []adbc.InfoCode{
 		adbc.InfoDriverName,
@@ -348,7 +348,7 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 func (c *ConnectionTests) TestMetadataGetStatistics() {
 	ctx := context.Background()
 	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	defer c.NoError(cnxn.Close())
 
 	if c.Quirks.SupportsStatistics() {
 		stats, ok := cnxn.(adbc.ConnectionGetStatistics)
@@ -382,7 +382,7 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 
 	ctx := context.Background()
 	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	defer c.NoError(cnxn.Close())
 
 	c.Require().NoError(c.Quirks.CreateSampleTable("sample_test", rec))
 
@@ -402,7 +402,7 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 func (c *ConnectionTests) TestMetadataGetTableTypes() {
 	ctx := context.Background()
 	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	defer c.NoError(cnxn.Close())
 
 	rdr, err := cnxn.GetTableTypes(ctx)
 	c.Require().NoError(err)
@@ -415,7 +415,7 @@ func (c *ConnectionTests) TestMetadataGetTableTypes() {
 func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 	ctx := context.Background()
 	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	defer c.NoError(cnxn.Close())
 
 	ingestCatalogName := c.Quirks.Catalog()
 	ingestSchemaName := c.Quirks.DBSchema()
@@ -667,7 +667,7 @@ func (s *StatementTests) TestSqlExecuteSchema() {
 
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	es, ok := stmt.(adbc.StatementExecuteSchema)
 	s.Require().True(ok, "%#v does not support ExecuteSchema", es)
@@ -706,7 +706,7 @@ func (s *StatementTests) TestSqlExecuteSchema() {
 func (s *StatementTests) TestSqlPartitionedInts() {
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	s.NoError(stmt.SetSqlQuery("SELECT 42"))
 
@@ -731,7 +731,7 @@ func (s *StatementTests) TestSqlPartitionedInts() {
 
 	cxn, err := s.DB.Open(s.ctx)
 	s.Require().NoError(err)
-	defer cxn.Close()
+	defer s.NoError(cxn.Close())
 
 	rdr, err := cxn.ReadPartition(s.ctx, part.PartitionIDs[0])
 	s.Require().NoError(err)
@@ -759,7 +759,7 @@ func (s *StatementTests) TestSqlPartitionedInts() {
 func (s *StatementTests) TestSQLPrepareGetParameterSchema() {
 	stmt, err := s.Cnxn.NewStatement()
 	s.NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
 	s.NoError(stmt.SetSqlQuery(query))
@@ -787,7 +787,7 @@ func (s *StatementTests) TestSQLPrepareSelectParams() {
 
 	stmt, err := s.Cnxn.NewStatement()
 	s.NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
 	s.Require().NoError(stmt.SetSqlQuery(query))
@@ -836,7 +836,7 @@ func (s *StatementTests) TestSQLPrepareSelectParams() {
 func (s *StatementTests) TestSQLPrepareSelectNoParams() {
 	stmt, err := s.Cnxn.NewStatement()
 	s.NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	s.NoError(stmt.SetSqlQuery("SELECT 1"))
 	s.NoError(stmt.Prepare(s.ctx))
@@ -873,7 +873,7 @@ func (s *StatementTests) TestSqlPrepareErrorParamCountMismatch() {
 	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
 	stmt, err := s.Cnxn.NewStatement()
 	s.NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	s.NoError(stmt.SetSqlQuery(query))
 	s.NoError(stmt.Prepare(s.ctx))
@@ -910,7 +910,7 @@ func (s *StatementTests) TestSqlIngestInts() {
 
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
 	s.Require().NoError(stmt.Bind(s.ctx, batch))
@@ -962,7 +962,7 @@ func (s *StatementTests) TestSqlIngestAppend() {
 	// ingest and create table
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
 	s.Require().NoError(stmt.Bind(s.ctx, batch))
@@ -1036,7 +1036,7 @@ func (s *StatementTests) TestSqlIngestReplace() {
 	// ingest and create table
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
 	s.Require().NoError(stmt.Bind(s.ctx, batch))
@@ -1108,7 +1108,7 @@ func (s *StatementTests) TestSqlIngestCreateAppend() {
 	// ingest and create table
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreateAppend))
@@ -1163,7 +1163,7 @@ func (s *StatementTests) TestSqlIngestErrors() {
 
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer s.NoError(stmt.Close())
 
 	s.Run("ingest without bind", func() {
 		var e adbc.Error

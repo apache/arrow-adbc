@@ -28,6 +28,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -148,7 +149,7 @@ func quoteTblName(name string) string {
 	return "\"" + strings.ReplaceAll(name, "\"", "\"\"") + "\""
 }
 
-func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
+func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.Record) (err error) {
 	var b strings.Builder
 	b.WriteString("CREATE OR REPLACE TABLE ")
 	b.WriteString(quoteTblName(tableName))
@@ -166,7 +167,9 @@ func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.Record) er
 
 	b.WriteString(")")
 	db := sql.OpenDB(s.connector)
-	defer db.Close()
+	defer func() {
+		err = errors.Join(err, db.Close())
+	}()
 
 	if _, err := db.Exec(b.String()); err != nil {
 		return err
@@ -181,7 +184,7 @@ func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.Record) er
 		args = append(args, getArr(col))
 	}
 
-	_, err := db.Exec(insertQuery, args...)
+	_, err = db.Exec(insertQuery, args...)
 	return err
 }
 
@@ -190,7 +193,11 @@ func (s *SnowflakeQuirks) DropTable(cnxn adbc.Connection, tblname string) error 
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() {
+		if err = stmt.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + quoteTblName(tblname)); err != nil {
 		return err
@@ -257,7 +264,12 @@ func createTempSchema(database string, uri string) string {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	schemaName := strings.ToUpper("ADBC_TESTING_" + strings.ReplaceAll(uuid.New().String(), "-", "_"))
 	_, err = db.Exec(`CREATE SCHEMA ` + database + `.` + schemaName)
@@ -273,7 +285,11 @@ func dropTempSchema(uri, schema string) {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer func() {
+		if err = db.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	_, err = db.Exec(`DROP SCHEMA ` + schema)
 	if err != nil {
@@ -1440,7 +1456,7 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest2", rec))
 
 	db := sql.OpenDB(suite.Quirks.connector)
-	defer db.Close()
+	defer suite.NoError(db.Close())
 
 	_, err = db.ExecContext(suite.ctx, `ALTER TABLE "bulk_ingest2" ADD CONSTRAINT bulk_ingest2_pk PRIMARY KEY (int64s, strings)`)
 	suite.Require().NoError(err)
@@ -1844,7 +1860,7 @@ func TestJwtAuthenticationUnencryptedValue(t *testing.T) {
 		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_VALUE` value")
 	}
 
-	ConnectWithJwt(uri, keyValue, "")
+	ConnectWithJwt(t, uri, keyValue, "")
 }
 
 func TestJwtAuthenticationEncryptedValue(t *testing.T) {
@@ -1865,10 +1881,10 @@ func TestJwtAuthenticationEncryptedValue(t *testing.T) {
 		t.Skip("Cannot find the `SNOWFLAKE_TEST_PKCS8_PASS` value")
 	}
 
-	ConnectWithJwt(uri, keyValue, passcode)
+	ConnectWithJwt(t, uri, keyValue, passcode)
 }
 
-func ConnectWithJwt(uri, keyValue, passcode string) {
+func ConnectWithJwt(t *testing.T, uri, keyValue, passcode string) {
 
 	// Windows funkiness
 	if runtime.GOOS == "windows" {
@@ -1877,9 +1893,7 @@ func ConnectWithJwt(uri, keyValue, passcode string) {
 	}
 
 	cfg, err := gosnowflake.ParseDSN(uri)
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 
 	opts := map[string]string{
 		driver.OptionAccount:                 cfg.Account,
@@ -1906,16 +1920,12 @@ func ConnectWithJwt(uri, keyValue, passcode string) {
 	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
 	adbcDriver := driver.NewDriver(mem)
 	db, err := adbcDriver.NewDatabase(opts)
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
+	assert.NoError(t, err)
+	defer assert.NoError(t, db.Close())
 
 	cnxn, err := db.Open(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	defer cnxn.Close()
+	assert.NoError(t, err)
+	defer assert.NoError(t, cnxn.Close())
 }
 
 func (suite *SnowflakeTests) TestJwtPrivateKey() {
@@ -1960,13 +1970,13 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 		opts[driver.OptionJwtPrivateKey] = keyFile
 		db, err := suite.driver.NewDatabase(opts)
 		suite.NoError(err)
-		defer db.Close()
+		defer suite.NoError(db.Close())
 		cnxn, err := db.Open(suite.ctx)
 		suite.NoError(err)
-		defer cnxn.Close()
+		defer suite.NoError(cnxn.Close())
 		stmt, err := cnxn.NewStatement()
 		suite.NoError(err)
-		defer stmt.Close()
+		defer suite.NoError(stmt.Close())
 
 		suite.NoError(stmt.SetSqlQuery("SELECT 1"))
 		rdr, _, err := stmt.ExecuteQuery(suite.ctx)
@@ -1987,7 +1997,7 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 		Bytes: x509.MarshalPKCS1PrivateKey(rsaKey),
 	})
 	pkcs1Key := writeKey("key.pem", rsaKeyPem)
-	defer os.Remove(pkcs1Key)
+	defer suite.NoError(os.Remove(pkcs1Key))
 	verifyKey(pkcs1Key)
 
 	// PKCS8 key
@@ -1997,13 +2007,13 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 		Bytes: rsaKeyP8Bytes,
 	})
 	pkcs8Key := writeKey("key.p8", rsaKeyP8)
-	defer os.Remove(pkcs8Key)
+	defer suite.NoError(os.Remove(pkcs8Key))
 	verifyKey(pkcs8Key)
 
 	// binary key
 	block, _ := pem.Decode([]byte(rsaKeyPem))
 	binKey := writeKey("key.bin", block.Bytes)
-	defer os.Remove(binKey)
+	defer suite.NoError(os.Remove(binKey))
 	verifyKey(binKey)
 }
 
