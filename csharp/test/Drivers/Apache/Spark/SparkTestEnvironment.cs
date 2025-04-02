@@ -77,6 +77,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             {
                 parameters.Add(SparkParameters.Token, testConfiguration.Token!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.AccessToken))
+            {
+                parameters.Add(SparkParameters.AccessToken, testConfiguration.AccessToken);
+            }
             if (!string.IsNullOrEmpty(testConfiguration.Username))
             {
                 parameters.Add(AdbcOptions.Username, testConfiguration.Username!);
@@ -96,10 +100,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             if (!string.IsNullOrEmpty(testConfiguration.DataTypeConversion))
             {
                 parameters.Add(SparkParameters.DataTypeConv, testConfiguration.DataTypeConversion!);
-            }
-            if (!string.IsNullOrEmpty(testConfiguration.TlsOptions))
-            {
-                parameters.Add(SparkParameters.TLSOptions, testConfiguration.TlsOptions!);
             }
             if (!string.IsNullOrEmpty(testConfiguration.BatchSize))
             {

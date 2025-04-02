@@ -31,7 +31,7 @@ from typing import List, Optional, Tuple
 import cython
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport (
-    PyCapsule_GetPointer, PyCapsule_New, PyCapsule_CheckExact
+    PyCapsule_GetPointer, PyCapsule_IsValid, PyCapsule_New
 )
 from libc.stdint cimport int64_t, uint8_t, uint32_t, uintptr_t
 from libc.stdlib cimport malloc, free
@@ -337,6 +337,12 @@ cdef class _AdbcHandle:
                     f"with open {self._child_type}")
 
 
+def is_pycapsule(obj, bytes name) -> bool:
+    """Check if an object is a PyCapsule of a specific type."""
+    # Taken from nanoarrow
+    return PyCapsule_IsValid(obj, name) == 1
+
+
 cdef void pycapsule_schema_deleter(object capsule) noexcept:
     cdef CArrowSchema* allocated = <CArrowSchema*>PyCapsule_GetPointer(
         capsule, "arrow_schema"
@@ -633,6 +639,15 @@ cdef class AdbcDatabase(_AdbcHandle):
                 status = AdbcDatabaseSetOption(
                     &self.database, c_key, c_value, &c_error)
             elif isinstance(value, str):
+                value = _to_bytes(value, "option value")
+                c_value = value
+                status = AdbcDatabaseSetOption(
+                    &self.database, c_key, c_value, &c_error)
+            elif isinstance(value, bool):
+                if value:
+                    value = ADBC_OPTION_VALUE_ENABLED
+                else:
+                    value = ADBC_OPTION_VALUE_DISABLED
                 value = _to_bytes(value, "option value")
                 c_value = value
                 status = AdbcDatabaseSetOption(
@@ -1021,6 +1036,15 @@ cdef class AdbcConnection(_AdbcHandle):
                 c_value = value
                 status = AdbcConnectionSetOption(
                     &self.connection, c_key, c_value, &c_error)
+            elif isinstance(value, bool):
+                if value:
+                    value = ADBC_OPTION_VALUE_ENABLED
+                else:
+                    value = ADBC_OPTION_VALUE_DISABLED
+                value = _to_bytes(value, "option value")
+                c_value = value
+                status = AdbcConnectionSetOption(
+                    &self.connection, c_key, c_value, &c_error)
             elif isinstance(value, bytes):
                 c_value = value
                 status = AdbcConnectionSetOptionBytes(
@@ -1107,7 +1131,7 @@ cdef class AdbcStatement(_AdbcHandle):
                 )
             schema, data = data.__arrow_c_array__()
 
-        if PyCapsule_CheckExact(data):
+        if is_pycapsule(data, b"arrow_array"):
             c_array = <CArrowArray*> PyCapsule_GetPointer(data, "arrow_array")
         elif isinstance(data, ArrowArrayHandle):
             c_array = &(<ArrowArrayHandle> data).array
@@ -1119,7 +1143,7 @@ cdef class AdbcStatement(_AdbcHandle):
                 f"Protocol), a PyCapsule, int or ArrowArrayHandle, not {type(data)}"
             )
 
-        if PyCapsule_CheckExact(schema):
+        if is_pycapsule(schema, b"arrow_schema"):
             c_schema = <CArrowSchema*> PyCapsule_GetPointer(schema, "arrow_schema")
         elif isinstance(schema, ArrowSchemaHandle):
             c_schema = &(<ArrowSchemaHandle> schema).schema
@@ -1154,7 +1178,7 @@ cdef class AdbcStatement(_AdbcHandle):
         ):
             stream = stream.__arrow_c_stream__()
 
-        if PyCapsule_CheckExact(stream):
+        if is_pycapsule(stream, b"arrow_array_stream"):
             c_stream = <CArrowArrayStream*> PyCapsule_GetPointer(
                 stream, "arrow_array_stream"
             )
@@ -1463,6 +1487,15 @@ cdef class AdbcStatement(_AdbcHandle):
                 status = AdbcStatementSetOption(
                     &self.statement, c_key, c_value, &c_error)
             elif isinstance(value, str):
+                value = _to_bytes(value, "option value")
+                c_value = value
+                status = AdbcStatementSetOption(
+                    &self.statement, c_key, c_value, &c_error)
+            elif isinstance(value, bool):
+                if value:
+                    value = ADBC_OPTION_VALUE_ENABLED
+                else:
+                    value = ADBC_OPTION_VALUE_DISABLED
                 value = _to_bytes(value, "option value")
                 c_value = value
                 status = AdbcStatementSetOption(

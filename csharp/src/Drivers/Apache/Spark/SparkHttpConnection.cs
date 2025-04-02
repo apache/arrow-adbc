@@ -51,6 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
             {
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
@@ -83,6 +84,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                             $"Parameters must include valid authentiation settings. Please provide either '{SparkParameters.Token}'; or '{AdbcOptions.Username}' and '{AdbcOptions.Password}'.",
                             nameof(Properties));
                     break;
+
+                case SparkAuthType.OAuth:
+                    if (string.IsNullOrWhiteSpace(access_token))
+                        throw new ArgumentException(
+                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' but parameter '{SparkParameters.AccessToken}' is not set. Please provide a value for '{SparkParameters.AccessToken}'.",
+                            nameof(Properties));
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
@@ -113,7 +121,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(SparkParameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName, TlsOptions.IsTlsEnabled)
             };
         }
 
@@ -121,8 +129,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         {
             Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
-            Properties.TryGetValue(SparkParameters.TLSOptions, out string? tlsOptions);
-            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
             Properties.TryGetValue(SparkParameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
             if (connectTimeoutMs != null)
             {
@@ -130,9 +136,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(SparkParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
+            TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected override TTransport CreateTransport()
         {
@@ -146,14 +153,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
             Properties.TryGetValue(SparkParameters.Token, out string? token);
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName);
-            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName, TlsOptions.IsTlsEnabled);
+            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, access_token);
 
-            HttpClientHandler httpClientHandler = NewHttpClientHandler();
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
@@ -173,25 +181,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return transport;
         }
 
-        private HttpClientHandler NewHttpClientHandler()
-        {
-            HttpClientHandler httpClientHandler = new();
-            if (TlsOptions != HiveServer2TlsOption.Empty)
-            {
-                httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
-                {
-                    if (policyErrors == SslPolicyErrors.None) return true;
-
-                    return
-                       (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowSelfSigned))
-                    && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowHostnameMismatch));
-                };
-            }
-
-            return httpClientHandler;
-        }
-
-        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password)
+        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password, string? access_token)
         {
             if (!string.IsNullOrEmpty(token) && (authType == SparkAuthType.Empty || authType == SparkAuthType.Token))
             {
@@ -204,6 +194,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             else if (!string.IsNullOrEmpty(username) && (authType == SparkAuthType.Empty || authType == SparkAuthType.UsernameOnly))
             {
                 return new AuthenticationHeaderValue(BasicAuthenticationScheme, Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:")));
+            }
+            else if (!string.IsNullOrEmpty(access_token) && authType == SparkAuthType.OAuth)
+            {
+                return new AuthenticationHeaderValue(BearerAuthenticationScheme, access_token);
             }
             else if (authType == SparkAuthType.None)
             {
@@ -223,8 +217,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            var req = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V11)
+            var req = new TOpenSessionReq
             {
+                Client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V10,
                 CanUseMultipleCatalogs = true,
             };
             return req;

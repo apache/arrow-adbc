@@ -31,7 +31,7 @@ Apache, the Apache feather logo, and the Apache Arrow project logo are either
 registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "17 (dev)"
+release = "18 (dev)"
 # Needed to generate version switcher
 version = release
 
@@ -53,6 +53,23 @@ extensions = [
     "sphinxext.opengraph",
 ]
 templates_path = ["_templates"]
+
+
+def on_missing_reference(app, env, node, contnode):
+    if str(contnode) == "polars.DataFrame":
+        # Polars does something odd with Sphinx such that polars.DataFrame
+        # isn't xrefable; suppress the warning.
+        return contnode
+    elif str(contnode) == "CapsuleType":
+        # CapsuleType is only in 3.13+
+        return contnode
+    else:
+        return None
+
+
+def setup(app):
+    app.connect("missing-reference", on_missing_reference)
+
 
 # -- Options for autodoc ----------------------------------------------------
 

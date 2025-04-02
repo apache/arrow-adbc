@@ -17,7 +17,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="1.2.0" GeneratePathProperty="true" />
+    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="1.2.1" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>

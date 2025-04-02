@@ -86,7 +86,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     return null;
                 }
-
                 await FetchNextBatchAsync(cancellationToken);
             }
         }
@@ -164,11 +163,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                         return;
                     }
                     this.fetchTimer.Restart();
-                    TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+                    TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
                     response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
                     this.fetchTimer.Stop();
                 }
-
                 this.batches = response.Results.ArrowBatches;
 
                 if (!response.HasMoreRows)

@@ -21,6 +21,7 @@ make
 # Needed to install mermaid
 nodejs
 numpydoc
+polars
 pytest
 sphinx>=8.1
 sphinx-autobuild

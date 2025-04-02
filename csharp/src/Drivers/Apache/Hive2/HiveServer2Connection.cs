@@ -342,7 +342,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal DataTypeConversion DataTypeConversion { get; set; } = DataTypeConversion.None;
 
-        protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
+        protected internal TlsProperties TlsOptions { get; set; } = new TlsProperties();
 
         protected internal int ConnectTimeoutMilliseconds { get; set; } = ConnectTimeoutMillisecondsDefault;
 
@@ -354,10 +354,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal abstract SchemaParser SchemaParser { get; }
 
-        internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
+        internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) where T : HiveServer2Statement;
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
             Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
             try
@@ -644,9 +649,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // Must be in the finished state to be valid. If not, typically a server error or timeout has occurred.
             if (statusResponse.OperationState != TOperationState.FINISHED_STATE)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 throw new HiveServer2Exception(statusResponse.ErrorMessage, AdbcStatusCode.InvalidState)
                     .SetSqlState(statusResponse.SqlState)
                     .SetNativeError(statusResponse.ErrorCode);
+#pragma warning restore CS0618 // Type or member is obsolete
             }
         }
 
@@ -683,7 +690,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override void Dispose()
         {
-            if (_client != null)
+            if (_client != null && SessionHandle != null)
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 TCloseSessionReq r6 = new(SessionHandle);
@@ -724,7 +731,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return fileVersionInfo.ProductVersion ?? GetProductVersionDefault();
         }
 
-        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName)
+        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName, bool isTlsEnabled)
         {
             // Uri property takes precedent.
             if (!string.IsNullOrWhiteSpace(uri))
@@ -748,8 +755,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             bool isPortSet = !string.IsNullOrEmpty(port);
             bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
-            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
-            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+            string uriScheme = isTlsEnabled ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
             int uriPort;
             if (!isPortSet)
                 uriPort = -1;
@@ -996,6 +1002,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
             TGetColumnsReq getColumnsReq = new TGetColumnsReq(SessionHandle);
             getColumnsReq.CatalogName = catalog;
             getColumnsReq.SchemaName = dbSchema;

@@ -96,7 +96,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(ImpalaParameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
             Properties.TryGetValue(ImpalaParameters.TLSOptions, out string? tlsOptions);
-            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
         }
 
         protected override TTransport CreateTransport()
@@ -127,8 +126,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             {
                 throw new ArgumentOutOfRangeException(ImpalaParameters.AuthType, authType, $"Unsupported {ImpalaParameters.AuthType} value.");
             }
-            TOpenSessionReq request = new TOpenSessionReq(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7)
+            TOpenSessionReq request = new TOpenSessionReq
             {
+                Client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7,
                 CanUseMultipleCatalogs = true,
             };
             switch (authTypeValue)
@@ -149,7 +149,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             return request;
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         internal override ImpalaServerType ServerType => ImpalaServerType.Standard;
 
