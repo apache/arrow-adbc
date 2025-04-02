@@ -1456,7 +1456,7 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 	suite.Require().NoError(suite.Quirks.CreateSampleTable("bulk_ingest2", rec))
 
 	db := sql.OpenDB(suite.Quirks.connector)
-	defer suite.NoError(db.Close())
+	defer validation.CheckedClose(suite.T(), db)
 
 	_, err = db.ExecContext(suite.ctx, `ALTER TABLE "bulk_ingest2" ADD CONSTRAINT bulk_ingest2_pk PRIMARY KEY (int64s, strings)`)
 	suite.Require().NoError(err)
@@ -1631,7 +1631,7 @@ func (suite *SnowflakeTests) TestNewDatabaseGetSetOptions() {
 	})
 	suite.NoError(err)
 	suite.NotNil(db)
-	defer suite.NoError(db.Close())
+	defer validation.CheckedClose(suite.T(), db)
 
 	getSetDB, ok := db.(adbc.GetSetOptions)
 	suite.True(ok)
@@ -1921,11 +1921,11 @@ func ConnectWithJwt(t *testing.T, uri, keyValue, passcode string) {
 	adbcDriver := driver.NewDriver(mem)
 	db, err := adbcDriver.NewDatabase(opts)
 	assert.NoError(t, err)
-	defer assert.NoError(t, db.Close())
+	defer validation.CheckedClose(t, db)
 
 	cnxn, err := db.Open(context.Background())
 	assert.NoError(t, err)
-	defer assert.NoError(t, cnxn.Close())
+	defer validation.CheckedClose(t, cnxn)
 }
 
 func (suite *SnowflakeTests) TestJwtPrivateKey() {
@@ -1970,13 +1970,13 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 		opts[driver.OptionJwtPrivateKey] = keyFile
 		db, err := suite.driver.NewDatabase(opts)
 		suite.NoError(err)
-		defer suite.NoError(db.Close())
+		defer validation.CheckedClose(suite.T(), db)
 		cnxn, err := db.Open(suite.ctx)
 		suite.NoError(err)
-		defer suite.NoError(cnxn.Close())
+		defer validation.CheckedClose(suite.T(), cnxn)
 		stmt, err := cnxn.NewStatement()
 		suite.NoError(err)
-		defer suite.NoError(stmt.Close())
+		defer validation.CheckedClose(suite.T(), stmt)
 
 		suite.NoError(stmt.SetSqlQuery("SELECT 1"))
 		rdr, _, err := stmt.ExecuteQuery(suite.ctx)
@@ -1997,7 +1997,9 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 		Bytes: x509.MarshalPKCS1PrivateKey(rsaKey),
 	})
 	pkcs1Key := writeKey("key.pem", rsaKeyPem)
-	defer suite.NoError(os.Remove(pkcs1Key))
+	defer validation.CheckedCleanup(suite.T(), func() error {
+		return os.Remove(pkcs1Key)
+	})
 	verifyKey(pkcs1Key)
 
 	// PKCS8 key
@@ -2007,13 +2009,17 @@ func (suite *SnowflakeTests) TestJwtPrivateKey() {
 		Bytes: rsaKeyP8Bytes,
 	})
 	pkcs8Key := writeKey("key.p8", rsaKeyP8)
-	defer suite.NoError(os.Remove(pkcs8Key))
+	defer validation.CheckedCleanup(suite.T(), func() error {
+		return os.Remove(pkcs8Key)
+	})
 	verifyKey(pkcs8Key)
 
 	// binary key
 	block, _ := pem.Decode([]byte(rsaKeyPem))
 	binKey := writeKey("key.bin", block.Bytes)
-	defer suite.NoError(os.Remove(binKey))
+	defer validation.CheckedCleanup(suite.T(), func() error {
+		return os.Remove(binKey)
+	})
 	verifyKey(binKey)
 }
 

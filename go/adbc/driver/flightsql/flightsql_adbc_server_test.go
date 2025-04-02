@@ -38,6 +38,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -241,7 +242,7 @@ func (suite *AuthnTests) TestBearerTokenUpdated() {
 	// apache/arrow-adbc#584: when setting the auth header directly, the client should use any updated token value from the server if given
 	stmt, err := suite.cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer suite.NoError(stmt.Close())
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
 	reader, _, err := stmt.ExecuteQuery(context.Background())
@@ -287,7 +288,7 @@ func (suite *DialerOptionsTests) SetupSuite() {
 func (suite *DialerOptionsTests) TestGrpcObserved() {
 	stmt, err := suite.cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer suite.NoError(stmt.Close())
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
 	reader, _, err := stmt.ExecuteQuery(context.Background())
@@ -367,7 +368,7 @@ func (suite *ErrorDetailsTests) SetupSuite() {
 func (ts *ErrorDetailsTests) TestBinaryDetails() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("binaryheader"))
 
@@ -404,7 +405,7 @@ func (ts *ErrorDetailsTests) TestBinaryDetails() {
 func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("details"))
 
@@ -431,7 +432,7 @@ func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 func (ts *ErrorDetailsTests) TestDoGet() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("query"))
 
@@ -466,7 +467,7 @@ func (ts *ErrorDetailsTests) TestDoGet() {
 func (ts *ErrorDetailsTests) TestVendorCode() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("vendorcode"))
 
@@ -518,7 +519,7 @@ func (suite *ExecuteSchemaTests) SetupSuite() {
 func (ts *ExecuteSchemaTests) TestNoQuery() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	es := stmt.(adbc.StatementExecuteSchema)
 	_, err = es.ExecuteSchema(context.Background())
@@ -531,7 +532,7 @@ func (ts *ExecuteSchemaTests) TestNoQuery() {
 func (ts *ExecuteSchemaTests) TestPreparedQuery() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("sample query"))
 	ts.NoError(stmt.Prepare(context.Background()))
@@ -551,7 +552,7 @@ func (ts *ExecuteSchemaTests) TestPreparedQuery() {
 func (ts *ExecuteSchemaTests) TestQuery() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("sample query"))
 
@@ -880,7 +881,7 @@ func (suite *IncrementalPollTests) SetupSuite() {
 func (ts *IncrementalPollTests) TestMaxProgress() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 	opts := stmt.(adbc.GetSetOptions)
 
 	val, err := opts.GetOptionDouble(adbc.OptionKeyMaxProgress)
@@ -891,7 +892,7 @@ func (ts *IncrementalPollTests) TestMaxProgress() {
 func (ts *IncrementalPollTests) TestOptionValue() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 	opts := stmt.(adbc.GetSetOptions)
 
 	val, err := opts.GetOption(adbc.OptionKeyIncremental)
@@ -913,7 +914,7 @@ func (ts *IncrementalPollTests) TestAppMetadata() {
 	ctx, cancel := context.WithCancel(context.Background())
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -957,7 +958,7 @@ func (ts *IncrementalPollTests) TestUnavailable() {
 	ctx := context.Background()
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1011,7 +1012,7 @@ func (ts *IncrementalPollTests) TestQuery() {
 		ts.Run(name, func() {
 			stmt, err := ts.cnxn.NewStatement()
 			ts.NoError(err)
-			defer ts.NoError(stmt.Close())
+			defer validation.CheckedClose(ts.T(), stmt)
 
 			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1030,7 +1031,7 @@ func (ts *IncrementalPollTests) TestQueryPrepared() {
 		ts.Run(name, func() {
 			stmt, err := ts.cnxn.NewStatement()
 			ts.NoError(err)
-			defer ts.NoError(stmt.Close())
+			defer validation.CheckedClose(ts.T(), stmt)
 
 			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1051,7 +1052,7 @@ func (ts *IncrementalPollTests) TestQueryPreparedTransaction() {
 			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
 			stmt, err := ts.cnxn.NewStatement()
 			ts.NoError(err)
-			defer ts.NoError(stmt.Close())
+			defer validation.CheckedClose(ts.T(), stmt)
 
 			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1072,7 +1073,7 @@ func (ts *IncrementalPollTests) TestQueryTransaction() {
 			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
 			stmt, err := ts.cnxn.NewStatement()
 			ts.NoError(err)
-			defer ts.NoError(stmt.Close())
+			defer validation.CheckedClose(ts.T(), stmt)
 
 			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1249,7 +1250,7 @@ func (ts *TimeoutTests) TestGetSet() {
 	}
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	for _, v := range []interface{}{ts.db, ts.cnxn, stmt} {
 		getset := v.(adbc.GetSetOptions)
@@ -1308,7 +1309,7 @@ func (ts *TimeoutTests) TestDoActionTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
 	var adbcErr adbc.Error
@@ -1324,7 +1325,7 @@ func (ts *TimeoutTests) TestDoGetTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
 	var adbcErr adbc.Error
@@ -1339,7 +1340,7 @@ func (ts *TimeoutTests) TestDoPutTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("timeout"))
 	var adbcErr adbc.Error
@@ -1354,7 +1355,7 @@ func (ts *TimeoutTests) TestGetFlightInfoTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("timeout"))
 	var adbcErr adbc.Error
@@ -1371,7 +1372,7 @@ func (ts *TimeoutTests) TestDontTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("notimeout"))
 	// GetFlightInfo will sleep for one second and DoGet will also
@@ -1394,7 +1395,7 @@ func (ts *TimeoutTests) TestDontTimeout() {
 func (ts *TimeoutTests) TestBadAddress() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer ts.NoError(stmt.Close())
+	defer validation.CheckedClose(ts.T(), stmt)
 	ts.Require().NoError(stmt.SetSqlQuery("bad endpoint"))
 
 	ts.Require().NoError(ts.db.(adbc.GetSetOptions).SetOptionDouble(driver.OptionTimeoutConnect, 5))
@@ -1528,7 +1529,7 @@ func (suite *CookieTests) SetupSuite() {
 func (suite *CookieTests) TestCookieUsage() {
 	stmt, err := suite.cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer suite.NoError(stmt.Close())
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
 	reader, _, err := stmt.ExecuteQuery(context.Background())
@@ -1610,7 +1611,7 @@ func (suite *DataTypeTests) SetupSuite() {
 func (suite *DataTypeTests) DoTestCase(name string, schema *arrow.Schema) {
 	stmt, err := suite.cnxn.NewStatement()
 	suite.NoError(err)
-	defer suite.NoError(stmt.Close())
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.NoError(stmt.SetSqlQuery(name))
 	reader, _, err := stmt.ExecuteQuery(context.Background())

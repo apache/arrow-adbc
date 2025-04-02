@@ -28,6 +28,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -62,7 +63,7 @@ func TestDefaultDriver(t *testing.T) {
 
 	db, err := drv.NewDatabase(nil)
 	require.NoError(t, err)
-	defer require.NoError(t, db.Close())
+	defer validation.CheckedClose(t, db)
 
 	require.NoError(t, db.SetOptions(map[string]string{OptionKeyRecognized: "should-pass"}))
 
@@ -193,7 +194,7 @@ func TestCustomizedDriver(t *testing.T) {
 
 	db, err := drv.NewDatabase(nil)
 	require.NoError(t, err)
-	defer require.NoError(t, db.Close())
+	defer validation.CheckedClose(t, db)
 
 	require.NoError(t, db.SetOptions(map[string]string{OptionKeyRecognized: "should-pass"}))
 
@@ -203,7 +204,7 @@ func TestCustomizedDriver(t *testing.T) {
 
 	cnxn, err := db.Open(ctx)
 	require.NoError(t, err)
-	defer require.NoError(t, cnxn.Close())
+	defer validation.CheckedClose(t, cnxn)
 
 	err = cnxn.Commit(ctx)
 	require.Error(t, err)

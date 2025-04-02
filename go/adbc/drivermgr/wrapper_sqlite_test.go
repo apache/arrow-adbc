@@ -27,6 +27,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/drivermgr"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -55,11 +56,11 @@ func (dm *DriverMgrSuite) SetupSuite() {
 
 	cnxn, err := dm.db.Open(dm.ctx)
 	dm.NoError(err)
-	defer dm.NoError(cnxn.Close())
+	defer validation.CheckedClose(dm.T(), cnxn)
 
 	stmt, err := cnxn.NewStatement()
 	dm.NoError(err)
-	defer dm.NoError(stmt.Close())
+	defer validation.CheckedClose(dm.T(), stmt)
 
 	dm.NoError(stmt.SetSqlQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)"))
 
@@ -425,7 +426,7 @@ func (dm *DriverMgrSuite) TestSqlExecute() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer dm.NoError(st.Close())
+	defer validation.CheckedClose(dm.T(), st)
 
 	rdr, _, err := st.ExecuteQuery(dm.ctx)
 	dm.NoError(err)
@@ -446,7 +447,7 @@ func (dm *DriverMgrSuite) TestSqlExecuteInvalid() {
 	query := "INVALID"
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
-	defer dm.NoError(st.Close())
+	defer validation.CheckedClose(dm.T(), st)
 
 	dm.Require().NoError(st.SetSqlQuery(query))
 
@@ -465,7 +466,7 @@ func (dm *DriverMgrSuite) TestSqlPrepare() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer dm.NoError(st.Close())
+	defer validation.CheckedClose(dm.T(), st)
 
 	dm.Require().NoError(st.Prepare(dm.ctx))
 	rdr, _, err := st.ExecuteQuery(dm.ctx)
@@ -500,7 +501,7 @@ func (dm *DriverMgrSuite) TestSqlPrepareMultipleParams() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer dm.NoError(st.Close())
+	defer validation.CheckedClose(dm.T(), st)
 
 	dm.NoError(st.Prepare(dm.ctx))
 	dm.NoError(st.Bind(dm.ctx, params))
@@ -520,7 +521,7 @@ func (dm *DriverMgrSuite) TestGetParameterSchema() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer dm.NoError(st.Close())
+	defer validation.CheckedClose(dm.T(), st)
 	dm.Require().NoError(st.Prepare(context.Background()))
 
 	expSchema := arrow.NewSchema([]arrow.Field{
@@ -539,7 +540,7 @@ func (dm *DriverMgrSuite) TestBindStream() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
 	dm.Require().NoError(st.SetSqlQuery(query))
-	defer dm.NoError(st.Close())
+	defer validation.CheckedClose(dm.T(), st)
 
 	schema := arrow.NewSchema([]arrow.Field{
 		{Name: "1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},

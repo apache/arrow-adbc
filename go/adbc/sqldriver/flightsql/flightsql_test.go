@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	_ "github.com/apache/arrow-adbc/go/adbc/sqldriver/flightsql"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql/example"
@@ -100,7 +101,7 @@ func (suite *SQLDriverFlightSQLSuite) dsn() string {
 func (suite *SQLDriverFlightSQLSuite) TestQuery() {
 	db, err := sql.Open("flightsql", suite.dsn())
 	suite.Require().NoError(err)
-	defer suite.NoError(db.Close())
+	defer validation.CheckedClose(suite.T(), db)
 
 	_, err = db.Exec("CREATE TABLE t (k, v)")
 	suite.Require().NoError(err)

@@ -661,7 +661,7 @@ func (suite *BigQueryTests) TestNewDatabaseGetSetOptions() {
 	})
 	suite.NoError(err)
 	suite.NotNil(db)
-	defer suite.NoError(db.Close())
+	defer validation.CheckedClose(suite.T(), db)
 
 	getSetDB, ok := db.(adbc.GetSetOptions)
 	suite.True(ok)
