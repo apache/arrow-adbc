@@ -76,13 +76,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
 
         public static bool BooleanIsValid(string key, string value, out bool booleanValue)
         {
-            if (string.IsNullOrEmpty(value))
-            {
-                // Treat like an indicator that when key is present and value is blank, it indicates a 'true'.
-                booleanValue = true;
-                return true;
-            }
-            else if (bool.TryParse(value, out booleanValue))
+            if (bool.TryParse(value, out booleanValue))
             {
                 return true;
             }
