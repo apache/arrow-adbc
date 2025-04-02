@@ -95,33 +95,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             if (IsMetadataCommand)
             {
-                QueryResult result = SqlQuery?.ToLowerInvariant() switch
-                {
-                    GetCatalogsCommandName => await GetCatalogsAsync(cancellationToken),
-                    GetSchemasCommandName => await GetSchemasAsync(cancellationToken),
-                    GetTablesCommandName => await GetTablesAsync(cancellationToken),
-                    GetColumnsCommandName => await GetColumnsAsync(cancellationToken),
-                    GetPrimaryKeysCommandName => await GetPrimaryKeysAsync(cancellationToken),
-                    GetCrossReferenceCommandName => await GetCrossReferenceAsync(cancellationToken),
-                    null => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
-                    "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
-                    _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {SupportedMetadataCommands}"),
-                };
-                return result;
+                return await ExecuteMetadataCommandQuery(cancellationToken);
             }
-            else
-            {
-                // this could either:
-                // take QueryTimeoutSeconds * 3
-                // OR
-                // take QueryTimeoutSeconds (but this could be restricting)
-                await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
-                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-                Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken); // + get the result, up to QueryTimeout
 
-                // Store metadata for use in readers
-                return new QueryResult(-1, Connection.NewReader(this, schema));
-            }
+            // this could either:
+            // take QueryTimeoutSeconds * 3
+            // OR
+            // take QueryTimeoutSeconds (but this could be restricting)
+            await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
+            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
+            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
+            Schema schema = Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
+
+            // Store metadata for use in readers
+            return new QueryResult(-1, Connection.NewReader(this, schema, response));
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
@@ -332,6 +319,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         }
                 }
             }
+        }
+
+        private async Task<QueryResult> ExecuteMetadataCommandQuery(CancellationToken cancellationToken)
+        {
+            return SqlQuery?.ToLowerInvariant() switch
+            {
+                GetCatalogsCommandName => await GetCatalogsAsync(cancellationToken),
+                GetSchemasCommandName => await GetSchemasAsync(cancellationToken),
+                GetTablesCommandName => await GetTablesAsync(cancellationToken),
+                GetColumnsCommandName => await GetColumnsAsync(cancellationToken),
+                GetPrimaryKeysCommandName => await GetPrimaryKeysAsync(cancellationToken),
+                GetCrossReferenceCommandName => await GetCrossReferenceAsync(cancellationToken),
+                null => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
+                "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
+                _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {SupportedMetadataCommands}"),
+            };
         }
 
         private async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
