@@ -41,10 +41,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         [SkippableFact]
-        public async void ProcessingPatternMatchesReaderPrefetching()
+        public async void PrefetchingReturnCorrectResult()
         {
-            // This test specifically checks that the processing pattern used
-            // aligns with the prefetching implementation in SparkDatabricksReader
+            // This test specifically checks that prefetch with multiple batches return correct results
 
             // Get a new connection and create a statement
             using AdbcConnection connection = NewConnection();
