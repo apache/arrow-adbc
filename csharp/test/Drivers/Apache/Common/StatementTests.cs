@@ -216,6 +216,89 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             }
         }
 
+        [SkippableFact]
+        public async Task CanGetSchemas()
+        {
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
+            statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
+            statement.SqlQuery = "GetSchemas";
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            Assert.Equal(2, queryResult.Stream.Schema.FieldsList.Count);
+            int actualBatchLength = 0;
+
+            while (queryResult.Stream != null)
+            {
+                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                {
+                    break;
+                }
+                actualBatchLength += batch.Length;
+            }
+            Assert.Equal(1, actualBatchLength);
+        }
+
+        [SkippableFact]
+        public async Task CanGetTables()
+        {
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
+            statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
+            statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+            statement.SqlQuery = "GetTables";
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            Assert.True(queryResult.Stream.Schema.FieldsList.Count >= 5);
+            int actualBatchLength = 0;
+
+            while (queryResult.Stream != null)
+            {
+                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                {
+                    break;
+                }
+                actualBatchLength += batch.Length;
+            }
+            Assert.Equal(1, actualBatchLength);
+        }
+
+        [SkippableFact]
+        public async Task CanGetColumns()
+        {
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
+            statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
+            statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+            statement.SqlQuery = "GetColumns";
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            Assert.Equal(23, queryResult.Stream.Schema.FieldsList.Count);
+            int actualBatchLength = 0;
+
+            while (queryResult.Stream != null)
+            {
+                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                {
+                    break;
+                }
+                actualBatchLength += batch.Length;
+            }
+            Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, actualBatchLength);
+        }
+
         /// <summary>
         /// Validates if the driver can execute GetPrimaryKeys metadata command.
         /// </summary>

@@ -58,6 +58,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             await base.CanGetPrimaryKeys(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
         }
 
+        [SkippableFact]
+        public async Task CanGetCrossReferenceFromParentTableDatabricks()
+        {
+            Skip.If(TestEnvironment.ServerType != SparkServerType.Databricks);
+            await base.CanGetCrossReferenceFromParentTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        [SkippableFact]
+        public async Task CanGetCrossReferenceFromChildTableDatabricks()
+        {
+            Skip.If(TestEnvironment.ServerType != SparkServerType.Databricks);
+            await base.CanGetCrossReferenceFromChildTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
         protected override void PrepareCreateTableWithPrimaryKeys(out string sqlUpdate, out string tableNameParent, out string fullTableNameParent, out IReadOnlyList<string> primaryKeys)
         {
             CreateNewTableName(out tableNameParent, out fullTableNameParent);
