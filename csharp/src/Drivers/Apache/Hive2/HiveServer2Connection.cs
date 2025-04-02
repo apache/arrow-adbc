@@ -53,6 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             AdbcInfoCode.VendorSql,
             AdbcInfoCode.VendorVersion,
         ];
+        private readonly Dictionary<string, string> _properties = [];
 
         internal const string ColumnDef = "COLUMN_DEF";
         internal const string ColumnName = "COLUMN_NAME";
@@ -270,7 +271,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
-            Properties = properties;
+            _properties = properties.ToDictionary(e => e.Key, e => e.Value);
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -298,7 +299,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal int QueryTimeoutSeconds { get; set; } = ApacheUtility.QueryTimeoutSecondsDefault;
 
-        internal IReadOnlyDictionary<string, string> Properties { get; }
+        internal IReadOnlyDictionary<string, string> Properties => _properties;
 
         internal async Task OpenAsync()
         {
@@ -355,6 +356,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal abstract SchemaParser SchemaParser { get; }
 
         internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) where T : HiveServer2Statement;
+
+        public override void SetOption(string key, string value)
+        {
+            _properties[key] = value;
+        }
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {

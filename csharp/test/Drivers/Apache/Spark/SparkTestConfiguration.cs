@@ -28,5 +28,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [JsonPropertyName("access_token"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string AccessToken { get; set; } = string.Empty;
 
+        [JsonPropertyName("cloud_fetch_metadata"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public CloudFetchMetadata? CloudFetchMetadata { get; set; }
+    }
+
+    public class CloudFetchMetadata
+    {
+        [JsonPropertyName("catalog"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Catalog { get; set; } = string.Empty;
+
+        [JsonPropertyName("schema"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Schema { get; set; } = string.Empty;
+
+        [JsonPropertyName("table"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Table { get; set; } = string.Empty;
+
+        [JsonPropertyName("expectedResults"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int? ExpectedResults { get; set; }
     }
 }

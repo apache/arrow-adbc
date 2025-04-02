@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,6 +30,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+        }
+
+        protected override void ValidateOptions()
+        {
+            ValidateTlsEnabledOption();
+            base.ValidateOptions();
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
@@ -95,5 +102,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Task.FromResult(response.DirectResults.ResultSet.Results);
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
+
+        private void ValidateTlsEnabledOption()
+        {
+            if (!Properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled))
+            {
+                // Databricks is TLS enabled, by default
+                SetOption(HttpTlsOptions.IsTlsEnabled, "true");
+            }
+            else
+            {
+                if (bool.TryParse(isSslEnabled, out bool isEnabled))
+                {
+                    if (!isEnabled)
+                    {
+                        // Disallow explicit disable of TLS
+                        throw new ArgumentOutOfRangeException(HttpTlsOptions.IsTlsEnabled, isSslEnabled, $"Driver type {SparkServerTypeConstants.Databricks} only supports TLS enabled.");
+                    }
+                }
+                else
+                {
+                    throw new ArgumentOutOfRangeException(HttpTlsOptions.IsTlsEnabled, isSslEnabled, "Expecting boolean value.");
+                }
+            }
+        }
     }
 }
