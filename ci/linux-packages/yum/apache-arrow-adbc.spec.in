@@ -215,6 +215,7 @@ Libraries and header files for ADBC Flight SQL driver.
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
+%{_libdir}/cmake/AdbcDriverFlightSQL/
 %{_libdir}/libadbc_driver_flightsql.a
 %{_libdir}/libadbc_driver_flightsql.so
 %{_libdir}/pkgconfig/adbc-driver-flightsql.pc
@@ -244,6 +245,7 @@ Libraries and header files for ADBC Snowflake driver
 %defattr(-,root,root,-)
 %doc README.md
 %license LICENSE.txt NOTICE.txt
+%{_libdir}/cmake/AdbcDriverSnowflake/
 %{_libdir}/libadbc_driver_snowflake.a
 %{_libdir}/libadbc_driver_snowflake.so
 %{_libdir}/pkgconfig/adbc-driver-snowflake.pc

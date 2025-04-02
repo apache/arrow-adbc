@@ -22,9 +22,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
     /// <summary>
     /// Configuration settings for working with BigQuery.
     /// </summary>
-    internal class BigQueryTestConfiguration : TestConfiguration
+    internal class BigQueryTestConfiguration : MultiEnvironmentTestConfiguration<BigQueryTestEnvironment>
     {
-        public BigQueryTestConfiguration()
+    }
+
+    /// <summary>
+    /// Configuration environments for working with BigQuery.
+    /// </summary>
+    internal class BigQueryTestEnvironment : TestConfiguration
+    {
+        public BigQueryTestEnvironment()
         {
             AllowLargeResults = false;
             IncludeTableConstraints = true;
@@ -32,6 +39,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("projectId")]
         public string? ProjectId { get; set; }
+
+        [JsonPropertyName("billingProjectId")]
+        public string? BillingProjectId { get; set; }
 
         [JsonPropertyName("clientId")]
         public string ClientId { get; set; } = string.Empty;
@@ -60,8 +70,29 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("includePublicProjectId")]
         public bool IncludePublicProjectId { get; set; } = false;
 
+        /// <summary>
+        /// Sets the query timeout (in minutes).
+        /// </summary>
         [JsonPropertyName("timeoutMinutes")]
         public int? TimeoutMinutes { get; set; }
+
+        /// <summary>
+        /// Sets the query timeout (in seconds).
+        /// </summary>
+        [JsonPropertyName("queryTimeout")]
+        public int? QueryTimeout { get; set; }
+
+        /// <summary>
+        /// The number of seconds to allow for the HttpClient timeout.
+        /// </summary>
+        [JsonPropertyName("clientTimeout")]
+        public int? ClientTimeout { get; set; }
+
+        /// <summary>
+        /// Indicates if timeout tests should run during this execution.
+        /// </summary>
+        [JsonPropertyName("runTimeoutTests")]
+        public bool RunTimeoutTests { get; set; } = false;
 
         [JsonPropertyName("maxStreamCount")]
         public int? MaxStreamCount { get; set; }

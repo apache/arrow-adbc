@@ -20,6 +20,7 @@
 #include <Rinternals.h>
 
 #include <cstring>
+#include <string>
 #include <unordered_map>
 
 #include "driver/framework/base_driver.h"

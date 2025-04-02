@@ -17,7 +17,7 @@
   under the License.
 -->
 
-# ADBC Snowflake Driver
+# ADBC BigQuery Driver
 
 This driver provides an interface to
 [BigQuery](https://cloud.google.com/bigquery) using ADBC.

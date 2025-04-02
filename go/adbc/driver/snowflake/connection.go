@@ -350,7 +350,9 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 						field := c.toArrowField(col)
 						xdbcDataType := internal.ToXdbcDataType(field.Type)
 
-						getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcDataType = driverbase.Nullable(int16(field.Type.ID()))
+						if field.Type != nil {
+							getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcDataType = driverbase.Nullable(int16(field.Type.ID()))
+						}
 						getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcSqlDataType = driverbase.Nullable(int16(xdbcDataType))
 					}
 				}
@@ -475,6 +477,11 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 		fallthrough
 	case "GEOMETRY":
 		field.Type = arrow.BinaryTypes.String
+	case "VECTOR":
+		// despite the fact that Snowflake *does* support returning data
+		// for VECTOR typed columns as Arrow FixedSizeLists, there's no way
+		// currently to retrieve enough metadata to construct the proper type
+		// for it
 	}
 
 	return field

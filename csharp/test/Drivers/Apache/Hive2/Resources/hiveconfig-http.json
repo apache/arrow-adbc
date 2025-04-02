@@ -1,0 +1,15 @@
+{
+    "uri": "http://<hostName>:10000/cliservice",
+    "auth_type": "basic",
+    "username": "<username>",
+    "password": "<password>",
+    "type": "http",
+    "data_type_conv": "none",
+    "query": "",
+    "expectedResults": 0,
+    "metadata": {
+        "schema": "default",
+        "table": "<tableName>",
+        "expectedColumnCount": 17
+    }
+}

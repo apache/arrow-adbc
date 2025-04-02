@@ -28,16 +28,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         internal const string BIGQUERY_TEST_CONFIG_VARIABLE = "BIGQUERY_TEST_CONFIG_FILE";
 
         /// <summary>
-        /// Gets a the BigQuery ADBC driver with settings from the <see cref="BigQueryTestConfiguration"/>.
+        /// Gets a the BigQuery ADBC driver with settings from the <see cref="BigQueryTestEnvironment"/>.
         /// </summary>
-        /// <param name="testConfiguration"><see cref="BigQueryTestConfiguration"/></param>
+        /// <param name="testEnvironment"><see cref="BigQueryTestEnvironment"/></param>
         /// <param name="parameters"></param>
         /// <returns></returns>
         internal static AdbcConnection GetBigQueryAdbcConnection(
-            BigQueryTestConfiguration testConfiguration
+            BigQueryTestEnvironment testEnvironment
            )
         {
-            Dictionary<string, string> parameters = GetBigQueryParameters(testConfiguration);
+            Dictionary<string, string> parameters = GetBigQueryParameters(testEnvironment);
             AdbcDatabase database = new BigQueryDriver().Open(parameters);
             AdbcConnection connection = database.Connect(new Dictionary<string, string>());
 
@@ -47,57 +47,72 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// <summary>
         /// Gets the parameters for connecting to BigQuery.
         /// </summary>
-        /// <param name="testConfiguration"><see cref="BigQueryTestConfiguration"/></param>
+        /// <param name="testEnvironment"><see cref="BigQueryTestEnvironment"/></param>
         /// <returns></returns>
-        internal static Dictionary<string, string> GetBigQueryParameters(BigQueryTestConfiguration testConfiguration)
+        internal static Dictionary<string, string> GetBigQueryParameters(BigQueryTestEnvironment testEnvironment)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>{};
 
-            if (!string.IsNullOrEmpty(testConfiguration.ProjectId))
+            if (!string.IsNullOrEmpty(testEnvironment.ProjectId))
             {
-                parameters.Add(BigQueryParameters.ProjectId, testConfiguration.ProjectId!);
+                parameters.Add(BigQueryParameters.ProjectId, testEnvironment.ProjectId!);
             }
 
-            if (!string.IsNullOrEmpty(testConfiguration.JsonCredential))
+            if (!string.IsNullOrEmpty(testEnvironment.BillingProjectId))
+            {
+                parameters.Add(BigQueryParameters.BillingProjectId, testEnvironment.BillingProjectId!);
+            }
+
+            if (!string.IsNullOrEmpty(testEnvironment.JsonCredential))
             {
                 parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.ServiceAccountAuthenticationType);
-                parameters.Add(BigQueryParameters.JsonCredential, testConfiguration.JsonCredential);
+                parameters.Add(BigQueryParameters.JsonCredential, testEnvironment.JsonCredential);
             }
             else
             {
                 parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.UserAuthenticationType);
-                parameters.Add(BigQueryParameters.ClientId, testConfiguration.ClientId);
-                parameters.Add(BigQueryParameters.ClientSecret, testConfiguration.ClientSecret);
-                parameters.Add(BigQueryParameters.RefreshToken, testConfiguration.RefreshToken);
+                parameters.Add(BigQueryParameters.ClientId, testEnvironment.ClientId);
+                parameters.Add(BigQueryParameters.ClientSecret, testEnvironment.ClientSecret);
+                parameters.Add(BigQueryParameters.RefreshToken, testEnvironment.RefreshToken);
             }
 
-            if (!string.IsNullOrEmpty(testConfiguration.Scopes))
+            if (!string.IsNullOrEmpty(testEnvironment.Scopes))
             {
-                parameters.Add(BigQueryParameters.Scopes, testConfiguration.Scopes);
+                parameters.Add(BigQueryParameters.Scopes, testEnvironment.Scopes);
             }
 
-            if (testConfiguration.AllowLargeResults)
+            if (testEnvironment.AllowLargeResults)
             {
-                parameters.Add(BigQueryParameters.AllowLargeResults, testConfiguration.AllowLargeResults.ToString());
+                parameters.Add(BigQueryParameters.AllowLargeResults, testEnvironment.AllowLargeResults.ToString());
             }
 
-            parameters.Add(BigQueryParameters.IncludeConstraintsWithGetObjects, testConfiguration.IncludeTableConstraints.ToString());
+            parameters.Add(BigQueryParameters.IncludeConstraintsWithGetObjects, testEnvironment.IncludeTableConstraints.ToString());
 
-            parameters.Add(BigQueryParameters.IncludePublicProjectId, testConfiguration.IncludePublicProjectId.ToString());
+            parameters.Add(BigQueryParameters.IncludePublicProjectId, testEnvironment.IncludePublicProjectId.ToString());
 
-            if (!string.IsNullOrEmpty(testConfiguration.LargeResultsDestinationTable))
+            if (!string.IsNullOrEmpty(testEnvironment.LargeResultsDestinationTable))
             {
-                parameters.Add(BigQueryParameters.LargeResultsDestinationTable, testConfiguration.LargeResultsDestinationTable);
+                parameters.Add(BigQueryParameters.LargeResultsDestinationTable, testEnvironment.LargeResultsDestinationTable);
             }
 
-            if (testConfiguration.TimeoutMinutes.HasValue)
+            if (testEnvironment.TimeoutMinutes.HasValue)
             {
-                parameters.Add(BigQueryParameters.GetQueryResultsOptionsTimeoutMinutes, testConfiguration.TimeoutMinutes.Value.ToString());
+                int seconds = testEnvironment.TimeoutMinutes.Value * 60;
+                parameters.Add(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds.ToString());
+            }
+            else if (testEnvironment.QueryTimeout.HasValue)
+            {
+                parameters.Add(BigQueryParameters.GetQueryResultsOptionsTimeout, testEnvironment.QueryTimeout.Value.ToString());
             }
 
-            if (testConfiguration.MaxStreamCount.HasValue)
+            if (testEnvironment.ClientTimeout.HasValue)
             {
-                parameters.Add(BigQueryParameters.MaxFetchConcurrency, testConfiguration.MaxStreamCount.Value.ToString());
+                parameters.Add(BigQueryParameters.ClientTimeout, testEnvironment.ClientTimeout.Value.ToString());
+            }
+
+            if (testEnvironment.MaxStreamCount.HasValue)
+            {
+                parameters.Add(BigQueryParameters.MaxFetchConcurrency, testEnvironment.MaxStreamCount.Value.ToString());
             }
 
             return parameters;
@@ -106,8 +121,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// <summary>
         /// Parses the queries from resources/BigQueryData.sql
         /// </summary>
-        /// <param name="testConfiguration"><see cref="BigQueryTestConfiguration"/></param>
-        internal static string[] GetQueries(BigQueryTestConfiguration testConfiguration)
+        /// <param name="testEnvironment"><see cref="BigQueryTestEnvironment"/></param>
+        internal static string[] GetQueries(BigQueryTestEnvironment testEnvironment)
         {
             // get past the license header
             StringBuilder content = new StringBuilder();
@@ -122,7 +137,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 {
                     if (line.Contains(placeholder))
                     {
-                        string modifiedLine = line.Replace(placeholder, $"{testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{testConfiguration.Metadata.Table}");
+                        string modifiedLine = line.Replace(placeholder, $"{testEnvironment.Metadata.Catalog}.{testEnvironment.Metadata.Schema}.{testEnvironment.Metadata.Table}");
 
                         content.AppendLine(modifiedLine);
                     }

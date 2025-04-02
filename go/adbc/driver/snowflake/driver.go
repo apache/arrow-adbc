@@ -20,6 +20,7 @@ package snowflake
 import (
 	"errors"
 	"maps"
+	"net/http"
 	"runtime/debug"
 	"strings"
 
@@ -170,22 +171,58 @@ func quoteTblName(name string) string {
 	return "\"" + strings.ReplaceAll(name, "\"", "\"\"") + "\""
 }
 
+type config struct {
+	*gosnowflake.Config
+}
+
+// Option is a function type to set custom driver configurations.
+//
+// It is intended for configurations that cannot be provided from the standard options map,
+// e.g. the underlying HTTP transporter.
+type Option func(*config) error
+
+// WithTransporter sets the custom transporter to use for the Snowflake connection.
+// This allows to intercept HTTP requests and responses.
+func WithTransporter(transporter http.RoundTripper) Option {
+	return func(cfg *config) error {
+		cfg.Transporter = transporter
+		return nil
+	}
+}
+
+// Driver is the Snowflake driver interface.
+//
+// It extends the base adbc.Driver to provide additional options
+// when creating the Snowflake database.
+type Driver interface {
+	adbc.Driver
+
+	// NewDatabaseWithOptions creates a new Snowflake database with the provided options.
+	NewDatabaseWithOptions(map[string]string, ...Option) (adbc.Database, error)
+}
+
+var _ Driver = (*driverImpl)(nil)
+
 type driverImpl struct {
 	driverbase.DriverImplBase
 }
 
 // NewDriver creates a new Snowflake driver using the given Arrow allocator.
-func NewDriver(alloc memory.Allocator) adbc.Driver {
+func NewDriver(alloc memory.Allocator) Driver {
 	info := driverbase.DefaultDriverInfo("Snowflake")
 	if infoVendorVersion != "" {
 		if err := info.RegisterInfoCode(adbc.InfoVendorVersion, infoVendorVersion); err != nil {
 			panic(err)
 		}
 	}
-	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)})
+	return &driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)}
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithOptions(opts)
+}
+
+func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, optFuncs ...Option) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 	db := &databaseImpl{
 		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
@@ -193,6 +230,13 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
+	}
+
+	cfg := &config{Config: db.cfg}
+	for _, opt := range optFuncs {
+		if err := opt(cfg); err != nil {
+			return nil, err
+		}
 	}
 
 	return driverbase.NewDatabase(db), nil

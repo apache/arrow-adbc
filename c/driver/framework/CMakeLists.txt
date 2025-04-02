@@ -34,8 +34,7 @@ if(ADBC_BUILD_TESTS)
                 SOURCES
                 base_driver_test.cc
                 EXTRA_LINK_LIBS
-                adbc_driver_framework
-                nanoarrow)
+                adbc_driver_framework)
   target_compile_features(adbc-driver-framework-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-framework-test
                              PRIVATE "${REPOSITORY_ROOT}/c/"

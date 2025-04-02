@@ -1,15 +1,54 @@
 {
-    "projectId": "",
-    "clientId": "",
-    "clientSecret": "",
-    "refreshToken": "",
-    "maxStreamCount": 1,
-    "metadata": {
-        "catalog": "",
-        "schema": "",
-        "table": "",
-        "expectedColumnCount": 0
-    },
-    "query": "",
-    "expectedResults": 0
+    "testEnvironments": [ "", "" ],
+    "shared": {
+        "clientId": "clientId_example",
+        "clientSecret": "clientSecret_example"
+    }
+    "environments": {
+        "<env1>": {
+            "projectId": "",
+            "clientId": "$ref:shared.clientId",
+            "clientSecret": "$ref:shared.clientSecret",
+            "refreshToken": "",
+            "maxStreamCount": 1,
+            "metadata": {
+                "catalog": "",
+                "schema": "",
+                "table": "",
+                "expectedColumnCount": 0
+            },
+            "query": "",
+            "expectedResults": 0
+        },
+        "<env2>": {
+            "projectId": "",
+            "clientId": "$ref:shared.clientId",
+            "clientSecret": "$ref:shared.clientSecret",
+            "refreshToken": "",
+            "maxStreamCount": 1,
+            "metadata": {
+                "catalog": "",
+                "schema": "",
+                "table": "",
+                "expectedColumnCount": 0
+            },
+            "query": "",
+            "expectedResults": 0
+        },
+        "<env3>": {
+            "projectId": "",
+            "clientId": "",
+            "clientSecret": "",
+            "refreshToken": "",
+            "maxStreamCount": 1,
+            "metadata": {
+                "catalog": "",
+                "schema": "",
+                "table": "",
+                "expectedColumnCount": 0
+            },
+            "query": "",
+            "expectedResults": 0
+        }
+    }
 }

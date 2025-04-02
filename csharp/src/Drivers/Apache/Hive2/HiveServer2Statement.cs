@@ -25,11 +25,12 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal abstract class HiveServer2Statement : AdbcStatement
+    internal class HiveServer2Statement : AdbcStatement
     {
-        protected HiveServer2Statement(HiveServer2Connection connection)
+        internal HiveServer2Statement(HiveServer2Connection connection)
         {
             Connection = connection;
+            ValidateOptions(connection.Properties);
         }
 
         protected virtual void SetStatementProperties(TExecuteStatementReq statement)

@@ -49,7 +49,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(ImpalaParameters.AuthType, out string? authType);
-            bool isValidAuthType = ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue);
+            if (!ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(ImpalaParameters.AuthType, authType, $"Unsupported {ImpalaParameters.AuthType} value.");
+            }
             switch (authTypeValue)
             {
                 case ImpalaAuthType.Basic:
@@ -102,7 +105,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(ImpalaParameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(uri, hostName, path, port)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName)
             };
         }
 
@@ -130,12 +133,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(ImpalaParameters.Path, out string? path);
             Properties.TryGetValue(ImpalaParameters.Port, out string? port);
             Properties.TryGetValue(ImpalaParameters.AuthType, out string? authType);
-            bool isValidAuthType = ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue);
+            if (!ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(ImpalaParameters.AuthType, authType, $"Unsupported {ImpalaParameters.AuthType} value.");
+            }
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
             HttpClientHandler httpClientHandler = NewHttpClientHandler();
@@ -213,5 +219,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override ImpalaServerType ServerType => ImpalaServerType.Http;
+
+        protected override int ColumnMapIndexOffset => 0;
     }
 }
