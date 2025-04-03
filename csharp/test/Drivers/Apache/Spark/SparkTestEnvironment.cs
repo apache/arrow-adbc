@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Text;
+using System.Text.Json.Serialization;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
@@ -116,6 +117,33 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             if (!string.IsNullOrEmpty(testConfiguration.QueryTimeoutSeconds))
             {
                 parameters.Add(ApacheParameters.QueryTimeoutSeconds, testConfiguration.QueryTimeoutSeconds!);
+            }
+            if (testConfiguration.HttpOptions != null)
+            {
+                if (testConfiguration.HttpOptions.Tls != null)
+                {
+                    TlsTestConfiguration tlsOptions = testConfiguration.HttpOptions.Tls;
+                    if (tlsOptions.Enabled.HasValue)
+                    {
+                        parameters.Add(HttpTlsOptions.IsTlsEnabled, tlsOptions.Enabled.Value.ToString());
+                    }
+                    if (tlsOptions.AllowSelfSigned.HasValue)
+                    {
+                        parameters.Add(HttpTlsOptions.AllowSelfSigned, tlsOptions.AllowSelfSigned.Value.ToString());
+                    }
+                    if (tlsOptions.AllowHostnameMismatch.HasValue)
+                    {
+                        parameters.Add(HttpTlsOptions.AllowHostnameMismatch, tlsOptions.AllowHostnameMismatch.Value.ToString());
+                    }
+                    if (tlsOptions.DisableServerCertificateValidation.HasValue)
+                    {
+                        parameters.Add(HttpTlsOptions.DisableServerCertificateValidation, tlsOptions.DisableServerCertificateValidation.Value.ToString());
+                    }
+                    if (!string.IsNullOrEmpty(tlsOptions.TrustedCertificatePath))
+                    {
+                        parameters.Add(HttpTlsOptions.TrustedCertificatePath, tlsOptions.TrustedCertificatePath!);
+                    }
+                }
             }
 
             return parameters;
