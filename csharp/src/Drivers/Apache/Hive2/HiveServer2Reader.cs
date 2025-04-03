@@ -122,7 +122,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        private  RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)
+        private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)
         {
             IReadOnlyList<IArrowArray> columnData = GetArrowArrayData(response.Results, columnCount, Schema, _dataTypeConversion);
 
@@ -142,11 +142,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             return columnData;
         }
-
-        //private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)
-        //{
-        //    return CreateBatch(response.Results, columnCount, rowCount, Schema, _dataTypeConversion);
-        //}
 
         internal static int GetColumnCount(TRowSet response) =>
             response.Columns.Count;

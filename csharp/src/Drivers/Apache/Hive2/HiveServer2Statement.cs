@@ -331,8 +331,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 GetColumnsCommandName => await GetColumnsAsync(cancellationToken),
                 GetPrimaryKeysCommandName => await GetPrimaryKeysAsync(cancellationToken),
                 GetCrossReferenceCommandName => await GetCrossReferenceAsync(cancellationToken),
-                null => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
-                "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
+                null or "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
                 _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {SupportedMetadataCommands}"),
             };
         }
@@ -354,7 +353,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
-            // Note: allows catalog/schema/table to be null or empty
             TGetPrimaryKeysResp resp = await Connection.GetPrimaryKeysAsync(
                 CatalogName,
                 SchemaName,

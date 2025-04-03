@@ -25,15 +25,55 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         public const string PollTimeMilliseconds = "adbc.apache.statement.polltime_ms";
         public const string BatchSize = "adbc.apache.statement.batch_size";
         public const string QueryTimeoutSeconds = "adbc.apache.statement.query_timeout_s";
+
+        /// <summary>
+        /// The indicator of whether the <c>AdbcStatement.ExecuteQuery[Async]</c> should execute a metadata command query.
+        /// In the case this indicator is set to <c>True</c>, the method will execute a metadata command using the native API where
+        /// the name of the command is given in the <c>AdbcStatement.SqlQuery</c> property value.
+        /// <para>
+        /// Use the <c>adbc.get_metadata.*</c> options to set the input parameters for the native metadata command query.
+        /// </para>
+        /// </summary>
         public const string IsMetadataCommand = "adbc.apache.statement.is_metadata_command";
 
-        public const string CatalogName = "adbc.apache.catalog_name";
-        public const string SchemaName = "adbc.apache.schema_name";
-        public const string TableName = "adbc.apache.table_name";
-        public const string TableTypes = "adbc.apache.table_types";
-        public const string ColumnName = "adbc.apache.column_name";
-        public const string ForeignCatalogName = "adbc.apache.foreign_catalog_name";
-        public const string ForeignSchemaName = "adbc.apache.foreign_schema_name";
-        public const string ForeignTableName = "adbc.apache.foreign_table_name";
+        /// <summary>
+        /// The catalog name (or pattern) of the table for GetSchemas, Get* metadata command queries.
+        /// </summary>
+        public const string CatalogName = "adbc.get_metadata.target_catalog";
+
+        /// <summary>
+        /// The schema name (or pattern) of the table for GetSchemas, GetTables, ... metadata command queries.
+        /// </summary>
+        public const string SchemaName = "adbc.get_metadata.target_db_schema";
+
+        /// <summary>
+        /// The table name (or pattern) of the table for GetSchemas, GetTables, ... metadata command queries.
+        /// </summary>
+        public const string TableName = "adbc.get_metadata.target_table";
+
+        /// <summary>
+        /// The comma-separted list of the table types for GetTables metadata command query.
+        /// </summary>
+        public const string TableTypes = "adbc.get_metadata.target_table_types";
+
+        /// <summary>
+        /// The column name (or pattern) in the table for GetColumns metadata command query.
+        /// </summary>
+        public const string ColumnName = "adbc.get_metadata.target_column";
+
+        /// <summary>
+        /// The catalog name (or pattern) of the foreign (child) table for GetCrossReference metadata command query.
+        /// </summary>
+        public const string ForeignCatalogName = "adbc.get_metadata.foreign_target_catalog";
+
+        /// <summary>
+        /// The schema name (or pattern) of the foreign (child) table for GetCrossReference metadata command query.
+        /// </summary>
+        public const string ForeignSchemaName = "adbc.get_metadata.foreign_target_db_schema";
+
+        /// <summary>
+        /// The table name (or pattern) of the foreign (child) table for GetCrossReference metadata command query.
+        /// </summary>
+        public const string ForeignTableName = "adbc.get_metadata.foreign_target_table";
     }
 }

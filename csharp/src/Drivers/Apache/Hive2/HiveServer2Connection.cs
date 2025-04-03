@@ -951,11 +951,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 SetDirectResults(req);
             }
-            if (!string.IsNullOrEmpty(catalogName))
+            if (catalogName != null)
             {
                 req.CatalogName = catalogName;
             }
-            if (!string.IsNullOrEmpty(schemaName))
+            if (schemaName != null)
             {
                 req.SchemaName = schemaName;
             }
@@ -983,15 +983,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 SetDirectResults(req);
             }
-            if (!string.IsNullOrEmpty(catalogName))
+            if (catalogName != null)
             {
                 req.CatalogName = catalogName;
             }
-            if (!string.IsNullOrEmpty(schemaName))
+            if (schemaName != null)
             {
                 req.SchemaName = schemaName;
             }
-            if (!string.IsNullOrEmpty(tableName))
+            if (tableName != null)
             {
                 req.TableName = tableName;
             }
@@ -1023,19 +1023,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 SetDirectResults(req);
             }
-            if (!string.IsNullOrEmpty(catalogName))
+            if (catalogName != null)
             {
                 req.CatalogName = catalogName;
             }
-            if (!string.IsNullOrEmpty(schemaName))
+            if (schemaName != null)
             {
                 req.SchemaName = schemaName;
             }
-            if (!string.IsNullOrEmpty(tableName))
+            if (tableName != null)
             {
                 req.TableName = tableName;
             }
-            if (!string.IsNullOrEmpty(columnName))
+            if (columnName != null)
             {
                 req.ColumnName = columnName;
             }
@@ -1067,15 +1067,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 SetDirectResults(req);
             }
-            if (!string.IsNullOrWhiteSpace(catalogName))
+            if (catalogName != null)
             {
                 req.CatalogName = catalogName!;
             }
-            if (!string.IsNullOrWhiteSpace(schemaName))
+            if (schemaName != null)
             {
                 req.SchemaName = schemaName!;
             }
-            if (!string.IsNullOrWhiteSpace(tableName))
+            if (tableName != null)
             {
                 req.TableName = tableName!;
             }
@@ -1110,31 +1110,30 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 SetDirectResults(req);
             }
-            if (!string.IsNullOrWhiteSpace(catalogName))
+            if (catalogName != null)
             {
                 req.ParentCatalogName = catalogName!;
             }
-            if (!string.IsNullOrWhiteSpace(schemaName))
+            if (schemaName != null)
             {
                 req.ParentSchemaName = schemaName!;
             }
-            if (!string.IsNullOrWhiteSpace(tableName))
+            if (tableName != null)
             {
                 req.ParentTableName = tableName!;
             }
-            if (!string.IsNullOrWhiteSpace(foreignCatalogName))
+            if (foreignCatalogName != null)
             {
                 req.ForeignCatalogName = foreignCatalogName!;
             }
-            if (!string.IsNullOrWhiteSpace(schemaName))
+            if (schemaName != null)
             {
                 req.ForeignSchemaName = foreignSchemaName!;
             }
-            if (!string.IsNullOrWhiteSpace(tableName))
+            if (tableName != null)
             {
                 req.ForeignTableName = foreignTableName!;
             }
-
 
             TGetCrossReferenceResp resp = await Client.GetCrossReference(req, cancellationToken);
             if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
