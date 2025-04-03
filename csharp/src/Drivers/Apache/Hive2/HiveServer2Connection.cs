@@ -939,7 +939,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return resp;
         }
 
-        internal async Task<TGetSchemasResp> GetSchemasAsync(string? catalogName, string? schemaName, CancellationToken cancellationToken)
+        internal async Task<TGetSchemasResp> GetSchemasAsync(
+            string? catalogName,
+            string? schemaName,
+            CancellationToken cancellationToken)
         {
             if (SessionHandle == null)
             {
@@ -971,7 +974,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return resp;
         }
 
-        internal async Task<TGetTablesResp> GetTablesAsync(string? catalogName, string? schemaName, string? tableName, List<string>? tableTypes, CancellationToken cancellationToken)
+        internal async Task<TGetTablesResp> GetTablesAsync(
+            string? catalogName,
+            string? schemaName,
+            string? tableName,
+            List<string>? tableTypes,
+            CancellationToken cancellationToken)
         {
             if (SessionHandle == null)
             {
@@ -1011,7 +1019,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return resp;
         }
 
-        internal async Task<TGetColumnsResp> GetColumnsAsync(string? catalogName, string? schemaName, string? tableName, string? columnName, CancellationToken cancellationToken)
+        internal async Task<TGetColumnsResp> GetColumnsAsync(
+            string? catalogName,
+            string? schemaName,
+            string? tableName,
+            string? columnName,
+            CancellationToken cancellationToken)
         {
             if (SessionHandle == null)
             {
