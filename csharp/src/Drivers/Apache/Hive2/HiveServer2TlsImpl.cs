@@ -26,7 +26,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     class TlsProperties
     {
-        public bool IsTlsEnabled { get; set; }
+        public bool IsTlsEnabled { get; set; } = true;
         public bool DisableServerCertificateValidation { get; set; }
         public bool AllowHostnameMismatch { get; set; }
         public bool AllowSelfSigned { get; set; }
@@ -43,15 +43,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 var uriValue = new Uri(uri);
                 tlsProperties.IsTlsEnabled = uriValue.Scheme == Uri.UriSchemeHttps || (properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled) && bool.TryParse(isSslEnabled, out bool isSslEnabledBool) && isSslEnabledBool);
             }
-            else
+            else if (properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled) && bool.TryParse(isSslEnabled, out bool isSslEnabledBool))
             {
-                tlsProperties.IsTlsEnabled = properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled) && bool.TryParse(isSslEnabled, out bool isSslEnabledBool) && isSslEnabledBool;
+                tlsProperties.IsTlsEnabled = isSslEnabledBool;
             }
             if (!tlsProperties.IsTlsEnabled)
             {
                 return tlsProperties;
             }
-            tlsProperties.IsTlsEnabled = true;
+
             if (properties.TryGetValue(HttpTlsOptions.DisableServerCertificateValidation, out string? disableServerCertificateValidation) && bool.TryParse(disableServerCertificateValidation, out bool disableServerCertificateValidationBool) && disableServerCertificateValidationBool)
             {
                 tlsProperties.DisableServerCertificateValidation = true;

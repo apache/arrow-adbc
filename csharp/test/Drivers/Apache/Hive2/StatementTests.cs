@@ -15,7 +15,8 @@
 * limitations under the License.
 */
 
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -26,6 +27,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
         public StatementTests(ITestOutputHelper? outputHelper)
             : base(outputHelper, new HiveServer2TestEnvironment.Factory())
         {
+        }
+
+        [SkippableFact]
+        public async Task CanGetPrimaryKeysHive()
+        {
+            await base.CanGetPrimaryKeys(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        [SkippableFact]
+        public async Task CanGetCrossReferenceParentTableHive()
+        {
+            await base.CanGetCrossReferenceFromParentTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        [SkippableFact]
+        public async Task CanGetCrossReferenceChildTableHive()
+        {
+            await base.CanGetCrossReferenceFromChildTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
         }
     }
 }

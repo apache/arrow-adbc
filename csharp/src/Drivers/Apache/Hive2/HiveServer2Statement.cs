@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -27,6 +28,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2Statement : AdbcStatement
     {
+        private const string GetPrimaryKeysCommandName = "getprimarykeys";
+        private const string GetCrossReferenceCommandName = "getcrossreference";
+        private const string GetCatalogsCommandName = "getcatalogs";
+        private const string GetSchemasCommandName = "getschemas";
+        private const string GetTablesCommandName = "gettables";
+        private const string GetColumnsCommandName = "getcolumns";
+        private const string SupportedMetadataCommands =
+            GetCatalogsCommandName + "," +
+            GetSchemasCommandName + "," +
+            GetTablesCommandName + "," +
+            GetColumnsCommandName + "," +
+            GetPrimaryKeysCommandName + "," +
+            GetCrossReferenceCommandName;
+
         internal HiveServer2Statement(HiveServer2Connection connection)
         {
             Connection = connection;
@@ -78,6 +93,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
         {
+            if (IsMetadataCommand)
+            {
+                return await ExecuteMetadataCommandQuery(cancellationToken);
+            }
+
             // this could either:
             // take QueryTimeoutSeconds * 3
             // OR
@@ -184,6 +204,36 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         QueryTimeoutSeconds = queryTimeoutSeconds;
                     }
                     break;
+                case ApacheParameters.IsMetadataCommand:
+                    if (ApacheUtility.BooleanIsValid(key, value, out bool isMetadataCommand))
+                    {
+                        IsMetadataCommand = isMetadataCommand;
+                    }
+                    break;
+                case ApacheParameters.CatalogName:
+                    this.CatalogName = value;
+                    break;
+                case ApacheParameters.SchemaName:
+                    this.SchemaName = value;
+                    break;
+                case ApacheParameters.TableName:
+                    this.TableName = value;
+                    break;
+                case ApacheParameters.TableTypes:
+                    this.TableTypes = value;
+                    break;
+                case ApacheParameters.ColumnName:
+                    this.ColumnName = value;
+                    break;
+                case ApacheParameters.ForeignCatalogName:
+                    this.ForeignCatalogName = value;
+                    break;
+                case ApacheParameters.ForeignSchemaName:
+                    this.ForeignSchemaName = value;
+                    break;
+                case ApacheParameters.ForeignTableName:
+                    this.ForeignTableName = value;
+                    break;
                 default:
                     throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
             }
@@ -191,7 +241,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
-            TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle!, SqlQuery!);
+            if (Connection.SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
             SetStatementProperties(executeRequest);
             TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
             if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
@@ -213,6 +268,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             get => Connection.QueryTimeoutSeconds;
             set => Connection.QueryTimeoutSeconds = value;
         }
+
+        protected internal bool IsMetadataCommand { get; set; } = false;
+        protected internal string? CatalogName { get; set; }
+        protected internal string? SchemaName { get; set; }
+        protected internal string? TableName { get; set; }
+        protected internal string? TableTypes { get; set; }
+        protected internal string? ColumnName { get; set; }
+        protected internal string? ForeignCatalogName { get; set; }
+        protected internal string? ForeignSchemaName { get; set; }
+        protected internal string? ForeignTableName { get; set; }
 
         public HiveServer2Connection Connection { get; private set; }
 
@@ -254,6 +319,119 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         }
                 }
             }
+        }
+
+        private async Task<QueryResult> ExecuteMetadataCommandQuery(CancellationToken cancellationToken)
+        {
+            return SqlQuery?.ToLowerInvariant() switch
+            {
+                GetCatalogsCommandName => await GetCatalogsAsync(cancellationToken),
+                GetSchemasCommandName => await GetSchemasAsync(cancellationToken),
+                GetTablesCommandName => await GetTablesAsync(cancellationToken),
+                GetColumnsCommandName => await GetColumnsAsync(cancellationToken),
+                GetPrimaryKeysCommandName => await GetPrimaryKeysAsync(cancellationToken),
+                GetCrossReferenceCommandName => await GetCrossReferenceAsync(cancellationToken),
+                null or "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
+                _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {SupportedMetadataCommands}"),
+            };
+        }
+
+        private async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
+        {
+            TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
+                CatalogName,
+                SchemaName,
+                TableName,
+                ForeignCatalogName,
+                ForeignSchemaName,
+                ForeignTableName,
+                cancellationToken);
+            OperationHandle = resp.OperationHandle;
+
+            return await GetQueryResult(resp.DirectResults, cancellationToken);
+        }
+
+        private async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
+        {
+            TGetPrimaryKeysResp resp = await Connection.GetPrimaryKeysAsync(
+                CatalogName,
+                SchemaName,
+                TableName,
+                cancellationToken);
+            OperationHandle = resp.OperationHandle;
+
+            return await GetQueryResult(resp.DirectResults, cancellationToken);
+        }
+
+        private async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
+        {
+            TGetCatalogsResp resp = await Connection.GetCatalogsAsync(cancellationToken);
+            OperationHandle = resp.OperationHandle;
+
+            return await GetQueryResult(resp.DirectResults, cancellationToken);
+        }
+
+        private async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
+        {
+            TGetSchemasResp resp = await Connection.GetSchemasAsync(
+                CatalogName,
+                SchemaName,
+                cancellationToken);
+            OperationHandle = resp.OperationHandle;
+
+            return await GetQueryResult(resp.DirectResults, cancellationToken);
+        }
+
+        private async Task<QueryResult> GetTablesAsync(CancellationToken cancellationToken = default)
+        {
+            List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
+            TGetTablesResp resp = await Connection.GetTablesAsync(
+                CatalogName,
+                SchemaName,
+                TableName,
+                tableTypesList,
+                cancellationToken);
+            OperationHandle = resp.OperationHandle;
+
+            return await GetQueryResult(resp.DirectResults, cancellationToken);
+        }
+
+        private async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
+        {
+            TGetColumnsResp resp = await Connection.GetColumnsAsync(
+                CatalogName,
+                SchemaName,
+                TableName,
+                ColumnName,
+                cancellationToken);
+            OperationHandle = resp.OperationHandle;
+
+            return await GetQueryResult(resp.DirectResults, cancellationToken);
+        }
+
+        private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        {
+            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
+            return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
+        }
+
+        private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
+        {
+            Schema schema;
+            if (Connection.AreResultsAvailableDirectly() && directResults?.ResultSet?.Results != null)
+            {
+                TGetResultSetMetadataResp resultSetMetadata = directResults.ResultSetMetadata;
+                schema = Connection.SchemaParser.GetArrowSchema(resultSetMetadata.Schema, Connection.DataTypeConversion);
+                TRowSet rowSet = directResults.ResultSet.Results;
+                int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
+                int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
+                IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
+                return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(schema, data));
+            }
+
+            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
+            schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
+            return new QueryResult(-1, Connection.NewReader(this, schema));
         }
     }
 }
