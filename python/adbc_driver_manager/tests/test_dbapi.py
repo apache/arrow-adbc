@@ -16,6 +16,8 @@
 # under the License.
 
 import pandas
+import polars
+import polars.testing
 import pyarrow
 import pyarrow.dataset
 import pytest
@@ -165,6 +167,9 @@ class StreamWrapper:
         lambda: StreamWrapper(
             pyarrow.table([[1, 2], ["foo", ""]], names=["ints", "strs"])
         ),
+        lambda: pyarrow.table(
+            [[1, 2], ["foo", ""]], names=["ints", "strs"]
+        ).__arrow_c_stream__(),
     ],
 )
 @pytest.mark.sqlite
@@ -227,6 +232,27 @@ def test_query_fetch_py(sqlite):
 @pytest.mark.sqlite
 def test_query_fetch_arrow(sqlite):
     with sqlite.cursor() as cur:
+        with pytest.raises(sqlite.ProgrammingError):
+            cur.fetch_arrow()
+
+        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
+        capsule = cur.fetch_arrow().__arrow_c_stream__()
+        reader = pyarrow.RecordBatchReader._import_from_c_capsule(capsule)
+        assert reader.read_all() == pyarrow.table(
+            {
+                "1": [1],
+                "foo": ["foo"],
+                "2.0": [2.0],
+            }
+        )
+
+        with pytest.raises(sqlite.ProgrammingError):
+            cur.fetch_arrow()
+
+
+@pytest.mark.sqlite
+def test_query_fetch_arrow_table(sqlite):
+    with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
         assert cur.fetch_arrow_table() == pyarrow.table(
             {
@@ -244,6 +270,22 @@ def test_query_fetch_df(sqlite):
         assert_frame_equal(
             cur.fetch_df(),
             pandas.DataFrame(
+                {
+                    "1": [1],
+                    "foo": ["foo"],
+                    "2.0": [2.0],
+                }
+            ),
+        )
+
+
+@pytest.mark.sqlite
+def test_query_fetch_polars(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
+        polars.testing.assert_frame_equal(
+            cur.fetch_polars(),
+            polars.DataFrame(
                 {
                     "1": [1],
                     "foo": ["foo"],

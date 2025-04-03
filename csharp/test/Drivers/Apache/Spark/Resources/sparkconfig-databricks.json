@@ -12,5 +12,21 @@
         "schema": "default",
         "table": "<tableName>",
         "expectedColumnCount": 19
+    },
+    "http_options-comment": "Allowed values, null|object",
+    "http_options": {
+        "tls-comment": "Allowed values, null|object",
+        "tls": {
+            "enabled-comment": "Allowed values, true|false|null.",
+            "enabled": null,
+            "disable_server_certificate_validation-comment": "Allowed values, true|false|null.",
+            "disable_server_certificate_validation": null,
+            "allow_self_signed-comment": "Allowed values, true|false|null.",
+            "allow_self_signed": null,
+            "allow_hostname_mismatch-comment": "Allowed values, true|false|null.",
+            "allow_hostname_mismatch": null,
+            "trusted_certificate_path-commnt": "Allowed values: string|null",
+            "trusted_certificate_path": null
+        }
     }
 }

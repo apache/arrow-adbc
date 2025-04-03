@@ -30,6 +30,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -219,55 +220,89 @@ void TupleReader::Release() {
   row_id_ = -1;
 }
 
+// Instead of directly exporting the TupleReader, which is tied to the
+// lifetime of the Statement, we export a weak_ptr reference instead.  That
+// way if the user accidentally closes the Statement before the
+// ArrowArrayStream, we can avoid a crash.
+// See https://github.com/apache/arrow-adbc/issues/2629
+struct ExportedTupleReader {
+  std::weak_ptr<TupleReader> self;
+};
+
 void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
   stream->get_schema = &GetSchemaTrampoline;
   stream->get_next = &GetNextTrampoline;
   stream->get_last_error = &GetLastErrorTrampoline;
   stream->release = &ReleaseTrampoline;
-  stream->private_data = this;
+  stream->private_data = new ExportedTupleReader{weak_from_this()};
 }
 
-const struct AdbcError* TupleReader::ErrorFromArrayStream(struct ArrowArrayStream* stream,
+const struct AdbcError* TupleReader::ErrorFromArrayStream(struct ArrowArrayStream* self,
                                                           AdbcStatusCode* status) {
-  if (!stream->private_data || stream->release != &ReleaseTrampoline) {
+  if (!self->private_data || self->release != &ReleaseTrampoline) {
     return nullptr;
   }
 
-  TupleReader* reader = static_cast<TupleReader*>(stream->private_data);
-  if (status) {
-    *status = reader->status_;
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    if (status) {
+      *status = maybe_reader->status_;
+    }
+    return &maybe_reader->error_;
   }
-  return &reader->error_;
+  return nullptr;
 }
 
 int TupleReader::GetSchemaTrampoline(struct ArrowArrayStream* self,
                                      struct ArrowSchema* out) {
   if (!self || !self->private_data) return EINVAL;
 
-  TupleReader* reader = static_cast<TupleReader*>(self->private_data);
-  return reader->GetSchema(out);
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    return maybe_reader->GetSchema(out);
+  }
+  // statement was closed or reader was otherwise invalidated
+  return EINVAL;
 }
 
 int TupleReader::GetNextTrampoline(struct ArrowArrayStream* self,
                                    struct ArrowArray* out) {
   if (!self || !self->private_data) return EINVAL;
 
-  TupleReader* reader = static_cast<TupleReader*>(self->private_data);
-  return reader->GetNext(out);
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    return maybe_reader->GetNext(out);
+  }
+  // statement was closed or reader was otherwise invalidated
+  return EINVAL;
 }
 
 const char* TupleReader::GetLastErrorTrampoline(struct ArrowArrayStream* self) {
   if (!self || !self->private_data) return nullptr;
+  constexpr std::string_view kReaderInvalidated =
+      "[libpq] Reader invalidated (statement or reader was closed)";
 
-  TupleReader* reader = static_cast<TupleReader*>(self->private_data);
-  return reader->last_error();
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    return maybe_reader->last_error();
+  }
+  // statement was closed or reader was otherwise invalidated
+  return kReaderInvalidated.data();
 }
 
 void TupleReader::ReleaseTrampoline(struct ArrowArrayStream* self) {
   if (!self || !self->private_data) return;
 
-  TupleReader* reader = static_cast<TupleReader*>(self->private_data);
-  reader->Release();
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    maybe_reader->Release();
+  }
+  delete wrapper;
   self->private_data = nullptr;
   self->release = nullptr;
 }
@@ -281,7 +316,7 @@ AdbcStatusCode PostgresStatement::New(struct AdbcConnection* connection,
   connection_ =
       *reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
   type_resolver_ = connection_->type_resolver();
-  reader_.conn_ = connection_->conn();
+  ClearResult();
   return ADBC_STATUS_OK;
 }
 
@@ -514,24 +549,24 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   }
 
   struct ArrowError na_error;
-  reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
-  CHECK_NA(INTERNAL, reader_.copy_reader_->Init(root_type), error);
+  reader_->copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
+  CHECK_NA(INTERNAL, reader_->copy_reader_->Init(root_type), error);
   CHECK_NA_DETAIL(INTERNAL,
-                  reader_.copy_reader_->InferOutputSchema(
+                  reader_->copy_reader_->InferOutputSchema(
                       std::string(connection_->VendorName()), &na_error),
                   &na_error, error);
 
-  CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InitFieldReaders(&na_error), &na_error,
+  CHECK_NA_DETAIL(INTERNAL, reader_->copy_reader_->InitFieldReaders(&na_error), &na_error,
                   error);
 
   // Execute the COPY query
   RAISE_STATUS(error, helper.ExecuteCopy());
 
   // We need the PQresult back for the reader
-  reader_.result_ = helper.ReleaseResult();
+  reader_->result_ = helper.ReleaseResult();
 
   // Export to stream
-  reader_.ExportTo(stream);
+  reader_->ExportTo(stream);
   if (rows_affected) *rows_affected = -1;
   return ADBC_STATUS_OK;
 }
@@ -674,7 +709,7 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
         break;
     }
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
-    result = std::to_string(reader_.batch_size_hint_bytes_);
+    result = std::to_string(reader_->batch_size_hint_bytes_);
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
     if (UseCopy()) {
       result = "true";
@@ -710,7 +745,7 @@ AdbcStatusCode PostgresStatement::GetOptionInt(const char* key, int64_t* value,
                                                struct AdbcError* error) {
   std::string result;
   if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
-    *value = reader_.batch_size_hint_bytes_;
+    *value = reader_->batch_size_hint_bytes_;
     return ADBC_STATUS_OK;
   }
   SetError(error, "[libpq] Unknown statement option '%s'", key);
@@ -799,7 +834,7 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    this->reader_.batch_size_hint_bytes_ = int_value;
+    this->batch_size_hint_bytes_ = this->reader_->batch_size_hint_bytes_ = int_value;
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
     if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
       use_copy_ = true;
@@ -836,7 +871,7 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    this->reader_.batch_size_hint_bytes_ = value;
+    this->batch_size_hint_bytes_ = this->reader_->batch_size_hint_bytes_ = value;
     return ADBC_STATUS_OK;
   }
   SetError(error, "[libpq] Unknown statement option '%s'", key);
@@ -845,7 +880,9 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
 
 void PostgresStatement::ClearResult() {
   // TODO: we may want to synchronize here for safety
-  reader_.Release();
+  if (reader_) reader_->Release();
+  reader_ = std::make_shared<TupleReader>(connection_->conn());
+  reader_->batch_size_hint_bytes_ = batch_size_hint_bytes_;
 }
 
 int PostgresStatement::UseCopy() {

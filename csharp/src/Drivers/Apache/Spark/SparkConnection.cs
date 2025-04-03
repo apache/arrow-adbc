@@ -63,7 +63,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override AdbcStatement CreateStatement()
         {
-            return new SparkStatement(this);
+            SparkStatement statement = new SparkStatement(this);
+            return statement;
         }
 
         protected internal override int PositionRequiredOffset => 1;
@@ -122,7 +123,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override bool IsColumnSizeValidForDecimal => false;
 
-        protected override bool AreResultsAvailableDirectly() => true;
+        protected internal override bool AreResultsAvailableDirectly() => true;
 
         protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = sparkGetDirectResults;
 
@@ -133,6 +134,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = sparkGetDirectResults;
 
         protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = sparkGetDirectResults;
+
+        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = sparkGetDirectResults;
+
+        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = sparkGetDirectResults;
 
         protected abstract void ValidateConnection();
         protected abstract void ValidateAuthentication();

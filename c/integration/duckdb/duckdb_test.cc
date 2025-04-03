@@ -16,10 +16,13 @@
 // under the License.
 
 #include <cstdlib>
+#include <stdexcept>
 #include <string>
+#include "gmock/gmock.h"
 
 #include <arrow-adbc/adbc.h>
 #include <arrow-adbc/adbc_driver_manager.h>
+#define ADBC_EXPORTING  // duckdb changed the include guard...
 #include <duckdb/common/adbc/adbc-init.hpp>
 
 #include "validation/adbc_validation.h"
@@ -27,9 +30,7 @@
 
 // Convert between our definitions and DuckDB's
 AdbcStatusCode DuckDbDriverInitFunc(int version, void* driver, struct AdbcError* error) {
-  return duckdb_adbc_init(static_cast<size_t>(version),
-                          reinterpret_cast<duckdb_adbc::AdbcDriver*>(driver),
-                          reinterpret_cast<duckdb_adbc::AdbcError*>(error));
+  return duckdb_adbc_init(static_cast<size_t>(version), driver, error);
 }
 
 class DuckDbQuirks : public adbc_validation::DriverQuirks {
@@ -109,8 +110,36 @@ class DuckDbStatementTest : public ::testing::Test,
     GTEST_SKIP() << "Cannot query rows affected in delete stream (not implemented)";
   }
 
+  void TestSqlQueryTrailingSemicolons() {
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+                adbc_validation::IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "INSTALL icu", &error),
+                adbc_validation::IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                adbc_validation::IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "LOAD icu", &error),
+                adbc_validation::IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                adbc_validation::IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementRelease(&statement, &error),
+                adbc_validation::IsOkStatus(&error));
+
+    adbc_validation::StatementTest::TestSqlQueryTrailingSemicolons();
+  }
+
   void TestErrorCompatibility() {
     GTEST_SKIP() << "DuckDB does not set AdbcError.release";
+  }
+
+  void TestResultIndependence() {
+    // DuckDB detects this by throwing
+    ASSERT_THAT([this]() { adbc_validation::StatementTest::TestResultIndependence(); },
+                ::testing::Throws<std::runtime_error>());
   }
 
  protected:

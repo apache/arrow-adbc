@@ -15,7 +15,8 @@
 * limitations under the License.
 */
 
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -26,6 +27,41 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
         public StatementTests(ITestOutputHelper? outputHelper)
             : base(outputHelper, new ImpalaTestEnvironment.Factory())
         {
+        }
+
+        [SkippableFact]
+        public async Task CanGetPrimaryKeysImpala()
+        {
+            await base.CanGetPrimaryKeys(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        [SkippableFact]
+        public async Task CanGetCrossReferenceParentTableImpala()
+        {
+            await base.CanGetCrossReferenceFromParentTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        [SkippableFact]
+        public async Task CanGetCrossReferenceChildTableImpala()
+        {
+            await base.CanGetCrossReferenceFromChildTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        protected override void PrepareCreateTableWithForeignKeys(string fullTableNameParent, out string sqlUpdate, out string tableNameChild, out string fullTableNameChild, out IReadOnlyList<string> foreignKeys)
+        {
+            CreateNewTableName(out tableNameChild, out fullTableNameChild);
+            sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameChild} \n"
+                + "  (INDEX INT, USERINDEX INT, USERNAME STRING, ADDRESS STRING, \n"
+                + "  PRIMARY KEY (INDEX), \n"
+                + $"  FOREIGN KEY (USERINDEX, USERNAME) REFERENCES {fullTableNameParent} (INDEX, NAME))";
+            foreignKeys = ["userindex", "username"];
+        }
+
+        protected override void PrepareCreateTableWithPrimaryKeys(out string sqlUpdate, out string tableNameParent, out string fullTableNameParent, out IReadOnlyList<string> primaryKeys)
+        {
+            CreateNewTableName(out tableNameParent, out fullTableNameParent);
+            sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameParent} (INDEX INT, NAME STRING, PRIMARY KEY (INDEX, NAME))";
+            primaryKeys = ["index", "name"];
         }
     }
 }

@@ -797,6 +797,15 @@ namespace Apache.Arrow.Adbc.C
                 Dispose(false);
             }
 
+            public override string? SqlQuery
+            {
+                set
+                {
+                    SetSqlQuery(value);
+                    base.SqlQuery = value;
+                }
+            }
+
             private unsafe ref CAdbcDriver Driver
             {
                 get
@@ -885,12 +894,6 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override QueryResult ExecuteQuery()
             {
-                if (SqlQuery != null)
-                {
-                    // TODO: Consider moving this to the setter
-                    SetSqlQuery(SqlQuery);
-                }
-
                 using (CallHelper caller = new CallHelper())
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
@@ -911,12 +914,6 @@ namespace Apache.Arrow.Adbc.C
 
             public override unsafe Schema ExecuteSchema()
             {
-                if (SqlQuery != null)
-                {
-                    // TODO: Consider moving this to the setter
-                    SetSqlQuery(SqlQuery);
-                }
-
                 using (CallHelper caller = new CallHelper())
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
@@ -936,12 +933,6 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override UpdateResult ExecuteUpdate()
             {
-                if (SqlQuery != null)
-                {
-                    // TODO: Consider moving this to the setter
-                    SetSqlQuery(SqlQuery);
-                }
-
                 using (CallHelper caller = new CallHelper())
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
@@ -962,12 +953,6 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override PartitionedResult ExecutePartitioned()
             {
-                if (SqlQuery != null)
-                {
-                    // TODO: Consider moving this to the setter
-                    SetSqlQuery(SqlQuery);
-                }
-
                 using (CallHelper caller = new CallHelper())
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
@@ -1009,6 +994,41 @@ namespace Apache.Arrow.Adbc.C
                                 Marshal.FreeHGlobal((IntPtr)nativePartitions);
                             }
                         }
+                    }
+                }
+            }
+
+            public unsafe override Schema GetParameterSchema()
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    fixed (CAdbcStatement* statement = &_nativeStatement)
+                    {
+                        caller.TranslateCode(
+#if NET5_0_OR_GREATER
+                            Driver.StatementGetParameterSchema
+#else
+                            Marshal.GetDelegateForFunctionPointer<StatementGetParameterSchema>(Driver.StatementGetParameterSchema)
+#endif
+                            (statement, caller.CreateSchema(), & caller._error));
+                    }
+                    return caller.ImportSchema();
+                }
+            }
+
+            public unsafe override void Prepare()
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    fixed (CAdbcStatement* statement = &_nativeStatement)
+                    {
+                        caller.TranslateCode(
+#if NET5_0_OR_GREATER
+                            Driver.StatementPrepare
+#else
+                            Marshal.GetDelegateForFunctionPointer<StatementPrepare>(Driver.StatementPrepare)
+#endif
+                            (statement, &caller._error));
                     }
                 }
             }
@@ -1055,7 +1075,7 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
-            private unsafe void SetSqlQuery(string sqlQuery)
+            private unsafe void SetSqlQuery(string? sqlQuery)
             {
                 fixed (CAdbcStatement* statement = &_nativeStatement)
                 {

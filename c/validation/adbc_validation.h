@@ -463,6 +463,7 @@ class StatementTest {
 
   void TestConcurrentStatements();
   void TestErrorCompatibility();
+  void TestResultIndependence();
   void TestResultInvalidation();
 
  protected:
@@ -579,6 +580,7 @@ void StatementTest::TestSqlIngestType(ArrowType type,
   TEST_F(FIXTURE, Transactions) { TestTransactions(); }                                 \
   TEST_F(FIXTURE, ConcurrentStatements) { TestConcurrentStatements(); }                 \
   TEST_F(FIXTURE, ErrorCompatibility) { TestErrorCompatibility(); }                     \
+  TEST_F(FIXTURE, ResultIndependence) { TestResultIndependence(); }                     \
   TEST_F(FIXTURE, ResultInvalidation) { TestResultInvalidation(); }
 
 }  // namespace adbc_validation
