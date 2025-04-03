@@ -53,23 +53,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [SkippableFact]
         public async Task TestRealDatabricksCloudFetchLargeResultSet()
         {
-            string fullTableName = GetCloudFetchFullTableName();
-            Skip.If(string.IsNullOrEmpty(fullTableName));
-            await TestRealDatabricksCloudFetchLargeQuery($"SELECT * FROM {fullTableName} LIMIT 1000000", 1000000);
-        }
-
-        private string GetCloudFetchFullTableName()
-        {
-            return
-                (string.IsNullOrEmpty(TestConfiguration.CloudFetchMetadata?.Catalog)
-                    ? ""
-                    : DelimitIdentifier(TestConfiguration.CloudFetchMetadata!.Catalog) + ".")
-                + (string.IsNullOrEmpty(TestConfiguration.CloudFetchMetadata?.Schema)
-                    ? ""
-                    : DelimitIdentifier(TestConfiguration.CloudFetchMetadata!.Schema) + ".")
-                + (string.IsNullOrEmpty(TestConfiguration.CloudFetchMetadata?.Table)
-                    ? ""
-                    : DelimitIdentifier(TestConfiguration.CloudFetchMetadata!.Table));
+            await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000);
         }
 
         private async Task TestRealDatabricksCloudFetchLargeQuery(string query, int rowCount)

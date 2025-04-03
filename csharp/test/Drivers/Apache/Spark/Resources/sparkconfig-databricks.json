@@ -28,13 +28,5 @@
             "trusted_certificate_path-commnt": "Allowed values: string|null",
             "trusted_certificate_path": null
         }
-    },
-    "cloud_fetch_metadata-comment": "Allowed values: null|object",
-    "cloud_fetch_metadata-example": {
-        "catalog": "catlog",
-        "schema": "schema",
-        "table": "table",
-        "expectedResults": 10000
-    },
-    "cloud_fetch_metadata": null
+    }
 }

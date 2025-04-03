@@ -270,7 +270,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
         {
-            Properties = properties.ToDictionary(e => e.Key, e => e.Value);
+            Properties = properties;
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
