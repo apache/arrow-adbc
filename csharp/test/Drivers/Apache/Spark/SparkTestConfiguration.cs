@@ -27,5 +27,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         [JsonPropertyName("access_token"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string AccessToken { get; set; } = string.Empty;
+
     }
 }

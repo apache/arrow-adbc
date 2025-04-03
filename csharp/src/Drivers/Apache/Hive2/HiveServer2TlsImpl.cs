@@ -47,7 +47,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 tlsProperties.IsTlsEnabled = isSslEnabledBool;
             }
-
             if (!tlsProperties.IsTlsEnabled)
             {
                 return tlsProperties;

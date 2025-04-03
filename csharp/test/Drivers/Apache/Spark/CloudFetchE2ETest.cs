@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM range(1000)", 1000);
         }
 
-        [SkippableFact]
+        [Fact]
         public async Task TestRealDatabricksCloudFetchLargeResultSet()
         {
             await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000);
