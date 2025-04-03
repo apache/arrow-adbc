@@ -43,10 +43,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     decompressor.CopyTo(outputStream);
                 }
-                
                 // Get the underlying buffer and its valid length without copying
                 return new ReadOnlyMemory<byte>(outputStream.GetBuffer(), 0, (int)outputStream.Length);
-                
                 // Note: We're not disposing the outputStream here because we're returning its buffer.
                 // The memory will be reclaimed when the ReadOnlyMemory is no longer referenced.
             }

@@ -194,7 +194,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                             dataToUse = Lz4Utilities.DecompressLz4(fileData);
                         }
 
-                        // Use ChunkStream which supports ReadOnlyMemory<byte> directly 
+                        // Use ChunkStream which supports ReadOnlyMemory<byte> directly
                         this.currentReader = new ArrowStreamReader(new ChunkStream(this.schema, dataToUse));
                         continue;
                     }
@@ -208,7 +208,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                             HttpRequestException or TaskCanceledException => $"{errorPrefix} Download failed - {ex.Message}",
                             _ => $"{errorPrefix} Processing failed - {ex.Message}" // Default case for any other exception
                         };
-                            
                         throw new AdbcException(errorMessage, ex);
                     }
                 }

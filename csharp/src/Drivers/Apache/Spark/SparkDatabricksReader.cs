@@ -110,7 +110,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 if (isLz4Compressed)
                 {
                     dataToUse = Lz4Utilities.DecompressLz4(batch.Batch);
-                
                 }
 
                 // Always use ChunkStream which ensures proper schema handling
@@ -124,10 +123,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     _ when ex.GetType().Name.Contains("LZ4") => $"Batch {this.index}: LZ4 decompression failed - Data may be corrupted",
                     _ => $"Batch {this.index}: Processing failed - {ex.Message}" // Default case for any other exception
                 };
-                
                 throw new AdbcException(errorMessage, ex);
             }
-
             this.index++;
         }
 
