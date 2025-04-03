@@ -23,6 +23,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using K4os.Compression.LZ4.Streams;
@@ -185,13 +186,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                     {
                         try
                         {
-                            dataStream = new MemoryStream();
-                            using (var inputStream = new MemoryStream(fileData!))
-                            using (var decompressor = LZ4Stream.Decode(inputStream))
-                            {
-                                await decompressor.CopyToAsync(dataStream);
-                            }
-                            dataStream.Position = 0;
+                            dataStream = await Lz4Utilities.DecompressLz4Async(fileData!, cancellationToken);
                         }
                         catch (Exception ex)
                         {

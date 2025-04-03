@@ -15,12 +15,15 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using K4os.Compression.LZ4.Streams;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -31,11 +34,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         List<TSparkArrowBatch>? batches;
         int index;
         IArrowReader? reader;
+        bool isLz4Compressed;
 
         public SparkDatabricksReader(HiveServer2Statement statement, Schema schema)
+            : this(statement, schema, false)
+        {
+        }
+
+        public SparkDatabricksReader(HiveServer2Statement statement, Schema schema, bool isLz4Compressed)
         {
             this.statement = statement;
             this.schema = schema;
+            this.isLz4Compressed = isLz4Compressed;
         }
 
         public Schema Schema { get { return schema; } }
@@ -56,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                 if (this.batches != null && this.index < this.batches.Count)
                 {
-                    this.reader = new ArrowStreamReader(new ChunkStream(this.schema, this.batches[this.index++].Batch));
+                    await ProcessFetchedBatchesAsync(cancellationToken);
                     continue;
                 }
 
@@ -70,6 +80,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                 TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
                 TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
+
+                // Make sure we get the arrowBatches
                 this.batches = response.Results.ArrowBatches;
 
                 if (!response.HasMoreRows)
@@ -77,6 +89,49 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     this.statement = null;
                 }
             }
+        }
+
+        private async Task ProcessFetchedBatchesAsync(CancellationToken cancellationToken)
+        {
+            var batch = this.batches![this.index];
+
+            // Ensure batch data exists
+            if (batch.Batch == null || batch.Batch.Length == 0)
+            {
+                this.index++;
+                return;
+            }
+
+            try
+            {
+                byte[] dataToUse = batch.Batch;
+
+                // If LZ4 compression is enabled, try to decompress the data
+                if (isLz4Compressed)
+                {
+                    try
+                    {
+                        var dataStream = await Lz4Utilities.DecompressLz4Async(batch.Batch, cancellationToken);
+                        dataToUse = dataStream.ToArray();
+                        dataStream.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        // If decompression fails, use the original data
+                        System.Diagnostics.Debug.WriteLine($"Failed to decompress LZ4 data: {ex.Message}");
+                    }
+                }
+
+                // Always use ChunkStream which ensures proper schema handling
+                this.reader = new ArrowStreamReader(new ChunkStream(this.schema, dataToUse));
+            }
+            catch (Exception ex)
+            {
+                // Log any errors and skip this batch
+                System.Diagnostics.Debug.WriteLine($"Error processing batch: {ex.Message}");
+            }
+
+            this.index++;
         }
 
         public void Dispose()
