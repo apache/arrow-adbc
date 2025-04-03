@@ -15,11 +15,9 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -30,12 +28,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
-        }
-
-        protected override void ValidateOptions()
-        {
-            ValidateTlsOptions();
-            base.ValidateOptions();
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
@@ -102,47 +94,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Task.FromResult(response.DirectResults.ResultSet.Results);
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-
-        private void ValidateTlsOptions()
-        {
-            if (!Properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled))
-            {
-                // Databricks is TLS enabled, by default
-                SetOption(HttpTlsOptions.IsTlsEnabled, "true");
-            }
-            else
-            {
-                if (bool.TryParse(isSslEnabled, out bool isEnabled))
-                {
-                    if (!isEnabled)
-                    {
-                        // Disallow explicit disable of TLS
-                        throw new ArgumentOutOfRangeException(HttpTlsOptions.IsTlsEnabled, isSslEnabled, $"Driver type {SparkServerTypeConstants.Databricks} only supports TLS enabled.");
-                    }
-                }
-                else
-                {
-                    throw new ArgumentOutOfRangeException(HttpTlsOptions.IsTlsEnabled, isSslEnabled, "Expecting boolean value.");
-                }
-            }
-            HashSet<string> unsupportedBooleanOptions = [
-                HttpTlsOptions.AllowHostnameMismatch,
-                HttpTlsOptions.AllowSelfSigned,
-                HttpTlsOptions.DisableServerCertificateValidation,
-            ];
-            foreach (string unsupportedOption in unsupportedBooleanOptions)
-            {
-                if (Properties.TryGetValue(unsupportedOption, out string? isEnabledValue)
-                    && bool.TryParse(isEnabledValue, out bool isEnabled)
-                    && isEnabled)
-                {
-                    throw new ArgumentOutOfRangeException(unsupportedOption, isEnabledValue, $"Option is not suppored for driver type {SparkServerTypeConstants.Databricks}.");
-                }
-            }
-            if (Properties.TryGetValue(HttpTlsOptions.TrustedCertificatePath, out string? value) && !string.IsNullOrEmpty(value))
-            {
-                throw new ArgumentOutOfRangeException(HttpTlsOptions.TrustedCertificatePath, value, $"Option is not suppored for driver type {SparkServerTypeConstants.Databricks}.");
-            }
-        }
     }
 }
