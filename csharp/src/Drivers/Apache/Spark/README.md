@@ -49,7 +49,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.apache.foreign_catalog_name` | The foreign (i.e., child) catalog name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetCrossReference`. | |
 | `adbc.apache.foreign_schema_name` | The foreign (i.e., child) schema name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetCrossReference`. | |
 | `adbc.apache.foreign_table_name` | The foreign (i.e., child) table name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetCrossReference`. | |
-| `adbc.http_options.tls.enabled` | If tls needs to enabled or not. One of `True`, `False` | `False` |
+| `adbc.http_options.tls.enabled` | If tls needs to enabled or not. One of `True`, `False` | `True` |
 | `adbc.http_options.tls.disable_server_certificate_validation` | If tls/ssl server certificate validation needs to enabled or not. One of `True`, `False`. If set to True, all certificate validation errors are ignored | `False` |
 | `adbc.http_options.tls.allow_self_signed` | If self signed tls/ssl certificate needs to be allowed or not. One of `True`, `False` | `False` |
 | `adbc.http_options.tls.allow_hostname_mismatch` | If hostname mismatch is allowed for ssl. One of `True`, `False` | `False` |
