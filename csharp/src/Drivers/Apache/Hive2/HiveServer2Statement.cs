@@ -284,6 +284,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public TOperationHandle? OperationHandle { get; private set; }
 
+        // Keep the original Client property for internal use
+        public TCLIService.Client Client => Connection.Client;
+
         private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0
             ? pollTimeMilliseconds
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than or equal to 0.");
