@@ -40,6 +40,15 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.apache.statement.batch_size` | Sets the maximum number of rows to retrieve in a single batch request. | `50000` |
 | `adbc.apache.statement.polltime_ms` | If polling is necessary to get a result, this option sets the length of time (in milliseconds) to wait between polls. | `500` |
 | `adbc.apache.statement.query_timeout_s` | Sets the maximum time (in seconds) for a query to complete. Values can be 0 (infinite) or greater than zero. | `60` |
+| `adbc.apache.statement.is_metadata_command` | Indicate that the value of `AdbcStatement.SqlQuery` contains the name of a native metadata command. If set to `True`, it indicates a metadata command query whereas a value of `False` indicates a SQL command query. <br><br>Supported metadata commands include: `GetPrimaryKeys`, `GetCrossReference`, `GetCatalogs`, `GetSchemas`, `GetTables`, and `GetColumns`. | `False` |
+| `adbc.get_metadata.target_catalog` | The catalog name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetPrimaryKeys`, `GetCrossReference`, `GetSchemas`, `GetTables`, and `GetColumns`. | |
+| `adbc.get_metadata.target_db_schema` | The schema name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetPrimaryKeys`, `GetCrossReference`, `GetSchemas`, `GetTables`, and `GetColumns`. | |
+| `adbc.get_metadata.target_table` | The table name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetPrimaryKeys`, `GetCrossReference`, `GetSchemas`, `GetTables`, and `GetColumns`. | |
+| `adbc.get_metadata.target_table_types` | The comma-separated list of table types when used with a metadata command query. <br><br>Supported metadata commands include: `GetTables`. | |
+| `adbc.get_metadata.target_column` | The column name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetColumns`.  | |
+| `adbc.get_metadata.foreign_target_catalog` | The foreign (i.e., child) catalog name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetCrossReference`. | |
+| `adbc.get_metadata.foreign_target_db_schema` | The foreign (i.e., child) schema name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetCrossReference`. | |
+| `adbc.get_metadata.foreign_target_table` | The foreign (i.e., child) table name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetCrossReference`. | |
 | `adbc.http_options.tls.enabled` | If tls needs to enabled or not. One of `True`, `False` | `True` |
 | `adbc.http_options.tls.disable_server_certificate_validation` | If tls/ssl server certificate validation needs to enabled or not. One of `True`, `False`. If set to True, all certificate validation errors are ignored | `False` |
 | `adbc.http_options.tls.allow_self_signed` | If self signed tls/ssl certificate needs to be allowed or not. One of `True`, `False` | `False` |

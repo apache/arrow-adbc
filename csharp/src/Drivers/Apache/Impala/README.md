@@ -17,16 +17,16 @@
 
 -->
 
-# Hive Driver
+# Impala Driver
 
 ## Database and Connection Properties
 
-Properties should be passed in the call to `HiveServer2Driver.Open`,
-but can also be passed in the call to `AdbcDatabase.Connect`.
+Properties should be passed in the call to `ImpalaDriver.Open`,
+but can also be passed in the call to `AdbcDatabase.Connect`. Options beginning with `adbc.apache.*` can also be set using the `AdbcStatement.SetOption` method.
 
 | Property               | Description | Default |
 | :---                   | :---        | :---    |
-| `adbc.hive.transport_type`      | (Required) Indicates the Hive transport type. `http` | |
+| `adbc.hive.transport_type` | (Required) Indicates the Hive transport type. `http` or `standard` | |
 | `adbc.hive.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only` and `basic`. This property is optional. The authentication type can be inferred from `username`, and `password`. | |
 | `adbc.hive.host`      | Host name for the data source. Do not include scheme or port number. Example: `hiveserver.region.cloudapp.azure.com` |  |
 | `adbc.hive.port`      | The port number the data source listens on for a new connections. | `443` |
@@ -48,7 +48,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.get_metadata.foreign_target_catalog` | The foreign (i.e., child) catalog name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetCrossReference`. | |
 | `adbc.get_metadata.foreign_target_db_schema` | The foreign (i.e., child) schema name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetCrossReference`. | |
 | `adbc.get_metadata.foreign_target_table` | The foreign (i.e., child) table name (or pattern) when used with a metadata command query. <br><br>Supported metadata commands include: `GetCrossReference`. | |
-| `adbc.http_options.tls.enabled` | If tls needs to enabled or not. One of `True`, `False` | `True` |
+| `adbc.http_options.tls.enabled` | If tls needs to enabled or not. One of `True`, `False` | `False` |
 | `adbc.http_options.tls.disable_server_certificate_validation` | If tls/ssl server certificate validation needs to enabled or not. One of `True`, `False`. If set to True, all certificate validation errors are ignored | `False` |
 | `adbc.http_options.tls.allow_self_signed` | If self signed tls/ssl certificate needs to be allowed or not. One of `True`, `False` | `False` |
 | `adbc.http_options.tls.allow_hostname_mismatch` | If hostname mismatch is allowed for ssl. One of `True`, `False` | `False` |
@@ -62,7 +62,7 @@ The `adbc.apache.statement.query_timeout_s` is analogous to a CommandTimeout for
 
 The `adbc.apache.statement.polltime_ms` specifies the time between polls to the service, up to the limit specifed by `adbc.apache.statement.query_timeout_s`.
 
-## Hive Data Types
+## Impala Data Types
 
 The following table depicts how the Hive ADBC driver converts a Hive type to an Arrow type and a .NET type:
 
@@ -80,8 +80,6 @@ The following table depicts how the Hive ADBC driver converts a Hive type to an 
 | DOUBLE               | Double     | double | | |
 | FLOAT                | *Double*   | *double* | Float | float |
 | INT                  | Int32      | int | | |
-| INTERVAL_DAY_TIME+   | String     | string | | |
-| INTERVAL_YEAR_MONTH+ | String     | string | | |
 | MAP*                 | String     | string | | |
 | NULL                 | String     | string | | |
 | SMALLINT             | Int16      | short | | |
@@ -96,16 +94,10 @@ The following table depicts how the Hive ADBC driver converts a Hive type to an 
 
 ## Supported Variants
 
-### Apache Hive over HTTP
+### Impala over HTTP
 
-Support for Hive over HTTP is the most mature.
+Support for Impala HTTP is the most mature.
 
-### Azure Hive HDInsight
+### Impala over TCP Socket (standar)
 
-To read data from Azure HDInsight Hive Cluster, use the following parameters:
-adbc.hive.type = "http"
-adbc.hive.port = "443"
-adbc.hive.path = "/hive2"
-adbc.hive.host = $"{clusterHostName}"
-username = $"{clusterUserName}"
-password = $"{clusterPassword}"
+Support for Impala over TCP socket is also supported.
