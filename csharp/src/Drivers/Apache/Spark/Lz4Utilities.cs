@@ -16,9 +16,8 @@
 */
 
 using System;
+using System.Buffers;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using K4os.Compression.LZ4.Streams;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
@@ -29,13 +28,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     internal static class Lz4Utilities
     {
         /// <summary>
-        /// Decompresses LZ4 compressed data into a memory stream.
+        /// Decompresses LZ4 compressed data into memory.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
-        /// <param name="cancellationToken">A cancellation token.</param>
-        /// <returns>A memory stream containing the decompressed data, positioned at the beginning of the stream.</returns>
+        /// <returns>A ReadOnlyMemory containing the decompressed data.</returns>
         /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
-        public static async Task<MemoryStream> DecompressLz4Async(byte[] compressedData, CancellationToken cancellationToken = default)
+        public static ReadOnlyMemory<byte> DecompressLz4(byte[] compressedData)
         {
             try
             {
@@ -43,10 +41,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 using (var inputStream = new MemoryStream(compressedData))
                 using (var decompressor = LZ4Stream.Decode(inputStream))
                 {
-                    await decompressor.CopyToAsync(outputStream);
+                    decompressor.CopyTo(outputStream);
                 }
-                outputStream.Position = 0;
-                return outputStream;
+                
+                // Get the underlying buffer and its valid length without copying
+                return new ReadOnlyMemory<byte>(outputStream.GetBuffer(), 0, (int)outputStream.Length);
+                
+                // Note: We're not disposing the outputStream here because we're returning its buffer.
+                // The memory will be reclaimed when the ReadOnlyMemory is no longer referenced.
             }
             catch (Exception ex)
             {
@@ -54,4 +56,4 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
     }
-} 
+}

@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                 if (this.batches != null && this.index < this.batches.Count)
                 {
-                    await ProcessFetchedBatchesAsync(cancellationToken);
+                    ProcessFetchedBatches();
                     continue;
                 }
 
@@ -91,7 +91,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
         }
 
-        private async Task ProcessFetchedBatchesAsync(CancellationToken cancellationToken)
+        private void ProcessFetchedBatches()
         {
             var batch = this.batches![this.index];
 
@@ -104,22 +104,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             try
             {
-                byte[] dataToUse = batch.Batch;
+                ReadOnlyMemory<byte> dataToUse = new ReadOnlyMemory<byte>(batch.Batch);
 
-                // If LZ4 compression is enabled, try to decompress the data
+                // If LZ4 compression is enabled, decompress the data
                 if (isLz4Compressed)
                 {
-                    try
-                    {
-                        var dataStream = await Lz4Utilities.DecompressLz4Async(batch.Batch, cancellationToken);
-                        dataToUse = dataStream.ToArray();
-                        dataStream.Dispose();
-                    }
-                    catch (Exception ex)
-                    {
-                        // If decompression fails, use the original data
-                        System.Diagnostics.Debug.WriteLine($"Failed to decompress LZ4 data: {ex.Message}");
-                    }
+                    dataToUse = Lz4Utilities.DecompressLz4(batch.Batch);
+                
                 }
 
                 // Always use ChunkStream which ensures proper schema handling
@@ -127,8 +118,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
             catch (Exception ex)
             {
-                // Log any errors and skip this batch
-                System.Diagnostics.Debug.WriteLine($"Error processing batch: {ex.Message}");
+                // Create concise error message based on exception type
+                string errorMessage = ex switch
+                {
+                    _ when ex.GetType().Name.Contains("LZ4") => $"Batch {this.index}: LZ4 decompression failed - Data may be corrupted",
+                    _ => $"Batch {this.index}: Processing failed - {ex.Message}" // Default case for any other exception
+                };
+                
+                throw new AdbcException(errorMessage, ex);
             }
 
             this.index++;
