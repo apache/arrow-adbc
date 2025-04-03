@@ -53,21 +53,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 throw new AdbcException($"Failed to decompress LZ4 data: {ex.Message}", ex);
             }
         }
-
-        /// <summary>
-        /// Checks if the provided data appears to be LZ4 compressed.
-        /// </summary>
-        /// <param name="data">The data to check.</param>
-        /// <returns>True if the data has the LZ4 frame magic number at the beginning, false otherwise.</returns>
-        public static bool IsLz4Compressed(byte[] data)
-        {
-            // LZ4 frame format starts with a 4-byte magic number: [0x04, 0x22, 0x4D, 0x18]
-            if (data == null || data.Length < 4)
-            {
-                return false;
-            }
-
-            return data[0] == 0x04 && data[1] == 0x22 && data[2] == 0x4D && data[3] == 0x18;
-        }
     }
 } 
