@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         const string infoDriverName = "ADBC BigQuery Driver";
         const string infoDriverVersion = "1.0.0";
         const string infoVendorName = "BigQuery";
-        const string infoDriverArrowVersion = "1.0.0";
+        const string infoDriverArrowVersion = "19.0.0";
         const string publicProjectId = "bigquery-public-data";
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
@@ -64,18 +64,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             Dictionary<string, string> modifiedProperties = this.properties.ToDictionary(k => k.Key, v => v.Value);
             modifiedProperties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
             this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);
-            httpClient = new HttpClient();
-
-            UpdateToken = () => Task.Run(() => UpdateClientToken());
-            CheckIfTokenRequiresUpdate = (e) => { return CheckIfClientTokenNeedsRenewal(e); };
+            this.httpClient = new HttpClient();
         }
 
-        public Func<Task> UpdateToken { get; set; }
-
-        public Func<Exception, bool> CheckIfTokenRequiresUpdate { get; set; }
+        public Func<Task>? UpdateToken { get; set; }
 
         internal BigQueryClient? Client { get; private set; }
         internal GoogleCredential? Credential { get; private set; }
+        public string? AccessToken { get; set; }
 
         /// <summary>
         /// Initializes the internal BigQuery connection
@@ -137,7 +133,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!this.properties.TryGetValue(BigQueryParameters.RefreshToken, out refreshToken))
                     throw new ArgumentException($"The {BigQueryParameters.RefreshToken} parameter is not present");
 
-                this.Credential = ApplyScopes(GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint)));
+                this.AccessToken = GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint);
+                this.Credential = ApplyScopes(GoogleCredential.FromAccessToken(this.AccessToken));
             }
             else if (!string.IsNullOrEmpty(authenticationType) && authenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
             {
@@ -147,6 +144,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!this.properties.TryGetValue(BigQueryParameters.AudienceUri, out audienceUri))
                     throw new ArgumentException($"The {BigQueryParameters.AudienceUri} parameter is not present");
 
+                this.AccessToken = accessToken;
+                UpdateToken = () => Task.Run(() => UpdateClientToken());
                 this.Credential = ApplyScopes(GoogleCredential.FromAccessToken(TradeEntraIdTokenForBigQueryToken(audienceUri, accessToken)));
             }
             else if (!string.IsNullOrEmpty(authenticationType) && authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
@@ -1237,7 +1236,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 string json = JsonSerializer.Serialize(requestBody);
                 StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                HttpResponseMessage response = httpClient.PostAsync(BigQueryConstants.StsTokenEndpoint, content).Result;
+                HttpResponseMessage response = this.httpClient.PostAsync(BigQueryConstants.StsTokenEndpoint, content).Result;
                 response.EnsureSuccessStatusCode();
 
                 string responseBody = response.Content.ReadAsStringAsync().Result;

@@ -49,12 +49,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this.bigQueryConnection = bigQueryConnection;
 
             UpdateToken = () => Task.Run(() => bigQueryConnection.UpdateClientToken());
-            CheckIfTokenRequiresUpdate = (e) => { return bigQueryConnection.CheckIfClientTokenNeedsRenewal(e); };
         }
 
-        public Func<Task> UpdateToken { get; set; }
-
-        public Func<Exception, bool> CheckIfTokenRequiresUpdate { get; set; }
+        public Func<Task>? UpdateToken { get; set; }
 
         public IReadOnlyDictionary<string, string>? Options { get; set; }
 
@@ -62,10 +59,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private GoogleCredential Credential => this.bigQueryConnection.Credential ?? throw new AdbcException("Credential cannot be null");
 
+        public string? AccessToken { get; set; }
+
         public override QueryResult ExecuteQuery()
         {
-            //return ExecuteQueryInternal();
-
             Func<Task<QueryResult>> func = () => Task.Run(() => ExecuteQueryInternal());
             return AdbcRetryManager.ExecuteWithRetriesAsync<QueryResult>(this, func).Result;
         }
