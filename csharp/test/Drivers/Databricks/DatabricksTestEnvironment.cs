@@ -22,6 +22,7 @@ using System.Text;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Apache.Arrow.Types;
@@ -44,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         public override int ExpectedColumnCount => 19;
 
-        public override AdbcDriver CreateNewDriver() => new SparkDriver();
+        public override AdbcDriver CreateNewDriver() => new DatabricksDriver();
 
         public override string GetCreateTemporaryTableStatement(string tableName, string columns)
         {
@@ -148,7 +149,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             return parameters;
         }
 
-        internal SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
+        //internal SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
 
         public override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
 

@@ -64,8 +64,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
 
-        //internal override SparkServerType ServerType => SparkServerType.Databricks;
-
         protected override TOpenSessionReq CreateSessionRequest()
         {
             var req = new TOpenSessionReq

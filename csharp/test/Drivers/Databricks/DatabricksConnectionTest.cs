@@ -29,7 +29,7 @@ using Xunit.Abstractions;
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
     /// <summary>
-    /// Class for testing the Spark ADBC connection tests.
+    /// Class for testing the Databricks ADBC connection tests.
     /// </summary>
     public class DatabricksConnectionTest : TestBase<DatabricksTestConfiguration, DatabricksTestEnvironment>
     {
@@ -105,7 +105,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         /// <summary>
-        /// Tests the various metadata calls on a SparkConnection
+        /// Tests the various metadata calls on a DatabricksConnection
         /// </summary>
         /// <param name="metadataWithException"></param>
         [SkippableTheory]

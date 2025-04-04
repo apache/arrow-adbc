@@ -16,7 +16,6 @@
 */
 
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit.Abstractions;
 

@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System.Text.Json.Serialization;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks

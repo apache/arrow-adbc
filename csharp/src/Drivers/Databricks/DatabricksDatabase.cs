@@ -15,7 +15,9 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -30,10 +32,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             this.properties = properties;
         }
-
-        public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? properties)
+        public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
-            DatabricksConnection connection = new DatabricksConnection(this.properties);
+            IReadOnlyDictionary<string, string> mergedProperties = options == null
+                ? properties
+                : options
+                    .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            DatabricksConnection connection = new DatabricksConnection(mergedProperties);
+            connection.OpenAsync().Wait();
             return connection;
         }
     }
