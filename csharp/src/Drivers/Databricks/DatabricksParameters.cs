@@ -22,7 +22,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     public class DatabricksParameters
     {
+        // CloudFetch configuration parameters
+        /// <summary>
+        /// Maximum number of retry attempts for CloudFetch downloads.
+        /// Default value is 3 if not specified.
+        /// </summary>
+        public const string CloudFetchMaxRetries = "adbc.databricks.cloudfetch.max_retries";
 
+        /// <summary>
+        /// Delay in milliseconds between CloudFetch retry attempts.
+        /// Default value is 500ms if not specified.
+        /// </summary>
+        public const string CloudFetchRetryDelayMs = "adbc.databricks.cloudfetch.retry_delay_ms";
+
+        /// <summary>
+        /// Timeout in minutes for CloudFetch HTTP operations.
+        /// Default value is 5 minutes if not specified.
+        /// </summary>
+        public const string CloudFetchTimeoutMinutes = "adbc.databricks.cloudfetch.timeout_minutes";
     }
 
     /// <summary>

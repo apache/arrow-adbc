@@ -20,7 +20,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -54,7 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Choose the appropriate reader based on the result format
             if (resultFormat == TSparkRowSetType.URL_BASED_SET)
             {
-                return new SparkCloudFetchReader(statement, schema, isLz4Compressed);
+                return new CloudFetchReader(statement, schema, isLz4Compressed);
             }
             else
             {
