@@ -155,9 +155,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// </summary>
         public sealed class Options : ApacheParameters
         {
+            // Lz4 compression option
+            public const string CanDecompressLz4 = "adbc.spark.lz4_compression.enabled";
             // CloudFetch options
             public const string UseCloudFetch = "adbc.spark.cloudfetch.enabled";
-            public const string CanDecompressLz4 = "adbc.spark.cloudfetch.lz4.enabled";
             public const string MaxBytesPerFile = "adbc.spark.cloudfetch.max_bytes_per_file";
         }
     }

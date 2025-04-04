@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
             else
             {
-                return new SparkDatabricksReader(statement, schema);
+                return new SparkDatabricksReader(statement, schema, isLz4Compressed);
             }
         }
 
