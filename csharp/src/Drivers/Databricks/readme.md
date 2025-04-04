@@ -18,4 +18,39 @@
 -->
 
 # Databricks
-...
+
+The Databricks ADBC driver is built on top of the Spark ADBC driver and inherits many of it's [properties](../Apache/Spark/readme.md).
+
+The Databricks ADBC driver supports token-based authentiation using the
+[Databricks personal access token](https://docs.databricks.com/en/dev-tools/auth/pat.html).
+Basic (username and password) authenication is not supported, at this time.
+
+## Data Types
+
+The following table depicts how the Databricks ADBC driver converts a Databricks type to an Arrow type and a .NET type:
+
+
+| Spark Type           | Arrow Type | C# Type |
+| :---                 | :---:      | :---:   |
+| ARRAY*               | String     | string  |
+| BIGINT               | Int64      | long |
+| BINARY               | Binary     | byte[] |
+| BOOLEAN              | Boolean    | bool |
+| CHAR                 | String     | string |
+| DATE                 | Date32     | DateTime |
+| DECIMAL              | Decimal128 | SqlDecimal |
+| DOUBLE               | Double     | double |
+| FLOAT                | Float      | float |
+| INT                  | Int32      | int |
+| INTERVAL_DAY_TIME+   | String     | string |
+| INTERVAL_YEAR_MONTH+ | String     | string |
+| MAP*                 | String     | string |
+| NULL                 | Null       | null |
+| SMALLINT             | Int16      | short |
+| STRING               | String     | string |
+| STRUCT*              | String     | string |
+| TIMESTAMP            | Timestamp  | DateTimeOffset |
+| TINYINT              | Int8       | sbyte |
+| UNION                | String     | string |
+| USER_DEFINED         | String     | string |
+| VARCHAR              | String     | string |

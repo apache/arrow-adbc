@@ -15,88 +15,17 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
-using Apache.Arrow.Ipc;
-using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
+    [Obsolete("Please use the Apache.Arrow.Adbc.Drivers.Databricks.DatabricksConnection instead")]
     internal class SparkDatabricksConnection : SparkHttpConnection
     {
         public SparkDatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            throw new InvalidOperationException("Please use the Apache.Arrow.Adbc.Drivers.Databricks.DatabricksConnection instead");
         }
-
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
-        {
-            // Get result format from metadata response if available
-            TSparkRowSetType resultFormat = TSparkRowSetType.ARROW_BASED_SET;
-            bool isLz4Compressed = false;
-
-            if (metadataResp != null)
-            {
-                if (metadataResp.__isset.resultFormat)
-                {
-                    resultFormat = metadataResp.ResultFormat;
-                }
-
-                if (metadataResp.__isset.lz4Compressed)
-                {
-                    isLz4Compressed = metadataResp.Lz4Compressed;
-                }
-            }
-
-            // Choose the appropriate reader based on the result format
-            if (resultFormat == TSparkRowSetType.URL_BASED_SET)
-            {
-                return new SparkCloudFetchReader(statement, schema, isLz4Compressed);
-            }
-            else
-            {
-                return new SparkDatabricksReader(statement, schema);
-            }
-        }
-
-        internal override SchemaParser SchemaParser => new SparkDatabricksSchemaParser();
-
-        internal override SparkServerType ServerType => SparkServerType.Databricks;
-
-        protected override TOpenSessionReq CreateSessionRequest()
-        {
-            var req = new TOpenSessionReq
-            {
-                Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
-                Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
-                CanUseMultipleCatalogs = true,
-            };
-            return req;
-        }
-
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
     }
 }
