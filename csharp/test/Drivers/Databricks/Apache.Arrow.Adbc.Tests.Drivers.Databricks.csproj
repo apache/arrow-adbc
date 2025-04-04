@@ -18,8 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Drivers\Apache\Apache.Arrow.Adbc.Drivers.Apache.csproj" />
+    <ProjectReference Include="..\..\..\src\Drivers\Databricks\Apache.Arrow.Adbc.Drivers.Databricks.csproj" />
     <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
+    <ProjectReference Include="..\Apache\Apache.Arrow.Adbc.Tests.Drivers.Apache.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -38,10 +39,22 @@
     <None Update="Impala\Resources\ImpalaData.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\databricks.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\Databricks.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Spark\Resources\sparkconfig-http.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Spark\Resources\sparkconfig-databricks.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Impala\Resources\impalaconfig.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Spark\Resources\SparkData-Databricks.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Spark\Resources\SparkData.sql">

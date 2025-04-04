@@ -23,12 +23,12 @@ using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
-    public class StatementTests : Common.StatementTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class StatementTests : StatementTests<DatabricksTestConfiguration, DatabricksTestEnvironment>
     {
         public StatementTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new DatabricksTestEnvironment.Factory())
         {
         }
 
@@ -49,6 +49,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 Add(new(null, longRunningQuery, typeof(TimeoutException)));
                 Add(new(0, longRunningQuery, null));
             }
+        }
+
+        [SkippableFact]
+        public async Task CanGetPrimaryKeysDatabricks()
+        {
+            await base.CanGetPrimaryKeys(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        [SkippableFact]
+        public async Task CanGetCrossReferenceFromParentTableDatabricks()
+        {
+            await base.CanGetCrossReferenceFromParentTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        [SkippableFact]
+        public async Task CanGetCrossReferenceFromChildTableDatabricks()
+        {
+            await base.CanGetCrossReferenceFromChildTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
         }
 
         protected override void PrepareCreateTableWithPrimaryKeys(out string sqlUpdate, out string tableNameParent, out string fullTableNameParent, out IReadOnlyList<string> primaryKeys)

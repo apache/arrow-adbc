@@ -18,15 +18,16 @@
 using System;
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
-    public class DriverTests : Common.DriverTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class DriverTests : DriverTests<DatabricksTestConfiguration, DatabricksTestEnvironment>
     {
         public DriverTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new DatabricksTestEnvironment.Factory())
         {
         }
 
@@ -112,7 +113,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         protected override IReadOnlyList<int> GetUpdateExpectedResults()
         {
             int affectedRows = ValidateAffectedRows ? 1 : -1;
-            return ClientTests.GetUpdateExpectedResults(affectedRows, false);
+            return ClientTests.GetUpdateExpectedResults(affectedRows, true);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()

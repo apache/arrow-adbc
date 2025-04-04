@@ -19,29 +19,30 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Text;
-using System.Text.Json.Serialization;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Apache.Arrow.Types;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
-    public class SparkTestEnvironment : CommonTestEnvironment<SparkTestConfiguration>
+    public class DatabricksTestEnvironment : CommonTestEnvironment<DatabricksTestConfiguration>
     {
-        public class Factory : Factory<SparkTestEnvironment>
+        public class Factory : Factory<DatabricksTestEnvironment>
         {
-            public override SparkTestEnvironment Create(Func<AdbcConnection> getConnection) => new(getConnection);
+            public override DatabricksTestEnvironment Create(Func<AdbcConnection> getConnection) => new(getConnection);
         }
 
-        private SparkTestEnvironment(Func<AdbcConnection> getConnection) : base(getConnection) { }
+        private DatabricksTestEnvironment(Func<AdbcConnection> getConnection) : base(getConnection) { }
 
-        public override string TestConfigVariable => "SPARK_TEST_CONFIG_FILE";
+        public override string TestConfigVariable => "DATABRICKS_TEST_CONFIG_FILE";
 
-        public override string SqlDataResourceLocation => "Spark/Resources/SparkData.sql";
+        public override string SqlDataResourceLocation => "Resources/Databricks.sql";
 
-        public override int ExpectedColumnCount => 17;
+
+        public override int ExpectedColumnCount => 19;
 
         public override AdbcDriver CreateNewDriver() => new SparkDriver();
 
@@ -52,7 +53,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         public override string Delimiter => "`";
 
-        public override Dictionary<string, string> GetDriverParameters(SparkTestConfiguration testConfiguration)
+        public override Dictionary<string, string> GetDriverParameters(DatabricksTestConfiguration testConfiguration)
         {
             Dictionary<string, string> parameters = new(StringComparer.OrdinalIgnoreCase);
 
@@ -151,13 +152,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
 
         public override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
 
-        public override bool SupportsDelete => false;
+        public override bool SupportsDelete => true;
 
-        public override bool SupportsUpdate => false;
+        public override bool SupportsUpdate => true;
 
-        public override bool SupportCatalogName => false;
+        public override bool SupportCatalogName => true;
 
-        public override bool ValidateAffectedRows => false;
+        public override bool ValidateAffectedRows => true;
 
         public override string GetInsertStatement(string tableName, string columnName, string? value) =>
             string.Format("INSERT INTO {0} ({1}) SELECT {2};", tableName, columnName, value ?? "NULL");
@@ -165,7 +166,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         public override SampleDataBuilder GetSampleDataBuilder()
         {
             SampleDataBuilder sampleDataBuilder = new();
-            bool dataTypeIsFloat = DataTypeConversion.HasFlag(DataTypeConversion.Scalar);
+            bool dataTypeIsFloat = true; // ServerType == SparkServerType.Databricks || DataTypeConversion.HasFlag(DataTypeConversion.Scalar);
             Type floatNetType = dataTypeIsFloat ? typeof(float) : typeof(double);
             Type floatArrowType = dataTypeIsFloat ? typeof(FloatType) : typeof(DoubleType);
             object floatValue;

@@ -27,15 +27,15 @@ using Xunit.Abstractions;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
     /// <summary>
     /// End-to-end tests for the CloudFetch feature in the Spark ADBC driver.
     /// </summary>
-    public class CloudFetchE2ETest : TestBase<SparkTestConfiguration, SparkTestEnvironment>
+    public class CloudFetchE2ETest : TestBase<DatabricksTestConfiguration, DatabricksTestEnvironment>
     {
         public CloudFetchE2ETest(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new DatabricksTestEnvironment.Factory())
         {
             // Skip the test if the SPARK_TEST_CONFIG_FILE environment variable is not set
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));

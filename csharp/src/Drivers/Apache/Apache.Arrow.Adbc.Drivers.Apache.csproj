@@ -5,6 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Spark\SparkDatabricksConnection.cs" />
+    <Compile Remove="Spark\SparkDatabricksReader.cs" />
+    <Compile Remove="Spark\SparkDatabricksSchemaParser.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ApacheThrift" Version="0.21.0" />
     <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
     <PackageReference Include="K4os.Compression.LZ4.Streams" Version="1.3.8" />

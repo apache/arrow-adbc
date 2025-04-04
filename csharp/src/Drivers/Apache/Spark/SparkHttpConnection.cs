@@ -181,25 +181,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return transport;
         }
 
-        internal HttpClientHandler NewHttpClientHandler()
-        {
-            HttpClientHandler httpClientHandler = new();
-            if (TlsOptions != HiveServer2TlsOption.Empty)
-            {
-                httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
-                {
-                    if (policyErrors == SslPolicyErrors.None) return true;
-
-                    return
-                       (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowSelfSigned))
-                    && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) || TlsOptions.HasFlag(HiveServer2TlsOption.AllowHostnameMismatch));
-                };
-            }
-
-            return httpClientHandler;
-        }
-
-        internal static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password, string? access_token)
+        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password, string? access_token)
         {
             if (!string.IsNullOrEmpty(token) && (authType == SparkAuthType.Empty || authType == SparkAuthType.Token))
             {

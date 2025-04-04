@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -15,70 +15,90 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Headers;
+using System.Threading;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Thrift;
-using Thrift.Transport;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
+using Apache.Arrow.Ipc;
+using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
-    /// <summary>
-    /// Databricks-specific implementation of <see cref="AdbcConnection"/>
-    /// </summary>
-    internal class DatabricksConnection : SparkDatabricksConnection
+    internal class DatabricksConnection : SparkHttpConnection
     {
-        protected new const string ProductVersionDefault = "1.0.0";
-        protected new const string DriverName = "ADBC Databricks Driver";
-        private const string ArrowVersion = "1.0.0";
-        private static readonly string s_userAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault}";
-
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
 
-        protected override TTransport CreateTransport()
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {
-            // Assumption: parameters have already been validated.
-            Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
-            Properties.TryGetValue(SparkParameters.Path, out string? path);
-            Properties.TryGetValue(SparkParameters.Port, out string? port);
-            Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
+            // Get result format from metadata response if available
+            TSparkRowSetType resultFormat = TSparkRowSetType.ARROW_BASED_SET;
+            bool isLz4Compressed = false;
+
+            if (metadataResp != null)
             {
-                throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+                if (metadataResp.__isset.resultFormat)
+                {
+                    resultFormat = metadataResp.ResultFormat;
+                }
+
+                if (metadataResp.__isset.lz4Compressed)
+                {
+                    isLz4Compressed = metadataResp.Lz4Compressed;
+                }
             }
-            Properties.TryGetValue(SparkParameters.Token, out string? token);
-            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
-            Properties.TryGetValue(AdbcOptions.Username, out string? username);
-            Properties.TryGetValue(AdbcOptions.Password, out string? password);
-            Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName);
-            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, access_token);
-
-            HttpClientHandler httpClientHandler = NewHttpClientHandler();
-            Lz4CompressionHandler lz4CompressionHandler = new Lz4CompressionHandler { InnerHandler = httpClientHandler };
-            HttpClient httpClient = new(lz4CompressionHandler);
-            httpClient.BaseAddress = baseAddress;
-            httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(s_userAgent);
-            httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
-            httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
-            httpClient.DefaultRequestHeaders.ExpectContinue = false;
-
-            TConfiguration config = new();
-            ThriftHttpTransport transport = new(httpClient, config)
+            // Choose the appropriate reader based on the result format
+            if (resultFormat == TSparkRowSetType.URL_BASED_SET)
             {
-                // This value can only be set before the first call/request. So if a new value for query timeout
-                // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
-                // to ensure cancelled correctly.
-                ConnectTimeout = int.MaxValue,
-            };
-            return transport;
+                return new SparkCloudFetchReader(statement, schema, isLz4Compressed);
+            }
+            else
+            {
+                return new DatabricksReader(statement, schema);
+            }
         }
+
+        internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
+
+        //internal override SparkServerType ServerType => SparkServerType.Databricks;
+
+        protected override TOpenSessionReq CreateSessionRequest()
+        {
+            var req = new TOpenSessionReq
+            {
+                Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
+                Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
+                CanUseMultipleCatalogs = true,
+            };
+            return req;
+        }
+
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSetMetadata);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSetMetadata);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSetMetadata);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSetMetadata);
+        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSetMetadata);
+
+        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults.ResultSet.Results);
     }
 }

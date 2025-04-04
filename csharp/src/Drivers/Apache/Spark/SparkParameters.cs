@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     public static class SparkServerTypeConstants
     {
         public const string Http = "http";
-        public const string Databricks = "databricks";
+        //public const string Databricks = "databricks";
         public const string Standard = "standard";
     }
 }

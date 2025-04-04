@@ -17,21 +17,22 @@
 
 using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
-    public class ClientTests : Common.ClientTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class ClientTests : ClientTests<DatabricksTestConfiguration, DatabricksTestEnvironment>
     {
         public ClientTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new DatabricksTestEnvironment.Factory())
         {
         }
 
         protected override IReadOnlyList<int> GetUpdateExpectedResults()
         {
             int affectedRows = ValidateAffectedRows ? 1 : -1;
-            return GetUpdateExpectedResults(affectedRows, false);
+            return GetUpdateExpectedResults(affectedRows, true);
         }
 
         internal static IReadOnlyList<int> GetUpdateExpectedResults(int affectedRows, bool isDatabricks)
