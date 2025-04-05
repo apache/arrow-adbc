@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
@@ -43,6 +44,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             AdbcConnection connection = database.Connect(new Dictionary<string, string>());
 
             return connection;
+        }
+
+        internal static AdbcConnection GetRetryableEntraBigQueryAdbcConnection(
+            BigQueryTestEnvironment testEnvironment,
+            string accessToken
+           )
+        {
+            testEnvironment.AccessToken = accessToken;
+            Dictionary<string, string> parameters = GetBigQueryParameters(testEnvironment);
+            AdbcDatabase database = new BigQueryDriver().Open(parameters);
+            BigQueryConnection? connection = database.Connect(new Dictionary<string, string>()) as BigQueryConnection;
+
+            return connection!;
         }
 
         /// <summary>

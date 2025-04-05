@@ -20,9 +20,11 @@ using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc
 {
-    interface ITokenProtectedResource
+    public interface ITokenProtectedResource
     {
-        string? AccessToken { get; set; }
-        Func<Task>? UpdateToken { get; set; }
+       // public string? AccessToken { get; set; }
+        public Func<Task>? UpdateToken { get; set; }
+
+        public bool TokenRequiresUpdate(Exception ex);
     }
 }

@@ -19,12 +19,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
-using Google;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
@@ -47,8 +45,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (bigQueryConnection == null) { throw new AdbcException($"{nameof(bigQueryConnection)} cannot be null", AdbcStatusCode.InvalidArgument); }
 
             this.bigQueryConnection = bigQueryConnection;
-
-            UpdateToken = () => Task.Run(() => bigQueryConnection.UpdateClientToken());
         }
 
         public Func<Task>? UpdateToken { get; set; }
@@ -59,12 +55,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private GoogleCredential Credential => this.bigQueryConnection.Credential ?? throw new AdbcException("Credential cannot be null");
 
-        public string? AccessToken { get; set; }
 
         public override QueryResult ExecuteQuery()
         {
             Func<Task<QueryResult>> func = () => Task.Run(() => ExecuteQueryInternal());
-            return AdbcRetryManager.ExecuteWithRetriesAsync<QueryResult>(this, func).Result;
+            return AdbcRetryManager.ExecuteWithRetriesAsync<QueryResult>(this, func).GetAwaiter().GetResult();
         }
 
         private QueryResult ExecuteQueryInternal()
@@ -82,38 +77,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
-            Func<Task<BigQueryResults>> func = () => Task.Run(() =>
+            BigQueryResults results = job.GetQueryResults(getQueryResultsOptions);
+
+            TokenProtectedReadClientManger clientMgr = new TokenProtectedReadClientManger(this.Credential);
+            clientMgr.UpdateToken = () => Task.Run(() =>
             {
-                BigQueryResults? results = null;
-                while (true)
-                {
-                    results = job.GetQueryResults(getQueryResultsOptions);
-
-                    if (job.State == JobState.Done)
-                    {
-                        break;
-                    }
-                }
-
-                if (results == null)
-                {
-                    throw new AdbcException("Could not retrieve query results.");
-                }
-
-                if (job.Status.Errors?.Count > 0)
-                {
-                    // TODO: Log these (but they dont necessarily mean the job didn't complete)
-                }
-
-                return results;
+                this.bigQueryConnection.SetCredential();
+                clientMgr.UpdateCredential(this.Credential);
             });
-
-            // only try two times because it's called as part of a larger retryable method
-            BigQueryResults results = AdbcRetryManager.ExecuteWithRetriesAsync<BigQueryResults>(this, func, 2).Result;
-
-            BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
-            readClientBuilder.Credential = this.Credential;
-            BigQueryReadClient readClient = readClientBuilder.Build();
 
             if (results.TableReference == null)
             {
@@ -154,12 +125,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
             ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
-            ReadSession rrs = readClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, maxStreamCount);
+            ReadSession rrs = clientMgr.ReadClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, maxStreamCount);
 
             long totalRows = results.TotalRows == null ? -1L : (long)results.TotalRows.Value;
 
             var readers = rrs.Streams
-                             .Select(s => ReadChunk(readClient, s.Name))
+                             .Select(s => ReadChunkWithRetries(clientMgr, s.Name))
                              .Where(chunk => chunk != null)
                              .Cast<IArrowReader>();
 
@@ -277,11 +248,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return type;
         }
 
-        static IArrowReader? ReadChunk(BigQueryReadClient readClient, string streamName)
+        static IArrowReader? ReadChunkWithRetries(TokenProtectedReadClientManger clientMgr, string streamName)
+        {
+            Func<Task<IArrowReader?>> func = () => Task.FromResult<IArrowReader?>(ReadChunk(clientMgr, streamName));
+            return AdbcRetryManager.ExecuteWithRetriesAsync<IArrowReader?>(clientMgr, func).GetAwaiter().GetResult();
+        }
+
+        static IArrowReader? ReadChunk(TokenProtectedReadClientManger clientMgr, string streamName)
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
-            BigQueryReadClient.ReadRowsStream readRowsStream = readClient.ReadRows(new ReadRowsRequest { ReadStream = streamName });
+            BigQueryReadClient.ReadRowsStream readRowsStream = clientMgr.ReadClient.ReadRows(new ReadRowsRequest { ReadStream = streamName });
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
 
             ReadRowsStream stream = new ReadRowsStream(enumerator);
@@ -375,6 +352,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
             return options;
         }
+
+        public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
         class MultiArrowReader : IArrowArrayStream
         {

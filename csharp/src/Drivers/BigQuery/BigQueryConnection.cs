@@ -66,12 +66,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);
             this.httpClient = new HttpClient();
         }
-
         public Func<Task>? UpdateToken { get; set; }
-
         internal BigQueryClient? Client { get; private set; }
         internal GoogleCredential? Credential { get; private set; }
-        public string? AccessToken { get; set; }
 
         /// <summary>
         /// Initializes the internal BigQuery connection
@@ -81,20 +78,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             string? projectId = null;
             string? billingProjectId = null;
-            string? clientId = null;
-            string? clientSecret = null;
-            string? refreshToken = null;
             TimeSpan? clientTimeout = null;
-            string? accessToken = null;
-            string? audienceUri = null;
-            string? authenticationType = null;
-
-            string tokenEndpoint = BigQueryConstants.TokenEndpoint;
-
-            // TODO: handle token expiration
-
-            if (!this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
-                throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter is not present");
 
             // if the caller doesn't specify a projectId, use the default
             if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
@@ -108,6 +92,46 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!string.IsNullOrEmpty(result))
                     includePublicProjectIds = Convert.ToBoolean(result);
             }
+
+            if (this.properties.TryGetValue(BigQueryParameters.ClientTimeout, out string? timeoutSeconds) &&
+                int.TryParse(timeoutSeconds, out int seconds))
+            {
+                clientTimeout = TimeSpan.FromSeconds(seconds);
+            }
+
+            SetCredential();
+
+            BigQueryClientBuilder bigQueryClientBuilder = new BigQueryClientBuilder()
+            {
+                ProjectId = projectId,
+                QuotaProject = billingProjectId,
+                GoogleCredential = this.Credential
+            };
+
+            BigQueryClient client = bigQueryClientBuilder.Build();
+
+            if (clientTimeout.HasValue)
+            {
+                client.Service.HttpClient.Timeout = clientTimeout.Value;
+            }
+
+            this.Client = client;
+            return client;
+        }
+
+        internal void SetCredential()
+        {
+            string? clientId = null;
+            string? clientSecret = null;
+            string? refreshToken = null;
+            string? accessToken = null;
+            string? audienceUri = null;
+            string? authenticationType = null;
+
+            string tokenEndpoint = BigQueryConstants.TokenEndpoint;
+
+            if (!this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
+                throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter is not present");
 
             if (this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out string? newAuthenticationType))
             {
@@ -133,8 +157,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!this.properties.TryGetValue(BigQueryParameters.RefreshToken, out refreshToken))
                     throw new ArgumentException($"The {BigQueryParameters.RefreshToken} parameter is not present");
 
-                this.AccessToken = GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint);
-                this.Credential = ApplyScopes(GoogleCredential.FromAccessToken(this.AccessToken));
+                this.Credential = ApplyScopes(GoogleCredential.FromAccessToken(GetAccessToken(clientId, clientSecret, refreshToken, tokenEndpoint)));
             }
             else if (!string.IsNullOrEmpty(authenticationType) && authenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
             {
@@ -144,8 +167,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (!this.properties.TryGetValue(BigQueryParameters.AudienceUri, out audienceUri))
                     throw new ArgumentException($"The {BigQueryParameters.AudienceUri} parameter is not present");
 
-                this.AccessToken = accessToken;
-                UpdateToken = () => Task.Run(() => UpdateClientToken());
                 this.Credential = ApplyScopes(GoogleCredential.FromAccessToken(TradeEntraIdTokenForBigQueryToken(audienceUri, accessToken)));
             }
             else if (!string.IsNullOrEmpty(authenticationType) && authenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
@@ -161,29 +182,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 throw new ArgumentException($"{authenticationType} is not a valid authenticationType");
             }
+        }
 
-            if (this.properties.TryGetValue(BigQueryParameters.ClientTimeout, out string? timeoutSeconds) &&
-                int.TryParse(timeoutSeconds, out int seconds))
+        public override void SetOption(string key, string value)
+        {
+            base.SetOption(key, value);
+
+            if (key.Equals(BigQueryParameters.AccessToken))
             {
-                clientTimeout = TimeSpan.FromSeconds(seconds);
+                UpdateClientToken();
             }
-
-            BigQueryClientBuilder bigQueryClientBuilder = new BigQueryClientBuilder()
-            {
-                ProjectId = projectId,
-                QuotaProject = billingProjectId,
-                GoogleCredential = this.Credential
-            };
-
-            BigQueryClient client = bigQueryClientBuilder.Build();
-
-            if (clientTimeout.HasValue)
-            {
-                client.Service.HttpClient.Timeout = clientTimeout.Value;
-            }
-
-            this.Client = client;
-            return client;
         }
 
         /// <summary>
@@ -348,22 +356,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         }
 
         /// <summary>
-        /// Renews the internal BigQueryClient with updated credentials.
+        /// Determines if the token needs to be updated.
         /// </summary>
-        internal bool CheckIfClientTokenNeedsRenewal(Exception ex)
-        {
-            bool result = false;
+        public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
-            if (ex is GoogleApiException)
-            {
-                if (((GoogleApiException)ex).HttpStatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    result = true;
-                }
-            }
-
-            return result;
-        }
 
         /// <summary>
         /// Executes the query using the BigQueryClient.
@@ -403,7 +399,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             try
             {
                 Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = new(
-                    () => {
+                    () =>
+                    {
                         return Task.Run(
                             () => { return this.Client?.ListProjects(); }
                          );
@@ -473,7 +470,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string dbSchemaRegexp = PatternToRegEx(dbSchemaPattern);
 
             Func<Task<PagedEnumerable<DatasetList, BigQueryDataset>?>> func = new(
-                    () => {
+                    () =>
+                    {
                         return Task.Run(
                             () => { return this.Client?.ListDatasets(catalog); }
                          );
@@ -481,7 +479,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 );
 
             PagedEnumerable<DatasetList, BigQueryDataset>? schemas =
-                AdbcRetryManager.ExecuteWithRetriesAsync<PagedEnumerable<DatasetList, BigQueryDataset>?>(this,func).Result;
+                AdbcRetryManager.ExecuteWithRetriesAsync<PagedEnumerable<DatasetList, BigQueryDataset>?>(this, func).Result;
 
             if (schemas != null)
             {
@@ -1249,7 +1247,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 throw new AdbcException(
                     "Unable to obtain access token from BigQuery",
-                    AdbcStatusCode.Unauthenticated | AdbcStatusCode.Unauthorized,
+                    AdbcStatusCode.Unauthenticated,
                     ex);
             }
         }

@@ -60,25 +60,23 @@ namespace Apache.Arrow.Adbc
                     retryCount++;
                     if (retryCount >= maxRetries)
                     {
+                        if (tokenProtectedResource?.TokenRequiresUpdate(ex) == true)
+                        {
+                            throw new AdbcException($"Cannot update access token after {maxRetries} tries", AdbcStatusCode.Unauthenticated, ex);
+                        }
+
                         throw new AdbcException($"Cannot execute {action.Method.Name} after {maxRetries} tries", AdbcStatusCode.UnknownError, ex);
                     }
 
-                    if (tokenProtectedResource != null)
+                    if ((tokenProtectedResource?.UpdateToken == null))
                     {
-                        if ((tokenProtectedResource.UpdateToken == null && tokenProtectedResource.CheckIfTokenRequiresUpdate != null))
+                        throw new AdbcException($"UpdateToken cannot be null on the token-protected resource", AdbcStatusCode.InvalidArgument);
+                    }
+                    else
+                    {
+                        if (tokenProtectedResource.TokenRequiresUpdate(ex))
                         {
-                            throw new AdbcException($"UpdateToken cannot be null if CheckIfTokenRequiresUpdate is not null", AdbcStatusCode.InvalidArgument);
-                        }
-                        else if (tokenProtectedResource.UpdateToken != null && tokenProtectedResource.CheckIfTokenRequiresUpdate == null)
-                        {
-                            throw new AdbcException($"CheckIfTokenRequiresUpdate cannot be null if UpdateToken is not null", AdbcStatusCode.InvalidArgument);
-                        }
-                        else if (tokenProtectedResource.UpdateToken != null && tokenProtectedResource.CheckIfTokenRequiresUpdate != null)
-                        {
-                            if (tokenProtectedResource.CheckIfTokenRequiresUpdate(ex))
-                            {
-                                await tokenProtectedResource.UpdateToken();
-                            }
+                            await tokenProtectedResource.UpdateToken();
                         }
                     }
 
