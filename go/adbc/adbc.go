@@ -250,6 +250,7 @@ const (
 	OptionKeyURI                      = "uri"
 	OptionKeyUsername                 = "username"
 	OptionKeyPassword                 = "password"
+	OptionKeyToken                    = "token"
 )
 
 type OptionIsolationLevel string
