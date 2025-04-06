@@ -58,7 +58,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [SkippableFact, Order(1)]
         public void CanSignInAndRefreshEntraToken()
         {
-            BigQueryTestEnvironment environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).First();
+            BigQueryTestEnvironment environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
+
+            Assert.NotNull(environment);
+
             BigQueryConnection? connection = BigQueryTestingUtils.GetRetryableEntraBigQueryAdbcConnection(environment, GetAccessToken(environment)) as BigQueryConnection;
 
             Assert.NotNull(connection);
@@ -84,8 +87,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
 
             // the easiest way is to log in to Visual Studio using Tools > Options > Azure Service Authentication
-            DefaultAzureCredentialOptions options = new DefaultAzureCredentialOptions();
-            DefaultAzureCredential credential = new DefaultAzureCredential(options);
+            DefaultAzureCredential credential = new DefaultAzureCredential();
 
             // Request the token
             string claimJson = JsonSerializer.Serialize(environment.EntraConfiguration.Claims);

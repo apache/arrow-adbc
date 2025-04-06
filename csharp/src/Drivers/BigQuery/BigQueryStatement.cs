@@ -142,7 +142,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public override UpdateResult ExecuteUpdate()
         {
             Func<Task<UpdateResult>> func = () => Task.Run(() => ExecuteUpdateInternal());
-            return AdbcRetryManager.ExecuteWithRetriesAsync<UpdateResult>(this,func).Result;
+            return AdbcRetryManager.ExecuteWithRetriesAsync<UpdateResult>(this, func).Result;
         }
 
         private UpdateResult ExecuteUpdateInternal()
@@ -285,7 +285,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 //PagedEnumerable<ProjectList, CloudProject>? projects = this.Client.ListProjects();
 
                 Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = new(
-                    () => {
+                    () =>
+                    {
                         return Task.Run(
                             () => { return this.Client?.ListProjects(); }
                          );

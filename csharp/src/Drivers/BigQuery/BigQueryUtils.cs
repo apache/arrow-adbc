@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using Google;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery

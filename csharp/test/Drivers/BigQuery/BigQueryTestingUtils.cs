@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery

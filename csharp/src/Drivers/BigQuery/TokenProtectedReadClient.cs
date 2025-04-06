@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.BigQuery.Storage.V1;
-using Google.Cloud.BigQuery.V2;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
