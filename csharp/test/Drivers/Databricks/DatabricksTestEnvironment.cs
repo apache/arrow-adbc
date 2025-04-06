@@ -42,7 +42,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         public override string SqlDataResourceLocation => "Resources/Databricks.sql";
 
-
         public override int ExpectedColumnCount => 19;
 
         public override AdbcDriver CreateNewDriver() => new DatabricksDriver();
@@ -149,9 +148,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             return parameters;
         }
 
-        //internal SparkServerType ServerType => ((SparkConnection)Connection).ServerType;
-
-        public override string VendorVersion => ((HiveServer2Connection)Connection).VendorVersion;
+        public override string VendorVersion => ((DatabricksConnection)Connection).VendorVersion;
 
         public override bool SupportsDelete => true;
 

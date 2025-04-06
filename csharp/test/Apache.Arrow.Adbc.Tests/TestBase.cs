@@ -176,7 +176,7 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         /// <summary>
-        /// Gets a the Spark ADBC driver with settings from the <see cref="SparkTestConfiguration"/>.
+        /// Gets an ADBC driver with settings from the <see cref="Tests.TestConfiguration"/>.
         /// </summary>
         /// <param name="testConfiguration"><see cref="Tests.TestConfiguration"/></param>
         /// <param name="connectionOptions"></param>

@@ -17,15 +17,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Extensions;
-using Apache.Arrow.Ipc;
-using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
-using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {

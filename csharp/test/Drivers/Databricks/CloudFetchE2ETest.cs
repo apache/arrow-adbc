@@ -17,7 +17,6 @@
 
 using System;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Xunit;
 using Xunit.Abstractions;
@@ -59,13 +58,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             statement.SetOption(DatabricksStatement.Options.CanDecompressLz4, "true");
             statement.SetOption(DatabricksStatement.Options.MaxBytesPerFile, "10485760"); // 10MB
 
-
             // Execute a query that generates a large result set using range function
             statement.SqlQuery = query;
 
             // Execute the query and get the result
             var result = await statement.ExecuteQueryAsync();
-
 
             if (result.Stream == null)
             {

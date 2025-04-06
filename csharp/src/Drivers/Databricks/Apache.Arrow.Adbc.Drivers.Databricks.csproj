@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
-    <PackageReference Include="System.Net.Http.WinHttpHandler" Version="8.0.2" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
+    <PackageReference Include="K4os.Compression.LZ4.Streams" Version="1.3.8" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="readme.md">

@@ -18,20 +18,17 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using K4os.Compression.LZ4.Streams;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
-    /// Reader for CloudFetch results from Databricks Thrift server.
+    /// Reader for CloudFetch results from Databricks Spark Thrift server.
     /// Handles downloading and processing URL-based result sets.
     /// </summary>
     internal sealed class CloudFetchReader : IArrowArrayStream
@@ -45,7 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private readonly int retryDelayMs;
         private readonly int timeoutMinutes;
 
-        private HiveServer2Statement? statement;
+        private DatabricksStatement? statement;
         private readonly Schema schema;
         private List<TSparkArrowResultLink>? resultLinks;
         private int linkIndex;
@@ -59,10 +56,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchReader"/> class.
         /// </summary>
-        /// <param name="statement">The HiveServer2 statement.</param>
+        /// <param name="statement">The Databricks statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        public CloudFetchReader(HiveServer2Statement statement, Schema schema, bool isLz4Compressed)
+        public CloudFetchReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
         {
             this.statement = statement;
             this.schema = schema;
@@ -162,59 +159,52 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     var link = this.resultLinks[this.linkIndex++];
                     byte[]? fileData = null;
 
-                    // Retry logic for downloading files
-                    for (int retry = 0; retry < this.maxRetries; retry++)
-                    {
-                        try
-                        {
-                            fileData = await DownloadFileAsync(link.FileLink, cancellationToken);
-                            break; // Success, exit retry loop
-                        }
-                        catch (Exception ex) when (retry < this.maxRetries - 1)
-                        {
-                            // Log the error and retry
-                            Debug.WriteLine($"Error downloading file (attempt {retry + 1}/{this.maxRetries}): {ex.Message}");
-                            await Task.Delay(this.retryDelayMs * (retry + 1), cancellationToken);
-                        }
-                    }
-
-                    // Process the downloaded file data
-                    MemoryStream dataStream;
-
-                    // If the data is LZ4 compressed, decompress it
-                    if (this.isLz4Compressed)
-                    {
-                        try
-                        {
-                            dataStream = new MemoryStream();
-                            using (var inputStream = new MemoryStream(fileData!))
-                            using (var decompressor = LZ4Stream.Decode(inputStream))
-                            {
-                                await decompressor.CopyToAsync(dataStream);
-                            }
-                            dataStream.Position = 0;
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"Error decompressing data: {ex.Message}");
-                            continue; // Skip this link and try the next one
-                        }
-                    }
-                    else
-                    {
-                        dataStream = new MemoryStream(fileData!);
-                    }
-
                     try
                     {
-                        this.currentReader = new ArrowStreamReader(dataStream);
+                        // Try to download with retry logic
+                        for (int retry = 0; retry < this.maxRetries; retry++)
+                        {
+                            try
+                            {
+                                fileData = await DownloadFileAsync(link.FileLink, cancellationToken);
+                                break; // Success, exit retry loop
+                            }
+                            catch (Exception) when (retry < this.maxRetries - 1)
+                            {
+                                // Only delay and retry if we haven't reached max retries
+                                await Task.Delay(this.retryDelayMs * (retry + 1), cancellationToken);
+                            }
+                        }
+
+                        // If download still failed after all retries
+                        if (fileData == null)
+                        {
+                            throw new AdbcException($"Failed to download CloudFetch data from {link.FileLink} after {this.maxRetries} attempts");
+                        }
+
+                        ReadOnlyMemory<byte> dataToUse = new ReadOnlyMemory<byte>(fileData);
+
+                        // If the data is LZ4 compressed, decompress it
+                        if (this.isLz4Compressed)
+                        {
+                            dataToUse = Lz4Utilities.DecompressLz4(fileData);
+                        }
+
+                        // Use ChunkStream which supports ReadOnlyMemory<byte> directly
+                        this.currentReader = new ArrowStreamReader(new ChunkStream(this.schema, dataToUse));
                         continue;
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error creating Arrow reader: {ex.Message}");
-                        dataStream.Dispose();
-                        continue; // Skip this link and try the next one
+                        // Create concise error message based on exception type
+                        string errorPrefix = $"CloudFetch link {this.linkIndex - 1}:";
+                        string errorMessage = ex switch
+                        {
+                            _ when ex.GetType().Name.Contains("LZ4") => $"{errorPrefix} LZ4 decompression failed - Data may be corrupted",
+                            HttpRequestException or TaskCanceledException => $"{errorPrefix} Download failed - {ex.Message}",
+                            _ => $"{errorPrefix} Processing failed - {ex.Message}" // Default case for any other exception
+                        };
+                        throw new AdbcException(errorMessage, ex);
                     }
                 }
 
@@ -243,9 +233,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Error fetching results from server: {ex.Message}");
-                    this.statement = null; // Mark as done due to error
-                    return null;
+                    throw new AdbcException($"Server request failed - {ex.Message}", ex);
                 }
 
                 // Check if we have URL-based results

@@ -15,11 +15,13 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -37,6 +39,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             TSparkRowSetType resultFormat = TSparkRowSetType.ARROW_BASED_SET;
             bool isLz4Compressed = false;
 
+            DatabricksStatement? databricksStatement = statement as DatabricksStatement;
+
+            if (databricksStatement == null)
+            {
+                throw new InvalidOperationException("Cannot obtain a reader for Databricks");
+            }
+
             if (metadataResp != null)
             {
                 if (metadataResp.__isset.resultFormat)
@@ -53,15 +62,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Choose the appropriate reader based on the result format
             if (resultFormat == TSparkRowSetType.URL_BASED_SET)
             {
-                return new CloudFetchReader(statement, schema, isLz4Compressed);
+                return new CloudFetchReader(databricksStatement, schema, isLz4Compressed);
             }
             else
             {
-                return new DatabricksReader(statement, schema);
+                return new DatabricksReader(databricksStatement, schema);
             }
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
+
+        public override AdbcStatement CreateStatement()
+        {
+            DatabricksStatement statement = new DatabricksStatement(this);
+            return statement;
+        }
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
