@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;

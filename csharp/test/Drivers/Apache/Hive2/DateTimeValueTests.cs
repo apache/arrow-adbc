@@ -15,11 +15,6 @@
 * limitations under the License.
 */
 
-using System;
-using System.Globalization;
-using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2

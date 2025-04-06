@@ -76,7 +76,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 NewConnection(testConfiguration);
             }
-            catch(AggregateException aex)
+            catch (AggregateException aex)
             {
                 if (exceptionType != null)
                 {
@@ -204,7 +204,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                     cn.GetObjects(AdbcConnection.GetObjectsDepth.Tables, testConfiguration.Metadata.Catalog, testConfiguration.Metadata.Schema, testConfiguration.Metadata.Schema, null, null);
                 };
 
-                AddAction("getObjectsAll", getObjectsAll, new List<Type?>() { null, typeof(TimeoutException), null, null, null } );
+                AddAction("getObjectsAll", getObjectsAll, new List<Type?>() { null, typeof(TimeoutException), null, null, null });
                 AddAction("getObjectsCatalogs", getObjectsCatalogs);
                 AddAction("getObjectsDbSchemas", getObjectsDbSchemas);
                 AddAction("getObjectsTables", getObjectsTables);

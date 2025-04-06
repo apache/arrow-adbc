@@ -16,7 +16,6 @@
 */
 
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Xunit;
 using Xunit.Abstractions;
 

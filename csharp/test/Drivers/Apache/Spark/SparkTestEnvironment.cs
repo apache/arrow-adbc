@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Text;
-using System.Text.Json.Serialization;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
