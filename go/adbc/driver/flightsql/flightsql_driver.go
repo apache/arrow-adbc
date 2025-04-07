@@ -68,7 +68,7 @@ const (
 	infoDriverName                      = "ADBC Flight SQL Driver - Go"
 
 	// Oauth2 options
-	OptionKeyToken            = "adbc.flight.sql.oauth.token"
+	OptionKeyToken            = "adbc.flight.sql.token"
 	OptionKeyOauthFlow        = "adbc.flight.sql.oauth.flow"
 	OptionKeyAuthURI          = "adbc.flight.sql.oauth.auth_uri"
 	OptionKeyTokenURI         = "adbc.flight.sql.oauth.token_uri"
