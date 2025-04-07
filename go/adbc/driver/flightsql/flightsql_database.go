@@ -114,11 +114,12 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	}
 
 	if val, ok := cnOptions[OptionSSLSkipVerify]; ok {
-		if val == adbc.OptionValueEnabled {
+		switch val {
+		case adbc.OptionValueEnabled:
 			tlsConfig.InsecureSkipVerify = true
-		} else if val == adbc.OptionValueDisabled {
+		case adbc.OptionValueDisabled:
 			tlsConfig.InsecureSkipVerify = false
-		} else {
+		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, val),
 				Code: adbc.StatusInvalidArgument,
@@ -220,11 +221,12 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	d.dialOpts.rebuild()
 
 	if val, ok := cnOptions[OptionCookieMiddleware]; ok {
-		if val == adbc.OptionValueEnabled {
+		switch val {
+		case adbc.OptionValueEnabled:
 			d.enableCookies = true
-		} else if val == adbc.OptionValueDisabled {
+		case adbc.OptionValueDisabled:
 			d.enableCookies = false
-		} else {
+		default:
 			return d.ErrorHelper.Errorf(adbc.StatusInvalidArgument, "Invalid value for database option '%s': '%s'", OptionCookieMiddleware, val)
 		}
 		delete(cnOptions, OptionCookieMiddleware)
@@ -362,14 +364,15 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	creds := d.creds
 
 	target := uri.Host
-	if uri.Scheme == "grpc" || uri.Scheme == "grpc+tcp" {
+	switch uri.Scheme {
+	case "grpc", "grpc+tcp":
 		creds = insecure.NewCredentials()
-	} else if uri.Scheme == "grpc+unix" {
+	case "grpc+unix":
 		creds = insecure.NewCredentials()
 		target = "unix:" + uri.Path
 	}
 
-	dv, _ := d.DatabaseImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	dv, _ := d.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	driverVersion := dv.(string)
 	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
 	dialOpts = append(dialOpts, d.userDialOpts...)
@@ -447,7 +450,10 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		}).
 		EvictedFunc(func(_, client interface{}) {
 			conn := client.(*flightsql.Client)
-			conn.Close()
+			err := conn.Close()
+			if err != nil {
+				d.Logger.Debug("failed to close client", "error", err.Error())
+			}
 		}).Build()
 
 	var cnxnSupport support

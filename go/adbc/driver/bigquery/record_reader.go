@@ -158,7 +158,7 @@ func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, q
 			return -1, err
 		}
 		if parameters != nil {
-			query.QueryConfig.Parameters = parameters
+			query.Parameters = parameters
 		}
 
 		arrowIterator, rows, err := runQuery(ctx, query, false)
