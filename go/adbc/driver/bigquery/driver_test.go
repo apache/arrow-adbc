@@ -611,8 +611,21 @@ func (suite *BigQueryTests) TestDropSchema() {
 	suite.Require().NoError(err)
 	rdr.Release()
 
-	// We expect at error as the schema should not exist
+	// We expect an error as the schema should not exist
 	suite.Require().Error(suite.Quirks.client.Dataset(schema).DeleteWithContents(suite.Quirks.ctx))
+}
+
+func (suite *BigQueryTests) TestCreateView() {
+	// Create unique schema to drop via a query
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("CREATE TABLE IF NOT EXISTS a (id int)")))
+	rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	rdr.Release()
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(fmt.Sprintf("CREATE VIEW IF NOT EXISTS a_view AS SELECT * FROM a")))
+	rdr, _, err = suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	rdr.Release()
 }
 
 func (suite *BigQueryTests) TestNewDatabaseGetSetOptions() {
