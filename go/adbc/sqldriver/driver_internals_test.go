@@ -136,8 +136,16 @@ func TestColumnTypeDatabaseTypeName(t *testing.T) {
 }
 
 var (
-	tz       = time.FixedZone("North Idaho", -int((8 * time.Hour).Seconds()))
-	testTime = time.Date(2023, time.January, 26, 15, 40, 39, 123456789, tz)
+	tz          = time.FixedZone("North Idaho", -int((8 * time.Hour).Seconds()))
+	testTime    = time.Date(2023, time.January, 26, 15, 40, 39, 123456789, tz)
+	stringField = arrow.Field{
+		Name: "str",
+		Type: arrow.BinaryTypes.String,
+	}
+	int32Field = arrow.Field{
+		Name: "int",
+		Type: arrow.PrimitiveTypes.Int32,
+	}
 )
 
 func TestNextRowTypes(t *testing.T) {
@@ -253,6 +261,48 @@ func TestNextRowTypes(t *testing.T) {
 				b.(*array.Decimal256Builder).Append(decimal256.FromU64(10))
 			},
 			golangValue: decimal256.FromU64(10),
+		},
+		{
+			arrowType: arrow.SparseUnionOf([]arrow.Field{stringField, int32Field}, []arrow.UnionTypeCode{0, 1}),
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				ub := b.(array.UnionBuilder)
+				ub.Append(0)
+				ub.Child(0).(*array.StringBuilder).Append("my-string")
+				ub.Child(1).AppendEmptyValue()
+			},
+			golangValue: "my-string",
+		},
+		{
+			arrowType: arrow.SparseUnionOf([]arrow.Field{stringField, int32Field}, []arrow.UnionTypeCode{0, 1}),
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				ub := b.(array.UnionBuilder)
+				ub.Append(1)
+				ub.Child(1).(*array.Int32Builder).Append(100)
+				ub.Child(0).AppendEmptyValue()
+
+			},
+			golangValue: int32(100),
+		},
+		{
+			arrowType: arrow.DenseUnionOf([]arrow.Field{int32Field, stringField}, []arrow.UnionTypeCode{10, 20}),
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				ub := b.(array.UnionBuilder)
+				ub.Append(20)
+				ub.Child(1).(*array.StringBuilder).Append("my-string")
+			},
+			golangValue: "my-string",
+		},
+		{
+			arrowType: arrow.DenseUnionOf([]arrow.Field{int32Field, stringField}, []arrow.UnionTypeCode{10, 20}),
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				b.(array.UnionBuilder).Append(10)
+				b.(array.UnionBuilder).Child(0).(*array.Int32Builder).Append(100)
+			},
+			golangValue: int32(100),
 		},
 	}
 
