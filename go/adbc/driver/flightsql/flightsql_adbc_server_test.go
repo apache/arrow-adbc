@@ -386,8 +386,7 @@ func (suite *OAuthTests) TestTokenExchangeFlow() {
 }
 
 func (suite *OAuthTests) TestClientCredentialsFlow() {
-	var err error
-	err = suite.db.SetOptions(map[string]string{
+	err := suite.db.SetOptions(map[string]string{
 		driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
 		driver.OptionKeyClientId:     "test-client",
 		driver.OptionKeyClientSecret: "test-secret",
@@ -420,6 +419,18 @@ func (suite *OAuthTests) openAndExecuteQuery(query string) {
 	reader, _, err := stmt.ExecuteQuery(context.Background())
 	suite.NoError(err)
 	defer reader.Release()
+}
+
+func (suite *OAuthTests) TestFailOauthWithTokenSet() {
+	err := suite.db.SetOptions(map[string]string{
+		driver.OptionAuthorizationHeader: "Bearer test-client-token",
+		driver.OptionKeyOauthFlow:        strconv.Itoa(driver.ClientCredentials),
+		driver.OptionKeyClientId:         "test-client",
+		driver.OptionKeyClientSecret:     "test-secret",
+		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
+	})
+	suite.Error(err, "Expected error for missing parameters")
+	suite.Contains(err.Error(), "Authentication conflict: Use either Authorization header OR username/password parameter OR token")
 }
 
 func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
