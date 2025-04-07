@@ -444,7 +444,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
 				adbc.OptionKeyToken:       "test-subject-token",
 				driver.OptionKeyTokenURI:  suite.oauthServer.URL,
 			},
-			expectedErrorMsg: "token Exchange grant requires subject token type",
+			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.exchange.subject_token_type",
 		},
 		{
 			name: "Missing token URI",
@@ -453,7 +453,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
 				adbc.OptionKeyToken:              "test-subject-token",
 				driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 			},
-			expectedErrorMsg: "token exchange grant requires token URI",
+			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.token_uri",
 		},
 	}
 
@@ -479,7 +479,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
 				driver.OptionKeyClientSecret: "test-secret",
 				driver.OptionKeyTokenURI:     suite.oauthServer.URL,
 			},
-			expectedErrorMsg: "client credentials grant requires client_id",
+			expectedErrorMsg: "client credentials grant requires adbc.flight.sql.oauth.client_id",
 		},
 		{
 			name: "Missing client secret",
@@ -488,7 +488,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
 				driver.OptionKeyClientId:  "test-client",
 				driver.OptionKeyTokenURI:  suite.oauthServer.URL,
 			},
-			expectedErrorMsg: "client credentials grant requires client_secret",
+			expectedErrorMsg: "client credentials grant requires adbc.flight.sql.oauth.client_secret",
 		},
 		{
 			name: "Missing token URI",
@@ -497,7 +497,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
 				driver.OptionKeyClientId:     "test-client",
 				driver.OptionKeyClientSecret: "test-secret",
 			},
-			expectedErrorMsg: "client credentials grant requires token_uri",
+			expectedErrorMsg: "client credentials grant requires adbc.flight.sql.oauth.token_uri",
 		},
 	}
 

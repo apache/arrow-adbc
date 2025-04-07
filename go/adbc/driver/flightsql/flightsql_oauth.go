@@ -35,53 +35,20 @@ const (
 	TokenExchange
 )
 
-type clientCredentials struct {
-	conf  *oauth2.Config
-	token oauth2.TokenSource
+type oAuthOption struct {
+	isRequired bool
+	oAuthKey   string
 }
 
-func newClientCredentials(options map[string]string) (*clientCredentials, error) {
-	clientId, ok := options[OptionKeyClientId]
-	if !ok {
-		return nil, fmt.Errorf("client credentials grant requires client_id")
-	}
-
-	clientSecret, ok := options[OptionKeyClientSecret]
-	if !ok {
-		return nil, fmt.Errorf("client credentials grant requires client_secret")
-	}
-
-	tokenURI, ok := options[OptionKeyTokenURI]
-	if !ok {
-		return nil, fmt.Errorf("client credentials grant requires token_uri")
-	}
-
-	delete(options, OptionKeyClientId)
-	delete(options, OptionKeyClientSecret)
-	delete(options, OptionKeyTokenURI)
-	conf := &oauth2.Config{
-		ClientID:     clientId,
-		ClientSecret: clientSecret,
-		Endpoint: oauth2.Endpoint{
-			TokenURL: tokenURI,
-		},
-	}
-
-	scopes := options[OptionKeyScope]
-	if scopes != "" {
-		conf.Scopes = []string{scopes}
-		delete(options, OptionKeyScope)
-	}
-
-	return &clientCredentials{
-		conf: conf,
-	}, nil
+type oAuthConfig struct {
+	conf        *oauth2.Config
+	flowOptions []oauth2.AuthCodeOption
+	token       oauth2.TokenSource
 }
 
-func (c *clientCredentials) GetToken(ctx context.Context) (*oauth2.Token, error) {
-	option := []oauth2.AuthCodeOption{oauth2.SetAuthURLParam("grant_type", "client_credentials")}
+func (c *oAuthConfig) GetToken(ctx context.Context) (*oauth2.Token, error) {
 	if c.token == nil {
-		tok, err := c.conf.Exchange(ctx, "", option...)
+		tok, err := c.conf.Exchange(ctx, "", c.flowOptions...)
 		if err != nil {
 			return nil, err
 		}
@@ -93,34 +60,88 @@ func (c *clientCredentials) GetToken(ctx context.Context) (*oauth2.Token, error)
 	return c.token.Token()
 }
 
-type tokenExchange struct {
-	conf                 *oauth2.Config
-	tokenExchangeOptions []oauth2.AuthCodeOption
-	token                oauth2.TokenSource
+var (
+	clientCredentialsParams = map[string]oAuthOption{
+		OptionKeyClientId:     {true, "client_id"},
+		OptionKeyClientSecret: {true, "client_secret"},
+		OptionKeyTokenURI:     {true, "token_uri"},
+		OptionKeyScope:        {false, "scope"},
+	}
+)
+
+func newClientCredentials(options map[string]string) (*oAuthConfig, error) {
+
+	params := map[string]string{}
+
+	for key, param := range clientCredentialsParams {
+		if value, ok := options[key]; ok {
+			params[key] = value
+			delete(options, key)
+		} else if param.isRequired {
+			return nil, fmt.Errorf("client credentials grant requires %s", key)
+		}
+	}
+
+	conf := &oauth2.Config{
+		ClientID:     params[OptionKeyClientId],
+		ClientSecret: params[OptionKeyClientSecret],
+		Endpoint: oauth2.Endpoint{
+			TokenURL: params[OptionKeyTokenURI],
+		},
+	}
+
+	if scopes, ok := params[OptionKeyScope]; ok {
+		conf.Scopes = []string{scopes}
+	}
+
+	return &oAuthConfig{
+		conf: conf,
+		flowOptions: []oauth2.AuthCodeOption{
+			oauth2.SetAuthURLParam("grant_type", "client_credentials"),
+		},
+	}, nil
 }
 
-func newTokenExchangeFlow(options map[string]string) (*tokenExchange, error) {
-	token, ok := options[adbc.OptionKeyToken]
-	if !ok {
-		return nil, fmt.Errorf("token Exchange grant requires token")
+var (
+	tokenExchangParams = map[string]oAuthOption{
+		adbc.OptionKeyToken:       {true, "subject_token"},
+		OptionKeySubjectTokenType: {true, "subject_token_type"},
+		OptionKeyReqTokenType:     {false, "requested_token_type"},
+		OptionKeyExchangeAud:      {false, "audience"},
+		OptionKeyExchangeResource: {false, "resource"},
+		OptionKeyExchangeScope:    {false, "scope"},
 	}
+)
 
-	subjectTokenType, ok := options[OptionKeySubjectTokenType]
-	if !ok {
-		return nil, fmt.Errorf("token Exchange grant requires subject token type")
-	}
+func newTokenExchangeFlow(options map[string]string) (*oAuthConfig, error) {
 
 	tokenURI, ok := options[OptionKeyTokenURI]
 	if !ok {
-		return nil, fmt.Errorf("token exchange grant requires token URI")
+		return nil, fmt.Errorf("token exchange grant requires adbc.flight.sql.oauth.token_uri")
+	}
+	delete(options, OptionKeyTokenURI)
+
+	conf := &oauth2.Config{
+		Endpoint: oauth2.Endpoint{
+			TokenURL: tokenURI,
+		},
 	}
 
 	tokOptions := []oauth2.AuthCodeOption{
 		oauth2.SetAuthURLParam("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
-		oauth2.SetAuthURLParam("subject_token", token),
-		oauth2.SetAuthURLParam("subject_token_type", subjectTokenType),
 	}
 
+	for key, param := range tokenExchangParams {
+		if value, ok := options[key]; ok {
+			tokOptions = append(tokOptions, oauth2.SetAuthURLParam(param.oAuthKey, value))
+			delete(options, key)
+		} else if param.isRequired {
+			return nil, fmt.Errorf("token exchange grant requires %s", key)
+		}
+	}
+
+	// actor token and actor token type are optional
+	// but if one is present, the other must be present
 	if actor, ok := options[OptionKeyActorToken]; ok {
 		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("actor_token", actor))
 		delete(options, OptionKeyActorToken)
@@ -132,54 +153,8 @@ func newTokenExchangeFlow(options map[string]string) (*tokenExchange, error) {
 		}
 	}
 
-	if reqTokenType, ok := options[OptionKeyReqTokenType]; ok {
-		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("requested_token_type", reqTokenType))
-		delete(options, OptionKeyReqTokenType)
-	}
-
-	if aud, ok := options[OptionKeyExchangeAud]; ok {
-		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("audience", aud))
-		delete(options, OptionKeyExchangeAud)
-	}
-
-	if resource, ok := options[OptionKeyExchangeResource]; ok {
-		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("resource", resource))
-		delete(options, OptionKeyExchangeResource)
-	}
-
-	if scope, ok := options[OptionKeyExchangeScope]; ok {
-		tokOptions = append(tokOptions, oauth2.SetAuthURLParam("scope", scope))
-		delete(options, OptionKeyExchangeScope)
-	}
-
-	delete(options, OptionKeyTokenURI)
-	delete(options, OptionKeySubjectTokenType)
-	delete(options, adbc.OptionKeyToken)
-
-	return &tokenExchange{
-		conf: &oauth2.Config{
-			Endpoint: oauth2.Endpoint{
-				TokenURL: tokenURI,
-			},
-		},
-		tokenExchangeOptions: tokOptions,
+	return &oAuthConfig{
+		conf:        conf,
+		flowOptions: tokOptions,
 	}, nil
-}
-
-func (f *tokenExchange) GetToken(ctx context.Context) (*oauth2.Token, error) {
-	if f.token == nil {
-		tok, err := f.conf.Exchange(ctx, "", f.tokenExchangeOptions...)
-		if err != nil {
-			return nil, err
-		}
-
-		f.token = f.conf.TokenSource(ctx, tok)
-		return tok, nil
-	}
-
-	token, err := f.token.Token()
-	if err != nil {
-		return nil, err
-	}
-	return token, nil
 }
