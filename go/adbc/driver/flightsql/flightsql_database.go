@@ -61,7 +61,6 @@ type databaseImpl struct {
 
 	uri           *url.URL
 	creds         credentials.TransportCredentials
-	token         string
 	user, pass    string
 	hdrs          metadata.MD
 	timeout       timeoutOption
@@ -151,7 +150,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	if u, ok := cnOptions[adbc.OptionKeyUsername]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter",
+				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter OR token",
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -162,7 +161,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	if p, ok := cnOptions[adbc.OptionKeyPassword]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter",
+				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter OR token",
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -172,10 +171,10 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 
 	// if token exists it can bypass or apply token exchange
 	// else check oauth flow
-	if t, ok := cnOptions[adbc.OptionKeyToken]; ok {
+	if t, ok := cnOptions[OptionKeyToken]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authentication conflict: Use either Authorization header OR token parameter",
+				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter OR token",
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -198,19 +197,12 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			d.oauthFlow = tokExchange
 			delete(cnOptions, OptionKeyOauthFlow)
 		} else {
-			d.token = t
+			d.hdrs.Set("authorization", "Bearer "+t)
 			delete(cnOptions, OptionKeyToken)
 		}
 	}
 
 	if flow, ok := cnOptions[OptionKeyOauthFlow]; ok {
-		if d.token != "" {
-			return adbc.Error{
-				Msg:  "Authentication conflict: Use either token parameter or OAuth flow",
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-
 		flowVal, err := strconv.Atoi(flow)
 		if err != nil {
 			return adbc.Error{
@@ -459,10 +451,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	// Determine the authorization value to set
 	var authValue string
 
-	if d.token != "" {
-		// Authentication just using a token
-		authValue = "Bearer " + d.token
-	} else if d.oauthFlow != nil {
+	if d.oauthFlow != nil {
 		// OAuth flow authentication
 		token, err := d.oauthFlow.GetToken(ctx)
 		if err != nil {
