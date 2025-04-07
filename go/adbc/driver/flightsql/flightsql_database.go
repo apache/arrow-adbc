@@ -170,7 +170,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		delete(cnOptions, adbc.OptionKeyPassword)
 	}
 
-	// if token exists it can by pass or apply token exchange
+	// if token exists it can bypass or apply token exchange
 	// else check oauth flow
 	if t, ok := cnOptions[adbc.OptionKeyToken]; ok {
 		if d.hdrs.Len() > 0 {
@@ -210,9 +210,9 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-		var flowVal int
-		var err error
-		if flowVal, err = strconv.Atoi(flow); err != nil {
+
+		flowVal, err := strconv.Atoi(flow)
+		if err != nil {
 			return adbc.Error{
 				Msg:  fmt.Sprintf("invalid OAuth flow option: %s", flow),
 				Code: adbc.StatusInvalidArgument,
