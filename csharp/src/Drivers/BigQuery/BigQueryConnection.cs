@@ -31,6 +31,7 @@ using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.V2;
+using Google.Protobuf.Reflection;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
@@ -65,8 +66,38 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);
             this.httpClient = new HttpClient();
         }
+
+        internal BigQueryConnection(BigQueryClient customClient, IReadOnlyDictionary<string, string> properties)
+            : this(properties)
+        {
+            this.customClient = customClient;
+        }
+
         public Func<Task>? UpdateToken { get; set; }
-        internal BigQueryClient? Client { get; private set; }
+
+        private BigQueryClient? customClient;
+        private BigQueryClient? internalClient;
+
+        internal BigQueryClient? Client
+        {
+            get
+            {
+                if (customClient != null)
+                {
+                    return customClient;
+                }
+
+                return internalClient;
+            }
+            private set
+            {
+                if (customClient == null)
+                {
+                    internalClient = value;
+                }
+            }
+        }
+
         internal GoogleCredential? Credential { get; private set; }
 
         /// <summary>

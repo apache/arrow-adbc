@@ -16,6 +16,7 @@
 */
 
 using System.Collections.Generic;
+using Google.Cloud.BigQuery.V2;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
@@ -34,6 +35,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? properties)
         {
             BigQueryConnection connection = new BigQueryConnection(this.properties);
+            connection.Open();
+            return connection;
+        }
+
+        internal BigQueryConnection Connect(BigQueryClient customClient, IReadOnlyDictionary<string, string>? properties)
+        {
+            BigQueryConnection connection = new BigQueryConnection(customClient, this.properties);
             connection.Open();
             return connection;
         }

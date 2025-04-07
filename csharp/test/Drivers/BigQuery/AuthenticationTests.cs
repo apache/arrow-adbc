@@ -21,9 +21,12 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
+using Apache.Arrow.Adbc.Tests.Drivers.BigQuery.Mocks;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Azure.Core;
 using Azure.Identity;
+using Google.Apis.Auth.OAuth2;
+using Moq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -56,14 +59,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// Validates if the Entra token can sign in and refresh.
         /// </summary>
         [SkippableFact, Order(1)]
-        public void CanSignInAndRefreshEntraToken()
+        public void CanSignInWithEntraToken()
         {
-            BigQueryTestEnvironment environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
-
+            BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
             Assert.NotNull(environment);
 
             BigQueryConnection? connection = BigQueryTestingUtils.GetRetryableEntraBigQueryAdbcConnection(environment, GetAccessToken(environment)) as BigQueryConnection;
-
             Assert.NotNull(connection);
 
             connection.UpdateToken = () => Task.Run(() =>
@@ -77,6 +78,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount, environment.Name);
+        }
+
+        [SkippableFact, Order(1)]
+        public void CanRefreshTokenWithMockedClient()
+        {
+            MockedBigQueryClient mockedBigQueryClient = new MockedBigQueryClient();
+            BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
+            Assert.NotNull(environment);
+
+            BigQueryConnection connection = (BigQueryConnection) BigQueryTestingUtils.GetRetryableEntraBigQueryAdbcConnection(mockedBigQueryClient.Client, environment, GetAccessToken(environment));
+            Assert.NotNull(connection);
+
+            connection.UpdateToken = () => Task.Run(() =>
+            {
+                connection.SetOption(BigQueryParameters.AccessToken, Guid.NewGuid().ToString());
+            });
+
+            AdbcStatement statement = connection.CreateStatement();
+
+            QueryResult queryResult = statement.ExecuteQuery();
         }
 
         private string GetAccessToken(BigQueryTestEnvironment environment)

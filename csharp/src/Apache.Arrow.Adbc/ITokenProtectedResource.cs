@@ -22,7 +22,6 @@ namespace Apache.Arrow.Adbc
 {
     public interface ITokenProtectedResource
     {
-       // public string? AccessToken { get; set; }
         public Func<Task>? UpdateToken { get; set; }
 
         public bool TokenRequiresUpdate(Exception ex);
