@@ -203,6 +203,13 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	}
 
 	if flow, ok := cnOptions[OptionKeyOauthFlow]; ok {
+		if d.hdrs.Len() > 0 {
+			return adbc.Error{
+				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter OR token",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
 		flowVal, err := strconv.Atoi(flow)
 		if err != nil {
 			return adbc.Error{
