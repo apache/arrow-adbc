@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/apache/arrow-adbc/go/adbc"
 	"golang.org/x/oauth2"
 )
 
@@ -104,7 +103,7 @@ func newClientCredentials(options map[string]string) (*oAuthConfig, error) {
 
 var (
 	tokenExchangParams = map[string]oAuthOption{
-		adbc.OptionKeyToken:       {true, "subject_token"},
+		OptionKeyToken:            {true, "subject_token"},
 		OptionKeySubjectTokenType: {true, "subject_token_type"},
 		OptionKeyReqTokenType:     {false, "requested_token_type"},
 		OptionKeyExchangeAud:      {false, "audience"},

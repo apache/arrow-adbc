@@ -365,7 +365,7 @@ func (suite *OAuthTests) TearDownTest() {
 
 func (suite *OAuthTests) TestToken() {
 	err := suite.db.SetOptions(map[string]string{
-		adbc.OptionKeyToken: "test-client-token",
+		driver.OptionKeyToken: "test-client-token",
 	})
 	suite.Require().NoError(err)
 
@@ -375,7 +375,7 @@ func (suite *OAuthTests) TestToken() {
 func (suite *OAuthTests) TestTokenExchangeFlow() {
 	err := suite.db.SetOptions(map[string]string{
 		driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
-		adbc.OptionKeyToken:              "test-subject-token",
+		driver.OptionKeyToken:            "test-subject-token",
 		driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
 	})
@@ -441,7 +441,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
 			name: "Missing subject token type",
 			options: map[string]string{
 				driver.OptionKeyOauthFlow: strconv.Itoa(driver.TokenExchange),
-				adbc.OptionKeyToken:       "test-subject-token",
+				driver.OptionKeyToken:     "test-subject-token",
 				driver.OptionKeyTokenURI:  suite.oauthServer.URL,
 			},
 			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.exchange.subject_token_type",
@@ -450,7 +450,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
 			name: "Missing token URI",
 			options: map[string]string{
 				driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
-				adbc.OptionKeyToken:              "test-subject-token",
+				driver.OptionKeyToken:            "test-subject-token",
 				driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 			},
 			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.token_uri",
@@ -521,7 +521,7 @@ func (suite *OAuthTests) TestInvalidOAuthFlow() {
 			name: "Invalid flow value",
 			options: map[string]string{
 				driver.OptionKeyOauthFlow: "invalid-flow",
-				adbc.OptionKeyToken:       "test-token",
+				driver.OptionKeyToken:     "test-token",
 			},
 			expectedErrorMsg: "Invalid Argument: unsupported option",
 		},

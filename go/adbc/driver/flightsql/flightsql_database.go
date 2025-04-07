@@ -199,7 +199,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			delete(cnOptions, OptionKeyOauthFlow)
 		} else {
 			d.token = t
-			delete(cnOptions, adbc.OptionKeyToken)
+			delete(cnOptions, OptionKeyToken)
 		}
 	}
 
