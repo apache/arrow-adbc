@@ -20,7 +20,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     /// <summary>
     /// Parameters used for connecting to Spark data sources.
     /// </summary>
-    public static class SparkParameters
+    public class SparkParameters
     {
         public const string HostName = "adbc.spark.host";
         public const string Port = "adbc.spark.port";

@@ -15,12 +15,14 @@
  * limitations under the License.
  */
 
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
     /// Parameters used for connecting to Databricks data sources.
     /// </summary>
-    public class DatabricksParameters
+    public class DatabricksParameters : SparkParameters
     {
         // CloudFetch configuration parameters
         /// <summary>
