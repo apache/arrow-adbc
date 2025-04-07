@@ -450,34 +450,40 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	}
 
 	cl.Alloc = d.Alloc
+	// Authorization header is already set, continue
 	if len(authMiddle.hdrs.Get("authorization")) > 0 {
 		d.Logger.DebugContext(ctx, "reusing auth token", "location", loc)
-	} else {
-		if d.token != "" {
-			authMiddle.mutex.Lock()
-			defer authMiddle.mutex.Unlock()
-			authMiddle.hdrs.Set("authorization", "Bearer "+d.token)
-		} else if d.oauthFlow != nil {
-			token, err := d.oauthFlow.GetToken(ctx)
-			if err != nil {
-				return nil, adbcFromFlightStatusWithDetails(err, nil, nil, "Authenticate Oauth")
-			}
-			authMiddle.mutex.Lock()
-			defer authMiddle.mutex.Unlock()
-			authMiddle.hdrs.Set("authorization", "Bearer "+token.AccessToken)
-		} else if d.user != "" || d.pass != "" {
-			var header, trailer metadata.MD
-			ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
-			if err != nil {
-				return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
-			}
+		return cl, nil
+	}
 
-			if md, ok := metadata.FromOutgoingContext(ctx); ok {
-				authMiddle.mutex.Lock()
-				defer authMiddle.mutex.Unlock()
-				authMiddle.hdrs.Set("authorization", md.Get("Authorization")[0])
-			}
+	// Determine the authorization value to set
+	var authValue string
+
+	if d.token != "" {
+		// Authentication just using a token
+		authValue = "Bearer " + d.token
+	} else if d.oauthFlow != nil {
+		// OAuth flow authentication
+		token, err := d.oauthFlow.GetToken(ctx)
+		if err != nil {
+			return nil, adbcFromFlightStatusWithDetails(err, nil, nil, "Authenticate Oauth")
 		}
+		authValue = token.Type() + " " + token.AccessToken
+	} else if d.user != "" || d.pass != "" {
+		// Basic authentication using RPC
+		var header, trailer metadata.MD
+		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
+		if err != nil {
+			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
+		}
+
+		if md, ok := metadata.FromOutgoingContext(ctx); ok {
+			authValue = md.Get("Authorization")[0]
+		}
+	}
+
+	if authValue != "" {
+		authMiddle.SetHeader(authValue)
 	}
 
 	return cl, nil
@@ -603,4 +609,10 @@ func (b *bearerAuthMiddleware) HeadersReceived(ctx context.Context, md metadata.
 		defer b.mutex.Unlock()
 		b.hdrs.Set("authorization", headers...)
 	}
+}
+
+func (b *bearerAuthMiddleware) SetHeader(authValue string) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	b.hdrs.Set("authorization", authValue)
 }
