@@ -47,6 +47,9 @@ using adbc::driver::Status;
 namespace adbcpq {
 namespace {
 
+constexpr std::string_view kConnectionOptionTransactionStatus =
+    "adbc.postgresql.transaction_status";
+
 static const uint32_t kSupportedInfoCodes[] = {
     ADBC_INFO_VENDOR_NAME,          ADBC_INFO_VENDOR_VERSION,
     ADBC_INFO_DRIVER_NAME,          ADBC_INFO_DRIVER_VERSION,
@@ -471,6 +474,14 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
     return ADBC_STATUS_INVALID_STATE;
   }
 
+  PGTransactionStatusType txn_status = PQtransactionStatus(conn_);
+  if (txn_status == PQTRANS_IDLE) {
+    // https://github.com/apache/arrow-adbc/issues/2673: don't rollback if the
+    // transaction is idle, since it won't have any effect and PostgreSQL will
+    // issue a warning on the server side
+    return ADBC_STATUS_OK;
+  }
+
   PGresult* result = PQexec(conn_, "COMMIT; BEGIN TRANSACTION");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code = SetError(error, result, "%s%s",
@@ -615,6 +626,25 @@ AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
     output = (*it)[0].data;
   } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_AUTOCOMMIT) == 0) {
     output = autocommit_ ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED;
+  } else if (std::strcmp(option, kConnectionOptionTransactionStatus.data()) == 0) {
+    switch (PQtransactionStatus(conn_)) {
+      case PQTRANS_IDLE:
+        output = "idle";
+        break;
+      case PQTRANS_ACTIVE:
+        output = "active";
+        break;
+      case PQTRANS_INTRANS:
+        output = "intrans";
+        break;
+      case PQTRANS_INERROR:
+        output = "inerror";
+        break;
+      case PQTRANS_UNKNOWN:
+      default:
+        output = "unknown";
+        break;
+    }
   } else {
     return ADBC_STATUS_NOT_FOUND;
   }
@@ -1096,6 +1126,14 @@ AdbcStatusCode PostgresConnection::Rollback(struct AdbcError* error) {
   if (autocommit_) {
     SetError(error, "%s", "[libpq] Cannot rollback when autocommit is enabled");
     return ADBC_STATUS_INVALID_STATE;
+  }
+
+  PGTransactionStatusType txn_status = PQtransactionStatus(conn_);
+  if (txn_status == PQTRANS_IDLE) {
+    // https://github.com/apache/arrow-adbc/issues/2673: don't rollback if the
+    // transaction is idle, since it won't have any effect and PostgreSQL will
+    // issue a warning on the server side
+    return ADBC_STATUS_OK;
   }
 
   PGresult* result = PQexec(conn_, "ROLLBACK");

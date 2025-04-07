@@ -25,7 +25,7 @@ import pyarrow
 import pyarrow.dataset
 import pytest
 
-from adbc_driver_postgresql import StatementOptions, dbapi
+from adbc_driver_postgresql import ConnectionOptions, StatementOptions, dbapi
 
 
 @pytest.fixture
@@ -448,3 +448,24 @@ def test_timestamp_txn(postgres: dbapi.Connection) -> None:
         cur.execute("SELECT pg_current_xact_id_if_assigned()")
         assert cur.fetchone() != (None,)
     postgres.commit()
+
+
+def test_txn_status(postgres: dbapi.Connection) -> None:
+    def status() -> str:
+        return postgres.adbc_connection.get_option(
+            ConnectionOptions.TRANSACTION_STATUS.value
+        )
+
+    assert status() == "intrans"
+    postgres.rollback()
+    assert status() == "idle"
+
+    with postgres.cursor() as cur:
+        cur.execute("SELECT 1")
+        assert status() == "active"
+        postgres.commit()
+        assert status() == "intrans"
+        cur.execute("SELECT 1")
+        assert status() == "active"
+        postgres.rollback()
+        assert status() == "idle"
