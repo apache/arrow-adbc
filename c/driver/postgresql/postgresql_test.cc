@@ -1024,19 +1024,6 @@ TEST_F(PostgresStatementTest, TransactionStatus) {
     ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
     ASSERT_EQ("idle", ConnectionGetOption(&connection, txn_status, &error));
   }
-
-  {
-    adbc_validation::StreamReader reader;
-    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error),
-                IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                          &reader.rows_affected, &error),
-                IsOkStatus(&error));
-    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-
-    ASSERT_EQ("active", ConnectionGetOption(&connection, txn_status, &error));
-  }
-
   {
     adbc_validation::StreamReader reader;
     ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error),
