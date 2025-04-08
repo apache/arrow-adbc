@@ -16,14 +16,28 @@
 */
 
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
     public class StringValueTests(ITestOutputHelper output)
-        : Common.StringValueTests<SparkTestConfiguration, SparkTestEnvironment>(output, new SparkTestEnvironment.Factory())
+        : StringValueTests<DatabricksTestConfiguration, DatabricksTestEnvironment>(output, new DatabricksTestEnvironment.Factory())
     {
+        [SkippableTheory]
+        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.")]
+        internal async Task TestStringDataDatabricks(string? value)
+        {
+            await TestStringData(value);
+        }
+
+        [SkippableTheory]
+        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.")]
+        internal async Task TestVarcharDataDatabricks(string? value)
+        {
+            await TestVarcharData(value);
+        }
 
         [SkippableTheory]
         [InlineData(null)]
@@ -34,14 +48,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             await base.TestCharData(value);
         }
+
+        [SkippableTheory]
+        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.")]
+        internal async Task TestCharDataDatabricks(string? value)
+        {
+            await base.TestCharData(value);
+        }
+
         protected override async Task TestVarcharExceptionData(string value, string[] expectedTexts, string? expectedSqlState)
         {
             await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
         }
 
         [SkippableTheory]
-        [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "Exceeds", "length limitation: 10" }, null)]
-        public async Task TestVarcharExceptionDataSpark(string value, string[] expectedTexts, string? expectedSqlState)
+        [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "DELTA_EXCEED_CHAR_VARCHAR_LIMIT", "DeltaInvariantViolationException" }, "22001")]
+        public async Task TestVarcharExceptionDataDatabricks(string value, string[] expectedTexts, string? expectedSqlState)
         {
             await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
         }

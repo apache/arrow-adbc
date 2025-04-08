@@ -16,28 +16,22 @@
 */
 
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
-using Apache.Arrow.Types;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Xunit;
 using Xunit.Abstractions;
-using Apache.Arrow.Adbc.Client;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
     /// <summary>
-    /// End-to-end tests for the CloudFetch feature in the Spark ADBC driver.
+    /// End-to-end tests for the CloudFetch feature in the Databricks ADBC driver.
     /// </summary>
-    public class CloudFetchE2ETest : TestBase<SparkTestConfiguration, SparkTestEnvironment>
+    public class CloudFetchE2ETest : TestBase<DatabricksTestConfiguration, DatabricksTestEnvironment>
     {
         public CloudFetchE2ETest(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new DatabricksTestEnvironment.Factory())
         {
-            // Skip the test if the SPARK_TEST_CONFIG_FILE environment variable is not set
+            // Skip the test if the DATABRICKS_TEST_CONFIG_FILE environment variable is not set
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }
 
@@ -60,17 +54,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             // Create a statement with CloudFetch enabled
             var statement = Connection.CreateStatement();
-            statement.SetOption(SparkStatement.Options.UseCloudFetch, "true");
-            statement.SetOption(SparkStatement.Options.CanDecompressLz4, "true");
-            statement.SetOption(SparkStatement.Options.MaxBytesPerFile, "10485760"); // 10MB
-
+            statement.SetOption(DatabricksStatement.Options.UseCloudFetch, "true");
+            statement.SetOption(DatabricksStatement.Options.CanDecompressLz4, "true");
+            statement.SetOption(DatabricksStatement.Options.MaxBytesPerFile, "10485760"); // 10MB
 
             // Execute a query that generates a large result set using range function
             statement.SqlQuery = query;
 
             // Execute the query and get the result
             var result = await statement.ExecuteQueryAsync();
-
 
             if (result.Stream == null)
             {

@@ -26,7 +26,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 
 | Property               | Description | Default |
 | :---                   | :---        | :---    |
-| `adbc.spark.type`      | (Required) Indicates the Spark server type. One of `databricks`, `http` (future: `standard`) | |
+| `adbc.spark.type`      | (Required) Indicates the Spark server type. Currently only `http` (future: `standard`) | |
 | `adbc.spark.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only`, `basic`, and `token`. This property is optional. The authentication type can be inferred from `token`, `username`, and `password`. If a `token` value is provided, token authentication is used. Otherwise, if both `username` and `password` values are provided, basic authentication is used. | |
 | `adbc.spark.host`      | Host name for the data source. Do not include scheme or port number. Example: `sparkserver.region.cloudapp.azure.com` |  |
 | `adbc.spark.port`      | The port number the data source listens on for a new connections. | `443` |
@@ -67,33 +67,6 @@ The `adbc.apache.statement.polltime_ms` specifies the time between polls to the 
 
 The following table depicts how the Spark ADBC driver converts a Spark type to an Arrow type and a .NET type:
 
-### Spark on Databricks
-
-| Spark Type           | Arrow Type | C# Type |
-| :---                 | :---:      | :---:   |
-| ARRAY*               | String     | string  |
-| BIGINT               | Int64      | long |
-| BINARY               | Binary     | byte[] |
-| BOOLEAN              | Boolean    | bool |
-| CHAR                 | String     | string |
-| DATE                 | Date32     | DateTime |
-| DECIMAL              | Decimal128 | SqlDecimal |
-| DOUBLE               | Double     | double |
-| FLOAT                | Float      | float |
-| INT                  | Int32      | int |
-| INTERVAL_DAY_TIME+   | String     | string |
-| INTERVAL_YEAR_MONTH+ | String     | string |
-| MAP*                 | String     | string |
-| NULL                 | Null       | null |
-| SMALLINT             | Int16      | short |
-| STRING               | String     | string |
-| STRUCT*              | String     | string |
-| TIMESTAMP            | Timestamp  | DateTimeOffset |
-| TINYINT              | Int8       | sbyte |
-| UNION                | String     | string |
-| USER_DEFINED         | String     | string |
-| VARCHAR              | String     | string |
-
 ### Apache Spark over HTTP (adbc.spark.data_type_conv = ?)
 
 | Spark Type           | Arrow Type (`none`) | C# Type (`none`) | Arrow Type (`scalar`) | C# Type (`scalar`) |
@@ -125,14 +98,6 @@ The following table depicts how the Spark ADBC driver converts a Spark type to a
 \+ Interval types are returned as strings
 
 ## Supported Variants
-
-### Spark on Databricks
-
-Support for Spark on Databricks is the most mature.
-
-The Spark ADBC driver supports token-based authentiation using the
-[Databricks personal access token](https://docs.databricks.com/en/dev-tools/auth/pat.html).
-Basic (username and password) authenication is not supported, at this time.
 
 ### Apache Spark over HTPP
 

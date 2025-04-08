@@ -16,17 +16,49 @@
 */
 
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
-    public class DateTimeValueTests : Common.DateTimeValueTests<SparkTestConfiguration, SparkTestEnvironment>
+    public class DateTimeValueTests : DateTimeValueTests<DatabricksTestConfiguration, DatabricksTestEnvironment>
     {
         public DateTimeValueTests(ITestOutputHelper output)
-            : base(output, new SparkTestEnvironment.Factory())
+            : base(output, new DatabricksTestEnvironment.Factory())
         { }
+
+        [SkippableTheory]
+        [MemberData(nameof(TimestampBasicData), "TIMESTAMP_LTZ")]
+        [MemberData(nameof(TimestampExtendedData), "TIMESTAMP_LTZ")]
+        public async Task TestTimestampDataDatabricks(DateTimeOffset value, string columnType)
+        {
+            await base.TestTimestampData(value, columnType);
+        }
+
+        /// <summary>
+        /// Validates if driver can send and receive specific no timezone Timstamp values correctly
+        /// </summary>
+        [SkippableTheory]
+        [MemberData(nameof(TimestampBasicData), "TIMESTAMP_NTZ")]
+        [MemberData(nameof(TimestampExtendedData), "TIMESTAMP_NTZ")]
+        public async Task TestTimestampNoTimezoneDataDatabricks(DateTimeOffset value, string columnType)
+        {
+            string columnName = "TIMESTAMPTYPE";
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
+
+            string formattedValue = $"{value.ToString(DateFormat, CultureInfo.InvariantCulture)}";
+            DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateFormat, CultureInfo.InvariantCulture);
+
+            await ValidateInsertSelectDeleteSingleValueAsync(
+                table.TableName,
+                columnName,
+                // Remove timezone offset
+                new DateTimeOffset(truncatedValue.DateTime, TimeSpan.Zero),
+                QuoteValue(formattedValue));
+        }
 
         /// <summary>
         /// Tests INTERVAL data types (YEAR-MONTH and DAY-SECOND).

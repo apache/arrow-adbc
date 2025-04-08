@@ -15,19 +15,16 @@
 * limitations under the License.
 */
 
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
-    public class DateTimeValueTests : Common.DateTimeValueTests<ApacheTestConfiguration, HiveServer2TestEnvironment>
+    public class ComplexTypesValueTests : ComplexTypesValueTests<DatabricksTestConfiguration, DatabricksTestEnvironment>
     {
-        public DateTimeValueTests(ITestOutputHelper output)
-            : base(output, new HiveServer2TestEnvironment.Factory())
-        { }
-
-        protected override string GetFormattedTimestampValue(string value)
+        public ComplexTypesValueTests(ITestOutputHelper output)
+            : base(output, new DatabricksTestEnvironment.Factory())
         {
-            return "TO_TIMESTAMP(" + QuoteValue(value) + ")";
         }
     }
 }

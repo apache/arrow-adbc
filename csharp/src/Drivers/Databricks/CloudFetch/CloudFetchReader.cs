@@ -18,24 +18,20 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using K4os.Compression.LZ4.Streams;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
     /// Reader for CloudFetch results from Databricks Spark Thrift server.
     /// Handles downloading and processing URL-based result sets.
     /// </summary>
-    internal sealed class SparkCloudFetchReader : IArrowArrayStream
+    internal sealed class CloudFetchReader : IArrowArrayStream
     {
         // Default values used if not specified in connection properties
         private const int DefaultMaxRetries = 3;
@@ -46,7 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         private readonly int retryDelayMs;
         private readonly int timeoutMinutes;
 
-        private HiveServer2Statement? statement;
+        private DatabricksStatement? statement;
         private readonly Schema schema;
         private List<TSparkArrowResultLink>? resultLinks;
         private int linkIndex;
@@ -58,12 +54,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         private readonly Lazy<HttpClient> httpClient;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SparkCloudFetchReader"/> class.
+        /// Initializes a new instance of the <see cref="CloudFetchReader"/> class.
         /// </summary>
-        /// <param name="statement">The HiveServer2 statement.</param>
+        /// <param name="statement">The Databricks statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        public SparkCloudFetchReader(HiveServer2Statement statement, Schema schema, bool isLz4Compressed)
+        public CloudFetchReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
         {
             this.statement = statement;
             this.schema = schema;
@@ -74,7 +70,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
             // Parse max retries
             int parsedMaxRetries = DefaultMaxRetries;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchMaxRetries, out string? maxRetriesStr) &&
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchMaxRetries, out string? maxRetriesStr) &&
                 int.TryParse(maxRetriesStr, out parsedMaxRetries) &&
                 parsedMaxRetries > 0)
             {
@@ -88,7 +84,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
             // Parse retry delay
             int parsedRetryDelay = DefaultRetryDelayMs;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchRetryDelayMs, out string? retryDelayStr) &&
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchRetryDelayMs, out string? retryDelayStr) &&
                 int.TryParse(retryDelayStr, out parsedRetryDelay) &&
                 parsedRetryDelay > 0)
             {
@@ -102,7 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
             // Parse timeout minutes
             int parsedTimeout = DefaultTimeoutMinutes;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchTimeoutMinutes, out string? timeoutStr) &&
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchTimeoutMinutes, out string? timeoutStr) &&
                 int.TryParse(timeoutStr, out parsedTimeout) &&
                 parsedTimeout > 0)
             {
@@ -201,7 +197,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                     catch (Exception ex)
                     {
                         // Create concise error message based on exception type
-                        string errorPrefix = $"CloudFetch link {this.linkIndex-1}:";
+                        string errorPrefix = $"CloudFetch link {this.linkIndex - 1}:";
                         string errorMessage = ex switch
                         {
                             _ when ex.GetType().Name.Contains("LZ4") => $"{errorPrefix} LZ4 decompression failed - Data may be corrupted",

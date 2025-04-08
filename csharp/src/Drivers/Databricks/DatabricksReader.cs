@@ -17,31 +17,29 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using K4os.Compression.LZ4.Streams;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
-    internal sealed class SparkDatabricksReader : IArrowArrayStream
+    internal sealed class DatabricksReader : IArrowArrayStream
     {
-        HiveServer2Statement? statement;
+        DatabricksStatement? statement;
         Schema schema;
         List<TSparkArrowBatch>? batches;
         int index;
         IArrowReader? reader;
         bool isLz4Compressed;
 
-        public SparkDatabricksReader(HiveServer2Statement statement, Schema schema)
+        public DatabricksReader(DatabricksStatement statement, Schema schema)
             : this(statement, schema, false)
         {
         }
 
-        public SparkDatabricksReader(HiveServer2Statement statement, Schema schema, bool isLz4Compressed)
+        public DatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
         {
             this.statement = statement;
             this.schema = schema;

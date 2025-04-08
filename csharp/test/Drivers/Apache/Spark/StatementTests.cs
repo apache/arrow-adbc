@@ -17,9 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
 using Xunit.Abstractions;
@@ -40,50 +37,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             base.StatementTimeoutTest(statementWithExceptions);
         }
 
-        [SkippableTheory]
-        [InlineData(true, "CloudFetch enabled")]
-        [InlineData(false, "CloudFetch disabled")]
-        public async Task LZ4DecompressionCapabilityTest(bool useCloudFetch, string configName)
-        {
-            OutputHelper?.WriteLine($"Testing with LZ4 decompression capability enabled ({configName})");
-
-            // Create a connection using the test configuration
-            using AdbcConnection connection = NewConnection();
-            using var statement = connection.CreateStatement();
-
-            // Set options for LZ4 decompression (enabled by default) and CloudFetch as specified
-            statement.SetOption(SparkStatement.Options.UseCloudFetch, useCloudFetch.ToString().ToLower());
-            OutputHelper?.WriteLine($"CloudFetch is {(useCloudFetch ? "enabled" : "disabled")}");
-            OutputHelper?.WriteLine("LZ4 decompression capability is enabled by default");
-
-            // Execute a query that should return data
-            statement.SqlQuery = "SELECT id, CAST(id AS STRING) as id_string, id * 2 as id_doubled FROM RANGE(100)";
-            QueryResult result = statement.ExecuteQuery();
-
-            // Verify we have a valid stream
-            Assert.NotNull(result.Stream);
-
-            // Read all batches
-            int totalRows = 0;
-            int batchCount = 0;
-
-            while (result.Stream != null)
-            {
-                using var batch = await result.Stream.ReadNextRecordBatchAsync();
-                if (batch == null)
-                    break;
-
-                batchCount++;
-                totalRows += batch.Length;
-                OutputHelper?.WriteLine($"Batch {batchCount}: Read {batch.Length} rows");
-            }
-
-            // Verify we got all rows
-            Assert.Equal(100, totalRows);
-            OutputHelper?.WriteLine($"Successfully read {totalRows} rows in {batchCount} batches with {configName}");
-            OutputHelper?.WriteLine("NOTE: Whether actual LZ4 compression was used is determined by the server");
-        }
-
         internal class LongRunningStatementTimeoutTestData : ShortRunningStatementTimeoutTestData
         {
             public LongRunningStatementTimeoutTestData()
@@ -94,27 +47,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 Add(new(null, longRunningQuery, typeof(TimeoutException)));
                 Add(new(0, longRunningQuery, null));
             }
-        }
-
-        [SkippableFact]
-        public async Task CanGetPrimaryKeysDatabricks()
-        {
-            Skip.If(TestEnvironment.ServerType != SparkServerType.Databricks);
-            await base.CanGetPrimaryKeys(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
-        }
-
-        [SkippableFact]
-        public async Task CanGetCrossReferenceFromParentTableDatabricks()
-        {
-            Skip.If(TestEnvironment.ServerType != SparkServerType.Databricks);
-            await base.CanGetCrossReferenceFromParentTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
-        }
-
-        [SkippableFact]
-        public async Task CanGetCrossReferenceFromChildTableDatabricks()
-        {
-            Skip.If(TestEnvironment.ServerType != SparkServerType.Databricks);
-            await base.CanGetCrossReferenceFromChildTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
         }
 
         protected override void PrepareCreateTableWithPrimaryKeys(out string sqlUpdate, out string tableNameParent, out string fullTableNameParent, out IReadOnlyList<string> primaryKeys)

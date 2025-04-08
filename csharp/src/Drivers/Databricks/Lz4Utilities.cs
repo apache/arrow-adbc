@@ -16,11 +16,10 @@
 */
 
 using System;
-using System.Buffers;
 using System.IO;
 using K4os.Compression.LZ4.Streams;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
     /// Utility class for LZ4 compression/decompression operations.

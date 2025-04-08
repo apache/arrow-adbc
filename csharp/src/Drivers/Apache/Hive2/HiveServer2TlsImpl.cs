@@ -16,11 +16,11 @@
 */
 
 using System;
-using System.IO;
 using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using System.Net.Http;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {

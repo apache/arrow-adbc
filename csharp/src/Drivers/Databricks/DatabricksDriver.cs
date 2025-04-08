@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -15,19 +15,18 @@
 * limitations under the License.
 */
 
-using Xunit.Abstractions;
+using System.Collections.Generic;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
+namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
-    public class DateTimeValueTests : Common.DateTimeValueTests<ApacheTestConfiguration, HiveServer2TestEnvironment>
+    /// <summary>
+    /// Databricks-specific implementation of <see cref="AdbcDriver"/>
+    /// </summary>
+    public class DatabricksDriver : AdbcDriver
     {
-        public DateTimeValueTests(ITestOutputHelper output)
-            : base(output, new HiveServer2TestEnvironment.Factory())
-        { }
-
-        protected override string GetFormattedTimestampValue(string value)
+        public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
         {
-            return "TO_TIMESTAMP(" + QuoteValue(value) + ")";
+            return new DatabricksDatabase(parameters);
         }
     }
 }
