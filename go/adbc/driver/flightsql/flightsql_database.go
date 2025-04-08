@@ -37,6 +37,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -68,7 +69,7 @@ type databaseImpl struct {
 	enableCookies bool
 	options       map[string]string
 	userDialOpts  []grpc.DialOption
-	oauthFlow     OauthAuthFlow
+	oauthToken    *oauth.TokenSource
 }
 
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
@@ -181,9 +182,8 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 
 		// if contains token. it can bypass or use token exchange
 		if flow, ok := cnOptions[OptionKeyOauthFlow]; ok {
-			var flowVal int
-			var err error
-			if flowVal, err = strconv.Atoi(flow); err != nil || flowVal != TokenExchange {
+			flowVal, err := strconv.Atoi(flow)
+			if err != nil || flowVal != TokenExchange {
 				return adbc.Error{
 					Msg:  "unsupported option",
 					Code: adbc.StatusInvalidArgument,
@@ -194,7 +194,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			if err != nil {
 				return err
 			}
-			d.oauthFlow = tokExchange
+			d.oauthToken = tokExchange
 			delete(cnOptions, OptionKeyOauthFlow)
 		} else {
 			d.hdrs.Set("authorization", "Bearer "+t)
@@ -223,7 +223,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			if err != nil {
 				return err
 			}
-			d.oauthFlow = cl
+			d.oauthToken = cl
 			delete(cnOptions, OptionKeyOauthFlow)
 		default:
 			return adbc.Error{
@@ -439,6 +439,10 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
 	dialOpts = append(dialOpts, d.userDialOpts...)
 
+	if d.oauthToken != nil {
+		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: d.oauthToken}))
+	}
+
 	d.Logger.DebugContext(ctx, "new client", "location", loc)
 	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)
 	if err != nil {
@@ -455,18 +459,9 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 		return cl, nil
 	}
 
-	// Determine the authorization value to set
 	var authValue string
 
-	if d.oauthFlow != nil {
-		// OAuth flow authentication
-		token, err := d.oauthFlow.GetToken(ctx)
-		if err != nil {
-			return nil, adbcFromFlightStatusWithDetails(err, nil, nil, "Authenticate Oauth")
-		}
-		authValue = token.Type() + " " + token.AccessToken
-	} else if d.user != "" || d.pass != "" {
-		// Basic authentication using RPC
+	if d.user != "" || d.pass != "" {
 		var header, trailer metadata.MD
 		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
 		if err != nil {
