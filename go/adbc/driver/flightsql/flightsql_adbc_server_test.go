@@ -20,10 +20,18 @@
 package flightsql_test
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -52,6 +60,7 @@ import (
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
@@ -71,16 +80,14 @@ type ServerBasedTests struct {
 }
 
 func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware []flight.ServerMiddleware, dbArgs map[string]string, dialOpts ...grpc.DialOption) {
-	suite.s = flight.NewServerWithMiddleware(srvMiddleware)
-	suite.s.RegisterFlightService(flightsql.NewFlightServer(srv))
-	suite.Require().NoError(suite.s.Init("localhost:0"))
-	suite.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
-	go func() {
-		_ = suite.s.Serve()
-	}()
+	suite.setupFlightServer(srv, srvMiddleware)
 
-	uri := "grpc+tcp://" + suite.s.Addr().String()
+	suite.setupDatabase(dbArgs, dialOpts...)
+}
+
+func (suite *ServerBasedTests) setupDatabase(dbArgs map[string]string, dialOpts ...grpc.DialOption) {
 	var err error
+	uri := "grpc+tcp://" + suite.s.Addr().String()
 
 	args := map[string]string{
 		"uri": uri,
@@ -88,6 +95,16 @@ func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware 
 	maps.Copy(args, dbArgs)
 	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabaseWithOptions(args, dialOpts...)
 	suite.Require().NoError(err)
+}
+
+func (suite *ServerBasedTests) setupFlightServer(srv flightsql.Server, srvMiddleware []flight.ServerMiddleware, srvOpts ...grpc.ServerOption) {
+	suite.s = flight.NewServerWithMiddleware(srvMiddleware, srvOpts...)
+	suite.s.RegisterFlightService(flightsql.NewFlightServer(srv))
+	suite.Require().NoError(suite.s.Init("localhost:0"))
+	suite.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
+	go func() {
+		_ = suite.s.Serve()
+	}()
 }
 
 func (suite *ServerBasedTests) SetupTest() {
@@ -104,6 +121,59 @@ func (suite *ServerBasedTests) TearDownSuite() {
 	suite.NoError(suite.db.Close())
 	suite.db = nil
 	suite.s.Shutdown()
+}
+
+func (suite *ServerBasedTests) generateCertOption() grpc.ServerOption {
+	// Generate a self-signed certificate in-process for testing
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	suite.Require().NoError(err)
+	certTemplate := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"Unit Tests Incorporated"},
+		},
+		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+	certDer, err := x509.CreateCertificate(rand.Reader, &certTemplate, &certTemplate, &privKey.PublicKey, privKey)
+	suite.Require().NoError(err)
+	buffer := &bytes.Buffer{}
+	suite.Require().NoError(pem.Encode(buffer, &pem.Block{Type: "CERTIFICATE", Bytes: certDer}))
+	certBytes := make([]byte, buffer.Len())
+	copy(certBytes, buffer.Bytes())
+	buffer.Reset()
+	suite.Require().NoError(pem.Encode(buffer, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privKey)}))
+	keyBytes := make([]byte, buffer.Len())
+	copy(keyBytes, buffer.Bytes())
+
+	cert, err := tls.X509KeyPair(certBytes, keyBytes)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(err)
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
+	tlsCreds := credentials.NewTLS(tlsConfig)
+
+	return grpc.Creds(tlsCreds)
+}
+
+func (suite *ServerBasedTests) openAndExecuteQuery(query string) {
+	var err error
+	suite.cnxn, err = suite.db.Open(context.Background())
+	suite.Require().NoError(err)
+	defer suite.cnxn.Close()
+
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer stmt.Close()
+
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	suite.NoError(err)
+	defer reader.Release()
 }
 
 // ---- Tests --------------------
@@ -236,23 +306,45 @@ type AuthnTests struct {
 }
 
 func (suite *AuthnTests) SetupSuite() {
-	suite.DoSetupSuite(&AuthnTestServer{}, []flight.ServerMiddleware{
+	suite.setupFlightServer(&AuthnTestServer{}, []flight.ServerMiddleware{
 		{Stream: authnTestStream, Unary: authnTestUnary},
-	}, map[string]string{
-		driver.OptionAuthorizationHeader: "Bearer initial",
 	})
 }
 
-func (suite *AuthnTests) TestBearerTokenUpdated() {
-	// apache/arrow-adbc#584: when setting the auth header directly, the client should use any updated token value from the server if given
-	stmt, err := suite.cnxn.NewStatement()
-	suite.Require().NoError(err)
-	defer stmt.Close()
+func (suite *AuthnTests) SetupTest() {
+	suite.setupDatabase(map[string]string{
+		"uri": "grpc+tcp://" + suite.s.Addr().String(),
+	})
+}
 
-	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
-	reader, _, err := stmt.ExecuteQuery(context.Background())
-	suite.NoError(err)
-	defer reader.Release()
+func (suite *AuthnTests) TearDownTest() {
+	suite.NoError(suite.db.Close())
+	suite.db = nil
+}
+
+func (suite *AuthnTests) TearDownSuite() {
+	suite.s.Shutdown()
+}
+
+func (suite *AuthnTests) TestBearerTokenUpdated() {
+	err := suite.db.SetOptions(map[string]string{
+		driver.OptionAuthorizationHeader: "Bearer initial",
+	})
+	suite.Require().NoError(err)
+
+	// apache/arrow-adbc#584: when setting the auth header directly, the client should use any updated token value from the server if given
+
+	suite.openAndExecuteQuery("a-query")
+}
+
+func (suite *AuthnTests) TestToken() {
+	err := suite.db.SetOptions(map[string]string{
+		driver.OptionKeyToken: "initial",
+	})
+
+	suite.Require().NoError(err)
+
+	suite.openAndExecuteQuery("a-query")
 }
 
 type OAuthTests struct {
@@ -340,36 +432,26 @@ func oauthTestUnary(ctx context.Context, req interface{}, info *grpc.UnaryServer
 func (suite *OAuthTests) SetupSuite() {
 	suite.mockOAuthServer = &MockOAuthServer{}
 	suite.oauthServer = httptest.NewServer(http.HandlerFunc(suite.mockOAuthServer.handleTokenRequest))
-	suite.DoSetupSuite(&AuthnTestServer{}, []flight.ServerMiddleware{
+
+	suite.setupFlightServer(&AuthnTestServer{}, []flight.ServerMiddleware{
 		{Unary: oauthTestUnary},
-	}, map[string]string{})
+	}, suite.generateCertOption())
 }
 
 func (suite *OAuthTests) TearDownSuite() {
 	suite.oauthServer.Close()
+	suite.s.Shutdown()
 }
 
 func (suite *OAuthTests) SetupTest() {
-	// override inherited setup to reset db and open the database during test execution
-	var err error
-	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabaseWithOptions(
-		map[string]string{
-			"uri": "grpc+tcp://" + suite.s.Addr().String(),
-		})
-	suite.Require().NoError(err)
+	suite.setupDatabase(map[string]string{
+		"uri": "grpc+tls://" + suite.s.Addr().String(),
+	})
 }
 
 func (suite *OAuthTests) TearDownTest() {
-	suite.db.Close()
-}
-
-func (suite *OAuthTests) TestToken() {
-	err := suite.db.SetOptions(map[string]string{
-		driver.OptionKeyToken: "test-client-token",
-	})
-	suite.Require().NoError(err)
-
-	suite.openAndExecuteQuery("a-query")
+	suite.NoError(suite.db.Close())
+	suite.db = nil
 }
 
 func (suite *OAuthTests) TestTokenExchangeFlow() {
@@ -378,6 +460,7 @@ func (suite *OAuthTests) TestTokenExchangeFlow() {
 		driver.OptionKeyToken:            "test-subject-token",
 		driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
+		driver.OptionSSLSkipVerify:       adbc.OptionValueEnabled,
 	})
 	suite.Require().NoError(err)
 
@@ -391,6 +474,7 @@ func (suite *OAuthTests) TestClientCredentialsFlow() {
 		driver.OptionKeyClientId:     "test-client",
 		driver.OptionKeyClientSecret: "test-secret",
 		driver.OptionKeyTokenURI:     suite.oauthServer.URL,
+		driver.OptionSSLSkipVerify:   adbc.OptionValueEnabled,
 	})
 	suite.Require().NoError(err)
 
@@ -403,22 +487,6 @@ func (suite *OAuthTests) TestClientCredentialsFlow() {
 	// if it fails, it retries sending the client credentials in the request body.
 	// See https://code.google.com/p/goauth2/issues/detail?id=31 for background.
 	suite.Equal(2, suite.mockOAuthServer.clientCredentialsCalls, "Client credentials flow should be called once")
-}
-
-func (suite *OAuthTests) openAndExecuteQuery(query string) {
-	var err error
-	suite.cnxn, err = suite.db.Open(context.Background())
-	suite.Require().NoError(err)
-	defer suite.cnxn.Close()
-
-	stmt, err := suite.cnxn.NewStatement()
-	suite.Require().NoError(err)
-	defer stmt.Close()
-
-	suite.Require().NoError(stmt.SetSqlQuery(query))
-	reader, _, err := stmt.ExecuteQuery(context.Background())
-	suite.NoError(err)
-	defer reader.Release()
 }
 
 func (suite *OAuthTests) TestFailOauthWithTokenSet() {
