@@ -44,6 +44,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         private CancellationTokenSource? _cancellationTokenSource;
         private bool _isCompleted;
         private Exception? _error;
+        private readonly object _errorLock = new object();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloader"/> class.
@@ -137,6 +138,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         {
             try
             {
+                // Check if there's an error before trying to take from the queue
+                if (HasError)
+                {
+                    throw new AdbcException("Error in download process", _error ?? new Exception("Unknown error"));
+                }
+
                 // Try to take the next result from the queue
                 IDownloadResult result = await Task.Run(() => _resultQueue.Take(cancellationToken), cancellationToken);
                 
@@ -160,10 +167,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 _isCompleted = true;
                 return null;
             }
+            catch (AdbcException)
+            {
+                // Re-throw AdbcExceptions (these are our own errors)
+                throw;
+            }
             catch (Exception ex)
             {
                 // If there's an error, set the error state and propagate it
-                _error = ex;
+                SetError(ex);
                 throw;
             }
         }
@@ -176,10 +188,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
             {
                 // Keep track of active download tasks
                 var downloadTasks = new ConcurrentDictionary<Task, IDownloadResult>();
+                var downloadTaskCompletionSource = new TaskCompletionSource<bool>();
 
                 // Process items from the download queue until it's completed
                 foreach (var downloadResult in _downloadQueue.GetConsumingEnumerable(cancellationToken))
                 {
+                    // Check if there's an error before processing more downloads
+                    if (HasError)
+                    {
+                        // Add the failed download result to the queue to signal the error
+                        // This will be caught by GetNextDownloadedFileAsync
+                        break;
+                    }
+
                     // Check if this is the end of results guard
                     if (downloadResult == EndOfResultsGuard.Instance)
                     {
@@ -193,12 +214,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                             catch (Exception ex)
                             {
                                 Debug.WriteLine($"Error waiting for downloads to complete: {ex.Message}");
+                                // Don't set error here, as individual download tasks will handle their own errors
                             }
                         }
 
-                        // Add the guard to the result queue to signal the end of results
-                        _resultQueue.Add(EndOfResultsGuard.Instance, cancellationToken);
-                        _isCompleted = true;
+                        // Only add the guard if there's no error
+                        if (!HasError)
+                        {
+                            // Add the guard to the result queue to signal the end of results
+                            _resultQueue.Add(EndOfResultsGuard.Instance, cancellationToken);
+                            _isCompleted = true;
+                        }
                         break;
                     }
 
@@ -218,13 +244,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                             // Handle any exceptions
                             if (t.IsFaulted)
                             {
-                                Debug.WriteLine($"Download failed: {t.Exception?.InnerException?.Message}");
-                                downloadResult.SetFailed(t.Exception?.InnerException ?? new Exception("Unknown error"));
+                                Exception ex = t.Exception?.InnerException ?? new Exception("Unknown error");
+                                Debug.WriteLine($"Download failed: {ex.Message}");
+                                
+                                // Set the download as failed
+                                downloadResult.SetFailed(ex);
+                                
+                                // Set the error state to stop the download process
+                                SetError(ex);
+                                
+                                // Signal that we should stop processing downloads
+                                downloadTaskCompletionSource.TrySetException(ex);
                             }
                         }, cancellationToken);
 
                     // Add the task to the dictionary
                     downloadTasks[downloadTask] = downloadResult;
+                    
+                    // If there's an error, stop processing more downloads
+                    if (HasError)
+                    {
+                        break;
+                    }
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -234,18 +275,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in download loop: {ex.Message}");
-                _error = ex;
-                
-                // Add the guard to the result queue to signal the end of results
-                try
+                SetError(ex);
+            }
+            finally
+            {
+                // If there's an error, add the error to the result queue
+                if (HasError)
                 {
-                    _resultQueue.Add(EndOfResultsGuard.Instance, CancellationToken.None);
+                    CompleteWithError();
                 }
-                catch (Exception)
-                {
-                    // Ignore any errors when adding the guard in case of error
-                }
-                _isCompleted = true;
             }
         }
 
@@ -253,27 +291,31 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         {
             string url = downloadResult.Link.FileLink;
             byte[]? fileData = null;
-
+            
+            // Use the size directly from the download result
+            long size = downloadResult.Size;
+            
             // Acquire memory before downloading
-            await _memoryManager.AcquireMemoryAsync(downloadResult.Size, cancellationToken).ConfigureAwait(false);
+            await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
 
             // Retry logic for downloading files
             for (int retry = 0; retry < _maxRetries; retry++)
             {
                 try
                 {
-                    // Download the file
+                    // Download the file directly
                     using HttpResponseMessage response = await _httpClient.GetAsync(
                         url, 
+                        HttpCompletionOption.ResponseHeadersRead, 
                         cancellationToken).ConfigureAwait(false);
                     
                     response.EnsureSuccessStatusCode();
 
-                    // Get the content length if available
-                    long? actualContentLength = response.Content.Headers.ContentLength;
-                    if (actualContentLength.HasValue && actualContentLength.Value > 0)
+                    // Log the download size if available from response headers
+                    long? contentLength = response.Content.Headers.ContentLength;
+                    if (contentLength.HasValue && contentLength.Value > 0)
                     {
-                        Debug.WriteLine($"Downloading file of size: {actualContentLength.Value / 1024.0 / 1024.0:F2} MB");
+                        Debug.WriteLine($"Downloading file of size: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
                     }
 
                     // Read the file data
@@ -291,7 +333,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
             if (fileData == null)
             {
                 // Release the memory we acquired
-                _memoryManager.ReleaseMemory(downloadResult.Size);
+                _memoryManager.ReleaseMemory(size);
                 throw new InvalidOperationException($"Failed to download file from {url} after {_maxRetries} attempts.");
             }
 
@@ -314,7 +356,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 catch (Exception ex)
                 {
                     // Release the memory we acquired
-                    _memoryManager.ReleaseMemory(downloadResult.Size);
+                    _memoryManager.ReleaseMemory(size);
                     throw new InvalidOperationException($"Error decompressing data: {ex.Message}", ex);
                 }
             }
@@ -323,11 +365,38 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 dataStream = new MemoryStream(fileData);
             }
 
-            // Set the download as completed
-            downloadResult.SetCompleted(dataStream, downloadResult.Size);
+            // Set the download as completed with the original size
+            downloadResult.SetCompleted(dataStream, size);
 
             // Add the result to the result queue
             _resultQueue.Add(downloadResult, cancellationToken);
+        }
+
+        private void SetError(Exception ex)
+        {
+            lock (_errorLock)
+            {
+                if (_error == null)
+                {
+                    _error = ex;
+                }
+            }
+        }
+
+        private void CompleteWithError()
+        {
+            try
+            {
+                // Mark the result queue as completed to prevent further additions
+                _resultQueue.CompleteAdding();
+                
+                // Mark the download as completed with error
+                _isCompleted = true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error completing with error: {ex.Message}");
+            }
         }
     }
 }

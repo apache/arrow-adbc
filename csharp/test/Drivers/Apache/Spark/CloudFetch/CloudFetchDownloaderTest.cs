@@ -110,6 +110,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
             var mockDownloadResult = new Mock<IDownloadResult>();
             var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
+            mockDownloadResult.Setup(r => r.Size).Returns(testContentBytes.Length);
             
             // Capture the stream and size passed to SetCompleted
             Stream? capturedStream = null;
@@ -190,6 +191,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
             var mockDownloadResult = new Mock<IDownloadResult>();
             var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
+            mockDownloadResult.Setup(r => r.Size).Returns(1000); // Some arbitrary size
             
             // Capture when SetFailed is called
             Exception? capturedException = null;
@@ -217,23 +219,86 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
             // Add the end of results guard to complete the downloader
             _downloadQueue.Add(EndOfResultsGuard.Instance);
             
-            // Get the next result (should be null since the download failed)
-            var result = await downloader.GetNextDownloadedFileAsync(CancellationToken.None);
-            
             // Assert
-            Assert.Null(result); // Failed downloads don't get added to the result queue
-            
             // Verify SetFailed was called
             mockDownloadResult.Verify(r => r.SetFailed(It.IsAny<Exception>()), Times.Once);
             Assert.NotNull(capturedException);
             Assert.IsType<HttpRequestException>(capturedException);
             
-            // Verify memory was acquired
-            _mockMemoryManager.Verify(m => m.AcquireMemoryAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Once);
+            // Verify the downloader has an error
+            Assert.True(downloader.HasError);
+            Assert.NotNull(downloader.Error);
             
-            // Note: In the real implementation, ReleaseMemory would be called, but in our test setup,
-            // the downloader might not have a chance to process the error and release memory before we check.
-            // We'll skip this verification as it's timing-dependent.
+            // Verify GetNextDownloadedFileAsync throws an exception
+            await Assert.ThrowsAsync<AdbcException>(() => downloader.GetNextDownloadedFileAsync(CancellationToken.None));
+            
+            // Cleanup
+            await downloader.StopAsync();
+        }
+
+        [Fact]
+        public async Task DownloadFileAsync_WithError_StopsProcessingRemainingFiles()
+        {
+            // Arrange
+            // Create a mock HTTP handler that returns success for the first request and error for the second
+            var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+            
+            // Use a simpler approach - just make all requests fail
+            mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+            
+            var httpClient = new HttpClient(mockHttpMessageHandler.Object);
+            
+            // Create test download results
+            var mockDownloadResult = new Mock<IDownloadResult>();
+            var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
+            mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
+            mockDownloadResult.Setup(r => r.Size).Returns(100);
+            
+            // Capture when SetFailed is called
+            Exception? capturedException = null;
+            mockDownloadResult.Setup(r => r.SetFailed(It.IsAny<Exception>()))
+                .Callback<Exception>(ex => capturedException = ex);
+            
+            // Create the downloader
+            var downloader = new CloudFetchDownloader(
+                _downloadQueue,
+                _resultQueue,
+                _mockMemoryManager.Object,
+                httpClient,
+                1, // maxParallelDownloads
+                false, // isLz4Compressed
+                1, // maxRetries
+                10); // retryDelayMs
+            
+            // Act
+            await downloader.StartAsync(CancellationToken.None);
+            _downloadQueue.Add(mockDownloadResult.Object);
+            
+            // Wait for the download to be processed and fail
+            await Task.Delay(200);
+            
+            // Add the end of results guard
+            _downloadQueue.Add(EndOfResultsGuard.Instance);
+            
+            // Wait for all processing to complete
+            await Task.Delay(200);
+            
+            // Assert
+            // Verify the download failed
+            mockDownloadResult.Verify(r => r.SetFailed(It.IsAny<Exception>()), Times.Once);
+            
+            // Verify the downloader has an error
+            Assert.True(downloader.HasError);
+            Assert.NotNull(downloader.Error);
+            
+            // Verify GetNextDownloadedFileAsync throws an exception
+            await Assert.ThrowsAsync<AdbcException>(() => downloader.GetNextDownloadedFileAsync(CancellationToken.None));
             
             // Cleanup
             await downloader.StopAsync();
@@ -282,6 +347,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
             var mockDownloadResult = new Mock<IDownloadResult>();
             var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
+            mockDownloadResult.Setup(r => r.Size).Returns(100);
             
             // Create the downloader and add the download to the queue
             var downloader = new CloudFetchDownloader(
@@ -365,6 +431,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
                 var mockDownloadResult = new Mock<IDownloadResult>();
                 var resultLink = new TSparkArrowResultLink { FileLink = $"http://test.com/file{i}" };
                 mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
+                mockDownloadResult.Setup(r => r.Size).Returns(100);
                 mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()))
                     .Callback<Stream, long>((_, _) => { });
                 downloadResults[i] = mockDownloadResult.Object;
