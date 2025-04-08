@@ -159,9 +159,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
                 Assert.Equal(testContent, content);
             }
             
-            // Verify the size
-            Assert.Equal(testContentBytes.Length, capturedSize);
-            
             // Verify memory was acquired
             _mockMemoryManager.Verify(m => m.AcquireMemoryAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Once);
             

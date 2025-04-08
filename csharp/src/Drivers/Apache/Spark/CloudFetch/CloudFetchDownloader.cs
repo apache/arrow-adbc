@@ -253,41 +253,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         {
             string url = downloadResult.Link.FileLink;
             byte[]? fileData = null;
-            long contentLength = 0;
-
-            // Try to get the content length first to reserve memory
-            try
-            {
-                using var request = new HttpRequestMessage(HttpMethod.Head, url);
-                using var headResponse = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-                headResponse.EnsureSuccessStatusCode();
-
-                if (headResponse.Content.Headers.ContentLength.HasValue)
-                {
-                    contentLength = headResponse.Content.Headers.ContentLength.Value;
-                    
-                    // Add a buffer for decompression if needed
-                    if (_isLz4Compressed)
-                    {
-                        // LZ4 compression ratio is typically 2:1 to 5:1, so we'll estimate 3:1
-                        contentLength *= 3;
-                    }
-                }
-                else
-                {
-                    // If we can't determine the content length, use a conservative estimate
-                    contentLength = 10 * 1024 * 1024; // 10 MB
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error getting content length: {ex.Message}");
-                // If we can't determine the content length, use a conservative estimate
-                contentLength = 10 * 1024 * 1024; // 10 MB
-            }
 
             // Acquire memory before downloading
-            await _memoryManager.AcquireMemoryAsync(contentLength, cancellationToken).ConfigureAwait(false);
+            await _memoryManager.AcquireMemoryAsync(downloadResult.Size, cancellationToken).ConfigureAwait(false);
 
             // Retry logic for downloading files
             for (int retry = 0; retry < _maxRetries; retry++)
@@ -297,7 +265,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                     // Download the file
                     using HttpResponseMessage response = await _httpClient.GetAsync(
                         url, 
-                        HttpCompletionOption.ResponseHeadersRead, 
                         cancellationToken).ConfigureAwait(false);
                     
                     response.EnsureSuccessStatusCode();
@@ -324,13 +291,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
             if (fileData == null)
             {
                 // Release the memory we acquired
-                _memoryManager.ReleaseMemory(contentLength);
+                _memoryManager.ReleaseMemory(downloadResult.Size);
                 throw new InvalidOperationException($"Failed to download file from {url} after {_maxRetries} attempts.");
             }
 
             // Process the downloaded file data
             MemoryStream dataStream;
-            long actualSize;
 
             // If the data is LZ4 compressed, decompress it
             if (_isLz4Compressed)
@@ -344,44 +310,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                         await decompressor.CopyToAsync(dataStream, 81920, cancellationToken).ConfigureAwait(false);
                     }
                     dataStream.Position = 0;
-                    actualSize = dataStream.Length;
                 }
                 catch (Exception ex)
                 {
                     // Release the memory we acquired
-                    _memoryManager.ReleaseMemory(contentLength);
+                    _memoryManager.ReleaseMemory(downloadResult.Size);
                     throw new InvalidOperationException($"Error decompressing data: {ex.Message}", ex);
                 }
             }
             else
             {
                 dataStream = new MemoryStream(fileData);
-                actualSize = dataStream.Length;
-            }
-
-            // If the actual size is different from our estimate, adjust the memory allocation
-            if (actualSize != contentLength)
-            {
-                if (actualSize > contentLength)
-                {
-                    // We need more memory
-                    if (!_memoryManager.TryAcquireMemory(actualSize - contentLength))
-                    {
-                        // If we can't acquire the additional memory, release what we have and fail
-                        _memoryManager.ReleaseMemory(contentLength);
-                        dataStream.Dispose();
-                        throw new InvalidOperationException($"Not enough memory to store decompressed data of size {actualSize} bytes.");
-                    }
-                }
-                else
-                {
-                    // We can release some memory
-                    _memoryManager.ReleaseMemory(contentLength - actualSize);
-                }
             }
 
             // Set the download as completed
-            downloadResult.SetCompleted(dataStream, actualSize);
+            downloadResult.SetCompleted(dataStream, downloadResult.Size);
 
             // Add the result to the result queue
             _resultQueue.Add(downloadResult, cancellationToken);

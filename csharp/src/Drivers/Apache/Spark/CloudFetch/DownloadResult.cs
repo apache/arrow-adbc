@@ -43,6 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
             Link = link ?? throw new ArgumentNullException(nameof(link));
             _memoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
             _downloadCompletionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _size = link.BytesNum;
         }
 
         /// <inheritdoc />
@@ -76,8 +77,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         {
             ThrowIfDisposed();
             _dataStream = dataStream ?? throw new ArgumentNullException(nameof(dataStream));
-            _size = size;
             _downloadCompletionSource.TrySetResult(true);
+            _size = size;
         }
 
         /// <inheritdoc />
