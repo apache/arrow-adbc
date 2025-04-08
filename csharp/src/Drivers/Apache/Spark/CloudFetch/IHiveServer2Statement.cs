@@ -32,6 +32,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         /// <summary>
         /// Gets the client.
         /// </summary>
-        TCLIService.Client Client { get; }
+        TCLIService.IAsync Client { get; }
     }
 }

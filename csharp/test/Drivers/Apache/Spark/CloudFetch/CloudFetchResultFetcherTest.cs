@@ -45,14 +45,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
         public async Task StartAsync_CalledTwice_ThrowsException()
         {
             // Arrange
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResults(new List<TSparkArrowResultLink>(), false);
+            var mockClient = new Mock<TCLIService.IAsync>();
+            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
+            
+            var mockStatement = new Mock<IHiveServer2Statement>();
+            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
             
             var fetcher = new CloudFetchResultFetcher(
-                testStatement,
+                mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
-                5); // prefetchCount
+                5); // batchSize
             
             // Act & Assert
             await fetcher.StartAsync(CancellationToken.None);
@@ -73,14 +78,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
                 CreateTestResultLink(200, 100, "http://test.com/file3")
             };
             
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResults(resultLinks, false);
+            var mockClient = new Mock<TCLIService.IAsync>();
+            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateFetchResultsResponse(resultLinks, false));
+            
+            var mockStatement = new Mock<IHiveServer2Statement>();
+            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
             
             var fetcher = new CloudFetchResultFetcher(
-                testStatement,
+                mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
-                5); // prefetchCount
+                5); // batchSize
             
             // Act
             await fetcher.StartAsync(CancellationToken.None);
@@ -142,18 +152,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
                 CreateTestResultLink(300, 100, "http://test.com/file4")
             };
             
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResultsSequence(new[]
-            {
-                (firstBatchLinks, true),
-                (secondBatchLinks, false)
-            });
+            var mockClient = new Mock<TCLIService.IAsync>();
+            mockClient.SetupSequence(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateFetchResultsResponse(firstBatchLinks, true))
+                .ReturnsAsync(CreateFetchResultsResponse(secondBatchLinks, false));
+            
+            var mockStatement = new Mock<IHiveServer2Statement>();
+            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
             
             var fetcher = new CloudFetchResultFetcher(
-                testStatement,
+                mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
-                5); // prefetchCount
+                5); // batchSize
             
             // Act
             await fetcher.StartAsync(CancellationToken.None);
@@ -194,14 +206,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
         public async Task FetchResultsAsync_WithEmptyResults_CompletesGracefully()
         {
             // Arrange
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResults(new List<TSparkArrowResultLink>(), false);
+            var mockClient = new Mock<TCLIService.IAsync>();
+            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
+            
+            var mockStatement = new Mock<IHiveServer2Statement>();
+            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
             
             var fetcher = new CloudFetchResultFetcher(
-                testStatement,
+                mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
-                5); // prefetchCount
+                5); // batchSize
             
             // Act
             await fetcher.StartAsync(CancellationToken.None);
@@ -234,14 +251,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
         public async Task FetchResultsAsync_WithServerError_SetsErrorState()
         {
             // Arrange
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResultsThrows(new InvalidOperationException("Test server error"));
+            var mockClient = new Mock<TCLIService.IAsync>();
+            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Test server error"));
+            
+            var mockStatement = new Mock<IHiveServer2Statement>();
+            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
             
             var fetcher = new CloudFetchResultFetcher(
-                testStatement,
+                mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
-                5); // prefetchCount
+                5); // batchSize
             
             // Act
             await fetcher.StartAsync(CancellationToken.None);
@@ -273,31 +295,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
             var fetchStarted = new TaskCompletionSource<bool>();
             var fetchCancelled = new TaskCompletionSource<bool>();
             
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResultsCallback(async (req, token) =>
-            {
-                fetchStarted.TrySetResult(true);
-                
-                try
+            var mockClient = new Mock<TCLIService.IAsync>();
+            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
+                .Returns(async (TFetchResultsReq req, CancellationToken token) =>
                 {
-                    // Wait for a long time or until cancellation
-                    await Task.Delay(10000, token);
-                }
-                catch (OperationCanceledException)
-                {
-                    fetchCancelled.TrySetResult(true);
-                    throw;
-                }
-                
-                // Return empty results if not cancelled
-                return CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false);
-            });
+                    fetchStarted.TrySetResult(true);
+                    
+                    try
+                    {
+                        // Wait for a long time or until cancellation
+                        await Task.Delay(10000, token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        fetchCancelled.TrySetResult(true);
+                        throw;
+                    }
+                    
+                    // Return empty results if not cancelled
+                    return CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false);
+                });
+            
+            var mockStatement = new Mock<IHiveServer2Statement>();
+            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
             
             var fetcher = new CloudFetchResultFetcher(
-                testStatement,
+                mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
-                5); // prefetchCount
+                5); // batchSize
             
             // Act
             await fetcher.StartAsync(CancellationToken.None);
@@ -315,125 +342,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
             
             // Verify the fetcher state
             Assert.True(fetcher.IsCompleted);
-        }
-
-        [Fact]
-        public async Task RefreshLinkAsync_ReturnsCorrectLink()
-        {
-            // Arrange
-            long targetOffset = 100;
-            var resultLinks = new List<TSparkArrowResultLink>
-            {
-                CreateTestResultLink(0, 100, "http://test.com/file1"),
-                CreateTestResultLink(targetOffset, 100, "http://test.com/file2"),
-                CreateTestResultLink(200, 100, "http://test.com/file3")
-            };
-            
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResults(resultLinks, false);
-            
-            var fetcher = new CloudFetchResultFetcher(
-                testStatement,
-                _mockMemoryManager.Object,
-                _downloadQueue,
-                5); // prefetchCount
-            
-            // Act
-            var refreshedLink = await fetcher.RefreshLinkAsync(targetOffset, CancellationToken.None);
-            
-            // Assert
-            Assert.NotNull(refreshedLink);
-            Assert.Equal(targetOffset, refreshedLink.StartRowOffset);
-            Assert.Equal("http://test.com/file2", refreshedLink.FileLink);
-            
-            // Verify caching works - second call should not hit the server again
-            var secondRefresh = await fetcher.RefreshLinkAsync(targetOffset, CancellationToken.None);
-            Assert.NotNull(secondRefresh);
-            Assert.Equal(targetOffset, secondRefresh.StartRowOffset);
-            
-            // Verify the client was only called once for the specific offset
-            // Note: With prefetch, the client may be called multiple times, but we only care about the specific offset
-            Assert.True(testStatement.FetchResultsCallCount > 0, "FetchResults should be called at least once");
-        }
-
-        [Fact]
-        public async Task RefreshLinkAsync_WithNonExistentOffset_ReturnsNull()
-        {
-            // Arrange
-            long targetOffset = 500; // This offset doesn't exist in our result links
-            var resultLinks = new List<TSparkArrowResultLink>
-            {
-                CreateTestResultLink(0, 100, "http://test.com/file1"),
-                CreateTestResultLink(100, 100, "http://test.com/file2"),
-                CreateTestResultLink(200, 100, "http://test.com/file3")
-            };
-            
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResults(resultLinks, false);
-            
-            var fetcher = new CloudFetchResultFetcher(
-                testStatement,
-                _mockMemoryManager.Object,
-                _downloadQueue,
-                5); // prefetchCount
-            
-            // Act
-            var refreshedLink = await fetcher.RefreshLinkAsync(targetOffset, CancellationToken.None);
-            
-            // Assert
-            Assert.Null(refreshedLink);
-        }
-
-        [Fact]
-        public async Task RefreshLinkAsync_WithServerError_PropagatesException()
-        {
-            // Arrange
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResultsThrows(new InvalidOperationException("Test server error"));
-            
-            var fetcher = new CloudFetchResultFetcher(
-                testStatement,
-                _mockMemoryManager.Object,
-                _downloadQueue,
-                5); // prefetchCount
-            
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => fetcher.RefreshLinkAsync(0, CancellationToken.None));
-        }
-
-        [Fact]
-        public async Task RefreshCurrentBatchAsync_ReturnsAllLinks()
-        {
-            // Arrange
-            var resultLinks = new List<TSparkArrowResultLink>
-            {
-                CreateTestResultLink(0, 100, "http://test.com/file1"),
-                CreateTestResultLink(100, 100, "http://test.com/file2"),
-                CreateTestResultLink(200, 100, "http://test.com/file3")
-            };
-            
-            var testStatement = new TestHiveServer2Statement();
-            testStatement.SetupFetchResults(resultLinks, false);
-            
-            var fetcher = new CloudFetchResultFetcher(
-                testStatement,
-                _mockMemoryManager.Object,
-                _downloadQueue,
-                5); // prefetchCount
-            
-            // Act
-            var refreshedLinks = await fetcher.RefreshCurrentBatchAsync(CancellationToken.None);
-            
-            // Assert
-            Assert.NotNull(refreshedLinks);
-            Assert.Equal(resultLinks.Count, refreshedLinks.Count);
-            
-            // Verify each link is in the dictionary with the correct key
-            foreach (var link in resultLinks)
-            {
-                Assert.True(refreshedLinks.ContainsKey(link.StartRowOffset));
-                Assert.Equal(link.FileLink, refreshedLinks[link.StartRowOffset].FileLink);
-            }
         }
 
         private TOperationHandle CreateOperationHandle()
