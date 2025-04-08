@@ -21,12 +21,9 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
-using Apache.Arrow.Adbc.Tests.Drivers.BigQuery.Mocks;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Azure.Core;
 using Azure.Identity;
-using Google.Apis.Auth.OAuth2;
-using Moq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -38,7 +35,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         private BigQueryTestConfiguration _testConfiguration;
         readonly List<BigQueryTestEnvironment> _environments;
         readonly ITestOutputHelper _outputHelper;
-        readonly Dictionary<string, AdbcConnection> _configuredConnections = new Dictionary<string, AdbcConnection>();
 
         public AuthenticationTests(ITestOutputHelper outputHelper)
         {
@@ -47,12 +43,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             _testConfiguration = MultiEnvironmentTestUtils.LoadMultiEnvironmentTestConfiguration<BigQueryTestConfiguration>(BigQueryTestingUtils.BIGQUERY_TEST_CONFIG_VARIABLE);
             _environments = MultiEnvironmentTestUtils.GetTestEnvironments<BigQueryTestEnvironment>(_testConfiguration);
             _outputHelper = outputHelper;
-
-            //foreach (BigQueryTestEnvironment environment in _environments)
-            //{
-            //    AdbcConnection connection = BigQueryTestingUtils.GetRetryableBigQueryAdbcConnection(environment);
-            //    _configuredConnections.Add(environment.Name!, connection);
-            //}
         }
 
         /// <summary>
@@ -64,7 +54,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
             Assert.NotNull(environment);
 
-            BigQueryConnection? connection = BigQueryTestingUtils.GetRetryableEntraBigQueryAdbcConnection(environment, GetAccessToken(environment)) as BigQueryConnection;
+            BigQueryConnection? connection = BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, GetAccessToken(environment)) as BigQueryConnection;
             Assert.NotNull(connection);
 
             connection.UpdateToken = () => Task.Run(() =>
@@ -81,21 +71,23 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [SkippableFact, Order(1)]
-        public void CanRefreshTokenWithMockedClient()
+        public void CanRefreshToken()
         {
-            MockedBigQueryClient mockedBigQueryClient = new MockedBigQueryClient();
             BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
             Assert.NotNull(environment);
 
-            BigQueryConnection connection = (BigQueryConnection) BigQueryTestingUtils.GetRetryableEntraBigQueryAdbcConnection(mockedBigQueryClient.Client, environment, GetAccessToken(environment));
+            BigQueryConnection connection = (BigQueryConnection)BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, GetAccessToken(environment));
             Assert.NotNull(connection);
 
             connection.UpdateToken = () => Task.Run(() =>
             {
-                connection.SetOption(BigQueryParameters.AccessToken, Guid.NewGuid().ToString());
+                connection.SetOption(BigQueryParameters.AccessToken, GetAccessToken(environment));
+
+                _outputHelper.WriteLine("Successfully set a new token");
             });
 
             AdbcStatement statement = connection.CreateStatement();
+            statement.SqlQuery = "SELECT COUNT(*) FROM UNNEST(GENERATE_ARRAY(1, 1000000, 1)) AS a, UNNEST(GENERATE_ARRAY(1, 1000000, 1)) AS b WHERE RAND() < 0.0000001";
 
             QueryResult queryResult = statement.ExecuteQuery();
         }

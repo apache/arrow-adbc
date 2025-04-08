@@ -45,6 +45,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (bigQueryConnection == null) { throw new AdbcException($"{nameof(bigQueryConnection)} cannot be null", AdbcStatusCode.InvalidArgument); }
 
             this.bigQueryConnection = bigQueryConnection;
+
+            // pass on the handler since this isn't accessible publicly
+            this.UpdateToken = bigQueryConnection.UpdateToken;
         }
 
         public Func<Task>? UpdateToken { get; set; }

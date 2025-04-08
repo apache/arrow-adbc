@@ -33,7 +33,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this.bigQueryReadClient = readClientBuilder.Build();
         }
 
-        public string? AccessToken { get; set; }
         public Func<Task>? UpdateToken { get; set; }
 
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);

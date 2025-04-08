@@ -21,7 +21,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
-using Google.Cloud.BigQuery.V2;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
@@ -46,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             return connection;
         }
 
-        internal static AdbcConnection GetRetryableEntraBigQueryAdbcConnection(
+        internal static AdbcConnection GetEntraProtectedBigQueryAdbcConnection(
             BigQueryTestEnvironment testEnvironment,
             string accessToken
            )
@@ -55,20 +54,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             Dictionary<string, string> parameters = GetBigQueryParameters(testEnvironment);
             AdbcDatabase database = new BigQueryDriver().Open(parameters);
             AdbcConnection connection = database.Connect(new Dictionary<string, string>());
-
-            return connection;
-        }
-
-        internal static AdbcConnection GetRetryableEntraBigQueryAdbcConnection(
-            BigQueryClient customClient,
-            BigQueryTestEnvironment testEnvironment,
-            string accessToken
-           )
-        {
-            testEnvironment.AccessToken = accessToken;
-            Dictionary<string, string> parameters = GetBigQueryParameters(testEnvironment);
-            BigQueryDatabase database = (BigQueryDatabase) new BigQueryDriver().Open(parameters);
-            BigQueryConnection connection = database.Connect(customClient, new Dictionary<string, string>());
 
             return connection;
         }

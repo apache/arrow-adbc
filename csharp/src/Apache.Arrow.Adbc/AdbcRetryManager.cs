@@ -45,6 +45,11 @@ namespace Apache.Arrow.Adbc
                 throw new AdbcException("There is no method to retry", AdbcStatusCode.InvalidArgument);
             }
 
+            if ((tokenProtectedResource?.UpdateToken == null))
+            {
+                throw new AdbcException($"UpdateToken cannot be null on the token-protected resource", AdbcStatusCode.InvalidArgument);
+            }
+
             int retryCount = 0;
             int delay = initialDelayMilliseconds;
 
@@ -68,16 +73,9 @@ namespace Apache.Arrow.Adbc
                         throw new AdbcException($"Cannot execute {action.Method.Name} after {maxRetries} tries", AdbcStatusCode.UnknownError, ex);
                     }
 
-                    if ((tokenProtectedResource?.UpdateToken == null))
+                    if (tokenProtectedResource.TokenRequiresUpdate(ex))
                     {
-                        throw new AdbcException($"UpdateToken cannot be null on the token-protected resource", AdbcStatusCode.InvalidArgument);
-                    }
-                    else
-                    {
-                        if (tokenProtectedResource.TokenRequiresUpdate(ex))
-                        {
-                            await tokenProtectedResource.UpdateToken();
-                        }
+                        await tokenProtectedResource.UpdateToken();
                     }
 
                     await Task.Delay(delay);

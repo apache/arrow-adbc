@@ -31,7 +31,6 @@ using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.V2;
-using Google.Protobuf.Reflection;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
@@ -40,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// </summary>
     public class BigQueryConnection : AdbcConnection, ITokenProtectedResource
     {
-        readonly IReadOnlyDictionary<string, string> properties;
+        IReadOnlyDictionary<string, string> properties;
         readonly HttpClient httpClient;
         bool includePublicProjectIds = false;
         const string infoDriverName = "ADBC BigQuery Driver";
@@ -67,36 +66,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this.httpClient = new HttpClient();
         }
 
-        internal BigQueryConnection(BigQueryClient customClient, IReadOnlyDictionary<string, string> properties)
-            : this(properties)
-        {
-            this.customClient = customClient;
-        }
-
         public Func<Task>? UpdateToken { get; set; }
 
-        private BigQueryClient? customClient;
-        private BigQueryClient? internalClient;
-
-        internal BigQueryClient? Client
-        {
-            get
-            {
-                if (customClient != null)
-                {
-                    return customClient;
-                }
-
-                return internalClient;
-            }
-            private set
-            {
-                if (customClient == null)
-                {
-                    internalClient = value;
-                }
-            }
-        }
+        internal BigQueryClient? Client { get; private set; }
 
         internal GoogleCredential? Credential { get; private set; }
 
@@ -216,7 +188,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override void SetOption(string key, string value)
         {
-            base.SetOption(key, value);
+            Dictionary<string, string> modifiedProperties = this.properties.ToDictionary(k => k.Key, v => v.Value);
+            modifiedProperties[key] = value;
+            this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);
 
             if (key.Equals(BigQueryParameters.AccessToken))
             {
