@@ -179,6 +179,11 @@
           <artifactId>spotless-maven-plugin</artifactId>
           <version>2.44.3</version>
         </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo.natives</groupId>
+          <artifactId>maven-native-javah</artifactId>
+          <version>1.0-M1</version>
+        </plugin>
       </plugins>
     </pluginManagement>
 
@@ -201,6 +206,7 @@
             <exclude>**/*.log</exclude>
             <exclude>**/target/**</exclude>
             <exclude>.mvn/jvm.config</exclude>
+            <exclude>build/</exclude>
           </excludes>
         </configuration>
         <executions>
@@ -314,6 +320,13 @@
           </plugin>
         </plugins>
       </build>
+    </profile>
+
+    <profile>
+      <id>jni</id>
+      <modules>
+        <module>driver/jni</module>
+      </modules>
     </profile>
   </profiles>
 </project>

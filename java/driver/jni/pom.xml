@@ -22,43 +22,33 @@
   <parent>
     <groupId>org.apache.arrow.adbc</groupId>
     <artifactId>arrow-adbc-java-root</artifactId>
-    <version>0.18.0-SNAPSHOT</version>
+    <version>0.17.0-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>adbc-driver-flight-sql</artifactId>
+  <artifactId>adbc-driver-jni</artifactId>
   <packaging>jar</packaging>
-  <name>Arrow ADBC Driver Flight SQL</name>
-  <description>An ADBC driver wrapping Flight SQL.</description>
+  <name>Arrow ADBC Driver Native</name>
+  <description>An ADBC driver wrapping the native driver manager.</description>
 
   <dependencies>
-    <dependency>
-      <groupId>com.github.ben-manes.caffeine</groupId>
-      <artifactId>caffeine</artifactId>
-      <version>3.2.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>4.30.2</version>
-    </dependency>
-
     <!-- Arrow -->
+    <dependency>
+      <groupId>org.apache.arrow</groupId>
+      <artifactId>arrow-c-data</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.apache.arrow</groupId>
       <artifactId>arrow-memory-core</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.arrow</groupId>
+      <artifactId>arrow-memory-netty</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.arrow</groupId>
       <artifactId>arrow-vector</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>flight-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>flight-sql</artifactId>
     </dependency>
 
     <dependency>
@@ -68,16 +58,6 @@
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
       <artifactId>adbc-driver-manager</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-sql</artifactId>
-    </dependency>
-
-    <!-- Helpers for mapping Arrow types to ANSI SQL types and building test servers -->
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>flight-sql-jdbc-core</artifactId>
     </dependency>
 
     <!-- Static analysis and linting -->
@@ -97,18 +77,6 @@
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.junit.vintage</groupId>
-      <artifactId>junit-vintage-engine</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>flight-sql-jdbc-core</artifactId>
-      <version>${dep.arrow.version}</version>
-      <classifier>tests</classifier>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
 
   <build>
@@ -124,4 +92,25 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <!-- Invoked by CMake to generate headers. -->
+      <!-- You must first build the project (without JNI enabled). -->
+      <id>javah</id>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+              <compilerArgs>
+                <arg>-h</arg>
+                <arg>${project.basedir}/target/headers</arg>
+              </compilerArgs>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
