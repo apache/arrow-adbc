@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -61,15 +62,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override QueryResult ExecuteQuery()
         {
-            Func<Task<QueryResult>> func = () => Task.Run(() => ExecuteQueryInternal());
-            return AdbcRetryManager.ExecuteWithRetriesAsync<QueryResult>(this, func).GetAwaiter().GetResult();
+            //Func<Task<QueryResult>> func = () => ExecuteQueryInternalAsync();
+            //return AdbcRetryManager.ExecuteWithRetriesAsync<QueryResult>(this, func).GetAwaiter().GetResult();
+
+            return ExecuteQueryInternalAsync().GetAwaiter().GetResult();
         }
 
-        private QueryResult ExecuteQueryInternal()
+        private async Task<QueryResult> ExecuteQueryInternalAsync()
         {
             QueryOptions queryOptions = ValidateOptions();
 
-            BigQueryJob job = this.Client.CreateQueryJob(SqlQuery, null, queryOptions);
+            BigQueryJob job = await this.Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
 
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
@@ -80,7 +83,41 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
-            BigQueryResults results = job.GetQueryResults(getQueryResultsOptions);
+            Task<BigQueryResults> resultsTask = job.GetQueryResultsAsync(getQueryResultsOptions);
+
+            DateTime start = DateTime.Now;
+
+            Func<Task<bool>> func = () => Task.Run(() =>
+            {
+                while (true)
+                {
+                    var jobWithStatus = this.Client.GetJob(job.Reference);
+                    Debug.WriteLine($"Job state is {jobWithStatus.State}");
+
+                    if (jobWithStatus.State == JobState.Done)
+                    {
+                        if (jobWithStatus.Status.ErrorResult != null)
+                        {
+                            Debug.WriteLine($"Error: {jobWithStatus.Status.ErrorResult.Message}");
+                        }
+
+                        DateTime end = DateTime.Now;
+                        TimeSpan duration = end - start;
+                        Debug.WriteLine($"Done at {end.ToString()} after {duration.TotalMinutes}");
+                        return true;
+                    }
+                }
+            });
+
+            Debug.WriteLine($"Starting ExecuteWithRetriesAsync at {start.ToString()}");
+
+            await AdbcRetryManager.ExecuteWithRetriesAsync<bool>(this, func);
+
+            Debug.WriteLine($"Getting results at {DateTime.Now.ToString()}");
+
+            BigQueryResults results = resultsTask.Result;
+
+            Debug.WriteLine($"Results received at {DateTime.Now.ToString()}");
 
             TokenProtectedReadClientManger clientMgr = new TokenProtectedReadClientManger(this.Credential);
             clientMgr.UpdateToken = () => Task.Run(() =>
@@ -113,6 +150,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 throw new AdbcException("There is no query statement");
             }
+
+            Debug.WriteLine($"Reading records at {DateTime.Now.ToString()}");
 
             string table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
 
