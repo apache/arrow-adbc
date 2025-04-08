@@ -20,13 +20,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Statement : AdbcStatement
+    internal class HiveServer2Statement : AdbcStatement, IHiveServer2Statement
     {
         private const string GetPrimaryKeysCommandName = "getprimarykeys";
         private const string GetCrossReferenceCommandName = "getcrossreference";
@@ -282,6 +283,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public HiveServer2Connection Connection { get; private set; }
 
         public TOperationHandle? OperationHandle { get; private set; }
+
+        public TCLIService.Client Client => Connection.Client;
 
         private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0
             ? pollTimeMilliseconds

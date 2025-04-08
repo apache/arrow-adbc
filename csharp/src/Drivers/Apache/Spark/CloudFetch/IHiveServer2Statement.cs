@@ -22,17 +22,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
     /// <summary>
     /// Interface for accessing HiveServer2Statement properties needed by CloudFetchResultFetcher.
     /// </summary>
-    public interface IHiveServer2StatementProperties
+    public interface IHiveServer2Statement
     {
         /// <summary>
         /// Gets the operation handle.
         /// </summary>
         TOperationHandle? OperationHandle { get; }
-
-        /// <summary>
-        /// Gets the batch size.
-        /// </summary>
-        long BatchSize { get; }
 
         /// <summary>
         /// Gets the client.

@@ -136,7 +136,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
                 _statement,
                 _memoryManager,
                 _downloadQueue,
-                prefetchCount);
+                2000000);
 
             // Initialize the downloader
             _downloader = new CloudFetchDownloader(

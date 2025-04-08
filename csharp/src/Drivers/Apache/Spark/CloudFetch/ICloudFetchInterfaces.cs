@@ -142,21 +142,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         /// Gets the error encountered by the fetcher, if any.
         /// </summary>
         Exception? Error { get; }
-        
-        /// <summary>
-        /// Refreshes a link for the specified row offset.
-        /// </summary>
-        /// <param name="startRowOffset">The start row offset.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>The refreshed link, or null if not found.</returns>
-        Task<TSparkArrowResultLink?> RefreshLinkAsync(long startRowOffset, CancellationToken cancellationToken);
-        
-        /// <summary>
-        /// Refreshes all links in the current batch.
-        /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A dictionary mapping start row offsets to links.</returns>
-        Task<Dictionary<long, TSparkArrowResultLink>> RefreshCurrentBatchAsync(CancellationToken cancellationToken);
     }
 
     /// <summary>
