@@ -2677,6 +2677,9 @@ void StatementTest::TestTransactions() {
               })(),
               ::testing::Not(IsOkStatus(&error)));
 
+  // Rollback
+  ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
+
   // Commit
   ASSERT_THAT(quirks()->CreateSampleTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));

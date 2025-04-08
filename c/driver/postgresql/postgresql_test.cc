@@ -1022,7 +1022,7 @@ TEST_F(PostgresStatementTest, TransactionStatus) {
     ASSERT_EQ("active", ConnectionGetOption(&connection, txn_status, &error));
 
     ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
-    ASSERT_EQ("idle", ConnectionGetOption(&connection, txn_status, &error));
+    ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
   }
   {
     adbc_validation::StreamReader reader;
@@ -1035,8 +1035,6 @@ TEST_F(PostgresStatementTest, TransactionStatus) {
 
     ASSERT_EQ("active", ConnectionGetOption(&connection, txn_status, &error));
 
-    // Note that despite the status being "active", this commit still
-    // generates a warning on the server.
     ASSERT_THAT(AdbcConnectionCommit(&connection, &error), IsOkStatus(&error));
     ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
   }

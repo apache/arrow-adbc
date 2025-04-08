@@ -196,6 +196,7 @@ def test_stmt_ingest(postgres: dbapi.Connection) -> None:
             postgres.ProgrammingError, match='"test_ingest" already exists'
         ):
             cur.adbc_ingest("test_ingest", table, mode="create")
+        postgres.rollback()
 
         cur.adbc_ingest("test_ingest", table, mode="create_append")
         cur.execute("SELECT * FROM test_ingest ORDER BY ints")
@@ -458,7 +459,7 @@ def test_txn_status(postgres: dbapi.Connection) -> None:
 
     assert status() == "intrans"
     postgres.rollback()
-    assert status() == "idle"
+    assert status() == "intrans"
 
     with postgres.cursor() as cur:
         cur.execute("SELECT 1")
@@ -468,4 +469,4 @@ def test_txn_status(postgres: dbapi.Connection) -> None:
         cur.execute("SELECT 1")
         assert status() == "active"
         postgres.rollback()
-        assert status() == "idle"
+        assert status() == "intrans"

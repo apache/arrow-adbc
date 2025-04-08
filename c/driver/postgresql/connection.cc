@@ -1136,7 +1136,7 @@ AdbcStatusCode PostgresConnection::Rollback(struct AdbcError* error) {
     return ADBC_STATUS_OK;
   }
 
-  PGresult* result = PQexec(conn_, "ROLLBACK");
+  PGresult* result = PQexec(conn_, "ROLLBACK AND CHAIN");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     SetError(error, "%s%s", "[libpq] Failed to rollback: ", PQerrorMessage(conn_));
     PQclear(result);
