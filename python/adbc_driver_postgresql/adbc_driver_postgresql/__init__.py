@@ -22,7 +22,19 @@ import adbc_driver_manager
 
 from ._version import __version__
 
-__all__ = ["StatementOptions", "connect", "__version__"]
+__all__ = [
+    "ConnectionOptions",
+    "StatementOptions",
+    "connect",
+    "__version__",
+]
+
+
+class ConnectionOptions(enum.Enum):
+    """Connection options specific to the PostgreSQL driver."""
+
+    #: Get the transaction status.
+    TRANSACTION_STATUS = "adbc.postgresql.transaction_status"
 
 
 class StatementOptions(enum.Enum):

@@ -995,6 +995,51 @@ class PostgresStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(PostgresStatementTest)
 
+TEST_F(PostgresStatementTest, TransactionStatus) {
+  using adbc_validation::ConnectionGetOption;
+  const char* txn_status = "adbc.postgresql.transaction_status";
+  ASSERT_THAT(quirks()->DropTable(&connection, "txntest", &error), IsOkStatus(&error));
+
+  ASSERT_EQ("idle", ConnectionGetOption(&connection, txn_status, &error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
+
+  ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  {
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+    ASSERT_EQ("active", ConnectionGetOption(&connection, txn_status, &error));
+
+    ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
+    ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
+  }
+  {
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+    ASSERT_EQ("active", ConnectionGetOption(&connection, txn_status, &error));
+
+    ASSERT_THAT(AdbcConnectionCommit(&connection, &error), IsOkStatus(&error));
+    ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
+  }
+}
+
 TEST_F(PostgresStatementTest, SqlIngestSchema) {
   const std::string schema_name = "testschema";
 
