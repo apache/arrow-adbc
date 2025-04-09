@@ -29,9 +29,49 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksConnection : SparkHttpConnection
     {
+        // CloudFetch configuration
+        private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
+
+        private bool _useCloudFetch = true;
+        private bool _canDecompressLz4 = true;
+        private long _maxBytesPerFile = DefaultMaxBytesPerFile;
+
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            // Parse CloudFetch options from connection properties
+            if (Properties.TryGetValue(DatabricksParameters.UseCloudFetch, out string? useCloudFetchStr) &&
+                bool.TryParse(useCloudFetchStr, out bool useCloudFetchValue))
+            {
+                _useCloudFetch = useCloudFetchValue;
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.CanDecompressLz4, out string? canDecompressLz4Str) &&
+                bool.TryParse(canDecompressLz4Str, out bool canDecompressLz4Value))
+            {
+                _canDecompressLz4 = canDecompressLz4Value;
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr) &&
+                long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
+            {
+                _maxBytesPerFile = maxBytesPerFileValue;
+            }
         }
+
+        /// <summary>
+        /// Gets whether CloudFetch is enabled.
+        /// </summary>
+        internal bool UseCloudFetch => _useCloudFetch;
+
+        /// <summary>
+        /// Gets whether LZ4 decompression is enabled.
+        /// </summary>
+        internal bool CanDecompressLz4 => _canDecompressLz4;
+
+        /// <summary>
+        /// Gets the maximum bytes per file for CloudFetch.
+        /// </summary>
+        internal long MaxBytesPerFile => _maxBytesPerFile;
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {

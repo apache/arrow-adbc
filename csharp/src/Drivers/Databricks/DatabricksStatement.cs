@@ -27,18 +27,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal class DatabricksStatement : SparkStatement
     {
-        // Default maximum bytes per file for CloudFetch
-        private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
-
-        // CloudFetch configuration
-        private bool useCloudFetch = true;
-        private bool canDecompressLz4 = true;
-        private long maxBytesPerFile = DefaultMaxBytesPerFile;
+        private bool useCloudFetch;
+        private bool canDecompressLz4;
+        private long maxBytesPerFile;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
         {
-
+            // Inherit CloudFetch settings from connection
+            useCloudFetch = connection.UseCloudFetch;
+            canDecompressLz4 = connection.CanDecompressLz4;
+            maxBytesPerFile = connection.MaxBytesPerFile;
         }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
@@ -55,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             switch (key)
             {
-                case Options.UseCloudFetch:
+                case DatabricksParameters.UseCloudFetch:
                     if (bool.TryParse(value, out bool useCloudFetchValue))
                     {
                         this.useCloudFetch = useCloudFetchValue;
@@ -65,7 +64,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         throw new ArgumentException($"Invalid value for {key}: {value}. Expected a boolean value.");
                     }
                     break;
-                case Options.CanDecompressLz4:
+                case DatabricksParameters.CanDecompressLz4:
                     if (bool.TryParse(value, out bool canDecompressLz4Value))
                     {
                         this.canDecompressLz4 = canDecompressLz4Value;
@@ -75,7 +74,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         throw new ArgumentException($"Invalid value for {key}: {value}. Expected a boolean value.");
                     }
                     break;
-                case Options.MaxBytesPerFile:
+                case DatabricksParameters.MaxBytesPerFile:
                     if (long.TryParse(value, out long maxBytesPerFileValue))
                     {
                         this.maxBytesPerFile = maxBytesPerFileValue;
@@ -131,17 +130,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal void SetMaxBytesPerFile(long maxBytesPerFile)
         {
             this.maxBytesPerFile = maxBytesPerFile;
-        }
-
-        /// <summary>
-        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
-        /// </summary>
-        public sealed class Options : ApacheParameters
-        {
-            // CloudFetch options
-            public const string UseCloudFetch = "adbc.databricks.cloudfetch.enabled";
-            public const string CanDecompressLz4 = "adbc.databricks.cloudfetch.lz4.enabled";
-            public const string MaxBytesPerFile = "adbc.databricks.cloudfetch.max_bytes_per_file";
         }
     }
 }
