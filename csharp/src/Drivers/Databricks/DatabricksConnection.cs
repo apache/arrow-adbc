@@ -30,26 +30,28 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     internal class DatabricksConnection : SparkHttpConnection
     {
         // CloudFetch configuration
+        private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
+
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
-        private long _maxBytesPerFile = 20 * 1024 * 1024; // 20MB default
+        private long _maxBytesPerFile = DefaultMaxBytesPerFile;
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
             // Parse CloudFetch options from connection properties
-            if (properties.TryGetValue(DatabricksParameters.UseCloudFetch, out string? useCloudFetchStr) &&
+            if (Properties.TryGetValue(DatabricksParameters.UseCloudFetch, out string? useCloudFetchStr) &&
                 bool.TryParse(useCloudFetchStr, out bool useCloudFetchValue))
             {
                 _useCloudFetch = useCloudFetchValue;
             }
 
-            if (properties.TryGetValue(DatabricksParameters.CanDecompressLz4, out string? canDecompressLz4Str) &&
+            if (Properties.TryGetValue(DatabricksParameters.CanDecompressLz4, out string? canDecompressLz4Str) &&
                 bool.TryParse(canDecompressLz4Str, out bool canDecompressLz4Value))
             {
                 _canDecompressLz4 = canDecompressLz4Value;
             }
 
-            if (properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr) &&
+            if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr) &&
                 long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
             {
                 _maxBytesPerFile = maxBytesPerFileValue;

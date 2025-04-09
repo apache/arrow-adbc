@@ -27,13 +27,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal class DatabricksStatement : SparkStatement
     {
-        // Default maximum bytes per file for CloudFetch
-        private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
-
-        // CloudFetch configuration
-        private bool useCloudFetch = true;
-        private bool canDecompressLz4 = true;
-        private long maxBytesPerFile = DefaultMaxBytesPerFile;
+        private bool useCloudFetch;
+        private bool canDecompressLz4;
+        private long maxBytesPerFile;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
