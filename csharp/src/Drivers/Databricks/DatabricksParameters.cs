@@ -42,6 +42,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is 5 minutes if not specified.
         /// </summary>
         public const string CloudFetchTimeoutMinutes = "adbc.databricks.cloudfetch.timeout_minutes";
+
+        /// <summary>
+        /// Controls whether to retry requests that receive a 503 response with a Retry-After header.
+        /// Default value is true (enabled). Set to false to disable retry behavior.
+        /// </summary>
+        public const string TemporarilyUnavailableRetry = "adbc.spark.temporarily_unavailable_retry";
+        
+        /// <summary>
+        /// Maximum total time in seconds to retry 503 responses before failing.
+        /// Default value is 900 seconds (15 minutes). Set to 0 to retry indefinitely.
+        /// </summary>
+        public const string TemporarilyUnavailableRetryTimeout = "adbc.spark.temporarily_unavailable_retry_timeout";
     }
 
     /// <summary>
