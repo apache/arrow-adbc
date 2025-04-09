@@ -191,6 +191,7 @@ def test_stmt_ingest(postgres: dbapi.Connection) -> None:
         cur.adbc_ingest("test_ingest", table, mode="replace")
         cur.execute("SELECT * FROM test_ingest ORDER BY ints")
         assert cur.fetch_arrow_table() == table
+        postgres.commit()
 
         with pytest.raises(
             postgres.ProgrammingError, match='"test_ingest" already exists'
