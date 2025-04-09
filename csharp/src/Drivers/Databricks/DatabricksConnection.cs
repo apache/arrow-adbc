@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
             else
             {
-                return new DatabricksReader(databricksStatement, schema);
+                return new DatabricksReader(databricksStatement, schema, isLz4Compressed);
             }
         }
 
