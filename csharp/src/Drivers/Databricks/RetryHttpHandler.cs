@@ -21,20 +21,14 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
-using System.Text;
-using Thrift;
-using Thrift.Protocol;
-using Thrift.Transport;
-using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
     /// HTTP handler that implements retry behavior for 503 responses with Retry-After headers.
     /// </summary>
     internal class RetryHttpHandler : DelegatingHandler
     {
-        private readonly bool _retryEnabled;
         private readonly int _retryTimeoutSeconds;
 
         /// <summary>
@@ -43,10 +37,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         /// <param name="innerHandler">The inner handler to delegate to.</param>
         /// <param name="retryEnabled">Whether retry behavior is enabled.</param>
         /// <param name="retryTimeoutSeconds">Maximum total time in seconds to retry before failing.</param>
-        public RetryHttpHandler(HttpMessageHandler innerHandler, bool retryEnabled, int retryTimeoutSeconds)
+        public RetryHttpHandler(HttpMessageHandler innerHandler, int retryTimeoutSeconds)
             : base(innerHandler)
         {
-            _retryEnabled = retryEnabled;
             _retryTimeoutSeconds = retryTimeoutSeconds;
         }
 
@@ -57,12 +50,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            // If retry is disabled, just pass through to the inner handler
-            if (!_retryEnabled)
-            {
-                return await base.SendAsync(request, cancellationToken);
-            }
-
             // Clone the request content if it's not null so we can reuse it for retries
             var requestContentClone = request.Content != null
                 ? await CloneHttpContentAsync(request.Content)
@@ -104,16 +91,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     return response;
                 }
 
-                // Extract error message from response if possible
-                try
-                {
-                    lastErrorMessage = await ExtractErrorMessageAsync(response);
-                }
-                catch
-                {
-                    // If we can't extract the error message, just use a generic one
-                    lastErrorMessage = $"Service temporarily unavailable (HTTP 503). Retry after {retryAfterSeconds} seconds.";
-                }
+                lastErrorMessage = $"Service temporarily unavailable (HTTP 503). Retry after {retryAfterSeconds} seconds.";
+
+                // Dispose the response before retrying
+                response.Dispose();
+
+                // Reset the request content for the next attempt
+                request.Content = null;
 
                 // Check if we've exceeded the timeout
                 totalRetrySeconds += retryAfterSeconds;
@@ -123,15 +107,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     break;
                 }
 
-                // Dispose the response before retrying
-                response.Dispose();
-
                 // Wait for the specified retry time
                 await Task.Delay(TimeSpan.FromSeconds(retryAfterSeconds), cancellationToken);
-
-                // Reset the request content for the next attempt
-                request.Content = null;
-
             } while (!cancellationToken.IsCancellationRequested);
 
             // If we get here, we've either exceeded the timeout or been cancelled
@@ -140,19 +117,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 throw new OperationCanceledException("Request cancelled during retry wait", cancellationToken);
             }
 
-            // Create a custom exception with the SQL state code and last error message
-            var exception = new AdbcException(
+            throw new DatabricksException(
                 lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded",
-                AdbcStatusCode.IOError);
-
-            // Add SQL state as part of the message since we can't set it directly
-            throw new AdbcException(
-                $"[SQLState: 08001] {exception.Message}",
-                AdbcStatusCode.IOError);
+                 AdbcStatusCode.IOError);
         }
 
         /// <summary>
         /// Clones an HttpContent object so it can be reused for retries.
+        /// per .net guidance, we should not reuse the http content across multiple
+        /// request, as it maybe disposed.
         /// </summary>
         private static async Task<HttpContent> CloneHttpContentAsync(HttpContent content)
         {
@@ -170,35 +143,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             }
             return clone;
         }
-
-        /// <summary>
-        /// Attempts to extract the error message from a Thrift TApplicationException in the response body.
-        /// </summary>
-        private static async Task<string?> ExtractErrorMessageAsync(HttpResponseMessage response)
-        {
-            if (response.Content == null)
-            {
-                return null;
-            }
-
-            // Check if the content type is application/x-thrift
-            if (response.Content.Headers.ContentType?.MediaType != "application/x-thrift")
-            {
-                // If it's not Thrift, just return the content as a string
-                return await response.Content.ReadAsStringAsync();
-            }
-
-            try
-            {
-                // For Thrift content, just return a generic message
-                // We can't easily parse the Thrift message without access to the specific methods
-                return await response.Content.ReadAsStringAsync();
-            }
-            catch
-            {
-                // If we can't read the content, return null
-                return null;
-            }
-        }
     }
 }
+

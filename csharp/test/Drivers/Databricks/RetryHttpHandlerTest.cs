@@ -15,17 +15,14 @@
 * limitations under the License.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
     /// <summary>
     /// Tests for the RetryHttpHandler class.
@@ -47,7 +44,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 });
 
             // Create the RetryHttpHandler with retry enabled and a 5-second timeout
-            var retryHandler = new RetryHttpHandler(mockHandler, true, 5);
+            var retryHandler = new RetryHttpHandler(mockHandler, 5);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -82,7 +79,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 });
 
             // Create the RetryHttpHandler with retry enabled and a 1-second timeout
-            var retryHandler = new RetryHttpHandler(mockHandler, true, 1);
+            var retryHandler = new RetryHttpHandler(mockHandler, 1);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -100,35 +97,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         }
 
         /// <summary>
-        /// Tests that the RetryHttpHandler doesn't retry when retry is disabled.
-        /// </summary>
-        [Fact]
-        public async Task RetryAfterHandlerDoesNotRetryWhenDisabled()
-        {
-            // Create a mock handler that returns a 503 response with a Retry-After header
-            var mockHandler = new MockHttpMessageHandler(
-                new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
-                {
-                    Headers = { { "Retry-After", "1" } },
-                    Content = new StringContent("Service Unavailable")
-                });
-
-            // Create the RetryHttpHandler with retry disabled
-            var retryHandler = new RetryHttpHandler(mockHandler, false, 5);
-
-            // Create an HttpClient with our handler
-            var httpClient = new HttpClient(retryHandler);
-
-            // Send a request
-            var response = await httpClient.GetAsync("http://test.com");
-
-            // Verify the response is 503
-            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            Assert.Equal("Service Unavailable", await response.Content.ReadAsStringAsync());
-            Assert.Equal(1, mockHandler.RequestCount); // Only the initial request, no retries
-        }
-
-        /// <summary>
         /// Tests that the RetryHttpHandler handles non-503 responses correctly.
         /// </summary>
         [Fact]
@@ -142,7 +110,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 });
 
             // Create the RetryHttpHandler with retry enabled
-            var retryHandler = new RetryHttpHandler(mockHandler, true, 5);
+            var retryHandler = new RetryHttpHandler(mockHandler, 5);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -170,7 +138,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 });
 
             // Create the RetryHttpHandler with retry enabled
-            var retryHandler = new RetryHttpHandler(mockHandler, true, 5);
+            var retryHandler = new RetryHttpHandler(mockHandler, 5);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -206,7 +174,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             mockHandler.SetResponseAfterRetryCount(0, response);
 
             // Create the RetryHttpHandler with retry enabled
-            var retryHandler = new RetryHttpHandler(mockHandler, true, 5);
+            var retryHandler = new RetryHttpHandler(mockHandler, 5);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
