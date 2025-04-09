@@ -44,7 +44,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             using var statement = connection.CreateStatement();
 
             // Set options for LZ4 decompression (enabled by default) and CloudFetch as specified
-            statement.SetOption(DatabricksStatement.Options.UseCloudFetch, useCloudFetch.ToString().ToLower());
+            statement.SetOption(DatabricksParameters.UseCloudFetch, useCloudFetch.ToString().ToLower());
             OutputHelper?.WriteLine($"CloudFetch is {(useCloudFetch ? "enabled" : "disabled")}");
             OutputHelper?.WriteLine("LZ4 decompression capability is enabled by default");
 
