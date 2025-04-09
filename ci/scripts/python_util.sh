@@ -94,7 +94,7 @@ function build_drivers {
     pushd ${build_dir}
     cmake \
         -DADBC_BUILD_SHARED=ON \
-        -DADBC_BUILD_STATIC=OFF \
+        -DADBC_BUILD_STATIC=ON \
         -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_INSTALL_PREFIX=${build_dir} \
@@ -105,6 +105,7 @@ function build_drivers {
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
         -DADBC_DRIVER_BIGQUERY=ON \
         -DADBC_DRIVER_FLIGHTSQL=ON \
+        -DADBC_DRIVER_MANAGER=ON \
         -DADBC_DRIVER_POSTGRESQL=ON \
         -DADBC_DRIVER_SQLITE=ON \
         -DADBC_DRIVER_SNOWFLAKE=ON \

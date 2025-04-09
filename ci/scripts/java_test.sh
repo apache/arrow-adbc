@@ -18,10 +18,20 @@
 
 set -ex
 
-source_dir=${1}
+: ${BUILD_JNI:=OFF}
 
-pushd ${source_dir}/java
+main() {
+    local -r source_dir=${1}
 
-mvn -B test
+    pushd ${source_dir}/java
 
-popd
+    if [[ "${BUILD_JNI}" == "ON" ]]; then
+        mvn -B -Pjni test
+    else
+        mvn -B test
+    fi
+
+    popd
+}
+
+main "$@"
