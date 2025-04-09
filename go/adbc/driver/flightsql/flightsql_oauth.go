@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"golang.org/x/oauth2"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 )
 
@@ -69,7 +70,7 @@ func parseOAuthOptions(options map[string]string, paramMap map[string]oAuthOptio
 	return params, nil
 }
 
-func exchangeToken(conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption) (*oauth.TokenSource, error) {
+func exchangeToken(conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption) (credentials.PerRPCCredentials, error) {
 	ctx := context.Background()
 	tok, err := conf.Exchange(ctx, "", codeOptions...)
 	if err != nil {
@@ -78,7 +79,7 @@ func exchangeToken(conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption) (*o
 	return &oauth.TokenSource{TokenSource: conf.TokenSource(ctx, tok)}, nil
 }
 
-func newClientCredentials(options map[string]string) (*oauth.TokenSource, error) {
+func newClientCredentials(options map[string]string) (credentials.PerRPCCredentials, error) {
 	codeOptions := []oauth2.AuthCodeOption{
 		oauth2.SetAuthURLParam("grant_type", "client_credentials"),
 	}
@@ -103,7 +104,7 @@ func newClientCredentials(options map[string]string) (*oauth.TokenSource, error)
 	return exchangeToken(conf, codeOptions)
 }
 
-func newTokenExchangeFlow(options map[string]string) (*oauth.TokenSource, error) {
+func newTokenExchangeFlow(options map[string]string) (credentials.PerRPCCredentials, error) {
 	tokenURI, ok := options[OptionKeyTokenURI]
 	if !ok {
 		return nil, fmt.Errorf("token exchange grant requires %s", OptionKeyTokenURI)

@@ -37,7 +37,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -69,7 +68,7 @@ type databaseImpl struct {
 	enableCookies bool
 	options       map[string]string
 	userDialOpts  []grpc.DialOption
-	oauthToken    *oauth.TokenSource
+	oauthToken    credentials.PerRPCCredentials
 }
 
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
@@ -440,7 +439,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	dialOpts = append(dialOpts, d.userDialOpts...)
 
 	if d.oauthToken != nil {
-		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: d.oauthToken}))
+		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(d.oauthToken))
 	}
 
 	d.Logger.DebugContext(ctx, "new client", "location", loc)
