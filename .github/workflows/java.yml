@@ -213,9 +213,9 @@ jobs:
           done
           popd
           cp -r artifacts/*/jni/adbc_driver_jni java/driver/jni/src/main/resources
-          for drivers in artifacts/*/driver; do
-            export LD_LIBRARY_PATH=$(pwd)/$drivers:${LD_LIBRARY_PATH:-}
-            export DYLD_LIBRARY_PATH=$(pwd)/$drivers:${DYLD_LIBRARY_PATH:-}
+          for driver in artifacts/*/driver; do
+            export LD_LIBRARY_PATH=$(pwd)/$driver:${LD_LIBRARY_PATH:-}
+            export DYLD_LIBRARY_PATH=$(pwd)/$driver:${DYLD_LIBRARY_PATH:-}
           done
           env BUILD_JNI=ON ./ci/scripts/java_build.sh $(pwd)
           cd java
