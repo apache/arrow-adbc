@@ -209,15 +209,8 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			}
 		}
 
-		flowVal, err := strconv.Atoi(flow)
-		if err != nil {
-			return adbc.Error{
-				Msg:  fmt.Sprintf("invalid OAuth flow option: %s", flow),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		switch flowVal {
-		case ClientCredentials:
+		switch flow {
+		case "2": // Client Credentials flow
 			cl, err := newClientCredentials(cnOptions)
 			if err != nil {
 				return err
