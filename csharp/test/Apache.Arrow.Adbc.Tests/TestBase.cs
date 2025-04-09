@@ -96,7 +96,7 @@ namespace Apache.Arrow.Adbc.Tests
                         "{0}{1}{2}",
                         string.IsNullOrEmpty(TestConfiguration.Metadata.Catalog) ? string.Empty : DelimitIdentifier(TestConfiguration.Metadata.Catalog) + ".",
                         string.IsNullOrEmpty(TestConfiguration.Metadata.Schema) ? string.Empty : DelimitIdentifier(TestConfiguration.Metadata.Schema) + ".",
-                        DelimitIdentifier(Guid.NewGuid().ToString().Replace("-", ""))
+                        DelimitIdentifier(Guid.NewGuid().ToString("N"))
                     );
 
         /// <summary>
@@ -176,7 +176,7 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         /// <summary>
-        /// Gets a the Spark ADBC driver with settings from the <see cref="SparkTestConfiguration"/>.
+        /// Gets an ADBC driver with settings from the <see cref="Tests.TestConfiguration"/>.
         /// </summary>
         /// <param name="testConfiguration"><see cref="Tests.TestConfiguration"/></param>
         /// <param name="connectionOptions"></param>
@@ -658,6 +658,15 @@ namespace Apache.Arrow.Adbc.Tests
             return name.Substring(1);
         }
 
+        protected void CreateNewTableName(out string tableName, out string fullTableName)
+        {
+            string catalogName = TestConfiguration.Metadata.Catalog;
+            string schemaName = TestConfiguration.Metadata.Schema;
+            tableName = Guid.NewGuid().ToString("N");
+            string catalogFormatted = string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".";
+            fullTableName = $"{catalogFormatted}{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
+        }
+
         /// <summary>
         /// Represents a temporary table that can create and drop the table automatically.
         /// </summary>
@@ -730,7 +739,7 @@ namespace Apache.Arrow.Adbc.Tests
             private TemporarySchema(string catalogName, AdbcStatement statement)
             {
                 CatalogName = catalogName;
-                SchemaName = Guid.NewGuid().ToString().Replace("-", "");
+                SchemaName = Guid.NewGuid().ToString("N");
                 _statement = statement;
             }
 

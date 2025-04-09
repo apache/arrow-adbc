@@ -131,6 +131,10 @@ func init() {
 			}
 		}
 	}
+
+	// Disable some stray logs
+	// https://github.com/snowflakedb/gosnowflake/pull/1332
+	_ = gosnowflake.GetLogger().SetLogLevel("warn")
 }
 
 func errToAdbcErr(code adbc.Status, err error) error {
