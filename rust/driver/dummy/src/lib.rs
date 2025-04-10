@@ -396,15 +396,15 @@ impl Connection for DummyConnection {
         Ok(reader)
     }
 
-    fn get_objects(
-        &self,
+    fn get_objects<'a>(
+        &'_ self,
         _depth: ObjectDepth,
-        _catalog: Option<&str>,
-        _db_schema: Option<&str>,
-        _table_name: Option<&str>,
-        _table_type: Option<Vec<&str>>,
-        _column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader> {
+        _catalog: Option<&'_ str>,
+        _db_schema: Option<&'_ str>,
+        _table_name: Option<&'_ str>,
+        _table_type: Option<Vec<&'_ str>>,
+        _column_name: Option<&'_ str>,
+    ) -> Result<impl RecordBatchReader + 'a> {
         let constraint_column_usage_array_inner = StructArray::from(vec![
             (
                 Arc::new(Field::new("fk_catalog", DataType::Utf8, true)),
