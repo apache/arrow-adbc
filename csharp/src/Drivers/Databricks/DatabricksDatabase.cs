@@ -41,6 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             DatabricksConnection connection = new DatabricksConnection(mergedProperties);
             connection.OpenAsync().Wait();
+            connection.ApplyServerSidePropertiesAsync().Wait();
             return connection;
         }
     }
