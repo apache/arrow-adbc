@@ -21,6 +21,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
+using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
 
@@ -426,12 +427,128 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
                 int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
                 IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
+                
+                // Enhance column schema results if this is a GetColumns query
+                if (SqlQuery?.ToLowerInvariant() == GetColumnsCommandName)
+                {
+                    return EnhanceGetColumnsResult(schema, data, rowCount, resultSetMetadata, rowSet);
+                }
+                
                 return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(schema, data));
             }
 
             await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
             schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
+            
+            // For GetColumns operation, we need to fetch the results and enhance them
+            if (SqlQuery?.ToLowerInvariant() == GetColumnsCommandName)
+            {
+                // Fetch the results manually to enhance them
+                TRowSet rowSet = await Connection.FetchResultsAsync(OperationHandle!, BatchSize, cancellationToken);
+                int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
+                int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
+                
+                // Get metadata again to ensure we have the latest
+                TGetResultSetMetadataResp metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
+                
+                // Get the arrays from the row set
+                IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
+                
+                return EnhanceGetColumnsResult(schema, data, rowCount, metadata, rowSet);
+            }
+            
             return new QueryResult(-1, Connection.NewReader(this, schema));
+        }
+
+        private QueryResult EnhanceGetColumnsResult(Schema originalSchema, IReadOnlyList<IArrowArray> originalData, 
+            int rowCount, TGetResultSetMetadataResp metadata, TRowSet rowSet)
+        {
+            // Create a column map using Connection's GetColumnIndexMap method
+            var columnMap = Connection.GetColumnIndexMap(metadata.Schema.Columns);
+            
+            // Get column indices - we know these columns always exist
+            int typeNameIndex = columnMap["TYPE_NAME"];
+            int dataTypeIndex = columnMap["DATA_TYPE"];
+            int columnSizeIndex = columnMap["COLUMN_SIZE"];
+            int decimalDigitsIndex = columnMap["DECIMAL_DIGITS"];
+            
+            // Extract the existing arrays
+            StringArray typeNames = (StringArray)originalData[typeNameIndex];
+            Int32Array originalColumnSizes = (Int32Array)originalData[columnSizeIndex];
+            Int32Array originalDecimalDigits = (Int32Array)originalData[decimalDigitsIndex];
+            
+            // Create enhanced schema with BASE_TYPE_NAME column
+            var enhancedFields = originalSchema.FieldsList.ToList();
+            enhancedFields.Add(new Field("BASE_TYPE_NAME", StringType.Default, true));
+            Schema enhancedSchema = new Schema(enhancedFields, originalSchema.Metadata);
+            
+            // Pre-allocate arrays to store our values
+            int length = typeNames.Length;
+            List<string> baseTypeNames = new List<string>(length);
+            List<int> columnSizeValues = new List<int>(length);
+            List<int> decimalDigitsValues = new List<int>(length);
+            
+            // Process each row
+            for (int i = 0; i < length; i++)
+            {
+                string? typeName = typeNames.GetString(i);
+                short colType = (short)rowSet.Columns[dataTypeIndex].I32Val.Values.Values[i];
+                int columnSize = originalColumnSizes.GetValue(i).GetValueOrDefault();
+                int decimalDigits = originalDecimalDigits.GetValue(i).GetValueOrDefault();
+                
+                // Create a TableInfo for this row
+                var tableInfo = new HiveServer2Connection.TableInfo(string.Empty);
+                
+                // Process all types through SetPrecisionScaleAndTypeName
+                Connection.SetPrecisionScaleAndTypeName(colType, typeName ?? string.Empty, tableInfo, columnSize, decimalDigits);
+                
+                // Get base type name
+                string baseTypeName;
+                if (tableInfo.BaseTypeName.Count > 0)
+                {
+                    string? baseTypeNameValue = tableInfo.BaseTypeName[0];
+                    baseTypeName = baseTypeNameValue ?? string.Empty;
+                }
+                else
+                {
+                    baseTypeName = typeName ?? string.Empty;
+                }
+                baseTypeNames.Add(baseTypeName);
+                
+                // Get precision/scale values
+                if (tableInfo.Precision.Count > 0)
+                {
+                    int? precisionValue = tableInfo.Precision[0];
+                    columnSizeValues.Add(precisionValue.GetValueOrDefault(columnSize));
+                }
+                else
+                {
+                    columnSizeValues.Add(columnSize);
+                }
+                
+                if (tableInfo.Scale.Count > 0)
+                {
+                    int? scaleValue = tableInfo.Scale[0];
+                    decimalDigitsValues.Add(scaleValue.GetValueOrDefault(decimalDigits));
+                }
+                else
+                {
+                    decimalDigitsValues.Add(decimalDigits);
+                }
+            }
+            
+            // Create the Arrow arrays directly from our data arrays
+            StringArray baseTypeNameArray = new StringArray.Builder().AppendRange(baseTypeNames).Build();
+            Int32Array columnSizeArray = new Int32Array.Builder().AppendRange(columnSizeValues).Build();
+            Int32Array decimalDigitsArray = new Int32Array.Builder().AppendRange(decimalDigitsValues).Build();
+            
+            // Create enhanced data with modified columns
+            var enhancedData = new List<IArrowArray>(originalData);
+            enhancedData[columnSizeIndex] = columnSizeArray;
+            enhancedData[decimalDigitsIndex] = decimalDigitsArray;
+            enhancedData.Add(baseTypeNameArray);
+            
+            return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(enhancedSchema, enhancedData));
         }
     }
 }

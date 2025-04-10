@@ -224,7 +224,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return req;
         }
 
-        protected override void SetPrecisionScaleAndTypeName(
+        public override void SetPrecisionScaleAndTypeName(
             short colType,
             string typeName,
             TableInfo? tableInfo,
