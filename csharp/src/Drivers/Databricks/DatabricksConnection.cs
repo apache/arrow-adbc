@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
@@ -29,9 +31,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksConnection : SparkHttpConnection
     {
+        private bool _applySSPWithQueries = true;
+
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            if (Properties.TryGetValue(DatabricksParameters.ApplySSPWithQueries, out string? applySSPWithQueriesStr) &&
+                bool.TryParse(applySSPWithQueriesStr, out bool applySSPWithQueriesValue))
+            {
+                _applySSPWithQueries = applySSPWithQueriesValue;
+            }
         }
+
+        /// <summary>
+        /// Gets whether server side properties should be applied using queries.
+        /// </summary>
+        internal bool ApplySSPWithQueries => _applySSPWithQueries;
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {
@@ -86,7 +100,68 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
                 CanUseMultipleCatalogs = true,
             };
+
+            // If not using queries to set server-side properties, include them in Configuration
+            if (!_applySSPWithQueries)
+            {
+                req.Configuration = new Dictionary<string, string>();
+                var serverSideProperties = GetServerSideProperties();
+                foreach (var property in serverSideProperties)
+                {
+                    req.Configuration[property.Key] = property.Value;
+                }
+            }
             return req;
+        }
+
+        /// <summary>
+        /// Gets a dictionary of server-side properties extracted from connection properties.
+        /// </summary>
+        /// <returns>Dictionary of server-side properties with prefix removed from keys.</returns>
+        private Dictionary<string, string> GetServerSideProperties()
+        {
+            return Properties
+                .Where(p => p.Key.StartsWith(DatabricksParameters.ServerSidePropertyPrefix))
+                .ToDictionary(
+                    p => p.Key.Substring(DatabricksParameters.ServerSidePropertyPrefix.Length),
+                    p => p.Value
+                );
+        }
+
+        /// <summary>
+        /// Applies server-side properties by executing "set key=value" queries.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task ApplyServerSidePropertiesAsync()
+        {
+            if (!_applySSPWithQueries)
+            {
+                return;
+            }
+
+            var serverSideProperties = GetServerSideProperties();
+
+            if (serverSideProperties.Count == 0)
+            {
+                return;
+            }
+
+            using var statement = new DatabricksStatement(this);
+
+            foreach (var property in serverSideProperties)
+            {
+                string query = $"SET {property.Key}={property.Value}";
+                statement.SqlQuery = query;
+
+                try
+                {
+                    await statement.ExecuteUpdateAsync();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error setting server-side property '{property.Key}': {ex.Message}");
+                }
+            }
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
