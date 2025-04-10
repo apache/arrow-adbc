@@ -90,7 +90,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // Note: the INTERVAL sql type does not have an associated column type id.
         private static readonly HashSet<ISqlTypeNameParser> s_parsers = new HashSet<ISqlTypeNameParser>(s_parserMap.Values
             .Concat([
-                SqlIntervalTypeParser.Default, 
+                SqlIntervalTypeParser.Default,
                 SqlSimpleTypeParser.Default("VOID"),
                 SqlSimpleTypeParser.Default("VARIANT"),
             ]));

@@ -133,12 +133,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
             // We should have 24 columns now (the original 23 + BASE_TYPE_NAME)
             Assert.Equal(24, queryResult.Stream.Schema.FieldsList.Count);
-            
+
             // Verify the BASE_TYPE_NAME column is present
             bool hasBaseTypeNameColumn = false;
             int baseTypeNameIndex = -1;
             int typeNameIndex = -1;
-            
+
             for (int i = 0; i < queryResult.Stream.Schema.FieldsList.Count; i++)
             {
                 if (queryResult.Stream.Schema.FieldsList[i].Name.Equals("BASE_TYPE_NAME", StringComparison.OrdinalIgnoreCase))
@@ -151,27 +151,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                     typeNameIndex = i;
                 }
             }
-            
+
             Assert.True(hasBaseTypeNameColumn, "BASE_TYPE_NAME column not found in GetColumns result");
             Assert.True(typeNameIndex >= 0, "TYPE_NAME column not found in GetColumns result");
-            
+
             // Read batches and verify BASE_TYPE_NAME values
             int actualBatchLength = 0;
-            
+
             // Track if we've seen specific complex types
             bool foundDecimal = false;
             bool foundInterval = false;
             bool foundMap = false;
             bool foundArray = false;
             bool foundStruct = false;
-            
+
             Dictionary<string, string> typeNameToBaseTypeName = new Dictionary<string, string>();
-            
+
             // For tracking decimal precision and scale
             int columnSizeIndex = -1;
             int decimalDigitsIndex = -1;
             Dictionary<string, (int precision, short scale)> decimalTypeInfo = new Dictionary<string, (int, short)>();
-            
+
             // Find COLUMN_SIZE and DECIMAL_DIGITS columns
             for (int i = 0; i < queryResult.Stream.Schema.FieldsList.Count; i++)
             {
@@ -183,11 +183,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 {
                     decimalDigitsIndex = i;
                 }
-                
+
                 if (columnSizeIndex >= 0 && decimalDigitsIndex >= 0)
                     break;
             }
-            
+
             while (queryResult.Stream != null)
             {
                 RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
@@ -195,32 +195,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 {
                     break;
                 }
-                
+
                 actualBatchLength += batch.Length;
-                
+
                 // Verify relationships between TYPE_NAME and BASE_TYPE_NAME for each row
                 for (int i = 0; i < batch.Length; i++)
                 {
                     string? typeName = ((StringArray)batch.Column(typeNameIndex)).GetString(i);
                     string? baseTypeName = ((StringArray)batch.Column(baseTypeNameIndex)).GetString(i);
-                    
+
                     // Store for later analysis
                     if (!string.IsNullOrEmpty(typeName) && !string.IsNullOrEmpty(baseTypeName))
                     {
                         typeNameToBaseTypeName[typeName] = baseTypeName;
-                        
+
                         // Collect precision and scale for DECIMAL types
                         if (typeName.StartsWith("DECIMAL(") && columnSizeIndex >= 0 && decimalDigitsIndex >= 0)
                         {
                             int? precision = ((Int32Array)batch.Column(columnSizeIndex)).GetValue(i);
                             int? scale = ((Int32Array)batch.Column(decimalDigitsIndex)).GetValue(i);
-                            
+
                             if (precision.HasValue && scale.HasValue)
                             {
                                 decimalTypeInfo[typeName] = (precision.Value, (short)scale.Value);
                             }
                         }
-                        
+
                         // Track if we've found specific complex types
                         if (typeName.StartsWith("DECIMAL("))
                             foundDecimal = true;
@@ -233,41 +233,41 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                         else if (typeName.StartsWith("STRUCT<"))
                             foundStruct = true;
                     }
-                    
+
                     // BASE_TYPE_NAME should not be null if TYPE_NAME is not null
                     if (!string.IsNullOrEmpty(typeName))
                     {
                         Assert.NotNull(baseTypeName);
-                        
+
                         // BASE_TYPE_NAME should be contained within TYPE_NAME or equal to it
                         // But we might have cases like "ARRAY<INT>" where baseTypeName would be "ARRAY"
                         if (!typeName.Contains("<") && !typeName.Contains("(") && !typeName.Contains(" "))
                         {
                             // Simple types should match exactly, with special handling for INT vs INTEGER
-                            bool isEquivalentType = 
-                                typeName == baseTypeName || 
+                            bool isEquivalentType =
+                                typeName == baseTypeName ||
                                 ((typeName == "INT" && baseTypeName == "INTEGER")) ||
                                 ((typeName == "TIMESTAMP_NTZ" || typeName == "TIMESTAMP_LTZ") && baseTypeName == "TIMESTAMP");
-                            
-                            Assert.True(isEquivalentType, 
+
+                            Assert.True(isEquivalentType,
                                 $"TypeName '{typeName}' should be equivalent to BaseTypeName '{baseTypeName}'");
                         }
                         else
                         {
                             // Complex types should have BASE_TYPE_NAME as a prefix (without parameters)
-                            Assert.True(typeName.StartsWith(baseTypeName), 
+                            Assert.True(typeName.StartsWith(baseTypeName),
                                 $"TypeName '{typeName}' should start with BaseTypeName '{baseTypeName}'");
-                            
+
                             // The BASE_TYPE_NAME should not contain angle brackets or parentheses
                             Assert.DoesNotContain("(", baseTypeName);
                             Assert.DoesNotContain("<", baseTypeName);
                         }
-                        
+
                         OutputHelper?.WriteLine($"TYPE_NAME: {typeName}, BASE_TYPE_NAME: {baseTypeName}");
                     }
                 }
             }
-            
+
             // Specific tests for complex types - if we found them in the results
             if (foundDecimal)
             {
@@ -275,26 +275,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 string decimalBaseTypeName = typeNameToBaseTypeName[decimalTypeName];
                 Assert.Equal("DECIMAL", decimalBaseTypeName);
                 OutputHelper?.WriteLine($"Verified DECIMAL: {decimalTypeName} -> {decimalBaseTypeName}");
-                
+
                 // Extract precision and scale from the type name (e.g., "DECIMAL(38,10)" -> precision=38, scale=10)
                 string typePart = decimalTypeName.Substring(decimalTypeName.IndexOf('(') + 1);
                 typePart = typePart.Remove(typePart.Length - 1); // Remove closing parenthesis
                 string[] parts = typePart.Split(',');
-                
+
                 int expectedPrecision = int.Parse(parts[0]);
                 int expectedScale = parts.Length > 1 ? int.Parse(parts[1]) : 0;
-                
+
                 // Verify that the precision and scale from the data match what's in the type name
-                Assert.True(decimalTypeInfo.ContainsKey(decimalTypeName), 
+                Assert.True(decimalTypeInfo.ContainsKey(decimalTypeName),
                     $"Could not find precision and scale information for {decimalTypeName}");
-                
+
                 var (actualPrecision, actualScale) = decimalTypeInfo[decimalTypeName];
                 Assert.Equal(expectedPrecision, actualPrecision);
                 Assert.Equal(expectedScale, actualScale);
-                
+
                 OutputHelper?.WriteLine($"Verified DECIMAL precision/scale: {decimalTypeName} -> precision={actualPrecision}, scale={actualScale}");
             }
-            
+
             if (foundInterval)
             {
                 string intervalTypeName = typeNameToBaseTypeName.Keys.First(k => k.StartsWith("INTERVAL"));
@@ -302,7 +302,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 Assert.Equal("INTERVAL", intervalBaseTypeName);
                 OutputHelper?.WriteLine($"Verified INTERVAL: {intervalTypeName} -> {intervalBaseTypeName}");
             }
-            
+
             if (foundMap)
             {
                 string mapTypeName = typeNameToBaseTypeName.Keys.First(k => k.StartsWith("MAP<"));
@@ -310,7 +310,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 Assert.Equal("MAP", mapBaseTypeName);
                 OutputHelper?.WriteLine($"Verified MAP: {mapTypeName} -> {mapBaseTypeName}");
             }
-            
+
             if (foundArray)
             {
                 string arrayTypeName = typeNameToBaseTypeName.Keys.First(k => k.StartsWith("ARRAY<"));
@@ -318,7 +318,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 Assert.Equal("ARRAY", arrayBaseTypeName);
                 OutputHelper?.WriteLine($"Verified ARRAY: {arrayTypeName} -> {arrayBaseTypeName}");
             }
-            
+
             if (foundStruct)
             {
                 string structTypeName = typeNameToBaseTypeName.Keys.First(k => k.StartsWith("STRUCT<"));
@@ -326,7 +326,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 Assert.Equal("STRUCT", structBaseTypeName);
                 OutputHelper?.WriteLine($"Verified STRUCT: {structTypeName} -> {structBaseTypeName}");
             }
-            
+
             Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, actualBatchLength);
         }
 
