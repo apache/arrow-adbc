@@ -725,15 +725,15 @@ impl Connection for DataFusionConnection {
         Ok(reader)
     }
 
-    fn get_objects(
-        &self,
+    fn get_objects<'a>(
+        &'_ self,
         depth: adbc_core::options::ObjectDepth,
-        _catalog: Option<&str>,
-        _db_schema: Option<&str>,
-        _table_name: Option<&str>,
-        _table_type: Option<Vec<&str>>,
-        _column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send> {
+        _catalog: Option<&'_ str>,
+        _db_schema: Option<&'_ str>,
+        _table_name: Option<&'_ str>,
+        _table_type: Option<Vec<&'_ str>>,
+        _column_name: Option<&'_ str>,
+    ) -> Result<impl RecordBatchReader + Send + 'a> {
         let batch = GetObjectsBuilder::new().build(&self.runtime, &self.ctx, &depth)?;
         let reader = SingleBatchReader::new(batch);
         Ok(reader)

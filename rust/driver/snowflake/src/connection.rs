@@ -78,15 +78,15 @@ impl adbc_core::Connection for Connection {
         self.0.get_info(codes)
     }
 
-    fn get_objects(
-        &self,
+    fn get_objects<'a>(
+        &'_ self,
         depth: adbc_core::options::ObjectDepth,
-        catalog: Option<&str>,
-        db_schema: Option<&str>,
-        table_name: Option<&str>,
-        table_type: Option<Vec<&str>>,
-        column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send> {
+        catalog: Option<&'_ str>,
+        db_schema: Option<&'_ str>,
+        table_name: Option<&'_ str>,
+        table_type: Option<Vec<&'_ str>>,
+        column_name: Option<&'_ str>,
+    ) -> Result<impl RecordBatchReader + Send + 'a> {
         self.0.get_objects(
             depth,
             catalog,
