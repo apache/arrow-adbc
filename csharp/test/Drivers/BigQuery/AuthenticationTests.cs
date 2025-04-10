@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         /// <summary>
-        /// Validates if the Entra token can sign in and refresh.
+        /// Validates if the Entra token can sign in.
         /// </summary>
         [SkippableFact, Order(1)]
         public void CanSignInWithEntraToken()
@@ -70,8 +70,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount, environment.Name);
         }
 
+        /// <summary>
+        /// Validates if the Entra token can sign in and refresh.
+        /// </summary>
         [SkippableFact, Order(1)]
-        public void CanRefreshToken()
+        public void CanSignInWithAndRefreshEntraToken()
         {
             BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
             Assert.NotNull(environment);
@@ -86,10 +89,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 _outputHelper.WriteLine("Successfully set a new token");
             });
 
+            // create a query that takes 75 minutes because Entra tokens typically expire in 60 minutes
             AdbcStatement statement = connection.CreateStatement();
-            statement.SqlQuery = "SELECT COUNT(*) FROM UNNEST(GENERATE_ARRAY(1, 1000000, 1)) AS a, UNNEST(GENERATE_ARRAY(1, 1000000, 1)) AS b WHERE RAND() < 0.0000001";
+            statement.SqlQuery = @"
+                DECLARE end_time TIMESTAMP;
+                SET end_time = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 75 MINUTE);
+
+                WHILE CURRENT_TIMESTAMP() < end_time DO
+                END WHILE;
+
+                SELECT 'Query completed after 75 minutes' AS result;";
 
             QueryResult queryResult = statement.ExecuteQuery();
+
+            _outputHelper.WriteLine($"Retrieve query result with {queryResult.RowCount} rows");
         }
 
         private string GetAccessToken(BigQueryTestEnvironment environment)
@@ -106,6 +119,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             string claimJson = JsonSerializer.Serialize(environment.EntraConfiguration.Claims);
             TokenRequestContext requestContext = new TokenRequestContext(environment.EntraConfiguration.Scopes, claims: claimJson);
             AccessToken accessToken = credential.GetToken(requestContext);
+
+            _outputHelper.WriteLine($"Access token is {accessToken.Token}");
 
             return accessToken.Token;
         }

@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -65,7 +66,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);
             this.httpClient = new HttpClient();
         }
-
         public Func<Task>? UpdateToken { get; set; }
 
         internal BigQueryClient? Client { get; private set; }
@@ -1225,6 +1225,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             try
             {
+                Debug.WriteLine($"{DateTime.Now.ToString()} - Trading {entraAccessToken}");
+
                 var requestBody = new
                 {
                     scope = BigQueryConstants.EntraIdScope,
@@ -1244,6 +1246,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 string responseBody = response.Content.ReadAsStringAsync().Result;
 
                 BigQueryStsTokenResponse? bigQueryTokenResponse = JsonSerializer.Deserialize<BigQueryStsTokenResponse>(responseBody);
+
+                Debug.WriteLine($"{DateTime.Now.ToString()} - Traded for Google token {bigQueryTokenResponse?.AccessToken}");
 
                 return bigQueryTokenResponse?.AccessToken;
             }
