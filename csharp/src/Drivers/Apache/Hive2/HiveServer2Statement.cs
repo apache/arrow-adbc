@@ -423,7 +423,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
                 Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
-                
+
                 // Fetch the results manually to enhance them
                 TRowSet rowSet = await Connection.FetchResultsAsync(OperationHandle!, BatchSize, cancellationToken);
                 int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
