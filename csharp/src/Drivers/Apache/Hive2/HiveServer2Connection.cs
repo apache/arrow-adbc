@@ -1242,7 +1242,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 nullBitmapBuffer.Build());
         }
 
-        public abstract void SetPrecisionScaleAndTypeName(short columnType, string typeName, TableInfo? tableInfo, int columnSize, int decimalDigits);
+        internal abstract void SetPrecisionScaleAndTypeName(short columnType, string typeName, TableInfo? tableInfo, int columnSize, int decimalDigits);
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
@@ -1359,7 +1359,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        public async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
+        internal async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
             await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
 
