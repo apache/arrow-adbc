@@ -617,7 +617,9 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 		metadata["MaterializedView.Query"] = md.MaterializedView.Query
 		metadata["MaterializedView.RefreshInterval"] = md.MaterializedView.RefreshInterval.String()
 		metadata["MaterializedView.AllowNonIncrementalDefinition"] = strconv.FormatBool(md.MaterializedView.AllowNonIncrementalDefinition)
-		metadata["MaterializedView.MaxStaleness"] = md.MaxStaleness.String()
+		if md.MaxStaleness != nil {
+			metadata["MaterializedView.MaxStaleness"] = md.MaxStaleness.String()
+		}
 	}
 	labels := ""
 	if len(md.Labels) > 0 {
