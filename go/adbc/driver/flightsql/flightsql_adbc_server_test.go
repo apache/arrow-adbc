@@ -337,16 +337,6 @@ func (suite *AuthnTests) TestBearerTokenUpdated() {
 	suite.openAndExecuteQuery("a-query")
 }
 
-func (suite *AuthnTests) TestToken() {
-	err := suite.db.SetOptions(map[string]string{
-		driver.OptionKeyToken: "initial",
-	})
-
-	suite.Require().NoError(err)
-
-	suite.openAndExecuteQuery("a-query")
-}
-
 type OAuthTests struct {
 	ServerBasedTests
 
@@ -456,8 +446,8 @@ func (suite *OAuthTests) TearDownTest() {
 
 func (suite *OAuthTests) TestTokenExchangeFlow() {
 	err := suite.db.SetOptions(map[string]string{
-		driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
-		driver.OptionKeyToken:            "test-subject-token",
+		driver.OptionKeyOauthFlow:        driver.TokenExchange,
+		driver.OptionKeySubjectToken:     "test-subject-token",
 		driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
 		driver.OptionSSLSkipVerify:       adbc.OptionValueEnabled,
@@ -470,7 +460,7 @@ func (suite *OAuthTests) TestTokenExchangeFlow() {
 
 func (suite *OAuthTests) TestClientCredentialsFlow() {
 	err := suite.db.SetOptions(map[string]string{
-		driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
+		driver.OptionKeyOauthFlow:    driver.ClientCredentials,
 		driver.OptionKeyClientId:     "test-client",
 		driver.OptionKeyClientSecret: "test-secret",
 		driver.OptionKeyTokenURI:     suite.oauthServer.URL,
@@ -492,7 +482,7 @@ func (suite *OAuthTests) TestClientCredentialsFlow() {
 func (suite *OAuthTests) TestFailOauthWithTokenSet() {
 	err := suite.db.SetOptions(map[string]string{
 		driver.OptionAuthorizationHeader: "Bearer test-client-token",
-		driver.OptionKeyOauthFlow:        strconv.Itoa(driver.ClientCredentials),
+		driver.OptionKeyOauthFlow:        driver.ClientCredentials,
 		driver.OptionKeyClientId:         "test-client",
 		driver.OptionKeyClientSecret:     "test-secret",
 		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
@@ -510,26 +500,26 @@ func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
 		{
 			name: "Missing token",
 			options: map[string]string{
-				driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
+				driver.OptionKeyOauthFlow:        driver.TokenExchange,
 				driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 				driver.OptionKeyTokenURI:         suite.oauthServer.URL,
 			},
-			expectedErrorMsg: "Not Implemented: oauth flow not implemented: 4",
+			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.exchange.subject_token",
 		},
 		{
 			name: "Missing subject token type",
 			options: map[string]string{
-				driver.OptionKeyOauthFlow: strconv.Itoa(driver.TokenExchange),
-				driver.OptionKeyToken:     "test-subject-token",
-				driver.OptionKeyTokenURI:  suite.oauthServer.URL,
+				driver.OptionKeyOauthFlow:    driver.TokenExchange,
+				driver.OptionKeySubjectToken: "test-subject-token",
+				driver.OptionKeyTokenURI:     suite.oauthServer.URL,
 			},
 			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.exchange.subject_token_type",
 		},
 		{
 			name: "Missing token URI",
 			options: map[string]string{
-				driver.OptionKeyOauthFlow:        strconv.Itoa(driver.TokenExchange),
-				driver.OptionKeyToken:            "test-subject-token",
+				driver.OptionKeyOauthFlow:        driver.TokenExchange,
+				driver.OptionKeySubjectToken:     "test-subject-token",
 				driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 			},
 			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.token_uri",
@@ -554,7 +544,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
 		{
 			name: "Missing client ID",
 			options: map[string]string{
-				driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
+				driver.OptionKeyOauthFlow:    driver.ClientCredentials,
 				driver.OptionKeyClientSecret: "test-secret",
 				driver.OptionKeyTokenURI:     suite.oauthServer.URL,
 			},
@@ -563,7 +553,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
 		{
 			name: "Missing client secret",
 			options: map[string]string{
-				driver.OptionKeyOauthFlow: strconv.Itoa(driver.ClientCredentials),
+				driver.OptionKeyOauthFlow: driver.ClientCredentials,
 				driver.OptionKeyClientId:  "test-client",
 				driver.OptionKeyTokenURI:  suite.oauthServer.URL,
 			},
@@ -572,7 +562,7 @@ func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
 		{
 			name: "Missing token URI",
 			options: map[string]string{
-				driver.OptionKeyOauthFlow:    strconv.Itoa(driver.ClientCredentials),
+				driver.OptionKeyOauthFlow:    driver.ClientCredentials,
 				driver.OptionKeyClientId:     "test-client",
 				driver.OptionKeyClientSecret: "test-secret",
 			},
@@ -591,35 +581,13 @@ func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
 }
 
 func (suite *OAuthTests) TestInvalidOAuthFlow() {
-	testCases := []struct {
-		name             string
-		options          map[string]string
-		expectedErrorMsg string
-	}{
-		{
-			name: "Invalid flow value",
-			options: map[string]string{
-				driver.OptionKeyOauthFlow: "invalid-flow",
-				driver.OptionKeyToken:     "test-token",
-			},
-			expectedErrorMsg: "Invalid Argument: unsupported option",
-		},
-		{
-			name: "Unsupported flow type",
-			options: map[string]string{
-				driver.OptionKeyOauthFlow: "99", // Using a number that doesn't map to a defined flow
-			},
-			expectedErrorMsg: "Not Implemented: oauth flow not implemented: 99",
-		},
-	}
+	err := suite.db.SetOptions(map[string]string{
+		driver.OptionKeyOauthFlow:    "invalid-flow",
+		driver.OptionKeySubjectToken: "test-token",
+	})
 
-	for _, tc := range testCases {
-		suite.Run(tc.name, func() {
-			err := suite.db.SetOptions(tc.options)
-			suite.Error(err, "Expected error for invalid OAuth flow")
-			suite.Contains(err.Error(), tc.expectedErrorMsg)
-		})
-	}
+	suite.Error(err, "Expected error for invalid OAuth flow")
+	suite.Contains(err.Error(), "Not Implemented: oauth flow not implemented: invalid-flow")
 }
 
 // ---- Grpc Dialer Options Tests --------------

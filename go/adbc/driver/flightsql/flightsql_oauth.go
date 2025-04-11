@@ -27,9 +27,8 @@ import (
 )
 
 const (
-	AuthPKCE = 1 << iota
-	ClientCredentials
-	TokenExchange
+	ClientCredentials = "client_credentials"
+	TokenExchange     = "token_exchange"
 )
 
 type oAuthOption struct {
@@ -46,7 +45,7 @@ var (
 	}
 
 	tokenExchangParams = map[string]oAuthOption{
-		OptionKeyToken:            {true, "subject_token"},
+		OptionKeySubjectToken:     {true, "subject_token"},
 		OptionKeySubjectTokenType: {true, "subject_token_type"},
 		OptionKeyReqTokenType:     {false, "requested_token_type"},
 		OptionKeyExchangeAud:      {false, "audience"},

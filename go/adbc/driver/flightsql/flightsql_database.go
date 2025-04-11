@@ -169,38 +169,6 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		delete(cnOptions, adbc.OptionKeyPassword)
 	}
 
-	// if token exists it can bypass or apply token exchange
-	// else check oauth flow
-	if t, ok := cnOptions[OptionKeyToken]; ok {
-		if d.hdrs.Len() > 0 {
-			return adbc.Error{
-				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter OR token",
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-
-		// if contains token. it can bypass or use token exchange
-		if flow, ok := cnOptions[OptionKeyOauthFlow]; ok {
-			flowVal, err := strconv.Atoi(flow)
-			if err != nil || flowVal != TokenExchange {
-				return adbc.Error{
-					Msg:  "unsupported option",
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-
-			tokExchange, err := newTokenExchangeFlow(cnOptions)
-			if err != nil {
-				return err
-			}
-			d.oauthToken = tokExchange
-			delete(cnOptions, OptionKeyOauthFlow)
-		} else {
-			d.hdrs.Set("authorization", "Bearer "+t)
-			delete(cnOptions, OptionKeyToken)
-		}
-	}
-
 	if flow, ok := cnOptions[OptionKeyOauthFlow]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
@@ -209,20 +177,27 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			}
 		}
 
+		var rpcCreds credentials.PerRPCCredentials
+		var err error
 		switch flow {
-		case "2": // Client Credentials flow
-			cl, err := newClientCredentials(cnOptions)
+		case ClientCredentials: // Client Credentials flow
+			rpcCreds, err = newClientCredentials(cnOptions)
 			if err != nil {
 				return err
 			}
-			d.oauthToken = cl
-			delete(cnOptions, OptionKeyOauthFlow)
+		case TokenExchange: // Token Exchange flow
+			rpcCreds, err = newTokenExchangeFlow(cnOptions)
+			if err != nil {
+				return err
+			}
 		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("oauth flow not implemented: %s", flow),
 				Code: adbc.StatusNotImplemented,
 			}
 		}
+		d.oauthToken = rpcCreds
+		delete(cnOptions, OptionKeyOauthFlow)
 	}
 
 	var err error
