@@ -117,12 +117,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             if (!string.IsNullOrEmpty(testEnvironment.StatementType))
             {
-                parameters.Add(BigQueryParameters.StatementType, testEnvironment.StatementType!);
+                parameters.Add(BigQueryParameters.StatementType, testEnvironment.StatementType);
             }
 
-            if (testEnvironment.StatementIndex.HasValue)
+            if (!string.IsNullOrEmpty(testEnvironment.EvaluationKind))
             {
-                parameters.Add(BigQueryParameters.StatementIndex, testEnvironment.StatementIndex.Value.ToString());
+                parameters.Add(BigQueryParameters.EvaluationKind, testEnvironment.EvaluationKind);
             }
 
             return parameters;

@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -74,30 +73,27 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     statementType = statementTypeString;
                 }
-                int statementIndex = 1;
-                if (this.Options?.TryGetValue(BigQueryParameters.StatementIndex, out string? statementIndexString) == true &&
-                    int.TryParse(statementIndexString, out int statementIndexInt) &&
-                    statementIndexInt > 0)
+                string evaluationKind = string.Empty;
+                if (this.Options?.TryGetValue(BigQueryParameters.EvaluationKind, out string? evaluationKindString) == true)
                 {
-                    statementIndex = statementIndexInt;
+                    evaluationKind = evaluationKindString;
                 }
-                
-                // To get the results of all statements in a multi-statement query, enumerate the child jobs and call jobs.getQueryResults on each of them.
-                // Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements
+
+                // To get the results of all statements in a multi-statement query, enumerate the child jobs. Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements.
+                // Can filter by StatementType and EvaluationKind. Related public docs: https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobstatistics2, https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#evaluationkind
                 ListJobsOptions listJobsOptions = new ListJobsOptions();
                 listJobsOptions.ParentJobId = results.JobReference.JobId;
                 var joblist = client.ListJobs(listJobsOptions)
                     .Select(job => client.GetJob(job.Reference))
+                    .Where(job => string.IsNullOrEmpty(evaluationKind) || job.Statistics.ScriptStatistics.EvaluationKind.Equals(evaluationKind, StringComparison.OrdinalIgnoreCase))
                     .Where(job => string.IsNullOrEmpty(statementType) || job.Statistics.Query.StatementType.Equals(statementType,StringComparison.OrdinalIgnoreCase))
                     .OrderBy(job => job.Resource.Statistics.CreationTime)
                     .ToList();
 
-                if(statementIndex < 1 || statementIndex > joblist.Count)
+                if (joblist.Count > 0)
                 {
-                    throw new ArgumentOutOfRangeException($"The specified index {statementIndex} is out of range. There are {joblist.Count} jobs available.");
+                    results = joblist[0].GetQueryResults(getQueryResultsOptions);
                 }
-
-                results = joblist[statementIndex - 1].GetQueryResults(getQueryResultsOptions);
             }
             if (results.TableReference == null)
             {

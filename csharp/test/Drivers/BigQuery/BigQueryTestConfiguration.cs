@@ -101,7 +101,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         public string StatementType { get; set; } = string.Empty;
 
         [JsonPropertyName("statementIndex")]
-        public int? StatementIndex { get; set; }
+        public string EvaluationKind { get; set; } = string.Empty;
 
         /// <summary>
         /// How structs should be handled by the ADO.NET client for this environment.
