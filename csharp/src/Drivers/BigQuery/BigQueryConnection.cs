@@ -1058,7 +1058,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.LargeDecimalsAsString,
                 BigQueryParameters.LargeResultsDestinationTable,
                 BigQueryParameters.GetQueryResultsOptionsTimeout,
-                BigQueryParameters.MaxFetchConcurrency
+                BigQueryParameters.MaxFetchConcurrency,
+                BigQueryParameters.StatementType,
+                BigQueryParameters.EvaluationKind
             };
 
             foreach (string key in statementOptions)

@@ -115,6 +115,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.MaxFetchConcurrency, testEnvironment.MaxStreamCount.Value.ToString());
             }
 
+            if (!string.IsNullOrEmpty(testEnvironment.StatementType))
+            {
+                parameters.Add(BigQueryParameters.StatementType, testEnvironment.StatementType);
+            }
+
+            if (!string.IsNullOrEmpty(testEnvironment.EvaluationKind))
+            {
+                parameters.Add(BigQueryParameters.EvaluationKind, testEnvironment.EvaluationKind);
+            }
+
             return parameters;
         }
 
