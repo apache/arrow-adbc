@@ -41,3 +41,6 @@ libloading = { version = "0.8", optional = true }
 
 [dev-dependencies]
 arrow-select.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
