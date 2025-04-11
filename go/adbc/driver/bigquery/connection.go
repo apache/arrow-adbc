@@ -617,7 +617,32 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 		metadata["MaterializedView.Query"] = md.MaterializedView.Query
 		metadata["MaterializedView.RefreshInterval"] = md.MaterializedView.RefreshInterval.String()
 		metadata["MaterializedView.AllowNonIncrementalDefinition"] = strconv.FormatBool(md.MaterializedView.AllowNonIncrementalDefinition)
-		metadata["MaterializedView.MaxStaleness"] = md.MaxStaleness.String()
+		if md.MaxStaleness != nil {
+			metadata["MaterializedView.MaxStaleness"] = md.MaxStaleness.String()
+		}
+	}
+	if md.TimePartitioning != nil {
+		// "DAY", "HOUR", "MONTH", "YEAR"
+		metadata["TimePartitioning.Type"] = string(md.TimePartitioning.Type)
+		if md.TimePartitioning.Expiration != 0 {
+			metadata["TimePartitioning.Expiration"] = md.TimePartitioning.Expiration.String()
+		}
+		if md.TimePartitioning.Field != "" {
+			metadata["TimePartitioning.Field"] = md.TimePartitioning.Field
+		}
+	}
+	if md.RangePartitioning != nil {
+		if md.RangePartitioning.Field != "" {
+			metadata["RangePartitioning.Field"] = md.RangePartitioning.Field
+		}
+		if md.RangePartitioning.Range != nil {
+			metadata["RangePartitioning.Range.Start"] = strconv.FormatInt(md.RangePartitioning.Range.Start, 10)
+			metadata["RangePartitioning.Range.End"] = strconv.FormatInt(md.RangePartitioning.Range.End, 10)
+			metadata["RangePartitioning.Range.Interval"] = strconv.FormatInt(md.RangePartitioning.Range.Interval, 10)
+		}
+	}
+	if md.RequirePartitionFilter {
+		metadata["RequirePartitionFilter"] = strconv.FormatBool(md.RequirePartitionFilter)
 	}
 	labels := ""
 	if len(md.Labels) > 0 {
