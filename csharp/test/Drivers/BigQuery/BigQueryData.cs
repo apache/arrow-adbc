@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
-using System.Dynamic;
 using System.Text;
 using System.Text.Json;
 using Apache.Arrow.Types;

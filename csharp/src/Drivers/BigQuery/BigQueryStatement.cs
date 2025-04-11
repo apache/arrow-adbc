@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -36,24 +37,48 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// BigQuery-specific implementation of <see cref="AdbcStatement"/>
     /// </summary>
-    public class BigQueryStatement : AdbcStatement
+    class BigQueryStatement : AdbcStatement, ITokenProtectedResource, IDisposable
     {
-        readonly BigQueryClient client;
-        readonly GoogleCredential credential;
+        readonly BigQueryConnection bigQueryConnection;
 
-        public BigQueryStatement(BigQueryClient client, GoogleCredential credential)
+        public BigQueryStatement(BigQueryConnection bigQueryConnection)
         {
-            this.client = client;
-            this.credential = credential;
+            if (bigQueryConnection == null) { throw new AdbcException($"{nameof(bigQueryConnection)} cannot be null", AdbcStatusCode.InvalidArgument); }
+
+            this.bigQueryConnection = bigQueryConnection;
+
+            // pass on the handler since this isn't accessible publicly
+            this.UpdateToken = bigQueryConnection.UpdateToken;
         }
+
+        public Func<Task>? UpdateToken { get; set; }
 
         public IReadOnlyDictionary<string, string>? Options { get; set; }
 
+        private BigQueryClient Client => this.bigQueryConnection.Client ?? throw new AdbcException("Client cannot be null");
+
+        private GoogleCredential Credential => this.bigQueryConnection.Credential ?? throw new AdbcException("Credential cannot be null");
+
+        private int MaxRetryAttempts => this.bigQueryConnection.MaxRetryAttempts;
+        private int RetryDelayMs => this.bigQueryConnection.RetryDelayMs;
+
         public override QueryResult ExecuteQuery()
+        {
+            if (this.UpdateToken != null)
+            {
+                return ExecuteQueryInternalAsync().GetAwaiter().GetResult();
+            }
+            else
+            {
+                return ExecuteQueryInternal();
+            }
+        }
+
+        private QueryResult ExecuteQueryInternal()
         {
             QueryOptions queryOptions = ValidateOptions();
 
-            BigQueryJob job = this.client.CreateQueryJob(SqlQuery, null, queryOptions);
+            BigQueryJob job = this.Client.CreateQueryJob(SqlQuery, null, queryOptions);
 
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
@@ -67,7 +92,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             BigQueryResults results = job.GetQueryResults(getQueryResultsOptions);
 
             BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
-            readClientBuilder.Credential = this.credential;
+            readClientBuilder.Credential = this.Credential;
             BigQueryReadClient readClient = readClientBuilder.Build();
 
             if (results.TableReference == null)
@@ -76,11 +101,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 // Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements
                 ListJobsOptions listJobsOptions = new ListJobsOptions();
                 listJobsOptions.ParentJobId = results.JobReference.JobId;
-                PagedEnumerable<JobList, BigQueryJob> joblist = client.ListJobs(listJobsOptions);
-                BigQueryJob firstQueryJob = new BigQueryJob(client, job.Resource);
+                PagedEnumerable<JobList, BigQueryJob> joblist = this.Client.ListJobs(listJobsOptions);
+                BigQueryJob firstQueryJob = new BigQueryJob(this.Client, job.Resource);
                 foreach (BigQueryJob childJob in joblist)
                 {
-                    var tempJob = client.GetJob(childJob.Reference);
+                    var tempJob = this.Client.GetJob(childJob.Reference);
                     var query = tempJob.Resource?.Configuration?.Query;
                     if (query != null && query.DestinationTable != null && query.DestinationTable.ProjectId != null && query.DestinationTable.DatasetId != null && query.DestinationTable.TableId != null)
                     {
@@ -123,7 +148,127 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new QueryResult(totalRows, stream);
         }
 
+        private async Task<QueryResult> ExecuteQueryInternalAsync()
+        {
+            QueryOptions queryOptions = ValidateOptions();
+
+            BigQueryJob job = await this.Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
+
+            JobReference jobReference = job.Reference;
+
+            GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
+
+            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true &&
+                int.TryParse(timeoutSeconds, out int seconds) &&
+                seconds >= 0)
+            {
+                getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
+            }
+
+            Func<Task<BigQueryJob>> checkJobStatus = async () =>
+            {
+                while (true)
+                {
+                    var jobWithStatus = await this.Client.GetJobAsync(jobReference);
+
+                    if (jobWithStatus.State == JobState.Done)
+                    {
+                        if (jobWithStatus.Status.ErrorResult != null)
+                        {
+                            Debug.WriteLine($"Error: {jobWithStatus.Status.ErrorResult.Message}");
+                        }
+
+                        return jobWithStatus;
+                    }
+                }
+            };
+
+            await RetryManager.ExecuteWithRetriesAsync<BigQueryJob>(this, checkJobStatus, MaxRetryAttempts, RetryDelayMs);
+
+            Func<Task<BigQueryResults>> getJobResults = async () =>
+            {
+                // if the authentication token was reset, then we need a new job with the latest token
+                BigQueryJob completedJob = await this.Client.GetJobAsync(jobReference);
+                return await completedJob.GetQueryResultsAsync();
+            };
+
+            BigQueryResults results = await RetryManager.ExecuteWithRetriesAsync(this, getJobResults, MaxRetryAttempts, RetryDelayMs);
+
+            TokenProtectedReadClientManger clientMgr = new TokenProtectedReadClientManger(this.Credential);
+            clientMgr.UpdateToken = () => Task.Run(() =>
+            {
+                this.bigQueryConnection.SetCredential();
+                clientMgr.UpdateCredential(this.Credential);
+            });
+
+            if (results?.TableReference == null)
+            {
+                // To get the results of all statements in a multi-statement query, enumerate the child jobs and call jobs.getQueryResults on each of them.
+                // Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements
+                ListJobsOptions listJobsOptions = new ListJobsOptions();
+                listJobsOptions.ParentJobId = results?.JobReference.JobId;
+                PagedAsyncEnumerable<JobList, BigQueryJob> joblist = this.Client.ListJobsAsync(listJobsOptions);
+                BigQueryJob firstQueryJob = new BigQueryJob(this.Client, job.Resource);
+                await foreach (BigQueryJob childJob in joblist)
+                {
+                    var tempJob = await this.Client.GetJobAsync(childJob.Reference);
+                    var query = tempJob.Resource?.Configuration?.Query;
+                    if (query != null && query.DestinationTable != null && query.DestinationTable.ProjectId != null && query.DestinationTable.DatasetId != null && query.DestinationTable.TableId != null)
+                    {
+                        firstQueryJob = tempJob;
+                    }
+                }
+                results = await firstQueryJob.GetQueryResultsAsync();
+            }
+
+            if (results?.TableReference == null)
+            {
+                throw new AdbcException("There is no query statement");
+            }
+
+            string table = $"projects/{results.TableReference.ProjectId}/datasets/{results.TableReference.DatasetId}/tables/{results.TableReference.TableId}";
+
+            int maxStreamCount = 1;
+
+            if (this.Options?.TryGetValue(BigQueryParameters.MaxFetchConcurrency, out string? maxStreamCountString) == true)
+            {
+                if (int.TryParse(maxStreamCountString, out int count))
+                {
+                    if (count >= 0)
+                    {
+                        maxStreamCount = count;
+                    }
+                }
+            }
+
+            ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
+            ReadSession rrs = clientMgr.ReadClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, maxStreamCount);
+
+            long totalRows = results.TotalRows == null ? -1L : (long)results.TotalRows.Value;
+
+            var readers = rrs.Streams
+                             .Select(s => ReadChunkWithRetries(clientMgr, s.Name))
+                             .Where(chunk => chunk != null)
+                             .Cast<IArrowReader>();
+
+            IArrowArrayStream stream = new MultiArrowReader(TranslateSchema(results.Schema), readers);
+
+            return new QueryResult(totalRows, stream);
+        }
+
         public override UpdateResult ExecuteUpdate()
+        {
+            if (this.UpdateToken != null)
+            {
+                return ExecuteUpdateInternalAsync().GetAwaiter().GetResult();
+            }
+            else
+            {
+                return ExecuteUpdateInternal();
+            }
+        }
+
+        private UpdateResult ExecuteUpdateInternal()
         {
             QueryOptions options = ValidateOptions();
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
@@ -135,7 +280,30 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
-            BigQueryResults result = this.client.ExecuteQuery(
+            BigQueryResults result = this.Client.ExecuteQuery(
+                SqlQuery,
+                parameters: null,
+                queryOptions: options,
+                resultsOptions: getQueryResultsOptions);
+
+            long updatedRows = result.NumDmlAffectedRows == null ? -1L : result.NumDmlAffectedRows.Value;
+
+            return new UpdateResult(updatedRows);
+        }
+
+        private async Task<UpdateResult> ExecuteUpdateInternalAsync()
+        {
+            QueryOptions options = ValidateOptions();
+            GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
+
+            if (this.Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true &&
+                int.TryParse(timeoutSeconds, out int seconds) &&
+                seconds >= 0)
+            {
+                getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
+            }
+
+            BigQueryResults result = await this.Client.ExecuteQueryAsync(
                 SqlQuery,
                 parameters: null,
                 queryOptions: options,
@@ -226,11 +394,22 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return type;
         }
 
-        static IArrowReader? ReadChunk(BigQueryReadClient readClient, string streamName)
+        private IArrowReader? ReadChunkWithRetries(TokenProtectedReadClientManger clientMgr, string streamName)
+        {
+            Func<Task<IArrowReader?>> func = () => Task.FromResult<IArrowReader?>(ReadChunk(clientMgr, streamName));
+            return RetryManager.ExecuteWithRetriesAsync<IArrowReader?>(clientMgr, func, MaxRetryAttempts, RetryDelayMs).GetAwaiter().GetResult();
+        }
+
+        static IArrowReader? ReadChunk(TokenProtectedReadClientManger clientMgr, string streamName)
+        {
+            return ReadChunk(clientMgr.ReadClient, streamName);
+        }
+
+        static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName)
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
-            BigQueryReadClient.ReadRowsStream readRowsStream = readClient.ReadRows(new ReadRowsRequest { ReadStream = streamName });
+            BigQueryReadClient.ReadRowsStream readRowsStream = client.ReadRows(new ReadRowsRequest { ReadStream = streamName });
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
 
             ReadRowsStream stream = new ReadRowsStream(enumerator);
@@ -249,12 +428,24 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             QueryOptions options = new QueryOptions();
 
-            if (this.client.ProjectId == BigQueryConstants.DetectProjectId)
+            if (this.Client.ProjectId == BigQueryConstants.DetectProjectId)
             {
                 // An error occurs when calling CreateQueryJob without the ID set,
                 // so use the first one that is found. This does not prevent from calling
                 // to other 'project IDs' (catalogs) with a query.
-                PagedEnumerable<ProjectList, CloudProject>? projects = this.client.ListProjects();
+                //PagedEnumerable<ProjectList, CloudProject>? projects = this.Client.ListProjects();
+
+                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = new(
+                    () =>
+                    {
+                        return Task.Run(
+                            () => { return this.Client?.ListProjects(); }
+                         );
+                    }
+                );
+
+                PagedEnumerable<ProjectList, CloudProject>? projects =
+                    RetryManager.ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(this, func, MaxRetryAttempts, RetryDelayMs).Result;
 
                 if (projects != null)
                 {
@@ -313,6 +504,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
             return options;
         }
+
+        public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
         class MultiArrowReader : IArrowArrayStream
         {

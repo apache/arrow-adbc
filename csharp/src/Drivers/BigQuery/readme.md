@@ -40,8 +40,6 @@ The following parameters can be used to configure the driver behavior. The param
 **adbc.bigquery.auth_type**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Required. Must be `user` or `service`
 
-https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_AllowLargeResults
-
 **adbc.bigquery.billing_project_id**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The [Project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects) used for accessing billing BigQuery. If not specified, will default to the detected project ID.
 
@@ -60,11 +58,17 @@ https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/G
 **adbc.bigquery.get_query_results_options.timeout**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the timeout (in seconds) for the GetQueryResultsOptions value. If not set, defaults to 5 minutes. Similar to a CommandTimeout.
 
+**adbc.bigquery.maximum_retries**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. The maximum number of retries when using token refresh. Defaults to 5.
+
 **adbc.bigquery.max_fetch_concurrency**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [maxStreamCount](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.Storage.V1/latest/Google.Cloud.BigQuery.Storage.V1.BigQueryReadClient#Google_Cloud_BigQuery_Storage_V1_BigQueryReadClient_CreateReadSession_System_String_Google_Cloud_BigQuery_Storage_V1_ReadSession_System_Int32_Google_Api_Gax_Grpc_CallSettings_) for the CreateReadSession method. If not set, defaults to 1.
 
 **adbc.bigquery.include_constraints_getobjects**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Some callers do not need the constraint details when they get the table information and can improve the speed of obtaining the results. Setting this value to `"false"` will not include the constraint details. The default value is `"true"`.
+
+**adbc.bigquery.include_public_project_id**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Include the `bigquery-public-data` project ID with the list of project IDs.
 
 **adbc.bigquery.large_results_destination_table**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [DestinationTable](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_DestinationTable) value of the QueryOptions if configured. Expects the format to be `{projectId}.{datasetId}.{tableId}` to set the corresponding values in the [TableReference](https://github.com/googleapis/google-api-dotnet-client/blob/6c415c73788b848711e47c6dd33c2f93c76faf97/Src/Generated/Google.Apis.Bigquery.v2/Google.Apis.Bigquery.v2.cs#L9348) class.
@@ -72,11 +76,11 @@ https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/G
 **adbc.bigquery.project_id**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The [Project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects) used for accessing BigQuery. If not specified, will default to detect the projectIds the credentials have access to.
 
-**adbc.bigquery.include_public_project_id**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Include the `bigquery-public-data` project ID with the list of project IDs.
-
 **adbc.bigquery.refresh_token**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The refresh token used for when the generated OAuth token expires. Required for `user` authentication.
+
+**adbc.bigquery.retry_delay_ms**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional The delay between retries when using token refresh. Defaults to 200ms.
 
 **adbc.bigquery.scopes**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Comma separated list of scopes to include for the credential.
@@ -110,3 +114,19 @@ The following table depicts how the BigQuery ADBC driver converts a BigQuery typ
 +A JSON string
 
 See [Arrow Schema Details](https://cloud.google.com/bigquery/docs/reference/storage/#arrow_schema_details) for how BigQuery handles Arrow types.
+
+## Microsoft Entra
+The driver supports authenticating with a [Microsoft Entra](https://learn.microsoft.com/en-us/entra/fundamentals/what-is-entra) ID. For long running operations, the Entra token may timeout if the operation takes longer than the Entra token's lifetime. The driver has the ability to perform token refreshes by subscribing to the `UpdateToken` delegate on the `BigQueryConnection`. In this scenario, the driver will attempt to perform an operation. If that operation fails due to an Unauthorized error, then the token will be refreshed via the `UpdateToken` delegate.
+
+Sample code to refresh the token:
+
+```
+Dictionary<string,string> properties = ...;
+BigQueryConnection connection = new BigQueryConnection(properties);
+connection.UpdateToken = () => Task.Run(() =>
+{
+    connection.SetOption(BigQueryParameters.AccessToken, GetAccessToken());
+});
+```
+
+In the sample above, when a new token is needed, the delegate is invoked and updates the `adbc.bigquery.access_token` parameter on the connection object.
