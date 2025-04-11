@@ -66,6 +66,23 @@ const (
 	OptionStringListSessionOptionPrefix = "adbc.flight.sql.session.optionstringlist."
 	OptionLastFlightInfo                = "adbc.flight.sql.statement.exec.last_flight_info"
 	infoDriverName                      = "ADBC Flight SQL Driver - Go"
+
+	// Oauth2 options
+	OptionKeyOauthFlow        = "adbc.flight.sql.oauth.flow"
+	OptionKeyAuthURI          = "adbc.flight.sql.oauth.auth_uri"
+	OptionKeyTokenURI         = "adbc.flight.sql.oauth.token_uri"
+	OptionKeyRedirectURI      = "adbc.flight.sql.oauth.redirect_uri"
+	OptionKeyScope            = "adbc.flight.sql.oauth.scope"
+	OptionKeyClientId         = "adbc.flight.sql.oauth.client_id"
+	OptionKeyClientSecret     = "adbc.flight.sql.oauth.client_secret"
+	OptionKeySubjectToken     = "adbc.flight.sql.oauth.exchange.subject_token"
+	OptionKeySubjectTokenType = "adbc.flight.sql.oauth.exchange.subject_token_type"
+	OptionKeyActorToken       = "adbc.flight.sql.oauth.exchange.actor_token"
+	OptionKeyActorTokenType   = "adbc.flight.sql.oauth.exchange.actor_token_type"
+	OptionKeyReqTokenType     = "adbc.flight.sql.oauth.exchange.requested_token_type"
+	OptionKeyExchangeScope    = "adbc.flight.sql.oauth.exchange.scope"
+	OptionKeyExchangeAud      = "adbc.flight.sql.oauth.exchange.aud"
+	OptionKeyExchangeResource = "adbc.flight.sql.oauth.exchange.resource"
 )
 
 var errNoTransactionSupport = adbc.Error{
