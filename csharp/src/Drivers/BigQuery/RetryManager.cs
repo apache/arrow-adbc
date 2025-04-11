@@ -19,12 +19,12 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Apache.Arrow.Adbc
+namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
     /// <summary>
     /// Class that will retry calling a method with an exponential backoff.
     /// </summary>
-    public class AdbcRetryManager
+    public class RetryManager
     {
         public static async Task<T> ExecuteWithRetriesAsync<T>(
            Func<Task<T>> action,
@@ -45,11 +45,6 @@ namespace Apache.Arrow.Adbc
                 throw new AdbcException("There is no method to retry", AdbcStatusCode.InvalidArgument);
             }
 
-            if ((tokenProtectedResource?.UpdateToken == null))
-            {
-                throw new AdbcException($"UpdateToken cannot be null on the token-protected resource", AdbcStatusCode.InvalidArgument);
-            }
-
             int retryCount = 0;
             int delay = initialDelayMilliseconds;
 
@@ -65,17 +60,23 @@ namespace Apache.Arrow.Adbc
                     retryCount++;
                     if (retryCount >= maxRetries)
                     {
-                        if (tokenProtectedResource?.TokenRequiresUpdate(ex) == true)
+                        if ((tokenProtectedResource?.UpdateToken != null))
                         {
-                            throw new AdbcException($"Cannot update access token after {maxRetries} tries", AdbcStatusCode.Unauthenticated, ex);
+                            if (tokenProtectedResource?.TokenRequiresUpdate(ex) == true)
+                            {
+                                throw new AdbcException($"Cannot update access token after {maxRetries} tries", AdbcStatusCode.Unauthenticated, ex);
+                            }
                         }
 
                         throw new AdbcException($"Cannot execute {action.Method.Name} after {maxRetries} tries", AdbcStatusCode.UnknownError, ex);
                     }
 
-                    if (tokenProtectedResource.TokenRequiresUpdate(ex))
+                    if ((tokenProtectedResource?.UpdateToken != null))
                     {
-                        await tokenProtectedResource.UpdateToken();
+                        if (tokenProtectedResource.TokenRequiresUpdate(ex) == true)
+                        {
+                            await tokenProtectedResource.UpdateToken();
+                        }
                     }
 
                     await Task.Delay(delay);

@@ -20,7 +20,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
+using Azure.Core;
+using Azure.Identity;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
@@ -47,11 +50,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         internal static AdbcConnection GetEntraProtectedBigQueryAdbcConnection(
             BigQueryTestEnvironment testEnvironment,
-            string accessToken
+            string accessToken,
+            int? maxRetries = null
            )
         {
             testEnvironment.AccessToken = accessToken;
             Dictionary<string, string> parameters = GetBigQueryParameters(testEnvironment);
+
+            if (maxRetries.HasValue)
+            {
+                parameters.Add(BigQueryParameters.MaximumRetryAttempts, maxRetries.Value.ToString());
+            }
+
             AdbcDatabase database = new BigQueryDriver().Open(parameters);
             AdbcConnection connection = database.Connect(new Dictionary<string, string>());
 
@@ -87,7 +97,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 else if (testEnvironment.AuthenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
                 {
                     parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.EntraIdAuthenticationType);
-                    parameters.Add(BigQueryParameters.AccessToken, testEnvironment.AccessToken);
+
+                    if (string.IsNullOrEmpty(testEnvironment.AccessToken))
+                    {
+                        parameters.Add(BigQueryParameters.AccessToken, GetAccessToken(testEnvironment));
+                    }
+                    else
+                    {
+                        parameters.Add(BigQueryParameters.AccessToken, testEnvironment.AccessToken);
+                    }
+
                     parameters.Add(BigQueryParameters.AudienceUri, testEnvironment.Audience);
                 }
                 else
@@ -152,6 +171,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
 
             return parameters;
+        }
+
+        /// <summary>
+        /// Logs in to Entra using the currently logged in user found in DefaultAzureCredential.
+        /// </summary>
+        /// <param name="environment"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException">A test environment is not configured correctly.</exception>
+        internal static string GetAccessToken(BigQueryTestEnvironment environment)
+        {
+            if (environment?.EntraConfiguration?.Scopes == null || environment?.EntraConfiguration?.Claims == null)
+            {
+                throw new InvalidOperationException("The test environment is not configured correctly");
+            }
+
+            // the easiest way is to log in to Visual Studio using Tools > Options > Azure Service Authentication
+            DefaultAzureCredential credential = new DefaultAzureCredential();
+
+            // Request the token
+            string claimJson = JsonSerializer.Serialize(environment.EntraConfiguration.Claims);
+            TokenRequestContext requestContext = new TokenRequestContext(environment.EntraConfiguration.Scopes, claims: claimJson);
+            AccessToken accessToken = credential.GetToken(requestContext);
+
+            return accessToken.Token;
         }
 
         /// <summary>

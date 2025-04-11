@@ -65,12 +65,31 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             modifiedProperties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
             this.properties = new ReadOnlyDictionary<string, string>(modifiedProperties);
             this.httpClient = new HttpClient();
+
+            if (this.properties.TryGetValue(BigQueryParameters.MaximumRetryAttempts, out string? sRetryAttempts) &&
+                int.TryParse(sRetryAttempts, out int retries) &&
+                retries >= 0)
+            {
+                this.MaxRetryAttempts = retries;
+            }
+
+            if (this.properties.TryGetValue(BigQueryParameters.RetryDelayMs, out string? sRetryDelay) &&
+                int.TryParse(sRetryDelay, out int delay) &&
+                delay >= 0)
+            {
+                this.RetryDelayMs = delay;
+            }
         }
+
         public Func<Task>? UpdateToken { get; set; }
 
         internal BigQueryClient? Client { get; private set; }
 
         internal GoogleCredential? Credential { get; private set; }
+
+        internal int MaxRetryAttempts { get; private set; } = 5;
+
+        internal int RetryDelayMs { get; private set; } = 200;
 
         /// <summary>
         /// Initializes the internal BigQuery connection
@@ -381,7 +400,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (this.Client == null) { this.Client = Open(); }
 
             Func<Task<BigQueryResults?>> func = () => this.Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
-            BigQueryResults? result = AdbcRetryManager.ExecuteWithRetriesAsync<BigQueryResults?>(this, func).Result;
+            BigQueryResults? result = RetryManager.ExecuteWithRetriesAsync<BigQueryResults?>(this, func, MaxRetryAttempts, RetryDelayMs).Result;
 
             return result;
         }
@@ -411,7 +430,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                 );
 
-                catalogs = AdbcRetryManager.ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(this, func).Result;
+                catalogs = RetryManager.ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(this, func, MaxRetryAttempts, RetryDelayMs).Result;
 
                 if (catalogs != null)
                 {
@@ -483,7 +502,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 );
 
             PagedEnumerable<DatasetList, BigQueryDataset>? schemas =
-                AdbcRetryManager.ExecuteWithRetriesAsync<PagedEnumerable<DatasetList, BigQueryDataset>?>(this, func).Result;
+                RetryManager.ExecuteWithRetriesAsync<PagedEnumerable<DatasetList, BigQueryDataset>?>(this, func, MaxRetryAttempts, RetryDelayMs).Result;
 
             if (schemas != null)
             {
@@ -1165,6 +1184,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             this.Client?.Dispose();
             this.Client = null;
+            this.httpClient?.Dispose();
         }
 
         private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");
@@ -1225,8 +1245,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             try
             {
-                Debug.WriteLine($"{DateTime.Now.ToString()} - Trading {entraAccessToken}");
-
                 var requestBody = new
                 {
                     scope = BigQueryConstants.EntraIdScope,
@@ -1246,8 +1264,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 string responseBody = response.Content.ReadAsStringAsync().Result;
 
                 BigQueryStsTokenResponse? bigQueryTokenResponse = JsonSerializer.Deserialize<BigQueryStsTokenResponse>(responseBody);
-
-                Debug.WriteLine($"{DateTime.Now.ToString()} - Traded for Google token {bigQueryTokenResponse?.AccessToken}");
 
                 return bigQueryTokenResponse?.AccessToken;
             }

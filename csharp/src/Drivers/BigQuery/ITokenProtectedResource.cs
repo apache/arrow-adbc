@@ -18,12 +18,23 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Apache.Arrow.Adbc
+namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
+    /// <summary>
+    /// Common interface for a token protected resource.
+    /// </summary>
     public interface ITokenProtectedResource
     {
+        /// <summary>
+        /// The function to call when updating the token.
+        /// </summary>
         public Func<Task>? UpdateToken { get; set; }
 
+        /// <summary>
+        /// Determines the token needs to be updated.
+        /// </summary>
+        /// <param name="ex">The exception that occurs.</param>
+        /// <returns>True/False indicating a refresh is needed.</returns>
         public bool TokenRequiresUpdate(Exception ex);
     }
 }

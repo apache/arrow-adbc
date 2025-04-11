@@ -15,15 +15,12 @@
 * limitations under the License.
 */
 
-using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Xunit;
-using Azure.Core;
-using Azure.Identity;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -48,19 +45,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// <summary>
         /// Validates if the Entra token can sign in.
         /// </summary>
-        [SkippableFact, Order(1)]
-        public void CanSignInWithEntraToken()
+        [SkippableTheory, Order(1)]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void CanSignInWithEntraToken(bool withRefresh)
         {
             BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
             Assert.NotNull(environment);
 
-            BigQueryConnection? connection = BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, GetAccessToken(environment)) as BigQueryConnection;
+            BigQueryConnection? connection = BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, BigQueryTestingUtils.GetAccessToken(environment)) as BigQueryConnection;
             Assert.NotNull(connection);
 
-            connection.UpdateToken = () => Task.Run(() =>
+            if (withRefresh)
             {
-                connection.SetOption(BigQueryParameters.AccessToken, GetAccessToken(environment));
-            });
+                connection.UpdateToken = () => Task.Run(() =>
+                {
+                    connection.SetOption(BigQueryParameters.AccessToken, BigQueryTestingUtils.GetAccessToken(environment));
+                });
+            }
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
             AdbcStatement statement = connection.CreateStatement();
             statement.SqlQuery = environment.Query;
@@ -68,23 +72,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount, environment.Name);
+
+            stopwatch.Stop();
+
+            if (withRefresh)
+            {
+                _outputHelper.WriteLine($"With refresh (async) took {stopwatch.Elapsed.TotalSeconds} seconds");
+            }
+            else
+            {
+                _outputHelper.WriteLine($"Without refresh took {stopwatch.Elapsed.TotalSeconds} seconds");
+            }
         }
 
         /// <summary>
         /// Validates if the Entra token can sign in and refresh.
         /// </summary>
-        [SkippableFact, Order(1)]
-        public void CanSignInWithAndRefreshEntraToken()
+        [SkippableFact, Order(2)]
+        public void LongRunningQuerySucceedsByRefreshingEntraToken()
         {
             BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
             Assert.NotNull(environment);
 
-            BigQueryConnection connection = (BigQueryConnection)BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, GetAccessToken(environment));
+            BigQueryConnection connection = (BigQueryConnection)BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, BigQueryTestingUtils.GetAccessToken(environment));
             Assert.NotNull(connection);
 
             connection.UpdateToken = () => Task.Run(() =>
             {
-                connection.SetOption(BigQueryParameters.AccessToken, GetAccessToken(environment));
+                connection.SetOption(BigQueryParameters.AccessToken, BigQueryTestingUtils.GetAccessToken(environment));
 
                 _outputHelper.WriteLine("Successfully set a new token");
             });
@@ -105,24 +120,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             _outputHelper.WriteLine($"Retrieve query result with {queryResult.RowCount} rows");
         }
 
-        private string GetAccessToken(BigQueryTestEnvironment environment)
+        /// <summary>
+        /// Validates the retry logic works but still fails when a long running query runs
+        /// and the token refresh handler isn't defined for the BigQueryConnection.
+        /// </summary>
+        [SkippableFact, Order(1)]
+        public void LongRunningQueryFailsByNotRefreshingEntraToken()
         {
-            if (environment?.EntraConfiguration?.Scopes == null || environment?.EntraConfiguration?.Claims == null)
-            {
-                throw new InvalidOperationException("The test environment is not configured correctly");
-            }
+            BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
+            Assert.NotNull(environment);
 
-            // the easiest way is to log in to Visual Studio using Tools > Options > Azure Service Authentication
-            DefaultAzureCredential credential = new DefaultAzureCredential();
+            BigQueryConnection connection = (BigQueryConnection)BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, BigQueryTestingUtils.GetAccessToken(environment), 2);
+            Assert.NotNull(connection);
 
-            // Request the token
-            string claimJson = JsonSerializer.Serialize(environment.EntraConfiguration.Claims);
-            TokenRequestContext requestContext = new TokenRequestContext(environment.EntraConfiguration.Scopes, claims: claimJson);
-            AccessToken accessToken = credential.GetToken(requestContext);
+            // create a query that takes 75 minutes because Entra tokens typically expire in 60 minutes
+            AdbcStatement statement = connection.CreateStatement();
+            statement.SqlQuery = @"
+                DECLARE end_time TIMESTAMP;
+                SET end_time = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 75 MINUTE);
 
-            _outputHelper.WriteLine($"Access token is {accessToken.Token}");
+                WHILE CURRENT_TIMESTAMP() < end_time DO
+                END WHILE;
 
-            return accessToken.Token;
+                SELECT 'Query completed after 75 minutes' AS result;";
+
+            Assert.ThrowsAny<AdbcException>(() => statement.ExecuteQuery());
         }
     }
 }
