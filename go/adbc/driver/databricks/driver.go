@@ -51,8 +51,8 @@ const (
 	// Only has effect when the Databricks host is also set to
 	// https://accounts.cloud.databricks.com.
 	OptionStringAccountID = "adbc.databricks.account_id"
-	OptionStringUsername  = "adbc.databricks.username"
-	OptionStringPassword  = "adbc.databricks.password"
+	OptionStringUsername  = "username"
+	OptionStringPassword  = "password"
 
 	// The Databricks service principal’s client ID and secret.
 	OptionStringClientID     = "adbc.databricks.client_id"
@@ -143,7 +143,7 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	db := &databaseImpl{
 		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
-    config: nil,
+		config:           nil,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err

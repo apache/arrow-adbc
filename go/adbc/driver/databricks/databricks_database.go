@@ -18,19 +18,42 @@
 package databricks
 
 import (
+	"context"
 	"strconv"
 
+	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/databricks/databricks-sdk-go"
+	"github.com/databricks/databricks-sdk-go/client"
+	"github.com/databricks/databricks-sdk-go/config"
 )
 
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
-	config *databricks.Config
+	config *config.Config
 }
 
-func SetOption(config *databricks.Config, key string, value string) error {
+func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+	dbx_client, err := client.New(d.config)
+	if err != nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusUnknown,
+			Msg:  "[Databricks] Failed to create client: " + err.Error(),
+		}
+	}
+	conn := &connectionImpl{
+		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		client:             dbx_client,
+	}
+	return driverbase.NewConnectionBuilder(conn).
+		WithAutocommitSetter(conn).
+		WithCurrentNamespacer(conn).
+		WithTableTypeLister(conn).
+		WithDbObjectsEnumerator(conn).
+		Connection(), nil
+}
+
+func SetOption(config *config.Config, key string, value string) error {
 	switch key {
 	case OptionStringAuthType:
 		config.AuthType = value
@@ -132,9 +155,11 @@ func SetOption(config *databricks.Config, key string, value string) error {
 }
 
 func (d *databaseImpl) SetOptions(options map[string]string) error {
-	config := databricks.Config{}
+	if d.config == nil {
+		*d.config = config.Config{}
+	}
 	for k, v := range options {
-		err := SetOption(&config, k, v)
+		err := SetOption(d.config, k, v)
 		if err != nil {
 			return err
 		}
