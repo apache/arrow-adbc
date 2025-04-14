@@ -37,9 +37,13 @@ const (
 	OptionValueAuthTypeAzureMSI          = "azure-msi"
 	OptionValueAuthTypeAzureClientSecret = "azure-client-secret"
 
-	OptionStringClusterID           = "adbc.databricks.cluster_id"
-	OptionStringWarehouseID         = "adbc.databricks.warehouse_id"
+	OptionStringCluster             = "adbc.databricks.cluster"
+	OptionStringWarehouse           = "adbc.databricks.warehouse"
 	OptionStringServerlessComputeID = "adbc.databricks.serverless_compute_id"
+
+	// Optional default catalog and schema to use when executing SQL statements.
+	OptionStringCatalog = "adbc.databricks.catalog"
+	OptionStringSchema  = "adbc.databricks.schema"
 
 	// URL of the metadata service that provides authentication credentials.
 	OptionStringMetadataServiceURL = "adbc.databricks.metadata_service_url"

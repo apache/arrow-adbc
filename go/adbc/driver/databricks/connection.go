@@ -23,20 +23,30 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/databricks/databricks-sdk-go/client"
+	"github.com/databricks/databricks-sdk-go"
+	"github.com/databricks/databricks-sdk-go/service/sql"
 )
 
 type connectionImpl struct {
 	driverbase.ConnectionImplBase
 
-	client   *client.DatabricksClient
-	catalog  string
+	client *databricks.WorkspaceClient
+	// Default Catalog name (optional)
+	catalog string
+	// Default Schema name (optional)
 	dbSchema string
 }
 
 func sanitizeSchema(schema string) (string, error) {
 	// TODO(felipecrv): sanitize databricks schemas
 	return schema, nil
+}
+
+func (conn *connectionImpl) StatementExecution() sql.StatementExecutionInterface {
+	if conn.client == nil {
+		return nil
+	}
+	return conn.client.StatementExecution
 }
 
 // driverbase.CurrentNamespacer {{{

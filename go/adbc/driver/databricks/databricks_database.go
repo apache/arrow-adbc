@@ -23,27 +23,38 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/databricks/databricks-sdk-go/client"
-	"github.com/databricks/databricks-sdk-go/config"
+	"github.com/databricks/databricks-sdk-go"
 )
 
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
-	config *config.Config
+	config *databricks.Config
+	// Default Catalog name (optional)
+	catalog string
+	// Default Schema name (optional)
+	dbSchema string
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
-	dbx_client, err := client.New(d.config)
+	client, err := databricks.NewWorkspaceClient(d.config)
 	if err != nil {
+		if err == databricks.ErrNotWorkspaceClient {
+			return nil, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  "[Databricks] " + err.Error(),
+			}
+		}
 		return nil, adbc.Error{
 			Code: adbc.StatusUnknown,
-			Msg:  "[Databricks] Failed to create client: " + err.Error(),
+			Msg:  "[Databricks] " + err.Error(),
 		}
 	}
 	conn := &connectionImpl{
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
-		client:             dbx_client,
+		client:             client,
+		catalog:     d.catalog,
+		dbSchema:      d.dbSchema,
 	}
 	return driverbase.NewConnectionBuilder(conn).
 		WithAutocommitSetter(conn).
@@ -53,13 +64,13 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		Connection(), nil
 }
 
-func SetOption(config *config.Config, key string, value string) error {
+func SetOptionToConfig(config *databricks.Config, key string, value string) error {
 	switch key {
 	case OptionStringAuthType:
 		config.AuthType = value
-	case OptionStringClusterID:
+	case OptionStringCluster:
 		config.ClusterID = value
-	case OptionStringWarehouseID:
+	case OptionStringWarehouse:
 		config.WarehouseID = value
 	case OptionStringServerlessComputeID:
 		config.ServerlessComputeID = value
@@ -156,12 +167,19 @@ func SetOption(config *config.Config, key string, value string) error {
 
 func (d *databaseImpl) SetOptions(options map[string]string) error {
 	if d.config == nil {
-		*d.config = config.Config{}
+		d.config = &databricks.Config{}
 	}
 	for k, v := range options {
-		err := SetOption(d.config, k, v)
-		if err != nil {
-			return err
+		switch k {
+		case OptionStringCatalog:
+			d.catalog = v
+		case OptionStringSchema:
+			d.dbSchema = v
+		default:
+			err := SetOptionToConfig(d.config, k, v)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
