@@ -147,10 +147,12 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		delete(cnOptions, OptionAuthorizationHeader)
 	}
 
+	authConflictError := "Authentication conflict: Use either Authorization header OR username/password parameter"
+
 	if u, ok := cnOptions[adbc.OptionKeyUsername]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter OR token",
+				Msg:  authConflictError,
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -161,7 +163,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	if p, ok := cnOptions[adbc.OptionKeyPassword]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter OR token",
+				Msg:  authConflictError,
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -172,31 +174,27 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	if flow, ok := cnOptions[OptionKeyOauthFlow]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authentication conflict: Use either Authorization header OR username/password parameter OR token",
+				Msg:  authConflictError,
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
 
-		var rpcCreds credentials.PerRPCCredentials
 		var err error
 		switch flow {
-		case ClientCredentials: // Client Credentials flow
-			rpcCreds, err = newClientCredentials(cnOptions)
-			if err != nil {
-				return err
-			}
-		case TokenExchange: // Token Exchange flow
-			rpcCreds, err = newTokenExchangeFlow(cnOptions)
-			if err != nil {
-				return err
-			}
+		case ClientCredentials:
+			d.oauthToken, err = newClientCredentials(cnOptions)
+		case TokenExchange:
+			d.oauthToken, err = newTokenExchangeFlow(cnOptions)
 		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("oauth flow not implemented: %s", flow),
 				Code: adbc.StatusNotImplemented,
 			}
 		}
-		d.oauthToken = rpcCreds
+
+		if err != nil {
+			return err
+		}
 		delete(cnOptions, OptionKeyOauthFlow)
 	}
 
