@@ -488,7 +488,7 @@ func (suite *OAuthTests) TestFailOauthWithTokenSet() {
 		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
 	})
 	suite.Error(err, "Expected error for missing parameters")
-	suite.Contains(err.Error(), "Authentication conflict: Use either Authorization header OR username/password parameter OR token")
+	suite.Contains(err.Error(), "Authentication conflict: Use either Authorization header OR username/password parameter")
 }
 
 func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
