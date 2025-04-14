@@ -390,6 +390,19 @@
 <section id="module-adbc_driver_postgresql">
 <span id="low-level-api"></span><h2>Low-Level API<a class="headerlink" href="#module-adbc_driver_postgresql" title="Link to this heading">¶</a></h2>
 <dl class="py class">
+<dt class="sig sig-object py" id="adbc_driver_postgresql.ConnectionOptions">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.</span></span><span class="sig-name descname"><span class="pre">ConnectionOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_postgresql.ConnectionOptions" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Connection options specific to the PostgreSQL driver.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_postgresql.ConnectionOptions.TRANSACTION_STATUS">
+<span class="sig-name descname"><span class="pre">TRANSACTION_STATUS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.postgresql.transaction_status'</span></em><a class="headerlink" href="#adbc_driver_postgresql.ConnectionOptions.TRANSACTION_STATUS" title="Link to this definition">¶</a></dt>
+<dd><p>Get the transaction status.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="adbc_driver_postgresql.StatementOptions">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_postgresql.</span></span><span class="sig-name descname"><span class="pre">StatementOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_postgresql.StatementOptions" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
@@ -505,6 +518,10 @@ United States and other countries.
             <ul>
 <li><a class="reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a><ul>
 <li><a class="reference internal" href="#module-adbc_driver_postgresql">Low-Level API</a><ul>
+<li><a class="reference internal" href="#adbc_driver_postgresql.ConnectionOptions"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_postgresql.ConnectionOptions.TRANSACTION_STATUS"><code class="docutils literal notranslate"><span class="pre">ConnectionOptions.TRANSACTION_STATUS</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions.BATCH_SIZE_HINT_BYTES"><code class="docutils literal notranslate"><span class="pre">StatementOptions.BATCH_SIZE_HINT_BYTES</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_postgresql.StatementOptions.USE_COPY"><code class="docutils literal notranslate"><span class="pre">StatementOptions.USE_COPY</span></code></a></li>
