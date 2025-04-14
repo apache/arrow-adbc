@@ -21,6 +21,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Xunit;
+using Google;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -86,51 +87,37 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         /// <summary>
-        /// Validates if the Entra token can sign in and refresh.
+        /// Validates the behvior of a long running operation using Entra token.
         /// </summary>
-        [SkippableFact, Order(2)]
-        public void LongRunningQuerySucceedsByRefreshingEntraToken()
+        /// <param name="withRefresh">
+        /// Indicates if a refresh should be performed. If true, the operation should succeed.
+        /// If false, indicates that an error will be thrown after the number of retries.
+        /// </param>
+        [SkippableTheory, Order(2)]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void ValidateLongRunningQueryExpectedBehavior(bool withRefresh)
         {
             BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
             Assert.NotNull(environment);
 
-            BigQueryConnection connection = (BigQueryConnection)BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, BigQueryTestingUtils.GetAccessToken(environment));
-            Assert.NotNull(connection);
+            BigQueryConnection? connection;
 
-            connection.UpdateToken = () => Task.Run(() =>
+            if (withRefresh)
             {
-                connection.SetOption(BigQueryParameters.AccessToken, BigQueryTestingUtils.GetAccessToken(environment));
+                connection = (BigQueryConnection)BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, BigQueryTestingUtils.GetAccessToken(environment));
+                connection.UpdateToken = () => Task.Run(() =>
+                {
+                    connection.SetOption(BigQueryParameters.AccessToken, BigQueryTestingUtils.GetAccessToken(environment));
+                    _outputHelper.WriteLine("Successfully set a new token");
+                });
+            }
+            else
+            {
+                // use two retries to shorten the time it takes to run the test
+                connection = (BigQueryConnection)BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, BigQueryTestingUtils.GetAccessToken(environment), 2);
+            }
 
-                _outputHelper.WriteLine("Successfully set a new token");
-            });
-
-            // create a query that takes 75 minutes because Entra tokens typically expire in 60 minutes
-            AdbcStatement statement = connection.CreateStatement();
-            statement.SqlQuery = @"
-                DECLARE end_time TIMESTAMP;
-                SET end_time = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 75 MINUTE);
-
-                WHILE CURRENT_TIMESTAMP() < end_time DO
-                END WHILE;
-
-                SELECT 'Query completed after 75 minutes' AS result;";
-
-            QueryResult queryResult = statement.ExecuteQuery();
-
-            _outputHelper.WriteLine($"Retrieve query result with {queryResult.RowCount} rows");
-        }
-
-        /// <summary>
-        /// Validates the retry logic works but still fails when a long running query runs
-        /// and the token refresh handler isn't defined for the BigQueryConnection.
-        /// </summary>
-        [SkippableFact, Order(1)]
-        public void LongRunningQueryFailsByNotRefreshingEntraToken()
-        {
-            BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
-            Assert.NotNull(environment);
-
-            BigQueryConnection connection = (BigQueryConnection)BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, BigQueryTestingUtils.GetAccessToken(environment), 2);
             Assert.NotNull(connection);
 
             // create a query that takes 75 minutes because Entra tokens typically expire in 60 minutes
@@ -144,7 +131,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                 SELECT 'Query completed after 75 minutes' AS result;";
 
-            Assert.ThrowsAny<AdbcException>(() => statement.ExecuteQuery());
+            if (withRefresh)
+            {
+                QueryResult queryResult = statement.ExecuteQuery();
+                _outputHelper.WriteLine($"Retrieve query result with {queryResult.RowCount} rows");
+            }
+            else
+            {
+                // throws GoogleApiException with the status as Unauthorized
+                Assert.ThrowsAny<GoogleApiException>(() => statement.ExecuteQuery());
+            }
         }
     }
 }
