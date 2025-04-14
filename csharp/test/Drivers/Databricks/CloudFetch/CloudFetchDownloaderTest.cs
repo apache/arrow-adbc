@@ -24,13 +24,13 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Moq.Protected;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
 {
     public class CloudFetchDownloaderTest
     {

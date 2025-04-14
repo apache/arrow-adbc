@@ -22,8 +22,9 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 {
     /// <summary>
     /// Manages the CloudFetch download pipeline.
@@ -36,7 +37,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         private const int DefaultMemoryBufferSizeMB = 200;
         private const bool DefaultPrefetchEnabled = true;
 
-        private readonly HiveServer2Statement _statement;
+        private readonly DatabricksStatement _statement;
         private readonly Schema _schema;
         private readonly bool _isLz4Compressed;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
@@ -55,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         /// <param name="statement">The HiveServer2 statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        public CloudFetchDownloadManager(HiveServer2Statement statement, Schema schema, bool isLz4Compressed)
+        public CloudFetchDownloadManager(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
@@ -66,7 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
             // Parse parallel downloads
             int parallelDownloads = DefaultParallelDownloads;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchParallelDownloads, out string? parallelDownloadsStr) &&
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchParallelDownloads, out string? parallelDownloadsStr) &&
                 int.TryParse(parallelDownloadsStr, out int parsedParallelDownloads) &&
                 parsedParallelDownloads > 0)
             {
@@ -75,7 +76,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
             // Parse prefetch count
             int prefetchCount = DefaultPrefetchCount;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchPrefetchCount, out string? prefetchCountStr) &&
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchPrefetchCount, out string? prefetchCountStr) &&
                 int.TryParse(prefetchCountStr, out int parsedPrefetchCount) &&
                 parsedPrefetchCount > 0)
             {
@@ -84,7 +85,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
             // Parse memory buffer size
             int memoryBufferSizeMB = DefaultMemoryBufferSizeMB;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchMemoryBufferSize, out string? memoryBufferSizeStr) &&
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchMemoryBufferSize, out string? memoryBufferSizeStr) &&
                 int.TryParse(memoryBufferSizeStr, out int parsedMemoryBufferSize) &&
                 parsedMemoryBufferSize > 0)
             {
@@ -93,7 +94,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
             // Parse max retries
             int maxRetries = 3;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchMaxRetries, out string? maxRetriesStr) &&
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchMaxRetries, out string? maxRetriesStr) &&
                 int.TryParse(maxRetriesStr, out int parsedMaxRetries) &&
                 parsedMaxRetries > 0)
             {
@@ -102,7 +103,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
             // Parse retry delay
             int retryDelayMs = 500;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchRetryDelayMs, out string? retryDelayStr) &&
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchRetryDelayMs, out string? retryDelayStr) &&
                 int.TryParse(retryDelayStr, out int parsedRetryDelay) &&
                 parsedRetryDelay > 0)
             {
@@ -111,7 +112,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
 
             // Parse timeout minutes
             int timeoutMinutes = 5;
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchTimeoutMinutes, out string? timeoutStr) &&
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchTimeoutMinutes, out string? timeoutStr) &&
                 int.TryParse(timeoutStr, out int parsedTimeout) &&
                 parsedTimeout > 0)
             {
@@ -160,7 +161,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
         /// <param name="resultFetcher">The result fetcher.</param>
         /// <param name="downloader">The downloader.</param>
         internal CloudFetchDownloadManager(
-            HiveServer2Statement statement, 
+            DatabricksStatement statement, 
             Schema schema, 
             bool isLz4Compressed,
             ICloudFetchResultFetcher resultFetcher,

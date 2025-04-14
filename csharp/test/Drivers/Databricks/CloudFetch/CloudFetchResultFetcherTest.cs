@@ -20,12 +20,12 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark.CloudFetch
+namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
 {
     /// <summary>
     /// Tests for CloudFetchResultFetcher

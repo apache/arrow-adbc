@@ -20,7 +20,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 {
     /// <summary>
     /// Represents a downloaded result file with its associated metadata.

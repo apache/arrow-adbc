@@ -20,14 +20,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Statement : AdbcStatement, IHiveServer2Statement
+    internal class HiveServer2Statement : AdbcStatement
     {
         private const string GetPrimaryKeysCommandName = "getprimarykeys";
         private const string GetCrossReferenceCommandName = "getcrossreference";
@@ -284,9 +283,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public TOperationHandle? OperationHandle { get; private set; }
 
-        // Cast the Client to IAsync for CloudFetch compatibility
-        TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
-        
         // Keep the original Client property for internal use
         public TCLIService.Client Client => Connection.Client;
 

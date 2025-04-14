@@ -21,7 +21,8 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -55,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             // Check if prefetch is enabled
             var connectionProps = statement.Connection.Properties;
             isPrefetchEnabled = true; // Default to true
-            if (connectionProps.TryGetValue(SparkParameters.CloudFetchPrefetchEnabled, out string? prefetchEnabledStr) &&
+            if (connectionProps.TryGetValue(Databricks.DatabricksParameters.CloudFetchPrefetchEnabled, out string? prefetchEnabledStr) &&
                 bool.TryParse(prefetchEnabledStr, out bool parsedPrefetchEnabled))
             {
                 isPrefetchEnabled = parsedPrefetchEnabled;
@@ -191,7 +192,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         {
             if (isDisposed)
             {
-                throw new ObjectDisposedException(nameof(SparkCloudFetchReader));
+                throw new ObjectDisposedException(nameof(CloudFetchReader));
             }
         }
     }

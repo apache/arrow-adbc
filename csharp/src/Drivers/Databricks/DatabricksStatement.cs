@@ -18,6 +18,7 @@
 using System;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -25,7 +26,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// <summary>
     /// Databricks-specific implementation of <see cref="AdbcStatement"/>
     /// </summary>
-    internal class DatabricksStatement : SparkStatement
+    internal class DatabricksStatement : SparkStatement, IHiveServer2Statement
     {
         // Default maximum bytes per file for CloudFetch
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
@@ -51,6 +52,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.MaxBytesPerFile = maxBytesPerFile;
         }
 
+        // Cast the Client to IAsync for CloudFetch compatibility
+        TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
+        
         public override void SetOption(string key, string value)
         {
             switch (key)

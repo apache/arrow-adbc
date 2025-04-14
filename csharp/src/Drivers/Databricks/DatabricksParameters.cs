@@ -42,6 +42,30 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is 5 minutes if not specified.
         /// </summary>
         public const string CloudFetchTimeoutMinutes = "adbc.databricks.cloudfetch.timeout_minutes";
+
+        /// <summary>
+        /// Maximum number of parallel downloads for CloudFetch operations.
+        /// Default value is 3 if not specified.
+        /// </summary>
+        public const string CloudFetchParallelDownloads = "adbc.spark.cloudfetch.parallel_downloads";
+
+        /// <summary>
+        /// Number of files to prefetch in CloudFetch operations.
+        /// Default value is 2 if not specified.
+        /// </summary>
+        public const string CloudFetchPrefetchCount = "adbc.spark.cloudfetch.prefetch_count";
+
+        /// <summary>
+        /// Maximum memory buffer size in MB for CloudFetch prefetched files.
+        /// Default value is 200MB if not specified.
+        /// </summary>
+        public const string CloudFetchMemoryBufferSize = "adbc.spark.cloudfetch.memory_buffer_size_mb";
+
+        /// <summary>
+        /// Whether CloudFetch prefetch functionality is enabled.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string CloudFetchPrefetchEnabled = "adbc.spark.cloudfetch.prefetch_enabled";
     }
 
     /// <summary>
