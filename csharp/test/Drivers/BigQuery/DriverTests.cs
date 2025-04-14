@@ -281,26 +281,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         /// <summary>
         /// Validates if the driver can connect to a live server and
-        /// parse the results of multi-statements.
-        /// </summary>
-        [SkippableFact, Order(6)]
-        public void CanExecuteMultiStatements()
-        {
-            foreach (BigQueryTestEnvironment environment in _environments)
-            {
-                AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
-
-                AdbcStatement statement = adbcConnection.CreateStatement();
-                statement.SqlQuery = "select 1;select 2;";
-
-                QueryResult queryResult = statement.ExecuteQuery();
-
-                Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount, environment.Name);
-            }
-        }
-
-        /// <summary>
-        /// Validates if the driver can connect to a live server and
         /// parse the results.
         /// </summary>
         [SkippableFact, Order(6)]
@@ -364,6 +344,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     statement.SqlQuery = environment.Query;
                     Assert.Throws<TimeoutException>(() => { statement.ExecuteQuery(); });
                 }
+            }
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results of multi-statements.
+        /// </summary>
+        [SkippableFact, Order(9)]
+        public void CanExecuteMultiStatements()
+        {
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
+
+                AdbcStatement statement = adbcConnection.CreateStatement();
+                statement.SqlQuery = "select 1;select 2;";
+
+                QueryResult queryResult = statement.ExecuteQuery();
+
+                Tests.DriverTests.CanExecuteQuery(queryResult, 1, environment.Name);
             }
         }
     }
