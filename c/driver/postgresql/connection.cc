@@ -32,6 +32,7 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
+#include <fmt/format.h>
 #include <libpq-fe.h>
 
 #include "database.h"
@@ -1078,6 +1079,11 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
 
   std::ignore = PQsetNoticeProcessor(conn_, SilentNoticeProcessor, nullptr);
 
+  for (const auto& [key, value] : post_init_options_) {
+    RAISE_ADBC(SetOption(key.data(), value.data(), error));
+  }
+  post_init_options_.clear();
+
   return ADBC_STATUS_OK;
 }
 
@@ -1121,6 +1127,11 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
+    if (!conn_) {
+      post_init_options_.emplace_back(key, value);
+      return ADBC_STATUS_OK;
+    }
+
     if (autocommit != autocommit_) {
       const char* query = autocommit ? "COMMIT" : "BEGIN TRANSACTION";
 
@@ -1136,9 +1147,18 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     }
     return ADBC_STATUS_OK;
   } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
+    if (!conn_) {
+      post_init_options_.emplace_back(key, value);
+      return ADBC_STATUS_OK;
+    }
+
     // PostgreSQL doesn't accept a parameter here
     char* value_esc = PQescapeIdentifier(conn_, value, strlen(value));
-    std::string query = std::string("SET search_path TO ") + value_esc;
+    if (!value_esc) {
+      SetError(error, "[libpq] Could not escape identifier: %s", PQerrorMessage(conn_));
+      return ADBC_STATUS_INTERNAL;
+    }
+    std::string query = fmt::format("SET search_path TO {}", value_esc);
     PQfreemem(value_esc);
 
     PqResultHelper result_helper{conn_, query};

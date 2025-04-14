@@ -691,6 +691,44 @@ TEST_F(PostgresConnectionTest, MetadataSetCurrentDbSchema) {
   ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
 }
 
+TEST_F(PostgresConnectionTest, MetadataSetCurrentDbSchemaInit) {
+  // Regression test: setting the schema before Init (which Python does)
+
+  // 1. Create the schema
+  {
+    ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement.value,
+                                 "CREATE SCHEMA IF NOT EXISTS regtestschema", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+  }
+
+  // 2. Initialize a connection with the schema
+  {
+    ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA,
+                                "regtestschema", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+    ASSERT_THAT(adbc_validation::ConnectionGetOption(
+                    &connection, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA, &error),
+                ::testing::Optional("regtestschema"s));
+  }
+}
+
 TEST_F(PostgresConnectionTest, MetadataGetSchemaCaseSensitiveTable) {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
