@@ -352,17 +352,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// parse the results of multi-statements.
         /// </summary>
         [SkippableFact, Order(9)]
-        public void CanExecuteMultiStatements()
+        public void CanExecuteMultiStatementQuery()
         {
             foreach (BigQueryTestEnvironment environment in _environments)
             {
                 AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
-
                 AdbcStatement statement = adbcConnection.CreateStatement();
-                statement.SqlQuery = "select 1;select 2;";
-
+                string query1 = "SELECT " +
+                        "CAST(1 as INT64) as id, " +
+                        "CAST(1.23 as FLOAT64) as number, " +
+                        "PARSE_NUMERIC(\"4.56\") as decimal, " +
+                        "PARSE_BIGNUMERIC(\"7.89000000000000000000000000000000000000\") as big_decimal, " +
+                        "CAST(True as BOOL) as is_active, " +
+                        "'John Doe' as name, " +
+                        "FROM_BASE64('YWJjMTIz') as data, " +
+                        "CAST('2023-09-08' as DATE) as date, " +
+                        "CAST('12:34:56' as TIME) as time, " +
+                        "CAST('2023-09-08 12:34:56' as DATETIME) as datetime, " +
+                        "CAST('2023-09-08 12:34:56+00:00' as TIMESTAMP) as timestamp, " +
+                        "ST_GEOGPOINT(1, 2) as point, " +
+                        "ARRAY[1, 2, 3] as numbers, " +
+                        "STRUCT('John Doe' as name, 30 as age) as person," +
+                        "PARSE_JSON('{\"name\":\"Jane Doe\",\"age\":29}') as json";
+                string query2 = "SELECT " +
+                          "CAST(1.7976931348623157e+308 as FLOAT64) as number, " +
+                          "PARSE_NUMERIC(\"9.99999999999999999999999999999999E+28\") as decimal, " +
+                          "PARSE_BIGNUMERIC(\"5.7896044618658097711785492504343953926634992332820282019728792003956564819968E+37\") as big_decimal";
+                string combinedQuery = query1 + ";" + query2 + ";";
+                statement.SqlQuery = combinedQuery;
                 QueryResult queryResult = statement.ExecuteQuery();
-
                 Tests.DriverTests.CanExecuteQuery(queryResult, 1, environment.Name);
             }
         }
