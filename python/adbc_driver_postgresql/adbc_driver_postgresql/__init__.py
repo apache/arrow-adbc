@@ -17,6 +17,7 @@
 
 import enum
 import functools
+import typing
 
 import adbc_driver_manager
 
@@ -53,9 +54,15 @@ class StatementOptions(enum.Enum):
     USE_COPY = "adbc.postgresql.use_copy"
 
 
-def connect(uri: str) -> adbc_driver_manager.AdbcDatabase:
+def connect(
+    uri: str,
+    db_kwargs: typing.Optional[typing.Dict[str, str]] = None,
+) -> adbc_driver_manager.AdbcDatabase:
     """Create a low level ADBC connection to PostgreSQL."""
-    return adbc_driver_manager.AdbcDatabase(driver=_driver_path(), uri=uri)
+    db_options = dict(db_kwargs or {})
+    db_options["driver"] = _driver_path()
+    db_options["uri"] = uri
+    return adbc_driver_manager.AdbcDatabase(**db_options)
 
 
 @functools.lru_cache

@@ -471,3 +471,17 @@ def test_txn_status(postgres: dbapi.Connection) -> None:
         assert status() == "active"
         postgres.rollback()
         assert status() == "intrans"
+
+
+def test_connect_conn_kwargs_db_schema(postgres_uri: str, postgres: dbapi.Connection):
+    """Verify current DB schema can be set via conn_kwargs."""
+    schema_key = "adbc.connection.db_schema"
+    schema_name = "dbapi_test_schema_via_option"
+
+    with postgres.cursor() as cur:
+        cur.execute(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE")
+        cur.execute(f"CREATE SCHEMA {schema_name}")
+    postgres.commit()
+    with dbapi.connect(postgres_uri, conn_kwargs={schema_key: schema_name}) as conn:
+        option_value = conn.adbc_connection.get_option(schema_key)
+        assert option_value == schema_name
