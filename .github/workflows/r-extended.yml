@@ -77,12 +77,13 @@ jobs:
 
 
   # Check older versions of R on Linux. This catches accidental use of newer R functions.
+  # We don't check Go drivers here because they don't have much R API surface area.
   rversions:
     strategy:
       matrix:
         rversion: ["3.6", "4.0", "4.1"]
         os: [ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake, adbcbigquery]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
       fail-fast: false
 
     uses: ./.github/workflows/r-check.yml
