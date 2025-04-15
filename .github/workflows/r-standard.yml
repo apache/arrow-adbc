@@ -46,15 +46,30 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  check-c:
     strategy:
       matrix:
         os: [ubuntu, macOS, windows]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake, adbcbigquery]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
 
     uses: ./.github/workflows/r-check.yml
     with:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
+
+  # Go-based drivers are not distributed on CRAN and are checked with error-on error only
+  check-go:
+    strategy:
+      matrix:
+        os: [ubuntu, macOS, windows]
+        pkg: [adbcflightsql, adbcsnowflake, adbcbigquery]
+
+    uses: ./.github/workflows/r-check.yml
+    with:
+      os: ${{ matrix.os }}
+      pkg: ${{ matrix.pkg }}
+      # Go based drivers generate WARNINGs because some symbols
+      # are linked in that R CMD check does not allow.
+      error-on: error
     secrets:
       SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
