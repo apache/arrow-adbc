@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksConnection : SparkHttpConnection
     {
-        private bool _applySSPWithQueries = true;
+        private bool _applySSPWithQueries = false;
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {

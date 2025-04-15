@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Whether to apply service side properties (SSP) with queries. If false, SSP will be applied
         /// by setting the Thrift configuration when the session is opened.
-        /// Default value is true if not specified.
+        /// Default value is false if not specified.
         /// </summary>
         public const string ApplySSPWithQueries = "adbc.databricks.apply_ssp_with_queries";
 
