@@ -51,14 +51,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 [DatabricksParameters.ApplySSPWithQueries] = applyWithQueries.ToString().ToLower()
             };
             using var connection = NewConnection(TestConfiguration, additionalConnectionParams);
-            
+
             // Verify the server-side property was set by querying it
             using var statement = connection.CreateStatement();
             statement.SqlQuery = "SET";
-            
+
             var result = await statement.ExecuteQueryAsync();
             Assert.NotNull(result.Stream);
-            
+
             var batch = await result.Stream.ReadNextRecordBatchAsync();
             Assert.NotNull(batch);
             Assert.True(batch.Length > 0);
