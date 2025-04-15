@@ -20,38 +20,138 @@ package databricks
 import (
 	"context"
 	"fmt"
+	"log"
+	"strconv"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"github.com/databricks/databricks-sdk-go/retries"
 	"github.com/databricks/databricks-sdk-go/service/sql"
+)
+
+const (
+	OptionIntByteLimit = "adbc.databricks.byte_limit"
+	OptionIntRowLimit  = "adbc.databricks.row_limit"
+
+	OptionBoolTruncated = "adbc.databricks.truncated" // read-only
 )
 
 type statement struct {
 	alloc memory.Allocator
 	conn  *connectionImpl
 
+	// req is the request to be sent to the Databricks SQL API
 	req *sql.ExecuteStatementRequest
-	// statementId is the ID of the current statement in the Databricks SQL API.
+
+	// statementId is the ID of the current statement in the Databricks SQL API
 	statementId string
+	// The manifest from the first StatementResponse
+	manifest *sql.ResultManifest
+}
+
+func NewStatement(conn *connectionImpl) (adbc.Statement, error) {
+	return &statement{
+		alloc: conn.Alloc,
+		conn:  conn,
+
+		req: &sql.ExecuteStatementRequest{
+			// Configurable via OptionIntByteLimit
+			ByteLimit: 0,
+			Catalog:   conn.catalog,
+			// Arrow responses can't be INLINE, so we always use EXTERNAL_LINKS
+			Disposition: sql.DispositionExternalLinks,
+			Format:      sql.FormatArrowStream,
+			// Continue execution asynchronously after the short wait timeout
+			OnWaitTimeout: sql.ExecuteStatementRequestOnWaitTimeoutContinue,
+			// TODO: set this when binding is implemented
+			Parameters: []sql.StatementParameterListItem{},
+			// Configurable via OptionIntRowLimit
+			RowLimit: 0,
+			Schema:   conn.dbSchema,
+			// Populated by SetSqlQuery()
+			Statement: "",
+			// TODO: make WaitTimeout configurable
+			// Short timeout to get to the first record batch or just
+			// the statement ID for polling later. Must be in [5s-50s].
+			WaitTimeout: "5s",
+			WarehouseId: conn.client.Config.WarehouseID,
+		},
+
+		statementId: "",
+		manifest:    nil,
+	}, nil
+}
+
+func (stmt *statement) resetStatement(sql string) error {
+	// TODO: think about cancelation and stmt re-use
+	stmt.req.Parameters = nil
+	stmt.req.Statement = sql
+	stmt.statementId = ""
+	stmt.manifest = nil
+	return nil
 }
 
 func (stmt *statement) SetOption(key, val string) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  fmt.Sprintf("SetOption not implemented for %s", key),
+	switch key {
+	case OptionBoolTruncated:
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("[Databricks] `%s` property is read-only", key),
+		}
+	default:
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("[Databricks] Unknown statement string type option `%s`", key),
+		}
+	}
+}
+
+func (stmt *statement) GetOption(key string) (string, error) {
+	switch key {
+	case OptionBoolTruncated:
+		truncated := false
+		if stmt.manifest != nil {
+			truncated = stmt.manifest.Truncated
+		}
+		return strconv.FormatBool(truncated), nil
+	default:
+		val, err := stmt.conn.GetOption(key)
+		if err == nil {
+			return val, nil
+		}
+		return "", err
 	}
 }
 
 func (stmt *statement) SetOptionInt(key string, value int64) error {
 	switch key {
-	// TODO
+	case OptionIntRowLimit:
+		stmt.req.RowLimit = value
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("unknown statement string type option `%s`", key),
+			Msg:  fmt.Sprintf("[Databricks] Unknown statement string type option `%s`", key),
 		}
+	}
+	return nil
+}
+
+func (stmt *statement) GetOptionInt(key string) (int64, error) {
+	switch key {
+	case OptionIntRowLimit:
+		if stmt.req != nil {
+			return stmt.req.RowLimit, nil
+		}
+		return 0, nil
+	default:
+		val, err := stmt.conn.GetOptionInt(key)
+		if err == nil {
+			return val, nil
+		}
+		return 0, err
 	}
 }
 
@@ -62,41 +162,17 @@ func (stmt *statement) SetOptionBytes(key string, value []byte) error {
 	}
 }
 
-func (stmt *statement) SetOptionDouble(key string, value float64) error {
-	return adbc.Error{
-		Msg:  fmt.Sprintf("[Databricks] Unknown statement double type option '%s'", key),
-		Code: adbc.StatusNotImplemented,
-	}
-}
-
-func (stmt *statement) GetOption(key string) (string, error) {
-	switch key {
-	// TODO
-	default:
-		val, err := stmt.conn.GetOption(key)
-		if err == nil {
-			return val, nil
-		}
-		return "", err
-	}
-}
-
-func (stmt *statement) GetOptionInt(key string) (int64, error) {
-	switch key {
-	// TODO
-	default:
-		val, err := stmt.conn.GetOptionInt(key)
-		if err == nil {
-			return val, nil
-		}
-		return 0, err
-	}
-}
-
 func (stmt *statement) GetOptionBytes(key string) ([]byte, error) {
 	return nil, adbc.Error{
 		Msg:  fmt.Sprintf("[Databricks] Unknown statement option '%s'", key),
 		Code: adbc.StatusNotFound,
+	}
+}
+
+func (stmt *statement) SetOptionDouble(key string, value float64) error {
+	return adbc.Error{
+		Msg:  fmt.Sprintf("[Databricks] Unknown statement double type option '%s'", key),
+		Code: adbc.StatusNotImplemented,
 	}
 }
 
@@ -107,44 +183,13 @@ func (stmt *statement) GetOptionDouble(key string) (float64, error) {
 	}
 }
 
-func (stmt *statement) nonNilExecuteRquest() *sql.ExecuteStatementRequest {
-	if stmt.req != nil {
-		return stmt.req
-	}
-	stmt.req = &sql.ExecuteStatementRequest{
-		// TODO: use the 100GiB default before this is configurable
-		ByteLimit: 100 * 1024 * 1024 * 1024,
-		Catalog:   stmt.conn.catalog,
-		// Arrow responses can't be INLINE, so we always use EXTERNAL_LINKS
-		Disposition: sql.DispositionExternalLinks,
-		Format:      sql.FormatArrowStream,
-		// Continue execution asynchronously after the short wait timeout
-		OnWaitTimeout: sql.ExecuteStatementRequestOnWaitTimeoutContinue,
-		// TODO: set this when binding is implemented
-		Parameters: []sql.StatementParameterListItem{},
-		// TODO: make truncation limit configurable
-		RowLimit: 0,
-		Schema:   stmt.conn.dbSchema,
-		// Populated by SetSqlQuery()
-		Statement: "",
-		// Short timeout to get to the first record batch or just
-		// the statement ID for polling later. Must be in [5s-50s].
-		WaitTimeout: "5s",
-		WarehouseId: stmt.conn.client.Config.WarehouseID,
-	}
-	return stmt.req
-}
-
 // SetSqlQuery sets the query string to be executed.
 //
 // The query can then be executed with any of the Execute methods.
 // For queries expected to be executed repeatedly, Prepare should be
 // called before execution.
 func (stmt *statement) SetSqlQuery(query string) error {
-	req := stmt.nonNilExecuteRquest()
-	req.Statement = query
-	// TODO: think about cancelation and stmt re-use
-	return nil
+	return stmt.resetStatement(query)
 }
 
 // ExecuteQuery executes the current query or prepared statement
@@ -156,55 +201,113 @@ func (stmt *statement) SetSqlQuery(query string) error {
 // Since ADBC 1.1.0: releasing the returned RecordReader without
 // consuming it fully is equivalent to calling AdbcStatementCancel.
 func (stmt *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
-	if stmt.req == nil || stmt.req.Statement == "" {
+	if stmt.req.Statement == "" {
 		return nil, -1, adbc.Error{
 			Code: adbc.StatusInvalidState,
 			Msg:  "ExecuteQuery called before SetSqlQuery",
 		}
 	}
 	// TODO: perform more validations
-	se := stmt.conn.StatementExecution()
-	res, err := se.ExecuteStatement(ctx, *stmt.req)
+	reader, err := stmt.executeQueryInternal(ctx)
 	if err != nil {
-		return nil, -1, adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("failed to execute statement: %s", err),
-		}
+		return nil, -1, err
 	}
-	stmt.statementId = res.StatementId
-	return newRecordReader(ctx, res, stmt.conn.Alloc)
+	return reader, reader.TotalRowCount, nil
 }
 
-func newRecordReader(_ctx context.Context, res *sql.StatementResponse, _alloc memory.Allocator) (reader array.RecordReader, totalRows int64, err error) {
+func (stmt *statement) executeQueryInternal(ctx context.Context) (*reader, error) {
+	se := stmt.conn.StatementExecution()
+	start := time.Now()
+	res, err := se.ExecuteStatement(ctx, *stmt.req)
+	if err != nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusUnknown,
+			Msg:  fmt.Sprintf("[Databricks] failed to execute statement: %s", err),
+		}
+	}
+
 	// Statement execution state:
+	//
 	// - `FAILED`: execution failed; reason for failure described in accomanying
-	//    error message.
-	// - `CLOSED`: execution successful, and statement closed; result no longer
-	//   available for fetch.
+	//   error message.
 	// - `CANCELED`: user canceled; can come from explicit cancel call, or timeout
 	//   with `on_wait_timeout=CANCEL`.
+	// - `CLOSED`: execution successful, and statement closed; result no longer
+	//   available for fetch.
 	// - `RUNNING`: running.
 	// - `PENDING`: waiting for warehouse.
 	// - `SUCCEEDED`: execution was successful, result data available for fetch.
-	if res.Status.State == sql.StatementStateFailed {
-		switch res.Status.Error.ErrorCode {
-		// TODO
+
+	state := res.Status.State
+	fmt.Printf("Statement execution state: %s [%s]\n", state.String(), time.Since(start).String())
+	switch state {
+	case sql.StatementStateSucceeded:
+		fmt.Printf("Statement execution state: %s [%s]\n", state.String(), time.Since(start).String())
+		if res.Result.ChunkIndex != 0 {
+			log.Fatal("first ChunkIndex is not 0")
 		}
-		return nil, -1, adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  "statement execution failed: " + res.Status.Error.Message,
-		}
-	} else if res.Status.State == sql.StatementStateClosed {
-		// TODO: return empty reader
-		return nil, 0, nil
-	} else if res.Status.State == sql.StatementStateCanceled {
-		return nil, -1, adbc.Error{
-			Code: adbc.StatusCancelled,
-			Msg:  "statement execution canceled: " + res.Status.Error.Message,
-		}
+		return NewRecordReader(&se, res.StatementId, res.Result, res.Manifest)
+	case sql.StatementStatePending, sql.StatementStateRunning:
+		// Keep polling until the statement reaches a terminal state
+		// TODO: make this configurable
+		timeout := 20 * time.Minute
+		return retries.Poll(ctx, timeout,
+			func() (*reader, *retries.Err) {
+				res, err := se.GetStatement(ctx, sql.GetStatementRequest{
+					StatementId: res.StatementId,
+				})
+				if err != nil {
+					adbcErr := adbc.Error{
+						Code: adbc.StatusUnknown,
+						Msg:  fmt.Sprintf("[Databricks] Failed to execute statement: %s", err),
+					}
+					return nil, retries.Halt(adbcErr)
+				}
+				state := res.Status.State
+				fmt.Printf("Statement execution state: %s [%s]\n", state.String(), time.Since(start).String())
+				switch state {
+				case sql.StatementStateSucceeded:
+					r, err := NewRecordReader(&se, res.StatementId, res.Result, res.Manifest)
+					if err != nil {
+						return nil, retries.Halt(err)
+					}
+					return r, nil
+				case sql.StatementStateRunning, sql.StatementStatePending:
+					return nil, retries.Continues(state.String())
+				case sql.StatementStateFailed, sql.StatementStateCanceled, sql.StatementStateClosed:
+					adbcErr := errorFromStmtStatus(res.Status)
+					return nil, retries.Halt(adbcErr)
+				default:
+					return nil, retries.Halt(unexpectedExecutionState(state))
+				}
+			})
+	case sql.StatementStateFailed, sql.StatementStateCanceled, sql.StatementStateClosed:
+		return nil, errorFromStmtStatus(res.Status)
+	default:
+		return nil, unexpectedExecutionState(state)
 	}
-	// TODO: RUNNING, PENDING, and SUCCEEDED
-	return nil, -1, nil
+}
+
+func unexpectedExecutionState(state sql.StatementState) error {
+	return adbc.Error{
+		Code: adbc.StatusInternal,
+		Msg:  fmt.Sprintf("[Databricks] Unexpected execution state: %s", state.String()),
+	}
+}
+
+func errorFromStmtStatus(s *sql.StatementStatus) adbc.Error {
+	msg := s.State.String()
+	if s.Error != nil {
+		msg = fmt.Sprintf("%s: %s %s", msg, s.Error.ErrorCode, s.Error.Message)
+	}
+	adbcCode := adbc.StatusUnknown
+	if s.State == sql.StatementStateCanceled || s.State == sql.StatementStateClosed {
+		adbcCode = adbc.StatusCancelled
+	}
+	return adbc.Error{
+		Code: adbcCode,
+		Msg:  msg,
+	}
 }
 
 // ExecuteUpdate executes a statement that does not generate a result

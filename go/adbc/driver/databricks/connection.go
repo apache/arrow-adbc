@@ -154,14 +154,12 @@ func (conn *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog st
 
 // NewStatement initializes a new statement object tied to this connection
 func (conn *connectionImpl) NewStatement() (adbc.Statement, error) {
-	return &statement{
-		alloc: conn.Alloc,
-		conn:  conn,
-	}, nil
+  return NewStatement(conn)
 }
 
 // Close closes this connection and releases any associated resources.
 func (conn *connectionImpl) Close() error {
+  // TODO: think about the consequences of this to statements and readers
 	conn.client = nil
 	conn.Closed = true
 	return nil
