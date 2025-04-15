@@ -72,6 +72,6 @@ jobs:
       pkg: ${{ matrix.pkg }}
       # Go based drivers generate WARNINGs because some symbols
       # are linked in that R CMD check does not allow.
-      error-on: warning
+      error-on: error
     secrets:
       SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
