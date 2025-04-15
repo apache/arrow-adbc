@@ -38,15 +38,29 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  check-c:
     strategy:
       matrix:
         os: [ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
 
     uses: ./.github/workflows/r-check.yml
     with:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
+
+  check-go:
+    strategy:
+      matrix:
+        os: [ubuntu]
+        pkg: [adbcflightsql, adbcsnowflake, adbcbigquery]
+
+    uses: ./.github/workflows/r-check.yml
+    with:
+      os: ${{ matrix.os }}
+      pkg: ${{ matrix.pkg }}
+      # For the r-basic check (that runs on many PRs), just check ERRORs
+      # (e.g., build failure, test failure)
+      error-on: error
     secrets:
       SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}

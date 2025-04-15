@@ -56,8 +56,6 @@ jobs:
     with:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
-    secrets:
-      SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
 
   # Go-based drivers are not distributed on CRAN and are checked with error-on error only
   check-go:
