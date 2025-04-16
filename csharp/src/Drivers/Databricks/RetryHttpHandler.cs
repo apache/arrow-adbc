@@ -145,4 +145,3 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         }
     }
 }
-
