@@ -161,39 +161,18 @@ func (r *reader) Next() bool {
 		if r.loadingChunkIdx == -1 {
 			return false // post-condition holds because of PROPERTY I
 		}
-		// wait for the loading chunk as we need it now
-		startWait := time.Now()
-		chunk := <-r.chunkChan
-		r.BytesReceived += chunk.inner.ContentLength
-		r.WaitTime += time.Since(startWait)
-		if chunk.err != nil {
-			r.err = chunk.err
+
+		chunkBody, chunkReader, err := r.consumeLoadingChunk()
+		if err != nil {
+			r.err = err
 			close(r.chunkChan)
 			return false // post-condition holds because of PROPERTY I
 		}
-		if chunk.chunkIndex != r.loadingChunkIdx {
-			log.Fatalf("expected chunk %d, but received %d", r.loadingChunkIdx, chunk.chunkIndex)
-		}
-		// trigger a request for a new chunk in the background
-		r.loadingChunkIdx += 1
-		if r.loadingChunkIdx < len(r.Chunks) {
-			// INVARIANT I and II are preserved: loadingChunkIdx is loading in the background
-			go r.startChunkDataRequest(r.loadingChunkIdx, nil)
-		} else {
-			// INVARIANT I and II are preserved: loadingChunkIdx is -1, so chunkChan is closed
-			r.loadingChunkIdx = -1
-			close(r.chunkChan)
-		}
-		// parse the new chunk into a record reader
-		r.activeChunkBody = chunk.inner.Body
-		chunkReader, err := ipc.NewReader(r.activeChunkBody)
-		if err != nil {
-			r.err = err
-			return false
-		}
+		r.activeChunkBody = chunkBody
 		r.activeChunk = array.RecordReader(chunkReader)
 		r.activeChunk.Retain()
-		// make sure r.schema is set when the first chunk is parsed
+
+		// make sure r.schema is set when the first chunk is parsed if not yet
 		if r.schema != nil {
 			r.schema = r.activeChunk.Schema()
 		}
@@ -225,41 +204,50 @@ func (r *reader) Schema() *arrow.Schema {
 			if r.loadingChunkIdx == -1 {
 				return nil // TODO: need to derive schema from the JSON manifest :(
 			}
-			// wait for the loading chunk
-			startWait := time.Now()
-			chunk := <-r.chunkChan
-			r.WaitTime += time.Since(startWait)
-			if chunk.err != nil {
-				r.err = chunk.err
-				close(r.chunkChan)
-				return nil
-			}
-			if chunk.chunkIndex != r.loadingChunkIdx {
-				log.Fatalf("expected chunk %d, but receiving %d", r.loadingChunkIdx, chunk.chunkIndex)
-			}
-			// trigger a request for a new chunk in the background
-			r.loadingChunkIdx += 1
-			if r.loadingChunkIdx < len(r.Chunks) {
-				// INVARIANT I and II are preserved
-				go r.startChunkDataRequest(r.loadingChunkIdx, nil)
-			} else {
-				// INVARIANT I and II are preserved
-				r.loadingChunkIdx = -1
-				close(r.chunkChan)
-			}
-			// parse the new chunk into a record reader
-			r.activeChunkBody = chunk.inner.Body
-			chunkReader, err := ipc.NewReader(r.activeChunkBody)
+			chunkBody, chunkReader, err := r.consumeLoadingChunk()
 			if err != nil {
 				r.err = err
-				return nil
+				return nil // TODO: need to derive schema from the JSON manifest :(
 			}
+			r.activeChunkBody = chunkBody
 			r.activeChunk = array.RecordReader(chunkReader)
 			r.activeChunk.Retain()
 		}
 		r.schema = r.activeChunk.Schema()
 	}
 	return r.schema
+}
+
+// \pre: r.activeChunk == nil && r.loadingChunkIdx != -1
+func (r *reader) consumeLoadingChunk() (io.ReadCloser, *ipc.Reader, error) {
+	// wait for the loading chunk
+	startWait := time.Now()
+	chunk := <-r.chunkChan
+	r.WaitTime += time.Since(startWait)
+	if chunk.err != nil {
+		close(r.chunkChan)
+		return nil, nil, chunk.err
+	}
+	if chunk.chunkIndex != r.loadingChunkIdx {
+		log.Fatalf("expected chunk %d, but receiving %d", r.loadingChunkIdx, chunk.chunkIndex)
+	}
+	// trigger a request for a new chunk in the background
+	r.loadingChunkIdx += 1
+	if r.loadingChunkIdx < len(r.Chunks) {
+		// INVARIANT I and II are preserved
+		go r.startChunkDataRequest(r.loadingChunkIdx, nil)
+	} else {
+		// INVARIANT I and II are preserved
+		r.loadingChunkIdx = -1
+		close(r.chunkChan)
+	}
+	// parse the new chunk into a record reader
+	chunkBody := chunk.inner.Body
+	chunkReader, err := ipc.NewReader(chunkBody)
+	if err != nil {
+		return nil, nil, err
+	}
+	return chunkBody, chunkReader, nil
 }
 
 // \pre: Next() returned true
