@@ -256,7 +256,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private string GetUserAgent()
         {
             // Check if a client has provided a user-agent entry
-            if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string userAgentEntry) && !string.IsNullOrWhiteSpace(userAgentEntry))
+            if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string? userAgentEntry) && !string.IsNullOrWhiteSpace(userAgentEntry))
             {
                 return $"{s_baseUserAgent} {userAgentEntry}";
             }

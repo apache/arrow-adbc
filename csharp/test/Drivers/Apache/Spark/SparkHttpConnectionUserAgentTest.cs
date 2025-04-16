@@ -123,7 +123,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             }
             
             // Invoke the method
-            return (string)getUserAgentMethod.Invoke(connection, null);
+            return (string)getUserAgentMethod.Invoke(connection, null)!;
         }
     }
 }
