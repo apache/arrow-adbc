@@ -37,13 +37,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
         private readonly BlockingCollection<IDownloadResult> _resultQueue;
         private readonly Mock<ICloudFetchMemoryBufferManager> _mockMemoryManager;
-        
+
         public CloudFetchDownloaderTest()
         {
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
             _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
             _mockMemoryManager = new Mock<ICloudFetchMemoryBufferManager>();
-            
+
             // Set up memory manager defaults
             _mockMemoryManager.Setup(m => m.TryAcquireMemory(It.IsAny<long>())).Returns(true);
             _mockMemoryManager.Setup(m => m.AcquireMemoryAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
@@ -55,12 +55,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
         {
             // Arrange
             var mockDownloader = new Mock<ICloudFetchDownloader>();
-            
+
             // Setup first call to succeed and second call to throw
             mockDownloader.SetupSequence(d => d.StartAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask)
                 .Throws(new InvalidOperationException("Downloader is already running."));
-            
+
             // Act & Assert
             await mockDownloader.Object.StartAsync(CancellationToken.None);
             await Assert.ThrowsAsync<InvalidOperationException>(() => mockDownloader.Object.StartAsync(CancellationToken.None));
@@ -79,18 +79,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 httpClient,
                 3, // maxParallelDownloads
                 false); // isLz4Compressed
-            
+
             // Add the end of results guard to the result queue
             _resultQueue.Add(EndOfResultsGuard.Instance);
-            
+
             // Act
             await downloader.StartAsync(CancellationToken.None);
             var result = await downloader.GetNextDownloadedFileAsync(CancellationToken.None);
-            
+
             // Assert
             Assert.Null(result);
             Assert.True(downloader.IsCompleted);
-            
+
             // Cleanup
             await downloader.StopAsync();
         }
@@ -101,17 +101,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             // Arrange
             string testContent = "Test file content";
             byte[] testContentBytes = Encoding.UTF8.GetBytes(testContent);
-            
+
             // Create a mock HTTP handler that returns our test content
             var mockHttpMessageHandler = CreateMockHttpMessageHandler(testContentBytes);
             var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-            
+
             // Create a test download result
             var mockDownloadResult = new Mock<IDownloadResult>();
             var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
             mockDownloadResult.Setup(r => r.Size).Returns(testContentBytes.Length);
-            
+
             // Capture the stream and size passed to SetCompleted
             Stream? capturedStream = null;
             long capturedSize = 0;
@@ -121,7 +121,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                     capturedStream = stream;
                     capturedSize = size;
                 });
-            
+
             // Create the downloader and add the download to the queue
             var downloader = new CloudFetchDownloader(
                 _downloadQueue,
@@ -132,26 +132,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 false, // isLz4Compressed
                 1, // maxRetries
                 10); // retryDelayMs
-            
+
             // Act
             await downloader.StartAsync(CancellationToken.None);
             _downloadQueue.Add(mockDownloadResult.Object);
-            
+
             // Wait for the download to be processed
             await Task.Delay(100);
-            
+
             // Add the end of results guard to complete the downloader
             _downloadQueue.Add(EndOfResultsGuard.Instance);
-            
+
             // Wait for the result to be available
             var result = await downloader.GetNextDownloadedFileAsync(CancellationToken.None);
-            
+
             // Assert
             Assert.Same(mockDownloadResult.Object, result);
-            
+
             // Verify SetCompleted was called
             mockDownloadResult.Verify(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()), Times.Once);
-            
+
             // Verify the content of the stream
             Assert.NotNull(capturedStream);
             using (var reader = new StreamReader(capturedStream))
@@ -159,10 +159,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 string content = reader.ReadToEnd();
                 Assert.Equal(testContent, content);
             }
-            
+
             // Verify memory was acquired
             _mockMemoryManager.Verify(m => m.AcquireMemoryAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Once);
-            
+
             // Cleanup
             await downloader.StopAsync();
         }
@@ -184,20 +184,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                     await Task.Delay(1, token); // Small delay to simulate network
                     return new HttpResponseMessage(HttpStatusCode.NotFound);
                 });
-            
+
             var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-            
+
             // Create a test download result
             var mockDownloadResult = new Mock<IDownloadResult>();
             var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
             mockDownloadResult.Setup(r => r.Size).Returns(1000); // Some arbitrary size
-            
+
             // Capture when SetFailed is called
             Exception? capturedException = null;
             mockDownloadResult.Setup(r => r.SetFailed(It.IsAny<Exception>()))
                 .Callback<Exception>(ex => capturedException = ex);
-            
+
             // Create the downloader and add the download to the queue
             var downloader = new CloudFetchDownloader(
                 _downloadQueue,
@@ -208,30 +208,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 false, // isLz4Compressed
                 1, // maxRetries
                 10); // retryDelayMs
-            
+
             // Act
             await downloader.StartAsync(CancellationToken.None);
             _downloadQueue.Add(mockDownloadResult.Object);
-            
+
             // Wait for the download to be processed
             await Task.Delay(100);
-            
+
             // Add the end of results guard to complete the downloader
             _downloadQueue.Add(EndOfResultsGuard.Instance);
-            
+
             // Assert
             // Verify SetFailed was called
             mockDownloadResult.Verify(r => r.SetFailed(It.IsAny<Exception>()), Times.Once);
             Assert.NotNull(capturedException);
             Assert.IsType<HttpRequestException>(capturedException);
-            
+
             // Verify the downloader has an error
             Assert.True(downloader.HasError);
             Assert.NotNull(downloader.Error);
-            
+
             // Verify GetNextDownloadedFileAsync throws an exception
             await Assert.ThrowsAsync<AdbcException>(() => downloader.GetNextDownloadedFileAsync(CancellationToken.None));
-            
+
             // Cleanup
             await downloader.StopAsync();
         }
@@ -242,7 +242,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             // Arrange
             // Create a mock HTTP handler that returns success for the first request and error for the second
             var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
-            
+
             // Use a simpler approach - just make all requests fail
             mockHttpMessageHandler
                 .Protected()
@@ -251,20 +251,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
-            
+
             var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-            
+
             // Create test download results
             var mockDownloadResult = new Mock<IDownloadResult>();
             var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
             mockDownloadResult.Setup(r => r.Size).Returns(100);
-            
+
             // Capture when SetFailed is called
             Exception? capturedException = null;
             mockDownloadResult.Setup(r => r.SetFailed(It.IsAny<Exception>()))
                 .Callback<Exception>(ex => capturedException = ex);
-            
+
             // Create the downloader
             var downloader = new CloudFetchDownloader(
                 _downloadQueue,
@@ -275,31 +275,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 false, // isLz4Compressed
                 1, // maxRetries
                 10); // retryDelayMs
-            
+
             // Act
             await downloader.StartAsync(CancellationToken.None);
             _downloadQueue.Add(mockDownloadResult.Object);
-            
+
             // Wait for the download to be processed and fail
             await Task.Delay(200);
-            
+
             // Add the end of results guard
             _downloadQueue.Add(EndOfResultsGuard.Instance);
-            
+
             // Wait for all processing to complete
             await Task.Delay(200);
-            
+
             // Assert
             // Verify the download failed
             mockDownloadResult.Verify(r => r.SetFailed(It.IsAny<Exception>()), Times.Once);
-            
+
             // Verify the downloader has an error
             Assert.True(downloader.HasError);
             Assert.NotNull(downloader.Error);
-            
+
             // Verify GetNextDownloadedFileAsync throws an exception
             await Assert.ThrowsAsync<AdbcException>(() => downloader.GetNextDownloadedFileAsync(CancellationToken.None));
-            
+
             // Cleanup
             await downloader.StopAsync();
         }
@@ -311,7 +311,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             var cancellationTokenSource = new CancellationTokenSource();
             var downloadStarted = new TaskCompletionSource<bool>();
             var downloadCancelled = new TaskCompletionSource<bool>();
-            
+
             // Create a mock HTTP handler with a delay to simulate a long download
             var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
             mockHttpMessageHandler
@@ -323,7 +323,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 .Returns<HttpRequestMessage, CancellationToken>(async (request, token) =>
                 {
                     downloadStarted.TrySetResult(true);
-                    
+
                     try
                     {
                         // Wait for a long time or until cancellation
@@ -334,21 +334,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                         downloadCancelled.TrySetResult(true);
                         throw;
                     }
-                    
+
                     return new HttpResponseMessage(HttpStatusCode.OK)
                     {
                         Content = new StringContent("Test content")
                     };
                 });
-            
+
             var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-            
+
             // Create a test download result
             var mockDownloadResult = new Mock<IDownloadResult>();
             var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
             mockDownloadResult.Setup(r => r.Size).Returns(100);
-            
+
             // Create the downloader and add the download to the queue
             var downloader = new CloudFetchDownloader(
                 _downloadQueue,
@@ -357,17 +357,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 httpClient,
                 1, // maxParallelDownloads
                 false); // isLz4Compressed
-            
+
             // Act
             await downloader.StartAsync(CancellationToken.None);
             _downloadQueue.Add(mockDownloadResult.Object);
-            
+
             // Wait for the download to start
             await downloadStarted.Task;
-            
+
             // Stop the downloader
             await downloader.StopAsync();
-            
+
             // Assert
             // Wait a short time for cancellation to propagate
             var cancelled = await Task.WhenAny(downloadCancelled.Task, Task.Delay(1000)) == downloadCancelled.Task;
@@ -382,13 +382,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             int maxParallelDownloads = 2;
             var downloadStartedEvents = new TaskCompletionSource<bool>[totalDownloads];
             var downloadCompletedEvents = new TaskCompletionSource<bool>[totalDownloads];
-            
+
             for (int i = 0; i < totalDownloads; i++)
             {
                 downloadStartedEvents[i] = new TaskCompletionSource<bool>();
                 downloadCompletedEvents[i] = new TaskCompletionSource<bool>();
             }
-            
+
             // Create a mock HTTP handler that signals when downloads start and waits for completion signal
             var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
             mockHttpMessageHandler
@@ -404,26 +404,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                     if (url.Contains("file"))
                     {
                         int index = int.Parse(url.Substring(url.Length - 1));
-                        
+
                         if (request.Method == HttpMethod.Get)
                         {
                             // Signal that this download has started
                             downloadStartedEvents[index].TrySetResult(true);
-                            
+
                             // Wait for the signal to complete this download
                             await downloadCompletedEvents[index].Task;
                         }
                     }
-                    
+
                     // Return a success response
                     return new HttpResponseMessage(HttpStatusCode.OK)
                     {
                         Content = new ByteArrayContent(Encoding.UTF8.GetBytes("Test content"))
                     };
                 });
-            
+
             var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-            
+
             // Create test download results
             var downloadResults = new IDownloadResult[totalDownloads];
             for (int i = 0; i < totalDownloads; i++)
@@ -436,7 +436,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                     .Callback<Stream, long>((_, _) => { });
                 downloadResults[i] = mockDownloadResult.Object;
             }
-            
+
             // Create the downloader
             var downloader = new CloudFetchDownloader(
                 _downloadQueue,
@@ -445,52 +445,52 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 httpClient,
                 maxParallelDownloads,
                 false); // isLz4Compressed
-            
+
             // Act
             await downloader.StartAsync(CancellationToken.None);
-            
+
             // Add all downloads to the queue
             foreach (var result in downloadResults)
             {
                 _downloadQueue.Add(result);
             }
-            
+
             // Wait for the first two downloads to start
             await Task.WhenAll(
                 downloadStartedEvents[0].Task,
                 downloadStartedEvents[1].Task);
-                
+
             // At this point, two downloads should be in progress
             // Wait a bit to ensure the third download has had a chance to start if it's going to
             await Task.Delay(100);
-            
+
             // The third download should not have started yet
             Assert.False(downloadStartedEvents[2].Task.IsCompleted, "The third download should not have started yet");
-            
+
             // Complete the first download
             downloadCompletedEvents[0].SetResult(true);
-            
+
             // Wait for the third download to start
             await downloadStartedEvents[2].Task;
-            
+
             // Complete the remaining downloads
             downloadCompletedEvents[1].SetResult(true);
             downloadCompletedEvents[2].SetResult(true);
-            
+
             // Add the end of results guard to complete the downloader
             _downloadQueue.Add(EndOfResultsGuard.Instance);
-            
+
             // Cleanup
             await downloader.StopAsync();
         }
 
         private static Mock<HttpMessageHandler> CreateMockHttpMessageHandler(
-            byte[]? content, 
+            byte[]? content,
             HttpStatusCode statusCode = HttpStatusCode.OK,
             TimeSpan? delay = null)
         {
             var mockHandler = new Mock<HttpMessageHandler>();
-            
+
             mockHandler
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
@@ -504,7 +504,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                     {
                         await Task.Delay(delay.Value, token);
                     }
-                    
+
                     // If the request is a HEAD request, return a response with content length
                     if (request.Method == HttpMethod.Head)
                     {
@@ -516,7 +516,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                         }
                         return response;
                     }
-                    
+
                     // For GET requests, return the actual content
                     var responseMessage = new HttpResponseMessage(statusCode);
                     if (content != null && statusCode == HttpStatusCode.OK)
@@ -524,10 +524,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                         responseMessage.Content = new ByteArrayContent(content);
                         responseMessage.Content.Headers.ContentLength = content.Length;
                     }
-                    
+
                     return responseMessage;
                 });
-            
+
             return mockHandler;
         }
     }

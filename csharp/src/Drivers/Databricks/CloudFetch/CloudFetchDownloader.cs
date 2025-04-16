@@ -112,7 +112,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             }
 
             _cancellationTokenSource?.Cancel();
-            
+
             try
             {
                 await _downloadTask.ConfigureAwait(false);
@@ -146,7 +146,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
                 // Try to take the next result from the queue
                 IDownloadResult result = await Task.Run(() => _resultQueue.Take(cancellationToken), cancellationToken);
-                
+
                 // Check if this is the end of results guard
                 if (result == EndOfResultsGuard.Instance)
                 {
@@ -246,13 +246,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                             {
                                 Exception ex = t.Exception?.InnerException ?? new Exception("Unknown error");
                                 Debug.WriteLine($"Download failed: {ex.Message}");
-                                
+
                                 // Set the download as failed
                                 downloadResult.SetFailed(ex);
-                                
+
                                 // Set the error state to stop the download process
                                 SetError(ex);
-                                
+
                                 // Signal that we should stop processing downloads
                                 downloadTaskCompletionSource.TrySetException(ex);
                             }
@@ -260,7 +260,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
                     // Add the task to the dictionary
                     downloadTasks[downloadTask] = downloadResult;
-                    
+
                     // If there's an error, stop processing more downloads
                     if (HasError)
                     {
@@ -291,10 +291,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         {
             string url = downloadResult.Link.FileLink;
             byte[]? fileData = null;
-            
+
             // Use the size directly from the download result
             long size = downloadResult.Size;
-            
+
             // Acquire memory before downloading
             await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
 
@@ -305,10 +305,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 {
                     // Download the file directly
                     using HttpResponseMessage response = await _httpClient.GetAsync(
-                        url, 
-                        HttpCompletionOption.ResponseHeadersRead, 
+                        url,
+                        HttpCompletionOption.ResponseHeadersRead,
                         cancellationToken).ConfigureAwait(false);
-                    
+
                     response.EnsureSuccessStatusCode();
 
                     // Log the download size if available from response headers
@@ -389,7 +389,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             {
                 // Mark the result queue as completed to prevent further additions
                 _resultQueue.CompleteAdding();
-                
+
                 // Mark the download as completed with error
                 _isCompleted = true;
             }

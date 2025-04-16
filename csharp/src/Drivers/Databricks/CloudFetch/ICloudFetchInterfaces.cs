@@ -127,17 +127,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// Gets a value indicating whether there are more results available.
         /// </summary>
         bool HasMoreResults { get; }
-        
+
         /// <summary>
         /// Gets a value indicating whether the fetcher has completed fetching all results.
         /// </summary>
         bool IsCompleted { get; }
-        
+
         /// <summary>
         /// Gets a value indicating whether the fetcher encountered an error.
         /// </summary>
         bool HasError { get; }
-        
+
         /// <summary>
         /// Gets the error encountered by the fetcher, if any.
         /// </summary>
@@ -168,17 +168,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The next downloaded file, or null if there are no more files.</returns>
         Task<IDownloadResult?> GetNextDownloadedFileAsync(CancellationToken cancellationToken);
-        
+
         /// <summary>
         /// Gets a value indicating whether the downloader has completed all downloads.
         /// </summary>
         bool IsCompleted { get; }
-        
+
         /// <summary>
         /// Gets a value indicating whether the downloader encountered an error.
         /// </summary>
         bool HasError { get; }
-        
+
         /// <summary>
         /// Gets the error encountered by the downloader, if any.
         /// </summary>

@@ -100,7 +100,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             {
                 _dataStream.Dispose();
                 _dataStream = null;
-                
+
                 // Release memory back to the manager
                 if (_size > 0)
                 {

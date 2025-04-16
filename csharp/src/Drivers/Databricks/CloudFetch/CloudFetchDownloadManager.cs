@@ -161,8 +161,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// <param name="resultFetcher">The result fetcher.</param>
         /// <param name="downloader">The downloader.</param>
         internal CloudFetchDownloadManager(
-            DatabricksStatement statement, 
-            Schema schema, 
+            DatabricksStatement statement,
+            Schema schema,
             bool isLz4Compressed,
             ICloudFetchResultFetcher resultFetcher,
             ICloudFetchDownloader downloader)
@@ -172,7 +172,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             _isLz4Compressed = isLz4Compressed;
             _resultFetcher = resultFetcher ?? throw new ArgumentNullException(nameof(resultFetcher));
             _downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
-            
+
             // Create empty collections for the test
             _memoryManager = new CloudFetchMemoryBufferManager(DefaultMemoryBufferSizeMB);
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);

@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             }
 
             _cancellationTokenSource?.Cancel();
-            
+
             try
             {
                 await _fetchTask.ConfigureAwait(false);
@@ -161,7 +161,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 _error = ex;
                 _hasMoreResults = false;
                 _isCompleted = true;
-                
+
                 // Add the end of results guard to the queue even in case of error
                 try
                 {

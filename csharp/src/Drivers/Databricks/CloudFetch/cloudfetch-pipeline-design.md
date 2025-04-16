@@ -1,10 +1,10 @@
 current cloudfetch implementation download the cloud result file inline with the reader, which generate performance problem, it slows down the reader when need download the next result file
 
-we need add prefetch functionality  to cloudfetch downloader, eg, we shouldn't block the reader because of the file download. infect we should have a separate downloader class to handle the parallel downloading of the result files. 
+we need add prefetch functionality  to cloudfetch downloader, eg, we shouldn't block the reader because of the file download. infect we should have a separate downloader class to handle the parallel downloading of the result files.
 
 if finished the current batch of download, the downloader need to be able to go ahead fetch next batch of download file async and start prefetching.
 
-There are some file download code currently in the SparkCloudFetchReader.cs please remove or refactor them into the new design. 
+There are some file download code currently in the SparkCloudFetchReader.cs please remove or refactor them into the new design.
 we will just use perfetch logic for downloading. to make the code simpler.
 
 Also the logic of FetchResults call should be also in the prefetch logic.
@@ -52,8 +52,8 @@ here are some high level class design of this work.
     memory will be released once SparkCloudFetchReader finished reading this file.
     we can make DownloadResult disposable to make safe operation.
 
-** class CloudFetchDownloadManager is the class manager all the works and classes above. 
-    SparkCloudFetchReader will get new download result and return batches. 
+** class CloudFetchDownloadManager is the class manager all the works and classes above.
+    SparkCloudFetchReader will get new download result and return batches.
     this class also moniotr the fetch and download status, when there is no more files it will reutn null to SparkCloudFetchReader
     no more files means nomore fetch can be downn from thrift server, no more events from all queues
 

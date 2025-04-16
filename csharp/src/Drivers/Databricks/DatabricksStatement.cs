@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         // Cast the Client to IAsync for CloudFetch compatibility
         TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
-        
+
         public override void SetOption(string key, string value)
         {
             switch (key)

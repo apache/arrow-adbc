@@ -34,7 +34,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
     {
         private readonly Mock<ICloudFetchMemoryBufferManager> _mockMemoryManager;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
-        
+
         public CloudFetchResultFetcherTest()
         {
             _mockMemoryManager = new Mock<ICloudFetchMemoryBufferManager>();
@@ -48,21 +48,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             var mockClient = new Mock<TCLIService.IAsync>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
-            
+
             var mockStatement = new Mock<IHiveServer2Statement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-            
+
             var fetcher = new CloudFetchResultFetcher(
                 mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
                 5); // batchSize
-            
+
             // Act & Assert
             await fetcher.StartAsync(CancellationToken.None);
             await Assert.ThrowsAsync<InvalidOperationException>(() => fetcher.StartAsync(CancellationToken.None));
-            
+
             // Cleanup
             await fetcher.StopAsync();
         }
@@ -77,33 +77,33 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 CreateTestResultLink(100, 100, "http://test.com/file2"),
                 CreateTestResultLink(200, 100, "http://test.com/file3")
             };
-            
+
             var mockClient = new Mock<TCLIService.IAsync>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateFetchResultsResponse(resultLinks, false));
-            
+
             var mockStatement = new Mock<IHiveServer2Statement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-            
+
             var fetcher = new CloudFetchResultFetcher(
                 mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
                 5); // batchSize
-            
+
             // Act
             await fetcher.StartAsync(CancellationToken.None);
-            
+
             // Wait for the fetcher to process the results
             await Task.Delay(100);
-            
+
             // Assert
             // The download queue should contain our result links
             // Note: With prefetch, there might be more items in the queue than just our result links
-            Assert.True(_downloadQueue.Count >= resultLinks.Count, 
+            Assert.True(_downloadQueue.Count >= resultLinks.Count,
                 $"Expected at least {resultLinks.Count} items in queue, but found {_downloadQueue.Count}");
-            
+
             // Take all items from the queue and verify they match our result links
             var downloadResults = new List<IDownloadResult>();
             while (_downloadQueue.TryTake(out var result))
@@ -115,9 +115,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 }
                 downloadResults.Add(result);
             }
-            
+
             Assert.Equal(resultLinks.Count, downloadResults.Count);
-            
+
             // Verify each download result has the correct link
             for (int i = 0; i < resultLinks.Count; i++)
             {
@@ -125,13 +125,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 Assert.Equal(resultLinks[i].StartRowOffset, downloadResults[i].Link.StartRowOffset);
                 Assert.Equal(resultLinks[i].RowCount, downloadResults[i].Link.RowCount);
             }
-            
+
             // Verify the fetcher state
             Assert.False(fetcher.HasMoreResults);
             Assert.True(fetcher.IsCompleted);
             Assert.False(fetcher.HasError);
             Assert.Null(fetcher.Error);
-            
+
             // Cleanup
             await fetcher.StopAsync();
         }
@@ -145,40 +145,40 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 CreateTestResultLink(0, 100, "http://test.com/file1"),
                 CreateTestResultLink(100, 100, "http://test.com/file2")
             };
-            
+
             var secondBatchLinks = new List<TSparkArrowResultLink>
             {
                 CreateTestResultLink(200, 100, "http://test.com/file3"),
                 CreateTestResultLink(300, 100, "http://test.com/file4")
             };
-            
+
             var mockClient = new Mock<TCLIService.IAsync>();
             mockClient.SetupSequence(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateFetchResultsResponse(firstBatchLinks, true))
                 .ReturnsAsync(CreateFetchResultsResponse(secondBatchLinks, false));
-            
+
             var mockStatement = new Mock<IHiveServer2Statement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-            
+
             var fetcher = new CloudFetchResultFetcher(
                 mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
                 5); // batchSize
-            
+
             // Act
             await fetcher.StartAsync(CancellationToken.None);
-            
+
             // Wait for the fetcher to process all results
             await Task.Delay(200);
-            
+
             // Assert
             // The download queue should contain all result links (both batches)
             // Note: With prefetch, there might be more items in the queue than just our result links
             Assert.True(_downloadQueue.Count >= firstBatchLinks.Count + secondBatchLinks.Count,
                 $"Expected at least {firstBatchLinks.Count + secondBatchLinks.Count} items in queue, but found {_downloadQueue.Count}");
-            
+
             // Take all items from the queue
             var downloadResults = new List<IDownloadResult>();
             while (_downloadQueue.TryTake(out var result))
@@ -190,14 +190,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 }
                 downloadResults.Add(result);
             }
-            
+
             Assert.Equal(firstBatchLinks.Count + secondBatchLinks.Count, downloadResults.Count);
-            
+
             // Verify the fetcher state
             Assert.False(fetcher.HasMoreResults);
             Assert.True(fetcher.IsCompleted);
             Assert.False(fetcher.HasError);
-            
+
             // Cleanup
             await fetcher.StopAsync();
         }
@@ -209,23 +209,23 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             var mockClient = new Mock<TCLIService.IAsync>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
-            
+
             var mockStatement = new Mock<IHiveServer2Statement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-            
+
             var fetcher = new CloudFetchResultFetcher(
                 mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
                 5); // batchSize
-            
+
             // Act
             await fetcher.StartAsync(CancellationToken.None);
-            
+
             // Wait for the fetcher to process the results
             await Task.Delay(100);
-            
+
             // Assert
             // The download queue should be empty except for the end guard
             var nonGuardItems = new List<IDownloadResult>();
@@ -237,12 +237,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 }
             }
             Assert.Empty(nonGuardItems);
-            
+
             // Verify the fetcher state
             Assert.False(fetcher.HasMoreResults);
             Assert.True(fetcher.IsCompleted);
             Assert.False(fetcher.HasError);
-            
+
             // Cleanup
             await fetcher.StopAsync();
         }
@@ -254,23 +254,23 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             var mockClient = new Mock<TCLIService.IAsync>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Test server error"));
-            
+
             var mockStatement = new Mock<IHiveServer2Statement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-            
+
             var fetcher = new CloudFetchResultFetcher(
                 mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
                 5); // batchSize
-            
+
             // Act
             await fetcher.StartAsync(CancellationToken.None);
-            
+
             // Wait for the fetcher to process the error
             await Task.Delay(100);
-            
+
             // Assert
             // Verify the fetcher state
             Assert.False(fetcher.HasMoreResults);
@@ -278,12 +278,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             Assert.True(fetcher.HasError);
             Assert.NotNull(fetcher.Error);
             Assert.IsType<InvalidOperationException>(fetcher.Error);
-            
+
             // The download queue should have the end guard
             Assert.Single(_downloadQueue);
             var result = _downloadQueue.Take();
             Assert.Same(EndOfResultsGuard.Instance, result);
-            
+
             // Cleanup
             await fetcher.StopAsync();
         }
@@ -294,13 +294,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             // Arrange
             var fetchStarted = new TaskCompletionSource<bool>();
             var fetchCancelled = new TaskCompletionSource<bool>();
-            
+
             var mockClient = new Mock<TCLIService.IAsync>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .Returns(async (TFetchResultsReq req, CancellationToken token) =>
                 {
                     fetchStarted.TrySetResult(true);
-                    
+
                     try
                     {
                         // Wait for a long time or until cancellation
@@ -311,35 +311,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                         fetchCancelled.TrySetResult(true);
                         throw;
                     }
-                    
+
                     // Return empty results if not cancelled
                     return CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false);
                 });
-            
+
             var mockStatement = new Mock<IHiveServer2Statement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-            
+
             var fetcher = new CloudFetchResultFetcher(
                 mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
                 5); // batchSize
-            
+
             // Act
             await fetcher.StartAsync(CancellationToken.None);
-            
+
             // Wait for the fetch to start
             await fetchStarted.Task;
-            
+
             // Stop the fetcher
             await fetcher.StopAsync();
-            
+
             // Assert
             // Wait a short time for cancellation to propagate
             var cancelled = await Task.WhenAny(fetchCancelled.Task, Task.Delay(1000)) == fetchCancelled.Task;
             Assert.True(cancelled, "Fetch operation should have been cancelled");
-            
+
             // Verify the fetcher state
             Assert.True(fetcher.IsCompleted);
         }
@@ -363,7 +363,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             var results = new TRowSet();
             results.__isset.resultLinks = true;
             results.ResultLinks = resultLinks;
-            
+
             return new TFetchResultsResp
             {
                 Status = new TStatus { StatusCode = TStatusCode.SUCCESS_STATUS },
