@@ -1,60 +1,63 @@
-current cloudfetch implementation download the cloud result file inline with the reader, which generate performance problem, it slows down the reader when need download the next result file
+<!---
+Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements. See the NOTICE file distributed with this work for additional information regarding copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
-we need add prefetch functionality  to cloudfetch downloader, eg, we shouldn't block the reader because of the file download. infect we should have a separate downloader class to handle the parallel downloading of the result files.
+  http://www.apache.org/licenses/LICENSE-2.0
 
-if finished the current batch of download, the downloader need to be able to go ahead fetch next batch of download file async and start prefetching.
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+-->
 
-There are some file download code currently in the SparkCloudFetchReader.cs please remove or refactor them into the new design.
-we will just use perfetch logic for downloading. to make the code simpler.
+current cloudfetch implementation downloads the cloud result file inline with the reader, which generates performance problems, as it slows down the reader when needing to download the next result file.
 
-Also the logic of FetchResults call should be also in the prefetch logic.
+We need to add prefetch functionality to the cloudfetch downloader, e.g., we shouldn't block the reader because of the file download. Instead, we should have a separate downloader class to handle the parallel downloading of the result files.
 
-also we need guarantee the oder of the read by the reader is same with the TSparkArrowResultLink in TFetchResultsResp
+If the current batch of downloads is finished, the downloader should be able to asynchronously fetch the next batch of files and start prefetching.
 
-also need add following config items
-1. how many parallel download allowed default value 3
-2. how many file we want to prefetch default value 2
-3. how many memory we want to use to buffer the prefetched files. default value 200MB
-4. is prefetch enabled, default to true
+There is some file download code currently in the SparkCloudFetchReader.cs; please remove or refactor it into the new design. We will just use prefetch logic for downloading to simplify the code.
 
+Also, the logic of the FetchResults call should be included in the prefetch logic.
 
-here are some high level class design of this work.
+Additionally, we need to guarantee that the order of the read by the reader is the same as that of the TSparkArrowResultLink in TFetchResultsResp.
 
-** the current SparkCloudFetchReader class will be simplified, all the download file and fetch next result set logic will be moved out of this class.
-** a new DownloadResult class is the central for monitor download and usage status of each fild downloaded.
-    it has the link of the files
-    it has the memory stream of the file
-    it track the size of the downloaded file
-    it also has a tasksource so that SparkCloudFetchReader can wait on if download is not finished.
-    it's the event for the pipeline. and need to be disposable and holding a reference to the CloudFetchMemoryBufferManager, and return the memory to it when disposal.
+We need to add the following configuration items:
+1. How many parallel downloads are allowed (default value: 3)
+2. How many files we want to prefetch (default value: 2)
+3. How much memory we want to use to buffer the prefetched files (default value: 200MB)
+4. Whether prefetch is enabled (default: true)
 
-** a pipeline design
-    we are using a pipeline design for this work, using concurrentqueue to build the pipeline, and DownloadResult as the event of each stage
-    in the pipeline. there will be 2 workers in this pipeline.
-*** the resultchunk fetcher worker
-    this worker will keep fetching result using a backgroud tasks from thrift server and append event to the queue waiting for download
-    the fetcher worker will monitor the pending download queue only the event count less than a configurable amount to continue fetch the
-    new result.
+Here are some high level class designs for this work:
 
-*** The file download worker
-    this worker will poll event from the download queue and perferm file download and append to the result queue so that the result can be consume by SparkCloudFetchReader
-    this worker will satify the concurrent download config and memory limit config.
-    this is also a background task
+- The current SparkCloudFetchReader class will be simplified; all file download and fetch-next-result-set logic will be moved out of this class.
 
-** a new class CloudFetchDownloader to has a list of DownloadResult in a concurrent queue
-    when getNextDownloadedFileAsync is called, pop and return one download result to SparkCloudFetchReader
-    if the queue is empty, but there is still more result in CloudFetchResultFetcher, it should wait for new
-        result comes in and restun.
-    if queue is emtpy and no more result in CloudFetchResultFetcher, return null.
+- A new DownloadResult class is central for monitoring download and usage status of each file:
+  - Contains the link to the file.
+  - Holds the memory stream of the file.
+  - Tracks the size of the downloaded file.
+  - Includes a TaskSource so that SparkCloudFetchReader can wait if a download is not finished.
+  - Acts as the event for the pipeline and should be disposable, holding a reference to the CloudFetchMemoryBufferManager and returning the memory upon disposal.
 
-** class  CloudFetchMemoryBufferManager used to gate how many files to buffer in the memory
-    memory need to be acquired before downlaod being scheduled.
-    memory will be released once SparkCloudFetchReader finished reading this file.
-    we can make DownloadResult disposable to make safe operation.
+- Pipeline Design:
+  - Uses a concurrent queue to build the pipeline, with DownloadResult as the event for each stage.
+  - Two workers process the pipeline:
+    - The result chunk fetcher worker:
+      - Continuously fetches results from the Thrift server via a background task and appends events to the download queue.
+      - Monitors the pending download queue and continues fetching new results only if the event count is below a configurable threshold.
+    - The file download worker:
+      - Polls events from the download queue, performs file downloads, and appends them to the result queue for consumption by the SparkCloudFetchReader.
+      - Adheres to the concurrent download and memory limit configurations.
+      - Runs as a background task.
 
-** class CloudFetchDownloadManager is the class manager all the works and classes above.
-    SparkCloudFetchReader will get new download result and return batches.
-    this class also moniotr the fetch and download status, when there is no more files it will reutn null to SparkCloudFetchReader
-    no more files means nomore fetch can be downn from thrift server, no more events from all queues
+- A new class, CloudFetchDownloader, will maintain a concurrent queue of DownloadResult objects:
+  - When getNextDownloadedFileAsync is called, it will pop and return a DownloadResult to the SparkCloudFetchReader.
+  - If the queue is empty but there are still results being fetched by CloudFetchResultFetcher, it should wait for new results before returning them.
+  - If the queue is empty and no more results are forthcoming, it should return null.
 
-** let's also use interface to decouple the implementation of each classes.
+- The CloudFetchMemoryBufferManager class will restrict how many files can be buffered in memory:
+  - Memory must be acquired before scheduling a download.
+  - Memory is released once SparkCloudFetchReader has finished reading a file.
+  - DownloadResult can be made disposable to ensure safe operation.
+
+- The CloudFetchDownloadManager class will manage all the above components:
+  - SparkCloudFetchReader will obtain new download results in batches from this manager.
+  - It monitors both fetch and download statuses, returning null to the SparkCloudFetchReader when there are no more files (i.e., no more results fetched from the Thrift server and no pending events in any queues).
+
+- Interfaces should be used to decouple the implementations of each class.
