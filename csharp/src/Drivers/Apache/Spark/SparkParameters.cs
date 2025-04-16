@@ -33,6 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Type = "adbc.spark.type";
         public const string DataTypeConv = "adbc.spark.data_type_conv";
         public const string ConnectTimeoutMilliseconds = "adbc.spark.connect_timeout_ms";
+        public const string UserAgentEntry = "adbc.spark.user_agent_entry";
     }
 
     public static class SparkAuthTypeConstants
