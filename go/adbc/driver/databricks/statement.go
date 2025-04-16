@@ -217,7 +217,6 @@ func (stmt *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, in
 
 func (stmt *statement) executeQueryInternal(ctx context.Context) (*reader, error) {
 	se := stmt.conn.StatementExecution()
-	start := time.Now()
 	res, err := se.ExecuteStatement(ctx, *stmt.req)
 	if err != nil {
 		return nil, adbc.Error{
@@ -239,14 +238,12 @@ func (stmt *statement) executeQueryInternal(ctx context.Context) (*reader, error
 	// - `SUCCEEDED`: execution was successful, result data available for fetch.
 
 	state := res.Status.State
-	fmt.Printf("Statement execution state: %s [%s]\n", state.String(), time.Since(start).String())
 	switch state {
 	case sql.StatementStateSucceeded:
-		fmt.Printf("Statement execution state: %s [%s]\n", state.String(), time.Since(start).String())
 		if res.Result.ChunkIndex != 0 {
 			log.Fatal("first ChunkIndex is not 0")
 		}
-		return NewRecordReader(&se, res.StatementId, res.Result, res.Manifest)
+		return NewRecordReader(se, res.StatementId, res.Result, res.Manifest)
 	case sql.StatementStatePending, sql.StatementStateRunning:
 		// Keep polling until the statement reaches a terminal state
 		// TODO: make this configurable
@@ -264,10 +261,9 @@ func (stmt *statement) executeQueryInternal(ctx context.Context) (*reader, error
 					return nil, retries.Halt(adbcErr)
 				}
 				state := res.Status.State
-				fmt.Printf("Statement execution state: %s [%s]\n", state.String(), time.Since(start).String())
 				switch state {
 				case sql.StatementStateSucceeded:
-					r, err := NewRecordReader(&se, res.StatementId, res.Result, res.Manifest)
+					r, err := NewRecordReader(se, res.StatementId, res.Result, res.Manifest)
 					if err != nil {
 						return nil, retries.Halt(err)
 					}

@@ -40,7 +40,7 @@ type chunkResponse struct {
 type reader struct {
 	refCount int64
 
-	stmtExecution *sql.StatementExecutionInterface
+	stmtExecution sql.StatementExecutionInterface
 	httpClient    *http.Client
 
 	// Statement that this reader is associated with.
@@ -69,13 +69,23 @@ type reader struct {
 	err    error
 
 	cancelFn context.CancelFunc
+
+	// Statistics
+
+	// Reader's start time.
+	startTime time.Time
+	// All the bytes received from the server.
+	BytesReceived int64
+	// Time spent waiting for the server to respond in the foreground.
+	WaitTime time.Duration
 }
 
 func NewRecordReader(
-	stmtExecution *sql.StatementExecutionInterface, statementId string, result *sql.ResultData, manifest *sql.ResultManifest) (*reader, error) {
+	stmtExecution sql.StatementExecutionInterface, statementId string, result *sql.ResultData, manifest *sql.ResultManifest) (*reader, error) {
 	r := &reader{
 		refCount: 1,
 
+		// TODO: context
 		stmtExecution: stmtExecution,
 		httpClient:    http.DefaultClient,
 
@@ -89,17 +99,25 @@ func NewRecordReader(
 		chunkChan:       make(chan chunkResponse),
 		activeChunk:     nil,
 
-		schema: nil, // XXX
+		schema: nil, // TODO: build schema when there are no chunks
 		rec:    nil,
 		err:    nil,
 
 		cancelFn: func() {},
+
+		startTime: time.Now(),
+		// All the bytes received from the server.
+		BytesReceived: 0,
+		// Time spent waiting for the server to respond in the foreground.
+		WaitTime: 0,
 	}
 	if len(manifest.Chunks) > 0 && len(result.ExternalLinks) > 0 {
 		// Establish INVARIANT I by starting the loading of r.loadingChunkIdx
 		go r.startChunkDataRequest(r.loadingChunkIdx, &result.ExternalLinks[0])
 	} else {
-		log.Fatal("manifest.Chunks is inconsistent with result.ExternalLinks")
+		// Establish INVARIANT I by finishing the entire iteration process
+		close(r.chunkChan)
+		r.loadingChunkIdx = -1
 	}
 	return r, nil
 }
@@ -116,53 +134,53 @@ func (r *reader) Release() {
 		if r.rec != nil {
 			r.rec.Release()
 		}
+		// TODO: cancel HTTP connection
+		// TODO: close channel
 		r.cancelFn()
 	}
 }
 
-// \pre: INVARIANT I: loadingChunkIdx != -1 implies chunk is loading in the background
-// \pre: INVARIANT II: loadingChunkIdx == -1 implies chunkChan is closed
+// \pre: loadingChunkIdx != -1 implies chunk is loading in the background (INVARIANT I)
+// \pre: loadingChunkIdx == -1 implies chunkChan is closed (INVARIANT II)
 // \post: if returns true, r.Record() != nil && r.err == nil
 // \post: if returns false, r.Record() == nil and r.err *MUST* be checked
 func (r *reader) Next() bool {
-	log.Println("Next()")
 	if r.rec != nil {
 		r.rec.Release()
 		r.rec = nil
 	}
 	if r.err != nil {
-		return false // post-conditions are guaranteed because r.rec == nil && r.err != nil
+		return false // post-condition holds: r.rec == nil && r.err != nil
 	}
-	// PROP I: r.rec == nil && r.err == nil
+	// PROPERTY I: r.rec == nil && r.err == nil
 
-	log.Println("checking if activeChunk is nil")
-	// if we don't have an active chunk, we need to wait for the loading one
+	// If we don't have an active chunk, we need to wait for the loading one,
 	// parse it, and trigger a request for the next chunk to preserve
-	// invariants I and II
+	// invariants I and II.
 	if r.activeChunk == nil {
 		if r.loadingChunkIdx == -1 {
-			return false // post-conditions are guaranteed by PROP I
+			return false // post-condition holds because of PROPERTY I
 		}
-		log.Println("waiting for loading chunk")
-		// wait for the loading chunk
-		start := time.Now()
+		// wait for the loading chunk as we need it now
+		startWait := time.Now()
 		chunk := <-r.chunkChan
-		log.Printf("blocked %s waiting for chunk %d", time.Since(start).String(), chunk.chunkIndex)
+		r.BytesReceived += chunk.inner.ContentLength
+		r.WaitTime += time.Since(startWait)
 		if chunk.err != nil {
 			r.err = chunk.err
 			close(r.chunkChan)
-			return false // post-conditions are guaranteed by PROP I
+			return false // post-condition holds because of PROPERTY I
 		}
 		if chunk.chunkIndex != r.loadingChunkIdx {
-			log.Fatalf("expected chunk %d, but receiving %d", r.loadingChunkIdx, chunk.chunkIndex)
+			log.Fatalf("expected chunk %d, but received %d", r.loadingChunkIdx, chunk.chunkIndex)
 		}
 		// trigger a request for a new chunk in the background
 		r.loadingChunkIdx += 1
 		if r.loadingChunkIdx < len(r.Chunks) {
-			// INVARIANT I and II are preserved
+			// INVARIANT I and II are preserved: loadingChunkIdx is loading in the background
 			go r.startChunkDataRequest(r.loadingChunkIdx, nil)
 		} else {
-			// INVARIANT I and II are preserved
+			// INVARIANT I and II are preserved: loadingChunkIdx is -1, so chunkChan is closed
 			r.loadingChunkIdx = -1
 			close(r.chunkChan)
 		}
@@ -180,23 +198,24 @@ func (r *reader) Next() bool {
 			r.schema = r.activeChunk.Schema()
 		}
 	}
-	// PROP II: r.activeChunk != nil
+	// PROPERTY II: r.activeChunk != nil
 
-	log.Printf("calling Next on the active chunk")
 	if r.activeChunk.Next() {
 		r.rec = r.activeChunk.Record()
 		r.rec.Retain()
-		log.Printf("Success! Batch with %d rows\n", r.rec.NumRows())
-		return true // post-conditions preserved since r.rec != nil
+		return true // post-condition holds: r.rec != nil
 	}
 	// make sure the error (if it exists) is retained
 	r.err = r.activeChunk.Err()
-	// release the fully consumed chunk and close the underlying HTTP body stream
+	// release the fully consumed (or err'd) chunk and close the underlying HTTP body stream
 	r.activeChunk.Release()
 	r.activeChunk = nil
 	r.activeChunkBody.Close()
-	// PROP III: r.activeChunk == nil
-	// recursively call Next() to start processing another chunk or stopping
+	// PROPERTY III: r.activeChunk == nil
+
+	// Recursively call Next() to start processing another chunk or stopping.
+	// Iteration will either terminate (if r.err != nil) or an attempt will be made
+	// to load the next chunk (because r.activeChunk == nil) guaranteeing progress.
 	return r.Next()
 }
 
@@ -204,13 +223,12 @@ func (r *reader) Schema() *arrow.Schema {
 	if r.schema == nil {
 		if r.activeChunk == nil {
 			if r.loadingChunkIdx == -1 {
-				return nil // XXX
+				return nil // TODO: need to derive schema from the JSON manifest :(
 			}
-			log.Println("waiting for loading chunk")
 			// wait for the loading chunk
-			start := time.Now()
+			startWait := time.Now()
 			chunk := <-r.chunkChan
-			log.Printf("blocked %s waiting for chunk %d", time.Since(start).String(), chunk.chunkIndex)
+			r.WaitTime += time.Since(startWait)
 			if chunk.err != nil {
 				r.err = chunk.err
 				close(r.chunkChan)
@@ -229,12 +247,10 @@ func (r *reader) Schema() *arrow.Schema {
 				r.loadingChunkIdx = -1
 				close(r.chunkChan)
 			}
-			log.Println("parsing new chunk into a record reader")
 			// parse the new chunk into a record reader
 			r.activeChunkBody = chunk.inner.Body
 			chunkReader, err := ipc.NewReader(r.activeChunkBody)
 			if err != nil {
-				log.Printf("error creating new chunk reader: %v", err)
 				r.err = err
 				return nil
 			}
@@ -246,13 +262,8 @@ func (r *reader) Schema() *arrow.Schema {
 	return r.schema
 }
 
+// \pre: Next() returned true
 func (r *reader) Record() arrow.Record {
-	if r.err != nil {
-		log.Fatalf("Record() called when there is an error: %v", r.err)
-	}
-	if r.rec == nil {
-		log.Fatalf("Record() called when there is no record available")
-	}
 	return r.rec
 }
 
@@ -260,22 +271,28 @@ func (r *reader) Err() error {
 	return r.err
 }
 
+func (r *reader) Throughput() float64 {
+	elapsed := time.Since(r.startTime)
+	elapsedSeconds := elapsed.Seconds()
+	return float64(r.BytesReceived) / elapsedSeconds
+}
+
 // Start an HTTP request for the chunk data and notify the chunkReceived channel
 // when a response is received and data is available for streaming.
+//
+// NOTE: The caller is responsible for closing the response body in .inner.
 func (r *reader) startChunkDataRequest(chunkIndex int, externalLink *sql.ExternalLink) {
 	url := ""
 	if externalLink != nil {
 		url = externalLink.ExternalLink
 	} else {
-		log.Printf("chunk %d: starting request for external link", chunkIndex)
-		// TODO: retry logic
+		// TODO(felipecrv): retry logic
 		req := sql.GetStatementResultChunkNRequest{
 			ChunkIndex:  chunkIndex,
 			StatementId: r.StatementId,
 		}
-		res, err := (*r.stmtExecution).GetStatementResultChunkN(context.TODO(), req)
+		res, err := r.stmtExecution.GetStatementResultChunkN(context.TODO(), req)
 		if err != nil {
-			log.Printf("chunk %d: error getting external link: %v", chunkIndex, err)
 			r.chunkChan <- chunkResponse{
 				chunkIndex: chunkIndex,
 				inner:      nil,
@@ -287,12 +304,12 @@ func (r *reader) startChunkDataRequest(chunkIndex int, externalLink *sql.Externa
 			url = externalLink.ExternalLink
 		}
 	}
-	log.Printf("chunk %d: starting request chunk data %s", chunkIndex, url)
+	// TODO: must send request headers as well
+	// TODO: use context for cancellation
 	res, err := r.httpClient.Get(url)
 	r.chunkChan <- chunkResponse{
 		chunkIndex: chunkIndex,
 		inner:      res,
 		err:        err,
 	}
-	// receiver is responsible for calling chunkResponse.Close()
 }
