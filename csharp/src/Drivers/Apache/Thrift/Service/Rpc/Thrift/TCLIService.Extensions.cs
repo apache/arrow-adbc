@@ -33,7 +33,7 @@ using Thrift.Protocol;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public static class TCLIServiceExtensions
+  internal static class TCLIServiceExtensions
   {
     public static bool Equals(this Dictionary<string, double> instance, object that)
     {

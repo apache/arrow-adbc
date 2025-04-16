@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TSetClientInfoReq : TBase
+  internal partial class TSetClientInfoReq : TBase
   {
     private Dictionary<string, string> _configuration;
 

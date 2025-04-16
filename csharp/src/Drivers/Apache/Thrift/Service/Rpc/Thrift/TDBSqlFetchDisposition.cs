@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TDBSqlFetchDisposition
+  internal enum TDBSqlFetchDisposition
   {
     DISPOSITION_UNSPECIFIED = 0,
     DISPOSITION_INLINE = 1,

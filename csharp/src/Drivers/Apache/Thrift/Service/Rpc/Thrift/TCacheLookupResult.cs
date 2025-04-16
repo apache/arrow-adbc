@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TCacheLookupResult
+  internal enum TCacheLookupResult
   {
     CACHE_INELIGIBLE = 0,
     LOCAL_CACHE_HIT = 1,
