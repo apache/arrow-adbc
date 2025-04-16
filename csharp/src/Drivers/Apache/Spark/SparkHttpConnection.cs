@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkHttpConnection : SparkConnection
     {
-        private static readonly string s_userAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault}";
+        private static readonly string s_baseUserAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault}";
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
@@ -164,7 +164,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(s_userAgent);
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(GetUserAgent());
             httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
@@ -252,5 +252,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SparkServerType ServerType => SparkServerType.Http;
 
         protected override int ColumnMapIndexOffset => 1;
+        
+        private string GetUserAgent()
+        {
+            // Check if a client has provided a user-agent entry
+            if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string userAgentEntry) && !string.IsNullOrWhiteSpace(userAgentEntry))
+            {
+                return $"{s_baseUserAgent} {userAgentEntry}";
+            }
+            
+            return s_baseUserAgent;
+        }
     }
 }
