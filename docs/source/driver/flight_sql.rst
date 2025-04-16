@@ -261,7 +261,7 @@ OAuth 2.0 Options
 -----------------------
 .. _oauth-configurations:
 
-Supported configurations to obtainstokens using OAuth 2.0 authentication flows.
+Supported configurations to obtain tokens using OAuth 2.0 authentication flows.
 
 ``adbc.flight.sql.oauth.flow``
   Specifies the OAuth 2.0 flow type to use. Possible values: ``client_credentials``, ``token_exchange``
