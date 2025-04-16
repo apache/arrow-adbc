@@ -111,7 +111,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         }
 
         protected override void ValidateOptions()
-        { 
+        {
              base.ValidateOptions();
 
             bool tempUnavailableRetryValue = true; // Default to enabled
