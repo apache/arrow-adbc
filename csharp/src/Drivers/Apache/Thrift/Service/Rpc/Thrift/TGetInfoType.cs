@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TGetInfoType
+  internal enum TGetInfoType
   {
     CLI_MAX_DRIVER_CONNECTIONS = 0,
     CLI_MAX_CONCURRENT_ACTIVITIES = 1,

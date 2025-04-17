@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetQueryIdReq : TBase
+  internal partial class TGetQueryIdReq : TBase
   {
 
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle OperationHandle { get; set; }

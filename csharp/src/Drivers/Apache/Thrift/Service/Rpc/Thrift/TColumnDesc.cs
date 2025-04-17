@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TColumnDesc : TBase
+  internal partial class TColumnDesc : TBase
   {
     private string _comment;
 

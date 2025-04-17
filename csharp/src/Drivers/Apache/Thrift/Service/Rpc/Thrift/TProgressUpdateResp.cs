@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TProgressUpdateResp : TBase
+  internal partial class TProgressUpdateResp : TBase
   {
 
     public List<string> HeaderNames { get; set; }
