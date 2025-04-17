@@ -80,6 +80,7 @@ func exchangeToken(conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption) (cr
 
 func newClientCredentials(options map[string]string) (credentials.PerRPCCredentials, error) {
 	codeOptions := []oauth2.AuthCodeOption{
+		// Required value for client credentials requests as specified in https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.2
 		oauth2.SetAuthURLParam("grant_type", "client_credentials"),
 	}
 
@@ -117,6 +118,7 @@ func newTokenExchangeFlow(options map[string]string) (credentials.PerRPCCredenti
 	}
 
 	codeOptions := []oauth2.AuthCodeOption{
+		// Required value for token exchange requests as specified in https://datatracker.ietf.org/doc/html/rfc8693#name-request
 		oauth2.SetAuthURLParam("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
 	}
 

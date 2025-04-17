@@ -147,7 +147,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		delete(cnOptions, OptionAuthorizationHeader)
 	}
 
-	authConflictError := "Authentication conflict: Use either Authorization header OR username/password parameter"
+	const authConflictError = "Authentication conflict: Use either Authorization header OR username/password parameter"
 
 	if u, ok := cnOptions[adbc.OptionKeyUsername]; ok {
 		if d.hdrs.Len() > 0 {
