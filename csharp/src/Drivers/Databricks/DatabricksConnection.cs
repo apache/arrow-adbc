@@ -150,7 +150,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             foreach (var property in serverSideProperties)
             {
-                string query = $"SET {property.Key}={property.Value}";
+                if (!IsValidPropertyName(property.Key))
+                {
+                    Debug.WriteLine($"Skipping invalid property name: {property.Key}");
+                    continue;
+                }
+
+                string escapedValue = EscapeSqlString(property.Value);
+                string query = $"SET {property.Key}={escapedValue}";
                 statement.SqlQuery = query;
 
                 try
@@ -162,6 +169,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     Debug.WriteLine($"Error setting server-side property '{property.Key}': {ex.Message}");
                 }
             }
+        }
+
+        private bool IsValidPropertyName(string propertyName)
+        {
+            // Allow only letters and underscores in property names
+            return System.Text.RegularExpressions.Regex.IsMatch(
+                propertyName,
+                @"^[a-zA-Z_]+$");
+        }
+
+        private string EscapeSqlString(string value)
+        {
+            return "`" + value.Replace("`", "``") + "`";
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
