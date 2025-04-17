@@ -14,10 +14,26 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+
+using System.Text.Json.Serialization;
+
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
-    internal static class BigQueryTableTypes
+    /// <summary>
+    /// The token response from BigQuery
+    /// </summary>
+    internal class BigQueryStsTokenResponse
     {
-        public static readonly string[] TableTypes = new string[] { "BASE TABLE", "VIEW", "CLONE", "SNAPSHOT" };
+        [JsonPropertyName("access_token")]
+        public string? AccessToken { get; set; }
+
+        [JsonPropertyName("issued_token_type")]
+        public string? IssuedTokenType { get; set; }
+
+        [JsonPropertyName("token_type")]
+        public string? TokenType { get; set; }
+
+        [JsonPropertyName("expires_in")]
+        public int? ExpiresIn { get; set; }
     }
 }
