@@ -159,7 +159,7 @@ few optional authentication schemes:
   header will then be sent back as the ``authorization`` header on all
   future requests.
 
-- (Go only) OAuth 2.0 authentication flows.
+- OAuth 2.0 authentication flows.
 
   The client provides :ref:`configurations <oauth-configurations>` to allow client application to obtain access
   tokens from an authorization server. The obtained token is then used
