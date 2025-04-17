@@ -645,6 +645,11 @@ client to server.  The server then responds with an
 header will then be sent back as the <code class="docutils literal notranslate"><span class="pre">authorization</span></code> header on all
 future requests.</p>
 </li>
+<li><p>OAuth 2.0 authentication flows.</p>
+<p>The client provides <a class="reference internal" href="#oauth-configurations"><span class="std std-ref">configurations</span></a> to allow client application to obtain access
+tokens from an authorization server. The obtained token is then used
+on the <code class="docutils literal notranslate"><span class="pre">authorization</span></code> header on all future requests.</p>
+</li>
 </ul>
 </section>
 <section id="bulk-ingestion">
@@ -715,13 +720,55 @@ to <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/ap
 <dl>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.rpc.call_header.&lt;HEADER</span> <span class="pre">NAME&gt;</span></code></dt><dd><p>Add the header <code class="docutils literal notranslate"><span class="pre">&lt;HEADER</span> <span class="pre">NAME&gt;</span></code> to outgoing requests with the given
 value.</p>
-<blockquote>
-<div><p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX" title="adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX</span></code></a></p>
-</div></blockquote>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX" title="adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX</span></code></a></p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Header names must be in all lowercase.</p>
 </div>
+</dd>
+</dl>
+</section>
+<section id="oauth-2-0-options">
+<h3>OAuth 2.0 Options<a class="headerlink" href="#oauth-2-0-options" title="Link to this heading">¶</a></h3>
+<p id="oauth-configurations">Supported configurations to obtain tokens using OAuth 2.0 authentication flows.</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.flow</span></code></dt><dd><p>Specifies the OAuth 2.0 flow type to use. Possible values: <code class="docutils literal notranslate"><span class="pre">client_credentials</span></code>, <code class="docutils literal notranslate"><span class="pre">token_exchange</span></code></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.client_id</span></code></dt><dd><p>Unique identifier issued to the client application by the authorization server</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.client_secret</span></code></dt><dd><p>Secret associated to the client_id. Used to authenticate the client application to the authorization server</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.token_uri</span></code></dt><dd><p>The endpoint URL where the client application requests tokens from the authorization server</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.scope</span></code></dt><dd><p>Space-separated list of permissions that the client is requesting access to (e.g <code class="docutils literal notranslate"><span class="pre">&quot;read.all</span> <span class="pre">offline_access&quot;</span></code>)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.subject_token</span></code></dt><dd><p>The security token that the client application wants to exchange</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.subject_token_type</span></code></dt><dd><p>Identifier for the type of the subject token.
+Check list below for supported token types.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.actor_token</span></code></dt><dd><p>A security token that represents the identity of the acting party</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.actor_token_type</span></code></dt><dd><p>Identifier for the type of the actor token.
+Check list below for supported token types.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.aud</span></code></dt><dd><p>The intended audience for the requested security token</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.resource</span></code></dt><dd><p>The resource server where the client intends to use the requested security token</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.scope</span></code></dt><dd><p>Specific permissions requested for the new token</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.requested_token_type</span></code></dt><dd><p>The type of token the client wants to receive in exchange.
+Check list below for supported token types.</p>
+</dd>
+<dt>Supported token types:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:access_token</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:refresh_token</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:id_token</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:saml1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:saml2</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:jwt</span></code></p></li>
+</ul>
 </dd>
 </dl>
 </section>
@@ -919,6 +966,7 @@ United States and other countries.
 <li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
 <li><a class="reference internal" href="#client-options">Client Options</a></li>
 <li><a class="reference internal" href="#custom-call-headers">Custom Call Headers</a></li>
+<li><a class="reference internal" href="#oauth-2-0-options">OAuth 2.0 Options</a></li>
 <li><a class="reference internal" href="#distributed-result-sets">Distributed Result Sets</a></li>
 <li><a class="reference internal" href="#incremental-execution">Incremental Execution</a></li>
 <li><a class="reference internal" href="#metadata">Metadata</a></li>
