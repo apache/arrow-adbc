@@ -60,11 +60,13 @@ impl adbc_core::Statement for Statement {
         self.0.bind(batch)
     }
 
-    fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
+    fn bind_stream(&mut self, reader: impl RecordBatchReader + Send + 'static) -> Result<()> {
         self.0.bind_stream(reader)
     }
 
-    fn execute(&mut self) -> Result<impl RecordBatchReader + Send> {
+    type Reader<'statement> = <ManagedStatement as adbc_core::Statement>::Reader<'statement>;
+
+    fn execute(&mut self) -> Result<Self::Reader<'_>> {
         self.0.execute()
     }
 

@@ -706,10 +706,12 @@ impl Connection for DataFusionConnection {
         todo!()
     }
 
+    type InfoReader<'connection> = SingleBatchReader;
+
     fn get_info(
         &self,
         codes: Option<std::collections::HashSet<adbc_core::options::InfoCode>>,
-    ) -> Result<impl RecordBatchReader + Send> {
+    ) -> Result<Self::InfoReader<'_>> {
         let mut get_info_builder = GetInfoBuilder::new();
 
         codes.unwrap().into_iter().for_each(|f| match f {
@@ -725,6 +727,8 @@ impl Connection for DataFusionConnection {
         Ok(reader)
     }
 
+    type ObjectsReader<'connection> = SingleBatchReader;
+
     fn get_objects(
         &self,
         depth: adbc_core::options::ObjectDepth,
@@ -733,7 +737,7 @@ impl Connection for DataFusionConnection {
         _table_name: Option<&str>,
         _table_type: Option<Vec<&str>>,
         _column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send> {
+    ) -> Result<Self::ObjectsReader<'_>> {
         let batch = GetObjectsBuilder::new().build(&self.runtime, &self.ctx, &depth)?;
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
@@ -748,13 +752,19 @@ impl Connection for DataFusionConnection {
         todo!()
     }
 
-    fn get_table_types(&self) -> Result<SingleBatchReader> {
+    type TableTypesReader<'connection> = SingleBatchReader;
+
+    fn get_table_types(&self) -> Result<Self::TableTypesReader<'_>> {
         todo!()
     }
 
-    fn get_statistic_names(&self) -> Result<SingleBatchReader> {
+    type StatisticNamesReader<'connection> = SingleBatchReader;
+
+    fn get_statistic_names(&self) -> Result<Self::StatisticNamesReader<'_>> {
         todo!()
     }
+
+    type StatisticsReader<'connection> = SingleBatchReader;
 
     fn get_statistics(
         &self,
@@ -762,7 +772,7 @@ impl Connection for DataFusionConnection {
         _db_schema: Option<&str>,
         _table_name: Option<&str>,
         _approximate: bool,
-    ) -> Result<SingleBatchReader> {
+    ) -> Result<Self::StatisticsReader<'_>> {
         todo!()
     }
 
@@ -774,7 +784,9 @@ impl Connection for DataFusionConnection {
         todo!()
     }
 
-    fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<SingleBatchReader> {
+    type PartitionReader<'connection> = SingleBatchReader;
+
+    fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<Self::PartitionReader<'_>> {
         todo!()
     }
 }
@@ -863,12 +875,14 @@ impl Statement for DataFusionStatement {
 
     fn bind_stream(
         &mut self,
-        _reader: Box<dyn arrow_array::RecordBatchReader + Send>,
+        _reader: impl arrow_array::RecordBatchReader + Send + 'static,
     ) -> adbc_core::error::Result<()> {
         todo!()
     }
 
-    fn execute(&mut self) -> Result<impl RecordBatchReader + Send> {
+    type Reader<'statement> = DataFusionReader;
+
+    fn execute(&mut self) -> Result<Self::Reader<'_>> {
         self.runtime.block_on(async {
             let df = if self.sql_query.is_some() {
                 self.ctx

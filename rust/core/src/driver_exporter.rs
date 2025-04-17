@@ -98,7 +98,24 @@ pub trait FFIDriver {
     fn ffi_driver() -> FFI_AdbcDriver;
 }
 
-impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType {
+impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType
+where
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::InfoReader<'a>:
+        Send,
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::ObjectsReader<'a>:
+        Send,
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::TableTypesReader<'a>:
+        Send,
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::StatisticNamesReader<
+        'a,
+    >: Send,
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::StatisticsReader<'a>:
+        Send,
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::PartitionReader<'a>:
+        Send,
+    for<'a> <<<DriverType::DatabaseType as Database>::ConnectionType as Connection>::StatementType as Statement>::Reader<'a>:
+        Send,
+{
     fn ffi_driver() -> FFI_AdbcDriver {
         FFI_AdbcDriver {
             private_data: std::ptr::null_mut(),
@@ -950,7 +967,11 @@ unsafe extern "C" fn connection_get_table_types<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> FFI_AdbcStatusCode
+where
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::TableTypesReader<'a>:
+        Send,
+{
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -998,7 +1019,11 @@ unsafe extern "C" fn connection_get_info<DriverType: Driver + 'static>(
     info_codes_length: usize,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> FFI_AdbcStatusCode
+where
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::InfoReader<'a>:
+        Send,
+{
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -1066,7 +1091,12 @@ unsafe extern "C" fn connection_get_statistic_names<DriverType: Driver + 'static
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> FFI_AdbcStatusCode
+where
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::StatisticNamesReader<
+        'a,
+    >: Send,
+{
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -1087,7 +1117,11 @@ unsafe extern "C" fn connection_read_partition<DriverType: Driver + 'static>(
     serialized_length: usize,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> FFI_AdbcStatusCode
+where
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::PartitionReader<'a>:
+        Send,
+{
     check_not_null!(connection, error);
     check_not_null!(serialized_partition, error);
     check_not_null!(out, error);
@@ -1112,7 +1146,11 @@ unsafe extern "C" fn connection_get_statistics<DriverType: Driver + 'static>(
     approximate: c_char,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> FFI_AdbcStatusCode
+where
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::StatisticsReader<'a>:
+        Send,
+{
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -1143,7 +1181,11 @@ unsafe extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
     column_name: *const c_char,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> FFI_AdbcStatusCode
+where
+    for<'a> <<DriverType::DatabaseType as Database>::ConnectionType as Connection>::ObjectsReader<'a>:
+        Send,
+{
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -1455,7 +1497,10 @@ unsafe extern "C" fn statement_execute_query<DriverType: Driver + 'static>(
     out: *mut FFI_ArrowArrayStream,
     rows_affected: *mut i64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> FFI_AdbcStatusCode where
+    for<'a> <<<DriverType::DatabaseType as Database>::ConnectionType as Connection>::StatementType as Statement>::Reader<'a>:
+    Send,
+{
     check_not_null!(statement, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
