@@ -38,22 +38,50 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            ValidateProperties();
+        }
+
+        private void ValidateProperties()
+        {
             // Parse CloudFetch options from connection properties
-            if (Properties.TryGetValue(DatabricksParameters.UseCloudFetch, out string? useCloudFetchStr) &&
-                bool.TryParse(useCloudFetchStr, out bool useCloudFetchValue))
+            if (Properties.TryGetValue(DatabricksParameters.UseCloudFetch, out string? useCloudFetchStr))
             {
-                _useCloudFetch = useCloudFetchValue;
+                if (bool.TryParse(useCloudFetchStr, out bool useCloudFetchValue))
+                {
+                    _useCloudFetch = useCloudFetchValue;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.UseCloudFetch}' value '{useCloudFetchStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
             }
 
-            if (Properties.TryGetValue(DatabricksParameters.CanDecompressLz4, out string? canDecompressLz4Str) &&
-                bool.TryParse(canDecompressLz4Str, out bool canDecompressLz4Value))
+            if (Properties.TryGetValue(DatabricksParameters.CanDecompressLz4, out string? canDecompressLz4Str))
             {
-                _canDecompressLz4 = canDecompressLz4Value;
+                if (bool.TryParse(canDecompressLz4Str, out bool canDecompressLz4Value))
+                {
+                    _canDecompressLz4 = canDecompressLz4Value;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.CanDecompressLz4}' value '{canDecompressLz4Str}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
             }
 
-            if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr) &&
-                long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
+            if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr))
             {
+                if (!long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.MaxBytesPerFile}' value '{maxBytesPerFileStr}' could not be parsed. Valid values are positive integers.");
+                }
+
+                if (maxBytesPerFileValue <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(Properties),
+                        maxBytesPerFileValue,
+                        $"Parameter '{DatabricksParameters.MaxBytesPerFile}' value must be a positive integer.");
+                }
                 _maxBytesPerFile = maxBytesPerFileValue;
             }
         }
