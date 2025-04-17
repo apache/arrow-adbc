@@ -19,7 +19,6 @@ package databricks
 
 import (
 	"context"
-	"io"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -35,6 +34,25 @@ type chunkResponse struct {
 	chunkIndex int
 	inner      *http.Response
 	err        error
+
+	reader array.RecordReader
+}
+
+func (c *chunkResponse) Retain() {
+	if c.reader != nil {
+		c.reader.Retain()
+	}
+}
+
+func (c *chunkResponse) Release() {
+	if c.reader != nil {
+		c.reader.Release()
+		c.reader = nil
+	}
+	if c.inner != nil {
+		c.inner.Body.Close()
+		c.inner = nil
+	}
 }
 
 type reader struct {
@@ -59,10 +77,8 @@ type reader struct {
 	loadingChunkIdx int
 	// The channel to receive chunk responses.
 	chunkChan chan chunkResponse
-	// The underlying reader for the activeChunk.
-	activeChunkBody io.ReadCloser
 	// The reader for the already loaded chunk. If nil, poll for the next chunk.
-	activeChunk array.RecordReader
+	activeChunk *chunkResponse
 
 	schema *arrow.Schema
 	rec    arrow.Record
@@ -129,7 +145,6 @@ func (r *reader) Release() {
 	if atomic.AddInt64(&r.refCount, -1) == 0 {
 		if r.activeChunk != nil {
 			r.activeChunk.Release()
-			r.activeChunkBody.Close()
 		}
 		if r.rec != nil {
 			r.rec.Release()
@@ -162,34 +177,32 @@ func (r *reader) Next() bool {
 			return false // post-condition holds because of PROPERTY I
 		}
 
-		chunkBody, chunkReader, err := r.consumeLoadingChunk()
+		chunk, err := r.consumeLoadingChunk()
 		if err != nil {
 			r.err = err
 			close(r.chunkChan)
 			return false // post-condition holds because of PROPERTY I
 		}
-		r.activeChunkBody = chunkBody
-		r.activeChunk = array.RecordReader(chunkReader)
+		r.activeChunk = chunk
 		r.activeChunk.Retain()
 
 		// make sure r.schema is set when the first chunk is parsed if not yet
 		if r.schema != nil {
-			r.schema = r.activeChunk.Schema()
+			r.schema = r.activeChunk.reader.Schema()
 		}
 	}
 	// PROPERTY II: r.activeChunk != nil
 
-	if r.activeChunk.Next() {
-		r.rec = r.activeChunk.Record()
+	if r.activeChunk.reader.Next() {
+		r.rec = r.activeChunk.reader.Record()
 		r.rec.Retain()
 		return true // post-condition holds: r.rec != nil
 	}
 	// make sure the error (if it exists) is retained
-	r.err = r.activeChunk.Err()
-	// release the fully consumed (or err'd) chunk and close the underlying HTTP body stream
+	r.err = r.activeChunk.reader.Err()
+	// release the fully consumed (or err'd) chunk
 	r.activeChunk.Release()
 	r.activeChunk = nil
-	r.activeChunkBody.Close()
 	// PROPERTY III: r.activeChunk == nil
 
 	// Recursively call Next() to start processing another chunk or stopping.
@@ -204,29 +217,28 @@ func (r *reader) Schema() *arrow.Schema {
 			if r.loadingChunkIdx == -1 {
 				return nil // TODO: need to derive schema from the JSON manifest :(
 			}
-			chunkBody, chunkReader, err := r.consumeLoadingChunk()
+			chunk, err := r.consumeLoadingChunk()
 			if err != nil {
 				r.err = err
 				return nil // TODO: need to derive schema from the JSON manifest :(
 			}
-			r.activeChunkBody = chunkBody
-			r.activeChunk = array.RecordReader(chunkReader)
+			r.activeChunk = chunk
 			r.activeChunk.Retain()
 		}
-		r.schema = r.activeChunk.Schema()
+		r.schema = r.activeChunk.reader.Schema()
 	}
 	return r.schema
 }
 
 // \pre: r.activeChunk == nil && r.loadingChunkIdx != -1
-func (r *reader) consumeLoadingChunk() (io.ReadCloser, *ipc.Reader, error) {
+func (r *reader) consumeLoadingChunk() (*chunkResponse, error) {
 	// wait for the loading chunk
 	startWait := time.Now()
 	chunk := <-r.chunkChan
 	r.WaitTime += time.Since(startWait)
 	if chunk.err != nil {
 		close(r.chunkChan)
-		return nil, nil, chunk.err
+		return nil, chunk.err
 	}
 	if chunk.chunkIndex != r.loadingChunkIdx {
 		log.Fatalf("expected chunk %d, but receiving %d", r.loadingChunkIdx, chunk.chunkIndex)
@@ -241,13 +253,7 @@ func (r *reader) consumeLoadingChunk() (io.ReadCloser, *ipc.Reader, error) {
 		r.loadingChunkIdx = -1
 		close(r.chunkChan)
 	}
-	// parse the new chunk into a record reader
-	chunkBody := chunk.inner.Body
-	chunkReader, err := ipc.NewReader(chunkBody)
-	if err != nil {
-		return nil, nil, err
-	}
-	return chunkBody, chunkReader, nil
+	return &chunk, nil
 }
 
 // \pre: Next() returned true
@@ -295,9 +301,12 @@ func (r *reader) startChunkDataRequest(chunkIndex int, externalLink *sql.Externa
 	// TODO: must send request headers as well
 	// TODO: use context for cancellation
 	res, err := r.httpClient.Get(url)
+	chunkBodyReader, err := ipc.NewReader(res.Body)
+	chunkRecordReader := array.RecordReader(chunkBodyReader)
 	r.chunkChan <- chunkResponse{
 		chunkIndex: chunkIndex,
 		inner:      res,
 		err:        err,
+		reader:     chunkRecordReader,
 	}
 }
