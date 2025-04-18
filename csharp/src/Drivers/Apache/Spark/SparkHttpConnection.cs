@@ -135,10 +135,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(SparkParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
+
             TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+
+        protected virtual HttpMessageHandler CreateHttpHandler()
+        {
+            return HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
+        }
 
         protected override TTransport CreateTransport()
         {
@@ -160,8 +166,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName, TlsOptions.IsTlsEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, access_token);
 
-            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
-            HttpClient httpClient = new(httpClientHandler);
+            HttpClient httpClient = new(CreateHttpHandler());
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(s_userAgent);
