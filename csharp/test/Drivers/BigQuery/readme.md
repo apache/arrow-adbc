@@ -46,6 +46,7 @@ The following values can be setup in the configuration
   - **includePublicProjectId** - True/False to indicate if the public projects should be included in the result set.
   - **scopes** - Comma separated list (string) of scopes applied during the test.
   - **queryTimeout** - The timeout (in seconds) for a query. Similar to a CommandTimeout.
+  - **maxStreamCount** - The max stream count.
   - **statementType** - When executing multiple statements, limit the type of statement returned.
   - **statementIndex** - When executing multiple statements, specify the result of the statement to be returned.
   - **evaluationKind** - When executing multiple statements, limit the evaluation kind returned.
