@@ -26,6 +26,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         // CloudFetch configuration parameters
         /// <summary>
+        /// Whether to use CloudFetch for retrieving results.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string UseCloudFetch = "adbc.databricks.cloudfetch.enabled";
+
+        /// <summary>
+        /// Whether the client can decompress LZ4 compressed results.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string CanDecompressLz4 = "adbc.databricks.cloudfetch.lz4.enabled";
+
+        /// <summary>
+        /// Maximum bytes per file for CloudFetch.
+        /// Default value is 20MB if not specified.
+        /// </summary>
+        public const string MaxBytesPerFile = "adbc.databricks.cloudfetch.max_bytes_per_file";
+
+        /// <summary>
         /// Maximum number of retry attempts for CloudFetch downloads.
         /// Default value is 3 if not specified.
         /// </summary>
