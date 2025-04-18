@@ -73,6 +73,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     statementType = statementTypeString;
                 }
+                int statementIndex = 1;
+                if (this.Options?.TryGetValue(BigQueryParameters.StatementIndex, out string? statementIndexString) == true &&
+                    int.TryParse(statementIndexString, out int statementIndexInt) &&
+                    statementIndexInt > 0)
+                {
+                    statementIndex = statementIndexInt;
+                }
                 string evaluationKind = string.Empty;
                 if (this.Options?.TryGetValue(BigQueryParameters.EvaluationKind, out string? evaluationKindString) == true)
                 {
@@ -92,7 +99,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 if (joblist.Count > 0)
                 {
-                    results = joblist[0].GetQueryResults(getQueryResultsOptions);
+                    if (statementIndex < 1 || statementIndex > joblist.Count)
+                    {
+                        throw new ArgumentOutOfRangeException($"The specified index {statementIndex} is out of range. There are {joblist.Count} jobs available.");
+                    }
+                    results = joblist[statementIndex - 1].GetQueryResults(getQueryResultsOptions);
                 }
             }
             if (results.TableReference == null)

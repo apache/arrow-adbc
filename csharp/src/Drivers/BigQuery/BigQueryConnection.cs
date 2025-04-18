@@ -1060,6 +1060,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.GetQueryResultsOptionsTimeout,
                 BigQueryParameters.MaxFetchConcurrency,
                 BigQueryParameters.StatementType,
+                BigQueryParameters.StatementIndex,
                 BigQueryParameters.EvaluationKind
             };
 

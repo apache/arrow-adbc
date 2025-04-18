@@ -100,6 +100,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("statementType")]
         public string StatementType { get; set; } = string.Empty;
 
+        [JsonPropertyName("statementIndex")]
+        public int? StatementIndex { get; set; }
+
         [JsonPropertyName("evaluationKind")]
         public string EvaluationKind { get; set; } = string.Empty;
 
