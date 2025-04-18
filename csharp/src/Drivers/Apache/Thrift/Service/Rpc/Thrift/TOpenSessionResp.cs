@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TOpenSessionResp : TBase
+  internal partial class TOpenSessionResp : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle _sessionHandle;
     private Dictionary<string, string> _configuration;

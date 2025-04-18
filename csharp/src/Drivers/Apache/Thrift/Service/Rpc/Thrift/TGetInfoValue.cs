@@ -41,7 +41,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetInfoValue : TBase
+  internal partial class TGetInfoValue : TBase
   {
     private string _stringValue;
     private short _smallIntValue;

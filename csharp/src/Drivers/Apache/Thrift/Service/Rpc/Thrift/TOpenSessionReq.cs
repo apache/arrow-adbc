@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TOpenSessionReq : TBase
+  internal partial class TOpenSessionReq : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion _client_protocol;
     private string _username;

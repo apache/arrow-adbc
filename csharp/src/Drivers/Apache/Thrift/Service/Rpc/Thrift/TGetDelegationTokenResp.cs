@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetDelegationTokenResp : TBase
+  internal partial class TGetDelegationTokenResp : TBase
   {
     private string _delegationToken;
 

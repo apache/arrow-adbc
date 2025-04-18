@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TBoolValue : TBase
+  internal partial class TBoolValue : TBase
   {
     private bool _value;
 

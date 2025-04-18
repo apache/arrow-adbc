@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TSessionHandle : TBase
+  internal partial class TSessionHandle : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion _serverProtocolVersion;
 

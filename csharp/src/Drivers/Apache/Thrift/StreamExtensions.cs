@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
 {
-    public static class StreamExtensions
+    internal static class StreamExtensions
     {
         public static void WriteInt32LittleEndian(int value, Span<byte> buffer, int offset)
         {

@@ -31,6 +31,10 @@ on:
         required: false
         default: release
         type: string
+      error-on:
+        required: false
+        default: warning
+        type: string
     secrets:
       SNOWFLAKE_URI:
         required: false
@@ -100,6 +104,7 @@ jobs:
           R_KEEP_PKG_SOURCE: yes
         with:
           working-directory: r/${{ inputs.pkg }}
+          error-on: '"${{ inputs.error-on }}"'
 
       - name: Shutdown docker compose services
         if: runner.os == 'Linux'

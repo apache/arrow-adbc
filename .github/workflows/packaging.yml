@@ -99,7 +99,6 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-13"]
-        go-version: [1.21.8] # Customize Go versions as needed
 
     steps:
       - uses: actions/download-artifact@v4
@@ -116,10 +115,13 @@ jobs:
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
 
+      - name: Get required Go version
+        run: |
+          (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
@@ -342,7 +344,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252  # v1.229.0
+        uses: ruby/setup-ruby@e5ac7b085f6e63d49c8973eb0c6e04d876b881f1  # v1.230.0
         with:
           ruby-version: ruby
 
@@ -721,9 +723,13 @@ jobs:
           ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
           popd
 
+      - name: Get required Go version
+        run: |
+          (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
+
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21.8
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum

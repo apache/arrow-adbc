@@ -41,7 +41,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TArrayTypeEntry : TBase
+  internal partial class TArrayTypeEntry : TBase
   {
 
     public int ObjectTypePtr { get; set; }

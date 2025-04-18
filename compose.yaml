@@ -75,6 +75,13 @@ services:
       - .:/adbc:delegated
     command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
 
+  # Build the JNI and driver libraries
+  java-jni:
+    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c 'env CMAKE_BUILD_TYPE=Release /adbc/ci/scripts/java_jni_build.sh /adbc /adbc/dist /adbc/local'"
+
   ############################ Python conda ##################################
 
   # Must be run as docker compose run -e HOST_USER_ID=$(id -u) python-conda

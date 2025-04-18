@@ -41,7 +41,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetTablesReq : TBase
+  internal partial class TGetTablesReq : TBase
   {
     private string _catalogName;
     private string _schemaName;

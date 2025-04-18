@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TCancelOperationReq : TBase
+  internal partial class TCancelOperationReq : TBase
   {
     private short _executionVersion;
     private bool _replacedByNextAttempt;
