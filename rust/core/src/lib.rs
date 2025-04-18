@@ -141,6 +141,7 @@ pub trait Database: Optionable<Option = OptionDatabase> {
 /// setting [options::OptionConnection::AutoCommit] to "false". Turning off
 /// autocommit allows customizing the isolation level.
 pub trait Connection: Optionable<Option = OptionConnection> {
+    /// The [`Statement`] type of this [`Connection`].
     type StatementType: Statement;
 
     /// Allocate and initialize a new statement.
@@ -148,6 +149,11 @@ pub trait Connection: Optionable<Option = OptionConnection> {
 
     /// Cancel the in-progress operation on a connection.
     fn cancel(&mut self) -> Result<()>;
+
+    /// The [`RecordBatchReader`] returned by [`Connection::get_info`].
+    type InfoReader<'connection>: RecordBatchReader
+    where
+        Self: 'connection;
 
     /// Get metadata about the database/driver.
     ///
@@ -174,10 +180,12 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// int32_bitmask (3)           | int32
     /// string_list (4)             | list\<utf8\>
     /// int32_to_int32_list_map (5) | map\<int32, list\<int32\>\>
-    fn get_info(
-        &self,
-        codes: Option<HashSet<options::InfoCode>>,
-    ) -> Result<impl RecordBatchReader + Send>;
+    fn get_info(&self, codes: Option<HashSet<options::InfoCode>>) -> Result<Self::InfoReader<'_>>;
+
+    /// The [`RecordBatchReader`] returned by [`Connection::get_objects`].
+    type ObjectsReader<'connection>: RecordBatchReader
+    where
+        Self: 'connection;
 
     /// Get a hierarchical view of all catalogs, database schemas, tables, and
     /// columns.
@@ -285,7 +293,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send>;
+    ) -> Result<Self::ObjectsReader<'_>>;
 
     /// Get the Arrow schema of a table.
     ///
@@ -301,6 +309,11 @@ pub trait Connection: Optionable<Option = OptionConnection> {
         table_name: &str,
     ) -> Result<Schema>;
 
+    /// The [`RecordBatchReader`] returned by [`Connection::get_table_types`].
+    type TableTypesReader<'connection>: RecordBatchReader
+    where
+        Self: 'connection;
+
     /// Get a list of table types in the database.
     ///
     /// # Result
@@ -310,7 +323,12 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// Field Name     | Field Type
     /// ---------------|--------------
     /// table_type     | utf8 not null
-    fn get_table_types(&self) -> Result<impl RecordBatchReader + Send>;
+    fn get_table_types(&self) -> Result<Self::TableTypesReader<'_>>;
+
+    /// The [`RecordBatchReader`] returned by [`Connection::get_statistic_names`].
+    type StatisticNamesReader<'connection>: RecordBatchReader
+    where
+        Self: 'connection;
 
     /// Get the names of statistics specific to this driver.
     ///
@@ -325,7 +343,12 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     ///
     /// # Since
     /// ADBC API revision 1.1.0
-    fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send>;
+    fn get_statistic_names(&self) -> Result<Self::StatisticNamesReader<'_>>;
+
+    /// The [`RecordBatchReader`] returned by [`Connection::get_statistics`].
+    type StatisticsReader<'connection>: RecordBatchReader
+    where
+        Self: 'connection;
 
     /// Get statistics about the data distribution of table(s).
     ///
@@ -391,7 +414,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> Result<impl RecordBatchReader + Send>;
+    ) -> Result<Self::StatisticsReader<'_>>;
 
     /// Commit any pending transactions. Only used if autocommit is disabled.
     ///
@@ -403,6 +426,11 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// Behavior is undefined if this is mixed with SQL transaction statements.
     fn rollback(&mut self) -> Result<()>;
 
+    /// The [`RecordBatchReader`] returned by [`Connection::read_partition`].
+    type PartitionReader<'connection>: RecordBatchReader
+    where
+        Self: 'connection;
+
     /// Retrieve a given partition of data.
     ///
     /// A partition can be retrieved from [Statement::execute_partitions].
@@ -410,7 +438,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// # Arguments
     ///
     /// - `partition` - The partition descriptor.
-    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader + Send>;
+    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<Self::PartitionReader<'_>>;
 }
 
 /// A handle to an ADBC statement.
@@ -436,17 +464,17 @@ pub trait Statement: Optionable<Option = OptionStatement> {
 
     /// Bind Arrow data. This can be used for bulk inserts or prepared
     /// statements.
-    // TODO(alexandreyc): should we use a generic here instead of a trait object?
-    // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567750972
-    fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()>;
+    fn bind_stream(&mut self, reader: impl RecordBatchReader + Send + 'static) -> Result<()>;
+
+    /// The [`RecordBatchReader`] returned by [`Statement::execute`].
+    type Reader<'statement>: RecordBatchReader
+    where
+        Self: 'statement;
 
     /// Execute a statement and get the results.
     ///
     /// This invalidates any prior result sets.
-    // TODO(alexandreyc): is the Send bound absolutely necessary? same question
-    // for all methods that return an impl RecordBatchReader
-    // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567748242
-    fn execute(&mut self) -> Result<impl RecordBatchReader + Send>;
+    fn execute(&mut self) -> Result<Self::Reader<'_>>;
 
     /// Execute a statement that doesn’t have a result set and get the number
     /// of affected rows.

@@ -27,7 +27,6 @@ use adbc_core::{
     options::{InfoCode, OptionConnection, OptionValue},
     Optionable,
 };
-use arrow_array::RecordBatchReader;
 use arrow_schema::Schema;
 
 use crate::Statement;
@@ -74,9 +73,15 @@ impl adbc_core::Connection for Connection {
         self.0.cancel()
     }
 
-    fn get_info(&self, codes: Option<HashSet<InfoCode>>) -> Result<impl RecordBatchReader + Send> {
+    type InfoReader<'connection> =
+        <ManagedConnection as adbc_core::Connection>::InfoReader<'connection>;
+
+    fn get_info(&self, codes: Option<HashSet<InfoCode>>) -> Result<Self::InfoReader<'_>> {
         self.0.get_info(codes)
     }
+
+    type ObjectsReader<'connection> =
+        <ManagedConnection as adbc_core::Connection>::ObjectsReader<'connection>;
 
     fn get_objects(
         &self,
@@ -86,7 +91,7 @@ impl adbc_core::Connection for Connection {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send> {
+    ) -> Result<Self::ObjectsReader<'_>> {
         self.0.get_objects(
             depth,
             catalog,
@@ -106,13 +111,22 @@ impl adbc_core::Connection for Connection {
         self.0.get_table_schema(catalog, db_schema, table_name)
     }
 
-    fn get_table_types(&self) -> Result<impl RecordBatchReader + Send> {
+    type TableTypesReader<'connection> =
+        <ManagedConnection as adbc_core::Connection>::TableTypesReader<'connection>;
+
+    fn get_table_types(&self) -> Result<Self::TableTypesReader<'_>> {
         self.0.get_table_types()
     }
 
-    fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send> {
+    type StatisticNamesReader<'connection> =
+        <ManagedConnection as adbc_core::Connection>::StatisticNamesReader<'connection>;
+
+    fn get_statistic_names(&self) -> Result<Self::StatisticNamesReader<'_>> {
         self.0.get_statistic_names()
     }
+
+    type StatisticsReader<'connection> =
+        <ManagedConnection as adbc_core::Connection>::StatisticsReader<'connection>;
 
     fn get_statistics(
         &self,
@@ -120,7 +134,7 @@ impl adbc_core::Connection for Connection {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> Result<impl RecordBatchReader + Send> {
+    ) -> Result<Self::StatisticsReader<'_>> {
         self.0
             .get_statistics(catalog, db_schema, table_name, approximate)
     }
@@ -133,7 +147,10 @@ impl adbc_core::Connection for Connection {
         self.0.rollback()
     }
 
-    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader + Send> {
+    type PartitionReader<'connection> =
+        <ManagedConnection as adbc_core::Connection>::PartitionReader<'connection>;
+
+    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<Self::PartitionReader<'_>> {
         self.0.read_partition(partition)
     }
 }

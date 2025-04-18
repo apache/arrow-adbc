@@ -298,7 +298,9 @@ impl Connection for DummyConnection {
         Ok(())
     }
 
-    fn get_info(&self, _codes: Option<HashSet<InfoCode>>) -> Result<impl RecordBatchReader> {
+    type InfoReader<'connection> = SingleBatchReader;
+
+    fn get_info(&self, _codes: Option<HashSet<InfoCode>>) -> Result<Self::InfoReader<'_>> {
         let string_value_array = StringArray::from(vec!["MyVendorName"]);
         let bool_value_array = BooleanArray::from(vec![true]);
         let int64_value_array = Int64Array::from(vec![42]);
@@ -396,6 +398,8 @@ impl Connection for DummyConnection {
         Ok(reader)
     }
 
+    type ObjectsReader<'connection> = SingleBatchReader;
+
     fn get_objects(
         &self,
         _depth: ObjectDepth,
@@ -404,7 +408,7 @@ impl Connection for DummyConnection {
         _table_name: Option<&str>,
         _table_type: Option<Vec<&str>>,
         _column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader> {
+    ) -> Result<Self::ObjectsReader<'_>> {
         let constraint_column_usage_array_inner = StructArray::from(vec![
             (
                 Arc::new(Field::new("fk_catalog", DataType::Utf8, true)),
@@ -634,13 +638,15 @@ impl Connection for DummyConnection {
         Ok(reader)
     }
 
+    type StatisticsReader<'connection> = SingleBatchReader;
+
     fn get_statistics(
         &self,
         _catalog: Option<&str>,
         _db_schema: Option<&str>,
         _table_name: Option<&str>,
         _approximate: bool,
-    ) -> Result<impl RecordBatchReader> {
+    ) -> Result<Self::StatisticsReader<'_>> {
         let statistic_value_int64_array = Int64Array::from(Vec::<i64>::new());
         let statistic_value_uint64_array = UInt64Array::from(vec![42]);
         let statistic_value_float64_array = Float64Array::from(Vec::<f64>::new());
@@ -746,7 +752,9 @@ impl Connection for DummyConnection {
         Ok(reader)
     }
 
-    fn get_statistic_names(&self) -> Result<impl RecordBatchReader> {
+    type StatisticNamesReader<'connection> = SingleBatchReader;
+
+    fn get_statistic_names(&self) -> Result<Self::StatisticNamesReader<'_>> {
         let name_array = StringArray::from(vec!["sum", "min", "max"]);
         let key_array = Int16Array::from(vec![0, 1, 2]);
         let batch = RecordBatch::try_new(
@@ -776,14 +784,18 @@ impl Connection for DummyConnection {
         }
     }
 
-    fn get_table_types(&self) -> Result<impl RecordBatchReader> {
+    type TableTypesReader<'connection> = SingleBatchReader;
+
+    fn get_table_types(&self) -> Result<Self::TableTypesReader<'_>> {
         let array = Arc::new(StringArray::from(vec!["table", "view"]));
         let batch = RecordBatch::try_new(schemas::GET_TABLE_TYPES_SCHEMA.clone(), vec![array])?;
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
     }
 
-    fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader> {
+    type PartitionReader<'connection> = SingleBatchReader;
+
+    fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<Self::PartitionReader<'_>> {
         let batch = get_table_data();
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
@@ -828,7 +840,7 @@ impl Statement for DummyStatement {
         Ok(())
     }
 
-    fn bind_stream(&mut self, _reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
+    fn bind_stream(&mut self, _reader: impl RecordBatchReader + Send + 'static) -> Result<()> {
         Ok(())
     }
 
@@ -836,7 +848,9 @@ impl Statement for DummyStatement {
         Ok(())
     }
 
-    fn execute(&mut self) -> Result<impl RecordBatchReader> {
+    type Reader<'statement> = SingleBatchReader;
+
+    fn execute(&mut self) -> Result<Self::Reader<'_>> {
         let batch = get_table_data();
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
