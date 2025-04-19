@@ -44,6 +44,8 @@ const (
 	OptionStringAuthClientID              = "adbc.bigquery.sql.auth.client_id"
 	OptionStringAuthClientSecret          = "adbc.bigquery.sql.auth.client_secret"
 	OptionStringAuthRefreshToken          = "adbc.bigquery.sql.auth.refresh_token"
+	OptionStringAuthAccessTokenEndpoint   = "adbc.bigquery.sql.auth.access_token_endpoint"
+	OptionStringAuthAccessTokenServerName = "adbc.bigquery.sql.auth.access_token_server_name"
 
 	// OptionStringQueryParameterMode specifies if the query uses positional syntax ("?")
 	// or the named syntax ("@p"). It is illegal to mix positional and named syntax.
@@ -74,8 +76,8 @@ const (
 	defaultQueryResultBufferSize    = 200
 	defaultQueryPrefetchConcurrency = 10
 
-	AccessTokenEndpoint   = "https://accounts.google.com/o/oauth2/token"
-	AccessTokenServerName = "google.com"
+	DefaultAccessTokenEndpoint   = "https://accounts.google.com/o/oauth2/token"
+	DefaultAccessTokenServerName = "google.com"
 )
 
 var (

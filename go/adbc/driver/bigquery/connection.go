@@ -44,11 +44,13 @@ import (
 type connectionImpl struct {
 	driverbase.ConnectionImplBase
 
-	authType     string
-	credentials  string
-	clientID     string
-	clientSecret string
-	refreshToken string
+	authType              string
+	credentials           string
+	clientID              string
+	clientSecret          string
+	refreshToken          string
+	accessTokenEndpoint   string
+	accessTokenServerName string
 
 	// catalog is the same as the project id in BigQuery
 	catalog string
@@ -527,6 +529,14 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthRefreshToken),
 				}
 			}
+			if c.accessTokenEndpoint == "" || c.accessTokenEndpoint == DefaultAccessTokenEndpoint {
+				c.accessTokenEndpoint = DefaultAccessTokenEndpoint
+				// Only use default server name if the access token endpoint is also set to default
+				if c.accessTokenServerName == "" {
+					c.accessTokenServerName = DefaultAccessTokenServerName
+				}
+			}
+
 			credentials = option.WithTokenSource(c)
 		}
 
@@ -812,7 +822,7 @@ func (c *connectionImpl) getAccessToken() (*bigQueryTokenResponse, error) {
 	params.Add("client_id", c.clientID)
 	params.Add("client_secret", c.clientSecret)
 	params.Add("refresh_token", c.refreshToken)
-	req, err := http.NewRequest("POST", AccessTokenEndpoint, bytes.NewBufferString(params.Encode()))
+	req, err := http.NewRequest("POST", c.accessTokenEndpoint, bytes.NewBufferString(params.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -820,7 +830,7 @@ func (c *connectionImpl) getAccessToken() (*bigQueryTokenResponse, error) {
 	req.Header.Set("Accept", "application/json")
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{ServerName: AccessTokenServerName},
+		TLSClientConfig: &tls.Config{ServerName: c.accessTokenServerName},
 	}
 	client := &http.Client{
 		Transport: tr,

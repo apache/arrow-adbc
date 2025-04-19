@@ -28,11 +28,13 @@ import (
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
-	authType     string
-	credentials  string
-	clientID     string
-	clientSecret string
-	refreshToken string
+	authType              string
+	credentials           string
+	clientID              string
+	clientSecret          string
+	refreshToken          string
+	accessTokenEndpoint   string
+	accessTokenServerName string
 	// projectID is the catalog
 	projectID string
 	// datasetID is the schema
@@ -48,6 +50,8 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		clientID:               d.clientID,
 		clientSecret:           d.clientSecret,
 		refreshToken:           d.refreshToken,
+		accessTokenEndpoint:    d.accessTokenEndpoint,
+		accessTokenServerName:  d.accessTokenServerName,
 		tableID:                d.tableID,
 		catalog:                d.projectID,
 		dbSchema:               d.datasetID,
@@ -129,6 +133,10 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.clientSecret = value
 	case OptionStringAuthRefreshToken:
 		d.refreshToken = value
+	case OptionStringAuthAccessTokenEndpoint:
+		d.accessTokenEndpoint = value
+	case OptionStringAuthAccessTokenServerName:
+		d.accessTokenServerName = value
 	case OptionStringProjectID:
 		d.projectID = value
 	case OptionStringDatasetID:
