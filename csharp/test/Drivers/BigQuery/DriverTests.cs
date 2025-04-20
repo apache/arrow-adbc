@@ -299,7 +299,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
-
         private AdbcConnection GetAdbcConnection(string? environmentName)
         {
             if (string.IsNullOrEmpty(environmentName))
