@@ -63,6 +63,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private int RetryDelayMs => this.bigQueryConnection.RetryDelayMs;
 
+        public override void SetOption(string key, string value)
+        {
+            Dictionary<string, string> opts = Options == null ? new Dictionary<string, string>() : new Dictionary<string, string>((IDictionary<string, string>)Options);
+            opts[key] = value;
+            Options = opts;
+        }
+
         public override QueryResult ExecuteQuery()
         {
             return ExecuteQueryInternalAsync().GetAwaiter().GetResult();
@@ -347,8 +354,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 // An error occurs when calling CreateQueryJob without the ID set,
                 // so use the first one that is found. This does not prevent from calling
                 // to other 'project IDs' (catalogs) with a query.
-                //PagedEnumerable<ProjectList, CloudProject>? projects = Client.ListProjects();
-
                 Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () =>
                     {
                         return Task.Run(
