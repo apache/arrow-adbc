@@ -193,7 +193,10 @@ pub struct FFI_AdbcDriver {
     pub(crate) StatementSetOptionInt: Option<methods::FuncStatementSetOptionInt>,
 }
 
+/// The [FFI_AdbcDriver] carries raw C pointers to the driver manager and private data that rustc
+/// can not treat as [Send] and [Sync] but we trust drivers access them in a thread-safe way.
 unsafe impl Send for FFI_AdbcDriver {}
+unsafe impl Sync for FFI_AdbcDriver {}
 
 macro_rules! driver_method {
     ($driver:expr, $method:ident) => {
