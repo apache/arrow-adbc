@@ -107,6 +107,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("maxStreamCount")]
         public int? MaxStreamCount { get; set; }
 
+        [JsonPropertyName("statementType")]
+        public string StatementType { get; set; } = string.Empty;
+
+        [JsonPropertyName("statementIndex")]
+        public int? StatementIndex { get; set; }
+
+        [JsonPropertyName("evaluationKind")]
+        public string EvaluationKind { get; set; } = string.Empty;
+
         /// <summary>
         /// How structs should be handled by the ADO.NET client for this environment.
         /// </summary>

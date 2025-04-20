@@ -170,6 +170,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.MaxFetchConcurrency, testEnvironment.MaxStreamCount.Value.ToString());
             }
 
+            if (!string.IsNullOrEmpty(testEnvironment.StatementType))
+            {
+                parameters.Add(BigQueryParameters.StatementType, testEnvironment.StatementType);
+            }
+
+            if (testEnvironment.StatementIndex.HasValue)
+            {
+                parameters.Add(BigQueryParameters.StatementIndex, testEnvironment.StatementIndex.Value.ToString());
+            }
+
+            if (!string.IsNullOrEmpty(testEnvironment.EvaluationKind))
+            {
+                parameters.Add(BigQueryParameters.EvaluationKind, testEnvironment.EvaluationKind);
+            }
+
             return parameters;
         }
 

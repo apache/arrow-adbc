@@ -34,11 +34,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         IArrowReader? reader;
         bool isLz4Compressed;
 
-        public DatabricksReader(DatabricksStatement statement, Schema schema)
-            : this(statement, schema, false)
-        {
-        }
-
         public DatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
         {
             this.statement = statement;

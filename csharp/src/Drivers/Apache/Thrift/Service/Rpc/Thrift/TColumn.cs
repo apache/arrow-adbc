@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TColumn : TBase
+  internal partial class TColumn : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TBoolColumn _boolVal;
     private global::Apache.Hive.Service.Rpc.Thrift.TByteColumn _byteVal;

@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TDBSqlCloudResultFile : TBase
+  internal partial class TDBSqlCloudResultFile : TBase
   {
     private string _filePath;
     private long _startRowOffset;

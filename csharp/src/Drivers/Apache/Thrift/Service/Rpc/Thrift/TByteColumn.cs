@@ -30,7 +30,7 @@ using Thrift.Protocol.Utilities;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TByteColumn : TBase
+  internal partial class TByteColumn : TBase
   {
 
     public Int8Array Values { get; set; }

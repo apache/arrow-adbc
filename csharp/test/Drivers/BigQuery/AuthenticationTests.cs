@@ -46,10 +46,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// <summary>
         /// Validates if the Entra token can sign in.
         /// </summary>
-        [SkippableTheory, Order(1)]
-        [InlineData(false)]
-        [InlineData(true)]
-        public void CanSignInWithEntraToken(bool withRefresh)
+        [SkippableFact, Order(1)]
+        public void CanSignInWithEntraToken()
         {
             BigQueryTestEnvironment? environment = _environments.Where(x => x.AuthenticationType == BigQueryConstants.EntraIdAuthenticationType).FirstOrDefault();
             Assert.NotNull(environment);
@@ -57,33 +55,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             BigQueryConnection? connection = BigQueryTestingUtils.GetEntraProtectedBigQueryAdbcConnection(environment, BigQueryTestingUtils.GetAccessToken(environment)) as BigQueryConnection;
             Assert.NotNull(connection);
 
-            if (withRefresh)
-            {
-                connection.UpdateToken = () => Task.Run(() =>
-                {
-                    connection.SetOption(BigQueryParameters.AccessToken, BigQueryTestingUtils.GetAccessToken(environment));
-                });
-            }
-
-            Stopwatch stopwatch = Stopwatch.StartNew();
-
             AdbcStatement statement = connection.CreateStatement();
             statement.SqlQuery = environment.Query;
 
             QueryResult queryResult = statement.ExecuteQuery();
 
             Tests.DriverTests.CanExecuteQuery(queryResult, environment.ExpectedResultsCount, environment.Name);
-
-            stopwatch.Stop();
-
-            if (withRefresh)
-            {
-                _outputHelper.WriteLine($"With refresh (async) took {stopwatch.Elapsed.TotalSeconds} seconds");
-            }
-            else
-            {
-                _outputHelper.WriteLine($"Without refresh took {stopwatch.Elapsed.TotalSeconds} seconds");
-            }
         }
 
         /// <summary>
@@ -138,8 +115,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
             else
             {
-                // throws GoogleApiException with the status as Unauthorized
-                Assert.ThrowsAny<GoogleApiException>(() => statement.ExecuteQuery());
+                // throws AdbcException with the status as Unauthorized
+                Assert.ThrowsAny<AdbcException>(() => statement.ExecuteQuery());
             }
         }
     }

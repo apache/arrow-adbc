@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TStatusCode
+  internal enum TStatusCode
   {
     SUCCESS_STATUS = 0,
     SUCCESS_WITH_INFO_STATUS = 1,

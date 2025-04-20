@@ -17,7 +17,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
+using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Xunit;
@@ -202,6 +205,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                     var columns = adbcConnection.GetSchema("Columns", new[] { catalog, schema });
                     Assert.Equal(16, columns.Columns.Count);
+                }
+            }
+        }
+
+        [SkippableFact]
+        public void CoeVerifySchemaTables()
+        {
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection(environment))
+                {
+                    adbcConnection.Open();
+
+                    using AdbcCommand adbcCommand = new AdbcCommand("SELECT * FROM mashuptest-154002.AdbcTests.PkNames", adbcConnection);
+                    using AdbcDataReader reader = adbcCommand.ExecuteReader();
+                    DataTable? dt = reader.GetSchemaTable();
+
+                    Debug.WriteLine(dt?.Columns.Count);
                 }
             }
         }
