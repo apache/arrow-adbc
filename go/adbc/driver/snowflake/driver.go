@@ -228,9 +228,16 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 
 func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, optFuncs ...Option) (adbc.Database, error) {
 	opts = maps.Clone(opts)
+
+	dbImplBase := driverbase.NewDatabaseImplBase(&d.DriverImplBase)
+	dv, _ := dbImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	driverVersion := dv.(string)
+	defaultAppName := "[ADBC][Go-" + driverVersion + "]"
+
 	db := &databaseImpl{
-		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
+		DatabaseImplBase: dbImplBase,
 		useHighPrecision: true,
+		defaultAppName:   defaultAppName,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
