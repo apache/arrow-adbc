@@ -103,6 +103,10 @@ const (
 	// on Windows/OSX, false for Linux
 	OptionClientStoreTempCred = "adbc.snowflake.sql.client_option.store_temp_creds"
 
+	OptionClientId     = "adbc.snowflake.sql.client_option.client_id"
+	OptionClientSecret = "adbc.snowflake.sql.client_option.client_secret"
+	OptionRefreshToken = "adbc.snowflake.sql.client_option.refresh_token"
+
 	// auth types are implemented by the Snowflake driver in gosnowflake
 	// general username password authentication
 	OptionValueAuthSnowflake = "auth_snowflake"

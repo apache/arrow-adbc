@@ -52,6 +52,11 @@ type databaseImpl struct {
 	driverbase.DatabaseImplBase
 	cfg *gosnowflake.Config
 
+	// Optional OAuth2 parameters
+	clientId     string
+	clientSecret string
+	refreshToken string
+
 	useHighPrecision bool
 }
 
@@ -126,6 +131,12 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.cfg.Tracing, nil
 	case OptionClientConfigFile:
 		return d.cfg.ClientConfigFile, nil
+	case OptionClientId:
+		return d.clientId, nil
+	case OptionClientSecret:
+		return d.clientSecret, nil
+	case OptionRefreshToken:
+		return d.refreshToken, nil
 	case OptionUseHighPrecision:
 		if d.useHighPrecision {
 			return adbc.OptionValueEnabled, nil
@@ -418,6 +429,12 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			d.cfg.Tracing = v
 		case OptionClientConfigFile:
 			d.cfg.ClientConfigFile = v
+		case OptionClientId:
+			d.clientId = v
+		case OptionClientSecret:
+			d.clientSecret = v
+		case OptionRefreshToken:
+			d.refreshToken = v
 		case OptionUseHighPrecision:
 			switch v {
 			case adbc.OptionValueEnabled:
