@@ -407,36 +407,39 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
+            // Common variables declared upfront
+            TGetResultSetMetadataResp metadata;
+            Schema schema;
+            TRowSet rowSet;
+
             // For GetColumns, we need to enhance the result with BASE_TYPE_NAME
             if (Connection.AreResultsAvailableDirectly() && resp.DirectResults?.ResultSet?.Results != null)
             {
-                TGetResultSetMetadataResp resultSetMetadata = resp.DirectResults.ResultSetMetadata;
-                Schema schema = Connection.SchemaParser.GetArrowSchema(resultSetMetadata.Schema, Connection.DataTypeConversion);
-                TRowSet rowSet = resp.DirectResults.ResultSet.Results;
-                int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
-                int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
-                IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
-
-                return EnhanceGetColumnsResult(schema, data, rowCount, resultSetMetadata, rowSet);
+                // Get data from direct results
+                metadata = resp.DirectResults.ResultSetMetadata;
+                schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+                rowSet = resp.DirectResults.ResultSet.Results;
             }
             else
             {
+                // Poll and fetch results
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
-                Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
+                
+                // Get metadata
+                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
+                schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
 
-                // Fetch the results manually to enhance them
-                TRowSet rowSet = await Connection.FetchResultsAsync(OperationHandle!, BatchSize, cancellationToken);
-                int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
-                int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
-
-                // Get metadata again to ensure we have the latest
-                TGetResultSetMetadataResp metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
-
-                // Get the arrays from the row set
-                IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
-
-                return EnhanceGetColumnsResult(schema, data, rowCount, metadata, rowSet);
+                // Fetch the results
+                rowSet = await Connection.FetchResultsAsync(OperationHandle!, BatchSize, cancellationToken);
             }
+
+            // Common processing for both paths
+            int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
+            int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
+            IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
+
+            // Return the enhanced result with added BASE_TYPE_NAME column
+            return EnhanceGetColumnsResult(schema, data, rowCount, metadata, rowSet);
         }
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
