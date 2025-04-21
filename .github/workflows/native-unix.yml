@@ -251,12 +251,7 @@ jobs:
         run: |
           meson setup \
             -Db_sanitize=address,undefined \
-            -Ddriver_manager=true \
-            -Dflightsql=true \
-            -Dpostgresql=true \
-            -Dsnowflake=true \
-            -Dsqlite=true \
-            -Dtests=true \
+            -Dauto_features=enabled \
             c c/build
           meson compile -C c/build
       - name: Test

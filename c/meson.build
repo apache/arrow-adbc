@@ -45,7 +45,7 @@ driver_dir = include_directories('driver')
 nanoarrow_dep = dependency('nanoarrow')
 fmt_dep = dependency('fmt')
 
-if get_option('tests')
+if get_option('tests').enabled()
     gtest_main_dep = dependency('gtest_main')
     gmock_dep = dependency('gmock')
 else
@@ -53,8 +53,8 @@ else
     gmock_dep = disabler()
 endif
 
-needs_driver_manager = get_option('driver_manager') \
-    or get_option('tests')
+needs_driver_manager = get_option('driver_manager').enabled() \
+    or get_option('tests').enabled()
 
 pkg = import('pkgconfig')
 
@@ -70,26 +70,26 @@ endif
 subdir('driver/common')
 subdir('driver/framework')
 
-if get_option('tests')
+if get_option('tests').enabled()
     subdir('validation')
 endif
 
-if get_option('bigquery')
+if get_option('bigquery').enabled()
     subdir('driver/bigquery')
 endif
 
-if get_option('flightsql')
+if get_option('flightsql').enabled()
     subdir('driver/flightsql')
 endif
 
-if get_option('postgresql')
+if get_option('postgresql').enabled()
     subdir('driver/postgresql')
 endif
 
-if get_option('sqlite')
+if get_option('sqlite').enabled()
     subdir('driver/sqlite')
 endif
 
-if get_option('snowflake')
+if get_option('snowflake').enabled()
     subdir('driver/snowflake')
 endif

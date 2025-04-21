@@ -55,7 +55,7 @@ pkg.generate(
     filebase: 'adbc-driver-flightsql',
 )
 
-if get_option('tests')
+if get_option('tests').enabled()
     exc = executable(
         'adbc-driver-flightsql-test',
         'dremio_flightsql_test.cc',

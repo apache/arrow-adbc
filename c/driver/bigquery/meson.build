@@ -55,11 +55,11 @@ pkg.generate(
     filebase: 'adbc-driver-bigquery',
 )
 
-if get_option('tests')
+if get_option('tests').enabled()
     exc = executable(
         'adbc-driver-bigquery-test',
         'bigquery_test.cc',
-        include_directories: [root_dir, driver_dir],
+        include_directories: [c_dir, driver_dir],
         link_with: [adbc_common_lib, adbc_driver_bigquery_lib],
         dependencies: [adbc_validation_dep],
     )
