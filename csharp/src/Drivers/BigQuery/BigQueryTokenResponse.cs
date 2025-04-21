@@ -22,7 +22,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// The token response from BigQuery
     /// </summary>
-    internal class BigQueryTokenResponse
+    class BigQueryTokenResponse
     {
         [JsonPropertyName("access_token")]
         public string? AccessToken { get; set; }

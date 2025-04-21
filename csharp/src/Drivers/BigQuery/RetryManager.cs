@@ -24,7 +24,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// Class that will retry calling a method with an exponential backoff.
     /// </summary>
-    public class RetryManager
+    class RetryManager
     {
         public static async Task<T> ExecuteWithRetriesAsync<T>(
            Func<Task<T>> action,

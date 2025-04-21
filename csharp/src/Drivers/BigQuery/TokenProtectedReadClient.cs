@@ -22,7 +22,7 @@ using Google.Cloud.BigQuery.Storage.V1;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
-    internal class TokenProtectedReadClientManger : ITokenProtectedResource
+    class TokenProtectedReadClientManger : ITokenProtectedResource
     {
         BigQueryReadClient bigQueryReadClient;
 

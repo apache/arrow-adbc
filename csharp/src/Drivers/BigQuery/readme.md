@@ -34,11 +34,17 @@ The ADBC driver passes the configured credentials to BigQuery, but you may need 
 
 The following parameters can be used to configure the driver behavior. The parameters are case sensitive.
 
+**adbc.bigquery.access_token**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Sets the access token to use as the credential. Currently, this is for Microsoft Entra, but this could be used for other OAuth implementations as well.
+
+**adbc.bigquery.audience_uri**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Sets the audience URI for the authentication token. Currently, this is for Microsoft Entra, but this could be used for other OAuth implementations as well.
+
 **adbc.bigquery.allow_large_results**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Sets the [AllowLargeResults](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_AllowLargeResults) value of the QueryOptions to `true` if configured; otherwise, the default is `false`.
 
 **adbc.bigquery.auth_type**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Required. Must be `user` or `service`
+&nbsp;&nbsp;&nbsp;&nbsp;Required. Must be `user`, `aad` (for Microsoft Entra) or `service`.
 
 **adbc.bigquery.billing_project_id**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The [Project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects) used for accessing billing BigQuery. If not specified, will default to the detected project ID.

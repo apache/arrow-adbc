@@ -20,23 +20,15 @@ using Google;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
-    internal class BigQueryUtils
+    class BigQueryUtils
     {
         public static bool TokenRequiresUpdate(Exception ex)
         {
             bool result = false;
 
-            switch (ex)
+            if (ex is GoogleApiException gaex && gaex.HttpStatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                case GoogleApiException apiException:
-                    if (apiException.HttpStatusCode == System.Net.HttpStatusCode.Unauthorized)
-                    {
-                        result = true;
-                    }
-                    break;
-                // TODO: others?
-                default:
-                    return false;
+                result = true;
             }
 
             return result;

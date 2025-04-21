@@ -20,7 +20,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// Parameters used for connecting to BigQuery data sources.
     /// </summary>
-    public class BigQueryParameters
+    class BigQueryParameters
     {
         public const string AccessToken = "adbc.bigquery.access_token";
         public const string AudienceUri = "adbc.bigquery.audience_uri";
@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// Constants used for default parameter values.
     /// </summary>
-    public class BigQueryConstants
+    class BigQueryConstants
     {
         public const string UserAuthenticationType = "user";
         public const string EntraIdAuthenticationType = "aad";
@@ -60,11 +60,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string TreatLargeDecimalAsString = "true";
 
         // Entra ID / Azure AD constants
-        public const string GrantType = "urn:ietf:params:oauth:grant-type:token-exchange";
-        public const string SubjectTokenType = "urn:ietf:params:oauth:token-type:id_token";
-        public const string RequestedTokenType = "urn:ietf:params:oauth:token-type:access_token";
+        public const string EntraGrantType = "urn:ietf:params:oauth:grant-type:token-exchange";
+        public const string EntraSubjectTokenType = "urn:ietf:params:oauth:token-type:id_token";
+        public const string EntraRequestedTokenType = "urn:ietf:params:oauth:token-type:access_token";
         public const string EntraIdScope = "https://www.googleapis.com/auth/cloud-platform";
-        public const string StsTokenEndpoint = "https://sts.googleapis.com/v1/token";
+        public const string EntraStsTokenEndpoint = "https://sts.googleapis.com/v1/token";
 
         // default value per https://pkg.go.dev/cloud.google.com/go/bigquery#section-readme
         public const string DetectProjectId = "*detect-project-id*";

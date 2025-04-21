@@ -53,7 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public Func<Task>? UpdateToken { get; set; }
 
-        public IReadOnlyDictionary<string, string>? Options { get; set; }
+        internal Dictionary<string, string>? Options { get; set; }
 
         private BigQueryClient Client => this.bigQueryConnection.Client ?? throw new AdbcException("Client cannot be null");
 
@@ -65,9 +65,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override void SetOption(string key, string value)
         {
-            Dictionary<string, string> opts = Options == null ? new Dictionary<string, string>() : new Dictionary<string, string>((IDictionary<string, string>)Options);
-            opts[key] = value;
-            Options = opts;
+            if (Options == null)
+            {
+                Options = new Dictionary<string, string>();
+            }
+
+            Options[key] = value;
         }
 
         public override QueryResult ExecuteQuery()
@@ -75,7 +78,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return ExecuteQueryInternalAsync().GetAwaiter().GetResult();
         }
 
-        private async Task<QueryResult> ExecuteQueryInternalAsync()
+        async Task<QueryResult> ExecuteQueryInternalAsync()
         {
             QueryOptions queryOptions = ValidateOptions();
             BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
@@ -216,7 +219,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return ExecuteUpdateInternalAsync().GetAwaiter().GetResult();
         }
 
-        private async Task<UpdateResult> ExecuteUpdateInternalAsync()
+        async Task<UpdateResult> ExecuteUpdateInternalAsync()
         {
             QueryOptions options = ValidateOptions();
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
@@ -235,17 +238,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new UpdateResult(updatedRows);
         }
 
-        private Schema TranslateSchema(TableSchema schema)
+        Schema TranslateSchema(TableSchema schema)
         {
             return new Schema(schema.Fields.Select(TranslateField), null);
         }
 
-        private Field TranslateField(TableFieldSchema field)
+        Field TranslateField(TableFieldSchema field)
         {
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
-        private IArrowType TranslateType(TableFieldSchema field)
+        IArrowType TranslateType(TableFieldSchema field)
         {
             // per https://developers.google.com/resources/api-libraries/documentation/bigquery/v2/java/latest/com/google/api/services/bigquery/model/TableFieldSchema.html#getType--
 
@@ -294,7 +297,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
-        private StructType BuildStructType(TableFieldSchema field)
+        StructType BuildStructType(TableFieldSchema field)
         {
             List<Field> arrowFields = new List<Field>();
 
@@ -307,7 +310,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new StructType(arrowFields.AsReadOnly());
         }
 
-        private IArrowType GetType(TableFieldSchema field, IArrowType type)
+        IArrowType GetType(TableFieldSchema field, IArrowType type)
         {
             if (field.Mode == "REPEATED")
                 return new ListType(type);
@@ -315,7 +318,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return type;
         }
 
-        private IArrowReader? ReadChunkWithRetries(TokenProtectedReadClientManger clientMgr, string streamName)
+        IArrowReader? ReadChunkWithRetries(TokenProtectedReadClientManger clientMgr, string streamName)
         {
             Func<Task<IArrowReader?>> func = () => Task.FromResult<IArrowReader?>(ReadChunk(clientMgr, streamName));
             return RetryManager.ExecuteWithRetriesAsync<IArrowReader?>(clientMgr, func, MaxRetryAttempts, RetryDelayMs).GetAwaiter().GetResult();

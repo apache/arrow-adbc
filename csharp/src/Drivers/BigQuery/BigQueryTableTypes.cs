@@ -16,7 +16,7 @@
 */
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
-    internal static class BigQueryTableTypes
+    static class BigQueryTableTypes
     {
         public static readonly string[] TableTypes = new string[] { "BASE TABLE", "VIEW", "CLONE", "SNAPSHOT" };
     }
