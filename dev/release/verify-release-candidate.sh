@@ -246,38 +246,42 @@ install_dotnet() {
     return 0
   fi
 
-  show_info "Ensuring that .NET is installed..."
+  if command -v dotnet; then
+    show_info "Found $(dotnet --version) at $(which dotnet)"
 
-  if dotnet --version | grep 8\.0 > /dev/null 2>&1; then
-    local csharp_bin=$(dirname $(which dotnet))
-    show_info "Found C# at $(which csharp) (.NET $(dotnet --version))"
-  else
-    if which dotnet > /dev/null 2>&1; then
-      show_info "dotnet found but it is the wrong version and will be ignored."
+    if dotnet --version | grep 8\.0 > /dev/null 2>&1; then
+        local csharp_bin=$(dirname $(which dotnet))
+        show_info "Found C# at $(which csharp) (.NET $(dotnet --version))"
+        DOTNET_ALREADY_INSTALLED=1
+        return 0
     fi
-    local csharp_bin=${ARROW_TMPDIR}/csharp/bin
-    local dotnet_version=8.0.204
-    local dotnet_platform=
-    case "$(uname)" in
-      Linux)
-        dotnet_platform=linux
-        ;;
-      Darwin)
-        dotnet_platform=macos
-        ;;
-    esac
-    local dotnet_download_thank_you_url=https://dotnet.microsoft.com/download/thank-you/dotnet-sdk-${dotnet_version}-${dotnet_platform}-x64-binaries
-    local dotnet_download_url=$( \
-      curl -sL ${dotnet_download_thank_you_url} | \
-        grep 'directLink' | \
-        grep -E -o 'https://download[^"]+' | \
-        sed -n 2p)
-    mkdir -p ${csharp_bin}
-    curl -sL ${dotnet_download_url} | \
-      tar xzf - -C ${csharp_bin}
-    PATH=${csharp_bin}:${PATH}
-    show_info "Installed C# at $(which csharp) (.NET $(dotnet --version))"
   fi
+
+  show_info "dotnet found but it is the wrong version or dotnet not found"
+
+  local csharp_bin=${ARROW_TMPDIR}/csharp/bin
+  local dotnet_version=8.0.204
+  local dotnet_platform=
+  case "$(uname)" in
+      Linux)
+          dotnet_platform=linux
+          ;;
+      Darwin)
+          dotnet_platform=macos
+          ;;
+  esac
+  local dotnet_download_thank_you_url=https://dotnet.microsoft.com/download/thank-you/dotnet-sdk-${dotnet_version}-${dotnet_platform}-x64-binaries
+  show_info "Getting .NET download URL from ${dotnet_download_thank_you_url}"
+  local dotnet_download_url=$(curl -sL ${dotnet_download_thank_you_url} | \
+                                  grep 'directLink' | \
+                                  grep -E -o 'https://download[^"]+' | \
+                                  sed -n 2p)
+  show_info "Downloading .NET from ${dotnet_download_url}"
+  mkdir -p ${csharp_bin}
+  curl -sL ${dotnet_download_url} | \
+      tar xzf - -C ${csharp_bin}
+  PATH=${csharp_bin}:${PATH}
+  show_info "Installed C# at $(which csharp) (.NET $(dotnet --version))"
 
   DOTNET_ALREADY_INSTALLED=1
 }
@@ -293,6 +297,18 @@ install_go() {
     show_info "Found $(go version) at $(command -v go)"
     export GOPATH=${ARROW_TMPDIR}/gopath
     mkdir -p $GOPATH
+    return 0
+  fi
+
+  local prefix=${ARROW_TMPDIR}/go
+  mkdir -p $prefix
+
+  if [ -f "${prefix}/go/bin/go" ]; then
+    export GOROOT=${prefix}/go
+    export GOPATH=${prefix}/gopath
+    export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+    show_info "Found $(go version) at ${prefix}/go/bin/go"
+    GO_ALREADY_INSTALLED=1
     return 0
   fi
 
@@ -315,8 +331,6 @@ install_go() {
   local archive="go${version}.${os}-${arch}.tar.gz"
   curl -sLO https://go.dev/dl/$archive
 
-  local prefix=${ARROW_TMPDIR}/go
-  mkdir -p $prefix
   tar -xzf $archive -C $prefix
   rm -f $archive
 
@@ -549,7 +563,7 @@ test_python() {
   show_header "Build and test Python libraries"
 
   # Build and test Python
-  maybe_setup_virtualenv cython duckdb pandas protobuf pyarrow pytest setuptools_scm setuptools importlib_resources || exit 1
+  maybe_setup_virtualenv cython duckdb pandas polars protobuf pyarrow pytest setuptools_scm setuptools importlib_resources || exit 1
   # XXX: pin Python for now since various other packages haven't caught up
   maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" python=3.12 || exit 1
 
