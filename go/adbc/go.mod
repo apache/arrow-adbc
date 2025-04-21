@@ -19,6 +19,8 @@ module github.com/apache/arrow-adbc/go/adbc
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	cloud.google.com/go/bigquery v1.67.0
 	github.com/apache/arrow-go/v18 v18.2.0
@@ -32,7 +34,7 @@ require (
 	golang.org/x/oauth2 v0.29.0
 	golang.org/x/sync v0.13.0
 	golang.org/x/tools v0.32.0
-	google.golang.org/api v0.227.0
+	google.golang.org/api v0.228.0
 	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.6
 	modernc.org/sqlite v1.37.0
@@ -41,7 +43,7 @@ require (
 require (
 	cloud.google.com/go v0.118.3 // indirect
 	cloud.google.com/go/auth v0.15.0 // indirect
-	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
+	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	cloud.google.com/go/iam v1.4.1 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect

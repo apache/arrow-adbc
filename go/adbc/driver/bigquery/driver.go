@@ -85,8 +85,8 @@ var (
 func init() {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, dep := range info.Deps {
-			switch {
-			case dep.Path == "cloud.google.com/go/bigquery":
+			switch dep.Path {
+			case "cloud.google.com/go/bigquery":
 				infoVendorVersion = dep.Version
 			}
 		}

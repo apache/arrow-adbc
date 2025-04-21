@@ -28,6 +28,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -62,7 +63,7 @@ func TestDefaultDriver(t *testing.T) {
 
 	db, err := drv.NewDatabase(nil)
 	require.NoError(t, err)
-	defer db.Close()
+	defer validation.CheckedClose(t, db)
 
 	require.NoError(t, db.SetOptions(map[string]string{OptionKeyRecognized: "should-pass"}))
 
@@ -193,7 +194,7 @@ func TestCustomizedDriver(t *testing.T) {
 
 	db, err := drv.NewDatabase(nil)
 	require.NoError(t, err)
-	defer db.Close()
+	defer validation.CheckedClose(t, db)
 
 	require.NoError(t, db.SetOptions(map[string]string{OptionKeyRecognized: "should-pass"}))
 
@@ -203,7 +204,7 @@ func TestCustomizedDriver(t *testing.T) {
 
 	cnxn, err := db.Open(ctx)
 	require.NoError(t, err)
-	defer cnxn.Close()
+	defer validation.CheckedClose(t, cnxn)
 
 	err = cnxn.Commit(ctx)
 	require.Error(t, err)
@@ -482,7 +483,7 @@ func (d *databaseImpl) SetOption(key, value string) error {
 }
 
 func (db *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
-	db.DatabaseImplBase.Logger.Info("Opening a new connection", "withHelpers", db.useHelpers)
+	db.Logger.Info("Opening a new connection", "withHelpers", db.useHelpers)
 	cnxn := &connectionImpl{ConnectionImplBase: driverbase.NewConnectionImplBase(&db.DatabaseImplBase), db: db}
 	bldr := driverbase.NewConnectionBuilder(cnxn)
 	if db.useHelpers { // this toggles between the NewDefaultDriver and NewCustomizedDriver scenarios
@@ -637,13 +638,13 @@ func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 }
 
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
-	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
+	if err := c.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
 		return err
 	}
-	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSubstrait, false); err != nil {
+	if err := c.DriverInfo.RegisterInfoCode(adbc.InfoVendorSubstrait, false); err != nil {
 		return err
 	}
-	return c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoCode(10_002), "this was fetched dynamically")
+	return c.DriverInfo.RegisterInfoCode(adbc.InfoCode(10_002), "this was fetched dynamically")
 }
 
 // MockedHandler is a mock.Mock that implements the slog.Handler interface.

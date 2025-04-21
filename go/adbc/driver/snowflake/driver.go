@@ -125,8 +125,8 @@ var (
 func init() {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, dep := range info.Deps {
-			switch {
-			case dep.Path == "github.com/snowflakedb/gosnowflake":
+			switch dep.Path {
+			case "github.com/snowflakedb/gosnowflake":
 				infoVendorVersion = dep.Version
 			}
 		}

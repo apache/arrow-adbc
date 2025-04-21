@@ -504,11 +504,12 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 	switch c.authType {
 	case OptionValueAuthTypeJSONCredentialFile, OptionValueAuthTypeJSONCredentialString, OptionValueAuthTypeUserAuthentication:
 		var credentials option.ClientOption
-		if c.authType == OptionValueAuthTypeJSONCredentialFile {
+		switch c.authType {
+		case OptionValueAuthTypeJSONCredentialFile:
 			credentials = option.WithCredentialsFile(c.credentials)
-		} else if c.authType == OptionValueAuthTypeJSONCredentialString {
+		case OptionValueAuthTypeJSONCredentialString:
 			credentials = option.WithCredentialsJSON([]byte(c.credentials))
-		} else {
+		default:
 			if c.clientID == "" {
 				return adbc.Error{
 					Code: adbc.StatusInvalidArgument,
