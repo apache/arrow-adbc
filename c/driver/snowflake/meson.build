@@ -19,21 +19,21 @@
 golang = find_program('go')
 
 if build_machine.system() == 'windows'
-  prefix = ''
-  suffix = '.lib'
+    prefix = ''
+    suffix = '.lib'
 elif build_machine.system() == 'darwin'
-  prefix = 'lib'
-  suffix = '.dylib'
+    prefix = 'lib'
+    suffix = '.dylib'
 else
-  prefix = 'lib'
-  suffix = '.so'
+    prefix = 'lib'
+    suffix = '.so'
 endif
 
 adbc_driver_snowflake_name = prefix + 'adbc_driver_snowflake' + suffix
 adbc_driver_snowflake_lib = custom_target(
     'adbc_driver_snowflake',
     output: adbc_driver_snowflake_name,
-    command : [
+    command: [
         golang,
         'build',
         '-C',
@@ -43,8 +43,8 @@ adbc_driver_snowflake_lib = custom_target(
         '-o',
         meson.current_build_dir() + '/' + adbc_driver_snowflake_name,
     ],
-    install : true,
-    install_dir : '.',
+    install: true,
+    install_dir: '.',
 )
 
 pkg.generate(
@@ -60,10 +60,7 @@ if get_option('tests')
         'adbc-driver-snowflake-test',
         'snowflake_test.cc',
         include_directories: [include_dir, c_dir, driver_dir],
-        link_with: [
-            adbc_common_lib,
-            adbc_driver_snowflake_lib,
-        ],
+        link_with: [adbc_common_lib, adbc_driver_snowflake_lib],
         dependencies: [adbc_validation_dep],
     )
     test('adbc-driver-snowflake', exc)

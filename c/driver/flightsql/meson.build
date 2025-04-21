@@ -19,21 +19,21 @@
 golang = find_program('go')
 
 if build_machine.system() == 'windows'
-  prefix = ''
-  suffix = '.lib'
+    prefix = ''
+    suffix = '.lib'
 elif build_machine.system() == 'darwin'
-  prefix = 'lib'
-  suffix = '.dylib'
+    prefix = 'lib'
+    suffix = '.dylib'
 else
-  prefix = 'lib'
-  suffix = '.so'
+    prefix = 'lib'
+    suffix = '.so'
 endif
 
 adbc_driver_flightsql_name = prefix + 'adbc_driver_flightsql' + suffix
 adbc_driver_flightsql_lib = custom_target(
     'adbc_driver_flightsql',
     output: adbc_driver_flightsql_name,
-    command : [
+    command: [
         golang,
         'build',
         '-C',
@@ -43,8 +43,8 @@ adbc_driver_flightsql_lib = custom_target(
         '-o',
         meson.current_build_dir() + '/' + adbc_driver_flightsql_name,
     ],
-    install : true,
-    install_dir : '.',
+    install: true,
+    install_dir: '.',
 )
 
 pkg.generate(
@@ -61,10 +61,7 @@ if get_option('tests')
         'dremio_flightsql_test.cc',
         'sqlite_flightsql_test.cc',
         include_directories: [include_dir, c_dir, driver_dir],
-        link_with: [
-            adbc_common_lib,
-            adbc_driver_flightsql_lib
-        ],
+        link_with: [adbc_common_lib, adbc_driver_flightsql_lib],
         dependencies: [adbc_validation_dep],
     )
     test('adbc-driver-flightsql', exc)

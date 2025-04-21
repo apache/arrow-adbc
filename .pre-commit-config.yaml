@@ -97,6 +97,12 @@ repos:
     rev: 8ae2bb65fe66458263d94711ae4ddd978faece00
     hooks:
     - id: vala-lint
+  - repo: https://github.com/trim21/pre-commit-mirror-meson
+    rev: 3fcd193f7ae6a5ae62cfcd21a1ac66347db7cb6b # v1.7.2
+    hooks:
+    - id: meson-fmt
+      files: 'meson.build'
+      args: ['--inplace']
   - repo: local
     hooks:
     - id: apache-rat
