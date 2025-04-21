@@ -18,13 +18,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
 {
-    public static class StreamExtensions
+    internal static class StreamExtensions
     {
         public static void WriteInt32LittleEndian(int value, Span<byte> buffer, int offset)
         {

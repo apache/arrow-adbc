@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TSparkArrowBatch : TBase
+  internal partial class TSparkArrowBatch : TBase
   {
 
     public byte[] Batch { get; set; }

@@ -15,15 +15,11 @@
 * limitations under the License.
 */
 
-using System;
 using System.IO;
 using System.Net.Http;
-using System.Threading.Tasks;
-using System.Threading;
-using Thrift;
-using Thrift.Transport;
-using Thrift.Transport.Client;
 using System.Reflection;
+using Thrift;
+using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache
 {

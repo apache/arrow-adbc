@@ -16,7 +16,6 @@
 */
 
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
@@ -31,7 +30,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         protected override IReadOnlyList<int> GetUpdateExpectedResults()
         {
             int affectedRows = ValidateAffectedRows ? 1 : -1;
-            return GetUpdateExpectedResults(affectedRows, TestEnvironment.ServerType == SparkServerType.Databricks);
+            return GetUpdateExpectedResults(affectedRows, false);
         }
 
         internal static IReadOnlyList<int> GetUpdateExpectedResults(int affectedRows, bool isDatabricks)

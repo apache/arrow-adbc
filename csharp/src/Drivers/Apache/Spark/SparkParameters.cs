@@ -20,7 +20,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     /// <summary>
     /// Parameters used for connecting to Spark data sources.
     /// </summary>
-    public static class SparkParameters
+    public class SparkParameters
     {
         public const string HostName = "adbc.spark.host";
         public const string Port = "adbc.spark.port";
@@ -33,25 +33,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Type = "adbc.spark.type";
         public const string DataTypeConv = "adbc.spark.data_type_conv";
         public const string ConnectTimeoutMilliseconds = "adbc.spark.connect_timeout_ms";
-
-        // CloudFetch configuration parameters
-        /// <summary>
-        /// Maximum number of retry attempts for CloudFetch downloads.
-        /// Default value is 3 if not specified.
-        /// </summary>
-        public const string CloudFetchMaxRetries = "adbc.spark.cloudfetch.max_retries";
-
-        /// <summary>
-        /// Delay in milliseconds between CloudFetch retry attempts.
-        /// Default value is 500ms if not specified.
-        /// </summary>
-        public const string CloudFetchRetryDelayMs = "adbc.spark.cloudfetch.retry_delay_ms";
-
-        /// <summary>
-        /// Timeout in minutes for CloudFetch HTTP operations.
-        /// Default value is 5 minutes if not specified.
-        /// </summary>
-        public const string CloudFetchTimeoutMinutes = "adbc.spark.cloudfetch.timeout_minutes";
     }
 
     public static class SparkAuthTypeConstants
@@ -66,7 +47,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     public static class SparkServerTypeConstants
     {
         public const string Http = "http";
-        public const string Databricks = "databricks";
         public const string Standard = "standard";
     }
 }

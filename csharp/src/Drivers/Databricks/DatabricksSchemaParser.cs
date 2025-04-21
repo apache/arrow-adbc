@@ -16,13 +16,14 @@
 */
 
 using System;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
-    internal class SparkDatabricksSchemaParser : SchemaParser
+    internal class DatabricksSchemaParser : SchemaParser
     {
         public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, DataTypeConversion dataTypeConversion)
         {

@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TCloudFetchDisabledReason
+  internal enum TCloudFetchDisabledReason
   {
     ARROW_SUPPORT = 0,
     CLOUD_FETCH_SUPPORT = 1,

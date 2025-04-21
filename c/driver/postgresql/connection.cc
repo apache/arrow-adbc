@@ -32,6 +32,7 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
+#include <fmt/format.h>
 #include <libpq-fe.h>
 
 #include "database.h"
@@ -46,6 +47,9 @@ using adbc::driver::Status;
 
 namespace adbcpq {
 namespace {
+
+constexpr std::string_view kConnectionOptionTransactionStatus =
+    "adbc.postgresql.transaction_status";
 
 static const uint32_t kSupportedInfoCodes[] = {
     ADBC_INFO_VENDOR_NAME,          ADBC_INFO_VENDOR_VERSION,
@@ -471,6 +475,14 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
     return ADBC_STATUS_INVALID_STATE;
   }
 
+  PGTransactionStatusType txn_status = PQtransactionStatus(conn_);
+  if (txn_status == PQTRANS_IDLE) {
+    // https://github.com/apache/arrow-adbc/issues/2673: don't rollback if the
+    // transaction is idle, since it won't have any effect and PostgreSQL will
+    // issue a warning on the server side
+    return ADBC_STATUS_OK;
+  }
+
   PGresult* result = PQexec(conn_, "COMMIT; BEGIN TRANSACTION");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code = SetError(error, result, "%s%s",
@@ -615,6 +627,25 @@ AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
     output = (*it)[0].data;
   } else if (std::strcmp(option, ADBC_CONNECTION_OPTION_AUTOCOMMIT) == 0) {
     output = autocommit_ ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED;
+  } else if (std::strcmp(option, kConnectionOptionTransactionStatus.data()) == 0) {
+    switch (PQtransactionStatus(conn_)) {
+      case PQTRANS_IDLE:
+        output = "idle";
+        break;
+      case PQTRANS_ACTIVE:
+        output = "active";
+        break;
+      case PQTRANS_INTRANS:
+        output = "intrans";
+        break;
+      case PQTRANS_INERROR:
+        output = "inerror";
+        break;
+      case PQTRANS_UNKNOWN:
+      default:
+        output = "unknown";
+        break;
+    }
   } else {
     return ADBC_STATUS_NOT_FOUND;
   }
@@ -1078,6 +1109,11 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
 
   std::ignore = PQsetNoticeProcessor(conn_, SilentNoticeProcessor, nullptr);
 
+  for (const auto& [key, value] : post_init_options_) {
+    RAISE_ADBC(SetOption(key.data(), value.data(), error));
+  }
+  post_init_options_.clear();
+
   return ADBC_STATUS_OK;
 }
 
@@ -1098,7 +1134,15 @@ AdbcStatusCode PostgresConnection::Rollback(struct AdbcError* error) {
     return ADBC_STATUS_INVALID_STATE;
   }
 
-  PGresult* result = PQexec(conn_, "ROLLBACK");
+  PGTransactionStatusType txn_status = PQtransactionStatus(conn_);
+  if (txn_status == PQTRANS_IDLE) {
+    // https://github.com/apache/arrow-adbc/issues/2673: don't rollback if the
+    // transaction is idle, since it won't have any effect and PostgreSQL will
+    // issue a warning on the server side
+    return ADBC_STATUS_OK;
+  }
+
+  PGresult* result = PQexec(conn_, "ROLLBACK AND CHAIN");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     SetError(error, "%s%s", "[libpq] Failed to rollback: ", PQerrorMessage(conn_));
     PQclear(result);
@@ -1121,6 +1165,11 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
+    if (!conn_) {
+      post_init_options_.emplace_back(key, value);
+      return ADBC_STATUS_OK;
+    }
+
     if (autocommit != autocommit_) {
       const char* query = autocommit ? "COMMIT" : "BEGIN TRANSACTION";
 
@@ -1136,9 +1185,18 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     }
     return ADBC_STATUS_OK;
   } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) == 0) {
+    if (!conn_) {
+      post_init_options_.emplace_back(key, value);
+      return ADBC_STATUS_OK;
+    }
+
     // PostgreSQL doesn't accept a parameter here
     char* value_esc = PQescapeIdentifier(conn_, value, strlen(value));
-    std::string query = std::string("SET search_path TO ") + value_esc;
+    if (!value_esc) {
+      SetError(error, "[libpq] Could not escape identifier: %s", PQerrorMessage(conn_));
+      return ADBC_STATUS_INTERNAL;
+    }
+    std::string query = fmt::format("SET search_path TO {}", value_esc);
     PQfreemem(value_esc);
 
     PqResultHelper result_helper{conn_, query};

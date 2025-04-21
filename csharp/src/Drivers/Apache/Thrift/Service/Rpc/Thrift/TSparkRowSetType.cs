@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TSparkRowSetType
+  internal enum TSparkRowSetType
   {
     ARROW_BASED_SET = 0,
     COLUMN_BASED_SET = 1,

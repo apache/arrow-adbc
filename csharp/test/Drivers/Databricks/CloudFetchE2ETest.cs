@@ -16,28 +16,22 @@
 */
 
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark.CloudFetch;
-using Apache.Arrow.Types;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Xunit;
 using Xunit.Abstractions;
-using Apache.Arrow.Adbc.Client;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
     /// <summary>
-    /// End-to-end tests for the CloudFetch feature in the Spark ADBC driver.
+    /// End-to-end tests for the CloudFetch feature in the Databricks ADBC driver.
     /// </summary>
-    public class CloudFetchE2ETest : TestBase<SparkTestConfiguration, SparkTestEnvironment>
+    public class CloudFetchE2ETest : TestBase<DatabricksTestConfiguration, DatabricksTestEnvironment>
     {
         public CloudFetchE2ETest(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new DatabricksTestEnvironment.Factory())
         {
-            // Skip the test if the SPARK_TEST_CONFIG_FILE environment variable is not set
+            // Skip the test if the DATABRICKS_TEST_CONFIG_FILE environment variable is not set
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }
 
@@ -56,21 +50,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000);
         }
 
-        private async Task TestRealDatabricksCloudFetchLargeQuery(string query, int rowCount)
+        [Fact]
+        public async Task TestRealDatabricksNoCloudFetchSmallResultSet()
+        {
+            await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM range(1000)", 1000, false);
+        }
+
+        [Fact]
+        public async Task TestRealDatabricksNoCloudFetchLargeResultSet()
+        {
+            await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000, false);
+        }
+
+        private async Task TestRealDatabricksCloudFetchLargeQuery(string query, int rowCount, bool useCloudFetch = true)
         {
             // Create a statement with CloudFetch enabled
             var statement = Connection.CreateStatement();
-            statement.SetOption(SparkStatement.Options.UseCloudFetch, "true");
-            statement.SetOption(SparkStatement.Options.CanDecompressLz4, "true");
-            statement.SetOption(SparkStatement.Options.MaxBytesPerFile, "10485760"); // 10MB
-
+            statement.SetOption(DatabricksParameters.UseCloudFetch, useCloudFetch.ToString());
+            statement.SetOption(DatabricksParameters.CanDecompressLz4, "true");
+            statement.SetOption(DatabricksParameters.MaxBytesPerFile, "10485760"); // 10MB
 
             // Execute a query that generates a large result set using range function
             statement.SqlQuery = query;
 
             // Execute the query and get the result
             var result = await statement.ExecuteQueryAsync();
-
 
             if (result.Stream == null)
             {

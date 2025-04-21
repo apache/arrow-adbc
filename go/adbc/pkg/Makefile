@@ -15,7 +15,7 @@
 # limitations under the License.
 
 GO_BUILD=go build
-RM=rm
+RM=rm -f
 ifeq ($(shell go env GOOS),linux)
 	SUFFIX=so
 else ifeq ($(shell go env GOOS),windows)

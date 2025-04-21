@@ -603,7 +603,9 @@ func (r *rows) Next(dest []driver.Value) error {
 			dest[i] = nil
 			continue
 		}
-
+		if colUnion, ok := col.(array.Union); ok {
+			col = colUnion.Field(colUnion.ChildID(int(r.curRow)))
+		}
 		switch col := col.(type) {
 		case *array.Boolean:
 			dest[i] = col.Value(int(r.curRow))
