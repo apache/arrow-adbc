@@ -165,11 +165,11 @@ func (suite *ServerBasedTests) openAndExecuteQuery(query string) {
 	var err error
 	suite.cnxn, err = suite.db.Open(context.Background())
 	suite.Require().NoError(err)
-	defer suite.cnxn.Close()
+	defer validation.CheckedClose(suite.T(), suite.cnxn)
 
 	stmt, err := suite.cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery(query))
 	reader, _, err := stmt.ExecuteQuery(context.Background())
@@ -454,7 +454,6 @@ func (suite *OAuthTests) TestTokenExchangeFlow() {
 		driver.OptionSSLSkipVerify:       adbc.OptionValueEnabled,
 	})
 	suite.Require().NoError(err)
-	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.openAndExecuteQuery("a-query")
 	suite.Equal(1, suite.mockOAuthServer.tokenExchangeCalls, "Token exchange flow should be called once")
@@ -472,7 +471,7 @@ func (suite *OAuthTests) TestClientCredentialsFlow() {
 
 	suite.cnxn, err = suite.db.Open(context.Background())
 	suite.Require().NoError(err)
-	defer suite.cnxn.Close()
+	defer validation.CheckedClose(suite.T(), suite.cnxn)
 
 	suite.openAndExecuteQuery("a-query")
 	// golang/oauth2 tries to call the token endpoint sending the client credentials in the authentication header,
