@@ -424,7 +424,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 // Poll and fetch results
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
-                
+
                 // Get metadata
                 metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
                 schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
