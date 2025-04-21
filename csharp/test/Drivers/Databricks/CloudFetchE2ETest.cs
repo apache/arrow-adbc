@@ -50,13 +50,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000);
         }
 
-        private async Task TestRealDatabricksCloudFetchLargeQuery(string query, int rowCount)
+        [Fact]
+        public async Task TestRealDatabricksNoCloudFetchSmallResultSet()
+        {
+            await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM range(1000)", 1000, false);
+        }
+
+        [Fact]
+        public async Task TestRealDatabricksNoCloudFetchLargeResultSet()
+        {
+            await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000, false);
+        }
+
+        private async Task TestRealDatabricksCloudFetchLargeQuery(string query, int rowCount, bool useCloudFetch = true)
         {
             // Create a statement with CloudFetch enabled
             var statement = Connection.CreateStatement();
-            statement.SetOption(DatabricksStatement.Options.UseCloudFetch, "true");
-            statement.SetOption(DatabricksStatement.Options.CanDecompressLz4, "true");
-            statement.SetOption(DatabricksStatement.Options.MaxBytesPerFile, "10485760"); // 10MB
+            statement.SetOption(DatabricksParameters.UseCloudFetch, useCloudFetch.ToString());
+            statement.SetOption(DatabricksParameters.CanDecompressLz4, "true");
+            statement.SetOption(DatabricksParameters.MaxBytesPerFile, "10485760"); // 10MB
 
             // Execute a query that generates a large result set using range function
             statement.SqlQuery = query;
