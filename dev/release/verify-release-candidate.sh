@@ -296,7 +296,7 @@ install_go() {
     return 0
   fi
 
-  local version=1.21.8
+  local version=1.24.2
   show_info "Installing go version ${version}..."
 
   local arch="$(uname -m)"
@@ -503,11 +503,10 @@ test_cpp() {
 
   # Build and test C++
   maybe_setup_go
-  # XXX: pin Python for now since various other packages haven't caught up
   maybe_setup_conda \
     --file ci/conda_env_cpp.txt \
     compilers \
-    go=1.22 python=3.12 || exit 1
+    go python || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
@@ -637,6 +636,8 @@ test_csharp() {
   maybe_setup_dotnet
   maybe_setup_conda dotnet || exit 1
 
+  export DOTNET_ROLL_FORWARD=LatestMajor
+
   "${ADBC_DIR}/ci/scripts/csharp_build.sh" "${ADBC_SOURCE_DIR}"
   "${ADBC_DIR}/ci/scripts/csharp_test.sh" "${ADBC_SOURCE_DIR}"
 }
@@ -661,7 +662,7 @@ test_go() {
   # apache/arrow-adbc#517: `go build` calls git. Don't assume system
   # has git; even if it's there, go_build.sh sets DYLD_LIBRARY_PATH
   # which can interfere with system git.
-  maybe_setup_conda compilers git go=1.22 || exit 1
+  maybe_setup_conda compilers git go || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     # The CMake setup forces RPATH to be the Conda prefix
