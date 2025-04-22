@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TUnionTypeEntry : TBase
+  internal partial class TUnionTypeEntry : TBase
   {
 
     public Dictionary<string, int> NameToTypePtr { get; set; }

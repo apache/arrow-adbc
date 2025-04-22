@@ -32,7 +32,7 @@ using Thrift.Collections;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public static class TCLIServiceConstants
+  internal static class TCLIServiceConstants
   {
     public static HashSet<global::Apache.Hive.Service.Rpc.Thrift.TTypeId> PRIMITIVE_TYPES = new HashSet<global::Apache.Hive.Service.Rpc.Thrift.TTypeId>();
     public static HashSet<global::Apache.Hive.Service.Rpc.Thrift.TTypeId> COMPLEX_TYPES = new HashSet<global::Apache.Hive.Service.Rpc.Thrift.TTypeId>();

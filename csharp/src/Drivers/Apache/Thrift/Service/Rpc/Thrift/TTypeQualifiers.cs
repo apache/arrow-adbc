@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TTypeQualifiers : TBase
+  internal partial class TTypeQualifiers : TBase
   {
 
     public Dictionary<string, global::Apache.Hive.Service.Rpc.Thrift.TTypeQualifierValue> Qualifiers { get; set; }

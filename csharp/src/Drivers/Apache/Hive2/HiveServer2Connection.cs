@@ -768,7 +768,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return baseAddress;
         }
 
-        protected IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
+        internal IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
            .Select(t => new { Index = t.Position - ColumnMapIndexOffset, t.ColumnName })
            .ToDictionary(t => t.ColumnName, t => t.Index);
 
@@ -1242,12 +1242,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 nullBitmapBuffer.Build());
         }
 
-        protected abstract void SetPrecisionScaleAndTypeName(
-            short colType,
-            string typeName,
-            TableInfo? tableInfo,
-            int columnSize,
-            int decimalDigits);
+        internal abstract void SetPrecisionScaleAndTypeName(short columnType, string typeName, TableInfo? tableInfo, int columnSize, int decimalDigits);
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
@@ -1364,7 +1359,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
+        internal async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
             await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
 

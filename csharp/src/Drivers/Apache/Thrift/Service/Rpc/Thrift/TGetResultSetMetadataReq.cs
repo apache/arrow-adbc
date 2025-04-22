@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetResultSetMetadataReq : TBase
+  internal partial class TGetResultSetMetadataReq : TBase
   {
     private bool _includeCloudResultFiles;
 

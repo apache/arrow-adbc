@@ -47,6 +47,9 @@ The following values can be setup in the configuration
   - **scopes** - Comma separated list (string) of scopes applied during the test.
   - **queryTimeout** - The timeout (in seconds) for a query. Similar to a CommandTimeout.
   - **maxStreamCount** - The max stream count.
+  - **statementType** - When executing multiple statements, limit the type of statement returned.
+  - **statementIndex** - When executing multiple statements, specify the result of the statement to be returned.
+  - **evaluationKind** - When executing multiple statements, limit the evaluation kind returned.
   - **includeTableConstraints** - Whether to include table constraints in the GetObjects query.
   - **largeResultsDestinationTable** - Sets the [DestinationTable](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_DestinationTable) value of the QueryOptions if configured. Expects the format to be `{projectId}.{datasetId}.{tableId}` to set the corresponding values in the [TableReference](https://github.com/googleapis/google-api-dotnet-client/blob/6c415c73788b848711e47c6dd33c2f93c76faf97/Src/Generated/Google.Apis.Bigquery.v2/Google.Apis.Bigquery.v2.cs#L9348) class.
   - **allowLargeResults** - Whether to allow large results .

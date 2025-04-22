@@ -396,9 +396,14 @@ jobs:
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      # XXX: https://github.com/actions/setup-go/issues/457
+      # We can't use go-version-file for setup-go because it doesn't understand
+      # the 'toolchain' parameter and staticcheck tends to need the latest Go
+      - id: toolchain
+        run: echo "GO_VERSION=$(sed -n 's/^toolchain go//p' go/adbc/go.mod)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@v5
         with:
-          go-version-file: "go/adbc/go.mod"
+          go-version: ${{ steps.toolchain.outputs.GO_VERSION }}
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum

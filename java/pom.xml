@@ -164,7 +164,7 @@
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
-        <version>5.12.1</version>
+        <version>5.12.2</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -177,7 +177,7 @@
         <plugin>
           <groupId>com.diffplug.spotless</groupId>
           <artifactId>spotless-maven-plugin</artifactId>
-          <version>2.44.3</version>
+          <version>2.44.4</version>
         </plugin>
         <plugin>
           <groupId>org.codehaus.mojo.natives</groupId>
@@ -300,7 +300,7 @@
                 <path>
                   <groupId>com.google.errorprone</groupId>
                   <artifactId>error_prone_core</artifactId>
-                  <version>2.37.0</version>
+                  <version>2.38.0</version>
                 </path>
                 <path>
                   <groupId>com.uber.nullaway</groupId>

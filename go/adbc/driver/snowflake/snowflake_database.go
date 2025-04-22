@@ -156,7 +156,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		}
 	}
 
-	dv, _ := d.DatabaseImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	dv, _ := d.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	driverVersion := dv.(string)
 	defaultAppName := "[ADBC][Go-" + driverVersion + "]"
 	// set default application name to track
@@ -362,7 +362,8 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 
 			var parsedKey any
 
-			if block.Type == "ENCRYPTED PRIVATE KEY" {
+			switch block.Type {
+			case "ENCRYPTED PRIVATE KEY":
 				passcode, ok := cnOptions[OptionJwtPrivateKeyPkcs8Password]
 				if ok {
 					parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(passcode))
@@ -372,9 +373,9 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 						Code: adbc.StatusInvalidArgument,
 					}
 				}
-			} else if block.Type == "PRIVATE KEY" {
+			case "PRIVATE KEY":
 				parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes)
-			} else {
+			default:
 				return adbc.Error{
 					Msg:  block.Type + " is not supported",
 					Code: adbc.StatusInvalidArgument,

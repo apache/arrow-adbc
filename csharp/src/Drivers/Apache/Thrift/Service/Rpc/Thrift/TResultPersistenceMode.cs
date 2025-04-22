@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TResultPersistenceMode
+  internal enum TResultPersistenceMode
   {
     ONLY_LARGE_RESULTS = 0,
     ALL_QUERY_RESULTS = 1,

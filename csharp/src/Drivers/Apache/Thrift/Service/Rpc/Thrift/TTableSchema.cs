@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TTableSchema : TBase
+  internal partial class TTableSchema : TBase
   {
 
     public List<global::Apache.Hive.Service.Rpc.Thrift.TColumnDesc> Columns { get; set; }

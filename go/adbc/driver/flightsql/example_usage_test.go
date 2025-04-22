@@ -24,6 +24,7 @@ package flightsql_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 
@@ -39,7 +40,7 @@ import (
 
 var headers = map[string]string{"foo": "bar"}
 
-func FlightSQLExample(uri string) error {
+func FlightSQLExample(uri string) (err error) {
 	ctx := context.Background()
 	options := map[string]string{
 		adbc.OptionKeyURI: uri,
@@ -55,19 +56,25 @@ func FlightSQLExample(uri string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open database: %s\n", err.Error())
 	}
-	defer db.Close()
+	defer func() {
+		err = errors.Join(err, db.Close())
+	}()
 
 	cnxn, err := db.Open(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to open connection: %s", err.Error())
 	}
-	defer cnxn.Close()
+	defer func() {
+		err = errors.Join(err, cnxn.Close())
+	}()
 
 	stmt, err := cnxn.NewStatement()
 	if err != nil {
 		return fmt.Errorf("failed to create statement: %s", err.Error())
 	}
-	defer stmt.Close()
+	defer func() {
+		err = errors.Join(err, stmt.Close())
+	}()
 
 	if err = stmt.SetSqlQuery("SELECT 1 AS theresult"); err != nil {
 		return fmt.Errorf("failed to set query: %s", err.Error())
@@ -105,7 +112,12 @@ func Example() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	srv, err := sqlite.NewSQLiteFlightSQLServer(db)
 	if err != nil {

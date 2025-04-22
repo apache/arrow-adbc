@@ -26,6 +26,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         // CloudFetch configuration parameters
         /// <summary>
+        /// Whether to use CloudFetch for retrieving results.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string UseCloudFetch = "adbc.databricks.cloudfetch.enabled";
+
+        /// <summary>
+        /// Whether the client can decompress LZ4 compressed results.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string CanDecompressLz4 = "adbc.databricks.cloudfetch.lz4.enabled";
+
+        /// <summary>
+        /// Maximum bytes per file for CloudFetch.
+        /// Default value is 20MB if not specified.
+        /// </summary>
+        public const string MaxBytesPerFile = "adbc.databricks.cloudfetch.max_bytes_per_file";
+
+        /// <summary>
         /// Maximum number of retry attempts for CloudFetch downloads.
         /// Default value is 3 if not specified.
         /// </summary>
@@ -42,6 +60,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is 5 minutes if not specified.
         /// </summary>
         public const string CloudFetchTimeoutMinutes = "adbc.databricks.cloudfetch.timeout_minutes";
+
+        /// <summary>
+        /// Whether to apply service side properties (SSP) with queries. If false, SSP will be applied
+        /// by setting the Thrift configuration when the session is opened.
+        /// Default value is false if not specified.
+        /// </summary>
+        public const string ApplySSPWithQueries = "adbc.databricks.apply_ssp_with_queries";
+
+        /// <summary>
+        /// Prefix for server-side properties. Properties with this prefix will be passed to the server
+        /// by executing a "set key=value" query when opening a session.
+        /// For example, a property with key "adbc.databricks.SSP_use_cached_result"
+        /// and value "true" will result in executing "set use_cached_result=true" on the server.
+        /// </summary>
+        public const string ServerSidePropertyPrefix = "adbc.databricks.SSP_";
     }
 
     /// <summary>

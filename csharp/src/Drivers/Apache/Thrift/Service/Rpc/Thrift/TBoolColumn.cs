@@ -28,7 +28,7 @@ using Thrift.Protocol.Utilities;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TBoolColumn : TBase
+  internal partial class TBoolColumn : TBase
   {
 
     public BooleanArray Values { get; set; }

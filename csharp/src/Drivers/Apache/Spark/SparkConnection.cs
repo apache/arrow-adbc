@@ -63,7 +63,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected internal override int PositionRequiredOffset => 1;
 
-        protected override void SetPrecisionScaleAndTypeName(
+        internal override void SetPrecisionScaleAndTypeName(
             short colType,
             string typeName,
             TableInfo? tableInfo,

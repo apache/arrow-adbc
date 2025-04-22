@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TProtocolVersion
+  internal enum TProtocolVersion
   {
     __HIVE_JDBC_WORKAROUND = -7,
     __TEST_PROTOCOL_VERSION = 65281,
