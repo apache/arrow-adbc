@@ -150,7 +150,7 @@ impl From<libloading::Error> for Error {
 }
 
 struct ManagedDriverInner {
-    driver: Pin<Box<ffi::FFI_AdbcDriver>>,
+    driver: ffi::FFI_AdbcDriver,
     version: AdbcVersion, // Driver version
     // The dynamic library must be kept loaded for the entire lifetime of the driver.
     // To avoid complex lifetimes we prefer to store it as part of this struct.
@@ -165,7 +165,7 @@ struct ManagedDriverInner {
 /// Implementation of [Driver].
 #[derive(Clone)]
 pub struct ManagedDriver {
-    inner: Arc<ManagedDriverInner>,
+    inner: Pin<Arc<ManagedDriverInner>>,
 }
 
 impl ManagedDriver {
@@ -177,8 +177,8 @@ impl ManagedDriver {
     /// Load a driver from an initialization function.
     pub fn load_static(init: &ffi::FFI_AdbcDriverInitFunc, version: AdbcVersion) -> Result<Self> {
         let driver = Self::load_impl(init, version)?;
-        let inner = Arc::new(ManagedDriverInner {
-            driver: Box::pin(driver),
+        let inner = Arc::pin(ManagedDriverInner {
+            driver,
             version,
             _library: None,
         });
@@ -205,8 +205,8 @@ impl ManagedDriver {
         let init: libloading::Symbol<ffi::FFI_AdbcDriverInitFunc> =
             unsafe { library.get(entrypoint)? };
         let driver = Self::load_impl(&init, version)?;
-        let inner = Arc::new(ManagedDriverInner {
-            driver: Box::pin(driver),
+        let inner = Arc::pin(ManagedDriverInner {
+            driver,
             version,
             _library: Some(library),
         });
@@ -248,7 +248,7 @@ impl ManagedDriver {
     }
 
     fn inner_ffi_driver(&self) -> &ffi::FFI_AdbcDriver {
-        &*self.inner.driver
+        &self.inner.driver
     }
 
     /// Returns a new database using the loaded driver.
@@ -444,12 +444,12 @@ where
 
 struct ManagedDatabaseInner {
     database: Mutex<ffi::FFI_AdbcDatabase>,
-    driver: Arc<ManagedDriverInner>,
+    driver: Pin<Arc<ManagedDriverInner>>,
 }
 
 impl Drop for ManagedDatabaseInner {
     fn drop(&mut self) {
-        let driver = &*self.driver.driver;
+        let driver = &self.driver.driver;
         let mut database = self.database.lock().unwrap();
         let method = driver_method!(driver, DatabaseRelease);
         // TODO(alexandreyc): how should we handle `DatabaseRelease` failing?
@@ -466,7 +466,7 @@ pub struct ManagedDatabase {
 
 impl ManagedDatabase {
     fn ffi_driver(&self) -> &ffi::FFI_AdbcDriver {
-        &*self.inner.driver.driver
+        &self.inner.driver.driver
     }
 
     fn driver_version(&self) -> AdbcVersion {
@@ -667,7 +667,7 @@ struct ManagedConnectionInner {
 
 impl Drop for ManagedConnectionInner {
     fn drop(&mut self) {
-        let driver = &*self.database.driver.driver;
+        let driver = &self.database.driver.driver;
         let mut connection = self.connection.lock().unwrap();
         let method = driver_method!(driver, ConnectionRelease);
         // TODO(alexandreyc): how should we handle `ConnectionRelease` failing?
@@ -684,7 +684,7 @@ pub struct ManagedConnection {
 
 impl ManagedConnection {
     fn ffi_driver(&self) -> &ffi::FFI_AdbcDriver {
-        &*self.inner.database.driver.driver
+        &self.inner.database.driver.driver
     }
 
     fn driver_version(&self) -> AdbcVersion {
@@ -1089,7 +1089,7 @@ impl ManagedStatement {
     }
 
     fn ffi_driver(&self) -> &ffi::FFI_AdbcDriver {
-        &*self.inner.connection.database.driver.driver
+        &self.inner.connection.database.driver.driver
     }
 }
 
