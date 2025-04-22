@@ -170,6 +170,9 @@ func isWildcardStr(ident string) bool {
 }
 
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (array.RecordReader, error) {
+	_, span := c.db.Tracer.Start(ctx, "GetObjects")
+	defer span.End()
+
 	var (
 		pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
 		showSchemaQueryID, tableQueryID                     string

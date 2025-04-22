@@ -18,7 +18,9 @@
 package snowflake
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"net/http"
 	"runtime/debug"
@@ -28,6 +30,12 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -117,6 +125,8 @@ const (
 	// use a username and password with mfa
 	OptionValueAuthUserPassMFA = "auth_mfa"
 )
+
+const driverNamespace = "apache.arrow.adbc.spark.driver"
 
 var (
 	infoVendorVersion string
@@ -243,5 +253,62 @@ func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, optFuncs ...
 		}
 	}
 
-	return driverbase.NewDatabase(db), nil
+	database, err := setTracing(db)
+	if err != nil {
+		return nil, err
+	}
+
+	return database, nil
+}
+
+func setTracing(db *databaseImpl) (driverbase.Database, error) {
+	shutdownTracerFunc, err := installExportPipeline()
+	if err != nil {
+		return nil, err
+	}
+
+	database := driverbase.NewDatabase(db)
+	logging, ok := database.(adbc.DatabaseLogging)
+	if !ok {
+		db.Logger.Error("spark does not support logging")
+		return nil, errors.New("spark does not support logging")
+	}
+	tracer := otel.GetTracerProvider().Tracer(
+		driverNamespace,
+		trace.WithInstrumentationVersion("0.1.0"), // TODO: Get driver version
+		trace.WithSchemaURL(semconv.SchemaURL),
+	)
+	logging.SetTracer(tracer)
+	logging.SetTracerShutdownFunc(shutdownTracerFunc)
+	return database, nil
+}
+
+func installExportPipeline() (func(context.Context) error, error) {
+	writer, err := driverbase.NewRotatingFileWriter(driverbase.WithLogNamePrefix(driverNamespace))
+	if err != nil {
+		return nil, err
+	}
+
+	exporter, err := stdouttrace.New(
+		stdouttrace.WithWriter(writer),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating stdout exporter: %w", err)
+	}
+
+	tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(tracingResource()),
+	)
+	otel.SetTracerProvider(tracerProvider)
+
+	return tracerProvider.Shutdown, nil
+}
+
+func tracingResource() *resource.Resource {
+	return resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceName(driverNamespace),
+		semconv.ServiceVersion("0.1.0"), // TODO: Get driver version
+	)
 }

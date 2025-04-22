@@ -15,34 +15,30 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package driverbase
+package driverbase_test
 
 import (
-	"log/slog"
-	"os"
+	"testing"
 
-	"go.opentelemetry.io/otel"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"go.opentelemetry.io/otel/trace"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/stretchr/testify/require"
 )
 
-func nilLogger() *slog.Logger {
-	h := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		AddSource: false,
-		Level:     slog.LevelError,
-	})
-	return slog.New(h)
-}
+func TestRotatingFileWriter(t *testing.T) {
 
-func defaultTracer() trace.Tracer {
-	const (
-		instrumentationName    = "apache.arrow.adbc.go"
-		instrumentationVersion = "0.1.0"
+	fw, err := driverbase.NewRotatingFileWriter(
+		driverbase.WithFileSizeMaxKb(1),
+		driverbase.WithFileCountMax(10),
 	)
-	tracer := otel.GetTracerProvider().Tracer(
-		instrumentationName,
-		trace.WithInstrumentationVersion(instrumentationVersion),
-		trace.WithSchemaURL(semconv.SchemaURL),
-	)
-	return tracer
+	defer func() {
+		err := fw.Clear()
+		require.NoError(t, err)
+	}()
+
+	require.NoError(t, err)
+	for range 1000 {
+		fw.Write([]byte("my string\n"))
+	}
+	err = fw.Close()
+	require.NoError(t, err)
 }

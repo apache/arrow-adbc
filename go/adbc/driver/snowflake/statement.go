@@ -30,6 +30,9 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -521,11 +524,15 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	ctx = st.setQueryContext(ctx)
 
+	_, span := st.cnxn.db.Tracer.Start(ctx, "ExecuteUpdate")
+	defer span.End()
+
 	if st.targetTable != "" {
 		return st.executeIngest(ctx)
 	}
 
 	if st.query == "" {
+		span.SetStatus(codes.Error, codes.Error.String())
 		return -1, adbc.Error{
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
@@ -547,11 +554,16 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 			if err == io.EOF {
 				break
 			} else if err != nil {
+				span.SetStatus(codes.Error, codes.Error.String())
 				return -1, err
 			}
 
+			span.AddEvent("execute.start",
+				trace.WithAttributes(attribute.String("query", st.query)),
+			)
 			r, err := st.cnxn.cn.ExecContext(ctx, st.query, params)
 			if err != nil {
+				span.SetStatus(codes.Error, codes.Error.String())
 				return -1, errToAdbcErr(adbc.StatusInternal, err)
 			}
 			n, err := r.RowsAffected()
@@ -561,11 +573,19 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 				numRows += n
 			}
 		}
+		span.AddEvent("execute.end",
+			trace.WithAttributes(attribute.Int64("rowcount", numRows)),
+		)
+		span.SetStatus(codes.Ok, codes.Ok.String())
 		return numRows, nil
 	}
 
+	span.AddEvent("execute.start",
+		trace.WithAttributes(attribute.String("query", st.query)),
+	)
 	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)
 	if err != nil {
+		span.SetStatus(codes.Error, codes.Error.String())
 		return -1, errToAdbcErr(adbc.StatusIO, err)
 	}
 
@@ -574,6 +594,10 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 		n = -1
 	}
 
+	span.AddEvent("execute.end",
+		trace.WithAttributes(attribute.Int64("rowcount", n)),
+	)
+	span.SetStatus(codes.Ok, codes.Ok.String())
 	return n, nil
 }
 

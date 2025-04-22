@@ -23,6 +23,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -49,10 +50,12 @@ type Database interface {
 // DatabaseImpl interface. It is meant to be used as a composite struct for a
 // driver's DatabaseImpl implementation.
 type DatabaseImplBase struct {
-	Alloc       memory.Allocator
-	ErrorHelper ErrorHelper
-	DriverInfo  *DriverInfo
-	Logger      *slog.Logger
+	Alloc              memory.Allocator
+	ErrorHelper        ErrorHelper
+	DriverInfo         *DriverInfo
+	Logger             *slog.Logger
+	Tracer             trace.Tracer
+	TracerShutdownFunc func(context.Context) error
 }
 
 // NewDatabaseImplBase instantiates DatabaseImplBase.
@@ -134,6 +137,18 @@ func (db *database) SetLogger(logger *slog.Logger) {
 	} else {
 		db.Base().Logger = nilLogger()
 	}
+}
+
+func (db *database) SetTracer(tracer trace.Tracer) {
+	if tracer != nil {
+		db.Base().Tracer = tracer
+	} else {
+		db.Base().Tracer = defaultTracer()
+	}
+}
+
+func (db *database) SetTracerShutdownFunc(shutdownFunc func(context.Context) error) {
+	db.Base().TracerShutdownFunc = shutdownFunc
 }
 
 var _ DatabaseImpl = (*DatabaseImplBase)(nil)

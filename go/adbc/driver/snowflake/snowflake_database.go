@@ -467,5 +467,12 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 }
 
 func (d *databaseImpl) Close() error {
+	if d.Base().TracerShutdownFunc != nil {
+		// TODO: What is the correct context to use? Should it be passed in?
+		err := d.Base().TracerShutdownFunc(context.TODO())
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
