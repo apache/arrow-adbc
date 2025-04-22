@@ -35,7 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkHttpConnection : SparkConnection
     {
-        private static readonly string s_baseUserAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault}";
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
@@ -258,7 +257,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // Build the base user agent string with Thrift version
             string thriftVersion = GetThriftVersion();
             string thriftComponent = string.IsNullOrEmpty(thriftVersion) ? "Thrift" : $"Thrift/{thriftVersion}";
-            string baseUserAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault} {thriftComponent}"; // consider using ProductVersion instead of ProductVersionDefault
+            string baseUserAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault} {thriftComponent}";
             
             // Check if a client has provided a user-agent entry
             if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string? userAgentEntry) && !string.IsNullOrWhiteSpace(userAgentEntry))
