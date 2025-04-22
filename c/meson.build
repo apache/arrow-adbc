@@ -17,7 +17,8 @@
 
 project(
     'arrow-adbc',
-    'c', 'cpp',
+    'c',
+    'cpp',
     version: '1.6.0-SNAPSHOT',
     license: 'Apache-2.0',
     meson_version: '>=1.3.0',
@@ -26,10 +27,14 @@ project(
         'c_std=c99',
         'warning_level=2',
         'cpp_std=c++17',
-    ]
+    ],
 )
 
-add_project_arguments('-Wno-int-conversion', '-Wno-unused-parameter', language: 'c')
+add_project_arguments(
+    '-Wno-int-conversion',
+    '-Wno-unused-parameter',
+    language: 'c',
+)
 add_project_arguments('-Wno-unused-parameter', '-Wno-reorder', language: 'cpp')
 
 c_dir = include_directories('.')
@@ -55,7 +60,10 @@ pkg = import('pkgconfig')
 
 if needs_driver_manager
     install_headers('include/adbc_driver_manager.h')
-    install_headers('include/arrow-adbc/adbc_driver_manager.h', subdir: 'arrow-adbc')
+    install_headers(
+        'include/arrow-adbc/adbc_driver_manager.h',
+        subdir: 'arrow-adbc',
+    )
     subdir('driver_manager')
 endif
 
@@ -63,25 +71,25 @@ subdir('driver/common')
 subdir('driver/framework')
 
 if get_option('tests')
-  subdir('validation')
+    subdir('validation')
 endif
 
 if get_option('bigquery')
-  subdir('driver/bigquery')
+    subdir('driver/bigquery')
 endif
 
 if get_option('flightsql')
-  subdir('driver/flightsql')
+    subdir('driver/flightsql')
 endif
 
 if get_option('postgresql')
-  subdir('driver/postgresql')
+    subdir('driver/postgresql')
 endif
 
 if get_option('sqlite')
-  subdir('driver/sqlite')
+    subdir('driver/sqlite')
 endif
 
 if get_option('snowflake')
-  subdir('driver/snowflake')
+    subdir('driver/snowflake')
 endif
