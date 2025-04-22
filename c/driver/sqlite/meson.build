@@ -39,13 +39,11 @@ pkg.generate(
     filebase: 'adbc-driver-sqlite',
 )
 
-if get_option('tests').enabled()
-    exc = executable(
-        'adbc-driver-sqlite-test',
-        sources: ['sqlite_test.cc'],
-        include_directories: [include_dir, c_dir, driver_dir],
-        link_with: [adbc_common_lib, adbc_sqlite3_driver_lib],
-        dependencies: [sqlite3_dep, adbc_validation_dep],
-    )
-    test('adbc-driver-sqlite', exc)
-endif
+exc = executable(
+    'adbc-driver-sqlite-test',
+    sources: ['sqlite_test.cc'],
+    include_directories: [include_dir, c_dir, driver_dir],
+    link_with: [adbc_common_lib, adbc_sqlite3_driver_lib],
+    dependencies: [sqlite3_dep, adbc_validation_dep],
+)
+test('adbc-driver-sqlite', exc)

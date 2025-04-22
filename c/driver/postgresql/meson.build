@@ -41,29 +41,27 @@ pkg.generate(
     filebase: 'adbc-driver-postgresql',
 )
 
-if get_option('tests').enabled()
-    postgres_tests = {
-        'driver-postgresql': {
-            'src_name': 'driver_postgresql',
-            'sources': ['postgres_type_test.cc', 'postgresql_test.cc'],
-        },
-        'driver-postgresql-copy': {
-            'src_name': 'driver_postgresql_copy',
-            'sources': [
-                'copy/postgres_copy_reader_test.cc',
-                'copy/postgres_copy_writer_test.cc',
-            ],
-        },
-    }
+postgres_tests = {
+    'driver-postgresql': {
+        'src_name': 'driver_postgresql',
+        'sources': ['postgres_type_test.cc', 'postgresql_test.cc'],
+    },
+    'driver-postgresql-copy': {
+        'src_name': 'driver_postgresql_copy',
+        'sources': [
+            'copy/postgres_copy_reader_test.cc',
+            'copy/postgres_copy_writer_test.cc',
+        ],
+    },
+}
 
-    foreach name, conf : postgres_tests
-        exc = executable(
-            'adbc-' + name + '-test',
-            sources: conf['sources'],
-            include_directories: [include_dir, driver_dir, c_dir],
-            link_with: [adbc_common_lib, adbc_postgres_driver_lib],
-            dependencies: [libpq_dep, adbc_validation_dep],
-        )
-        test('adbc-' + name, exc)
-    endforeach
-endif
+foreach name, conf : postgres_tests
+    exc = executable(
+        'adbc-' + name + '-test',
+        sources: conf['sources'],
+        include_directories: [include_dir, driver_dir, c_dir],
+        link_with: [adbc_common_lib, adbc_postgres_driver_lib],
+        dependencies: [libpq_dep, adbc_validation_dep],
+    )
+    test('adbc-' + name, exc)
+endforeach
