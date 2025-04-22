@@ -43,10 +43,12 @@ type config struct {
 	FileCountMax      int
 }
 
+// An option for the RotatingFileWriter
 type RotatingFileWriterOption interface {
 	apply(config) config
 }
 
+// Adds the TracingFolderPath option
 func WithTracingFolderPath(tracingFolderPath string) RotatingFileWriterOption {
 	return tracingFolderPathOption{tracingFolderPath}
 }
@@ -60,6 +62,7 @@ func (o tracingFolderPathOption) apply(cfg config) config {
 	return cfg
 }
 
+// Adds the LogNamePrefix option
 func WithLogNamePrefix(logNamePrefix string) RotatingFileWriterOption {
 	return logNamePrefixOption{logNamePrefix}
 }
@@ -73,6 +76,7 @@ func (o logNamePrefixOption) apply(cfg config) config {
 	return cfg
 }
 
+// Adds the FileSizeMaxKb option
 func WithFileSizeMaxKb(fileSizeMaxKb int64) RotatingFileWriterOption {
 	return fileSizeMaxKbOption{fileSizeMaxKb}
 }
@@ -86,6 +90,7 @@ func (o fileSizeMaxKbOption) apply(cfg config) config {
 	return cfg
 }
 
+// Adds the FileCountMax option
 func WithFileCountMax(fileCountMax int) RotatingFileWriterOption {
 	return fileCountMaxOption{fileCountMax}
 }
@@ -101,26 +106,37 @@ func (o fileCountMaxOption) apply(cfg config) config {
 
 func newConfig(options ...RotatingFileWriterOption) config {
 	cfg := config{
-		TracingFolderPath: "",
+		TracingFolderPath: defaultTracingFolderPath,
 		LogNamePrefix:     defaultLogNamePrefix,
 		FileSizeMaxKb:     defaultFileSizeMaxKb,
 		FileCountMax:      defaultFileCountMax,
 	}
 	for _, opt := range options {
+		// Applies the option value to the configuration
 		cfg = opt.apply(cfg)
 	}
 	return cfg
 }
 
+// A rotating file writer that writes bytes to new trace files into a given TracingFolderPath until the trace file exceeds FileSizeMaxKb in size.
+// Then a new trace file is created. If the number archived trace files exceeds FileCountMax, then the oldest file(s) are removed.
+// The files are named with the following pattern "<LogNamePrefix>-<current date/time UTC>.jsonl"
 type RotatingFileWriter interface {
+	// Extends
 	io.Writer
 	io.Closer
 
+	// Gets the path to the tracing folder
 	GetTracingFolderPath() string
+	// Gets the prefix for the log file name
 	GetLogNamePrefix() string
+	// Gets the maximum file size for the trace file
 	GetFileSizeMaxKb() int64
+	// Gets the maximum number of archive trace files to keep in the rotation
 	GetFileCountMax() int
+	// Gets the file stats for the current trace file
 	Stat() (fs.FileInfo, error)
+	// Clears the tracing folder of trace files with the given log file prefix
 	Clear() error
 }
 
@@ -132,13 +148,14 @@ type rotatingFileWriterImpl struct {
 	CurrentWriter     *os.File
 }
 
+// Creates a new RotatingFileWriter from the given options
 func NewRotatingFileWriter(options ...RotatingFileWriterOption) (RotatingFileWriter, error) {
 
 	cfg := newConfig(options...)
 
 	var tracingFolderPath = cfg.TracingFolderPath
 	// Ensure default for tracingFolderPath
-	if tracingFolderPath == "" {
+	if strings.TrimSpace(tracingFolderPath) == "" {
 		fullPath, err := getDefaultTracingFolderPath()
 		if err != nil {
 			return nil, err
@@ -161,14 +178,14 @@ func NewRotatingFileWriter(options ...RotatingFileWriterOption) (RotatingFileWri
 	var fileSizeMaxKb = cfg.FileSizeMaxKb
 	// Ensure default for fileSizeMaxKb
 	if fileSizeMaxKb <= 0 {
-		var maxKb int64 = defaultFileSizeMaxKb
+		var maxKb = defaultFileSizeMaxKb
 		fileSizeMaxKb = maxKb
 	}
 
 	var fileCountMax = cfg.FileCountMax
 	// Ensure default for fileCountMax
 	if fileCountMax <= 0 {
-		var countMax int = defaultFileCountMax
+		var countMax = defaultFileCountMax
 		fileCountMax = countMax
 	}
 
@@ -204,6 +221,7 @@ func getDefaultTracingFolderPath() (string, error) {
 	return fullPath, nil
 }
 
+// Closes the rotating file write
 func (base *rotatingFileWriterImpl) Close() error {
 	if base.CurrentWriter != nil {
 		err := base.CurrentWriter.Close()
