@@ -36,8 +36,13 @@ func TestRotatingFileWriter(t *testing.T) {
 	}()
 
 	require.NoError(t, err)
+	const value = "my string\n"
+	valueLen := len(value)
+
 	for range 1000 {
-		fw.Write([]byte("my string\n"))
+		len, err := fw.Write([]byte(value))
+		require.NoError(t, err)
+		require.Equal(t, valueLen, len)
 	}
 	err = fw.Close()
 	require.NoError(t, err)

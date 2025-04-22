@@ -195,8 +195,8 @@ func NewRotatingFileWriter(options ...RotatingFileWriterOption) (RotatingFileWri
 		return nil, err
 	}
 	defer func() {
-		tempFile.Close()
-		os.Remove(tempFile.Name())
+		_ = tempFile.Close()
+		_ = os.Remove(tempFile.Name())
 	}()
 	_, err = tempFile.WriteString("file started")
 	if err != nil {
