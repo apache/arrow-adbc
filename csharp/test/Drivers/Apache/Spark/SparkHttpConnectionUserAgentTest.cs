@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     public class SparkHttpConnectionUserAgentTest
     {
         [Fact]
-        public void UserAgentEntry_WhenNotProvided_UsesBaseUserAgent()
+        public void UserAgentEntry_WhenNotProvided_UsesBaseUserAgentWithThrift()
         {
             // Arrange
             var properties = new Dictionary<string, string>
@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string userAgent = GetUserAgentFromConnection(properties);
 
             // Assert
-            Assert.Equal("ADBCSparkDriver/1.0.0", userAgent);
+            Assert.Matches(@"ADBCSparkDriver/[\d\.]+ Thrift(/[\d\.]+)?", userAgent);
         }
 
         [Fact]
@@ -65,7 +65,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string userAgent = GetUserAgentFromConnection(properties);
 
             // Assert
-            Assert.Equal("ADBCSparkDriver/1.0.0 PowerBI", userAgent);
+            Assert.Matches(@"ADBCSparkDriver/[\d\.]+ Thrift(/[\d\.]+)? PowerBI", userAgent);
         }
 
         [Fact]
@@ -85,7 +85,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string userAgent = GetUserAgentFromConnection(properties);
 
             // Assert
-            Assert.Equal("ADBCSparkDriver/1.0.0", userAgent);
+            Assert.Matches(@"ADBCSparkDriver/[\d\.]+ Thrift(/[\d\.]+)?", userAgent);
         }
 
         [Fact]
@@ -105,7 +105,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
             string userAgent = GetUserAgentFromConnection(properties);
 
             // Assert
-            Assert.Equal("ADBCSparkDriver/1.0.0", userAgent);
+            Assert.Matches(@"ADBCSparkDriver/[\d\.]+ Thrift(/[\d\.]+)?", userAgent);
+        }
+
+        [Fact]
+        public void UserAgent_IncludesThriftComponent()
+        {
+            // Arrange
+            var properties = new Dictionary<string, string>
+            {
+                [SparkParameters.Type] = SparkServerTypeConstants.Http,
+                [SparkParameters.HostName] = "valid.server.com",
+                [SparkParameters.Path] = "/path",
+                [SparkParameters.AuthType] = SparkAuthTypeConstants.None
+            };
+
+            // Act
+            string userAgent = GetUserAgentFromConnection(properties);
+
+            // Assert
+            Assert.Contains("Thrift", userAgent);
         }
 
         private string GetUserAgentFromConnection(Dictionary<string, string> properties)

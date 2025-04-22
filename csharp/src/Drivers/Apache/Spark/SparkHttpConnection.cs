@@ -255,13 +255,33 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         
         private string GetUserAgent()
         {
+            // Build the base user agent string with Thrift version
+            string thriftVersion = GetThriftVersion();
+            string thriftComponent = string.IsNullOrEmpty(thriftVersion) ? "Thrift" : $"Thrift/{thriftVersion}";
+            string baseUserAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault} {thriftComponent}"; // consider using ProductVersion instead of ProductVersionDefault
+            
             // Check if a client has provided a user-agent entry
             if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string? userAgentEntry) && !string.IsNullOrWhiteSpace(userAgentEntry))
             {
-                return $"{s_baseUserAgent} {userAgentEntry}";
+                return $"{baseUserAgent} {userAgentEntry}";
             }
             
-            return s_baseUserAgent;
+            return baseUserAgent;
+        }
+        
+        private string GetThriftVersion()
+        {
+            try
+            {
+                var thriftAssembly = typeof(TProtocol).Assembly;
+                var version = thriftAssembly.GetName().Version;
+                return version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "";
+            }
+            catch
+            {
+                // Return empty string if there's any issue retrieving the assembly version
+                return "";
+            }
         }
     }
 }
