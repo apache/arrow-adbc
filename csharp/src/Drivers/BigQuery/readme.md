@@ -65,7 +65,7 @@ The following parameters can be used to configure the driver behavior. The param
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the timeout (in seconds) for the GetQueryResultsOptions value. If not set, defaults to 5 minutes. Similar to a CommandTimeout.
 
 **adbc.bigquery.maximum_retries**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Optional. The maximum number of retries when using token refresh. Defaults to 5.
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. The maximum number of retries. Defaults to 5.
 
 **adbc.bigquery.max_fetch_concurrency**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [maxStreamCount](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.Storage.V1/latest/Google.Cloud.BigQuery.Storage.V1.BigQueryReadClient#Google_Cloud_BigQuery_Storage_V1_BigQueryReadClient_CreateReadSession_System_String_Google_Cloud_BigQuery_Storage_V1_ReadSession_System_Int32_Google_Api_Gax_Grpc_CallSettings_) for the CreateReadSession method. If not set, defaults to 1.
@@ -95,7 +95,7 @@ The following parameters can be used to configure the driver behavior. The param
 &nbsp;&nbsp;&nbsp;&nbsp;The refresh token used for when the generated OAuth token expires. Required for `user` authentication.
 
 **adbc.bigquery.retry_delay_ms**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Optional The delay between retries when using token refresh. Defaults to 200ms.
+&nbsp;&nbsp;&nbsp;&nbsp;Optional The delay between retries. Defaults to 200ms. The retries could take up to `adbc.bigquery.maximum_retries` x `adbc.bigquery.retry_delay_ms` to complete.
 
 **adbc.bigquery.scopes**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Comma separated list of scopes to include for the credential.

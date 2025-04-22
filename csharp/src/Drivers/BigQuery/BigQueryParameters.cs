@@ -20,7 +20,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// Parameters used for connecting to BigQuery data sources.
     /// </summary>
-    class BigQueryParameters
+    internal class BigQueryParameters
     {
         public const string AccessToken = "adbc.bigquery.access_token";
         public const string AudienceUri = "adbc.bigquery.audience_uri";
@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// Constants used for default parameter values.
     /// </summary>
-    class BigQueryConstants
+    internal class BigQueryConstants
     {
         public const string UserAuthenticationType = "user";
         public const string EntraIdAuthenticationType = "aad";

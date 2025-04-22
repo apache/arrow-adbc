@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -85,6 +84,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
+        /// <summary>
+        /// The function to call when updating the token.
+        /// </summary>
         public Func<Task>? UpdateToken { get; set; }
 
         internal BigQueryClient? Client { get; private set; }
@@ -224,7 +226,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// </summary>
         /// <param name="credential"><see cref="GoogleCredential"/></param>
         /// <returns></returns>
-        GoogleCredential ApplyScopes(GoogleCredential credential)
+        private GoogleCredential ApplyScopes(GoogleCredential credential)
         {
             if (credential == null) throw new ArgumentNullException(nameof(credential));
 
@@ -385,7 +387,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// </summary>
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
-        async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, MaxRetryAttempts, RetryDelayMs);
+        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, MaxRetryAttempts, RetryDelayMs);
 
         /// <summary>
         /// Executes the query using the BigQueryClient.
@@ -398,7 +400,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// <remarks>
         /// Can later add logging or metrics around query calls.
         /// </remarks>
-        BigQueryResults? ExecuteQuery(string sql, IEnumerable<BigQueryParameter>? parameters, QueryOptions? queryOptions = null, GetQueryResultsOptions? resultsOptions = null)
+        private BigQueryResults? ExecuteQuery(string sql, IEnumerable<BigQueryParameter>? parameters, QueryOptions? queryOptions = null, GetQueryResultsOptions? resultsOptions = null)
         {
             if (Client == null) { Client = Open(); }
 
@@ -422,24 +424,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             PagedEnumerable<ProjectList, CloudProject>? catalogs;
             List<string> projectIds = new List<string>();
 
-            try
+            Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () => Task.Run(() =>
             {
-                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () => Task.Run(() =>
-                {
-                    // stick with this call because PagedAsyncEnumerable has different behaviors for selecting items
-                    return Client?.ListProjects();
-                });
+                // stick with this call because PagedAsyncEnumerable has different behaviors for selecting items
+                return Client?.ListProjects();
+            });
 
-                catalogs = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func).GetAwaiter().GetResult();
+            catalogs = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func).GetAwaiter().GetResult();
 
-                if (catalogs != null)
-                {
-                    projectIds = catalogs.Select(x => x.ProjectId).ToList();
-                }
-            }
-            catch
+            if (catalogs != null)
             {
-                // TODO: Logging
+                projectIds = catalogs.Select(x => x.ProjectId).ToList();
             }
 
             if (this.includePublicProjectIds && !projectIds.Contains(publicProjectId))
@@ -538,7 +533,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 nullBitmapBuffer.Build());
         }
 
-        StructArray GetTableSchemas(
+        private StructArray GetTableSchemas(
             GetObjectsDepth depth,
             string catalog,
             string dbSchema,
@@ -629,7 +624,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 nullBitmapBuffer.Build());
         }
 
-        StructArray GetColumnSchema(
+        private StructArray GetColumnSchema(
             string catalog,
             string dbSchema,
             string table,
@@ -811,7 +806,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 nullBitmapBuffer.Build());
         }
 
-        StringArray GetConstraintColumnNames(
+        private StringArray GetConstraintColumnNames(
             string catalog,
             string dbSchema,
             string table,
@@ -836,7 +831,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return constraintColumnNamesBuilder.Build();
         }
 
-        StructArray GetConstraintsUsage(
+        private StructArray GetConstraintsUsage(
             string catalog,
             string dbSchema,
             string table,
@@ -889,7 +884,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 nullBitmapBuffer.Build());
         }
 
-        string PatternToRegEx(string? pattern)
+        private string PatternToRegEx(string? pattern)
         {
             if (pattern == null)
                 return ".*";
@@ -902,7 +897,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return builder.ToString();
         }
 
-        string ToTypeName(string type, out string suffix)
+        private string ToTypeName(string type, out string suffix)
         {
             suffix = string.Empty;
 
@@ -918,7 +913,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return dataType;
         }
 
-        XdbcDataType ToXdbcDataType(string type)
+        private XdbcDataType ToXdbcDataType(string type)
         {
             switch (type)
             {
@@ -1004,7 +999,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new Schema(fields, null);
         }
 
-        Field DescToField(BigQueryRow row)
+        private Field DescToField(BigQueryRow row)
         {
             Dictionary<string, string> metaData = new Dictionary<string, string>();
             metaData.Add("PRIMARY_KEY", "");
@@ -1024,7 +1019,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return fieldBuilder.Build();
         }
 
-        string GetValue(object value)
+        private string GetValue(object value)
         {
             switch (value)
             {
@@ -1040,7 +1035,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
-        Field.Builder SchemaFieldGenerator(string name, string type)
+        private Field.Builder SchemaFieldGenerator(string name, string type)
         {
             int index = type.IndexOf("(");
             index = index == -1 ? type.IndexOf("<") : Math.Max(index, type.IndexOf("<"));
@@ -1049,7 +1044,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return GetFieldBuilder(name, type, dataType, index);
         }
 
-        Field.Builder GetFieldBuilder(string name, string type, string dataType, int index)
+        private Field.Builder GetFieldBuilder(string name, string type, string dataType, int index)
         {
             Field.Builder fieldBuilder = new Field.Builder();
             fieldBuilder.Name(name);
@@ -1102,13 +1097,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
-        class ParsedDecimalValues
+        private class ParsedDecimalValues
         {
             public int Precision { get; set; }
             public int Scale { get; set; }
         }
 
-        ParsedDecimalValues ParsePrecisionAndScale(string type)
+        private ParsedDecimalValues ParsePrecisionAndScale(string type)
         {
             if (string.IsNullOrWhiteSpace(type)) throw new ArgumentNullException(nameof(type));
 
@@ -1152,7 +1147,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return statement;
         }
 
-        Dictionary<string, string> ParseOptions()
+        private Dictionary<string, string> ParseOptions()
         {
             Dictionary<string, string> options = new Dictionary<string, string>();
 
@@ -1186,9 +1181,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this.httpClient?.Dispose();
         }
 
-        static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");
+        private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");
 
-        string Sanitize(string? input)
+        private string Sanitize(string? input)
         {
             if (string.IsNullOrEmpty(input))
                 return string.Empty;
@@ -1213,7 +1208,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// <param name="refreshToken"></param>
         /// <param name="tokenEndpoint"></param>
         /// <returns></returns>
-        string? GetAccessToken(string clientId, string clientSecret, string refreshToken, string tokenEndpoint)
+        private string? GetAccessToken(string clientId, string clientSecret, string refreshToken, string tokenEndpoint)
         {
             string body = string.Format(
                 "grant_type=refresh_token&client_id={0}&client_secret={1}&refresh_token={2}",
@@ -1240,7 +1235,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// <param name="audience"></param>
         /// <param name="entraAccessToken"></param>
         /// <returns></returns>
-        string? TradeEntraIdTokenForBigQueryToken(string audience, string entraAccessToken)
+        private string? TradeEntraIdTokenForBigQueryToken(string audience, string entraAccessToken)
         {
             try
             {

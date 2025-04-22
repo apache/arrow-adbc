@@ -24,18 +24,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// Class that will retry calling a method with an exponential backoff.
     /// </summary>
-    class RetryManager
+    internal class RetryManager
     {
         public static async Task<T> ExecuteWithRetriesAsync<T>(
-           Func<Task<T>> action,
-           int maxRetries = 5,
-           int initialDelayMilliseconds = 200)
-        {
-            return await ExecuteWithRetriesAsync<T>(null, action, maxRetries, initialDelayMilliseconds);
-        }
-
-        public static async Task<T> ExecuteWithRetriesAsync<T>(
-            ITokenProtectedResource? tokenProtectedResource,
+            ITokenProtectedResource tokenProtectedResource,
             Func<Task<T>> action,
             int maxRetries = 5,
             int initialDelayMilliseconds = 200)
@@ -80,7 +72,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
 
                     await Task.Delay(delay);
-                    delay *= 2;
+                    delay += delay;
                 }
             }
 

@@ -25,7 +25,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// Stream used for metadata calls
     /// </summary>
-    class BigQueryInfoArrowStream : IArrowArrayStream
+    internal class BigQueryInfoArrowStream : IArrowArrayStream
     {
         private Schema schema;
         private RecordBatch? batch;

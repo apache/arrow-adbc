@@ -23,7 +23,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// Common interface for a token protected resource.
     /// </summary>
-    interface ITokenProtectedResource
+    internal interface ITokenProtectedResource
     {
         /// <summary>
         /// The function to call when updating the token.

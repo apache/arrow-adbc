@@ -20,7 +20,7 @@ using Google;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
-    class BigQueryUtils
+    internal class BigQueryUtils
     {
         public static bool TokenRequiresUpdate(Exception ex)
         {

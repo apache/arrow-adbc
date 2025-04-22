@@ -78,7 +78,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return ExecuteQueryInternalAsync().GetAwaiter().GetResult();
         }
 
-        async Task<QueryResult> ExecuteQueryInternalAsync()
+        private async Task<QueryResult> ExecuteQueryInternalAsync()
         {
             QueryOptions queryOptions = ValidateOptions();
             BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
@@ -200,7 +200,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
 
             ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
-            ReadSession rrs = clientMgr.ReadClient.CreateReadSession("projects/" + results.TableReference.ProjectId, rs, maxStreamCount);
+
+            Func<Task<ReadSession>> createReadSession = () => clientMgr.ReadClient.CreateReadSessionAsync("projects/" + results.TableReference.ProjectId, rs, maxStreamCount);
+
+            ReadSession rrs = await ExecuteWithRetriesAsync<ReadSession>(createReadSession);
 
             long totalRows = results.TotalRows == null ? -1L : (long)results.TotalRows.Value;
 
@@ -219,7 +222,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return ExecuteUpdateInternalAsync().GetAwaiter().GetResult();
         }
 
-        async Task<UpdateResult> ExecuteUpdateInternalAsync()
+        private async Task<UpdateResult> ExecuteUpdateInternalAsync()
         {
             QueryOptions options = ValidateOptions();
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
@@ -238,17 +241,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new UpdateResult(updatedRows);
         }
 
-        Schema TranslateSchema(TableSchema schema)
+        private Schema TranslateSchema(TableSchema schema)
         {
             return new Schema(schema.Fields.Select(TranslateField), null);
         }
 
-        Field TranslateField(TableFieldSchema field)
+        private Field TranslateField(TableFieldSchema field)
         {
             return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
         }
 
-        IArrowType TranslateType(TableFieldSchema field)
+        private IArrowType TranslateType(TableFieldSchema field)
         {
             // per https://developers.google.com/resources/api-libraries/documentation/bigquery/v2/java/latest/com/google/api/services/bigquery/model/TableFieldSchema.html#getType--
 
@@ -297,7 +300,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
-        StructType BuildStructType(TableFieldSchema field)
+        private StructType BuildStructType(TableFieldSchema field)
         {
             List<Field> arrowFields = new List<Field>();
 
@@ -310,7 +313,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return new StructType(arrowFields.AsReadOnly());
         }
 
-        IArrowType GetType(TableFieldSchema field, IArrowType type)
+        private IArrowType GetType(TableFieldSchema field, IArrowType type)
         {
             if (field.Mode == "REPEATED")
                 return new ListType(type);
@@ -318,18 +321,18 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return type;
         }
 
-        IArrowReader? ReadChunkWithRetries(TokenProtectedReadClientManger clientMgr, string streamName)
+        private IArrowReader? ReadChunkWithRetries(TokenProtectedReadClientManger clientMgr, string streamName)
         {
             Func<Task<IArrowReader?>> func = () => Task.FromResult<IArrowReader?>(ReadChunk(clientMgr, streamName));
             return RetryManager.ExecuteWithRetriesAsync<IArrowReader?>(clientMgr, func, MaxRetryAttempts, RetryDelayMs).GetAwaiter().GetResult();
         }
 
-        static IArrowReader? ReadChunk(TokenProtectedReadClientManger clientMgr, string streamName)
+        private static IArrowReader? ReadChunk(TokenProtectedReadClientManger clientMgr, string streamName)
         {
             return ReadChunk(clientMgr.ReadClient, streamName);
         }
 
-        static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName)
+        private static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName)
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
@@ -348,7 +351,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
-        QueryOptions ValidateOptions()
+        private QueryOptions ValidateOptions()
         {
             QueryOptions options = new QueryOptions();
 
@@ -424,9 +427,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
-        async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, MaxRetryAttempts, RetryDelayMs);
+        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, MaxRetryAttempts, RetryDelayMs);
 
-        class MultiArrowReader : IArrowArrayStream
+        private class MultiArrowReader : IArrowArrayStream
         {
             readonly Schema schema;
             IEnumerator<IArrowReader>? readers;
