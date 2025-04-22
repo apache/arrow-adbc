@@ -50,11 +50,19 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			Msg:  "[Databricks] " + err.Error(),
 		}
 	}
+	mode := ""
+	if d.config.WarehouseID != "" {
+		mode = ModeWarehouse
+	} else {
+		mode = ModeCluster
+	}
+	
 	conn := &connectionImpl{
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 		client:             client,
 		catalog:     d.catalog,
 		dbSchema:      d.dbSchema,
+		mode:          mode,
 	}
 	return driverbase.NewConnectionBuilder(conn).
 		WithAutocommitSetter(conn).

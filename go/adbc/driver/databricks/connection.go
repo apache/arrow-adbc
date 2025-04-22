@@ -24,7 +24,13 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/databricks/databricks-sdk-go"
+	"github.com/databricks/databricks-sdk-go/service/compute"
 	"github.com/databricks/databricks-sdk-go/service/sql"
+)
+
+const (
+	ModeWarehouse = "warehouse"
+	ModeCluster   = "cluster"
 )
 
 type connectionImpl struct {
@@ -35,6 +41,9 @@ type connectionImpl struct {
 	catalog string
 	// Default Schema name (optional)
 	dbSchema string
+
+	// Warehouse or Cluster Mode
+	mode string
 }
 
 func sanitizeSchema(schema string) (string, error) {
@@ -47,6 +56,13 @@ func (conn *connectionImpl) StatementExecution() sql.StatementExecutionInterface
 		return nil
 	}
 	return conn.client.StatementExecution
+}
+
+func (conn *connectionImpl) CommandExecution() compute.CommandExecutionInterface {
+	if conn.client == nil {
+		return nil
+	}
+	return conn.client.CommandExecution
 }
 
 // driverbase.CurrentNamespacer {{{
@@ -154,7 +170,10 @@ func (conn *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog st
 
 // NewStatement initializes a new statement object tied to this connection
 func (conn *connectionImpl) NewStatement() (adbc.Statement, error) {
-	return NewStatement(conn)
+	if conn.mode == ModeWarehouse {
+		return NewStatement(conn)
+	}
+	return NewCommand(conn)
 }
 
 // Close closes this connection and releases any associated resources.
