@@ -55,7 +55,7 @@ pkg.generate(
     filebase: 'adbc-driver-snowflake',
 )
 
-if get_option('tests')
+if get_option('tests').enabled()
     exc = executable(
         'adbc-driver-snowflake-test',
         'snowflake_test.cc',

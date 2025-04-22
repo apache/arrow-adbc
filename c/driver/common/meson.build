@@ -23,7 +23,7 @@ adbc_common_lib = library(
     install: true,
 )
 
-if get_option('tests')
+if get_option('tests').enabled()
     exc = executable(
         'adbc-driver-common-test',
         'utils_test.cc',

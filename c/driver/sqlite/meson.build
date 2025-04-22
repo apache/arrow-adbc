@@ -39,7 +39,7 @@ pkg.generate(
     filebase: 'adbc-driver-sqlite',
 )
 
-if get_option('tests')
+if get_option('tests').enabled()
     exc = executable(
         'adbc-driver-sqlite-test',
         sources: ['sqlite_test.cc'],

@@ -41,7 +41,7 @@ pkg.generate(
     filebase: 'adbc-driver-postgresql',
 )
 
-if get_option('tests')
+if get_option('tests').enabled()
     postgres_tests = {
         'driver-postgresql': {
             'src_name': 'driver_postgresql',
