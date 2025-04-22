@@ -251,23 +251,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SparkServerType ServerType => SparkServerType.Http;
 
         protected override int ColumnMapIndexOffset => 1;
-        
+
         private string GetUserAgent()
         {
             // Build the base user agent string with Thrift version
             string thriftVersion = GetThriftVersion();
             string thriftComponent = string.IsNullOrEmpty(thriftVersion) ? "Thrift" : $"Thrift/{thriftVersion}";
             string baseUserAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault} {thriftComponent}";
-            
+
             // Check if a client has provided a user-agent entry
             if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string? userAgentEntry) && !string.IsNullOrWhiteSpace(userAgentEntry))
             {
                 return $"{baseUserAgent} {userAgentEntry}";
             }
-            
+
             return baseUserAgent;
         }
-        
+
         private string GetThriftVersion()
         {
             try

@@ -131,16 +131,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             // Create the connection
             var connection = new SparkHttpConnection(properties);
-            
+
             // Use reflection to access the private GetUserAgent method
-            var getUserAgentMethod = typeof(SparkHttpConnection).GetMethod("GetUserAgent", 
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            
+            var getUserAgentMethod = typeof(SparkHttpConnection).GetMethod("GetUserAgent", BindingFlags.NonPublic | BindingFlags.Instance);
+
             if (getUserAgentMethod == null)
             {
                 throw new InvalidOperationException("GetUserAgent method not found");
             }
-            
+
             // Invoke the method
             return (string)getUserAgentMethod.Invoke(connection, null)!;
         }
