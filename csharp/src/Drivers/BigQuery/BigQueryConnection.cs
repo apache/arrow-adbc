@@ -424,12 +424,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             try
             {
-                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () =>
-                    Task.Run(() =>
-                    {
-                        // stick with this call because PagedAsyncEnumerable has different behaviors for selecting items
-                        return Client?.ListProjects();
-                    });
+                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () => Task.Run(() =>
+                {
+                    // stick with this call because PagedAsyncEnumerable has different behaviors for selecting items
+                    return Client?.ListProjects();
+                });
 
                 catalogs = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func).GetAwaiter().GetResult();
 
@@ -493,12 +492,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             string dbSchemaRegexp = PatternToRegEx(dbSchemaPattern);
 
-            Func<Task<PagedEnumerable<DatasetList, BigQueryDataset>?>> func = () =>
-                Task.Run(() =>
-                {
-                    // stick with this call because PagedAsyncEnumerable has different behaviors for selecting items
-                    return Client?.ListDatasets(catalog);
-                });
+            Func<Task<PagedEnumerable<DatasetList, BigQueryDataset>?>> func = () => Task.Run(() =>
+            {
+                // stick with this call because PagedAsyncEnumerable has different behaviors for selecting items
+                return Client?.ListDatasets(catalog);
+            });
 
             PagedEnumerable<DatasetList, BigQueryDataset>? schemas = ExecuteWithRetriesAsync<PagedEnumerable<DatasetList, BigQueryDataset>?>(func).GetAwaiter().GetResult();
 

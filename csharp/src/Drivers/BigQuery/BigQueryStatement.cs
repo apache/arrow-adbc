@@ -357,12 +357,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 // An error occurs when calling CreateQueryJob without the ID set,
                 // so use the first one that is found. This does not prevent from calling
                 // to other 'project IDs' (catalogs) with a query.
-                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () =>
-                    {
-                        return Task.Run(
-                            () => { return Client?.ListProjects(); }
-                         );
-                    };
+                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () => Task.Run(() =>
+                {
+                    return Client?.ListProjects();
+                });
 
                 PagedEnumerable<ProjectList, CloudProject>? projects = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func).GetAwaiter().GetResult();
 
