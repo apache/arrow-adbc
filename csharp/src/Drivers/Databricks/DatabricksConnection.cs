@@ -33,6 +33,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     internal class DatabricksConnection : SparkHttpConnection
     {
         private bool _applySSPWithQueries = false;
+        private bool _enableDirectResults = true;
+
+        internal static TSparkGetDirectResults defaultGetDirectResults = new(){
+            MaxRows = 2000000,
+            MaxBytes = 404857600
+        };
 
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
@@ -59,6 +65,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 else
                 {
                     throw new ArgumentException($"Parameter '{DatabricksParameters.ApplySSPWithQueries}' value '{applySSPWithQueriesStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.EnableDirectResults, out string? enableDirectResultsStr))
+            {
+                if (bool.TryParse(enableDirectResultsStr, out bool enableDirectResultsValue))
+                {
+                    _enableDirectResults = enableDirectResultsValue;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableDirectResults}' value '{enableDirectResultsStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
 
@@ -111,6 +129,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal bool ApplySSPWithQueries => _applySSPWithQueries;
 
         /// <summary>
+        /// Gets whether direct results are enabled.
+        /// </summary>
+        internal bool EnableDirectResults => _enableDirectResults;
+
+        /// <summary>
         /// Gets whether CloudFetch is enabled.
         /// </summary>
         internal bool UseCloudFetch => _useCloudFetch;
@@ -144,6 +167,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
             return baseHandler;
         }
+
+        protected internal override bool AreResultsAvailableDirectly() => _enableDirectResults;
+
+        protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetCatalogsReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetSchemasReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = defaultGetDirectResults;
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {

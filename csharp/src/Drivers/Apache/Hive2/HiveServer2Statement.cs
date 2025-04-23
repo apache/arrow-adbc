@@ -54,6 +54,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             statement.QueryTimeout = QueryTimeoutSeconds;
         }
 
+        public TSparkDirectResults? DirectResults { get; set; }
+
         public override QueryResult ExecuteQuery()
         {
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
@@ -104,12 +106,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // OR
             // take QueryTimeoutSeconds (but this could be restricting)
             await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
-            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
-            Schema schema = Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
 
+            TGetResultSetMetadataResp metadata;
+            if (DirectResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
+            {
+                // The initial response has result data so we don't need to poll
+                metadata = DirectResults.ResultSetMetadata;
+            } else {
+                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
+                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
+            }
             // Store metadata for use in readers
-            return new QueryResult(-1, Connection.NewReader(this, schema, response));
+            Schema schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+            return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
@@ -257,6 +266,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     .SetNativeError(executeResponse.Status.ErrorCode);
             }
             OperationHandle = executeResponse.OperationHandle;
+
+            // Capture direct results if they're available
+            if (executeResponse.DirectResults != null)
+            {
+                DirectResults = executeResponse.DirectResults;
+
+                if (!string.IsNullOrEmpty(DirectResults.OperationStatus?.DisplayMessage))
+                {
+                    throw new HiveServer2Exception(DirectResults.OperationStatus.DisplayMessage)
+                        .SetSqlState(DirectResults.OperationStatus.SqlState)
+                        .SetNativeError(DirectResults.OperationStatus.ErrorCode);
+                }
+            }
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;

@@ -117,6 +117,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 client.Timeout = TimeSpan.FromMinutes(this.timeoutMinutes);
                 return client;
             });
+
+            // // If we have direct results, initialize the result links from them
+            if (statement.HasDirectResults() && statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
+            {
+                this.resultLinks = statement.DirectResults!.ResultSet.Results.ResultLinks;
+
+                // Update the start offset for the next fetch by calculating it from the links
+                if (this.resultLinks.Count > 0)
+                {
+                    var lastLink = this.resultLinks[this.resultLinks.Count - 1];
+                    this.startOffset = lastLink.StartRowOffset + lastLink.RowCount;
+                }
+
+                if (!statement.DirectResults.ResultSet.HasMoreRows)
+                {
+                    this.statement = null;
+                }
+            }
         }
 
         /// <summary>
