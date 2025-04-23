@@ -111,22 +111,20 @@ namespace Apache.Arrow.Adbc.Extensions
 #else
                 case ArrowTypeId.Time32:
                     Time32Array time32Array = (Time32Array)arrowArray;
-                    int? time32 = time32Array.GetValue(index);
-                    if (time32 == null) { return null; }
+                    if (time32Array.IsNull(index)) { return null; }
                     return ((Time32Type)time32Array.Data.DataType).Unit switch
                     {
-                        TimeUnit.Second => TimeSpan.FromSeconds(time32.Value),
-                        TimeUnit.Millisecond => TimeSpan.FromMilliseconds(time32.Value),
+                        TimeUnit.Second => TimeSpan.FromSeconds(time32Array.GetSeconds(index)!.Value),
+                        TimeUnit.Millisecond => TimeSpan.FromMilliseconds(time32Array.GetMilliSeconds(index)!.Value),
                         _ => throw new InvalidDataException("Unsupported time unit for Time32Type")
                     };
                 case ArrowTypeId.Time64:
                     Time64Array time64Array = (Time64Array)arrowArray;
-                    long? time64 = time64Array.GetValue(index);
-                    if (time64 == null) { return null; }
+                    if (time64Array.IsNull(index)) { return null; }
                     return ((Time64Type)time64Array.Data.DataType).Unit switch
                     {
-                        TimeUnit.Microsecond => TimeSpan.FromTicks(time64.Value * 10),
-                        TimeUnit.Nanosecond => TimeSpan.FromTicks(time64.Value / 100),
+                        TimeUnit.Microsecond => TimeSpan.FromTicks(time64Array.GetMicroSeconds(index)!.Value * 10),
+                        TimeUnit.Nanosecond => TimeSpan.FromTicks(time64Array.GetNanoSeconds(index)!.Value / 100),
                         _ => throw new InvalidDataException("Unsupported time unit for Time64Type")
                     };
 #endif
@@ -257,9 +255,9 @@ namespace Apache.Arrow.Adbc.Extensions
                     switch (time64Type.Unit)
                     {
                         case TimeUnit.Microsecond:
-                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetValue(index)!.Value * 10);
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetMicroSeconds(index)!.Value * 10);
                         case TimeUnit.Nanosecond:
-                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetValue(index)!.Value / 100);
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetNanoSeconds(index)!.Value / 100);
                         default:
                             throw new InvalidDataException("Unsupported time unit for Time64Type");
                     }
