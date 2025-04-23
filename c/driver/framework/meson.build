@@ -22,4 +22,5 @@ adbc_framework_lib = library(
     link_with: [adbc_common_lib],
     dependencies: [nanoarrow_dep, fmt_dep],
     install: true,
+    gnu_symbol_visibility: 'hidden',
 )

@@ -29,6 +29,7 @@ adbc_sqlite3_driver_lib = library(
     link_with: [adbc_common_lib, adbc_framework_lib],
     dependencies: [nanoarrow_dep, fmt_dep, sqlite3_dep],
     c_args: ['-DSIZEOF_TIME_T=' + time_t_size.to_string()],
+    gnu_symbol_visibility: 'hidden',
 )
 
 pkg.generate(
