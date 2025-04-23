@@ -95,11 +95,10 @@
 // thread may make a call. They do not allow concurrent access from multiple
 // threads.
 //
-// In order to implement this semantics, all FFI objects are wrapped into
-// `Mutex`. Hence, we need to deal with multiple locks at once, so care must
-// be taken to avoid deadlock and in particular we must avoid "lock inversion".
-// The general convention chosen here is to first acquire lock to the driver
-// and then acquire lock to the specific object under implementation.
+// In order to implement these semantics, all mutable FFI objects are wrapped
+// in `Mutex`es. `FFI_Driver` is not wrapped in a `Mutex` because it is
+// an immutable struct of function pointers. Wrapping the driver in a `Mutex`
+// would prevent any parallelism between driver calls, which is not desirable.
 
 use std::collections::HashSet;
 use std::ffi::{CStr, CString, OsStr};
