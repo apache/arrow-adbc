@@ -230,6 +230,5 @@ jobs:
           OS: ${{ matrix.os }}
           OS_VERSION: ${{ matrix.version }}
         run: |
-          # Hmm, -e doesn't work?
           pushd arrow-adbc
           env ${OS@U}=${OS_VERSION} docker compose run --rm verify-all-${OS}

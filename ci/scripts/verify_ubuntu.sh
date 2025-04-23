@@ -53,10 +53,12 @@ main() {
         lsb-release \
         ninja-build \
         pkg-config \
+        protobuf-compiler \
         python3 \
         python3-dev \
         python3-pip \
         python3-venv \
+        r-base \
         ruby-full \
         software-properties-common \
         wget
@@ -70,14 +72,6 @@ main() {
     echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | \
         tee /etc/apt/sources.list.d/adoptium.list
 
-    # Install R
-    # https://cloud.r-project.org/bin/linux/ubuntu/
-
-    wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | \
-        tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
-
-    add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
-
     # Install Arrow GLib
     wget https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
     apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
@@ -86,7 +80,6 @@ main() {
     apt install -y \
         libarrow-dev \
         libarrow-glib-dev \
-        r-base \
         temurin-21-jdk
 
     # Install Maven
@@ -95,7 +88,21 @@ main() {
     tar -C /opt/maven -xzvf apache-maven-3.9.9-bin.tar.gz --strip-components=1
     export PATH=/opt/maven/bin:$PATH
 
-    # We run under Docker and this is necessary since the source dir is typically mounted as a volume
+    # Check if protoc is too old (Ubuntu 22.04).  If so, install it from
+    # upstream instead.
+    if ! protoc --version | \
+            awk '{print $2}{print "3.15"}' | \
+            sort --version-sort | \
+            head -n1 | \
+            grep -E '^3\.15.*$' >/dev/null ; then
+        echo "protoc is too old"
+
+        wget -O protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v30.2/protoc-30.2-linux-x86_64.zip
+        unzip -o protoc.zip -d /usr/local -x readme.txt
+    fi
+
+    # We run under Docker and this is necessary since the source dir is
+    # typically mounted as a volume
     git config --global --add safe.directory "${source_dir}"
 
     "${source_dir}/dev/release/verify-release-candidate.sh"
