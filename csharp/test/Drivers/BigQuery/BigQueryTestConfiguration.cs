@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
@@ -39,6 +40,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("projectId")]
         public string? ProjectId { get; set; }
+
+        [JsonPropertyName("authenticationType")]
+        public string AuthenticationType { get; set; } = string.Empty;
+
+        [JsonPropertyName("accessToken")]
+        public string AccessToken { get; set; } = string.Empty;
+
+        [JsonPropertyName("audience")]
+        public string Audience { get; set; } = string.Empty;
 
         [JsonPropertyName("billingProjectId")]
         public string? BillingProjectId { get; set; }
@@ -114,5 +124,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// </remarks>
         [JsonPropertyName("structBehavior")]
         public string? StructBehavior { get; set; }
+
+        [JsonPropertyName("entraConfiguration")]
+        public EntraConfiguration? EntraConfiguration { get; set; }
+    }
+
+    class EntraConfiguration
+    {
+        [JsonPropertyName("scopes")]
+        public string[]? Scopes { get; set; }
+
+        [JsonPropertyName("claims")]
+        public Dictionary<string, string>? Claims { get; set; }
     }
 }
