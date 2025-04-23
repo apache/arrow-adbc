@@ -101,6 +101,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return await ExecuteMetadataCommandQuery(cancellationToken);
             }
 
+            _directResults = null;
+
             // this could either:
             // take QueryTimeoutSeconds * 3
             // OR
