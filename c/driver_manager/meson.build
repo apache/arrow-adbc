@@ -27,6 +27,7 @@ adbc_driver_manager_lib = library(
     include_directories: [include_dir],
     install: true,
     dependencies: [dl_dep],
+    gnu_symbol_visibility: 'hidden',
 )
 
 pkg.generate(
