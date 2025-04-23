@@ -737,7 +737,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 nullBitmapBuffer.Build());
         }
 
-        StructArray GetConstraintSchema(
+        private StructArray GetConstraintSchema(
             GetObjectsDepth depth,
             string catalog,
             string dbSchema,

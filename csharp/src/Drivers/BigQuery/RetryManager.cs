@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
     /// <summary>
-    /// Class that will retry calling a method with an exponential backoff.
+    /// Class that will retry calling a method with a backoff.
     /// </summary>
     internal class RetryManager
     {
