@@ -15,7 +15,7 @@
 # limitations under the License.
 
 GO_BUILD=go build
-RM=rm
+RM=rm -f
 ifeq ($(shell go env GOOS),linux)
 	SUFFIX=so
 else ifeq ($(shell go env GOOS),windows)
@@ -27,6 +27,7 @@ endif
 
 DRIVERS := \
 	libadbc_driver_bigquery.$(SUFFIX) \
+	libadbc_driver_databricks.$(SUFFIX) \
 	libadbc_driver_flightsql.$(SUFFIX) \
 	libadbc_driver_panicdummy.$(SUFFIX) \
 	libadbc_driver_snowflake.$(SUFFIX)
@@ -40,6 +41,7 @@ libadbc_driver_%.$(SUFFIX): %
 
 regenerate:
 	go run gen/main.go -prefix BigQuery -o ./bigquery/ -driver ../driver/bigquery
+	go run gen/main.go -prefix Databricks -o ./databricks/ -driver ../driver/databricks
 	go run gen/main.go -prefix FlightSQL -o ./flightsql/ -driver ../driver/flightsql
 	go run gen/main.go -prefix PanicDummy -o ./panicdummy/ -driver ../driver/panicdummy
 	go run gen/main.go -prefix Snowflake -o ./snowflake/ -driver ../driver/snowflake
