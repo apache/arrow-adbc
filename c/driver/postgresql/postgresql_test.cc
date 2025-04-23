@@ -343,7 +343,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetCatalogs) {
   auto catalogs = {"postgres", "template0", "template1"};
   for (auto catalog : catalogs) {
     struct AdbcGetObjectsCatalog* cat =
-        AdbcGetObjectsDataGetCatalogByName(*get_objects_data, catalog);
+        PrivateAdbcGetObjectsDataGetCatalogByName(*get_objects_data, catalog);
     ASSERT_NE(cat, nullptr) << "catalog " << catalog << " not found";
   }
 }
@@ -367,7 +367,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
       << "could not initialize the AdbcGetObjectsData object";
 
   struct AdbcGetObjectsSchema* schema =
-      AdbcGetObjectsDataGetSchemaByName(*get_objects_data, "postgres", "public");
+      PrivateAdbcGetObjectsDataGetSchemaByName(*get_objects_data, "postgres", "public");
   ASSERT_NE(schema, nullptr) << "schema public not found";
 }
 
@@ -411,12 +411,12 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
   ASSERT_NE(*get_objects_data, nullptr)
       << "could not initialize the AdbcGetObjectsData object";
 
-  struct AdbcGetObjectsTable* table = AdbcGetObjectsDataGetTableByName(
+  struct AdbcGetObjectsTable* table = PrivateAdbcGetObjectsDataGetTableByName(
       *get_objects_data, "postgres", "public", "adbc_pkey_test");
   ASSERT_NE(table, nullptr) << "could not find adbc_pkey_test table";
 
   ASSERT_EQ(table->n_table_columns, 2);
-  struct AdbcGetObjectsColumn* column = AdbcGetObjectsDataGetColumnByName(
+  struct AdbcGetObjectsColumn* column = PrivateAdbcGetObjectsDataGetColumnByName(
       *get_objects_data, "postgres", "public", "adbc_pkey_test", "id");
   ASSERT_NE(column, nullptr) << "could not find id column on adbc_pkey_test table";
 
@@ -424,8 +424,10 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
       << "expected 1 constraint on adbc_pkey_test table, found: "
       << table->n_table_constraints;
 
-  struct AdbcGetObjectsConstraint* constraint = AdbcGetObjectsDataGetConstraintByName(
-      *get_objects_data, "postgres", "public", "adbc_pkey_test", "adbc_pkey_test_pkey");
+  struct AdbcGetObjectsConstraint* constraint =
+      PrivateAdbcGetObjectsDataGetConstraintByName(*get_objects_data, "postgres",
+                                                   "public", "adbc_pkey_test",
+                                                   "adbc_pkey_test_pkey");
   ASSERT_NE(constraint, nullptr) << "could not find adbc_pkey_test_pkey constraint";
 
   auto constraint_type = std::string(constraint->constraint_type.data,
@@ -503,7 +505,7 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
   ASSERT_NE(*get_objects_data, nullptr)
       << "could not initialize the AdbcGetInfoData object";
 
-  struct AdbcGetObjectsTable* table = AdbcGetObjectsDataGetTableByName(
+  struct AdbcGetObjectsTable* table = PrivateAdbcGetObjectsDataGetTableByName(
       *get_objects_data, "postgres", "public", "adbc_fkey_test");
   ASSERT_NE(table, nullptr) << "could not find adbc_fkey_test table";
   ASSERT_EQ(table->n_table_constraints, 1)
@@ -513,8 +515,9 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsForeignKey) {
   const std::string version = adbc_validation::GetDriverVendorVersion(&connection);
   const std::string search_name =
       version < "120000" ? "adbc_fkey_test_fid1_fkey" : "adbc_fkey_test_fid1_fid2_fkey";
-  struct AdbcGetObjectsConstraint* constraint = AdbcGetObjectsDataGetConstraintByName(
-      *get_objects_data, "postgres", "public", "adbc_fkey_test", search_name.c_str());
+  struct AdbcGetObjectsConstraint* constraint =
+      PrivateAdbcGetObjectsDataGetConstraintByName(
+          *get_objects_data, "postgres", "public", "adbc_fkey_test", search_name.c_str());
   ASSERT_NE(constraint, nullptr) << "could not find " << search_name << " constraint";
 
   auto constraint_type = std::string(constraint->constraint_type.data,
@@ -615,11 +618,11 @@ TEST_F(PostgresConnectionTest, GetObjectsTableTypesFilter) {
   ASSERT_NE(*get_objects_data, nullptr)
       << "could not initialize the AdbcGetInfoData object";
 
-  struct AdbcGetObjectsTable* table = AdbcGetObjectsDataGetTableByName(
+  struct AdbcGetObjectsTable* table = PrivateAdbcGetObjectsDataGetTableByName(
       *get_objects_data, "postgres", "public", "adbc_table_types_table_test");
   ASSERT_EQ(table, nullptr) << "unexpected table adbc_table_types_table_test found";
 
-  struct AdbcGetObjectsTable* view = AdbcGetObjectsDataGetTableByName(
+  struct AdbcGetObjectsTable* view = PrivateAdbcGetObjectsDataGetTableByName(
       *get_objects_data, "postgres", "public", "adbc_table_types_view_test");
   ASSERT_NE(view, nullptr) << "did not find view adbc_table_types_view_test";
 }

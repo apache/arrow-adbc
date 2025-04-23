@@ -82,6 +82,7 @@ struct AdbcErrorDetail PostgresErrorGetDetail(const struct AdbcError* error, int
 }
 }  // namespace
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return PostgresErrorGetDetailCount(error);
 }
@@ -94,6 +95,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
                                                  AdbcStatusCode* status) {
   return PostgresErrorFromArrayStream(stream, status);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 // ---------------------------------------------------------------------
 // AdbcDatabase
@@ -195,6 +197,7 @@ AdbcStatusCode PostgresDatabaseSetOptionInt(struct AdbcDatabase* database,
 }
 }  // namespace
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
                                      char* value, size_t* length,
                                      struct AdbcError* error) {
@@ -250,6 +253,7 @@ AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const 
                                            double value, struct AdbcError* error) {
   return PostgresDatabaseSetOptionDouble(database, key, value, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 // ---------------------------------------------------------------------
 // AdbcConnection
@@ -450,6 +454,7 @@ AdbcStatusCode PostgresConnectionSetOptionInt(struct AdbcConnection* connection,
 
 }  // namespace
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
                                     struct AdbcError* error) {
   return PostgresConnectionCancel(connection, error);
@@ -584,6 +589,7 @@ AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
                                              struct AdbcError* error) {
   return PostgresConnectionSetOptionDouble(connection, key, value, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 // ---------------------------------------------------------------------
 // AdbcStatement
@@ -761,6 +767,7 @@ AdbcStatusCode PostgresStatementSetSqlQuery(struct AdbcStatement* statement,
 }
 }  // namespace
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
                                  struct ArrowArray* values, struct ArrowSchema* schema,
                                  struct AdbcError* error) {
@@ -870,6 +877,7 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
                                         const char* query, struct AdbcError* error) {
   return PostgresStatementSetSqlQuery(statement, query, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 extern "C" {
 ADBC_EXPORT
@@ -951,8 +959,10 @@ AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
   return ADBC_STATUS_OK;
 }
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* error) {
   return PostgresqlDriverInit(version, raw_driver, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 }

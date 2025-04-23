@@ -498,9 +498,9 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
       NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, lb, error));
     }
 
-    ArrowBufferAppend(buffer, tmp->data, tmp->size_bytes);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(buffer, tmp->data, tmp->size_bytes));
 
-    return ADBC_STATUS_OK;
+    return NANOARROW_OK;
   }
 
  private:

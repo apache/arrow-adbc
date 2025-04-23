@@ -34,6 +34,7 @@ services:
 
   # Build/test with latest Clang
   cpp-clang-latest:
+    image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
     build:
       context: .
       dockerfile: ci/docker/cpp-clang-latest.dockerfile
@@ -44,6 +45,7 @@ services:
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/clang-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/clang-latest'"
 
   cpp-gcc-latest:
+    image: ${REPO}:${ARCH}-cpp-gcc-latest-adbc
     build:
       context: .
       dockerfile: ci/docker/cpp-gcc-latest.dockerfile
@@ -53,6 +55,14 @@ services:
     volumes:
       - .:/adbc:delegated
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/gcc-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/gcc-latest'"
+
+  # Test building and installing the static libraries, then try linking to them.
+  cpp-static-test:
+    image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
+    volumes:
+      - .:/adbc:delegated
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_static_test.sh /adbc /adbc/build/static-test /adbc/build/local'"
+
 
   ############################ Documentation ###################################
 

@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-int AdbcStatusCodeToErrno(AdbcStatusCode code);
+int PrivateAdbcStatusCodeToErrno(AdbcStatusCode code);
 
 // If using mingw's c99-compliant printf, we need a different format-checking attribute
 #if defined(__USE_MINGW_ANSI_STDIO) && defined(__MINGW_PRINTF_FORMAT)
@@ -217,24 +217,25 @@ struct AdbcGetObjectsData {
 
 // does not copy any data from array
 // returns NULL on error
-struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_view);
-void AdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data);
+struct AdbcGetObjectsData* PrivateAdbcGetObjectsDataInit(
+    struct ArrowArrayView* array_view);
+void PrivateAdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data);
 
 // returns NULL on error
 // for now all arguments are required
-struct AdbcGetObjectsCatalog* AdbcGetObjectsDataGetCatalogByName(
+struct AdbcGetObjectsCatalog* PrivateAdbcGetObjectsDataGetCatalogByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name);
-struct AdbcGetObjectsSchema* AdbcGetObjectsDataGetSchemaByName(
+struct AdbcGetObjectsSchema* PrivateAdbcGetObjectsDataGetSchemaByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name);
-struct AdbcGetObjectsTable* AdbcGetObjectsDataGetTableByName(
+struct AdbcGetObjectsTable* PrivateAdbcGetObjectsDataGetTableByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name);
-struct AdbcGetObjectsColumn* AdbcGetObjectsDataGetColumnByName(
+struct AdbcGetObjectsColumn* PrivateAdbcGetObjectsDataGetColumnByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const column_name);
-struct AdbcGetObjectsConstraint* AdbcGetObjectsDataGetConstraintByName(
+struct AdbcGetObjectsConstraint* PrivateAdbcGetObjectsDataGetConstraintByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const constraint_name);

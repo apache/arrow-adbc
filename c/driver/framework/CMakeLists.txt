@@ -20,10 +20,25 @@ include(FetchContent)
 add_library(adbc_driver_framework STATIC objects.cc utility.cc)
 adbc_configure_target(adbc_driver_framework)
 set_target_properties(adbc_driver_framework PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(adbc_driver_framework
-                           PRIVATE "${REPOSITORY_ROOT}/c/" "${REPOSITORY_ROOT}/c/include"
-                                   "${REPOSITORY_ROOT}/c/vendor")
+target_include_directories(adbc_driver_framework PRIVATE "${REPOSITORY_ROOT}/c/"
+                                                         "${REPOSITORY_ROOT}/c/include")
 target_link_libraries(adbc_driver_framework PUBLIC adbc_driver_common fmt::fmt)
+
+# For static builds, we need to install the static library here so downstream
+# applications can link to it
+if(ADBC_BUILD_STATIC)
+  if(ADBC_WITH_VENDORED_FMT OR ADBC_WITH_VENDORED_NANOARROW)
+    message(WARNING "adbc_driver_framework is not installed when ADBC_WITH_VENDORED_FMT or ADBC_WITH_VENDORED_NANOARROW are ON. To use the static libraries, for now you must provide these dependencies instead of using the vendored copies"
+    )
+  else()
+    install(TARGETS adbc_driver_framework ${INSTALL_IS_OPTIONAL}
+            EXPORT adbc_driver_framework_targets
+            RUNTIME DESTINATION ${RUNTIME_INSTALL_DIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    arrow_install_cmake_package(AdbcDriverFramework adbc_driver_framework_targets)
+  endif()
+endif()
 
 if(ADBC_BUILD_TESTS)
   add_test_case(driver_framework_test

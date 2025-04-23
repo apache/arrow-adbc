@@ -201,10 +201,15 @@ jobs:
           pushd arrow-adbc
           docker compose run --rm cpp-gcc-latest
 
+      - name: cpp-static-test
+        run: |
+          pushd arrow-adbc
+          docker compose run --rm cpp-static-test
+
       - name: python-debug
         run: |
           pushd arrow-adbc
-          docker compose run -e PYTHON=3.12 --rm python-debug
+          env PYTHON=3.13 docker compose run --rm python-debug
 
   source-verify-docker:
     name: "Verify Source (OS)/${{ matrix.os }} ${{ matrix.version }}"
