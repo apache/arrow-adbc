@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
 
                     await Task.Delay(delay);
-                    delay += delay;
+                    delay = Math.Min(2 * delay, 5000);
                 }
             }
 
