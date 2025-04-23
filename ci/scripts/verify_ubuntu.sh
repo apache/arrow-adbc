@@ -79,7 +79,7 @@ main() {
     add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
 
     # Install Arrow GLib
-    wget https://repo1.maven.org/maven2/org/apache/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+    wget https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
     apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 
     apt update
@@ -95,7 +95,7 @@ main() {
     tar -C /opt/maven -xzvf apache-maven-3.9.9-bin.tar.gz --strip-components=1
     export PATH=/opt/maven/bin:$PATH
 
-    # We run under Docker and this is necessary since the source dir is mounted in
+    # We run under Docker and this is necessary since the source dir is typically mounted as a volume
     git config --global --add safe.directory "${source_dir}"
 
     "${source_dir}/dev/release/verify-release-candidate.sh"
