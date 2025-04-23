@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             this.isLz4Compressed = isLz4Compressed;
 
             // If we have direct results, initialize the batches from them
-            if (statement.HasDirectResults())
+            if (statement.HasDirectResults)
             {
                 this.batches = statement.DirectResults!.ResultSet.Results.ArrowBatches;
 

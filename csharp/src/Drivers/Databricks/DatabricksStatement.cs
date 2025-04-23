@@ -59,9 +59,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Checks if direct results are available.
         /// </summary>
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        public bool HasDirectResults()
+        internal bool HasDirectResults => DirectResults?.ResultSet != null && DirectResults?.ResultSetMetadata != null;
+
+        internal TSparkDirectResults? DirectResults
         {
-            return DirectResults?.ResultSet != null && DirectResults?.ResultSetMetadata != null;
+            get { return _directResults; }
         }
 
         public override void SetOption(string key, string value)

@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             statement.QueryTimeout = QueryTimeoutSeconds;
         }
 
-        public TSparkDirectResults? DirectResults { get; set; }
+        protected TSparkDirectResults? _directResults { get; set; }
 
         public override QueryResult ExecuteQuery()
         {
@@ -108,11 +108,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
 
             TGetResultSetMetadataResp metadata;
-            if (DirectResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
+            if (_directResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
             {
                 // The initial response has result data so we don't need to poll
-                metadata = DirectResults.ResultSetMetadata;
-            } else {
+                metadata = _directResults.ResultSetMetadata;
+            }
+            else
+            {
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
                 metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
             }
@@ -270,13 +272,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // Capture direct results if they're available
             if (executeResponse.DirectResults != null)
             {
-                DirectResults = executeResponse.DirectResults;
+                _directResults = executeResponse.DirectResults;
 
-                if (!string.IsNullOrEmpty(DirectResults.OperationStatus?.DisplayMessage))
+                if (!string.IsNullOrEmpty(_directResults.OperationStatus?.DisplayMessage))
                 {
-                    throw new HiveServer2Exception(DirectResults.OperationStatus.DisplayMessage)
-                        .SetSqlState(DirectResults.OperationStatus.SqlState)
-                        .SetNativeError(DirectResults.OperationStatus.ErrorCode);
+                    throw new HiveServer2Exception(_directResults.OperationStatus!.DisplayMessage)
+                        .SetSqlState(_directResults.OperationStatus.SqlState)
+                        .SetNativeError(_directResults.OperationStatus.ErrorCode);
                 }
             }
         }

@@ -35,7 +35,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
 
-        internal static TSparkGetDirectResults defaultGetDirectResults = new(){
+        internal static TSparkGetDirectResults defaultGetDirectResults = new()
+        {
             MaxRows = 2000000,
             MaxBytes = 404857600
         };

@@ -119,7 +119,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             });
 
             // // If we have direct results, initialize the result links from them
-            if (statement.HasDirectResults() && statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
+            if (statement.HasDirectResults && statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
             {
                 this.resultLinks = statement.DirectResults!.ResultSet.Results.ResultLinks;
 
