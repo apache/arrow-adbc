@@ -33,7 +33,7 @@ if(ADBC_BUILD_SHARED)
 endif()
 
 if(ADBC_BUILD_STATIC)
-  adbc_add_shared_library(
+  adbc_add_static_library(
     AdbcDriverFlightSQL::adbc_driver_flightsql_static
     adbc_driver_flightsql)
 endif()

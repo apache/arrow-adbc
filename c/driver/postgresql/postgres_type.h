@@ -349,7 +349,7 @@ class PostgresType {
         !typname_.empty() ? typname_.c_str() : PostgresTypname(type_id_);
     nanoarrow::UniqueBuffer buffer;
 
-    ArrowMetadataBuilderInit(buffer.get(), nullptr);
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), nullptr));
     // TODO(lidavidm): we have deprecated this in favor of arrow.opaque,
     // remove once we feel enough time has passed
     NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(

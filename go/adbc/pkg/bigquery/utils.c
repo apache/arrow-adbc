@@ -85,6 +85,7 @@ struct AdbcErrorDetail BigQueryErrorGetDetail(const struct AdbcError* error,
   };
 }
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return BigQueryErrorGetDetailCount(error);
 }
@@ -432,6 +433,7 @@ ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
   return BigQueryDriverInit(version, driver, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 int BigQueryArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
 int BigQueryArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);

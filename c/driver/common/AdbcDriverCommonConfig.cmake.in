@@ -17,25 +17,8 @@
 
 @PACKAGE_INIT@
 
-set(ADBC_BUILD_SHARED @ADBC_BUILD_SHARED@)
-set(ADBC_BUILD_STATIC @ADBC_BUILD_STATIC@)
-set(ADBC_FULL_SO_VERSION "@ADBC_FULL_SO_VERSION@")
-set(ADBC_INSTALL_LIBDIR "@CMAKE_INSTALL_LIBDIR@")
-set(ADBC_SO_VERSION "@ADBC_SO_VERSION@")
 set(ADBC_VERSION "@ADBC_VERSION@")
 
-@ADBC_GO_PACKAGE_INIT@
+include("${CMAKE_CURRENT_LIST_DIR}/AdbcDriverCommonTargets.cmake")
 
-if(ADBC_BUILD_SHARED)
-  adbc_add_shared_library(
-    AdbcDriverSnowflake::adbc_driver_snowflake_shared
-    adbc_driver_snowflake)
-endif()
-
-if(ADBC_BUILD_STATIC)
-  adbc_add_static_library(
-    AdbcDriverSnowflake::adbc_driver_snowflake_static
-    adbc_driver_snowflake)
-endif()
-
-check_required_components(AdbcDriverSnowflake)
+check_required_components(AdbcDriverCommon)

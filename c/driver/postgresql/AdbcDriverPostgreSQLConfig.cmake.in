@@ -17,8 +17,12 @@
 
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+
 set(ADBC_VERSION "@ADBC_VERSION@")
 
 include("${CMAKE_CURRENT_LIST_DIR}/AdbcDriverPostgreSQLTargets.cmake")
+
+find_dependency(PostgreSQL)
 
 check_required_components(AdbcDriverPostgreSQL)

@@ -57,7 +57,7 @@ function(adbc_add_static_library target_name base_name)
       PROPERTIES
       IMPORTED_LOCATION "${_IMPORT_PREFIX}/bin/${static_base_name}")
   else()
-    set(prefix "${_IMPORT_PREFIX}/${ADBC_IMPORT_LIB_DIR}")
+    set(prefix "${_IMPORT_PREFIX}/${ADBC_INSTALL_LIBDIR}")
     set_target_properties(${target_name}
       PROPERTIES
       IMPORTED_LOCATION "${prefix}/${static_base_name}")
@@ -74,7 +74,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
       PKG_CONFIG_NAME
       BUILD_STATIC
       BUILD_SHARED)
-  set(multi_value_args SOURCES OUTPUTS)
+  set(multi_value_args SOURCES DEFINES OUTPUTS)
 
   cmake_parse_arguments(ARG
                         "${options}"
@@ -135,10 +135,20 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                      "${GO_BUILD_FLAGS} $<$<CONFIG:DEBUG>:-gcflags=\"-N -l\">")
 
   # if we're building debug mode then change the default CGO_CFLAGS and CGO_CXXFLAGS from "-g O2" to "-g3"
-  set(GO_ENV_VARS
-      "CGO_ENABLED=1 $<$<CONFIG:DEBUG>:CGO_CFLAGS=-g3> $<$<CONFIG:DEBUG>:CGO_CXXFLAGS=-g3>"
-  )
-  separate_arguments(GO_ENV_VARS NATIVE_COMMAND "${GO_ENV_VARS}")
+  set(GO_FLAGS)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(GO_FLAGS "-g3")
+  endif()
+  string(JOIN " " GO_FLAGS "${GO_FLAGS}")
+
+  foreach(DEFINE ${ARG_DEFINES})
+    list(APPEND GO_FLAGS "-D${DEFINE}")
+  endforeach()
+
+  set(GO_ENV_VARS)
+  list(APPEND GO_ENV_VARS "CGO_ENABLED=1")
+  list(APPEND GO_ENV_VARS "CGO_CFLAGS=\"${GO_FLAGS}\"")
+  list(APPEND GO_ENV_VARS "CGO_CXXFLAGS=\"${GO_FLAGS}\"")
 
   if(BUILD_SHARED)
     set(LIB_NAME_SHARED
