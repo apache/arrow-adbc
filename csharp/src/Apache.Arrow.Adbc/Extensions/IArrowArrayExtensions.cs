@@ -244,9 +244,9 @@ namespace Apache.Arrow.Adbc.Extensions
                     switch (time32Type.Unit)
                     {
                         case TimeUnit.Second:
-                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromSeconds(((Time32Array)array).GetValue(index)!.Value);
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromSeconds(((Time32Array)array).GetSeconds(index)!.Value);
                         case TimeUnit.Millisecond:
-                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromMilliseconds(((Time32Array)array).GetValue(index)!.Value);
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromMilliseconds(((Time32Array)array).GetMilliSeconds(index)!.Value);
                         default:
                             throw new InvalidDataException("Unsupported time unit for Time32Type");
                     }
@@ -257,7 +257,7 @@ namespace Apache.Arrow.Adbc.Extensions
                         case TimeUnit.Microsecond:
                             return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetMicroSeconds(index)!.Value * 10);
                         case TimeUnit.Nanosecond:
-                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetNanoSeconds(index)!.Value / 100);
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetValue(index)!.Value / 100);
                         default:
                             throw new InvalidDataException("Unsupported time unit for Time64Type");
                     }
