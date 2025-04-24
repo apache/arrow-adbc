@@ -21,6 +21,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
 {
@@ -100,9 +101,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
             return dictionary.TryGetValue(key, out TValue? value) ? value : defaultValue;
         }
 
-        public static async Task<bool> ReadExactlyAsync(this Stream stream, Memory<byte> memory, CancellationToken cancellationToken = default)
+        public static async Task<bool> ReadExactlyAsync(this TTransport transport, Memory<byte> memory, CancellationToken cancellationToken = default)
         {
-            if (stream == null) throw new ArgumentNullException(nameof(stream));
+            if (transport == null) throw new ArgumentNullException(nameof(transport));
 
             // Try to get the underlying array from the Memory<byte>
             if (!MemoryMarshal.TryGetArray(memory, out ArraySegment<byte> arraySegment))
@@ -115,7 +116,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
 
             while (totalBytesRead < count)
             {
-                int bytesRead = await stream.ReadAsync(arraySegment.Array!, arraySegment.Offset + totalBytesRead, count - totalBytesRead, cancellationToken).ConfigureAwait(false);
+                int bytesRead = await transport.ReadAsync(arraySegment.Array!, arraySegment.Offset + totalBytesRead, count - totalBytesRead, cancellationToken).ConfigureAwait(false);
 
                 if (bytesRead == 0)
                 {
@@ -124,33 +125,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
                 }
 
                 totalBytesRead += bytesRead;
-            }
-
-            return true;
-        }
-
-        public static async Task<bool> ReadExactlyAsync(this Stream stream, byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
-        {
-            if (stream == null) throw new ArgumentNullException(nameof(stream));
-            if (buffer == null) throw new ArgumentNullException(nameof(buffer));
-            if (offset < 0 || offset >= buffer.Length) throw new ArgumentOutOfRangeException(nameof(offset));
-            if (count < 0 || (count + offset) > buffer.Length) throw new ArgumentOutOfRangeException(nameof(count));
-
-            int bytesReadTotal = 0;
-
-            while (bytesReadTotal < count)
-            {
-                int bytesRead = await stream.ReadAsync(buffer, offset + bytesReadTotal, count - bytesReadTotal, cancellationToken).ConfigureAwait(false);
-
-                // If ReadAsync returns 0, it means the end of the stream has been reached
-                if (bytesRead == 0)
-                {
-                    // If we haven't read any bytes at all, it's okay (might be at the end of the stream)
-                    // But if we've read some bytes and then hit the end of the stream, it's unexpected
-                    return bytesReadTotal == 0;
-                }
-
-                bytesReadTotal += bytesRead;
             }
 
             return true;
