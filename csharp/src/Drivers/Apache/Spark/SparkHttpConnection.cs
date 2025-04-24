@@ -30,6 +30,7 @@ using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
+using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -174,7 +175,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
 
             TConfiguration config = new();
-            ThriftHttpTransport transport = new(httpClient, config)
+            THttpTransport transport = new(httpClient, config)
             {
                 // This value can only be set before the first call/request. So if a new value for query timeout
                 // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token

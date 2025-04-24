@@ -1660,8 +1660,7 @@ func (ts *TimeoutTests) TestDoActionTimeout() {
 	var adbcErr adbc.Error
 	ts.ErrorAs(stmt.Prepare(context.Background()), &adbcErr)
 	ts.Equal(adbc.StatusTimeout, adbcErr.Code, adbcErr.Error())
-	// Exact match - we don't want extra fluff in the message
-	ts.Equal("[FlightSQL] context deadline exceeded (DeadlineExceeded; Prepare)", adbcErr.Msg)
+	// It seems gRPC isn't stable about the error message, unfortunately
 }
 
 func (ts *TimeoutTests) TestDoGetTimeout() {

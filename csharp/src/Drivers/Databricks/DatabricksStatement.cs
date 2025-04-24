@@ -18,6 +18,7 @@
 using System;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -25,7 +26,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// <summary>
     /// Databricks-specific implementation of <see cref="AdbcStatement"/>
     /// </summary>
-    internal class DatabricksStatement : SparkStatement
+    internal class DatabricksStatement : SparkStatement, IHiveServer2Statement
     {
         private bool useCloudFetch;
         private bool canDecompressLz4;
@@ -59,12 +60,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Checks if direct results are available.
         /// </summary>
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        internal bool HasDirectResults => DirectResults?.ResultSet != null && DirectResults?.ResultSetMetadata != null;
+        public bool HasDirectResults => DirectResults?.ResultSet != null && DirectResults?.ResultSetMetadata != null;
 
-        internal TSparkDirectResults? DirectResults
+        public TSparkDirectResults? DirectResults
         {
             get { return _directResults; }
         }
+
+
+        // Cast the Client to IAsync for CloudFetch compatibility
+        TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
 
         public override void SetOption(string key, string value)
         {
