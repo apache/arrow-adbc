@@ -19,8 +19,8 @@
   global:
     # Only expose symbols from the ADBC API
     Adbc*;
-    # Needed for tests (unfortunately)
-    PrivateAdbc*;
+    # Needed for tests, but namespaced so they are clearly not for public use
+    InternalAdbc*;
 
     # Expose driver-specific initialization routines
     FlightSQLDriverInit;
