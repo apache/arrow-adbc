@@ -2,23 +2,22 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
-using Apache.Arrow.Adbc.Tests;
-using Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Tests.Drivers.Databricks;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 {
-    public class OAuthClientCredentialsServiceTests : TestBase<SparkTestConfiguration, SparkTestEnvironment>, IDisposable
+    public class OAuthClientCredentialsServiceTests : TestBase<DatabricksTestConfiguration, DatabricksTestEnvironment>, IDisposable
     {
         private readonly OAuthClientCredentialsService _service;
 
         public OAuthClientCredentialsServiceTests(ITestOutputHelper? outputHelper)
-            : base(outputHelper, new SparkTestEnvironment.Factory())
+            : base(outputHelper, new DatabricksTestEnvironment.Factory())
         {
             _service = new OAuthClientCredentialsService(
-                TestConfiguration.Username,
-                TestConfiguration.Password,
+                TestConfiguration.OAuthClientId,
+                TestConfiguration.OAuthClientSecret,
                 new Uri(TestConfiguration.Uri),
                 timeoutMinutes: 1);
         }
@@ -26,6 +25,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         [Fact]
         public async Task GetAccessToken_WithValidCredentials_ReturnsToken()
         {
+            Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
+
             var token = await _service.GetAccessTokenAsync(CancellationToken.None);
 
             Assert.NotNull(token);
@@ -35,16 +36,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         [Fact]
         public async Task GetAccessToken_WithCancellation_ThrowsOperationCanceledException()
         {
+            Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
+
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            await Assert.ThrowsAsync<TaskCanceledException>(() =>
                 _service.GetAccessTokenAsync(cts.Token));
         }
 
         [Fact]
         public async Task GetAccessToken_MultipleCalls_ReusesCachedToken()
         {
+            Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
+
             var token1 = await _service.GetAccessTokenAsync(CancellationToken.None);
             var token2 = await _service.GetAccessTokenAsync(CancellationToken.None);
 

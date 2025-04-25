@@ -15,12 +15,17 @@
 * limitations under the License.
 */
 
+using System.Text.Json.Serialization;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
     public class DatabricksTestConfiguration : SparkTestConfiguration
     {
+        [JsonPropertyName("oauth_client_id"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string OAuthClientId { get; set; } = string.Empty;
 
+        [JsonPropertyName("oauth_client_secret"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string OAuthClientSecret { get; set; } = string.Empty;
     }
 }
