@@ -114,9 +114,9 @@ main() {
     cmake "${source_dir}/c/integration/static_test" \
           -DCMAKE_PREFIX_PATH="${install_dir}" \
           -DCMAKE_VERBOSE_MAKEFILE=ON
-    cmake --build "${build_dir}" --target static_test
+    cmake --build "${build_dir}/test" --target static_test
 
-    "${build_dir}/static_test"
+    "${build_dir}/test/static_test"
     popd
 }
 
