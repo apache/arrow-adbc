@@ -30,39 +30,49 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
     /// </summary>
     internal class OAuthClientCredentialsService
     {
-        private readonly HttpClient _httpClient;
+        private readonly Lazy<HttpClient> _httpClient;
         private readonly string _clientId;
         private readonly string _clientSecret;
         private readonly Uri _baseUri;
         private readonly string? _tenantId;
         private readonly string _scope;
         private readonly string _tokenEndpoint;
+        private readonly int _timeoutMinutes;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OAuthClientCredentialsService"/> class.
         /// </summary>
-        /// <param name="httpClient">The HTTP client to use for token requests.</param>
         /// <param name="clientId">The OAuth client ID.</param>
         /// <param name="clientSecret">The OAuth client secret.</param>
         /// <param name="baseUri">The base URI of the Databricks workspace.</param>
         /// <param name="tenantId">The Azure AD tenant ID. Required for Azure Databricks.</param>
         /// <param name="scope">The OAuth scope to request. Default is "all-apis".</param>
+        /// <param name="timeoutMinutes">The timeout in minutes for HTTP requests. Default is 5 minutes.</param>
         public OAuthClientCredentialsService(
-            HttpClient httpClient,
             string clientId,
             string clientSecret,
             Uri baseUri,
             string? tenantId = null,
-            string scope = "all-apis")
+            string scope = "all-apis",
+            int timeoutMinutes = 5)
         {
-            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
             _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
             _baseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri));
             _tenantId = tenantId;
             _scope = scope ?? "all-apis";
+            _timeoutMinutes = timeoutMinutes;
             _tokenEndpoint = DetermineTokenEndpoint();
+
+            _httpClient = new Lazy<HttpClient>(() =>
+            {
+                var client = new HttpClient();
+                client.Timeout = TimeSpan.FromMinutes(_timeoutMinutes);
+                return client;
+            });
         }
+
+        private HttpClient HttpClient => _httpClient.Value;
 
         private string DetermineTokenEndpoint()
         {
@@ -109,7 +119,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             HttpResponseMessage response;
             try
             {
-                response = await _httpClient.SendAsync(request, cancellationToken);
+                response = await HttpClient.SendAsync(request, cancellationToken);
                 response.EnsureSuccessStatusCode();
             }
             catch (HttpRequestException ex)
