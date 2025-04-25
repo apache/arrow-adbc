@@ -23,6 +23,7 @@
     InternalAdbc*;
 
     # Expose driver-specific initialization routines
+    BigQueryDriverInit;
     FlightSQLDriverInit;
     PostgresqlDriverInit;
     SnowflakeDriverInit;

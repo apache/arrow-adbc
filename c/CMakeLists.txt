@@ -64,6 +64,8 @@ if(ADBC_INTEGRATION_DUCKDB)
 endif()
 
 if(ADBC_DRIVER_FLIGHTSQL)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/flightsql.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/flightsql)
 endif()
 
@@ -75,18 +77,26 @@ if(ADBC_DRIVER_MANAGER)
 endif()
 
 if(ADBC_DRIVER_POSTGRESQL)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/postgresql.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/postgresql)
 endif()
 
 if(ADBC_DRIVER_SQLITE)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/sqlite.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/sqlite)
 endif()
 
 if(ADBC_DRIVER_SNOWFLAKE)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/snowflake.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/snowflake)
 endif()
 
 if(ADBC_DRIVER_BIGQUERY)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/bigquery.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/bigquery)
 endif()
 
