@@ -469,7 +469,7 @@ void InternalAdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder) {
   memset(binder, 0, sizeof(*binder));
 }
 
-struct StatementReader {
+struct InternalSqliteStatementReader {
   sqlite3* db;
   sqlite3_stmt* stmt;
   enum ArrowType* types;
@@ -481,16 +481,17 @@ struct StatementReader {
   int batch_size;
 };
 
-const char* StatementReaderGetLastError(struct ArrowArrayStream* self) {
+const char* InternalSqliteStatementReaderGetLastError(struct ArrowArrayStream* self) {
   if (!self->release || !self->private_data) {
     return NULL;
   }
 
-  struct StatementReader* reader = (struct StatementReader*)self->private_data;
+  struct InternalSqliteStatementReader* reader =
+      (struct InternalSqliteStatementReader*)self->private_data;
   return reader->error.message;
 }
 
-void StatementReaderSetError(struct StatementReader* reader) {
+void InternalSqliteStatementReaderSetError(struct InternalSqliteStatementReader* reader) {
   const char* msg = sqlite3_errmsg(reader->db);
   // Reset here so that we don't get an error again in StatementRelease
   (void)sqlite3_reset(reader->stmt);
@@ -498,8 +499,8 @@ void StatementReaderSetError(struct StatementReader* reader) {
   reader->error.message[sizeof(reader->error.message) - 1] = '\0';
 }
 
-int StatementReaderGetOneValue(struct StatementReader* reader, int col,
-                               struct ArrowArray* out) {
+int InternalSqliteStatementReaderGetOneValue(struct InternalSqliteStatementReader* reader,
+                                             int col, struct ArrowArray* out) {
   int sqlite_type = sqlite3_column_type(reader->stmt, col);
 
   if (sqlite_type == SQLITE_NULL) {
@@ -621,12 +622,14 @@ int StatementReaderGetOneValue(struct StatementReader* reader, int col,
   return ENOTSUP;
 }
 
-int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out) {
+int InternalSqliteStatementReaderGetNext(struct ArrowArrayStream* self,
+                                         struct ArrowArray* out) {
   if (!self->release || !self->private_data) {
     return EINVAL;
   }
 
-  struct StatementReader* reader = (struct StatementReader*)self->private_data;
+  struct InternalSqliteStatementReader* reader =
+      (struct InternalSqliteStatementReader*)self->private_data;
   if (reader->initial_batch.release != NULL) {
     // Canonically return zero-row results as a stream with zero batches
     if (reader->initial_batch.length == 0) {
@@ -681,17 +684,17 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
     } else if (rc == SQLITE_ERROR) {
       reader->done = 1;
       status = EIO;
-      StatementReaderSetError(reader);
+      InternalSqliteStatementReaderSetError(reader);
       break;
     } else if (rc != SQLITE_ROW) {
       reader->done = 1;
       status = ADBC_STATUS_INTERNAL;
-      StatementReaderSetError(reader);
+      InternalSqliteStatementReaderSetError(reader);
       break;
     }
 
     for (int col = 0; col < reader->schema.n_children; col++) {
-      status = StatementReaderGetOneValue(reader, col, out->children[col]);
+      status = InternalSqliteStatementReaderGetOneValue(reader, col, out->children[col]);
       if (status != 0) break;
     }
 
@@ -714,18 +717,21 @@ int StatementReaderGetNext(struct ArrowArrayStream* self, struct ArrowArray* out
   return status;
 }
 
-int StatementReaderGetSchema(struct ArrowArrayStream* self, struct ArrowSchema* out) {
+int InternalSqliteStatementReaderGetSchema(struct ArrowArrayStream* self,
+                                           struct ArrowSchema* out) {
   if (!self->release || !self->private_data) {
     return EINVAL;
   }
 
-  struct StatementReader* reader = (struct StatementReader*)self->private_data;
+  struct InternalSqliteStatementReader* reader =
+      (struct InternalSqliteStatementReader*)self->private_data;
   return ArrowSchemaDeepCopy(&reader->schema, out);
 }
 
-void StatementReaderRelease(struct ArrowArrayStream* self) {
+void InternalSqliteStatementReaderRelease(struct ArrowArrayStream* self) {
   if (self->private_data) {
-    struct StatementReader* reader = (struct StatementReader*)self->private_data;
+    struct InternalSqliteStatementReader* reader =
+        (struct InternalSqliteStatementReader*)self->private_data;
     if (reader->schema.release) {
       reader->schema.release(&reader->schema);
     }
@@ -772,12 +778,10 @@ void StatementReaderRelease(struct ArrowArrayStream* self) {
 
 /// Initialize buffers for the first (type-inferred) batch of data.
 /// Use raw buffers since the types may change.
-AdbcStatusCode StatementReaderInitializeInfer(int num_columns, size_t infer_rows,
-                                              struct ArrowBitmap* validity,
-                                              struct ArrowBuffer* data,
-                                              struct ArrowBuffer* binary,
-                                              enum ArrowType* current_type,
-                                              struct AdbcError* error) {
+AdbcStatusCode InternalSqliteStatementReaderInitializeInfer(
+    int num_columns, size_t infer_rows, struct ArrowBitmap* validity,
+    struct ArrowBuffer* data, struct ArrowBuffer* binary, enum ArrowType* current_type,
+    struct AdbcError* error) {
   for (int i = 0; i < num_columns; i++) {
     ArrowBitmapInit(&validity[i]);
     CHECK_NA(INTERNAL, ArrowBitmapReserve(&validity[i], infer_rows), error);
@@ -790,10 +794,11 @@ AdbcStatusCode StatementReaderInitializeInfer(int num_columns, size_t infer_rows
 }  // NOLINT(whitespace/indent)
 
 /// Finalize the first (type-inferred) batch of data.
-AdbcStatusCode StatementReaderInferFinalize(
-    sqlite3_stmt* stmt, int num_columns, int64_t num_rows, struct StatementReader* reader,
-    struct ArrowBitmap* validity, struct ArrowBuffer* data, struct ArrowBuffer* binary,
-    enum ArrowType* current_type, struct AdbcError* error) {
+AdbcStatusCode InternalSqliteStatementReaderInferFinalize(
+    sqlite3_stmt* stmt, int num_columns, int64_t num_rows,
+    struct InternalSqliteStatementReader* reader, struct ArrowBitmap* validity,
+    struct ArrowBuffer* data, struct ArrowBuffer* binary, enum ArrowType* current_type,
+    struct AdbcError* error) {
   ArrowSchemaInit(&reader->schema);
   CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(&reader->schema, num_columns), error);
   for (int col = 0; col < num_columns; col++) {
@@ -835,8 +840,8 @@ AdbcStatusCode StatementReaderInferFinalize(
 }
 
 // Convert an int64 typed column to double.
-AdbcStatusCode StatementReaderUpcastInt64ToDouble(struct ArrowBuffer* data,
-                                                  struct AdbcError* error) {
+AdbcStatusCode InternalSqliteStatementReaderUpcastInt64ToDouble(struct ArrowBuffer* data,
+                                                                struct AdbcError* error) {
   struct ArrowBuffer doubles;
   ArrowBufferInit(&doubles);
   CHECK_NA(INTERNAL, ArrowBufferReserve(&doubles, data->capacity_bytes), error);
@@ -852,10 +857,9 @@ AdbcStatusCode StatementReaderUpcastInt64ToDouble(struct ArrowBuffer* data,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode StatementReaderAppendInt64ToBinary(struct ArrowBuffer* offsets,
-                                                  struct ArrowBuffer* binary,
-                                                  int64_t value, int32_t* offset,
-                                                  struct AdbcError* error) {
+AdbcStatusCode InternalSqliteStatementReaderAppendInt64ToBinary(
+    struct ArrowBuffer* offsets, struct ArrowBuffer* binary, int64_t value,
+    int32_t* offset, struct AdbcError* error) {
   // Make sure we have at least 21 bytes available (19 digits + sign + null)
   // Presumably this is enough, but manpage for snprintf makes no guarantees
   // about whether locale may affect this, so check for truncation regardless
@@ -888,10 +892,9 @@ AdbcStatusCode StatementReaderAppendInt64ToBinary(struct ArrowBuffer* offsets,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode StatementReaderAppendDoubleToBinary(struct ArrowBuffer* offsets,
-                                                   struct ArrowBuffer* binary,
-                                                   double value, int32_t* offset,
-                                                   struct AdbcError* error) {
+AdbcStatusCode InternalSqliteStatementReaderAppendDoubleToBinary(
+    struct ArrowBuffer* offsets, struct ArrowBuffer* binary, double value,
+    int32_t* offset, struct AdbcError* error) {
   static const size_t kReserve = 64;
   size_t buffer_size = kReserve;
   CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
@@ -921,9 +924,8 @@ AdbcStatusCode StatementReaderAppendDoubleToBinary(struct ArrowBuffer* offsets,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode StatementReaderUpcastInt64ToBinary(struct ArrowBuffer* data,
-                                                  struct ArrowBuffer* binary,
-                                                  struct AdbcError* error) {
+AdbcStatusCode InternalSqliteStatementReaderUpcastInt64ToBinary(
+    struct ArrowBuffer* data, struct ArrowBuffer* binary, struct AdbcError* error) {
   struct ArrowBuffer offsets;
   ArrowBufferInit(&offsets);
   ArrowBufferInit(binary);
@@ -936,8 +938,8 @@ AdbcStatusCode StatementReaderUpcastInt64ToBinary(struct ArrowBuffer* data,
   int32_t offset = 0;
   ArrowBufferAppendUnsafe(&offsets, &offset, sizeof(int32_t));
   for (size_t i = 0; i < num_elements; i++) {
-    AdbcStatusCode status =
-        StatementReaderAppendInt64ToBinary(&offsets, binary, elements[i], &offset, error);
+    AdbcStatusCode status = InternalSqliteStatementReaderAppendInt64ToBinary(
+        &offsets, binary, elements[i], &offset, error);
     if (status != ADBC_STATUS_OK) return status;
   }
   ArrowBufferReset(data);
@@ -945,9 +947,8 @@ AdbcStatusCode StatementReaderUpcastInt64ToBinary(struct ArrowBuffer* data,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode StatementReaderUpcastDoubleToBinary(struct ArrowBuffer* data,
-                                                   struct ArrowBuffer* binary,
-                                                   struct AdbcError* error) {
+AdbcStatusCode InternalSqliteStatementReaderUpcastDoubleToBinary(
+    struct ArrowBuffer* data, struct ArrowBuffer* binary, struct AdbcError* error) {
   struct ArrowBuffer offsets;
   ArrowBufferInit(&offsets);
   ArrowBufferInit(binary);
@@ -960,7 +961,7 @@ AdbcStatusCode StatementReaderUpcastDoubleToBinary(struct ArrowBuffer* data,
   int32_t offset = 0;
   ArrowBufferAppendUnsafe(&offsets, &offset, sizeof(int32_t));
   for (size_t i = 0; i < num_elements; i++) {
-    AdbcStatusCode status = StatementReaderAppendDoubleToBinary(
+    AdbcStatusCode status = InternalSqliteStatementReaderAppendDoubleToBinary(
         &offsets, binary, elements[i], &offset, error);
     if (status != ADBC_STATUS_OK) return status;
   }
@@ -970,7 +971,7 @@ AdbcStatusCode StatementReaderUpcastDoubleToBinary(struct ArrowBuffer* data,
 }
 
 /// Append a single value to a single column.
-AdbcStatusCode StatementReaderInferOneValue(
+AdbcStatusCode InternalSqliteStatementReaderInferOneValue(
     sqlite3_stmt* stmt, int col, struct ArrowBitmap* validity, struct ArrowBuffer* data,
     struct ArrowBuffer* binary, enum ArrowType* current_type, struct AdbcError* error) {
   // TODO: static_assert sizeof(int64) == sizeof(double)
@@ -1018,7 +1019,7 @@ AdbcStatusCode StatementReaderInferOneValue(
         case NANOARROW_TYPE_STRING:
         case NANOARROW_TYPE_BINARY: {
           int32_t offset = ((int32_t*)data->data)[data->size_bytes / 4 - 1];
-          return StatementReaderAppendInt64ToBinary(
+          return InternalSqliteStatementReaderAppendInt64ToBinary(
               data, binary, sqlite3_column_int64(stmt, col), &offset, error);
         }
         default:
@@ -1031,7 +1032,8 @@ AdbcStatusCode StatementReaderInferOneValue(
 
       switch (*current_type) {
         case NANOARROW_TYPE_INT64: {
-          AdbcStatusCode status = StatementReaderUpcastInt64ToDouble(data, error);
+          AdbcStatusCode status =
+              InternalSqliteStatementReaderUpcastInt64ToDouble(data, error);
           if (status != ADBC_STATUS_OK) return status;
           *current_type = NANOARROW_TYPE_DOUBLE;
           double value = sqlite3_column_double(stmt, col);
@@ -1046,7 +1048,7 @@ AdbcStatusCode StatementReaderInferOneValue(
         case NANOARROW_TYPE_STRING:
         case NANOARROW_TYPE_BINARY: {
           int32_t offset = ((int32_t*)data->data)[data->size_bytes / 4 - 1];
-          return StatementReaderAppendDoubleToBinary(
+          return InternalSqliteStatementReaderAppendDoubleToBinary(
               data, binary, sqlite3_column_double(stmt, col), &offset, error);
         }
         default:
@@ -1059,14 +1061,15 @@ AdbcStatusCode StatementReaderInferOneValue(
 
       switch (*current_type) {
         case NANOARROW_TYPE_INT64: {
-          AdbcStatusCode status = StatementReaderUpcastInt64ToBinary(data, binary, error);
+          AdbcStatusCode status =
+              InternalSqliteStatementReaderUpcastInt64ToBinary(data, binary, error);
           if (status != ADBC_STATUS_OK) return status;
           *current_type = NANOARROW_TYPE_STRING;
           break;
         }
         case NANOARROW_TYPE_DOUBLE: {
           AdbcStatusCode status =
-              StatementReaderUpcastDoubleToBinary(data, binary, error);
+              InternalSqliteStatementReaderUpcastDoubleToBinary(data, binary, error);
           if (status != ADBC_STATUS_OK) return status;
           *current_type = NANOARROW_TYPE_STRING;
           break;
@@ -1090,14 +1093,15 @@ AdbcStatusCode StatementReaderInferOneValue(
 
       switch (*current_type) {
         case NANOARROW_TYPE_INT64: {
-          AdbcStatusCode status = StatementReaderUpcastInt64ToBinary(data, binary, error);
+          AdbcStatusCode status =
+              InternalSqliteStatementReaderUpcastInt64ToBinary(data, binary, error);
           if (status != ADBC_STATUS_OK) return status;
           *current_type = NANOARROW_TYPE_BINARY;
           break;
         }
         case NANOARROW_TYPE_DOUBLE: {
           AdbcStatusCode status =
-              StatementReaderUpcastDoubleToBinary(data, binary, error);
+              InternalSqliteStatementReaderUpcastDoubleToBinary(data, binary, error);
           if (status != ADBC_STATUS_OK) return status;
           *current_type = NANOARROW_TYPE_BINARY;
           break;
@@ -1130,17 +1134,18 @@ AdbcStatusCode InternalAdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
                                               size_t batch_size,
                                               struct ArrowArrayStream* stream,
                                               struct AdbcError* error) {
-  struct StatementReader* reader = malloc(sizeof(struct StatementReader));
-  memset(reader, 0, sizeof(struct StatementReader));
+  struct InternalSqliteStatementReader* reader =
+      malloc(sizeof(struct InternalSqliteStatementReader));
+  memset(reader, 0, sizeof(struct InternalSqliteStatementReader));
   reader->db = db;
   reader->stmt = stmt;
   reader->batch_size = (int)batch_size;
 
   stream->private_data = reader;
-  stream->release = StatementReaderRelease;
-  stream->get_last_error = StatementReaderGetLastError;
-  stream->get_next = StatementReaderGetNext;
-  stream->get_schema = StatementReaderGetSchema;
+  stream->release = InternalSqliteStatementReaderRelease;
+  stream->get_last_error = InternalSqliteStatementReaderGetLastError;
+  stream->get_next = InternalSqliteStatementReaderGetNext;
+  stream->get_schema = InternalSqliteStatementReaderGetSchema;
 
   sqlite3_mutex_enter(sqlite3_db_mutex(db));
 
@@ -1150,7 +1155,7 @@ AdbcStatusCode InternalAdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
   struct ArrowBuffer* binary = malloc(num_columns * sizeof(struct ArrowBuffer));
   enum ArrowType* current_type = malloc(num_columns * sizeof(enum ArrowType));
 
-  AdbcStatusCode status = StatementReaderInitializeInfer(
+  AdbcStatusCode status = InternalSqliteStatementReaderInitializeInfer(
       num_columns, batch_size, validity, data, binary, current_type, error);
 
   if (binder) {
@@ -1191,8 +1196,9 @@ AdbcStatusCode InternalAdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
       }
 
       for (int col = 0; col < num_columns; col++) {
-        status = StatementReaderInferOneValue(stmt, col, &validity[col], &data[col],
-                                              &binary[col], &current_type[col], error);
+        status = InternalSqliteStatementReaderInferOneValue(stmt, col, &validity[col],
+                                                            &data[col], &binary[col],
+                                                            &current_type[col], error);
         if (status != ADBC_STATUS_OK) break;
       }
       if (status != ADBC_STATUS_OK) break;
@@ -1200,8 +1206,9 @@ AdbcStatusCode InternalAdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
     }
 
     if (status == ADBC_STATUS_OK) {
-      status = StatementReaderInferFinalize(stmt, num_columns, num_rows, reader, validity,
-                                            data, binary, current_type, error);
+      status = InternalSqliteStatementReaderInferFinalize(stmt, num_columns, num_rows,
+                                                          reader, validity, data, binary,
+                                                          current_type, error);
     }
   }
 
