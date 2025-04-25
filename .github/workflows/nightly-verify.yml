@@ -208,6 +208,9 @@ jobs:
 
       - name: python-debug
         run: |
+          # Need to set this or ASAN inside the container gets stuck
+          # printing a loop of DEADLYSIGNAL
+          sudo sysctl vm.mmap_rnd_bits=28
           pushd arrow-adbc
           docker compose run -e PYTHON=3.13 --rm python-debug
 
