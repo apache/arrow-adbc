@@ -209,7 +209,7 @@ jobs:
       - name: python-debug
         run: |
           pushd arrow-adbc
-          env PYTHON=3.13 docker compose run --rm python-debug
+          docker compose run -e PYTHON=3.13 --rm python-debug
 
   source-verify-docker:
     name: "Verify Source (OS)/${{ matrix.os }} ${{ matrix.version }}"

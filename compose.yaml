@@ -108,11 +108,11 @@ services:
     command: "/bin/bash -c '/adbc/ci/scripts/python_conda_test.sh /adbc /adbc/build'"
 
   python-debug:
-    image: ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+    image: ${REPO}:${ARCH}-python-debug-adbc
     build:
       context: .
       cache_from:
-        - ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+        - ${REPO}:${ARCH}-python-debug-adbc
       dockerfile: ci/docker/python-debug.dockerfile
       args:
         ARCH: ${ARCH}
