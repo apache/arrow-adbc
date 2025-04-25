@@ -40,21 +40,21 @@ AdbcStatusCode InternalAdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
   if (status != 0) {
     const char* message = binder->params.get_last_error(&binder->params);
     if (!message) message = "(unknown error)";
-    SetError(error, "Failed to get parameter schema: (%d) %s: %s", status,
-             strerror(status), message);
+    InternalAdbcSetError(error, "Failed to get parameter schema: (%d) %s: %s", status,
+                         strerror(status), message);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   struct ArrowError arrow_error = {0};
   status = ArrowArrayViewInitFromSchema(&binder->batch, &binder->schema, &arrow_error);
   if (status != 0) {
-    SetError(error, "Failed to initialize array view: (%d) %s: %s", status,
-             strerror(status), arrow_error.message);
+    InternalAdbcSetError(error, "Failed to initialize array view: (%d) %s: %s", status,
+                         strerror(status), arrow_error.message);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   if (binder->batch.storage_type != NANOARROW_TYPE_STRUCT) {
-    SetError(error, "Bind parameters do not have root type STRUCT");
+    InternalAdbcSetError(error, "Bind parameters do not have root type STRUCT");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
@@ -65,13 +65,13 @@ AdbcStatusCode InternalAdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
   for (int i = 0; i < binder->schema.n_children; i++) {
     status = ArrowSchemaViewInit(&view, binder->schema.children[i], &arrow_error);
     if (status != NANOARROW_OK) {
-      SetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
-               strerror(status), status, arrow_error.message);
+      InternalAdbcSetError(error, "Failed to parse schema for column %d: %s (%d): %s", i,
+                           strerror(status), status, arrow_error.message);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
     if (view.type == NANOARROW_TYPE_UNINITIALIZED) {
-      SetError(error, "Column %d has UNINITIALIZED type", i);
+      InternalAdbcSetError(error, "Column %d has UNINITIALIZED type", i);
       return ADBC_STATUS_INTERNAL;
     }
 
@@ -80,8 +80,9 @@ AdbcStatusCode InternalAdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
       status = ArrowSchemaViewInit(&value_view, binder->schema.children[i]->dictionary,
                                    &arrow_error);
       if (status != NANOARROW_OK) {
-        SetError(error, "Failed to parse schema for column %d->dictionary: %s (%d): %s",
-                 i, strerror(status), status, arrow_error.message);
+        InternalAdbcSetError(
+            error, "Failed to parse schema for column %d->dictionary: %s (%d): %s", i,
+            strerror(status), status, arrow_error.message);
         return ADBC_STATUS_INVALID_ARGUMENT;
       }
 
@@ -96,8 +97,8 @@ AdbcStatusCode InternalAdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
         case NANOARROW_TYPE_BINARY_VIEW:
           break;
         default:
-          SetError(error, "Column %d dictionary has unsupported type %s", i,
-                   ArrowTypeString(value_view.type));
+          InternalAdbcSetError(error, "Column %d dictionary has unsupported type %s", i,
+                               ArrowTypeString(value_view.type));
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
@@ -129,7 +130,7 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
 
 #if SIZEOF_TIME_T < 8
   if ((value > INT32_MAX / SECONDS_PER_DAY) || (value < INT32_MIN / SECONDS_PER_DAY)) {
-    SetError(error, "Date %" PRId32 " exceeds platform time_t bounds", value);
+    InternalAdbcSetError(error, "Date %" PRId32 " exceeds platform time_t bounds", value);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
@@ -142,13 +143,15 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
 
 #if defined(_WIN32)
   if (gmtime_s(&broken_down_time, &time) != 0) {
-    SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
+    InternalAdbcSetError(error, "Could not convert date %" PRId32 " to broken down time",
+                         value);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 #else
   if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
-    SetError(error, "Could not convert date %" PRId32 " to broken down time", value);
+    InternalAdbcSetError(error, "Could not convert date %" PRId32 " to broken down time",
+                         value);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
@@ -160,7 +163,8 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
   }
 
   if (strftime(tsstr, strlen + 1, "%Y-%m-%d", &broken_down_time) == 0) {
-    SetError(error, "Call to strftime for date %" PRId32 " with failed", value);
+    InternalAdbcSetError(error, "Call to strftime for date %" PRId32 " with failed",
+                         value);
     free(tsstr);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
@@ -206,8 +210,9 @@ static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUni
 
 #if SIZEOF_TIME_T < 8
   if ((seconds > INT32_MAX) || (seconds < INT32_MIN)) {
-    SetError(error, "Timestamp %" PRId64 " with unit %d exceeds platform time_t bounds",
-             value, unit);
+    InternalAdbcSetError(
+        error, "Timestamp %" PRId64 " with unit %d exceeds platform time_t bounds", value,
+        unit);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
@@ -220,17 +225,17 @@ static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUni
 
 #if defined(_WIN32)
   if (gmtime_s(&broken_down_time, &time) != 0) {
-    SetError(error,
-             "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
-             value, unit);
+    InternalAdbcSetError(
+        error, "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
+        value, unit);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 #else
   if (gmtime_r(&time, &broken_down_time) != &broken_down_time) {
-    SetError(error,
-             "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
-             value, unit);
+    InternalAdbcSetError(
+        error, "Could not convert timestamp %" PRId64 " with unit %d to broken down time",
+        value, unit);
 
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
@@ -242,8 +247,9 @@ static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUni
   }
 
   if (strftime(tsstr, strlen, "%Y-%m-%dT%H:%M:%S", &broken_down_time) == 0) {
-    SetError(error, "Call to strftime for timestamp %" PRId64 " with unit %d failed",
-             value, unit);
+    InternalAdbcSetError(error,
+                         "Call to strftime for timestamp %" PRId64 " with unit %d failed",
+                         value, unit);
     free(tsstr);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
@@ -283,8 +289,8 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
       status =
           ArrowArrayViewInitFromSchema(&binder->batch, &binder->schema, &arrow_error);
       if (status != 0) {
-        SetError(error, "Failed to initialize array view: (%d) %s: %s", status,
-                 strerror(status), arrow_error.message);
+        InternalAdbcSetError(error, "Failed to initialize array view: (%d) %s: %s",
+                             status, strerror(status), arrow_error.message);
         return ADBC_STATUS_INTERNAL;
       }
     }
@@ -293,8 +299,8 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
     if (status != 0) {
       const char* message = binder->params.get_last_error(&binder->params);
       if (!message) message = "(unknown error)";
-      SetError(error, "Failed to get next parameter batch: (%d) %s: %s", status,
-               strerror(status), message);
+      InternalAdbcSetError(error, "Failed to get next parameter batch: (%d) %s: %s",
+                           status, strerror(status), message);
       return ADBC_STATUS_IO;
     }
 
@@ -306,8 +312,8 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
 
     status = ArrowArrayViewSetArray(&binder->batch, &binder->array, &arrow_error);
     if (status != 0) {
-      SetError(error, "Failed to initialize array view: (%d) %s: %s", status,
-               strerror(status), arrow_error.message);
+      InternalAdbcSetError(error, "Failed to initialize array view: (%d) %s: %s", status,
+                           strerror(status), arrow_error.message);
       return ADBC_STATUS_INTERNAL;
     }
 
@@ -315,11 +321,12 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
   }
 
   if (sqlite3_reset(stmt) != SQLITE_OK) {
-    SetError(error, "Failed to reset statement: %s", sqlite3_errmsg(conn));
+    InternalAdbcSetError(error, "Failed to reset statement: %s", sqlite3_errmsg(conn));
     return ADBC_STATUS_INTERNAL;
   }
   if (sqlite3_clear_bindings(stmt) != SQLITE_OK) {
-    SetError(error, "Failed to clear statement bindings: %s", sqlite3_errmsg(conn));
+    InternalAdbcSetError(error, "Failed to clear statement bindings: %s",
+                         sqlite3_errmsg(conn));
     return ADBC_STATUS_INTERNAL;
   }
 
@@ -346,10 +353,10 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
           uint64_t value =
               ArrowArrayViewGetUIntUnsafe(binder->batch.children[col], binder->next_row);
           if (value > INT64_MAX) {
-            SetError(error,
-                     "Column %d has unsigned integer value %" PRIu64
-                     "out of range of int64_t",
-                     col, value);
+            InternalAdbcSetError(error,
+                                 "Column %d has unsigned integer value %" PRIu64
+                                 "out of range of int64_t",
+                                 col, value);
             return ADBC_STATUS_INVALID_ARGUMENT;
           }
           status = sqlite3_bind_int64(stmt, col + 1, (int64_t)value);
@@ -401,11 +408,11 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
           char* tsstr;
 
           if ((value > INT32_MAX) || (value < INT32_MIN)) {
-            SetError(error,
-                     "Column %d has value %" PRId64
-                     " which exceeds the expected range "
-                     "for an Arrow DATE32 type",
-                     col, value);
+            InternalAdbcSetError(error,
+                                 "Column %d has value %" PRId64
+                                 " which exceeds the expected range "
+                                 "for an Arrow DATE32 type",
+                                 col, value);
             return ADBC_STATUS_INVALID_DATA;
           }
 
@@ -435,14 +442,15 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
           break;
         }
         default:
-          SetError(error, "Column %d has unsupported type %s", col,
-                   ArrowTypeString(binder->types[col]));
+          InternalAdbcSetError(error, "Column %d has unsupported type %s", col,
+                               ArrowTypeString(binder->types[col]));
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
     }
 
     if (status != SQLITE_OK) {
-      SetError(error, "Failed to clear statement bindings: %s", sqlite3_errmsg(conn));
+      InternalAdbcSetError(error, "Failed to clear statement bindings: %s",
+                           sqlite3_errmsg(conn));
       return ADBC_STATUS_INTERNAL;
     }
   }
@@ -491,7 +499,8 @@ const char* InternalSqliteStatementReaderGetLastError(struct ArrowArrayStream* s
   return reader->error.message;
 }
 
-void InternalSqliteStatementReaderSetError(struct InternalSqliteStatementReader* reader) {
+void InternalSqliteStatementReaderInternalAdbcSetError(
+    struct InternalSqliteStatementReader* reader) {
   const char* msg = sqlite3_errmsg(reader->db);
   // Reset here so that we don't get an error again in StatementRelease
   (void)sqlite3_reset(reader->stmt);
@@ -684,12 +693,12 @@ int InternalSqliteStatementReaderGetNext(struct ArrowArrayStream* self,
     } else if (rc == SQLITE_ERROR) {
       reader->done = 1;
       status = EIO;
-      InternalSqliteStatementReaderSetError(reader);
+      InternalSqliteStatementReaderInternalAdbcSetError(reader);
       break;
     } else if (rc != SQLITE_ROW) {
       reader->done = 1;
       status = ADBC_STATUS_INTERNAL;
-      InternalSqliteStatementReaderSetError(reader);
+      InternalSqliteStatementReaderInternalAdbcSetError(reader);
       break;
     }
 
@@ -816,7 +825,8 @@ AdbcStatusCode InternalSqliteStatementReaderInferFinalize(
     if (current_type[col] == NANOARROW_TYPE_STRING ||
         current_type[col] == NANOARROW_TYPE_BINARY) {
       if (binary[col].data == NULL) {
-        SetError(error, "INTERNAL: column has binary-like type but no backing buffer");
+        InternalAdbcSetError(
+            error, "INTERNAL: column has binary-like type but no backing buffer");
         return ADBC_STATUS_INTERNAL;
       }
     }
@@ -871,13 +881,13 @@ AdbcStatusCode InternalSqliteStatementReaderAppendInt64ToBinary(
   while (1) {
     written = snprintf(output, buffer_size, "%" PRId64, value);
     if (written < 0) {
-      SetError(error, "Encoding error when upcasting double to string");
+      InternalAdbcSetError(error, "Encoding error when upcasting double to string");
       return ADBC_STATUS_INTERNAL;
     } else if (((size_t)written) >= buffer_size) {
       // Truncated, resize and try again
       // Check for overflow - presumably this can never happen...?
       if (UINT_MAX - buffer_size < buffer_size) {
-        SetError(error, "Overflow when upcasting double to string");
+        InternalAdbcSetError(error, "Overflow when upcasting double to string");
         return ADBC_STATUS_INTERNAL;
       }
       CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
@@ -903,13 +913,13 @@ AdbcStatusCode InternalSqliteStatementReaderAppendDoubleToBinary(
   while (1) {
     written = snprintf(output, buffer_size, "%e", value);
     if (written < 0) {
-      SetError(error, "Encoding error when upcasting double to string");
+      InternalAdbcSetError(error, "Encoding error when upcasting double to string");
       return ADBC_STATUS_INTERNAL;
     } else if (((size_t)written) >= buffer_size) {
       // Truncated, resize and try again
       // Check for overflow - presumably this can never happen...?
       if (UINT_MAX - buffer_size < buffer_size) {
-        SetError(error, "Overflow when upcasting double to string");
+        InternalAdbcSetError(error, "Overflow when upcasting double to string");
         return ADBC_STATUS_INTERNAL;
       }
       CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
@@ -1185,7 +1195,7 @@ AdbcStatusCode InternalAdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
         }
         continue;
       } else if (rc == SQLITE_ERROR) {
-        SetError(error, "Failed to step query: %s", sqlite3_errmsg(db));
+        InternalAdbcSetError(error, "Failed to step query: %s", sqlite3_errmsg(db));
         status = ADBC_STATUS_IO;
         // Reset here so that we don't get an error again in StatementRelease
         (void)sqlite3_reset(stmt);

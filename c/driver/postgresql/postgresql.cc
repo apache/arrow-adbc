@@ -60,8 +60,8 @@ const struct AdbcError* PostgresErrorFromArrayStream(struct ArrowArrayStream* st
 }
 
 int PostgresErrorGetDetailCount(const struct AdbcError* error) {
-  if (IsCommonError(error)) {
-    return CommonErrorGetDetailCount(error);
+  if (InternalAdbcIsCommonError(error)) {
+    return InternalAdbcCommonErrorGetDetailCount(error);
   }
 
   if (error->vendor_code != ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) {
@@ -73,8 +73,8 @@ int PostgresErrorGetDetailCount(const struct AdbcError* error) {
 }
 
 struct AdbcErrorDetail PostgresErrorGetDetail(const struct AdbcError* error, int index) {
-  if (IsCommonError(error)) {
-    return CommonErrorGetDetail(error, index);
+  if (InternalAdbcIsCommonError(error)) {
+    return InternalAdbcCommonErrorGetDetail(error, index);
   }
 
   auto error_obj = reinterpret_cast<Status*>(error->private_data);
@@ -111,11 +111,11 @@ AdbcStatusCode PostgresDatabaseInit(struct AdbcDatabase* database,
 AdbcStatusCode PostgresDatabaseNew(struct AdbcDatabase* database,
                                    struct AdbcError* error) {
   if (!database) {
-    SetError(error, "%s", "[libpq] database must not be null");
+    InternalAdbcSetError(error, "%s", "[libpq] database must not be null");
     return ADBC_STATUS_INVALID_STATE;
   }
   if (database->private_data) {
-    SetError(error, "%s", "[libpq] database is already initialized");
+    InternalAdbcSetError(error, "%s", "[libpq] database is already initialized");
     return ADBC_STATUS_INVALID_STATE;
   }
   auto impl = std::make_shared<PostgresDatabase>();

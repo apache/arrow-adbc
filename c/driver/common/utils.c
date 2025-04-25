@@ -104,14 +104,15 @@ static void ReleaseError(struct AdbcError* error) {
   error->release = NULL;
 }
 
-void SetError(struct AdbcError* error, const char* format, ...) {
+void InternalAdbcSetError(struct AdbcError* error, const char* format, ...) {
   va_list args;
   va_start(args, format);
-  SetErrorVariadic(error, format, args);
+  InternalAdbcSetErrorVariadic(error, format, args);
   va_end(args);
 }
 
-void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args) {
+void InternalAdbcSetErrorVariadic(struct AdbcError* error, const char* format,
+                                  va_list args) {
   if (!error) return;
   if (error->release) {
     // TODO: combine the errors if possible
@@ -147,8 +148,8 @@ void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args)
   vsnprintf(error->message, kErrorBufferSize, format, args);
 }
 
-void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* detail,
-                       size_t detail_length) {
+void InternalAdbcAppendErrorDetail(struct AdbcError* error, const char* key,
+                                   const uint8_t* detail, size_t detail_length) {
   if (error->release != ReleaseErrorWithDetails) return;
 
   struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
@@ -212,7 +213,7 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
   details->count++;
 }
 
-int CommonErrorGetDetailCount(const struct AdbcError* error) {
+int InternalAdbcCommonErrorGetDetailCount(const struct AdbcError* error) {
   if (error->release != ReleaseErrorWithDetails) {
     return 0;
   }
@@ -220,7 +221,8 @@ int CommonErrorGetDetailCount(const struct AdbcError* error) {
   return details->count;
 }
 
-struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int index) {
+struct AdbcErrorDetail InternalAdbcCommonErrorGetDetail(const struct AdbcError* error,
+                                                        int index) {
   if (error->release != ReleaseErrorWithDetails) {
     return (struct AdbcErrorDetail){NULL, NULL, 0};
   }
@@ -235,11 +237,12 @@ struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int i
   };
 }
 
-bool IsCommonError(const struct AdbcError* error) {
+bool InternalAdbcIsCommonError(const struct AdbcError* error) {
   return error->release == ReleaseErrorWithDetails || error->release == ReleaseError;
 }
 
-int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
+int InternalAdbcStringBuilderInit(struct InternalAdbcStringBuilder* builder,
+                                  size_t initial_size) {
   builder->buffer = (char*)malloc(initial_size);
   if (builder->buffer == NULL) return errno;
 
@@ -248,7 +251,8 @@ int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
 
   return 0;
 }
-int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
+int InternalAdbcStringBuilderAppend(struct InternalAdbcStringBuilder* builder,
+                                    const char* fmt, ...) {
   va_list argptr;
   int bytes_available = (int)builder->capacity - (int)builder->size;
 
@@ -278,7 +282,7 @@ int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
 
   return 0;
 }
-void StringBuilderReset(struct StringBuilder* builder) {
+void InternalAdbcStringBuilderReset(struct InternalAdbcStringBuilder* builder) {
   if (builder->buffer) {
     free(builder->buffer);
   }
