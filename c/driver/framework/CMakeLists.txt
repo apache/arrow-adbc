@@ -24,6 +24,7 @@ target_include_directories(adbc_driver_framework
                            PRIVATE "${REPOSITORY_ROOT}/c/" "${REPOSITORY_ROOT}/c/include"
                                    "${REPOSITORY_ROOT}/c/vendor")
 target_link_libraries(adbc_driver_framework PUBLIC adbc_driver_common fmt::fmt)
+target_compile_definitions(adbc_driver_framework PUBLIC ADBC_STATIC)
 
 if(ADBC_BUILD_TESTS)
   add_test_case(driver_framework_test
