@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-int PrivateAdbcStatusCodeToErrno(AdbcStatusCode code);
+int InternalAdbcStatusCodeToErrno(AdbcStatusCode code);
 
 // If using mingw's c99-compliant printf, we need a different format-checking attribute
 #if defined(__USE_MINGW_ANSI_STDIO) && defined(__MINGW_PRINTF_FORMAT)
@@ -217,25 +217,25 @@ struct AdbcGetObjectsData {
 
 // does not copy any data from array
 // returns NULL on error
-struct AdbcGetObjectsData* PrivateAdbcGetObjectsDataInit(
+struct AdbcGetObjectsData* InternalAdbcGetObjectsDataInit(
     struct ArrowArrayView* array_view);
-void PrivateAdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data);
+void InternalAdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data);
 
 // returns NULL on error
 // for now all arguments are required
-struct AdbcGetObjectsCatalog* PrivateAdbcGetObjectsDataGetCatalogByName(
+struct AdbcGetObjectsCatalog* InternalAdbcGetObjectsDataGetCatalogByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name);
-struct AdbcGetObjectsSchema* PrivateAdbcGetObjectsDataGetSchemaByName(
+struct AdbcGetObjectsSchema* InternalAdbcGetObjectsDataGetSchemaByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name);
-struct AdbcGetObjectsTable* PrivateAdbcGetObjectsDataGetTableByName(
+struct AdbcGetObjectsTable* InternalAdbcGetObjectsDataGetTableByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name);
-struct AdbcGetObjectsColumn* PrivateAdbcGetObjectsDataGetColumnByName(
+struct AdbcGetObjectsColumn* InternalAdbcGetObjectsDataGetColumnByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const column_name);
-struct AdbcGetObjectsConstraint* PrivateAdbcGetObjectsDataGetConstraintByName(
+struct AdbcGetObjectsConstraint* InternalAdbcGetObjectsDataGetConstraintByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const constraint_name);

@@ -59,7 +59,7 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
   if (out->release == nullptr) {
     SetError(&error_, "[libpq] Result set was already consumed or freed");
     status_ = ADBC_STATUS_INVALID_STATE;
-    return PrivateAdbcStatusCodeToErrno(status_);
+    return InternalAdbcStatusCodeToErrno(status_);
   } else if (na_res != NANOARROW_OK) {
     // e.g., Can't allocate memory
     SetError(&error_, "[libpq] Error copying schema");
@@ -82,7 +82,7 @@ int TupleReader::GetCopyData() {
   if (get_copy_res == -2) {
     SetError(&error_, "[libpq] PQgetCopyData() failed: %s", PQerrorMessage(conn_));
     status_ = ADBC_STATUS_IO;
-    return PrivateAdbcStatusCodeToErrno(status_);
+    return InternalAdbcStatusCodeToErrno(status_);
   }
 
   if (get_copy_res == -1) {
@@ -93,7 +93,7 @@ int TupleReader::GetCopyData() {
     if (pq_status != PGRES_COMMAND_OK) {
       status_ = SetError(&error_, result_, "[libpq] Execution error [%s]: %s",
                          PQresStatus(pq_status), PQresultErrorMessage(result_));
-      return PrivateAdbcStatusCodeToErrno(status_);
+      return InternalAdbcStatusCodeToErrno(status_);
     } else {
       return ENODATA;
     }

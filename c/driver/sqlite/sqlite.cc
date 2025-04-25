@@ -600,8 +600,8 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
     nanoarrow::UniqueArrayStream stream;
     struct AdbcError error = ADBC_ERROR_INIT;
     AdbcStatusCode status =
-        PrivateAdbcSqliteExportReader(conn_, stmt, /*binder=*/NULL,
-                                      /*batch_size=*/64, stream.get(), &error);
+        InternalAdbcSqliteExportReader(conn_, stmt, /*binder=*/NULL,
+                                       /*batch_size=*/64, stream.get(), &error);
     if (status == ADBC_STATUS_OK) {
       int code = stream->get_schema(stream.get(), schema);
       if (code != 0) {
@@ -767,7 +767,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     if (bind_parameters_.release) {
       struct AdbcError error = ADBC_ERROR_INIT;
       if (AdbcStatusCode code =
-              PrivateAdbcSqliteBinderSetArrayStream(&binder_, &bind_parameters_, &error);
+              InternalAdbcSqliteBinderSetArrayStream(&binder_, &bind_parameters_, &error);
           code != ADBC_STATUS_OK) {
         return Status::FromAdbc(code, error);
       }
@@ -939,7 +939,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     while (true) {
       char finished = 0;
       status_code =
-          PrivateAdbcSqliteBinderBindNext(&binder_, conn_, stmt, &finished, &error);
+          InternalAdbcSqliteBinderBindNext(&binder_, conn_, stmt, &finished, &error);
       if (status_code != ADBC_STATUS_OK || finished) {
         status = Status::FromAdbc(status_code, error);
         break;
@@ -984,7 +984,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
           "parameter count mismatch: expected {} but found {}", expected, actual);
     }
 
-    auto status = PrivateAdbcSqliteExportReader(
+    auto status = InternalAdbcSqliteExportReader(
         conn_, stmt_, binder_.schema.release ? &binder_ : nullptr, batch_size_, stream,
         &error);
     if (status != ADBC_STATUS_OK) {
@@ -1021,10 +1021,10 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       if (binder_.schema.release) {
         char finished = 0;
         struct AdbcError error = ADBC_ERROR_INIT;
-        if (AdbcStatusCode code = PrivateAdbcSqliteBinderBindNext(&binder_, conn_, stmt_,
-                                                                  &finished, &error);
+        if (AdbcStatusCode code = InternalAdbcSqliteBinderBindNext(&binder_, conn_, stmt_,
+                                                                   &finished, &error);
             code != ADBC_STATUS_OK) {
-          PrivateAdbcSqliteBinderRelease(&binder_);
+          InternalAdbcSqliteBinderRelease(&binder_);
           return Status::FromAdbc(code, error);
         } else if (finished != 0) {
           break;
@@ -1041,7 +1041,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
 
       if (!binder_.schema.release) break;
     }
-    PrivateAdbcSqliteBinderRelease(&binder_);
+    InternalAdbcSqliteBinderRelease(&binder_);
 
     if (sqlite3_reset(stmt_) != SQLITE_OK) {
       const char* msg = sqlite3_errmsg(conn_);
@@ -1128,7 +1128,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
                                rc, sqlite3_errmsg(conn_));
       }
     }
-    PrivateAdbcSqliteBinderRelease(&binder_);
+    InternalAdbcSqliteBinderRelease(&binder_);
     return Statement::ReleaseImpl();
   }
 
