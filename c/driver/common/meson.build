@@ -21,6 +21,7 @@ adbc_common_lib = library(
     include_directories: [include_dir],
     dependencies: [nanoarrow_dep],
     install: true,
+    c_static_args: adbc_c_static_args,
 )
 
 exc = executable(

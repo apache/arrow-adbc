@@ -58,6 +58,14 @@ needs_driver_manager = get_option('driver_manager').enabled() \
 
 pkg = import('pkgconfig')
 
+add_project_arguments('-DADBC_EXPORTING', language: 'c')
+add_project_arguments('-DADBC_EXPORTING', language: 'cpp')
+# Meson does not support a global/project wide way of setting c/cpp
+# arguments only for static libraries, so we have to do this per target
+# See https://github.com/mesonbuild/meson/issues/10996
+adbc_c_static_args = ['-DADBC_STATIC']
+adbc_cpp_static_args = ['-DADBC_STATIC']
+
 if needs_driver_manager
     install_headers('include/adbc_driver_manager.h')
     install_headers(

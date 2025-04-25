@@ -55,6 +55,9 @@ add_arrow_lib(adbc_driver_postgresql
 
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+  if(ADBC_BUILD_STATIC)
+    target_compile_definitions(${LIB_TARGET} PUBLIC ADBC_STATIC)
+  endif()
   target_include_directories(${LIB_TARGET} SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)

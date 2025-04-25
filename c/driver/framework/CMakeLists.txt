@@ -23,6 +23,7 @@ set_target_properties(adbc_driver_framework PROPERTIES POSITION_INDEPENDENT_CODE
 target_include_directories(adbc_driver_framework PRIVATE "${REPOSITORY_ROOT}/c/"
                                                          "${REPOSITORY_ROOT}/c/include")
 target_link_libraries(adbc_driver_framework PUBLIC adbc_driver_common fmt::fmt)
+target_compile_definitions(adbc_driver_framework PUBLIC ADBC_STATIC)
 
 # For static builds, we need to install the static library here so downstream
 # applications can link to it

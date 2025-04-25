@@ -25,3 +25,4 @@ URL: https://github.com/apache/arrow-adbc
 Version: @ADBC_VERSION@
 Libs: -L${libdir} -ladbc_driver_sqlite
 Cflags: -I${includedir}
+Cflags.private: -DADBC_STATIC

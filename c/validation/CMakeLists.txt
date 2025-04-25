@@ -17,6 +17,7 @@
 
 add_library(adbc_validation_util STATIC adbc_validation_util.cc)
 adbc_configure_target(adbc_validation_util)
+target_compile_definitions(adbc_validation_util PUBLIC ADBC_STATIC)
 target_compile_features(adbc_validation_util PRIVATE cxx_std_17)
 target_include_directories(adbc_validation_util SYSTEM
                            PRIVATE "${REPOSITORY_ROOT}/c/include/"

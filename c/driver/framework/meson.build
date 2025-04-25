@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-adbc_framework_lib = library(
+adbc_framework_lib = static_library(
     'adbc_driver_framework',
     sources: ['objects.cc', 'utility.cc'],
     include_directories: [include_dir, c_dir],
@@ -23,4 +23,10 @@ adbc_framework_lib = library(
     dependencies: [nanoarrow_dep, fmt_dep],
     install: true,
     gnu_symbol_visibility: 'hidden',
+    cpp_args: adbc_cpp_static_args,
+)
+
+adbc_framework_dep = declare_dependency(
+    link_with: adbc_framework_lib,
+    compile_args: adbc_cpp_static_args,
 )

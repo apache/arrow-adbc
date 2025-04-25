@@ -52,6 +52,7 @@ function(adbc_add_static_library target_name base_name)
   set(static_base_name
     "${CMAKE_STATIC_LIBRARY_PREFIX}${base_name}${CMAKE_STATIC_LIBRARY_SUFFIX}")
   add_library(${target_name} STATIC IMPORTED)
+  target_compile_definitions(${target_name} ADBC_STATIC)
   if(WINDOWS)
     set_target_properties(${target_name}
       PROPERTIES

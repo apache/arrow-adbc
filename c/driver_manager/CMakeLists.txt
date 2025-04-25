@@ -41,6 +41,9 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
                                      ${REPOSITORY_ROOT}/c/vendor
                                      ${REPOSITORY_ROOT}/c/driver)
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+  if(ADBC_BUILD_STATIC)
+    target_compile_definitions(${LIB_TARGET} PUBLIC ADBC_STATIC)
+  endif()
 endforeach()
 
 if(ADBC_BUILD_TESTS)
