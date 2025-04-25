@@ -43,9 +43,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         {
             public string? AccessToken { get; set; }
             public DateTime ExpiresAt { get; set; }
-            
+
             public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
-            
+
             // Add buffer time to refresh token before actual expiration
             public bool NeedsRefresh => DateTime.UtcNow >= ExpiresAt.AddMinutes(-5);
         }
@@ -112,7 +112,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             }
 
             string content = await response.Content.ReadAsStringAsync();
-            
+
             try
             {
                 _cachedToken = ParseTokenResponse(content);
@@ -149,7 +149,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         private TokenInfo ParseTokenResponse(string content)
         {
             using var jsonDoc = JsonDocument.Parse(content);
-            
+
             if (!jsonDoc.RootElement.TryGetProperty("access_token", out var accessTokenElement))
             {
                 throw new DatabricksException("OAuth response did not contain an access_token");
