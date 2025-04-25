@@ -28,16 +28,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
     /// <summary>
     /// Service for obtaining OAuth access tokens using the client credentials grant type.
     /// </summary>
-    internal class OAuthClientCredentialsService
+    internal class OAuthClientCredentialsService : IDisposable
     {
         private readonly Lazy<HttpClient> _httpClient;
         private readonly string _clientId;
         private readonly string _clientSecret;
         private readonly Uri _baseUri;
-        private readonly string? _tenantId;
-        private readonly string _scope;
         private readonly string _tokenEndpoint;
         private readonly int _timeoutMinutes;
+        private readonly SemaphoreSlim _tokenLock = new SemaphoreSlim(1, 1);
+        private TokenInfo? _cachedToken;
+
+        private class TokenInfo
+        {
+            public string? AccessToken { get; set; }
+            public DateTime ExpiresAt { get; set; }
+            
+            public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
+            
+            // Add buffer time to refresh token before actual expiration
+            public bool NeedsRefresh => DateTime.UtcNow >= ExpiresAt.AddMinutes(-5);
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OAuthClientCredentialsService"/> class.
@@ -45,76 +56,49 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         /// <param name="clientId">The OAuth client ID.</param>
         /// <param name="clientSecret">The OAuth client secret.</param>
         /// <param name="baseUri">The base URI of the Databricks workspace.</param>
-        /// <param name="tenantId">The Azure AD tenant ID. Required for Azure Databricks.</param>
-        /// <param name="scope">The OAuth scope to request. Default is "all-apis".</param>
-        /// <param name="timeoutMinutes">The timeout in minutes for HTTP requests. Default is 5 minutes.</param>
         public OAuthClientCredentialsService(
             string clientId,
             string clientSecret,
             Uri baseUri,
-            string? tenantId = null,
-            string scope = "all-apis",
-            int timeoutMinutes = 5)
+            int timeoutMinutes = 1,
+            HttpClient? httpClient = null)
         {
             _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
             _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
             _baseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri));
-            _tenantId = tenantId;
-            _scope = scope ?? "all-apis";
             _timeoutMinutes = timeoutMinutes;
             _tokenEndpoint = DetermineTokenEndpoint();
 
-            _httpClient = new Lazy<HttpClient>(() =>
-            {
-                var client = new HttpClient();
-                client.Timeout = TimeSpan.FromMinutes(_timeoutMinutes);
-                return client;
-            });
+            _httpClient = httpClient != null
+                ? new Lazy<HttpClient>(() => httpClient)
+                : new Lazy<HttpClient>(() =>
+                {
+                    var client = new HttpClient();
+                    client.Timeout = TimeSpan.FromMinutes(_timeoutMinutes);
+                    return client;
+                });
         }
 
         private HttpClient HttpClient => _httpClient.Value;
 
         private string DetermineTokenEndpoint()
         {
-            string host = _baseUri.Host.ToLowerInvariant();
-            if (host.Contains("azuredatabricks.net"))
-            {
-                if (string.IsNullOrEmpty(_tenantId))
-                {
-                    throw new ArgumentException("Azure Databricks requires a tenantId to determine the token endpoint.");
-                }
-
-                return $"https://login.microsoftonline.com/{_tenantId}/oauth2/v2.0/token";
-            }
-            else
-            {
-                // Applies to AWS and GCP (if using Databricks-hosted IdP)
-                return "https://accounts.cloud.databricks.com/oidc/token";
-            }
+            // For workspace URLs, the token endpoint is always /oidc/v1/token
+            // TODO: Might be different for Azure AAD SPs
+            return $"{_baseUri.Scheme}://{_baseUri.Host}/oidc/v1/token";
         }
 
-        /// <summary>
-        /// Gets an OAuth access token using the client credentials grant type.
-        /// </summary>
-        /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
-        /// <returns>The access token.</returns>
-        /// <exception cref="DatabricksException">Thrown when the token request fails or the response is invalid.</exception>
-        public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
+        private string? GetValidCachedToken()
         {
-            var requestContent = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                new KeyValuePair<string, string>("client_id", _clientId),
-                new KeyValuePair<string, string>("client_secret", _clientSecret),
-                new KeyValuePair<string, string>("scope", _scope)
-            });
+            return _cachedToken != null && !_cachedToken.NeedsRefresh && _cachedToken.AccessToken != null
+                ? _cachedToken.AccessToken
+                : null;
+        }
 
-            var request = new HttpRequestMessage(HttpMethod.Post, _tokenEndpoint)
-            {
-                Content = requestContent
-            };
 
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        private async Task<string> RefreshTokenInternalAsync(CancellationToken cancellationToken)
+        {
+            var request = CreateTokenRequest();
 
             HttpResponseMessage response;
             try
@@ -131,25 +115,117 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             
             try
             {
-                using var jsonDoc = JsonDocument.Parse(content);
-                
-                if (!jsonDoc.RootElement.TryGetProperty("access_token", out var accessTokenElement))
-                {
-                    throw new DatabricksException("OAuth response did not contain an access_token");
-                }
-
-                string? accessToken = accessTokenElement.GetString();
-                if (string.IsNullOrEmpty(accessToken))
-                {
-                    throw new DatabricksException("OAuth access_token was null or empty");
-                }
-
-                return accessToken!;
+                _cachedToken = ParseTokenResponse(content);
+                return _cachedToken.AccessToken!;
             }
             catch (JsonException ex)
             {
                 throw new DatabricksException($"Failed to parse OAuth response: {ex.Message}", ex);
             }
         }
+
+        private HttpRequestMessage CreateTokenRequest()
+        {
+            var requestContent = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("grant_type", "client_credentials"),
+                new KeyValuePair<string, string>("scope", "sql")
+            });
+
+            var request = new HttpRequestMessage(HttpMethod.Post, _tokenEndpoint)
+            {
+                Content = requestContent
+            };
+
+            // Use Basic Auth with client ID and secret
+            var authHeader = Convert.ToBase64String(
+                System.Text.Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authHeader);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            return request;
+        }
+
+        private TokenInfo ParseTokenResponse(string content)
+        {
+            using var jsonDoc = JsonDocument.Parse(content);
+            
+            if (!jsonDoc.RootElement.TryGetProperty("access_token", out var accessTokenElement))
+            {
+                throw new DatabricksException("OAuth response did not contain an access_token");
+            }
+
+            string? accessToken = accessTokenElement.GetString();
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                throw new DatabricksException("OAuth access_token was null or empty");
+            }
+
+            // Get expiration time from response
+            if (!jsonDoc.RootElement.TryGetProperty("expires_in", out var expiresInElement))
+            {
+                throw new DatabricksException("OAuth response did not contain expires_in");
+            }
+
+            int expiresIn = expiresInElement.GetInt32();
+            if (expiresIn <= 0)
+            {
+                throw new DatabricksException("OAuth expires_in value must be positive");
+            }
+
+            return new TokenInfo
+            {
+                AccessToken = accessToken!,
+                ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn)
+            };
+        }
+
+        /// <summary>
+        /// Gets an OAuth access token using the client credentials grant type.
+        /// </summary>
+        /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+        /// <returns>The access token.</returns>
+        /// <exception cref="DatabricksException">Thrown when the token request fails or the response is invalid.</exception>
+        public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
+        {
+            // First try to get cached token without acquiring lock
+            if (GetValidCachedToken() is string cachedToken)
+            {
+                return cachedToken;
+            }
+
+            // If token needs refresh, acquire lock with timeout
+            var lockTimeout = TimeSpan.FromSeconds(30); // Reasonable timeout for lock acquisition
+            if (!await _tokenLock.WaitAsync(lockTimeout, cancellationToken).ConfigureAwait(false))
+            {
+                throw new TimeoutException("Timeout waiting for token refresh lock");
+            }
+
+            try
+            {
+                // Double-check pattern in case another thread refreshed while we were waiting
+                if (GetValidCachedToken() is string refreshedToken)
+                {
+                    return refreshedToken;
+                }
+
+                return await RefreshTokenInternalAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _tokenLock.Release();
+            }
+        }
+
+
+        public void Dispose()
+        {
+            _tokenLock.Dispose();
+            if (_httpClient.IsValueCreated)
+            {
+                HttpClient.Dispose();
+            }
+        }
+
     }
 }
