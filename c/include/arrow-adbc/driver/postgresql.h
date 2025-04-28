@@ -22,9 +22,6 @@
 
 #pragma once
 
-#ifndef ADBC_DRIVER_POSTGRESQL_H
-#define ADBC_DRIVER_POSTGRESQL_H
-
 #include <arrow-adbc/adbc.h>
 
 #ifdef __cplusplus
@@ -37,6 +34,4 @@ AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

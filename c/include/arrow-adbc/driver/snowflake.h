@@ -21,9 +21,6 @@
 
 #pragma once
 
-#ifndef ADBC_DRIVER_SNOWFLAKE_H
-#define ADBC_DRIVER_SNOWFLAKE_H
-
 #include <arrow-adbc/adbc.h>
 
 #ifdef __cplusplus
@@ -36,6 +33,4 @@ AdbcStatusCode SnowflakeDriverInit(int version, void* raw_driver,
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

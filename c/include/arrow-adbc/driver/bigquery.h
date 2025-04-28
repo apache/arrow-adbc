@@ -21,9 +21,6 @@
 
 #pragma once
 
-#ifndef ADBC_DRIVER_BIGQUERY_H
-#define ADBC_DRIVER_BIGQUERY_H
-
 #include <arrow-adbc/adbc.h>
 
 #ifdef __cplusplus
@@ -35,6 +32,4 @@ AdbcStatusCode BigQueryDriverInit(int version, void* raw_driver, struct AdbcErro
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
