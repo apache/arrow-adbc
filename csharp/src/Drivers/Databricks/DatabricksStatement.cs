@@ -67,7 +67,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             get { return _directResults; }
         }
 
-
         // Cast the Client to IAsync for CloudFetch compatibility
         TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
 
