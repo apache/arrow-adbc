@@ -32,3 +32,8 @@ pkg.generate(
     libraries: [adbc_driver_manager_lib],
     filebase: 'adbc-driver-manager',
 )
+
+adbc_driver_manager_dep = declare_dependency(
+    include_directories: include_dir,
+    link_with: adbc_driver_manager_lib,
+)
