@@ -468,5 +468,5 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 }
 
 func (d *databaseImpl) Close() error {
-	return d.Base().Close()
+	return nil
 }

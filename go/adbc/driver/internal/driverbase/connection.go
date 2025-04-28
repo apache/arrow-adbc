@@ -79,8 +79,9 @@ func (te traceExporterType) EnumIndex() int {
 	return int(te)
 }
 
-func tryParseTraceExporterType(traceExporter string) (traceExporterType, bool) {
-	te, ok := traceExporterNames[strings.ToLower(strings.TrimSpace(traceExporter))]
+func tryParseTraceExporterType(value string) (traceExporterType, bool) {
+	telemetryExporter := adbc.OptionTelemetryExporter(strings.ToLower(strings.TrimSpace(value)))
+	te, ok := traceExporterNames[telemetryExporter]
 	if ok {
 		return te, true
 	}

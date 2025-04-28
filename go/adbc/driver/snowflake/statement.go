@@ -239,11 +239,7 @@ func (st *statement) SetOption(key string, val string) error {
 			}
 		}
 	case adbc.OptionKeyTelemetryTraceParent:
-		if strings.TrimSpace(val) == "" {
-			st.traceParent = ""
-		} else {
-			st.traceParent = val
-		}
+		st.traceParent = strings.TrimSpace(val)
 	default:
 		return adbc.Error{
 			Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),

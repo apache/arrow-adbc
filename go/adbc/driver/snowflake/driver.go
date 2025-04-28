@@ -243,6 +243,5 @@ func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, optFuncs ...
 		}
 	}
 
-	database := driverbase.NewDatabase(db)
-	return database, nil
+	return driverbase.NewDatabase(db), nil
 }
