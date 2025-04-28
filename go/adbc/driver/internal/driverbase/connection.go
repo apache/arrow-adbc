@@ -508,7 +508,11 @@ func (cnxn *connection) InitTracing(driverName string, driverVersion string) {
 	cnxn.Base().InitTracing(driverName, driverVersion)
 }
 
-func (cnxn *connection) StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span, error) {
+func (cnxn *connection) StartSpan(
+	ctx context.Context,
+	spanName string,
+	opts ...trace.SpanStartOption,
+) (context.Context, trace.Span, error) {
 	return cnxn.Base().StartSpan(ctx, spanName)
 }
 

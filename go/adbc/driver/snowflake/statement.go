@@ -82,7 +82,11 @@ func (st *statement) GetTraceParent() string {
 	return st.traceParent
 }
 
-func (st *statement) StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (newCtx context.Context, span trace.Span, err error) {
+func (st *statement) StartSpan(
+	ctx context.Context,
+	spanName string,
+	opts ...trace.SpanStartOption,
+) (newCtx context.Context, span trace.Span, err error) {
 	newCtx, err = driverbase.MaybeAddTraceParent(ctx, st.cnxn, st)
 	if err != nil {
 		return ctx, nil, err
