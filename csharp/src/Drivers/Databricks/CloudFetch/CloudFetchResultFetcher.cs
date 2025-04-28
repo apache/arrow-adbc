@@ -129,6 +129,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         {
             try
             {
+                // Process direct results first, if available
+                if (_statement.HasDirectResults && _statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
+                {
+                    // Yield execution so the download queue doesn't get blocked before downloader is started
+                    await Task.Yield();
+                    ProcessDirectResultsAsync(cancellationToken);
+                }
+
                 // Continue fetching as needed
                 while (_hasMoreResults && !cancellationToken.IsCancellationRequested)
                 {
@@ -227,6 +235,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 // No more results
                 _hasMoreResults = false;
             }
+        }
+
+        private void ProcessDirectResultsAsync(CancellationToken cancellationToken)
+        {
+            List<TSparkArrowResultLink> resultLinks = _statement.DirectResults!.ResultSet.Results.ResultLinks;
+
+            foreach (var link in resultLinks)
+            {
+                var downloadResult = new DownloadResult(link, _memoryManager);
+                _downloadQueue.Add(downloadResult, cancellationToken);
+            }
+
+            // Update the start offset for the next fetch
+            if (resultLinks.Count > 0)
+            {
+                var lastLink = resultLinks[resultLinks.Count - 1];
+                _startOffset = lastLink.StartRowOffset + lastLink.RowCount;
+            }
+
+            _hasMoreResults = _statement.DirectResults!.ResultSet.HasMoreRows;
         }
     }
 }

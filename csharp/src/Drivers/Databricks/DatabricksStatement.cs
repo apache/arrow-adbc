@@ -49,6 +49,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.CanDownloadResult = useCloudFetch;
             statement.CanDecompressLZ4Result = canDecompressLz4;
             statement.MaxBytesPerFile = maxBytesPerFile;
+
+            if (Connection.AreResultsAvailableDirectly)
+            {
+                statement.GetDirectResults = DatabricksConnection.defaultGetDirectResults;
+            }
+        }
+
+        /// <summary>
+        /// Checks if direct results are available.
+        /// </summary>
+        /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
+        public bool HasDirectResults => DirectResults?.ResultSet != null && DirectResults?.ResultSetMetadata != null;
+
+        public TSparkDirectResults? DirectResults
+        {
+            get { return _directResults; }
         }
 
         // Cast the Client to IAsync for CloudFetch compatibility

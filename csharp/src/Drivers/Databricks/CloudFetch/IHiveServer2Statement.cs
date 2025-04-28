@@ -33,5 +33,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// Gets the client.
         /// </summary>
         TCLIService.IAsync Client { get; }
+
+        /// <summary>
+        /// Gets the direct results.
+        /// </summary>
+        TSparkDirectResults? DirectResults { get; }
+
+        /// <summary>
+        /// Checks if direct results are available.
+        /// </summary>
+        /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
+        bool HasDirectResults { get; }
     }
 }

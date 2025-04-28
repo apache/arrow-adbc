@@ -62,6 +62,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const string CloudFetchTimeoutMinutes = "adbc.databricks.cloudfetch.timeout_minutes";
 
         /// <summary>
+        /// Whether to enable the use of direct results when executing queries.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string EnableDirectResults = "adbc.databricks.enable_direct_results";
+
+        /// <summary>
         /// Whether to apply service side properties (SSP) with queries. If false, SSP will be applied
         /// by setting the Thrift configuration when the session is opened.
         /// Default value is false if not specified.

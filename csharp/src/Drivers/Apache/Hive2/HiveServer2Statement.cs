@@ -99,17 +99,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return await ExecuteMetadataCommandQuery(cancellationToken);
             }
 
+            _directResults = null;
+
             // this could either:
             // take QueryTimeoutSeconds * 3
             // OR
             // take QueryTimeoutSeconds (but this could be restricting)
             await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
-            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
-            Schema schema = Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
 
+            TGetResultSetMetadataResp metadata;
+            if (_directResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
+            {
+                // The initial response has result data so we don't need to poll
+                metadata = _directResults.ResultSetMetadata;
+            }
+            else
+            {
+                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
+                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
+            }
             // Store metadata for use in readers
-            return new QueryResult(-1, Connection.NewReader(this, schema, response));
+            Schema schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+            return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
@@ -257,6 +268,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     .SetNativeError(executeResponse.Status.ErrorCode);
             }
             OperationHandle = executeResponse.OperationHandle;
+
+            // Capture direct results if they're available
+            if (executeResponse.DirectResults != null)
+            {
+                _directResults = executeResponse.DirectResults;
+
+                if (!string.IsNullOrEmpty(_directResults.OperationStatus?.DisplayMessage))
+                {
+                    throw new HiveServer2Exception(_directResults.OperationStatus!.DisplayMessage)
+                        .SetSqlState(_directResults.OperationStatus.SqlState)
+                        .SetNativeError(_directResults.OperationStatus.ErrorCode);
+                }
+            }
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
@@ -279,6 +303,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal string? ForeignCatalogName { get; set; }
         protected internal string? ForeignSchemaName { get; set; }
         protected internal string? ForeignTableName { get; set; }
+        protected internal TSparkDirectResults? _directResults { get; set; }
 
         public HiveServer2Connection Connection { get; private set; }
 
@@ -416,7 +441,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TRowSet rowSet;
 
             // For GetColumns, we need to enhance the result with BASE_TYPE_NAME
-            if (Connection.AreResultsAvailableDirectly() && resp.DirectResults?.ResultSet?.Results != null)
+            if (Connection.AreResultsAvailableDirectly && resp.DirectResults?.ResultSet?.Results != null)
             {
                 // Get data from direct results
                 metadata = resp.DirectResults.ResultSetMetadata;
@@ -454,7 +479,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
         {
             Schema schema;
-            if (Connection.AreResultsAvailableDirectly() && directResults?.ResultSet?.Results != null)
+            if (Connection.AreResultsAvailableDirectly && directResults?.ResultSet?.Results != null)
             {
                 TGetResultSetMetadataResp resultSetMetadata = directResults.ResultSetMetadata;
                 schema = Connection.SchemaParser.GetArrowSchema(resultSetMetadata.Schema, Connection.DataTypeConversion);
