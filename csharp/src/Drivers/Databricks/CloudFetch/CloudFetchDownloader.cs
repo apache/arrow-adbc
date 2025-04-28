@@ -23,6 +23,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using K4os.Compression.LZ4.Streams;
+using Microsoft.Extensions.Logging;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 {
@@ -55,6 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// <param name="httpClient">The HTTP client to use for downloads.</param>
         /// <param name="maxParallelDownloads">The maximum number of parallel downloads.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
+        /// <param name="logger">The logger instance.</param>
         /// <param name="maxRetries">The maximum number of retry attempts.</param>
         /// <param name="retryDelayMs">The delay between retry attempts in milliseconds.</param>
         public CloudFetchDownloader(
@@ -184,6 +186,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         {
             await Task.Yield();
 
+            int totalFiles = 0;
+            int successfulDownloads = 0;
+            int failedDownloads = 0;
+            long totalBytes = 0;
+            var overallStopwatch = Stopwatch.StartNew();
+
             try
             {
                 // Keep track of active download tasks
@@ -193,6 +201,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 // Process items from the download queue until it's completed
                 foreach (var downloadResult in _downloadQueue.GetConsumingEnumerable(cancellationToken))
                 {
+                    totalFiles++;
+
                     // Check if there's an error before processing more downloads
                     if (HasError)
                     {
@@ -213,7 +223,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                             }
                             catch (Exception ex)
                             {
-                                Debug.WriteLine($"Error waiting for downloads to complete: {ex.Message}");
+                                Trace.TraceWarning($"Error waiting for downloads to complete: {ex.Message}");
                                 // Don't set error here, as individual download tasks will handle their own errors
                             }
                         }
@@ -245,16 +255,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                             if (t.IsFaulted)
                             {
                                 Exception ex = t.Exception?.InnerException ?? new Exception("Unknown error");
-                                Debug.WriteLine($"Download failed: {ex.Message}");
+                                Trace.TraceError($"Download failed for file {downloadResult.Link.FileLink}: {ex.Message}");
 
                                 // Set the download as failed
                                 downloadResult.SetFailed(ex);
+                                failedDownloads++;
 
                                 // Set the error state to stop the download process
                                 SetError(ex);
 
                                 // Signal that we should stop processing downloads
                                 downloadTaskCompletionSource.TrySetException(ex);
+                            }
+                            else if (!t.IsFaulted && !t.IsCanceled)
+                            {
+                                successfulDownloads++;
+                                totalBytes += downloadResult.Size;
                             }
                         }, cancellationToken);
 
@@ -274,14 +290,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // Expected when cancellation is requested
+                Trace.TraceInformation("Download process was cancelled");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error in download loop: {ex.Message}");
+                Trace.TraceError($"Error in download loop: {ex.Message}");
                 SetError(ex);
             }
             finally
             {
+                overallStopwatch.Stop();
+
+                Trace.TraceInformation(
+                    $"Download process completed. Total files: {totalFiles}, Successful: {successfulDownloads}, " +
+                    $"Failed: {failedDownloads}, Total size: {totalBytes / 1024.0 / 1024.0:F2} MB, Total time: {overallStopwatch.ElapsedMilliseconds / 1000.0:F2} sec");
+
                 // If there's an error, add the error to the result queue
                 if (HasError)
                 {
@@ -297,6 +320,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
             // Use the size directly from the download result
             long size = downloadResult.Size;
+
+            // Create a stopwatch to track download time
+            var stopwatch = Stopwatch.StartNew();
+
+            // Log download start
+            Trace.TraceInformation($"Starting download of file {downloadResult.Link.FileLink} from {SanitizeUrl(url)}, expected size: {size / 1024.0:F2} KB");
 
             // Acquire memory before downloading
             await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
@@ -318,7 +347,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                     long? contentLength = response.Content.Headers.ContentLength;
                     if (contentLength.HasValue && contentLength.Value > 0)
                     {
-                        Debug.WriteLine($"Downloading file of size: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
+                        Trace.TraceInformation($"Actual file size for {downloadResult.Link.FileLink}: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
                     }
 
                     // Read the file data
@@ -328,13 +357,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 catch (Exception ex) when (retry < _maxRetries - 1 && !cancellationToken.IsCancellationRequested)
                 {
                     // Log the error and retry
-                    Debug.WriteLine($"Error downloading file (attempt {retry + 1}/{_maxRetries}): {ex.Message}");
+                    Trace.TraceError($"Error downloading file {downloadResult.Link.FileLink} (attempt {retry + 1}/{_maxRetries}): {ex.Message}");
+
                     await Task.Delay(_retryDelayMs * (retry + 1), cancellationToken).ConfigureAwait(false);
                 }
             }
 
             if (fileData == null)
             {
+                stopwatch.Stop();
+                Trace.TraceError($"Failed to download file {downloadResult.Link.FileLink} from {SanitizeUrl(url)} after {_maxRetries} attempts. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
+
                 // Release the memory we acquired
                 _memoryManager.ReleaseMemory(size);
                 throw new InvalidOperationException($"Failed to download file from {url} after {_maxRetries} attempts.");
@@ -342,12 +375,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
             // Process the downloaded file data
             MemoryStream dataStream;
+            long actualSize = fileData.Length;
 
             // If the data is LZ4 compressed, decompress it
             if (_isLz4Compressed)
             {
                 try
                 {
+                    var decompressStopwatch = Stopwatch.StartNew();
                     dataStream = new MemoryStream();
                     using (var inputStream = new MemoryStream(fileData))
                     using (var decompressor = LZ4Stream.Decode(inputStream))
@@ -355,9 +390,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                         await decompressor.CopyToAsync(dataStream, 81920, cancellationToken).ConfigureAwait(false);
                     }
                     dataStream.Position = 0;
+                    decompressStopwatch.Stop();
+
+                    Trace.TraceInformation($"Decompressed file {downloadResult.Link.FileLink} in {decompressStopwatch.ElapsedMilliseconds} ms. Compressed size: {actualSize / 1024.0:F2} KB, Decompressed size: {dataStream.Length / 1024.0:F2} KB");
+
+                    actualSize = dataStream.Length;
                 }
                 catch (Exception ex)
                 {
+                    stopwatch.Stop();
+                    Trace.TraceError($"Error decompressing data for file {downloadResult.Link.FileLink}: {ex.Message}. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
+
                     // Release the memory we acquired
                     _memoryManager.ReleaseMemory(size);
                     throw new InvalidOperationException($"Error decompressing data: {ex.Message}", ex);
@@ -367,6 +410,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             {
                 dataStream = new MemoryStream(fileData);
             }
+
+            // Stop the stopwatch and log download completion
+            stopwatch.Stop();
+            Trace.TraceInformation($"Completed download of file {downloadResult.Link.FileLink}. Size: {actualSize / 1024.0:F2} KB, Latency: {stopwatch.ElapsedMilliseconds} ms, Throughput: {(actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0):F2} MB/s");
 
             // Set the download as completed with the original size
             downloadResult.SetCompleted(dataStream, size);
@@ -378,6 +425,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             {
                 if (_error == null)
                 {
+                    Trace.TraceError($"Setting error state: {ex.Message}");
                     _error = ex;
                 }
             }
@@ -395,7 +443,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error completing with error: {ex.Message}");
+                Trace.TraceError($"Error completing with error: {ex.Message}");
+            }
+        }
+
+        // Helper method to sanitize URLs for logging (to avoid exposing sensitive information)
+        private string SanitizeUrl(string url)
+        {
+            try
+            {
+                var uri = new Uri(url);
+                return $"{uri.Scheme}://{uri.Host}/{Path.GetFileName(uri.LocalPath)}";
+            }
+            catch
+            {
+                // If URL parsing fails, return a generic identifier
+                return "cloud-storage-url";
             }
         }
     }
