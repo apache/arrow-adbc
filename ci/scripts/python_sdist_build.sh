@@ -30,7 +30,7 @@ echo "=== (${PYTHON_VERSION}) Building ADBC sdists ==="
 
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
-pip install --upgrade pip setuptools
+pip install --upgrade pip build
 
 # For drivers, which bundle shared libraries, defer that to install time
 export _ADBC_IS_SDIST=1
@@ -41,7 +41,7 @@ for component in ${COMPONENTS}; do
     echo "=== Building $component sdist ==="
     # python -m build copies to a tempdir, so we can't reference other files in the repo
     # https://github.com/pypa/pip/issues/5519
-    python setup.py sdist
+    python -m build --sdist .
 
     popd
 done
