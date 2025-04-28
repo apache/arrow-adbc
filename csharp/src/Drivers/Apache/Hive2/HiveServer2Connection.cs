@@ -377,7 +377,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
                 {
                     TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
-                    if (AreResultsAvailableDirectly())
+                    if (AreResultsAvailableDirectly)
                     {
                         SetDirectResults(getCatalogsReq);
                     }
@@ -416,7 +416,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     TGetSchemasReq getSchemasReq = new TGetSchemasReq(SessionHandle);
                     getSchemasReq.CatalogName = catalogPattern;
                     getSchemasReq.SchemaName = dbSchemaPattern;
-                    if (AreResultsAvailableDirectly())
+                    if (AreResultsAvailableDirectly)
                     {
                         SetDirectResults(getSchemasReq);
                     }
@@ -449,7 +449,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     getTablesReq.CatalogName = catalogPattern;
                     getTablesReq.SchemaName = dbSchemaPattern;
                     getTablesReq.TableName = tableNamePattern;
-                    if (AreResultsAvailableDirectly())
+                    if (AreResultsAvailableDirectly)
                     {
                         SetDirectResults(getTablesReq);
                     }
@@ -486,7 +486,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     columnsReq.CatalogName = catalogPattern;
                     columnsReq.SchemaName = dbSchemaPattern;
                     columnsReq.TableName = tableNamePattern;
-                    if (AreResultsAvailableDirectly())
+                    if (AreResultsAvailableDirectly)
                     {
                         SetDirectResults(columnsReq);
                     }
@@ -594,7 +594,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
             };
 
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(req);
             }
@@ -786,7 +786,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
         protected internal abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default);
 
-        protected internal virtual bool AreResultsAvailableDirectly() => false;
+        protected internal virtual bool AreResultsAvailableDirectly => false;
 
         protected virtual void SetDirectResults(TGetColumnsReq request) => throw new System.NotImplementedException();
 
@@ -923,7 +923,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetCatalogsReq req = new TGetCatalogsReq(SessionHandle);
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(req);
             }
@@ -950,7 +950,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetSchemasReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(req);
             }
@@ -987,7 +987,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetTablesReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(req);
             }
@@ -1032,7 +1032,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetColumnsReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(req);
             }
@@ -1076,7 +1076,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetPrimaryKeysReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(req);
             }
@@ -1119,7 +1119,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetCrossReferenceReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(req);
             }
@@ -1255,7 +1255,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             getColumnsReq.CatalogName = catalog;
             getColumnsReq.SchemaName = dbSchema;
             getColumnsReq.TableName = tableName;
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(getColumnsReq);
             }

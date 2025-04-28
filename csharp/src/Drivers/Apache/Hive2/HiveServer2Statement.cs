@@ -441,7 +441,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             TRowSet rowSet;
 
             // For GetColumns, we need to enhance the result with BASE_TYPE_NAME
-            if (Connection.AreResultsAvailableDirectly() && resp.DirectResults?.ResultSet?.Results != null)
+            if (Connection.AreResultsAvailableDirectly && resp.DirectResults?.ResultSet?.Results != null)
             {
                 // Get data from direct results
                 metadata = resp.DirectResults.ResultSetMetadata;
@@ -479,7 +479,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
         {
             Schema schema;
-            if (Connection.AreResultsAvailableDirectly() && directResults?.ResultSet?.Results != null)
+            if (Connection.AreResultsAvailableDirectly && directResults?.ResultSet?.Results != null)
             {
                 TGetResultSetMetadataResp resultSetMetadata = directResults.ResultSetMetadata;
                 schema = Connection.SchemaParser.GetArrowSchema(resultSetMetadata.Schema, Connection.DataTypeConversion);

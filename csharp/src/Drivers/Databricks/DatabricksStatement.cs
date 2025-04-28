@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.CanDecompressLZ4Result = canDecompressLz4;
             statement.MaxBytesPerFile = maxBytesPerFile;
 
-            if (Connection.AreResultsAvailableDirectly())
+            if (Connection.AreResultsAvailableDirectly)
             {
                 statement.GetDirectResults = DatabricksConnection.defaultGetDirectResults;
             }

@@ -169,7 +169,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return baseHandler;
         }
 
-        protected internal override bool AreResultsAvailableDirectly() => _enableDirectResults;
+        protected internal override bool AreResultsAvailableDirectly => _enableDirectResults;
 
         protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = defaultGetDirectResults;
 
