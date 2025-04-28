@@ -630,26 +630,6 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	return n, nil
 }
 
-// func maybeAddTraceParent(ctx context.Context, st *statement) (context.Context, error) {
-// 	var hasTraceParent = false
-// 	var traceParentStr string = ""
-// 	if st.traceParent != "" {
-// 		traceParentStr = st.traceParent
-// 		hasTraceParent = true
-// 	} else if strings.TrimSpace(st.cnxn.db.TraceParent) != "" {
-// 		traceParentStr = st.cnxn.db.TraceParent
-// 		hasTraceParent = true
-// 	}
-// 	if hasTraceParent {
-// 		spanContext, err := parseTraceparent(ctx, traceParentStr)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		ctx = trace.ContextWithRemoteSpanContext(ctx, spanContext)
-// 	}
-// 	return ctx, nil
-// }
-
 // ExecuteSchema gets the schema of the result set of a query without executing it.
 func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 	ctx = st.setQueryContext(ctx)

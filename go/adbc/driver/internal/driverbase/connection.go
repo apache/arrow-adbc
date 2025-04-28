@@ -61,14 +61,18 @@ const (
 	TraceExporterConsole
 )
 
-var traceExporterNames = map[string]traceExporterType{
-	"none":    TraceExporterNone,
-	"otlp":    TraceExporterOtlp,
-	"console": TraceExporterConsole,
+var traceExporterNames = map[adbc.OptionTelemetryExporter]traceExporterType{
+	adbc.TelemetryExporterNone:    TraceExporterNone,
+	adbc.TelemetryExporterOtlp:    TraceExporterOtlp,
+	adbc.TelemetryExporterConsole: TraceExporterConsole,
 }
 
 func (te traceExporterType) String() string {
-	return [...]string{"none", "otlp", "console"}[te]
+	return [...]string{
+		string(adbc.TelemetryExporterNone),
+		string(adbc.TelemetryExporterOtlp),
+		string(adbc.TelemetryExporterConsole),
+	}[te]
 }
 
 func (te traceExporterType) EnumIndex() int {
@@ -344,7 +348,7 @@ func (base *ConnectionImplBase) StartSpan(
 
 func MaybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) (context.Context, error) {
 	var hasTraceParent = false
-	var traceParentStr string = ""
+	var traceParentStr = ""
 	if st != nil && st.GetTraceParent() != "" {
 		traceParentStr = st.GetTraceParent()
 		hasTraceParent = true
