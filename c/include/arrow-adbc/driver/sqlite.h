@@ -21,9 +21,6 @@
 
 #pragma once
 
-#ifndef ADBC_DRIVER_SQLITE_H
-#define ADBC_DRIVER_SQLITE_H
-
 #include <arrow-adbc/adbc.h>
 
 #ifdef __cplusplus
@@ -35,6 +32,4 @@ AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError*
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
