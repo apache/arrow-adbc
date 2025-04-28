@@ -20,10 +20,6 @@ package driverbase
 import (
 	"log/slog"
 	"os"
-
-	"go.opentelemetry.io/otel"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"go.opentelemetry.io/otel/trace"
 )
 
 func nilLogger() *slog.Logger {
@@ -32,17 +28,4 @@ func nilLogger() *slog.Logger {
 		Level:     slog.LevelError,
 	})
 	return slog.New(h)
-}
-
-func defaultTracer() trace.Tracer {
-	const (
-		instrumentationName    = "apache.arrow.adbc.go"
-		instrumentationVersion = "0.1.0"
-	)
-	tracer := otel.GetTracerProvider().Tracer(
-		instrumentationName,
-		trace.WithInstrumentationVersion(instrumentationVersion),
-		trace.WithSchemaURL(semconv.SchemaURL),
-	)
-	return tracer
 }

@@ -38,6 +38,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -170,7 +171,11 @@ func isWildcardStr(ident string) bool {
 }
 
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (rdr array.RecordReader, err error) {
-	_, span := c.db.Tracer.Start(ctx, "GetObjects")
+	var span trace.Span
+	ctx, span, err = c.StartSpan(ctx, "GetObjects")
+	if err != nil {
+		return nil, err
+	}
 	defer span.End()
 
 	var (
@@ -753,9 +758,6 @@ func (c *connectionImpl) SetOption(key, value string) error {
 		}
 		return nil
 	default:
-		return adbc.Error{
-			Msg:  "[Snowflake] unknown connection option " + key + ": " + value,
-			Code: adbc.StatusInvalidArgument,
-		}
+		return c.Base().SetOption(key, value)
 	}
 }

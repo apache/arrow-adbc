@@ -250,6 +250,15 @@ const (
 	OptionKeyURI                      = "uri"
 	OptionKeyUsername                 = "username"
 	OptionKeyPassword                 = "password"
+	OptionKeyTelemetryTraceParent     = "adbc.telemetry.trace_parent"
+)
+
+type OptionTelemetryExporter string
+
+const (
+	TelemetryExporterNone    OptionTelemetryExporter = "none"
+	TelemetryExporterOtlp    OptionTelemetryExporter = "otlp"
+	TelemetryExporterConsole OptionTelemetryExporter = "console"
 )
 
 type OptionIsolationLevel string

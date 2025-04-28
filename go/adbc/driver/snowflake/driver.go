@@ -18,26 +18,16 @@
 package snowflake
 
 import (
-	"context"
 	"errors"
 	"maps"
 	"net/http"
 	"runtime/debug"
 	"strings"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -126,11 +116,6 @@ const (
 	OptionValueAuthJwt = "auth_jwt"
 	// use a username and password with mfa
 	OptionValueAuthUserPassMFA = "auth_mfa"
-)
-
-const (
-	driverNamespace = "apache.arrow.adbc.snowflake"
-	driverService   = "apache.arrow.adbc.go"
 )
 
 var (
@@ -258,141 +243,6 @@ func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, optFuncs ...
 		}
 	}
 
-	database, err := setTracing(db)
-	if err != nil {
-		return nil, err
-	}
-
-	return database, nil
-}
-
-func setTracing(db *databaseImpl) (driverbase.Database, error) {
-	tracer, shutdownTracerFunc, err := setupTracing()
-	if err != nil {
-		return nil, err
-	}
-
 	database := driverbase.NewDatabase(db)
-	logging, ok := database.(adbc.DatabaseLogging)
-	if !ok {
-		db.Logger.Error("spark does not support logging")
-		return nil, errors.New("spark does not support logging")
-	}
-	logging.SetTracer(tracer)
-	logging.SetTracerShutdownFunc(shutdownTracerFunc)
 	return database, nil
-}
-
-// func installExportPipeline() (func(context.Context) error, error) {
-// 	writer, err := driverbase.NewRotatingFileWriter(driverbase.WithLogNamePrefix(driverNamespace))
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	exporter, err := stdouttrace.New(
-// 		stdouttrace.WithWriter(writer),
-// 	)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("creating stdout exporter: %w", err)
-// 	}
-
-// 	tracerProvider := sdktrace.NewTracerProvider(
-// 		sdktrace.WithBatcher(exporter),
-// 		sdktrace.WithResource(tracingResource()),
-// 	)
-// 	otel.SetTracerProvider(tracerProvider)
-
-// 	return tracerProvider.Shutdown, nil
-// }
-
-// func tracingResource() *resource.Resource {
-// 	return resource.NewWithAttributes(
-// 		semconv.SchemaURL,
-// 		semconv.ServiceName(driverNamespace),
-// 		semconv.ServiceVersion("0.1.0"), // TODO: Get driver version
-// 	)
-// }
-
-func newOtlpTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
-	return otlptracegrpc.New(
-		ctx,
-		otlptracegrpc.WithEndpoint("localhost:4317"),
-		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
-			Enabled:         true,
-			InitialInterval: 5 * time.Second,
-			MaxInterval:     30 * time.Second,
-			// MaxAttempts:     5,
-		}),
-	)
-}
-
-func newStdoutTraceExporter() (*stdouttrace.Exporter, error) {
-	writer, err := driverbase.NewRotatingFileWriter(driverbase.WithLogNamePrefix(driverNamespace))
-	if err != nil {
-		return nil, err
-	}
-
-	exporter, err := stdouttrace.New(
-		stdouttrace.WithWriter(writer),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return exporter, nil
-}
-
-func newTracerProvider(exporter sdktrace.SpanExporter) (*sdktrace.TracerProvider, error) {
-	// Ensure default SDK resource and the required service name are set.
-	mergedResource, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName(driverService),
-		),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(mergedResource),
-	), nil
-}
-
-func setupTracing() (trace.Tracer, func(context.Context) error, error) {
-	isTracingEnabled := true
-
-	if !isTracingEnabled {
-		// This creates a "noop" tracer
-		tracer := otel.Tracer(driverNamespace)
-		return tracer, nil, nil
-	}
-
-	var exporter sdktrace.SpanExporter
-	if true {
-		stdoutExporter, err := newStdoutTraceExporter()
-		if err != nil {
-			return nil, nil, err
-		}
-		exporter = stdoutExporter
-	} else {
-		otlpExporter, err := newOtlpTraceExporter(context.Background())
-		if err != nil {
-			return nil, nil, err
-		}
-		exporter = otlpExporter
-	}
-
-	tracerProvider, err := newTracerProvider(exporter)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	otel.SetTracerProvider(tracerProvider)
-	tracer := tracerProvider.Tracer(driverNamespace)
-
-	return tracer, tracerProvider.Shutdown, nil
 }

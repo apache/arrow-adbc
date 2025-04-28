@@ -26,12 +26,11 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -48,6 +47,7 @@ const (
 )
 
 type statement struct {
+	adbc.OTelTracing
 	cnxn                *connectionImpl
 	alloc               memory.Allocator
 	queueSize           int
@@ -62,6 +62,8 @@ type statement struct {
 
 	bound      arrow.Record
 	streamBind array.RecordReader
+
+	traceParent string
 }
 
 // setQueryContext applies the query tag if present.
@@ -70,6 +72,22 @@ func (st *statement) setQueryContext(ctx context.Context) context.Context {
 		ctx = gosnowflake.WithQueryTag(ctx, st.queryTag)
 	}
 	return ctx
+}
+
+func (st *statement) SetTraceParent(traceParent string) {
+	st.traceParent = traceParent
+}
+
+func (st *statement) GetTraceParent() string {
+	return st.traceParent
+}
+
+func (st *statement) StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (newCtx context.Context, span trace.Span, err error) {
+	newCtx, err = driverbase.MaybeAddTraceParent(ctx, st.cnxn, st)
+	if err != nil {
+		return ctx, nil, err
+	}
+	return st.cnxn.Base().StartSpan(newCtx, spanName, opts...)
 }
 
 // Close releases any relevant resources associated with this statement
@@ -98,6 +116,8 @@ func (st *statement) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStatementQueryTag:
 		return st.queryTag, nil
+	case adbc.OptionKeyTelemetryTraceParent:
+		return st.traceParent, nil
 	}
 	return "", adbc.Error{
 		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
@@ -217,6 +237,12 @@ func (st *statement) SetOption(key string, val string) error {
 				Msg:  fmt.Sprintf("[Snowflake] invalid statement option %s=%s", key, val),
 				Code: adbc.StatusInvalidArgument,
 			}
+		}
+	case adbc.OptionKeyTelemetryTraceParent:
+		if strings.TrimSpace(val) == "" {
+			st.traceParent = ""
+		} else {
+			st.traceParent = val
 		}
 	default:
 		return adbc.Error{
@@ -524,7 +550,10 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	ctx = st.setQueryContext(ctx)
 
-	_, span := st.cnxn.db.Tracer.Start(ctx, "ExecuteUpdate")
+	_, span, err := st.StartSpan(ctx, "ExecuteUpdate")
+	if err != nil {
+		return -1, err
+	}
 	defer span.End()
 
 	if st.targetTable != "" {
@@ -532,7 +561,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	}
 
 	if st.query == "" {
-		span.SetStatus(codes.Error, codes.Error.String())
+		// span.SetStatus(codes.Error, codes.Error.String())
 		return -1, adbc.Error{
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
@@ -554,16 +583,16 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 			if err == io.EOF {
 				break
 			} else if err != nil {
-				span.SetStatus(codes.Error, codes.Error.String())
+				// span.SetStatus(codes.Error, codes.Error.String())
 				return -1, err
 			}
 
-			span.AddEvent("execute.start",
-				trace.WithAttributes(attribute.String("query", st.query)),
-			)
+			// span.AddEvent("execute.start",
+			// 	trace.WithAttributes(attribute.String("query", st.query)),
+			// )
 			r, err := st.cnxn.cn.ExecContext(ctx, st.query, params)
 			if err != nil {
-				span.SetStatus(codes.Error, codes.Error.String())
+				// span.SetStatus(codes.Error, codes.Error.String())
 				return -1, errToAdbcErr(adbc.StatusInternal, err)
 			}
 			n, err := r.RowsAffected()
@@ -573,19 +602,19 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 				numRows += n
 			}
 		}
-		span.AddEvent("execute.end",
-			trace.WithAttributes(attribute.Int64("rowcount", numRows)),
-		)
-		span.SetStatus(codes.Ok, codes.Ok.String())
+		// span.AddEvent("execute.end",
+		// 	trace.WithAttributes(attribute.Int64("rowcount", numRows)),
+		// )
+		// span.SetStatus(codes.Ok, codes.Ok.String())
 		return numRows, nil
 	}
 
-	span.AddEvent("execute.start",
-		trace.WithAttributes(attribute.String("query", st.query)),
-	)
+	// span.AddEvent("execute.start",
+	// 	trace.WithAttributes(attribute.String("query", st.query)),
+	// )
 	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)
 	if err != nil {
-		span.SetStatus(codes.Error, codes.Error.String())
+		// span.SetStatus(codes.Error, codes.Error.String())
 		return -1, errToAdbcErr(adbc.StatusIO, err)
 	}
 
@@ -594,12 +623,32 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 		n = -1
 	}
 
-	span.AddEvent("execute.end",
-		trace.WithAttributes(attribute.Int64("rowcount", n)),
-	)
-	span.SetStatus(codes.Ok, codes.Ok.String())
+	// span.AddEvent("execute.end",
+	// 	trace.WithAttributes(attribute.Int64("rowcount", n)),
+	// )
+	// span.SetStatus(codes.Ok, codes.Ok.String())
 	return n, nil
 }
+
+// func maybeAddTraceParent(ctx context.Context, st *statement) (context.Context, error) {
+// 	var hasTraceParent = false
+// 	var traceParentStr string = ""
+// 	if st.traceParent != "" {
+// 		traceParentStr = st.traceParent
+// 		hasTraceParent = true
+// 	} else if strings.TrimSpace(st.cnxn.db.TraceParent) != "" {
+// 		traceParentStr = st.cnxn.db.TraceParent
+// 		hasTraceParent = true
+// 	}
+// 	if hasTraceParent {
+// 		spanContext, err := parseTraceparent(ctx, traceParentStr)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		ctx = trace.ContextWithRemoteSpanContext(ctx, spanContext)
+// 	}
+// 	return ctx, nil
+// }
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
 func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {

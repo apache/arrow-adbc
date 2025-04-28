@@ -30,6 +30,14 @@ import (
 // EXPERIMENTAL. Not formally part of the ADBC APIs.
 type DatabaseLogging interface {
 	SetLogger(*slog.Logger)
-	SetTracer(trace.Tracer)
-	SetTracerShutdownFunc(func(context.Context) error)
+}
+
+type OTelTracingInit interface {
+	InitTracing(driverName string, driverVersion string)
+}
+
+type OTelTracing interface {
+	SetTraceParent(string)
+	GetTraceParent() string
+	StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span, error)
 }
