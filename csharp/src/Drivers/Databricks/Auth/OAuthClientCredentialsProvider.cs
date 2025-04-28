@@ -28,12 +28,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
     /// <summary>
     /// Service for obtaining OAuth access tokens using the client credentials grant type.
     /// </summary>
-    internal class OAuthClientCredentialsService : IDisposable
+    internal class OAuthClientCredentialsProvider : IDisposable
     {
-        private readonly Lazy<HttpClient> _httpClient;
+        private readonly HttpClient _httpClient;
         private readonly string _clientId;
         private readonly string _clientSecret;
-        private readonly Uri _baseUri;
+        private readonly string _host;
         private readonly string _tokenEndpoint;
         private readonly int _timeoutMinutes;
         private readonly SemaphoreSlim _tokenLock = new SemaphoreSlim(1, 1);
@@ -56,36 +56,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         /// <param name="clientId">The OAuth client ID.</param>
         /// <param name="clientSecret">The OAuth client secret.</param>
         /// <param name="baseUri">The base URI of the Databricks workspace.</param>
-        public OAuthClientCredentialsService(
+        public OAuthClientCredentialsProvider(
             string clientId,
             string clientSecret,
-            Uri baseUri,
-            int timeoutMinutes = 1,
-            HttpClient? httpClient = null)
+            string host,
+            int timeoutMinutes = 1)
         {
             _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
             _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
-            _baseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri));
+            _host = host ?? throw new ArgumentNullException(nameof(host));
             _timeoutMinutes = timeoutMinutes;
             _tokenEndpoint = DetermineTokenEndpoint();
 
-            _httpClient = httpClient != null
-                ? new Lazy<HttpClient>(() => httpClient)
-                : new Lazy<HttpClient>(() =>
-                {
-                    var client = new HttpClient();
-                    client.Timeout = TimeSpan.FromMinutes(_timeoutMinutes);
-                    return client;
-                });
+            _httpClient = new HttpClient();
+            _httpClient.Timeout = TimeSpan.FromMinutes(_timeoutMinutes);
         }
-
-        private HttpClient HttpClient => _httpClient.Value;
 
         private string DetermineTokenEndpoint()
         {
             // For workspace URLs, the token endpoint is always /oidc/v1/token
             // TODO: Might be different for Azure AAD SPs
-            return $"{_baseUri.Scheme}://{_baseUri.Host}/oidc/v1/token";
+            return $"https://{_host}/oidc/v1/token";
         }
 
         private string? GetValidCachedToken()
@@ -103,7 +94,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             HttpResponseMessage response;
             try
             {
-                response = await HttpClient.SendAsync(request, cancellationToken);
+                response = await _httpClient.SendAsync(request, cancellationToken);
                 response.EnsureSuccessStatusCode();
             }
             catch (HttpRequestException ex)
@@ -129,7 +120,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             var requestContent = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                new KeyValuePair<string, string>("scope", "sql")
+                new KeyValuePair<string, string>("scope", "all-apis")
             });
 
             var request = new HttpRequestMessage(HttpMethod.Post, _tokenEndpoint)
@@ -194,12 +185,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 return cachedToken;
             }
 
-            // If token needs refresh, acquire lock with timeout
-            var lockTimeout = TimeSpan.FromSeconds(30); // Reasonable timeout for lock acquisition
-            if (!await _tokenLock.WaitAsync(lockTimeout, cancellationToken).ConfigureAwait(false))
-            {
-                throw new TimeoutException("Timeout waiting for token refresh lock");
-            }
+            await _tokenLock.WaitAsync(cancellationToken);
 
             try
             {
@@ -209,7 +195,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                     return refreshedToken;
                 }
 
-                return await RefreshTokenInternalAsync(cancellationToken).ConfigureAwait(false);
+                return await RefreshTokenInternalAsync(cancellationToken);
             }
             finally
             {
@@ -217,14 +203,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             }
         }
 
-
         public void Dispose()
         {
             _tokenLock.Dispose();
-            if (_httpClient.IsValueCreated)
-            {
-                HttpClient.Dispose();
-            }
+            _httpClient.Dispose();
         }
 
     }

@@ -24,17 +24,17 @@ using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 {
-    public class OAuthClientCredentialsServiceTests : TestBase<DatabricksTestConfiguration, DatabricksTestEnvironment>, IDisposable
+    public class OAuthClientCredentialsProviderTests : TestBase<DatabricksTestConfiguration, DatabricksTestEnvironment>, IDisposable
     {
-        private readonly OAuthClientCredentialsService _service;
+        private readonly OAuthClientCredentialsProvider _service;
 
-        public OAuthClientCredentialsServiceTests(ITestOutputHelper? outputHelper)
+        public OAuthClientCredentialsProviderTests(ITestOutputHelper? outputHelper)
             : base(outputHelper, new DatabricksTestEnvironment.Factory())
         {
-            _service = new OAuthClientCredentialsService(
+            _service = new OAuthClientCredentialsProvider(
                 TestConfiguration.OAuthClientId,
                 TestConfiguration.OAuthClientSecret,
-                new Uri(TestConfiguration.Uri),
+                TestConfiguration.HostName,
                 timeoutMinutes: 1);
         }
 
