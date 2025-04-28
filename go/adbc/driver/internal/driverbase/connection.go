@@ -56,15 +56,15 @@ const driverNamespace = "apache.arrow.adbc"
 type traceExporterType int
 
 const (
-	TraceExporterNone = iota
+	TraceExporterNone traceExporterType = iota
 	TraceExporterOtlp
 	TraceExporterConsole
 )
 
-var traceExporterNames = map[adbc.OptionTelemetryExporter]traceExporterType{
-	adbc.TelemetryExporterNone:    TraceExporterNone,
-	adbc.TelemetryExporterOtlp:    TraceExporterOtlp,
-	adbc.TelemetryExporterConsole: TraceExporterConsole,
+var traceExporterNames = map[string]traceExporterType{
+	string(adbc.TelemetryExporterNone):    TraceExporterNone,
+	string(adbc.TelemetryExporterOtlp):    TraceExporterOtlp,
+	string(adbc.TelemetryExporterConsole): TraceExporterConsole,
 }
 
 func (te traceExporterType) String() string {
@@ -80,9 +80,7 @@ func (te traceExporterType) EnumIndex() int {
 }
 
 func tryParseTraceExporterType(value string) (traceExporterType, bool) {
-	telemetryExporter := adbc.OptionTelemetryExporter(strings.ToLower(strings.TrimSpace(value)))
-	te, ok := traceExporterNames[telemetryExporter]
-	if ok {
+	if te, ok := traceExporterNames[value]; ok {
 		return te, true
 	}
 	return TraceExporterNone, false
@@ -180,23 +178,21 @@ func NewConnectionImplBase(database *DatabaseImplBase) ConnectionImplBase {
 		Autocommit:  true,
 		Closed:      false,
 	}
-
-	driverVersion := getDriverVersion(cnxn.DriverInfo)
-	cnxn.InitTracing(cnxn.DriverInfo.name, driverVersion)
+	cnxn.InitTracing(cnxn.DriverInfo.name, getDriverVersion(cnxn.DriverInfo))
 
 	return cnxn
 }
 
 func getDriverVersion(driverInfo *DriverInfo) string {
-	var driverVersion = "unknown"
+	var unknownDriverVersion = "unknown"
 	value, ok := driverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	if !ok || value == nil {
+		return unknownDriverVersion
+	}
+	if driverVersion, ok := value.(string); ok {
 		return driverVersion
 	}
-	if stringValue, ok := value.(string); ok {
-		return stringValue
-	}
-	return driverVersion
+	return unknownDriverVersion
 }
 
 func (base *ConnectionImplBase) Base() *ConnectionImplBase {
@@ -315,7 +311,7 @@ func (db *ConnectionImplBase) InitTracing(driverName string, driverVersion strin
 	exporterType, _ := tryParseTraceExporterType(exporterName)
 	switch exporterType {
 	case TraceExporterConsole:
-		exporter, _ = newStdoutTraceExporter(driverNamespace + "." + driverName)
+		exporter, _ = newStdoutTraceExporter()
 	case TraceExporterOtlp:
 		exporter, _ = newOtlpTraceExporter(context.Background())
 	}
@@ -917,19 +913,11 @@ func newOtlpTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	)
 }
 
-func newStdoutTraceExporter(logNamePrefix string) (*stdouttrace.Exporter, error) {
-	writer, err := NewRotatingFileWriter(WithLogNamePrefix(logNamePrefix))
+func newStdoutTraceExporter() (*stdouttrace.Exporter, error) {
+	exporter, err := stdouttrace.New()
 	if err != nil {
 		return nil, err
 	}
-
-	exporter, err := stdouttrace.New(
-		stdouttrace.WithWriter(writer),
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	return exporter, nil
 }
 
