@@ -962,7 +962,7 @@ AdbcStatusCode AdbcDriverPostgresqlInit(int version, void* raw_driver,
 #if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* raw_driver, struct AdbcError* error) {
-  return PostgresqlDriverInit(version, raw_driver, error);
+  return AdbcDriverPostgresqlInit(version, raw_driver, error);
 }
 #endif  // ADBC_NO_COMMON_ENTRYPOINTS
 }

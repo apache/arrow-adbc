@@ -28,13 +28,14 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
+#include <arrow-adbc/driver/postgresql.h>
 #include <gtest/gtest-param-test.h>
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.h>
+#include <nanoarrow/nanoarrow.hpp>
 
 #include "common/options.h"
 #include "common/utils.h"
-#include "database.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
