@@ -28,7 +28,8 @@ extern "C" {
 #endif
 
 ADBC_EXPORT
-AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError* error);
+AdbcStatusCode AdbcDriverSqliteInit(int version, void* raw_driver,
+                                    struct AdbcError* error);
 
 #ifdef __cplusplus
 }

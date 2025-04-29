@@ -15,10 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-/// \file arrow-adbc/adbc_driver_manager.h ADBC Driver Manager
+/// \file arrow-adbc/driver/postgresql.h ADBC PostgreSQL Driver
 ///
-/// A helper library to dynamically load and use multiple ADBC drivers in the
-/// same process.
+/// A driver for PostgreSQL.
 
 #pragma once
 
@@ -29,8 +28,8 @@ extern "C" {
 #endif
 
 ADBC_EXPORT
-AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
-                                    struct AdbcError* error);
+AdbcStatusCode AdbcDriverPostgresqlInit(int version, void* raw_driver,
+                                        struct AdbcError* error);
 
 #ifdef __cplusplus
 }

@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 
   AdbcStatusCode status;
 
-  status = FlightSQLDriverInit(ADBC_VERSION_1_1_0, &flightsql, &error);
+  status = AdbcDriverFlightsqlInit(ADBC_VERSION_1_1_0, &flightsql, &error);
   if (status != ADBC_STATUS_OK) {
     if (error.release) {
       fprintf(stderr, "FlightSQLDriverInit failed: %s\n", error.message);
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  status = PostgresqlDriverInit(ADBC_VERSION_1_1_0, &postgresql, &error);
+  status = AdbcDriverPostgresqlInit(ADBC_VERSION_1_1_0, &postgresql, &error);
   if (status != ADBC_STATUS_OK) {
     if (error.release) {
       fprintf(stderr, "PostgresqlDriverInit failed: %s\n", error.message);
@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  status = SqliteDriverInit(ADBC_VERSION_1_1_0, &sqlite, &error);
+  status = AdbcDriverSqliteInit(ADBC_VERSION_1_1_0, &sqlite, &error);
   if (status != ADBC_STATUS_OK) {
     if (error.release) {
       fprintf(stderr, "SqliteDriverInit failed: %s\n", error.message);

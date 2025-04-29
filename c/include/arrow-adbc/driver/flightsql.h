@@ -28,8 +28,8 @@ extern "C" {
 #endif
 
 ADBC_EXPORT
-AdbcStatusCode FlightSQLDriverInit(int version, void* raw_driver,
-                                   struct AdbcError* error);
+AdbcStatusCode AdbcDriverFlightsqlInit(int version, void* raw_driver,
+                                       struct AdbcError* error);
 
 #ifdef __cplusplus
 }
