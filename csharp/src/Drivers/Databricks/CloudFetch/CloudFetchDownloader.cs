@@ -23,7 +23,6 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using K4os.Compression.LZ4.Streams;
-using Microsoft.Extensions.Logging;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 {
@@ -255,7 +254,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                             if (t.IsFaulted)
                             {
                                 Exception ex = t.Exception?.InnerException ?? new Exception("Unknown error");
-                                Trace.TraceError($"Download failed for file {downloadResult.Link.FileLink}: {ex.Message}");
+                                Trace.TraceError($"Download failed for file {SanitizeUrl(downloadResult.Link.FileLink)}: {ex.Message}");
 
                                 // Set the download as failed
                                 downloadResult.SetFailed(ex);
@@ -316,6 +315,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private async Task DownloadFileAsync(IDownloadResult downloadResult, CancellationToken cancellationToken)
         {
             string url = downloadResult.Link.FileLink;
+            string sanitizedUrl = SanitizeUrl(downloadResult.Link.FileLink);
             byte[]? fileData = null;
 
             // Use the size directly from the download result
@@ -325,7 +325,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             var stopwatch = Stopwatch.StartNew();
 
             // Log download start
-            Trace.TraceInformation($"Starting download of file {downloadResult.Link.FileLink} from {SanitizeUrl(url)}, expected size: {size / 1024.0:F2} KB");
+            Trace.TraceInformation($"Starting download of file {sanitizedUrl}, expected size: {size / 1024.0:F2} KB");
 
             // Acquire memory before downloading
             await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
@@ -347,7 +347,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                     long? contentLength = response.Content.Headers.ContentLength;
                     if (contentLength.HasValue && contentLength.Value > 0)
                     {
-                        Trace.TraceInformation($"Actual file size for {downloadResult.Link.FileLink}: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
+                        Trace.TraceInformation($"Actual file size for {sanitizedUrl}: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
                     }
 
                     // Read the file data
@@ -357,7 +357,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 catch (Exception ex) when (retry < _maxRetries - 1 && !cancellationToken.IsCancellationRequested)
                 {
                     // Log the error and retry
-                    Trace.TraceError($"Error downloading file {downloadResult.Link.FileLink} (attempt {retry + 1}/{_maxRetries}): {ex.Message}");
+                    Trace.TraceError($"Error downloading file {SanitizeUrl(url)} (attempt {retry + 1}/{_maxRetries}): {ex.Message}");
 
                     await Task.Delay(_retryDelayMs * (retry + 1), cancellationToken).ConfigureAwait(false);
                 }
@@ -366,7 +366,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             if (fileData == null)
             {
                 stopwatch.Stop();
-                Trace.TraceError($"Failed to download file {downloadResult.Link.FileLink} from {SanitizeUrl(url)} after {_maxRetries} attempts. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
+                Trace.TraceError($"Failed to download file {sanitizedUrl} after {_maxRetries} attempts. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
 
                 // Release the memory we acquired
                 _memoryManager.ReleaseMemory(size);
@@ -392,14 +392,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                     dataStream.Position = 0;
                     decompressStopwatch.Stop();
 
-                    Trace.TraceInformation($"Decompressed file {downloadResult.Link.FileLink} in {decompressStopwatch.ElapsedMilliseconds} ms. Compressed size: {actualSize / 1024.0:F2} KB, Decompressed size: {dataStream.Length / 1024.0:F2} KB");
+                    Trace.TraceInformation($"Decompressed file {sanitizedUrl} in {decompressStopwatch.ElapsedMilliseconds} ms. Compressed size: {actualSize / 1024.0:F2} KB, Decompressed size: {dataStream.Length / 1024.0:F2} KB");
 
                     actualSize = dataStream.Length;
                 }
                 catch (Exception ex)
                 {
                     stopwatch.Stop();
-                    Trace.TraceError($"Error decompressing data for file {downloadResult.Link.FileLink}: {ex.Message}. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
+                    Trace.TraceError($"Error decompressing data for file {sanitizedUrl}: {ex.Message}. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
 
                     // Release the memory we acquired
                     _memoryManager.ReleaseMemory(size);
@@ -413,7 +413,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
             // Stop the stopwatch and log download completion
             stopwatch.Stop();
-            Trace.TraceInformation($"Completed download of file {downloadResult.Link.FileLink}. Size: {actualSize / 1024.0:F2} KB, Latency: {stopwatch.ElapsedMilliseconds} ms, Throughput: {(actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0):F2} MB/s");
+            Trace.TraceInformation($"Completed download of file {sanitizedUrl}. Size: {actualSize / 1024.0:F2} KB, Latency: {stopwatch.ElapsedMilliseconds} ms, Throughput: {(actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0):F2} MB/s");
 
             // Set the download as completed with the original size
             downloadResult.SetCompleted(dataStream, size);
