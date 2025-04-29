@@ -135,14 +135,11 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                      "${GO_BUILD_FLAGS} $<$<CONFIG:DEBUG>:-gcflags=\"-N -l\">")
 
   # if we're building debug mode then change the default CGO_CFLAGS and CGO_CXXFLAGS from "-g O2" to "-g3"
-  set(GO_FLAGS)
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(GO_FLAGS "-g3")
-  endif()
+  set(GO_FLAGS "$<$<CONFIG:Debug>:-g3>")
   string(JOIN " " GO_FLAGS "${GO_FLAGS}")
 
   foreach(DEFINE ${ARG_DEFINES})
-    list(APPEND GO_FLAGS "-D${DEFINE}")
+    string(APPEND GO_FLAGS " -D${DEFINE}")
   endforeach()
 
   set(GO_ENV_VARS)
