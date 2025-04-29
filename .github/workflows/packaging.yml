@@ -25,6 +25,8 @@ on:
       - ".env"
       - "c/**"
       - "ci/**"
+      - "dev/release/verify-apt.sh"
+      - "dev/release/verify-yum.sh"
       - "glib/**"
       - "python/**"
       - "ruby/**"
