@@ -25,19 +25,12 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
@@ -249,14 +242,14 @@ func (base *ConnectionImplBase) StartSpan(
 	ctx context.Context,
 	spanName string,
 	opts ...trace.SpanStartOption,
-) (context.Context, trace.Span, error) {
+) (context.Context, trace.Span) {
 	var span trace.Span
-	ctx, _ = MaybeAddTraceParent(ctx, base, nil)
+	ctx = MaybeAddTraceParent(ctx, base, nil)
 	ctx, span = base.Tracer.Start(ctx, spanName, opts...)
-	return ctx, span, nil
+	return ctx, span
 }
 
-func MaybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) (context.Context, error) {
+func MaybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) context.Context {
 	var hasTraceParent = false
 	var traceParentStr = ""
 	if st != nil && st.GetTraceParent() != "" {
@@ -269,11 +262,11 @@ func MaybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTe
 	if hasTraceParent {
 		spanContext, err := parseTraceparent(ctx, traceParentStr)
 		if err != nil {
-			return ctx, err
+			return ctx
 		}
 		ctx = trace.ContextWithRemoteSpanContext(ctx, spanContext)
 	}
-	return ctx, nil
+	return ctx
 }
 
 func parseTraceparent(ctx context.Context, traceParentStr string) (trace.SpanContext, error) {
@@ -421,7 +414,7 @@ func (cnxn *connection) StartSpan(
 	ctx context.Context,
 	spanName string,
 	opts ...trace.SpanStartOption,
-) (context.Context, trace.Span, error) {
+) (context.Context, trace.Span) {
 	return cnxn.Base().StartSpan(ctx, spanName)
 }
 
@@ -810,47 +803,6 @@ func ValueOrZero[T any](val *T) T {
 		return res
 	}
 	return *val
-}
-
-func newOtlpTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
-	return otlptracegrpc.New(
-		ctx,
-		otlptracegrpc.WithEndpoint("localhost:4317"),
-		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
-			Enabled:         true,
-			InitialInterval: 5 * time.Second,
-			MaxInterval:     30 * time.Second,
-			// MaxAttempts:     5,
-		}),
-	)
-}
-
-func newStdoutTraceExporter() (*stdouttrace.Exporter, error) {
-	exporter, err := stdouttrace.New()
-	if err != nil {
-		return nil, err
-	}
-	return exporter, nil
-}
-
-func newTracerProvider(exporter sdktrace.SpanExporter) (*sdktrace.TracerProvider, error) {
-	// Ensure default SDK resource and the required service name are set.
-	mergedResource, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName(driverNamespace),
-		),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(mergedResource),
-	), nil
 }
 
 var _ ConnectionImpl = (*ConnectionImplBase)(nil)

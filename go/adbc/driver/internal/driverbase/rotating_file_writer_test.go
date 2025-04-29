@@ -15,29 +15,35 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package adbc
+package driverbase_test
 
 import (
-	"context"
-	"log/slog"
+	"testing"
 
-	"go.opentelemetry.io/otel/trace"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/stretchr/testify/require"
 )
 
-// DatabaseLogging is a Database that also supports logging information to an
-// application-supplied log sink.
-//
-// EXPERIMENTAL. Not formally part of the ADBC APIs.
-type DatabaseLogging interface {
-	SetLogger(*slog.Logger)
-}
+func TestRotatingFileWriter(t *testing.T) {
 
-type OTelTracingInit interface {
-	InitTracing(driverName string, driverVersion string)
-}
+	fw, err := driverbase.NewRotatingFileWriter(
+		driverbase.WithFileSizeMaxKb(1),
+		driverbase.WithFileCountMax(10),
+	)
+	defer func() {
+		err := fw.Clear()
+		require.NoError(t, err)
+	}()
 
-type OTelTracing interface {
-	SetTraceParent(string)
-	GetTraceParent() string
-	StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span)
+	require.NoError(t, err)
+	const value = "my string\n"
+	valueLen := len(value)
+
+	for range 1000 {
+		len, err := fw.Write([]byte(value))
+		require.NoError(t, err)
+		require.Equal(t, valueLen, len)
+	}
+	err = fw.Close()
+	require.NoError(t, err)
 }

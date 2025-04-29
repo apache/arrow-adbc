@@ -256,9 +256,10 @@ const (
 type OptionTelemetryExporter string
 
 const (
-	TelemetryExporterNone    OptionTelemetryExporter = "none"
-	TelemetryExporterOtlp    OptionTelemetryExporter = "otlp"
-	TelemetryExporterConsole OptionTelemetryExporter = "console"
+	TelemetryExporterNone     OptionTelemetryExporter = "none"
+	TelemetryExporterOtlp     OptionTelemetryExporter = "otlp"
+	TelemetryExporterConsole  OptionTelemetryExporter = "console"
+	TelemetryExporterAdbcFile OptionTelemetryExporter = "adbcfile"
 )
 
 type OptionIsolationLevel string

@@ -19,12 +19,19 @@ package driverbase
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
@@ -38,12 +45,14 @@ const (
 	TraceExporterNone traceExporterType = iota
 	TraceExporterOtlp
 	TraceExporterConsole
+	TraceExporterAdbcFile
 )
 
 var traceExporterNames = map[string]traceExporterType{
-	string(adbc.TelemetryExporterNone):    TraceExporterNone,
-	string(adbc.TelemetryExporterOtlp):    TraceExporterOtlp,
-	string(adbc.TelemetryExporterConsole): TraceExporterConsole,
+	string(adbc.TelemetryExporterNone):     TraceExporterNone,
+	string(adbc.TelemetryExporterOtlp):     TraceExporterOtlp,
+	string(adbc.TelemetryExporterConsole):  TraceExporterConsole,
+	string(adbc.TelemetryExporterAdbcFile): TraceExporterAdbcFile,
 }
 
 func (te traceExporterType) String() string {
@@ -51,6 +60,7 @@ func (te traceExporterType) String() string {
 		string(adbc.TelemetryExporterNone),
 		string(adbc.TelemetryExporterOtlp),
 		string(adbc.TelemetryExporterConsole),
+		string(adbc.TelemetryExporterAdbcFile),
 	}[te]
 }
 
@@ -205,7 +215,11 @@ func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion strin
 		exporter, _ = newStdoutTraceExporter()
 	case TraceExporterOtlp:
 		exporter, _ = newOtlpTraceExporter(context.Background())
+	case TraceExporterAdbcFile:
+		exporter, _ = newAdbcFileExporter(driverName)
 	}
+
+	fullyQualifiedDriverName := driverNamespace + "." + driverName
 	if exporter != nil {
 		tracerProvider, err := newTracerProvider(exporter)
 		if err != nil {
@@ -213,12 +227,12 @@ func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion strin
 		}
 		base.tracerShutdownFunc = tracerProvider.Shutdown
 		tracer = tracerProvider.Tracer(
-			driverNamespace+"."+driverName,
+			fullyQualifiedDriverName,
 			trace.WithInstrumentationVersion(driverVersion),
 			trace.WithSchemaURL(semconv.SchemaURL),
 		)
 	} else {
-		tracer = otel.Tracer(driverNamespace + "." + driverName)
+		tracer = otel.Tracer(fullyQualifiedDriverName)
 	}
 	base.Tracer = tracer
 }
@@ -240,6 +254,59 @@ func getDriverVersion(driverInfo *DriverInfo) string {
 		return driverVersion
 	}
 	return unknownDriverVersion
+}
+
+func newOtlpTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
+	return otlptracegrpc.New(
+		ctx,
+		otlptracegrpc.WithEndpoint("localhost:4317"),
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
+			Enabled:         true,
+			InitialInterval: 5 * time.Second,
+			MaxInterval:     30 * time.Second,
+			// MaxAttempts:     5,
+		}),
+	)
+}
+
+func newAdbcFileExporter(driverName string) (exporter *stdouttrace.Exporter, err error) {
+	var fw io.Writer
+
+	fullyQualifiedDriverName := strings.ToLower(driverNamespace + "." + driverName)
+	if fw, err = NewRotatingFileWriter(WithLogNamePrefix(fullyQualifiedDriverName)); err != nil {
+		return nil, err
+	}
+	if exporter, err = stdouttrace.New(stdouttrace.WithWriter(fw)); err != nil {
+		return nil, err
+	}
+	return exporter, nil
+}
+
+func newStdoutTraceExporter() (exporter *stdouttrace.Exporter, err error) {
+	if exporter, err = stdouttrace.New(); err != nil {
+		return nil, err
+	}
+	return exporter, nil
+}
+
+func newTracerProvider(exporter sdktrace.SpanExporter) (*sdktrace.TracerProvider, error) {
+	// Ensure default SDK resource and the required service name are set.
+	mergedResource, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceName(driverNamespace),
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(mergedResource),
+	), nil
 }
 
 var _ DatabaseImpl = (*DatabaseImplBase)(nil)

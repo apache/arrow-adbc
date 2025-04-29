@@ -31,7 +31,6 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -47,7 +46,7 @@ const (
 )
 
 type statement struct {
-	adbc.OTelTracing
+	driverbase.StatementImplBase
 	cnxn                *connectionImpl
 	alloc               memory.Allocator
 	queueSize           int
@@ -72,26 +71,6 @@ func (st *statement) setQueryContext(ctx context.Context) context.Context {
 		ctx = gosnowflake.WithQueryTag(ctx, st.queryTag)
 	}
 	return ctx
-}
-
-func (st *statement) SetTraceParent(traceParent string) {
-	st.traceParent = traceParent
-}
-
-func (st *statement) GetTraceParent() string {
-	return st.traceParent
-}
-
-func (st *statement) StartSpan(
-	ctx context.Context,
-	spanName string,
-	opts ...trace.SpanStartOption,
-) (newCtx context.Context, span trace.Span, err error) {
-	newCtx, err = driverbase.MaybeAddTraceParent(ctx, st.cnxn, st)
-	if err != nil {
-		return ctx, nil, err
-	}
-	return st.cnxn.Base().StartSpan(newCtx, spanName, opts...)
 }
 
 // Close releases any relevant resources associated with this statement
@@ -550,10 +529,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	ctx = st.setQueryContext(ctx)
 
-	_, span, err := st.StartSpan(ctx, "ExecuteUpdate")
-	if err != nil {
-		return -1, err
-	}
+	_, span := st.StartSpan(ctx, "ExecuteUpdate")
 	defer span.End()
 
 	if st.targetTable != "" {

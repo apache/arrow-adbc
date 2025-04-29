@@ -172,7 +172,7 @@ func isWildcardStr(ident string) bool {
 
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (rdr array.RecordReader, err error) {
 	var span trace.Span
-	ctx, span, err = c.StartSpan(ctx, "GetObjects")
+	ctx, span = c.StartSpan(ctx, "GetObjects")
 	if err != nil {
 		return nil, err
 	}
@@ -707,6 +707,7 @@ func (c *connectionImpl) Rollback(_ context.Context) error {
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	defaultIngestOptions := DefaultIngestOptions()
 	return &statement{
+		StatementImplBase:   driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper),
 		alloc:               c.db.Alloc,
 		cnxn:                c,
 		queueSize:           defaultStatementQueueSize,
