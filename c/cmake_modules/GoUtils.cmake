@@ -136,8 +136,6 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
 
   # if we're building debug mode then change the default CGO_CFLAGS and CGO_CXXFLAGS from "-g O2" to "-g3"
   set(GO_FLAGS "$<$<CONFIG:Debug>:-g3>")
-  string(JOIN " " GO_FLAGS "${GO_FLAGS}")
-
   foreach(DEFINE ${ARG_DEFINES})
     string(APPEND GO_FLAGS " -D${DEFINE}")
   endforeach()
