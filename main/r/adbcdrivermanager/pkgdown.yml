@@ -2,7 +2,7 @@ pandoc: 3.6.4
 pkgdown: 2.1.2
 pkgdown_sha: ~
 articles: {}
-last_built: 2025-04-29T06:11Z
+last_built: 2025-04-29T12:19Z
 urls:
   reference: https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference
   article: https://arrow.apache.org/adbc/current/r/adbcdrivermanager/articles
