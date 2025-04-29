@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"time"
 
@@ -32,7 +31,6 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -51,46 +49,12 @@ const (
 	ConnectionMessageCannotRollback    = "Cannot rollback when autocommit is enabled"
 )
 
-const driverNamespace = "apache.arrow.adbc"
-
-type traceExporterType int
-
-const (
-	TraceExporterNone traceExporterType = iota
-	TraceExporterOtlp
-	TraceExporterConsole
-)
-
-var traceExporterNames = map[string]traceExporterType{
-	string(adbc.TelemetryExporterNone):    TraceExporterNone,
-	string(adbc.TelemetryExporterOtlp):    TraceExporterOtlp,
-	string(adbc.TelemetryExporterConsole): TraceExporterConsole,
-}
-
-func (te traceExporterType) String() string {
-	return [...]string{
-		string(adbc.TelemetryExporterNone),
-		string(adbc.TelemetryExporterOtlp),
-		string(adbc.TelemetryExporterConsole),
-	}[te]
-}
-
-func (te traceExporterType) EnumIndex() int {
-	return int(te)
-}
-
-func tryParseTraceExporterType(value string) (traceExporterType, bool) {
-	if te, ok := traceExporterNames[value]; ok {
-		return te, true
-	}
-	return TraceExporterNone, false
-}
-
 // ConnectionImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
 type ConnectionImpl interface {
 	adbc.Connection
 	adbc.GetSetOptions
+	adbc.OTelTracing
 	Base() *ConnectionImplBase
 }
 
@@ -144,8 +108,6 @@ type DbObjectsEnumerator interface {
 type Connection interface {
 	adbc.Connection
 	adbc.GetSetOptions
-	adbc.OTelTracingInit
-	adbc.OTelTracing
 }
 
 // ConnectionImplBase is a struct that provides default implementations of the
@@ -156,13 +118,12 @@ type ConnectionImplBase struct {
 	ErrorHelper ErrorHelper
 	DriverInfo  *DriverInfo
 	Logger      *slog.Logger
+	Tracer      trace.Tracer
 
 	Autocommit bool
 	Closed     bool
 
-	tracerShutdownFunc func(context.Context) error
-	tracer             trace.Tracer
-	traceParent        string
+	traceParent string
 }
 
 // NewConnectionImplBase instantiates ConnectionImplBase.
@@ -170,29 +131,15 @@ type ConnectionImplBase struct {
 //   - database is a DatabaseImplBase containing the common resources from the parent
 //     database, allowing the Arrow allocator, error handler, and logger to be reused.
 func NewConnectionImplBase(database *DatabaseImplBase) ConnectionImplBase {
-	cnxn := ConnectionImplBase{
+	return ConnectionImplBase{
 		Alloc:       database.Alloc,
 		ErrorHelper: database.ErrorHelper,
 		DriverInfo:  database.DriverInfo,
 		Logger:      database.Logger,
+		Tracer:      database.Tracer,
 		Autocommit:  true,
 		Closed:      false,
 	}
-	cnxn.InitTracing(cnxn.DriverInfo.name, getDriverVersion(cnxn.DriverInfo))
-
-	return cnxn
-}
-
-func getDriverVersion(driverInfo *DriverInfo) string {
-	var unknownDriverVersion = "unknown"
-	value, ok := driverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
-	if !ok || value == nil {
-		return unknownDriverVersion
-	}
-	if driverVersion, ok := value.(string); ok {
-		return driverVersion
-	}
-	return unknownDriverVersion
 }
 
 func (base *ConnectionImplBase) Base() *ConnectionImplBase {
@@ -267,11 +214,6 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 }
 
 func (base *ConnectionImplBase) Close() error {
-	defer func() { base.tracerShutdownFunc = nil }()
-	if base.tracerShutdownFunc != nil {
-		err := base.tracerShutdownFunc(context.Background())
-		return err
-	}
 	return nil
 }
 
@@ -303,35 +245,6 @@ func (base *ConnectionImplBase) SetTraceParent(traceParent string) {
 	base.traceParent = traceParent
 }
 
-func (db *ConnectionImplBase) InitTracing(driverName string, driverVersion string) {
-	var exporter sdktrace.SpanExporter = nil
-	var tracer trace.Tracer
-
-	exporterName := os.Getenv("OTEL_TRACES_EXPORTER")
-	exporterType, _ := tryParseTraceExporterType(exporterName)
-	switch exporterType {
-	case TraceExporterConsole:
-		exporter, _ = newStdoutTraceExporter()
-	case TraceExporterOtlp:
-		exporter, _ = newOtlpTraceExporter(context.Background())
-	}
-	if exporter != nil {
-		tracerProvider, err := newTracerProvider(exporter)
-		if err != nil {
-			panic(err)
-		}
-		db.tracerShutdownFunc = tracerProvider.Shutdown
-		tracer = tracerProvider.Tracer(
-			driverNamespace+"."+driverName,
-			trace.WithInstrumentationVersion(driverVersion),
-			trace.WithSchemaURL(semconv.SchemaURL),
-		)
-	} else {
-		tracer = otel.Tracer(driverNamespace + "." + driverName)
-	}
-	db.tracer = tracer
-}
-
 func (base *ConnectionImplBase) StartSpan(
 	ctx context.Context,
 	spanName string,
@@ -339,7 +252,7 @@ func (base *ConnectionImplBase) StartSpan(
 ) (context.Context, trace.Span, error) {
 	var span trace.Span
 	ctx, _ = MaybeAddTraceParent(ctx, base, nil)
-	ctx, span = base.tracer.Start(ctx, spanName, opts...)
+	ctx, span = base.Tracer.Start(ctx, spanName, opts...)
 	return ctx, span, nil
 }
 
@@ -356,7 +269,7 @@ func MaybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTe
 	if hasTraceParent {
 		spanContext, err := parseTraceparent(ctx, traceParentStr)
 		if err != nil {
-			return nil, err
+			return ctx, err
 		}
 		ctx = trace.ContextWithRemoteSpanContext(ctx, spanContext)
 	}
@@ -502,10 +415,6 @@ func (cnxn *connection) GetTraceParent() string {
 
 func (cnxn *connection) SetTraceParent(traceParent string) {
 	cnxn.Base().traceParent = traceParent
-}
-
-func (cnxn *connection) InitTracing(driverName string, driverVersion string) {
-	cnxn.Base().InitTracing(driverName, driverVersion)
 }
 
 func (cnxn *connection) StartSpan(

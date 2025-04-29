@@ -20,10 +20,43 @@ package driverbase
 import (
 	"context"
 	"log/slog"
+	"os"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
 )
+
+const driverNamespace = "apache.arrow.adbc"
+
+type traceExporterType int
+
+const (
+	TraceExporterNone traceExporterType = iota
+	TraceExporterOtlp
+	TraceExporterConsole
+)
+
+var traceExporterNames = map[string]traceExporterType{
+	string(adbc.TelemetryExporterNone):    TraceExporterNone,
+	string(adbc.TelemetryExporterOtlp):    TraceExporterOtlp,
+	string(adbc.TelemetryExporterConsole): TraceExporterConsole,
+}
+
+func (te traceExporterType) String() string {
+	return [...]string{
+		string(adbc.TelemetryExporterNone),
+		string(adbc.TelemetryExporterOtlp),
+		string(adbc.TelemetryExporterConsole),
+	}[te]
+}
+
+func (te traceExporterType) EnumIndex() int {
+	return int(te)
+}
 
 const (
 	DatabaseMessageOptionUnknown = "Unknown database option"
@@ -43,6 +76,7 @@ type Database interface {
 	adbc.Database
 	adbc.GetSetOptions
 	adbc.DatabaseLogging
+	adbc.OTelTracingInit
 }
 
 // DatabaseImplBase is a struct that provides default implementations of the
@@ -53,6 +87,9 @@ type DatabaseImplBase struct {
 	ErrorHelper ErrorHelper
 	DriverInfo  *DriverInfo
 	Logger      *slog.Logger
+	Tracer      trace.Tracer
+
+	tracerShutdownFunc func(context.Context) error
 }
 
 // NewDatabaseImplBase instantiates DatabaseImplBase.
@@ -60,7 +97,15 @@ type DatabaseImplBase struct {
 //   - driver is a DriverImplBase containing the common resources from the parent
 //     driver, allowing the Arrow allocator and error handler to be reused.
 func NewDatabaseImplBase(driver *DriverImplBase) DatabaseImplBase {
-	return DatabaseImplBase{Alloc: driver.Alloc, ErrorHelper: driver.ErrorHelper, DriverInfo: driver.DriverInfo, Logger: nilLogger()}
+	database := DatabaseImplBase{
+		Alloc:       driver.Alloc,
+		ErrorHelper: driver.ErrorHelper,
+		DriverInfo:  driver.DriverInfo,
+		Logger:      nilLogger(),
+		Tracer:      nilTracer(),
+	}
+	database.InitTracing(driver.DriverInfo.GetName(), getDriverVersion(driver.DriverInfo))
+	return database
 }
 
 func (base *DatabaseImplBase) Base() *DatabaseImplBase {
@@ -99,8 +144,17 @@ func (base *DatabaseImplBase) SetOptionInt(key string, val int64) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", DatabaseMessageOptionUnknown, key)
 }
 
+func (base *database) Close() error {
+	return base.Base().Close()
+}
+
 func (base *DatabaseImplBase) Close() error {
-	return nil
+	var err error = nil
+	if base.tracerShutdownFunc != nil {
+		err = base.tracerShutdownFunc(context.Background())
+		base.tracerShutdownFunc = nil
+	}
+	return err
 }
 
 func (base *DatabaseImplBase) Open(ctx context.Context) (adbc.Connection, error) {
@@ -134,6 +188,58 @@ func (db *database) SetLogger(logger *slog.Logger) {
 	} else {
 		db.Base().Logger = nilLogger()
 	}
+}
+
+func (base *database) InitTracing(driverName string, driverVersion string) {
+	base.Base().InitTracing(driverName, driverVersion)
+}
+
+func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion string) {
+	var exporter sdktrace.SpanExporter = nil
+	var tracer trace.Tracer
+
+	exporterName := os.Getenv("OTEL_TRACES_EXPORTER")
+	exporterType, _ := tryParseTraceExporterType(exporterName)
+	switch exporterType {
+	case TraceExporterConsole:
+		exporter, _ = newStdoutTraceExporter()
+	case TraceExporterOtlp:
+		exporter, _ = newOtlpTraceExporter(context.Background())
+	}
+	if exporter != nil {
+		tracerProvider, err := newTracerProvider(exporter)
+		if err != nil {
+			panic(err)
+		}
+		base.tracerShutdownFunc = tracerProvider.Shutdown
+		tracer = tracerProvider.Tracer(
+			driverNamespace+"."+driverName,
+			trace.WithInstrumentationVersion(driverVersion),
+			trace.WithSchemaURL(semconv.SchemaURL),
+		)
+	} else {
+		tracer = otel.Tracer(driverNamespace + "." + driverName)
+	}
+	base.Tracer = tracer
+}
+
+func tryParseTraceExporterType(value string) (traceExporterType, bool) {
+	if te, ok := traceExporterNames[value]; ok {
+		return te, true
+	}
+	return TraceExporterNone, false
+}
+
+func getDriverVersion(driverInfo *DriverInfo) string {
+	var unknownDriverVersion = "unknown"
+	value, ok := driverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	if !ok || value == nil {
+		return unknownDriverVersion
+	}
+	if driverVersion, ok := value.(string); ok {
+		return driverVersion
+	}
+	return unknownDriverVersion
 }
 
 var _ DatabaseImpl = (*DatabaseImplBase)(nil)
