@@ -44,8 +44,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             public string? AccessToken { get; set; }
             public DateTime ExpiresAt { get; set; }
 
-            public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
-
             // Add buffer time to refresh token before actual expiration
             public bool NeedsRefresh => DateTime.UtcNow >= ExpiresAt.AddMinutes(-5);
         }
@@ -75,7 +73,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         private string DetermineTokenEndpoint()
         {
             // For workspace URLs, the token endpoint is always /oidc/v1/token
-            // TODO: Might be different for Azure AAD SPs
             return $"https://{_host}/oidc/v1/token";
         }
 
@@ -97,7 +94,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 response = await _httpClient.SendAsync(request, cancellationToken);
                 response.EnsureSuccessStatusCode();
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex)
             {
                 throw new DatabricksException($"Failed to acquire OAuth access token: {ex.Message}", ex);
             }

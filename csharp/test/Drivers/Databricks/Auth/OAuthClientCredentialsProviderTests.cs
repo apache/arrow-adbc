@@ -27,56 +27,56 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 {
     public class OAuthClientCredentialsProviderTests : TestBase<DatabricksTestConfiguration, DatabricksTestEnvironment>, IDisposable
     {
-        private readonly OAuthClientCredentialsProvider _service;
-
         public OAuthClientCredentialsProviderTests(ITestOutputHelper? outputHelper)
             : base(outputHelper, new DatabricksTestEnvironment.Factory())
         {
-            _service = new OAuthClientCredentialsProvider(
+        }
+
+        private OAuthClientCredentialsProvider CreateService()
+        {
+            return new OAuthClientCredentialsProvider(
                 TestConfiguration.OAuthClientId,
                 TestConfiguration.OAuthClientSecret,
                 TestConfiguration.HostName,
                 timeoutMinutes: 1);
         }
 
-        [Fact]
+        [SkippableFact]
         public void GetAccessToken_WithValidCredentials_ReturnsToken()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
-            var token = _service.GetAccessToken();
+            var service = CreateService();
+            var token = service.GetAccessToken();
 
             Assert.NotNull(token);
             Assert.NotEmpty(token);
         }
 
-        [Fact]
+        [SkippableFact]
         public void GetAccessToken_WithCancellation_ThrowsOperationCanceledException()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
+            var service = CreateService();
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            Assert.Throws<OperationCanceledException>(() =>
-                _service.GetAccessToken(cts.Token));
+            var ex = Assert.ThrowsAny<OperationCanceledException>(() =>
+                service.GetAccessToken(cts.Token));
+            Assert.IsType<TaskCanceledException>(ex);
         }
 
-        [Fact]
+        [SkippableFact]
         public void GetAccessToken_MultipleCalls_ReusesCachedToken()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
-            var token1 = _service.GetAccessToken();
-            var token2 = _service.GetAccessToken();
+            var service = CreateService();
+            var token1 = service.GetAccessToken();
+            var token2 = service.GetAccessToken();
 
             Assert.Equal(token1, token2);
-        }
-
-        void IDisposable.Dispose()
-        {
-            _service.Dispose();
-            base.Dispose();
         }
     }
 }
