@@ -67,7 +67,7 @@ ${APT_INSTALL} \
 
 code_name="$(lsb_release --codename --short)"
 distribution="$(lsb_release --id --short | tr 'A-Z' 'a-z')"
-artifactory_base_url="https://apache.jfrog.io/artifactory/arrow/${distribution}"
+artifactory_base_url="https://packages.apache.org/artifactory/arrow/${distribution}"
 case "${TYPE}" in
   rc|staging-rc|staging-release)
     suffix=${TYPE%-release}
@@ -94,7 +94,7 @@ curl \
     --fail \
     --location \
     --remote-name \
-     https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+     https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 ${APT_INSTALL} ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 
 if [ "${TYPE}" = "local" ]; then
