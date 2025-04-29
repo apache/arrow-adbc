@@ -158,6 +158,7 @@ AdbcStatusCode BigQueryStatementSetSubstraitPlan(struct AdbcStatement* stmt,
 
 AdbcStatusCode AdbcDriverBigqueryInit(int version, void* rawDriver,
                                       struct AdbcError* err);
+AdbcStatusCode BigQueryDriverInit(int version, void* rawDriver, struct AdbcError* err);
 
 static inline void BigQueryerrRelease(struct AdbcError* error) {
   if (error->release) {

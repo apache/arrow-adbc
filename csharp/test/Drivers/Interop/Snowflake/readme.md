@@ -30,7 +30,7 @@ The environment variable `SNOWFLAKE_TEST_CONFIG_FILE` must be set to a configura
 The following values can be setup in the configuration:
 
 - **driverPath** - The path for the Go library. Can be a relative path if using .NET 5.0 or greater, otherwise, it is an absolute path.
-- **driverEntryPoint** - The driver entry point. For Snowflake, this is `SnowflakeDriverInit`.
+- **driverEntryPoint** - The driver entry point. For Snowflake, this is `AdbcDriverSnowflakeInit`.
 - **account** - The `adbc.snowflake.sql.account` value from the [Snowflake Client Options](https://arrow.apache.org/adbc/0.5.1/driver/snowflake.html#client-options).
 - **user** - The Snowflake user name.
 - **password** - The Snowflake password, if using `auth_snowflake` for the auth type.
