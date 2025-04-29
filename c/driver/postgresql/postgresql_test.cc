@@ -233,12 +233,12 @@ TEST_F(PostgresDatabaseTest, AdbcDriverBackwardsCompatibility) {
   std::memset(&driver, 0, ADBC_DRIVER_1_1_0_SIZE);
   driver.ErrorGetDetailCount = Canary;
 
-  ASSERT_THAT(::PostgresqlDriverInit(ADBC_VERSION_1_0_0, &driver, &error),
+  ASSERT_THAT(::AdbcDriverPostgresqlInit(ADBC_VERSION_1_0_0, &driver, &error),
               IsOkStatus(&error));
 
   ASSERT_EQ(Canary, driver.ErrorGetDetailCount);
 
-  ASSERT_THAT(::PostgresqlDriverInit(424242, &driver, &error),
+  ASSERT_THAT(::AdbcDriverPostgresqlInit(424242, &driver, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
 }
 
