@@ -102,9 +102,9 @@ Note: to verify APT/YUM packages on macOS/AArch64, you must \`export DOCKER_DEFA
 [1]: https://github.com/apache/arrow-adbc/issues?q=is%3Aissue+milestone%3A%22ADBC+Libraries+${RELEASE}%22+is%3Aclosed
 [2]: https://github.com/apache/arrow-adbc/commit/${commit}
 [3]: https://dist.apache.org/repos/dist/dev/arrow/${tag}/
-[4]: https://apache.jfrog.io/artifactory/arrow/almalinux-rc/
-[5]: https://apache.jfrog.io/artifactory/arrow/debian-rc/
-[6]: https://apache.jfrog.io/artifactory/arrow/ubuntu-rc/
+[4]: https://packages.apache.org/artifactory/arrow/almalinux-rc/
+[5]: https://packages.apache.org/artifactory/arrow/debian-rc/
+[6]: https://packages.apache.org/artifactory/arrow/ubuntu-rc/
 [7]: https://repository.apache.org/content/repositories/staging/org/apache/arrow/adbc/
 [8]: https://github.com/apache/arrow-adbc/releases/tag/${tag}
 [9]: https://github.com/apache/arrow-adbc/blob/${tag}/CHANGELOG.md

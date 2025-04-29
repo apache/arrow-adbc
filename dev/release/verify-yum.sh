@@ -39,7 +39,7 @@ TYPE="$2"
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 local_prefix="${SOURCE_DIR}/../../ci/linux-packages"
 
-artifactory_base_url="https://apache.jfrog.io/artifactory/arrow"
+artifactory_base_url="https://packages.apache.org/artifactory/arrow"
 
 distribution=$(. /etc/os-release && echo "${ID}")
 distribution_version=$(. /etc/os-release && echo "${VERSION_ID}" | grep -o "^[0-9]*")
@@ -94,7 +94,7 @@ fi
 if [ "${TYPE}" = "local" ]; then
   sed \
     -e "s,^\\[apache-arrow-,\\[apache-adbc-,g" \
-    -e "s,baseurl=https://apache\.jfrog\.io/artifactory/arrow/,baseurl=file://${local_prefix}/yum/repositories/,g" \
+    -e "s,baseurl=https://packages\.apache\.org/artifactory/arrow/,baseurl=file://${local_prefix}/yum/repositories/,g" \
     -e "s,RPM-GPG-KEY-Apache-Arrow,RPM-GPG-KEY-Apache-ADBC,g" \
     /etc/yum.repos.d/Apache-Arrow.repo > \
     /etc/yum.repos.d/Apache-ADBC.repo
