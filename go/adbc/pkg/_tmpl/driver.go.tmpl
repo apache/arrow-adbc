@@ -1810,8 +1810,8 @@ func {{.Prefix}}StatementExecutePartitions(stmt *C.struct_AdbcStatement, schema 
 	return C.ADBC_STATUS_OK
 }
 
-//export {{.Prefix}}DriverInit
-func {{.Prefix}}DriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export AdbcDriver{{.Prefix}}Init
+func AdbcDriver{{.Prefix}}Init(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 
 	switch version {

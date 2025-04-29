@@ -56,12 +56,19 @@ services:
       - .:/adbc:delegated
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/gcc-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/gcc-latest'"
 
+  # Build and dynamically load shared drivers missing the common entrypoints
+  cpp-shared-no-common-entrypoints-test:
+    image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
+    volumes:
+      - .:/adbc:delegated
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_shared_no_common_entrypoints_test.sh /adbc /adbc/build/shared-test/build /adbc/build/shared-test/local'"
+
   # Test building and installing the static libraries, then try linking to them.
   cpp-static-test:
     image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
     volumes:
       - .:/adbc:delegated
-    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_static_test.sh /adbc /adbc/build/static-test /adbc/build/local'"
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_static_test.sh /adbc /adbc/build/static-test/build /adbc/build/static-test/local'"
 
 
   ############################ Documentation ###################################

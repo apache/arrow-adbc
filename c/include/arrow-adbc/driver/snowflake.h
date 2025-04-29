@@ -28,8 +28,8 @@ extern "C" {
 #endif
 
 ADBC_EXPORT
-AdbcStatusCode SnowflakeDriverInit(int version, void* raw_driver,
-                                   struct AdbcError* error);
+AdbcStatusCode AdbcDriverSnowflakeInit(int version, void* raw_driver,
+                                       struct AdbcError* error);
 
 #ifdef __cplusplus
 }

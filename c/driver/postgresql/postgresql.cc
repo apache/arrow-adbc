@@ -881,8 +881,8 @@ AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
 
 extern "C" {
 ADBC_EXPORT
-AdbcStatusCode PostgresqlDriverInit(int version, void* raw_driver,
-                                    struct AdbcError* error) {
+AdbcStatusCode AdbcDriverPostgresqlInit(int version, void* raw_driver,
+                                        struct AdbcError* error) {
   if (version != ADBC_VERSION_1_0_0 && version != ADBC_VERSION_1_1_0) {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }

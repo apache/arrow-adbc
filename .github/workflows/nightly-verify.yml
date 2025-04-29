@@ -201,6 +201,11 @@ jobs:
           pushd arrow-adbc
           docker compose run --rm cpp-gcc-latest
 
+      - name: cpp-shared-no-common-entrypoints-test
+        run: |
+          pushd arrow-adbc
+          docker compose run --rm cpp-shared-no-common-entrypoints-test
+
       - name: cpp-static-test
         run: |
           pushd arrow-adbc

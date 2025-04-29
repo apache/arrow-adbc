@@ -15,17 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-{
-  global:
-    # Only expose symbols from the ADBC API
-    Adbc*;
-    # Needed for tests, but namespaced so they are clearly not for public use
-    InternalAdbc*;
+cmake_minimum_required(VERSION 3.18)
 
-    extern "C++" {
-        Adbc*;
-    };
+project(adbc-static-test LANGUAGES C)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
-  local:
-    *;
-};
+find_package(AdbcDriverManager REQUIRED)
+
+add_executable(shared_test main.c)
+target_link_libraries(shared_test PRIVATE AdbcDriverManager::adbc_driver_manager_shared)

@@ -40,8 +40,9 @@ extern "C" {
 ///
 /// \param[in] driver_name An identifier for the driver (e.g. a path to a
 ///   shared library on Linux).
-/// \param[in] entrypoint An identifier for the entrypoint (e.g. the
-///   symbol to call for AdbcDriverInitFunc on Linux).
+/// \param[in] entrypoint An identifier for the entrypoint (e.g. the symbol to
+///   call for AdbcDriverInitFunc on Linux).  If not provided, search for an
+///   entrypoint based on the driver name.
 /// \param[in] version The ADBC revision to attempt to initialize.
 /// \param[out] driver The table of function pointers to initialize.
 /// \param[out] error An optional location to return an error message
