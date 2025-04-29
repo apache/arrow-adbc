@@ -431,7 +431,7 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
-  return FlightSQLDriverInit(version, driver, error);
+  return AdbcDriverFlightsqlInit(version, driver, error);
 }
 #endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
