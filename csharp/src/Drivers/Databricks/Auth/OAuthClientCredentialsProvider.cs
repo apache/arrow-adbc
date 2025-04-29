@@ -36,6 +36,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         private readonly string _host;
         private readonly string _tokenEndpoint;
         private readonly int _timeoutMinutes;
+        private readonly string? _tenantId;
+        private readonly string? _accountId;
         private readonly SemaphoreSlim _tokenLock = new SemaphoreSlim(1, 1);
         private TokenInfo? _cachedToken;
 
@@ -55,16 +57,23 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         /// </summary>
         /// <param name="clientId">The OAuth client ID.</param>
         /// <param name="clientSecret">The OAuth client secret.</param>
-        /// <param name="baseUri">The base URI of the Databricks workspace.</param>
+        /// <param name="host">The host of the Databricks workspace.</param>
+        /// <param name="tenantId">The Azure AD tenant ID (optional).</param>
+        /// <param name="accountId">The Databricks account ID (optional).</param>
+        /// <param name="timeoutMinutes">The timeout in minutes for HTTP requests.</param>
         public OAuthClientCredentialsProvider(
             string clientId,
             string clientSecret,
             string host,
+            string? tenantId = null,
+            string? accountId = null,
             int timeoutMinutes = 1)
         {
             _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
             _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
             _host = host ?? throw new ArgumentNullException(nameof(host));
+            _tenantId = tenantId;
+            _accountId = accountId;
             _timeoutMinutes = timeoutMinutes;
             _tokenEndpoint = DetermineTokenEndpoint();
 
@@ -74,8 +83,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
 
         private string DetermineTokenEndpoint()
         {
-            // For workspace URLs, the token endpoint is always /oidc/v1/token
-            // TODO: Might be different for Azure AAD SPs
+            if (!string.IsNullOrEmpty(_tenantId))
+            {
+                // Use the tenant-specific Azure OIDC token endpoint
+                return $"https://login.microsoftonline.com/{_tenantId}/oauth2/v2.0/token";
+            }
+
             return $"https://{_host}/oidc/v1/token";
         }
 
@@ -120,7 +133,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             var requestContent = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                new KeyValuePair<string, string>("scope", "all-apis")
+                new KeyValuePair<string, string>("scope", !string.IsNullOrEmpty(_tenantId) ? "https://databricks.azure.net/.default" : "all-apis")
             });
 
             var request = new HttpRequestMessage(HttpMethod.Post, _tokenEndpoint)

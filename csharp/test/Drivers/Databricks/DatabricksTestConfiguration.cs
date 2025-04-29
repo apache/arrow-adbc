@@ -27,5 +27,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         [JsonPropertyName("oauth_client_secret"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string OAuthClientSecret { get; set; } = string.Empty;
+
+        [JsonPropertyName("azure_tenant_id"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string AzureTenantId { get; set; } = string.Empty;
     }
 }
