@@ -43,10 +43,10 @@ int main(int argc, char** argv) {
   status = AdbcDriverFlightsqlInit(ADBC_VERSION_1_1_0, &flightsql, &error);
   if (status != ADBC_STATUS_OK) {
     if (error.release) {
-      fprintf(stderr, "FlightSQLDriverInit failed: %s\n", error.message);
+      fprintf(stderr, "AdbcDriverFlightsqlInit failed: %s\n", error.message);
       error.release(&error);
     } else {
-      fprintf(stderr, "FlightSQLDriverInit failed\n");
+      fprintf(stderr, "AdbcDriverFlightsqlInit failed\n");
     }
     return EXIT_FAILURE;
   }
@@ -54,10 +54,10 @@ int main(int argc, char** argv) {
   status = AdbcDriverPostgresqlInit(ADBC_VERSION_1_1_0, &postgresql, &error);
   if (status != ADBC_STATUS_OK) {
     if (error.release) {
-      fprintf(stderr, "PostgresqlDriverInit failed: %s\n", error.message);
+      fprintf(stderr, "AdbcDriverPostgresqlInit failed: %s\n", error.message);
       error.release(&error);
     } else {
-      fprintf(stderr, "PostgresqlDriverInit failed\n");
+      fprintf(stderr, "AdbcDriverPostgresqlInit failed\n");
     }
     return EXIT_FAILURE;
   }
@@ -65,10 +65,10 @@ int main(int argc, char** argv) {
   status = AdbcDriverSqliteInit(ADBC_VERSION_1_1_0, &sqlite, &error);
   if (status != ADBC_STATUS_OK) {
     if (error.release) {
-      fprintf(stderr, "SqliteDriverInit failed: %s\n", error.message);
+      fprintf(stderr, "AdbcDriverSqliteInit failed: %s\n", error.message);
       error.release(&error);
     } else {
-      fprintf(stderr, "SqliteDriverInit failed\n");
+      fprintf(stderr, "AdbcDriverSqliteInit failed\n");
     }
     return EXIT_FAILURE;
   }
