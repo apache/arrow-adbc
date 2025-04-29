@@ -230,25 +230,6 @@ func (base *ConnectionImplBase) ReadPartition(ctx context.Context, serializedPar
 	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ReadPartition")
 }
 
-func (base *ConnectionImplBase) GetTraceParent() string {
-	return base.traceParent
-}
-
-func (base *ConnectionImplBase) SetTraceParent(traceParent string) {
-	base.traceParent = traceParent
-}
-
-func (base *ConnectionImplBase) StartSpan(
-	ctx context.Context,
-	spanName string,
-	opts ...trace.SpanStartOption,
-) (context.Context, trace.Span) {
-	var span trace.Span
-	ctx = MaybeAddTraceParent(ctx, base, nil)
-	ctx, span = base.Tracer.Start(ctx, spanName, opts...)
-	return ctx, span
-}
-
 func MaybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) context.Context {
 	var hasTraceParent = false
 	var traceParentStr = ""
@@ -288,7 +269,7 @@ func parseTraceparent(ctx context.Context, traceParentStr string) (trace.SpanCon
 func (base *ConnectionImplBase) GetOption(key string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(key)) {
 	case adbc.OptionKeyTelemetryTraceParent:
-		return base.GetTraceParent(), nil
+		return base.traceParent, nil
 	}
 	return "", base.ErrorHelper.Errorf(adbc.StatusNotFound, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
@@ -310,7 +291,7 @@ func (base *ConnectionImplBase) SetOption(key string, val string) error {
 	case adbc.OptionKeyAutoCommit:
 		return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnsupported, key)
 	case adbc.OptionKeyTelemetryTraceParent:
-		base.SetTraceParent(strings.TrimSpace(val))
+		base.traceParent = strings.TrimSpace(val)
 		return nil
 	}
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnknown, key)
@@ -402,20 +383,23 @@ func (b *ConnectionBuilder) Connection() Connection {
 	return conn
 }
 
-func (cnxn *connection) GetTraceParent() string {
-	return cnxn.Base().traceParent
+func (cnxn *ConnectionImplBase) GetTraceParent() string {
+	return cnxn.traceParent
 }
 
-func (cnxn *connection) SetTraceParent(traceParent string) {
-	cnxn.Base().traceParent = traceParent
+func (cnxn *ConnectionImplBase) SetTraceParent(traceParent string) {
+	cnxn.traceParent = traceParent
 }
 
-func (cnxn *connection) StartSpan(
+func (cnxn *ConnectionImplBase) StartSpan(
 	ctx context.Context,
 	spanName string,
 	opts ...trace.SpanStartOption,
 ) (context.Context, trace.Span) {
-	return cnxn.Base().StartSpan(ctx, spanName)
+	var span trace.Span
+	ctx = MaybeAddTraceParent(ctx, cnxn, nil)
+	ctx, span = cnxn.Tracer.Start(ctx, spanName, opts...)
+	return ctx, span
 }
 
 // GetObjects implements Connection.
