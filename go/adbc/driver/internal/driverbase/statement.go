@@ -129,3 +129,7 @@ func (st *StatementImplBase) StartSpan(
 	ctx, span = st.Tracer.Start(ctx, spanName, opts...)
 	return ctx, span
 }
+
+func (st *StatementImplBase) SetSpanOnError(span trace.Span, err error) bool {
+	return st.cnxn.Base().SetSpanOnError(span, err)
+}

@@ -30,6 +30,8 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
@@ -402,6 +404,18 @@ func (cnxn *ConnectionImplBase) StartSpan(
 	return ctx, span
 }
 
+func (cnxn *ConnectionImplBase) SetSpanOnError(span trace.Span, err error) bool {
+	if err != nil {
+		span.RecordError(err)
+		if adbcError, ok := err.(adbc.Error); ok {
+			span.SetAttributes(attribute.String("error.type", adbcError.Code.String()))
+		}
+		span.SetStatus(codes.Error, err.Error())
+		return true
+	}
+	return false
+}
+
 // GetObjects implements Connection.
 func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	helper := cnxn.dbObjectsEnumerator
@@ -620,15 +634,9 @@ func (cnxn *connection) Close() error {
 	}
 
 	err := cnxn.ConnectionImpl.Close()
-	if err != nil {
-		return err
+	if err == nil {
+		cnxn.Base().Closed = true
 	}
-	err = cnxn.Base().Close()
-	if err != nil {
-		return err
-	}
-
-	cnxn.Base().Closed = true
 	return nil
 }
 

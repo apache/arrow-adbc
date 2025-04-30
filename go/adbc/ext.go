@@ -40,4 +40,5 @@ type OTelTracing interface {
 	SetTraceParent(string)
 	GetTraceParent() string
 	StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span)
+	SetSpanOnError(span trace.Span, err error) bool
 }

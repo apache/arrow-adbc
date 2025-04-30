@@ -160,9 +160,9 @@ func (base *database) Close() error {
 
 func (base *DatabaseImplBase) Close() error {
 	var err error = nil
-	if base.tracerShutdownFunc != nil {
-		err = base.tracerShutdownFunc(context.Background())
-		base.tracerShutdownFunc = nil
+	if base.Base().tracerShutdownFunc != nil {
+		err = base.Base().tracerShutdownFunc(context.Background())
+		base.Base().tracerShutdownFunc = nil
 	}
 	return err
 }
@@ -225,7 +225,7 @@ func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion strin
 		if err != nil {
 			panic(err)
 		}
-		base.tracerShutdownFunc = tracerProvider.Shutdown
+		base.Base().tracerShutdownFunc = tracerProvider.Shutdown
 		tracer = tracerProvider.Tracer(
 			fullyQualifiedDriverName,
 			trace.WithInstrumentationVersion(driverVersion),
@@ -234,7 +234,7 @@ func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion strin
 	} else {
 		tracer = otel.Tracer(fullyQualifiedDriverName)
 	}
-	base.Tracer = tracer
+	base.Base().Tracer = tracer
 }
 
 func tryParseTraceExporterType(value string) (traceExporterType, bool) {
