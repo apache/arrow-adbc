@@ -30,12 +30,12 @@ func TestRotatingFileWriter(t *testing.T) {
 		driverbase.WithFileSizeMaxKb(1),
 		driverbase.WithFileCountMax(10),
 	)
+	require.NoError(t, err)
 	defer func() {
 		err := fw.Clear()
 		require.NoError(t, err)
 	}()
 
-	require.NoError(t, err)
 	const value = "my string\n"
 	valueLen := len(value)
 
@@ -45,5 +45,50 @@ func TestRotatingFileWriter(t *testing.T) {
 		require.Equal(t, valueLen, len)
 	}
 	err = fw.Close()
+	require.NoError(t, err)
+}
+
+func TestFileResuse(t *testing.T) {
+	fw1, err := driverbase.NewRotatingFileWriter(
+		driverbase.WithFileSizeMaxKb(1000),
+		driverbase.WithFileCountMax(10),
+	)
+	require.NoError(t, err)
+
+	const value = "my string\n"
+	valueLen := len(value)
+
+	for range 10 {
+		len, err := fw1.Write([]byte(value))
+		require.NoError(t, err)
+		require.Equal(t, valueLen, len)
+	}
+	fileInfo1, err := fw1.Stat()
+	require.NoError(t, err)
+	fileName1 := fileInfo1.Name()
+	err = fw1.Close()
+	require.NoError(t, err)
+
+	fw2, err := driverbase.NewRotatingFileWriter(
+		driverbase.WithFileSizeMaxKb(1000),
+		driverbase.WithFileCountMax(10),
+	)
+	require.NoError(t, err)
+	defer func() {
+		err := fw2.Clear()
+		require.NoError(t, err)
+	}()
+
+	for range 10 {
+		len, err := fw2.Write([]byte(value))
+		require.NoError(t, err)
+		require.Equal(t, valueLen, len)
+	}
+	fileInfo2, err := fw2.Stat()
+	require.NoError(t, err)
+	fileName2 := fileInfo2.Name()
+	require.Equal(t, fileName1, fileName2)
+
+	err = fw2.Close()
 	require.NoError(t, err)
 }

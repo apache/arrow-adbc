@@ -275,63 +275,100 @@ func (base *rotatingFileWriterImpl) GetFileCountMax() int {
 }
 
 func (base *rotatingFileWriterImpl) Write(p []byte) (int, error) {
-	shouldReturn := false
-	i := 0
 	err := (error)(nil)
 
 	// Check to see if file needs to rotate
-	shouldReturn, i, err = maybeCloseCurrentWriter(base)
-	if shouldReturn {
-		return i, err
+	if err = maybeCloseCurrentWriter(base); err != nil {
+		return 0, err
 	}
 
 	// Ensure we have a current writer
-	shouldReturn, i, err = ensureCurrentWriter(base)
-	if shouldReturn {
-		return i, err
+	if err = ensureCurrentWriter(base); err != nil {
+		return 0, err
 	}
 
 	// Perform the write
 	return base.CurrentWriter.Write(p)
 }
 
-func maybeCloseCurrentWriter(base *rotatingFileWriterImpl) (bool, int, error) {
+func maybeCloseCurrentWriter(base *rotatingFileWriterImpl) error {
 	if base.CurrentWriter != nil {
 		fileInfo, err := base.CurrentWriter.Stat()
 		if err != nil {
-			return true, 0, err
+			return err
 		}
 		if fileInfo.Size() >= int64(base.FileSizeMaxKb)*1024 {
 			err := base.CurrentWriter.Close()
 			if err != nil {
-				return true, 0, err
+				return err
 			}
 			base.CurrentWriter = nil
 			return removeOldFiles(base)
 		}
 	}
-	return false, 0, nil
+	return nil
 }
 
-func ensureCurrentWriter(base *rotatingFileWriterImpl) (bool, int, error) {
+func ensureCurrentWriter(base *rotatingFileWriterImpl) error {
+	const (
+		permissions = 0666 // Required to be full writable on Windows we can open it again
+		createFlags = os.O_APPEND | os.O_CREATE | os.O_WRONLY
+		appendFlags = os.O_APPEND | os.O_WRONLY
+	)
+
 	if base.CurrentWriter == nil {
-		now := time.Now().UTC()
-		safeTimeStamp := strings.ReplaceAll(strings.ReplaceAll(strings.Replace(strings.Replace(now.Format(time.RFC3339Nano), "Z", "", 1), "T", "-", 1), ":", "-"), ".", "-")
-		fileName := base.LogNamePrefix + "-" + safeTimeStamp + defaultTraceFileExt
-		fullPath := filepath.Join(base.TracingFolderPath, fileName)
-		currentWriter, err := os.OpenFile(fullPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModeAppend)
+		// check for a candidate file that is not full
+		ok, fullPathLastFile, err := getCandidateLogFileName(base)
 		if err != nil {
-			return true, 0, err
+			return err
+		}
+		// attempt to open exising candidate file
+		if ok {
+			currentWriter, err := os.OpenFile(fullPathLastFile, appendFlags, permissions)
+			if err == nil {
+				base.CurrentWriter = currentWriter
+				return nil
+			}
+			// unable to open candidate file (locked?)
+		}
+
+		// open a new file
+		fullPath := buildNewFileName(base)
+		currentWriter, err := os.OpenFile(fullPath, createFlags, permissions)
+		if err != nil {
+			return err
 		}
 		base.CurrentWriter = currentWriter
 	}
-	return false, 0, nil
+	return nil
 }
 
-func removeOldFiles(base *rotatingFileWriterImpl) (bool, int, error) {
+func buildNewFileName(base *rotatingFileWriterImpl) string {
+	now := time.Now().UTC()
+	safeTimeStamp := strings.ReplaceAll(strings.ReplaceAll(strings.Replace(strings.Replace(now.Format(time.RFC3339Nano), "Z", "", 1), "T", "-", 1), ":", "-"), ".", "-")
+	fileName := base.LogNamePrefix + "-" + safeTimeStamp + defaultTraceFileExt
+	fullPath := filepath.Join(base.TracingFolderPath, fileName)
+	return fullPath
+}
+
+func getCandidateLogFileName(base *rotatingFileWriterImpl) (bool, string, error) {
+	logFiles, err := getLogFiles(base.TracingFolderPath, base.LogNamePrefix, defaultTraceFileExt)
+	if err != nil || len(logFiles) < 1 {
+		return false, "", err
+	}
+	lastLogFile := logFiles[len(logFiles)-1]
+	fullPathLastFile := filepath.Join(base.TracingFolderPath, lastLogFile.Name())
+	fileInfo, err := os.Stat(fullPathLastFile)
+	if err != nil || fileInfo.Size() >= base.FileSizeMaxKb {
+		return false, "", err
+	}
+	return true, fullPathLastFile, nil
+}
+
+func removeOldFiles(base *rotatingFileWriterImpl) error {
 	logFiles, err := getLogFiles(base.TracingFolderPath, base.LogNamePrefix, defaultTraceFileExt)
 	if err != nil {
-		return true, 0, nil
+		return nil
 	}
 	len := len(logFiles)
 	if len > int(base.FileCountMax) {
@@ -340,12 +377,12 @@ func removeOldFiles(base *rotatingFileWriterImpl) (bool, int, error) {
 			if index < numToRemove {
 				err := os.Remove(filepath.Join(base.TracingFolderPath, file.Name()))
 				if err != nil {
-					return true, 0, err
+					return err
 				}
 			}
 		}
 	}
-	return false, 0, nil
+	return nil
 }
 
 func getLogFiles(folderPath string, prefix string, ext string) ([]os.DirEntry, error) {
