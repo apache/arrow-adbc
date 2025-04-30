@@ -357,12 +357,14 @@ func getCandidateLogFileName(base *rotatingFileWriterImpl) (bool, string, error)
 		return false, "", err
 	}
 	lastLogFile := logFiles[len(logFiles)-1]
-	fullPathLastFile := filepath.Join(base.TracingFolderPath, lastLogFile.Name())
-	fileInfo, err := os.Stat(fullPathLastFile)
-	if err != nil || fileInfo.Size() >= base.FileSizeMaxKb {
+	fileSizeMaxBytes := base.FileSizeMaxKb * 1024
+	fileInfo, err := lastLogFile.Info()
+	if err != nil || fileInfo.Size() >= fileSizeMaxBytes {
 		return false, "", err
 	}
-	return true, fullPathLastFile, nil
+	// Return full path name
+	fullPathFileName := filepath.Join(base.TracingFolderPath, lastLogFile.Name())
+	return true, fullPathFileName, nil
 }
 
 func removeOldFiles(base *rotatingFileWriterImpl) error {
