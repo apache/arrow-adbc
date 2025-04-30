@@ -484,7 +484,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 
 	_, span := st.StartSpan(ctx, "ExecuteQuery")
 	defer func() {
-		if !st.StatementImplBase.SetSpanOnError(span, err) {
+		if !st.SetSpanOnError(span, err) {
 			span.SetAttributes(attribute.Int64("db.response.returned_rows", nrows))
 			span.SetStatus(codes.Ok, "")
 		}
@@ -551,7 +551,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (nrows int64, err error)
 
 	_, span := st.StartSpan(ctx, "ExecuteUpdate")
 	defer func() {
-		if !st.StatementImplBase.SetSpanOnError(span, err) {
+		if !st.SetSpanOnError(span, err) {
 			span.SetAttributes(attribute.Int64("db.response.returned_rows", nrows))
 			span.SetStatus(codes.Ok, codes.Ok.String())
 		}
