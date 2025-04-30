@@ -176,10 +176,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
             List<int> expectedResults = new List<int>() { -1, 1, 1 };
 
+            string traceParent = "00-4bf92f35773311e894ea452ea4aa5adf-00f067aa0ba902b7-01";
+            //_connection.SetOption("adbc.telemetry.trace_parent", traceParent ?? string.Empty);
             for (int i = 0; i < queries.Length; i++)
             {
                 string query = queries[i];
-                UpdateResult updateResult = ExecuteUpdateStatement(query);
+                UpdateResult updateResult = ExecuteUpdateStatement(query, i == 0 ? traceParent : null);
 
                 Assert.Equal(expectedResults[i], updateResult.AffectedRows);
             }
@@ -364,8 +366,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a Special Character.
         /// </summary>
         [SkippableTheory, Order(3)]
-        [InlineData(@"ADBCDEMO_DB",@"PUBLIC","MyIdentifier")]
-        [InlineData(@"ADBCDEMO'DB", @"PUBLIC'SCHEMA","my.identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "MyIdentifier")]
+        [InlineData(@"ADBCDEMO'DB", @"PUBLIC'SCHEMA", "my.identifier")]
         [InlineData(@"ADBCDEM""DB", @"PUBLIC""SCHEMA", "my.identifier")]
         [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "my identifier")]
         [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "My 'Identifier'")]
@@ -577,10 +579,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 
         }
 
-        private UpdateResult ExecuteUpdateStatement(string query)
+        private UpdateResult ExecuteUpdateStatement(string query, string? traceParent = default)
         {
             using AdbcStatement statement = _connection.CreateStatement();
             statement.SqlQuery = query;
+            if (traceParent != null)
+            {
+                statement.SetOption("adbc.telemetry.trace_parent", traceParent ?? string.Empty);
+            }
+
             UpdateResult updateResult = statement.ExecuteUpdate();
             return updateResult;
         }

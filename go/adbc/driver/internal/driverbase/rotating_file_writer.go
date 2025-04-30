@@ -319,7 +319,7 @@ func ensureCurrentWriter(base *rotatingFileWriterImpl) (bool, int, error) {
 		safeTimeStamp := strings.ReplaceAll(strings.ReplaceAll(strings.Replace(strings.Replace(now.Format(time.RFC3339Nano), "Z", "", 1), "T", "-", 1), ":", "-"), ".", "-")
 		fileName := base.LogNamePrefix + "-" + safeTimeStamp + defaultTraceFileExt
 		fullPath := filepath.Join(base.TracingFolderPath, fileName)
-		currentWriter, err := os.OpenFile(fullPath, os.O_APPEND|os.O_CREATE, os.ModeAppend)
+		currentWriter, err := os.OpenFile(fullPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModeAppend)
 		if err != nil {
 			return true, 0, err
 		}
