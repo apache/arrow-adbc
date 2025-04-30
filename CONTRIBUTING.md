@@ -168,7 +168,7 @@ the form ``-D_option_:_value_``. For example, to build the a debug version of
 the SQLite3 driver along with tests, you would run:
 
 ```shell
-$ meson configure -Dbuildtype=debug -Dsqlite=true -Dtests=true build
+$ meson configure -Dbuildtype=debug -Dsqlite=enabled -Dtests=enabled build
 ```
 
 With the options set, you can then compile the project. For most dependencies,

@@ -55,13 +55,16 @@ pkg.generate(
     filebase: 'adbc-driver-snowflake',
 )
 
-if get_option('tests')
-    exc = executable(
-        'adbc-driver-snowflake-test',
-        'snowflake_test.cc',
-        include_directories: [include_dir, c_dir, driver_dir],
-        link_with: [adbc_common_lib, adbc_driver_snowflake_lib],
-        dependencies: [adbc_validation_dep],
-    )
-    test('adbc-driver-snowflake', exc)
-endif
+adbc_driver_snowflake_dep = declare_dependency(
+    include_directories: include_dir,
+    link_with: adbc_driver_snowflake_lib,
+)
+
+exc = executable(
+    'adbc-driver-snowflake-test',
+    'snowflake_test.cc',
+    include_directories: [include_dir, c_dir, driver_dir],
+    link_with: [adbc_common_lib, adbc_driver_snowflake_lib],
+    dependencies: [adbc_validation_dep],
+)
+test('adbc-driver-snowflake', exc)

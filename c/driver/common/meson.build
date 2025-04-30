@@ -23,13 +23,11 @@ adbc_common_lib = library(
     install: true,
 )
 
-if get_option('tests')
-    exc = executable(
-        'adbc-driver-common-test',
-        'utils_test.cc',
-        include_directories: [include_dir],
-        link_with: [adbc_common_lib],
-        dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep],
-    )
-    test('adbc-driver-common', exc)
-endif
+exc = executable(
+    'adbc-driver-common-test',
+    'utils_test.cc',
+    include_directories: [include_dir],
+    link_with: [adbc_common_lib],
+    dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep],
+)
+test('adbc-driver-common', exc)

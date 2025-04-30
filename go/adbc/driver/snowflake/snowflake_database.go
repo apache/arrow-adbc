@@ -53,6 +53,8 @@ type databaseImpl struct {
 	cfg *gosnowflake.Config
 
 	useHighPrecision bool
+
+	defaultAppName string
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -140,6 +142,10 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 	return d.DatabaseImplBase.GetOption(key)
 }
 
+func (d *databaseImpl) SetOption(key string, value string) error {
+	return d.SetOptionInternal(key, value, nil)
+}
+
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	uri, ok := cnOptions[adbc.OptionKeyURI]
 	if ok {
@@ -156,284 +162,299 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		}
 	}
 
-	dv, _ := d.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
-	driverVersion := dv.(string)
-	defaultAppName := "[ADBC][Go-" + driverVersion + "]"
 	// set default application name to track
 	// unless user overrides it
-	d.cfg.Application = defaultAppName
+	d.cfg.Application = d.defaultAppName
 
-	var err error
 	for k, v := range cnOptions {
 		v := v // copy into loop scope
-		switch k {
-		case adbc.OptionKeyUsername:
-			d.cfg.User = v
-		case adbc.OptionKeyPassword:
-			d.cfg.Password = v
-		case OptionDatabase:
-			d.cfg.Database = v
-		case OptionSchema:
-			d.cfg.Schema = v
-		case OptionWarehouse:
-			d.cfg.Warehouse = v
-		case OptionRole:
-			d.cfg.Role = v
-		case OptionRegion:
-			d.cfg.Region = v
-		case OptionAccount:
-			d.cfg.Account = v
-		case OptionProtocol:
-			d.cfg.Protocol = v
-		case OptionHost:
-			d.cfg.Host = v
-		case OptionPort:
-			d.cfg.Port, err = strconv.Atoi(v)
-			if err != nil {
-				return adbc.Error{
-					Msg:  "error encountered parsing Port option: " + err.Error(),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		case OptionAuthType:
-			d.cfg.Authenticator, ok = authTypeMap[v]
-			if !ok {
-				return adbc.Error{
-					Msg:  "invalid option value for " + OptionAuthType + ": '" + v + "'",
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		case OptionLoginTimeout:
-			dur, err := time.ParseDuration(v)
-			if err != nil {
-				return adbc.Error{
-					Msg:  "could not parse duration for '" + OptionLoginTimeout + "': " + err.Error(),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-			if dur < 0 {
-				dur = -dur
-			}
-			d.cfg.LoginTimeout = dur
-		case OptionRequestTimeout:
-			dur, err := time.ParseDuration(v)
-			if err != nil {
-				return adbc.Error{
-					Msg:  "could not parse duration for '" + OptionRequestTimeout + "': " + err.Error(),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-			if dur < 0 {
-				dur = -dur
-			}
-			d.cfg.RequestTimeout = dur
-		case OptionJwtExpireTimeout:
-			dur, err := time.ParseDuration(v)
-			if err != nil {
-				return adbc.Error{
-					Msg:  "could not parse duration for '" + OptionJwtExpireTimeout + "': " + err.Error(),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-			if dur < 0 {
-				dur = -dur
-			}
-			d.cfg.JWTExpireTimeout = dur
-		case OptionClientTimeout:
-			dur, err := time.ParseDuration(v)
-			if err != nil {
-				return adbc.Error{
-					Msg:  "could not parse duration for '" + OptionClientTimeout + "': " + err.Error(),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-			if dur < 0 {
-				dur = -dur
-			}
-			d.cfg.ClientTimeout = dur
-		case OptionApplicationName:
-			if !strings.HasPrefix(v, "[ADBC]") {
-				v = defaultAppName + v
-			}
-			d.cfg.Application = v
-		case OptionSSLSkipVerify:
-			switch v {
-			case adbc.OptionValueEnabled:
-				d.cfg.DisableOCSPChecks = true
-			case adbc.OptionValueDisabled:
-				d.cfg.DisableOCSPChecks = false
-			default:
-				return adbc.Error{
-					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		case OptionOCSPFailOpenMode:
-			switch v {
-			case adbc.OptionValueEnabled:
-				d.cfg.OCSPFailOpen = gosnowflake.OCSPFailOpenTrue
-			case adbc.OptionValueDisabled:
-				d.cfg.OCSPFailOpen = gosnowflake.OCSPFailOpenFalse
-			default:
-				return adbc.Error{
-					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		case OptionAuthToken:
-			d.cfg.Token = v
-		case OptionAuthOktaUrl:
-			d.cfg.OktaURL, err = url.Parse(v)
-			if err != nil {
-				return adbc.Error{
-					Msg:  fmt.Sprintf("error parsing URL for database option '%s': '%s'", k, v),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		case OptionKeepSessionAlive:
-			switch v {
-			case adbc.OptionValueEnabled:
-				d.cfg.KeepSessionAlive = true
-			case adbc.OptionValueDisabled:
-				d.cfg.KeepSessionAlive = false
-			default:
-				return adbc.Error{
-					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		case OptionDisableTelemetry:
-			switch v {
-			case adbc.OptionValueEnabled:
-				d.cfg.DisableTelemetry = true
-			case adbc.OptionValueDisabled:
-				d.cfg.DisableTelemetry = false
-			default:
-				return adbc.Error{
-					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		case OptionJwtPrivateKey:
-			data, err := os.ReadFile(v)
-			if err != nil {
-				return adbc.Error{
-					Msg:  "could not read private key file '" + v + "': " + err.Error(),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-
-			var block []byte
-			if strings.Contains(string(data), "PRIVATE KEY") {
-				b, _ := pem.Decode(data)
-				block = b.Bytes
-			} else {
-				block = data
-			}
-
-			var key *rsa.PrivateKey
-			key, err = x509.ParsePKCS1PrivateKey(block)
-			if err != nil && strings.Contains(err.Error(), "use ParsePKCS8PrivateKey instead") {
-				var pkcs8Key any
-				pkcs8Key, err = x509.ParsePKCS8PrivateKey(block)
-				key, ok = pkcs8Key.(*rsa.PrivateKey)
-				if !ok {
-					err = errors.New("file does not contain an RSA private key")
-				}
-			}
-
-			if err != nil {
-				return adbc.Error{
-					Msg:  "failed parsing private key file '" + v + "': " + err.Error(),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-
-			d.cfg.PrivateKey = key
-		case OptionJwtPrivateKeyPkcs8Value:
-			block, _ := pem.Decode([]byte(v))
-
-			if block == nil {
-				return adbc.Error{
-					Msg:  "Failed to parse PEM block containing the private key",
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-
-			var parsedKey any
-
-			switch block.Type {
-			case "ENCRYPTED PRIVATE KEY":
-				passcode, ok := cnOptions[OptionJwtPrivateKeyPkcs8Password]
-				if ok {
-					parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(passcode))
-				} else {
-					return adbc.Error{
-						Msg:  OptionJwtPrivateKeyPkcs8Password + " is not configured",
-						Code: adbc.StatusInvalidArgument,
-					}
-				}
-			case "PRIVATE KEY":
-				parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes)
-			default:
-				return adbc.Error{
-					Msg:  block.Type + " is not supported",
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-
-			if err != nil {
-				return adbc.Error{
-					Msg:  "[Snowflake] failed parsing PKCS8 private key: " + err.Error(),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-
-			d.cfg.PrivateKey = parsedKey.(*rsa.PrivateKey)
-
-		case OptionClientRequestMFAToken:
-			switch v {
-			case adbc.OptionValueEnabled:
-				d.cfg.ClientRequestMfaToken = gosnowflake.ConfigBoolTrue
-			case adbc.OptionValueDisabled:
-				d.cfg.ClientRequestMfaToken = gosnowflake.ConfigBoolFalse
-			default:
-				return adbc.Error{
-					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		case OptionClientStoreTempCred:
-			switch v {
-			case adbc.OptionValueEnabled:
-				d.cfg.ClientStoreTemporaryCredential = gosnowflake.ConfigBoolTrue
-			case adbc.OptionValueDisabled:
-				d.cfg.ClientStoreTemporaryCredential = gosnowflake.ConfigBoolFalse
-			default:
-				return adbc.Error{
-					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		case OptionLogTracing:
-			d.cfg.Tracing = v
-		case OptionClientConfigFile:
-			d.cfg.ClientConfigFile = v
-		case OptionUseHighPrecision:
-			switch v {
-			case adbc.OptionValueEnabled:
-				d.useHighPrecision = true
-			case adbc.OptionValueDisabled:
-				d.useHighPrecision = false
-			default:
-				return adbc.Error{
-					Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionUseHighPrecision, v),
-					Code: adbc.StatusInvalidArgument,
-				}
-			}
-		default:
-			d.cfg.Params[k] = &v
+		err := d.SetOptionInternal(k, v, &cnOptions)
+		if err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// SetOptionInternal sets the option for the database.
+//
+// cnOptions is nil if the option is being set post-initialiation.
+func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[string]string) error {
+	var err error
+	var ok bool
+	switch k {
+	case adbc.OptionKeyUsername:
+		d.cfg.User = v
+	case adbc.OptionKeyPassword:
+		d.cfg.Password = v
+	case OptionDatabase:
+		d.cfg.Database = v
+	case OptionSchema:
+		d.cfg.Schema = v
+	case OptionWarehouse:
+		d.cfg.Warehouse = v
+	case OptionRole:
+		d.cfg.Role = v
+	case OptionRegion:
+		d.cfg.Region = v
+	case OptionAccount:
+		d.cfg.Account = v
+	case OptionProtocol:
+		d.cfg.Protocol = v
+	case OptionHost:
+		d.cfg.Host = v
+	case OptionPort:
+		d.cfg.Port, err = strconv.Atoi(v)
+		if err != nil {
+			return adbc.Error{
+				Msg:  "error encountered parsing Port option: " + err.Error(),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionAuthType:
+		d.cfg.Authenticator, ok = authTypeMap[v]
+		if !ok {
+			return adbc.Error{
+				Msg:  "invalid option value for " + OptionAuthType + ": '" + v + "'",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionLoginTimeout:
+		dur, err := time.ParseDuration(v)
+		if err != nil {
+			return adbc.Error{
+				Msg:  "could not parse duration for '" + OptionLoginTimeout + "': " + err.Error(),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		if dur < 0 {
+			dur = -dur
+		}
+		d.cfg.LoginTimeout = dur
+	case OptionRequestTimeout:
+		dur, err := time.ParseDuration(v)
+		if err != nil {
+			return adbc.Error{
+				Msg:  "could not parse duration for '" + OptionRequestTimeout + "': " + err.Error(),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		if dur < 0 {
+			dur = -dur
+		}
+		d.cfg.RequestTimeout = dur
+	case OptionJwtExpireTimeout:
+		dur, err := time.ParseDuration(v)
+		if err != nil {
+			return adbc.Error{
+				Msg:  "could not parse duration for '" + OptionJwtExpireTimeout + "': " + err.Error(),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		if dur < 0 {
+			dur = -dur
+		}
+		d.cfg.JWTExpireTimeout = dur
+	case OptionClientTimeout:
+		dur, err := time.ParseDuration(v)
+		if err != nil {
+			return adbc.Error{
+				Msg:  "could not parse duration for '" + OptionClientTimeout + "': " + err.Error(),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		if dur < 0 {
+			dur = -dur
+		}
+		d.cfg.ClientTimeout = dur
+	case OptionApplicationName:
+		if !strings.HasPrefix(v, "[ADBC]") {
+			v = d.defaultAppName + v
+		}
+		d.cfg.Application = v
+	case OptionSSLSkipVerify:
+		switch v {
+		case adbc.OptionValueEnabled:
+			d.cfg.DisableOCSPChecks = true
+		case adbc.OptionValueDisabled:
+			d.cfg.DisableOCSPChecks = false
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionOCSPFailOpenMode:
+		switch v {
+		case adbc.OptionValueEnabled:
+			d.cfg.OCSPFailOpen = gosnowflake.OCSPFailOpenTrue
+		case adbc.OptionValueDisabled:
+			d.cfg.OCSPFailOpen = gosnowflake.OCSPFailOpenFalse
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionAuthToken:
+		d.cfg.Token = v
+	case OptionAuthOktaUrl:
+		d.cfg.OktaURL, err = url.Parse(v)
+		if err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("error parsing URL for database option '%s': '%s'", k, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionKeepSessionAlive:
+		switch v {
+		case adbc.OptionValueEnabled:
+			d.cfg.KeepSessionAlive = true
+		case adbc.OptionValueDisabled:
+			d.cfg.KeepSessionAlive = false
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionDisableTelemetry:
+		switch v {
+		case adbc.OptionValueEnabled:
+			d.cfg.DisableTelemetry = true
+		case adbc.OptionValueDisabled:
+			d.cfg.DisableTelemetry = false
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionJwtPrivateKey:
+		data, err := os.ReadFile(v)
+		if err != nil {
+			return adbc.Error{
+				Msg:  "could not read private key file '" + v + "': " + err.Error(),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
+		var block []byte
+		if strings.Contains(string(data), "PRIVATE KEY") {
+			b, _ := pem.Decode(data)
+			block = b.Bytes
+		} else {
+			block = data
+		}
+
+		var key *rsa.PrivateKey
+		key, err = x509.ParsePKCS1PrivateKey(block)
+		if err != nil && strings.Contains(err.Error(), "use ParsePKCS8PrivateKey instead") {
+			var pkcs8Key any
+			pkcs8Key, err = x509.ParsePKCS8PrivateKey(block)
+			key, ok = pkcs8Key.(*rsa.PrivateKey)
+			if !ok {
+				err = errors.New("file does not contain an RSA private key")
+			}
+		}
+
+		if err != nil {
+			return adbc.Error{
+				Msg:  "failed parsing private key file '" + v + "': " + err.Error(),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
+		d.cfg.PrivateKey = key
+	case OptionJwtPrivateKeyPkcs8Value:
+		block, _ := pem.Decode([]byte(v))
+
+		if block == nil {
+			return adbc.Error{
+				Msg:  "Failed to parse PEM block containing the private key",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
+		var parsedKey any
+
+		switch block.Type {
+		case "ENCRYPTED PRIVATE KEY":
+			if cnOptions == nil {
+				return adbc.Error{
+					Msg:  "[Snowflake] unable to set private key post initialization",
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+			passcode, ok := (*cnOptions)[OptionJwtPrivateKeyPkcs8Password]
+			if ok {
+				parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes, []byte(passcode))
+			} else {
+				return adbc.Error{
+					Msg:  OptionJwtPrivateKeyPkcs8Password + " is not configured",
+					Code: adbc.StatusInvalidArgument,
+				}
+			}
+		case "PRIVATE KEY":
+			parsedKey, err = pkcs8.ParsePKCS8PrivateKey(block.Bytes)
+		default:
+			return adbc.Error{
+				Msg:  block.Type + " is not supported",
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
+		if err != nil {
+			return adbc.Error{
+				Msg:  "[Snowflake] failed parsing PKCS8 private key: " + err.Error(),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
+		d.cfg.PrivateKey = parsedKey.(*rsa.PrivateKey)
+
+	case OptionClientRequestMFAToken:
+		switch v {
+		case adbc.OptionValueEnabled:
+			d.cfg.ClientRequestMfaToken = gosnowflake.ConfigBoolTrue
+		case adbc.OptionValueDisabled:
+			d.cfg.ClientRequestMfaToken = gosnowflake.ConfigBoolFalse
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionClientStoreTempCred:
+		switch v {
+		case adbc.OptionValueEnabled:
+			d.cfg.ClientStoreTemporaryCredential = gosnowflake.ConfigBoolTrue
+		case adbc.OptionValueDisabled:
+			d.cfg.ClientStoreTemporaryCredential = gosnowflake.ConfigBoolFalse
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionLogTracing:
+		d.cfg.Tracing = v
+	case OptionClientConfigFile:
+		d.cfg.ClientConfigFile = v
+	case OptionUseHighPrecision:
+		switch v {
+		case adbc.OptionValueEnabled:
+			d.useHighPrecision = true
+		case adbc.OptionValueDisabled:
+			d.useHighPrecision = false
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionUseHighPrecision, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	default:
+		d.cfg.Params[k] = &v
 	}
 	return nil
 }
@@ -470,3 +491,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 func (d *databaseImpl) Close() error {
 	return nil
 }
+
+var (
+	_ adbc.PostInitOptions = (*databaseImpl)(nil)
+)

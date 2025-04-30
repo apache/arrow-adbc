@@ -81,7 +81,7 @@ adbc_arrow_glib_gir = \
     libadbc_arrow_glib,
     dependencies: [declare_dependency(sources: adbc_glib_gir), arrow_glib],
     export_packages: 'adbc-arrow-glib',
-    extra_args: ['--warn-all'],
+    extra_args: gir_scanner_extra_args,
     fatal_warnings: gi_fatal_warnings,
     header: 'adbc-arrow-glib/adbc-arrow-glib.h',
     identifier_prefix: 'GADBCArrow',

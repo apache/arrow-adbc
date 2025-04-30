@@ -25,6 +25,7 @@ using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
+using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
@@ -105,8 +106,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
             // Delay the open connection until later.
             bool connectClient = false;
-            ThriftSocketTransport transport = new(hostName!, int.Parse(port!), connectClient, config: new());
-            return transport;
+            TSocketTransport transport = new(hostName!, int.Parse(port!), connectClient, config: new());
+            TBufferedTransport bufferedTransport = new TBufferedTransport(transport);
+            return bufferedTransport;
         }
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)

@@ -250,16 +250,23 @@ jobs:
       - name: Build
         run: |
           meson setup \
-            -Db_sanitize=address,undefined \
-            -Ddriver_manager=true \
-            -Dflightsql=true \
-            -Dpostgresql=true \
-            -Dsnowflake=true \
-            -Dsqlite=true \
-            -Dtests=true \
+            -Dauto_features=enabled \
             c c/build
           meson compile -C c/build
       - name: Test
+        run: |
+          meson test -C c/build --print-errorlogs
+      - name: Build with sanitizers
+        run: |
+          # skip bigquery and flightsql for now; see GH-2744
+          meson setup \
+            -Db_sanitize=address,undefined \
+            -Dauto_features=enabled \
+            -Dbigquery=disabled \
+            -Dflightsql=disabled \
+            c c/build
+          meson compile -C c/build
+      - name: Test with sanitizers
         run: |
           meson test -C c/build --print-errorlogs
       - name: Stop SQLite server, Dremio, and postgresql
@@ -392,7 +399,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935  # v2.1.8
+      - uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193  # v2.1.10
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -454,7 +461,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935  # v2.1.8
+      - uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193  # v2.1.10
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
