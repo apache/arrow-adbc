@@ -22,16 +22,14 @@ Frequently Asked Questions (FAQ)
 What exactly is ADBC?
 =====================
 
-ADBC is:
+At a high level, you can think of ADBC as a standard for Arrow-native access to
+databases. At a lower level, ADBC is two separate things:
 
-- A set of abstract APIs in different languages (C/C++, Go, and Java,
-  with more on the way) for working with databases and Arrow data.
+1. An abstract API, with definitions in different languages (currently C, Go,
+   Java, and Rust), for working with databases and Arrow data.
 
-  For example, result sets of queries in ADBC are all returned as
-  streams of Arrow data, not row-by-row.
-- A set of implementations of that API in different languages (C/C++,
-  C#/.NET, Go, Java, Python, and Ruby) that target different databases
-  (e.g. PostgreSQL, SQLite, any database supporting Flight SQL).
+2. A set of concrete implementations of that API in different languages and
+   drivers for different databases (see :doc:`driver/status`).
 
 Why not just use JDBC/ODBC?
 ===========================
