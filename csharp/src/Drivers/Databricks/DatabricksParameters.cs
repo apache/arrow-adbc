@@ -116,6 +116,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string CloudFetchPrefetchEnabled = "adbc.databricks.cloudfetch.prefetch_enabled";
+
+        /// <summary>
+        /// OAuth client ID for authentication.
+        /// </summary>
+        public const string OAuthClientId = "adbc.databricks.oauth.client_id";
+
+        /// <summary>
+        /// OAuth client secret for authentication.
+        /// </summary>
+        public const string OAuthClientSecret = "adbc.databricks.oauth.client_secret";
     }
 
     /// <summary>
