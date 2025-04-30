@@ -39,6 +39,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
+        protected string? _accessToken;
+
         public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
@@ -158,13 +160,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
             Properties.TryGetValue(SparkParameters.Token, out string? token);
-            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken);
 
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName, TlsOptions.IsTlsEnabled);
-            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, access_token);
+            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, _accessToken ?? accessToken);
 
             HttpClient httpClient = new(CreateHttpHandler());
             httpClient.BaseAddress = baseAddress;

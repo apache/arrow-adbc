@@ -24,9 +24,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -49,6 +51,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
         private const bool DefaultRetryOnUnavailable= true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 500;
+
+        private OAuthClientCredentialsProvider? _oauthProvider;
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -121,6 +125,30 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         $"Parameter '{DatabricksParameters.MaxBytesPerFile}' value must be a positive integer.");
                 }
                 _maxBytesPerFile = maxBytesPerFileValue;
+            }
+
+            // Initialize OAuth provider if credentials are provided
+            if (Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId) &&
+                Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret))
+            {
+                if (string.IsNullOrEmpty(clientId))
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.OAuthClientId}' cannot be null or empty.");
+                }
+
+                if (string.IsNullOrEmpty(clientSecret))
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.OAuthClientSecret}' cannot be null or empty.");
+                }
+
+                // Get the host from the connection properties
+                if (!Properties.TryGetValue("host", out string? host) || string.IsNullOrEmpty(host))
+                {
+                    throw new ArgumentException("Host parameter is required for OAuth authentication.");
+                }
+
+                // Initialize the OAuth provider
+                _oauthProvider = new OAuthClientCredentialsProvider(clientId, clientSecret, host);
             }
         }
 
@@ -373,5 +401,40 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             Task.FromResult(response.DirectResults.ResultSet.Results);
         protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
+
+        protected override TTransport CreateTransport()
+        {
+            // If we have an OAuth provider, ensure we have a valid token
+            if (_oauthProvider != null)
+            {
+                ValidateAndGetOAuthToken();
+            }
+
+            return base.CreateTransport();
+        }
+
+        protected override void ValidateAuthentication()
+        {
+            // If we have an OAuth provider, validate we can get a token
+            if (_oauthProvider != null)
+            {
+                ValidateAndGetOAuthToken();
+            }
+            else
+            {
+                base.ValidateAuthentication();
+            }
+        }
+
+        private void ValidateAndGetOAuthToken()
+        {
+            var accessToken = _oauthProvider?.GetAccessToken();
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                throw new ArgumentException(
+                    "Failed to obtain OAuth access token",
+                    nameof(_oauthProvider));
+            }
+        }
     }
 }
