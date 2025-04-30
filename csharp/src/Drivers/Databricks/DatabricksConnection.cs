@@ -24,11 +24,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -51,8 +49,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
         private const bool DefaultRetryOnUnavailable= true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 500;
-
-        private OAuthClientCredentialsProvider? _oauthProvider;
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -126,30 +122,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 _maxBytesPerFile = maxBytesPerFileValue;
             }
-
-            // Initialize OAuth provider if credentials are provided
-            if (Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId) &&
-                Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret))
-            {
-                if (string.IsNullOrEmpty(clientId))
-                {
-                    throw new ArgumentException($"Parameter '{DatabricksParameters.OAuthClientId}' cannot be null or empty.");
-                }
-
-                if (string.IsNullOrEmpty(clientSecret))
-                {
-                    throw new ArgumentException($"Parameter '{DatabricksParameters.OAuthClientSecret}' cannot be null or empty.");
-                }
-
-                // Get the host from the connection properties
-                if (!Properties.TryGetValue("host", out string? host) || string.IsNullOrEmpty(host))
-                {
-                    throw new ArgumentException("Host parameter is required for OAuth authentication.");
-                }
-
-                // Initialize the OAuth provider
-                _oauthProvider = new OAuthClientCredentialsProvider(clientId, clientSecret, host);
-            }
         }
 
         /// <summary>
@@ -189,11 +161,59 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override HttpMessageHandler CreateHttpHandler()
         {
-            var baseHandler = base.CreateHttpHandler();
+            HttpMessageHandler baseHandler = base.CreateHttpHandler();
             if (TemporarilyUnavailableRetry)
             {
-                return new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
+            // Add OAuth handler if OAuth authentication is being used
+                baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
             }
+
+            // Add OAuth handler if OAuth authentication is being used
+            if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
+                authType.ToLower() == SparkAuthTypeConstants.OAuth.ToLower())
+            {
+                // Try to get hostname from properties or extract from URI
+                string? host = null;
+                if (Properties.TryGetValue(SparkParameters.HostName, out host) && !string.IsNullOrEmpty(host))
+                {
+                    // Use hostname directly if provided
+                }
+                else if (Properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrEmpty(uri))
+                {
+                    // Extract hostname from URI if URI is provided
+                    if (Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsedUri))
+                    {
+                        host = parsedUri.Host;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(host))
+                {
+                    throw new ArgumentException("Either hostname or URI must be provided for OAuth authentication");
+                }
+
+                Properties.TryGetValue(SparkParameters.AuthFlow, out string? authFlow);
+
+                if (authFlow == "1")
+                {
+                    Properties.TryGetValue(SparkParameters.OAuthClientId, out string? clientId);
+                    Properties.TryGetValue(SparkParameters.OAuthClientSecret, out string? clientSecret);
+                    var tokenProvider = new Auth.OAuthClientCredentialsProvider(
+                        clientId!,
+                        clientSecret!,
+                        host,
+                        timeoutMinutes: 1
+                    );
+
+                    return new OAuthDelegatingHandler(baseHandler, tokenProvider);
+                }
+                else
+                {
+                    // For other auth flows, use default OAuth handling
+                    return baseHandler;
+                }
+            }
+
             return baseHandler;
         }
 
@@ -401,40 +421,5 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             Task.FromResult(response.DirectResults.ResultSet.Results);
         protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
-
-        protected override TTransport CreateTransport()
-        {
-            // If we have an OAuth provider, ensure we have a valid token
-            if (_oauthProvider != null)
-            {
-                ValidateAndGetOAuthToken();
-            }
-
-            return base.CreateTransport();
-        }
-
-        protected override void ValidateAuthentication()
-        {
-            // If we have an OAuth provider, validate we can get a token
-            if (_oauthProvider != null)
-            {
-                ValidateAndGetOAuthToken();
-            }
-            else
-            {
-                base.ValidateAuthentication();
-            }
-        }
-
-        private void ValidateAndGetOAuthToken()
-        {
-            var accessToken = _oauthProvider?.GetAccessToken();
-            if (string.IsNullOrEmpty(accessToken))
-            {
-                throw new ArgumentException(
-                    "Failed to obtain OAuth access token",
-                    nameof(_oauthProvider));
-            }
-        }
     }
 }

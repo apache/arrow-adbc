@@ -39,8 +39,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
-        protected string? _accessToken;
-
         public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
@@ -53,10 +51,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
             Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
+            Properties.TryGetValue(SparkParameters.AuthFlow, out string? authFlow);
+            Properties.TryGetValue(SparkParameters.OAuthClientId, out string? clientId);
+            Properties.TryGetValue(SparkParameters.OAuthClientSecret, out string? clientSecret);
+
             if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
             {
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
+
             switch (authTypeValue)
             {
                 case SparkAuthType.Token:
@@ -87,10 +90,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     break;
 
                 case SparkAuthType.OAuth:
-                    if (string.IsNullOrWhiteSpace(access_token))
+                    if (authFlow == "1")
+                    {
+                        // For client credentials flow, check for client ID and secret
+                        if (string.IsNullOrWhiteSpace(clientId))
+                        {
+                            throw new ArgumentException(
+                                $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' with auth flow 1 (client credentials) but parameter '{SparkParameters.OAuthClientId}' is not set. Please provide a value for '{SparkParameters.OAuthClientId}'.",
+                                nameof(Properties));
+                        }
+                        if (string.IsNullOrWhiteSpace(clientSecret))
+                        {
+                            throw new ArgumentException(
+                                $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' with auth flow 1 (client credentials) but parameter '{SparkParameters.OAuthClientSecret}' is not set. Please provide a value for '{SparkParameters.OAuthClientSecret}'.",
+                                nameof(Properties));
+                        }
+                    }
+                    else if (string.IsNullOrWhiteSpace(access_token))
+                    {
                         throw new ArgumentException(
                             $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' but parameter '{SparkParameters.AccessToken}' is not set. Please provide a value for '{SparkParameters.AccessToken}'.",
                             nameof(Properties));
+                    }
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
@@ -160,13 +181,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
             Properties.TryGetValue(SparkParameters.Token, out string? token);
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
-            Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken);
+            Properties.TryGetValue(SparkParameters.OAuthClientId, out string? clientId);
+            Properties.TryGetValue(SparkParameters.OAuthClientSecret, out string? clientSecret);
+            Properties.TryGetValue(SparkParameters.AuthFlow, out string? authFlow);
 
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName, TlsOptions.IsTlsEnabled);
-            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, _accessToken ?? accessToken);
+            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, authFlow, token, username, password, access_token, clientId, clientSecret);
 
             HttpClient httpClient = new(CreateHttpHandler());
             httpClient.BaseAddress = baseAddress;
@@ -187,7 +211,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return transport;
         }
 
-        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password, string? access_token)
+        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? authFlow, string? token, string? username, string? password, string? access_token, string? clientId, string? clientSecret)
         {
             if (!string.IsNullOrEmpty(token) && (authType == SparkAuthType.Empty || authType == SparkAuthType.Token))
             {
@@ -201,7 +225,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 return new AuthenticationHeaderValue(BasicAuthenticationScheme, Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:")));
             }
-            else if (!string.IsNullOrEmpty(access_token) && authType == SparkAuthType.OAuth)
+            else if (!string.IsNullOrEmpty(access_token) && (authType == SparkAuthType.OAuth && authFlow != "1"))
             {
                 return new AuthenticationHeaderValue(BearerAuthenticationScheme, access_token);
             }
@@ -209,9 +233,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 return null;
             }
+            else if (authType == SparkAuthType.OAuth && authFlow == "1" && !string.IsNullOrEmpty(clientId) && !string.IsNullOrEmpty(clientSecret))
+            {
+                // Use OAuthDelegatingHandler to handle OAuth client credentials flow. This lets us check token expiration per http request
+                return null;
+            }
             else
             {
-                throw new AdbcException("Missing connection properties. Must contain 'token' or 'username' and 'password'");
+                throw new AdbcException("Missing connection properties. Must contain 'token' or 'username' and 'password', or 'client_id' and 'client_secret' for OAuth client credentials authflow.");
             }
         }
 

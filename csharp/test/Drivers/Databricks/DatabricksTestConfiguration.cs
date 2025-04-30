@@ -22,6 +22,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
     public class DatabricksTestConfiguration : SparkTestConfiguration
     {
+
+        [JsonPropertyName("auth_flow"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string AuthFlow { get; set; } = string.Empty;
+
         [JsonPropertyName("oauth_client_id"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string OAuthClientId { get; set; } = string.Empty;
 

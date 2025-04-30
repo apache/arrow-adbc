@@ -42,19 +42,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         }
 
         [SkippableFact]
-        public void GetAccessToken_WithValidCredentials_ReturnsToken()
+        public async Task GetAccessToken_WithValidCredentials_ReturnsToken()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
             var service = CreateService();
-            var token = service.GetAccessToken();
+            var token = await service.GetAccessTokenAsync();
 
             Assert.NotNull(token);
             Assert.NotEmpty(token);
         }
 
         [SkippableFact]
-        public void GetAccessToken_WithCancellation_ThrowsOperationCanceledException()
+        public async Task GetAccessToken_WithCancellation_ThrowsOperationCanceledException()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
@@ -62,19 +62,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            var ex = Assert.ThrowsAny<OperationCanceledException>(() =>
-                service.GetAccessToken(cts.Token));
-            Assert.IsType<TaskCanceledException>(ex);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+                await service.GetAccessTokenAsync(cts.Token));
         }
 
         [SkippableFact]
-        public void GetAccessToken_MultipleCalls_ReusesCachedToken()
+        public async Task GetAccessToken_MultipleCalls_ReusesCachedToken()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
             var service = CreateService();
-            var token1 = service.GetAccessToken();
-            var token2 = service.GetAccessToken();
+            var token1 = await service.GetAccessTokenAsync();
+            var token2 = await service.GetAccessTokenAsync();
 
             Assert.Equal(token1, token2);
         }
