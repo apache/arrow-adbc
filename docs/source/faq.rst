@@ -22,14 +22,13 @@ Frequently Asked Questions (FAQ)
 What exactly is ADBC?
 =====================
 
-At a high level, you can think of ADBC as a standard for Arrow-native access to
-databases. At a lower level, ADBC is two separate things:
+At a high level, ADBC is the standard for Arrow-native access to databases. At a
+lower level, ADBC is two separate but related things:
 
-1. An abstract API, with definitions in different languages (currently C, Go,
-   Java, and Rust), for working with databases and Arrow data.
+1. An abstract API for working with databases and Arrow data.
 
-2. A set of concrete implementations of that API in different languages and
-   drivers for different databases (see :doc:`driver/status`).
+2. A set of concrete implementations of that abstract API in different languages
+   and drivers for different databases (see :doc:`driver/status`).
 
 Why not just use JDBC/ODBC?
 ===========================
