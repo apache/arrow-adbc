@@ -354,18 +354,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             // Verify schema has more fields than the regular GetColumns result (which has 24 fields)
             // We expect additional PK and FK fields
             OutputHelper?.WriteLine($"Column count in result schema: {queryResult.Stream.Schema.FieldsList.Count}");
-            Assert.True(queryResult.Stream.Schema.FieldsList.Count > 24, 
+            Assert.True(queryResult.Stream.Schema.FieldsList.Count > 24,
                 "GetColumnsExtended should return more columns than GetColumns (at least 24+)");
 
             // Verify that key fields from each original metadata call are present
             bool hasColumnName = false;
             bool hasPkKeySeq = false;
             bool hasFkTableName = false;
-            
+
             foreach (var field in queryResult.Stream.Schema.FieldsList)
             {
                 OutputHelper?.WriteLine($"Field in schema: {field.Name} ({field.DataType})");
-                
+
                 if (field.Name.Equals("COLUMN_NAME", StringComparison.OrdinalIgnoreCase))
                     hasColumnName = true;
                 else if (field.Name.Equals("PK_COLUMN_NAME", StringComparison.OrdinalIgnoreCase))
@@ -384,15 +384,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
                 if (batch == null) break;
-                
+
                 rowCount += batch.Length;
-                
+
                 // Output rows for debugging (limit to first 10)
                 if (batch.Length > 0)
                 {
                     int rowsToPrint = Math.Min(batch.Length, 10); // Limit to 10 rows
                     OutputHelper?.WriteLine($"Found {batch.Length} rows, showing first {rowsToPrint}:");
-                    
+
                     for (int rowIndex = 0; rowIndex < rowsToPrint; rowIndex++)
                     {
                         OutputHelper?.WriteLine($"Row {rowIndex}:");
@@ -417,7 +417,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         {
             if (array == null || index >= array.Length || array.IsNull(index))
                 return "null";
-            
+
             if (array is StringArray strArray)
                 return strArray.GetString(index) ?? "null";
             else if (array is Int32Array int32Array)
@@ -426,7 +426,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 return int16Array.GetValue(index).ToString() ?? "null";
             else if (array is BooleanArray boolArray)
                 return boolArray.GetValue(index).ToString() ?? "null";
-            
+
             return "unknown";
         }
 

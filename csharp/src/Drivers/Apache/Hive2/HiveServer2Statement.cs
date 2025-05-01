@@ -596,9 +596,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // 1. Get all three results at once
             var columnsResult = await GetColumnsAsync(cancellationToken);
             if (columnsResult.Stream == null) return columnsResult;
-            
+
             var pkResult = await GetPrimaryKeysAsync(cancellationToken);
-            
+
             // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
             var resp = await Connection.GetCrossReferenceAsync(
                 null,
@@ -614,44 +614,44 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             // 2. Read all batches into memory
             RecordBatch? columnsBatch = null;
-            RecordBatch? pkBatch = null; 
+            RecordBatch? pkBatch = null;
             RecordBatch? fkBatch = null;
-            
+
             // Extract column data
             using (var stream = columnsResult.Stream)
             {
                 columnsBatch = await stream.ReadNextRecordBatchAsync(cancellationToken);
                 if (columnsBatch == null) return columnsResult;
             }
-            
+
             // 3. Find column name index
             var colNameIndex = columnsResult.Stream.Schema.GetFieldIndex("COLUMN_NAME");
             if (colNameIndex < 0) return columnsResult; // Can't match without column names
-            
+
             // Get column names
             var colNames = (StringArray)columnsBatch.Column(colNameIndex);
-            
+
             // 4. Create combined schema and prepare data
             var allFields = new List<Field>(columnsResult.Stream.Schema.FieldsList);
             var combinedData = new List<IArrowArray>();
-            
+
             // Add all columns data
             for (int i = 0; i < columnsBatch.ColumnCount; i++)
             {
                 combinedData.Add(columnsBatch.Column(i));
             }
-            
+
             // 5. Process PK and FK data using helper methods with selected fields
-            ProcessRelationshipData(pkResult, "PK_", "COLUMN_NAME", 
+            ProcessRelationshipData(pkResult, "PK_", "COLUMN_NAME",
                 new[] { "COLUMN_NAME", "KEY_SEQ" }, // Selected PK fields
-                ref pkBatch, colNames, columnsBatch.Length, 
+                ref pkBatch, colNames, columnsBatch.Length,
                 ref allFields, combinedData, cancellationToken);
-            
-            ProcessRelationshipData(fkResult, "FK_", "FKCOLUMN_NAME", 
+
+            ProcessRelationshipData(fkResult, "FK_", "FKCOLUMN_NAME",
                 new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" }, // Selected FK fields
-                ref fkBatch, colNames, columnsBatch.Length, 
+                ref fkBatch, colNames, columnsBatch.Length,
                 ref allFields, combinedData, cancellationToken);
-            
+
             // 6. Return the combined result
             var combinedSchema = new Schema(allFields, columnsResult.Stream.Schema.Metadata);
             return new QueryResult(columnsBatch.Length, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
@@ -663,7 +663,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ref List<Field> allFields, List<IArrowArray> combinedData, CancellationToken cancellationToken)
         {
             if (result.Stream == null) return;
-            
+
             // Build column map and read batch
             Dictionary<string, int> map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             using (var stream = result.Stream)
@@ -684,9 +684,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     }
                 }
             }
-            
+
             if (batch == null) return;
-            
+
             // Add only the selected fields to schema
             foreach (var fieldName in includeFields)
             {
@@ -694,7 +694,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 if (fieldIndex >= 0)
                 {
                     allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
-                    
+
                     // Create string arrays for the selected fields
                     var builder = new StringArray.Builder();
                     for (int i = 0; i < rowCount; i++)
@@ -708,8 +708,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             }
                             else
                             {
-                                builder.Append(batch.Column(fieldIndex) is StringArray strArray 
-                                    ? strArray.GetString(rowIndex) 
+                                builder.Append(batch.Column(fieldIndex) is StringArray strArray
+                                    ? strArray.GetString(rowIndex)
                                     : batch.Column(fieldIndex).ToString());
                             }
                         }
