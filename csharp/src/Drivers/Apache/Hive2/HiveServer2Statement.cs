@@ -35,13 +35,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const string GetSchemasCommandName = "getschemas";
         private const string GetTablesCommandName = "gettables";
         private const string GetColumnsCommandName = "getcolumns";
+        private const string GetColumnsExtendedCommandName = "getcolumnsextended";
         private const string SupportedMetadataCommands =
             GetCatalogsCommandName + "," +
             GetSchemasCommandName + "," +
             GetTablesCommandName + "," +
             GetColumnsCommandName + "," +
             GetPrimaryKeysCommandName + "," +
-            GetCrossReferenceCommandName;
+            GetCrossReferenceCommandName + "," +
+            GetColumnsExtendedCommandName;
 
         internal HiveServer2Statement(HiveServer2Connection connection)
         {
@@ -360,6 +362,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 GetColumnsCommandName => await GetColumnsAsync(cancellationToken),
                 GetPrimaryKeysCommandName => await GetPrimaryKeysAsync(cancellationToken),
                 GetCrossReferenceCommandName => await GetCrossReferenceAsync(cancellationToken),
+                GetColumnsExtendedCommandName => await GetColumnsExtendedAsync(cancellationToken),
                 null or "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
                 _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {SupportedMetadataCommands}"),
             };
@@ -586,6 +589,138 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             enhancedData.Add(baseTypeNameArray);
 
             return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(enhancedSchema, enhancedData));
+        }
+
+        private async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
+        {
+            // 1. Get all three results at once
+            var columnsResult = await GetColumnsAsync(cancellationToken);
+            if (columnsResult.Stream == null) return columnsResult;
+            
+            var pkResult = await GetPrimaryKeysAsync(cancellationToken);
+            
+            // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
+            var resp = await Connection.GetCrossReferenceAsync(
+                null,
+                null,
+                null,
+                CatalogName,
+                SchemaName,
+                TableName,
+                cancellationToken);
+
+            var fkResult = await GetQueryResult(resp.DirectResults, cancellationToken);
+
+
+            // 2. Read all batches into memory
+            RecordBatch? columnsBatch = null;
+            RecordBatch? pkBatch = null; 
+            RecordBatch? fkBatch = null;
+            
+            // Extract column data
+            using (var stream = columnsResult.Stream)
+            {
+                columnsBatch = await stream.ReadNextRecordBatchAsync(cancellationToken);
+                if (columnsBatch == null) return columnsResult;
+            }
+            
+            // 3. Find column name index
+            var colNameIndex = columnsResult.Stream.Schema.GetFieldIndex("COLUMN_NAME");
+            if (colNameIndex < 0) return columnsResult; // Can't match without column names
+            
+            // Get column names
+            var colNames = (StringArray)columnsBatch.Column(colNameIndex);
+            
+            // 4. Create combined schema and prepare data
+            var allFields = new List<Field>(columnsResult.Stream.Schema.FieldsList);
+            var combinedData = new List<IArrowArray>();
+            
+            // Add all columns data
+            for (int i = 0; i < columnsBatch.ColumnCount; i++)
+            {
+                combinedData.Add(columnsBatch.Column(i));
+            }
+            
+            // 5. Process PK and FK data using helper methods with selected fields
+            ProcessRelationshipData(pkResult, "PK_", "COLUMN_NAME", 
+                new[] { "COLUMN_NAME", "KEY_SEQ" }, // Selected PK fields
+                ref pkBatch, colNames, columnsBatch.Length, 
+                ref allFields, combinedData, cancellationToken);
+            
+            ProcessRelationshipData(fkResult, "FK_", "FKCOLUMN_NAME", 
+                new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" }, // Selected FK fields
+                ref fkBatch, colNames, columnsBatch.Length, 
+                ref allFields, combinedData, cancellationToken);
+            
+            // 6. Return the combined result
+            var combinedSchema = new Schema(allFields, columnsResult.Stream.Schema.Metadata);
+            return new QueryResult(columnsBatch.Length, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
+        }
+
+        // Helper method to process relationship data (PK or FK) with selected fields
+        private void ProcessRelationshipData(QueryResult result, string prefix, string columnNameField,
+            string[] includeFields, ref RecordBatch? batch, StringArray colNames, int rowCount,
+            ref List<Field> allFields, List<IArrowArray> combinedData, CancellationToken cancellationToken)
+        {
+            if (result.Stream == null) return;
+            
+            // Build column map and read batch
+            Dictionary<string, int> map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            using (var stream = result.Stream)
+            {
+                var colIndex = result.Stream.Schema.GetFieldIndex(columnNameField);
+                if (colIndex >= 0)
+                {
+                    batch = stream.ReadNextRecordBatchAsync(cancellationToken).Result;
+                    if (batch != null && batch.Length > 0)
+                    {
+                        var keyColNames = (StringArray)batch.Column(colIndex);
+                        for (int i = 0; i < batch.Length; i++)
+                        {
+                            string? colName = keyColNames.GetString(i);
+                            if (!string.IsNullOrEmpty(colName))
+                                map[colName] = i;
+                        }
+                    }
+                }
+            }
+            
+            if (batch == null) return;
+            
+            // Add only the selected fields to schema
+            foreach (var fieldName in includeFields)
+            {
+                int fieldIndex = result.Stream.Schema.GetFieldIndex(fieldName);
+                if (fieldIndex >= 0)
+                {
+                    allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
+                    
+                    // Create string arrays for the selected fields
+                    var builder = new StringArray.Builder();
+                    for (int i = 0; i < rowCount; i++)
+                    {
+                        string? colName = colNames.GetString(i);
+                        if (!string.IsNullOrEmpty(colName) && map.TryGetValue(colName, out int rowIndex))
+                        {
+                            if (batch.Column(fieldIndex).IsNull(rowIndex))
+                            {
+                                builder.AppendNull();
+                            }
+                            else
+                            {
+                                builder.Append(batch.Column(fieldIndex) is StringArray strArray 
+                                    ? strArray.GetString(rowIndex) 
+                                    : batch.Column(fieldIndex).ToString());
+                            }
+                        }
+                        else
+                        {
+                            builder.AppendNull();
+                        }
+                    }
+                    combinedData.Add(builder.Build());
+                }
+            }
         }
     }
 }
