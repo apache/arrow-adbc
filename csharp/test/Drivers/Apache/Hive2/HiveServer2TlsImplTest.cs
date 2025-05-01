@@ -47,6 +47,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 
         public static IEnumerable<object?[]> GetHttpTlsOptionsTestData()
         {
+            // Tls is enabled by default
+            yield return new object?[] { new Dictionary<string, string> {  }, new TlsProperties { IsTlsEnabled = true } };
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "abc" } }, new TlsProperties { IsTlsEnabled = true } };
+
             yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "False" } }, new TlsProperties { IsTlsEnabled = false } };
             yield return new object?[] { new Dictionary<string, string> { { AdbcOptions.Uri, "https://arrow.apache.org" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false } };
             // uri takes precedence over ssl option
@@ -68,6 +72,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
 
         public static IEnumerable<object?[]> GetStandardTlsOptionsTestData()
         {
+            // Tls is enabled by default
+            yield return new object?[] { new Dictionary<string, string> { }, new TlsProperties { IsTlsEnabled = true } };
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "abc" } }, new TlsProperties { IsTlsEnabled = true } };
+
             yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "False" } }, new TlsProperties { IsTlsEnabled = false } };
             // other ssl options are ignored if disableServerCertificateValidation is set to true
             yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "True" }, { StandardTlsOptions.DisableServerCertificateValidation, "True" }, { StandardTlsOptions.AllowSelfSigned, "True" }, { StandardTlsOptions.AllowHostnameMismatch, "True" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = true } };

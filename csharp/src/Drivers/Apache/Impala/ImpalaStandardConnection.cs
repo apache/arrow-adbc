@@ -112,11 +112,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             {
                 if (IPAddress.TryParse(hostName!, out var address))
                 {
-                    transport = new TTlsSocketTransport(address!, int.Parse(port!), config: new(), 0, !string.IsNullOrEmpty(TlsOptions.TrustedCertificatePath) ? new X509Certificate2(TlsOptions.TrustedCertificatePath!) : null, certValidator: HiveServer2TlsImpl.getCertificateValidator(TlsOptions));
+                    transport = new TTlsSocketTransport(address!, int.Parse(port!), config: new(), 0, !string.IsNullOrEmpty(TlsOptions.TrustedCertificatePath) ? new X509Certificate2(TlsOptions.TrustedCertificatePath!) : null, certValidator: HiveServer2TlsImpl.GetCertificateValidator(TlsOptions));
                 }
                 else
                 {
-                    transport = new TTlsSocketTransport(hostName!, int.Parse(port!), config: new(), 0, !string.IsNullOrEmpty(TlsOptions.TrustedCertificatePath) ? new X509Certificate2(TlsOptions.TrustedCertificatePath!) : null, certValidator: HiveServer2TlsImpl.getCertificateValidator(TlsOptions));
+                    transport = new TTlsSocketTransport(hostName!, int.Parse(port!), config: new(), 0, !string.IsNullOrEmpty(TlsOptions.TrustedCertificatePath) ? new X509Certificate2(TlsOptions.TrustedCertificatePath!) : null, certValidator: HiveServer2TlsImpl.GetCertificateValidator(TlsOptions));
                 }
             }
             else

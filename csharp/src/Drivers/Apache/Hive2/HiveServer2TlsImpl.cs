@@ -41,11 +41,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             if (properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrWhiteSpace(uri))
             {
                 var uriValue = new Uri(uri);
-                tlsProperties.IsTlsEnabled = uriValue.Scheme == Uri.UriSchemeHttps || (properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled) && bool.TryParse(isSslEnabled, out bool isSslEnabledBool) && isSslEnabledBool);
+                tlsProperties.IsTlsEnabled = uriValue.Scheme == Uri.UriSchemeHttps || !properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isTlsEnabled) || !bool.TryParse(isTlsEnabled, out bool isTlsEnabledBool) || isTlsEnabledBool;
             }
-            else if (properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled) && bool.TryParse(isSslEnabled, out bool isSslEnabledBool))
+            else if (!properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isTlsEnabled) || !bool.TryParse(isTlsEnabled, out bool isTlsEnabledBool))
             {
-                tlsProperties.IsTlsEnabled = isSslEnabledBool;
+                tlsProperties.IsTlsEnabled = true;
+            }
+            else
+            {
+                tlsProperties.IsTlsEnabled = isTlsEnabledBool;
             }
             if (!tlsProperties.IsTlsEnabled)
             {
@@ -101,7 +105,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         static internal TlsProperties GetStandardTlsOptions(IReadOnlyDictionary<string, string> properties)
         {
             TlsProperties tlsProperties = new();
-            if (properties.TryGetValue(StandardTlsOptions.IsTlsEnabled, out string? isTlsEnabled) && bool.TryParse(isTlsEnabled, out bool isTlsEnabledBool))
+            // tls is enabled by default
+            if (!properties.TryGetValue(StandardTlsOptions.IsTlsEnabled, out string? isTlsEnabled) || !bool.TryParse(isTlsEnabled, out bool isTlsEnabledBool))
+            {
+                tlsProperties.IsTlsEnabled = true;
+            }
+            else
             {
                 tlsProperties.IsTlsEnabled = isTlsEnabledBool;
             }
@@ -126,7 +135,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return tlsProperties;
         }
 
-        static internal RemoteCertificateValidationCallback getCertificateValidator(TlsProperties tlsProperties)
+        static internal RemoteCertificateValidationCallback GetCertificateValidator(TlsProperties tlsProperties)
         {
             return (object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors policyErrors) =>
             {
