@@ -1139,11 +1139,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 req.ForeignCatalogName = foreignCatalogName!;
             }
-            if (schemaName != null)
+            if (foreignSchemaName != null)
             {
                 req.ForeignSchemaName = foreignSchemaName!;
             }
-            if (tableName != null)
+            if (foreignTableName != null)
             {
                 req.ForeignTableName = foreignTableName!;
             }
