@@ -37,15 +37,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         static internal TlsProperties GetHttpTlsOptions(IReadOnlyDictionary<string, string> properties)
         {
-            TlsProperties tlsProperties = new TlsProperties();
+            TlsProperties tlsProperties = new();
             if (properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrWhiteSpace(uri))
             {
                 var uriValue = new Uri(uri);
-                tlsProperties.IsTlsEnabled = uriValue.Scheme == Uri.UriSchemeHttps || (properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled) && bool.TryParse(isSslEnabled, out bool isSslEnabledBool) && isSslEnabledBool);
+                tlsProperties.IsTlsEnabled = uriValue.Scheme == Uri.UriSchemeHttps || !properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isTlsEnabled) || !bool.TryParse(isTlsEnabled, out bool isTlsEnabledBool) || isTlsEnabledBool;
             }
-            else if (properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isSslEnabled) && bool.TryParse(isSslEnabled, out bool isSslEnabledBool))
+            else if (!properties.TryGetValue(HttpTlsOptions.IsTlsEnabled, out string? isTlsEnabled) || !bool.TryParse(isTlsEnabled, out bool isTlsEnabledBool))
             {
-                tlsProperties.IsTlsEnabled = isSslEnabledBool;
+                tlsProperties.IsTlsEnabled = true;
+            }
+            else
+            {
+                tlsProperties.IsTlsEnabled = isTlsEnabledBool;
             }
             if (!tlsProperties.IsTlsEnabled)
             {
@@ -96,6 +100,55 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 };
             }
             return httpClientHandler;
+        }
+
+        static internal TlsProperties GetStandardTlsOptions(IReadOnlyDictionary<string, string> properties)
+        {
+            TlsProperties tlsProperties = new();
+            // tls is enabled by default
+            if (!properties.TryGetValue(StandardTlsOptions.IsTlsEnabled, out string? isTlsEnabled) || !bool.TryParse(isTlsEnabled, out bool isTlsEnabledBool))
+            {
+                tlsProperties.IsTlsEnabled = true;
+            }
+            else
+            {
+                tlsProperties.IsTlsEnabled = isTlsEnabledBool;
+            }
+            if (!tlsProperties.IsTlsEnabled)
+            {
+                return tlsProperties;
+            }
+
+            if (properties.TryGetValue(StandardTlsOptions.DisableServerCertificateValidation, out string? disableServerCertificateValidation) && bool.TryParse(disableServerCertificateValidation, out bool disableServerCertificateValidationBool) && disableServerCertificateValidationBool)
+            {
+                tlsProperties.DisableServerCertificateValidation = true;
+                return tlsProperties;
+            }
+            tlsProperties.DisableServerCertificateValidation = false;
+            tlsProperties.AllowHostnameMismatch = properties.TryGetValue(StandardTlsOptions.AllowHostnameMismatch, out string? allowHostnameMismatch) && bool.TryParse(allowHostnameMismatch, out bool allowHostnameMismatchBool) && allowHostnameMismatchBool;
+            tlsProperties.AllowSelfSigned = properties.TryGetValue(StandardTlsOptions.AllowSelfSigned, out string? allowSelfSigned) && bool.TryParse(allowSelfSigned, out bool allowSelfSignedBool) && allowSelfSignedBool;
+            if (tlsProperties.AllowSelfSigned)
+            {
+                if (!properties.TryGetValue(StandardTlsOptions.TrustedCertificatePath, out string? trustedCertificatePath)) return tlsProperties;
+                tlsProperties.TrustedCertificatePath = trustedCertificatePath != "" && File.Exists(trustedCertificatePath) ? trustedCertificatePath : throw new FileNotFoundException("Trusted certificate path is invalid or file does not exist.");
+            }
+            return tlsProperties;
+        }
+
+        static internal RemoteCertificateValidationCallback GetCertificateValidator(TlsProperties tlsProperties)
+        {
+            return (object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors policyErrors) =>
+            {
+                if (policyErrors == SslPolicyErrors.None || tlsProperties.DisableServerCertificateValidation) return true;
+                if (string.IsNullOrEmpty(tlsProperties.TrustedCertificatePath))
+                {
+                    return
+                        (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || tlsProperties.AllowSelfSigned)
+                        && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) || tlsProperties.AllowHostnameMismatch);
+                }
+
+                return false;
+            };
         }
     }
 }
