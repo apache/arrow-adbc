@@ -839,3 +839,79 @@
 - crosslink to Arrow Javadocs again (#2483)
 - fix references to root CONTRIBUTING.md file (#2521)
 - update java quickstart to use the PARAM_URI instead of the legacy PARAM_URL (#2530)
+
+## ADBC Libraries 18 (2025-05-02)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.6.0
+- C#: 0.18.0
+- Java: 0.18.0
+- R: 0.18.0
+- Rust: 0.18.0
+
+### New Features
+
+- **c**: Declare dependencies for drivers in Meson configuration (#2746)
+- **c/driver/postgresql**: avoid commit/rollback when idle (#2685)
+- **csharp**: Add retry-after behavior for 503 responses in Spark ADBC driver (#2664)
+- **csharp**: Add support for Prepare to ImportedStatement and to ADO.NET wrapper (#2628)
+- **csharp**: Implement CloudFetch for Databricks Spark driver (#2634)
+- **csharp**: fix powerbi hang when reading cloudfetch result in Databricks driver (#2747)
+- **csharp**: improve handling of StructArrays (#2587)
+- **csharp/src/Drivers**: Add Databricks driver (#2672)
+- **csharp/src/Drivers/Apache**: Add prefetch functionality to CloudFetch in Spark ADBC driver (#2678)
+- **csharp/src/Drivers/Apache**: Add support for Hive ADBC Driver with unit tests (#2540)
+- **csharp/src/Drivers/Apache**: Add support for native metadata queries using statement options (#2665)
+- **csharp/src/Drivers/Apache**: Custom ssl server certificate validation for Spark, Impala & Hive (#2610)
+- **csharp/src/Drivers/Apache**: Performance improvement - Replace TSocketTransport with TBufferedTransport (#2742)
+- **csharp/src/Drivers/Apache**: Regenerate Thrift classes based on a newer TCLIService.thrift (#2611)
+- **csharp/src/Drivers/Apache**: enhance GetColumns with BASE_TYPE_NAME column (#2695)
+- **csharp/src/Drivers/Apache/Spark**: Add Lz4 compression support to arrow batch reader (#2669)
+- **csharp/src/Drivers/Apache/Spark**: Add OAuth access token auth type to Csharp Spark Driver (#2579)
+- **csharp/src/Drivers/Apache/Spark**: add user agent entry + thrift version for spark http connections (#2711)
+- **csharp/src/Drivers/BigQuery**: Add support for AAD/Entra authentication (#2655)
+- **csharp/src/Drivers/BigQuery**: add additional billing and timeout properties and test settings (#2566)
+- **csharp/src/Drivers/BigQuery**: choose the first project ID if not specified (#2541)
+- **csharp/src/Drivers/BigQuery**: support evaluation kind and statement type setting (#2698)
+- **csharp/src/Drivers/Databricks**: Add option to enable using direct results for statements (#2737)
+- **csharp/src/Drivers/Databricks**: Implement ClientCredentialsProvider (#2743)
+- **csharp/src/Drivers/Databricks**: Make Cloud Fetch options configurable at the connection level (#2691)
+- **csharp/src/Drivers/Databricks**: Support server side property passthrough (#2692)
+- **go/adbc/driver/bigquery**: Return data about table/view partitioning (#2697)
+- **go/adbc/driver/flightsql**: Add OAuth Support to Flight Client (#2651)
+- **go/adbc/sqldriver**: read from union types (#2637)
+- **java/driver/jni**: add JNI bindings to native driver manager (#2401)
+- **python/adbc_driver_manager**: add cursor() arg to set options (#2589)
+- **python/adbc_driver_manager**: enable DB-API without PyArrow (#2609)
+
+### Bugfixes
+
+- **c**: Add libdl as dependency of driver manager in Meson (#2735)
+- **c/driver/postgresql**: avoid crash if closing invalidated result (#2653)
+- **c/driver/postgresql**: handle connection options before Init (#2701)
+- **ci**: Skip flaky ASAN failures in Meson (#2604)
+- **ci**: add missing trigger paths for Linux packages (#2761)
+- **ci**: fix MacOS builds for C# (#2606)
+- **csharp/src**: Add missing override to ImportedAdbcConnection (#2577)
+- **csharp/src/Drivers/Apache**: Fix setting foreign schema/table in GetCrossReference (#2765)
+- **csharp/src/Drivers/Apache**: Improve handling of authentication and server type enumeration parsing (#2574)
+- **csharp/src/Drivers/Apache**: Set tls enabled to true all HTTP-based drivers, by default (#2667)
+- **csharp/src/Drivers/Apache/Thrift**: Generated Thrift-based code should not be exposed publicly (#2710)
+- **csharp/src/Drivers/Databricks**: Fix Lz4 compression logic for DatabricksReader (#2690)
+- **dev/release**: remove incorrect `-f` from `mamba create` (#2755)
+- **dev/release**: use packages.apache.org instead of apache.jfrog.io (#2756)
+- **glib**: use -fPIE explicitly for g-ir-scanner (#2758)
+- **go**: Use arrow-go in templates instead of arrow/go (#2712)
+- **go/adbc/driver/bigquery**: Avoid creating arrow iterator when schema is empty (#2614)
+- **go/adbc/driver/bigquery**: Use number of rows (rather than schema) to check if we need an empty arrow iterator (#2674)
+- **go/adbc/driver/snowflake**: implement ability to set database options after initialization (#2728)
+- **go/adbc/driver/snowflake**: try to suppress stray logs (#2608)
+- **python/adbc_driver_postgresql**: handle kwargs in dbapi connect (#2700)
+- **rust/core**: remove the Mutex around the FFI driver object (#2736)
+
+### Documentation Improvements
+
+- rework "What exactly is ADBC?" in FAQ (#2763)
+- update implementation status table (#2580)
+- **rust**: show driver_manager features on docs.rs (#2699)
