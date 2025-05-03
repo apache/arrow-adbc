@@ -98,7 +98,7 @@ func newConfig(options ...rotatingFileWriterOption) (cfg config, err error) {
 	}
 
 	// Ensure tracingFolderPath exists
-	const folderPermissions = 0644
+	const folderPermissions = 0755
 	err = os.MkdirAll(cfg.TracingFolderPath, folderPermissions)
 	if err != nil {
 		return
