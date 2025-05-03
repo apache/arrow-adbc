@@ -71,6 +71,7 @@ func (te traceExporterType) String() string {
 const (
 	DatabaseMessageOptionUnknown                   = "Unknown database option"
 	DatabaseMessageOtelTracesExporterOptionUnknown = "Unknown " + otelTracesExporter + " option"
+	DatabaseMessageNoOtelTracesExporters           = "No trace exporters added"
 )
 
 // DatabaseImpl is an interface that drivers implement to provide
@@ -205,20 +206,32 @@ func (base *database) InitTracing(driverName string, driverVersion string) error
 }
 
 func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion string) (err error) {
-	var exporter sdktrace.SpanExporter
-	var exporters []sdktrace.SpanExporter
-	var tracer trace.Tracer
+	fullyQualifiedDriverName := driverNamespace + "." + driverName
 
-	exporterName := sync.OnceValue(func() string {
+	getExporterName := sync.OnceValue(func() string {
 		return os.Getenv(otelTracesExporter)
 	})
-	exporterType, ok := tryParseTraceExporterType(exporterName())
+	exporterName := getExporterName()
+
+	// Empty exporter
+	if exporterName == "" {
+		base.Tracer = otel.Tracer(fullyQualifiedDriverName)
+		return
+	}
+
+	var (
+		exporter  sdktrace.SpanExporter
+		exporters []sdktrace.SpanExporter
+		tracer    trace.Tracer
+	)
+
+	exporterType, ok := tryParseTraceExporterType(exporterName)
 	if !ok {
 		return base.ErrorHelper.Errorf(
 			adbc.StatusInvalidArgument,
 			"%s '%s'",
 			DatabaseMessageOtelTracesExporterOptionUnknown,
-			exporterName(),
+			getExporterName(),
 		)
 	}
 	switch exporterType {
@@ -250,16 +263,21 @@ func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion strin
 		)
 	}
 
-	fullyQualifiedDriverName := driverNamespace + "." + driverName
-	if len(exporters) > 0 {
-		tracer, err = newTracer(exporters, base, fullyQualifiedDriverName, driverVersion)
-		if err != nil {
-			return err
-		}
-	} else {
-		tracer = otel.Tracer(fullyQualifiedDriverName)
+	if len(exporters) < 1 {
+		return base.ErrorHelper.Errorf(
+			adbc.StatusInvalidState,
+			"%s '%s'",
+			DatabaseMessageNoOtelTracesExporters,
+			exporterType.String(),
+		)
 	}
-	base.Base().Tracer = tracer
+
+	tracer, err = newTracer(exporters, base, fullyQualifiedDriverName, driverVersion)
+	if err != nil {
+		return
+	}
+
+	base.Tracer = tracer
 	return
 }
 
