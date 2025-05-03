@@ -45,6 +45,7 @@ type connectionImpl struct {
 	driverbase.ConnectionImplBase
 
 	authType              string
+	accessToken           string
 	credentials           string
 	clientID              string
 	clientSecret          string
@@ -455,6 +456,8 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.authType, nil
 	case OptionStringAuthCredentials:
 		return c.credentials, nil
+	case OptionStringAuthAccessToken:
+		return c.accessToken, nil
 	case OptionStringAuthClientID:
 		return c.clientID, nil
 	case OptionStringAuthClientSecret:
@@ -504,13 +507,20 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		}
 	}
 	switch c.authType {
-	case OptionValueAuthTypeJSONCredentialFile, OptionValueAuthTypeJSONCredentialString, OptionValueAuthTypeUserAuthentication:
+	case OptionValueAuthTypeJSONCredentialFile,
+	    OptionValueAuthTypeJSONCredentialString,
+	    OptionValueAuthTypeUserAuthentication,
+	    OptionValueAuthTypeTemporaryAccessToken:
 		var credentials option.ClientOption
-		if c.authType == OptionValueAuthTypeJSONCredentialFile {
+
+		switch c.authType {
+		case OptionValueAuthTypeJSONCredentialFile:
 			credentials = option.WithCredentialsFile(c.credentials)
-		} else if c.authType == OptionValueAuthTypeJSONCredentialString {
+
+		case OptionValueAuthTypeJSONCredentialString:
 			credentials = option.WithCredentialsJSON([]byte(c.credentials))
-		} else {
+
+		case OptionValueAuthTypeUserAuthentication:
 			if c.clientID == "" {
 				return adbc.Error{
 					Code: adbc.StatusInvalidArgument,
@@ -531,13 +541,25 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			}
 			if c.accessTokenEndpoint == "" || c.accessTokenEndpoint == DefaultAccessTokenEndpoint {
 				c.accessTokenEndpoint = DefaultAccessTokenEndpoint
-				// Only use default server name if the access token endpoint is also set to default
 				if c.accessTokenServerName == "" {
 					c.accessTokenServerName = DefaultAccessTokenServerName
 				}
 			}
-
 			credentials = option.WithTokenSource(c)
+
+		case OptionValueAuthTypeTemporaryAccessToken:
+			if c.accessToken == "" {
+				return adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthAccessToken),
+				}
+			}
+			credentials = option.WithTokenSource(
+				oauth2.StaticTokenSource(&oauth2.Token{
+					AccessToken: c.accessToken,
+					TokenType:   "Bearer",
+				}),
+			)
 		}
 
 		client, err := bigquery.NewClient(ctx, c.catalog, credentials)
@@ -551,6 +573,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		}
 
 		c.client = client
+
 	default:
 		client, err := bigquery.NewClient(ctx, c.catalog)
 		if err != nil {
@@ -564,6 +587,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 
 		c.client = client
 	}
+
 	return nil
 }
 

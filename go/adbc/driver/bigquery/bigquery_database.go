@@ -29,6 +29,7 @@ type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
 	authType              string
+	accessToken           string
 	credentials           string
 	clientID              string
 	clientSecret          string
@@ -46,6 +47,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	conn := &connectionImpl{
 		ConnectionImplBase:     driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 		authType:               d.authType,
+		accessToken:            d.accessToken,
 		credentials:            d.credentials,
 		clientID:               d.clientID,
 		clientSecret:           d.clientSecret,
@@ -84,6 +86,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.clientID, nil
 	case OptionStringAuthClientSecret:
 		return d.clientSecret, nil
+	case OptionStringAuthAccessToken:
+		return d.accessToken, nil
 	case OptionStringAuthRefreshToken:
 		return d.refreshToken, nil
 	case OptionStringProjectID:
@@ -119,6 +123,8 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 			d.authType = value
 		case OptionValueAuthTypeUserAuthentication:
 			d.authType = value
+		case OptionValueAuthTypeTemporaryAccessToken:
+			d.authType = value
 		default:
 			return adbc.Error{
 				Code: adbc.StatusInvalidArgument,
@@ -131,6 +137,8 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.clientID = value
 	case OptionStringAuthClientSecret:
 		d.clientSecret = value
+	case OptionStringAuthAccessToken:
+		d.accessToken = value
 	case OptionStringAuthRefreshToken:
 		d.refreshToken = value
 	case OptionStringAuthAccessTokenEndpoint:

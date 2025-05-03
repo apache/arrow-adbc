@@ -79,3 +79,36 @@ func TestCustomAccessTokenEndpoint(t *testing.T) {
 		t.Errorf("Expected access token server name to be blank, but got %s", conn.accessTokenServerName)
 	}
 }
+
+func TestTemporaryAccessToken_Valid(t *testing.T) {
+	conn := &connectionImpl{
+		authType:     "adbc.bigquery.sql.auth_type.temporary_access_token",
+		catalog:      "test-project-id",
+		dbSchema:     "test-dataset-id",
+		tableID:      "test-table-id",
+		accessToken:  "ya29.fake-access-token-for-test",
+	}
+
+	err := conn.newClient(context.Background())
+	if err != nil {
+		t.Errorf("Expected no error with valid temporary access token, got: %v", err)
+	}
+}
+
+func TestTemporaryAccessToken_MissingToken(t *testing.T) {
+	conn := &connectionImpl{
+		authType: "adbc.bigquery.sql.auth_type.temporary_access_token",
+		catalog:  "test-project-id",
+		dbSchema: "test-dataset-id",
+		tableID:  "test-table-id",
+		// accessToken intentionally missing
+	}
+
+	err := conn.newClient(context.Background())
+	if err == nil {
+		t.Fatal("Expected error due to missing access token, got nil")
+	}
+	if !strings.Contains(err.Error(), "adbc.bigquery.sql.auth.access_token") {
+		t.Errorf("Expected error message to mention missing access token, got: %v", err)
+	}
+}
