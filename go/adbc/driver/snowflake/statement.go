@@ -469,8 +469,8 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 // of rows affected if known, otherwise it will be -1.
 //
 // This invalidates any prior result sets on this statement.
-func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReader, nrows int64, err error) {
-	nrows = -1
+func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReader, nRows int64, err error) {
+	nRows = -1
 
 	var span trace.Span
 	ctx, span = st.StartSpan(ctx, "ExecuteQuery")
@@ -478,15 +478,15 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 
 	defer func() {
 		if !st.SetSpanOnError(span, err) {
-			span.SetAttributes(attribute.Int64("db.response.returned_rows", nrows))
+			span.SetAttributes(attribute.Int64("db.response.returned_rows", nRows))
 			span.SetStatus(codes.Ok, "")
 		}
 		span.End()
 	}()
 
 	if st.targetTable != "" {
-		nrows, err = st.executeIngest(ctx)
-		return nil, nrows, err
+		nRows, err = st.executeIngest(ctx)
+		return
 	}
 
 	if st.query == "" {
@@ -494,7 +494,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
 		}
-		return nil, -1, err
+		return
 	}
 
 	// for a bound stream reader we'd need to implement something to
@@ -518,21 +518,22 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 		rdr := concatReader{}
 		err = rdr.Init(&bind)
 		if err != nil {
-			return nil, -1, err
+			return
 		}
-		return &rdr, -1, nil
+		reader = &rdr
+		return
 	}
 
 	var loader gosnowflake.ArrowStreamLoader
 	loader, err = st.cnxn.cn.QueryArrowStream(ctx, st.query)
 	if err != nil {
 		err = errToAdbcErr(adbc.StatusInternal, err)
-		return nil, -1, err
+		return
 	}
 
 	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
-	nrows = loader.TotalRows()
-	return reader, nrows, err
+	nRows = loader.TotalRows()
+	return
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
