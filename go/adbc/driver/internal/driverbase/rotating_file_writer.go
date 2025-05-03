@@ -257,12 +257,9 @@ func ensureCurrentWriter(base *rotatingFileWriterImpl) error {
 
 	if base.CurrentWriter == nil {
 		// check for a candidate file that is not full
-		ok, fullPathLastFile, err := getCandidateLogFileName(base)
-		if err != nil {
-			return err
-		}
-		// attempt to open exising candidate file
+		fullPathLastFile, ok := getCandidateLogFileName(base)
 		if ok {
+			// attempt to open exising candidate file
 			currentWriter, err := os.OpenFile(fullPathLastFile, appendFlags, permissions)
 			if err == nil {
 				base.CurrentWriter = currentWriter
@@ -283,25 +280,28 @@ func ensureCurrentWriter(base *rotatingFileWriterImpl) error {
 }
 
 func buildNewFileName(base *rotatingFileWriterImpl) string {
-	timeStamp := time.Now().UTC().Format("2006-01-02-15-04-05.999999999")
+	timeStamp := time.Now().UTC().Format("2006-01-02-15-04-05.000000000")
 	fileName := base.LogNamePrefix + "-" + timeStamp + defaultTraceFileExt
 	fullPath := filepath.Join(base.TracingFolderPath, fileName)
 	return fullPath
 }
 
-func getCandidateLogFileName(base *rotatingFileWriterImpl) (bool, string, error) {
+func getCandidateLogFileName(base *rotatingFileWriterImpl) (string, bool) {
 	logFiles, err := getLogFiles(base.TracingFolderPath, base.LogNamePrefix, defaultTraceFileExt)
 	if err != nil || len(logFiles) < 1 {
-		return false, "", err
+		return "", false
 	}
-	lastLogFilePath := logFiles[len(logFiles)-1]
+
+	// Assume these file paths are ordered lexigraphically, as documented for filepath.Glob()
+	candiateFilePath := logFiles[len(logFiles)-1]
 	fileSizeMaxBytes := base.FileSizeMaxKb * 1024
-	fileInfo, err := os.Stat(lastLogFilePath)
+	fileInfo, err := os.Stat(candiateFilePath)
 	if err != nil || fileInfo.Size() >= fileSizeMaxBytes {
-		return false, "", err
+		return "", false
 	}
+
 	// Return path
-	return true, lastLogFilePath, nil
+	return candiateFilePath, true
 }
 
 func removeOldFiles(base *rotatingFileWriterImpl) error {
