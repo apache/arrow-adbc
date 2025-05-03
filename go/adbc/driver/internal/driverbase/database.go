@@ -200,8 +200,8 @@ func (db *database) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (base *database) InitTracing(driverName string, driverVersion string) {
-	base.Base().InitTracing(driverName, driverVersion)
+func (base *database) InitTracing(driverName string, driverVersion string) error {
+	return base.Base().InitTracing(driverName, driverVersion)
 }
 
 func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion string) (err error) {
@@ -303,6 +303,12 @@ func getDriverVersion(driverInfo *DriverInfo) string {
 }
 
 func newOtlpTraceExporters(ctx context.Context) (exporters []sdktrace.SpanExporter, err error) {
+	// Configure these exporters using environment variables
+	// see: https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/
+	// see: https://opentelemetry.io/docs/specs/otel/protocol/exporter/
+	// see: https://pkg.go.dev/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
+	// see: https://pkg.go.dev/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp
+
 	// Create the gRPC exporter
 	var grpcExporter sdktrace.SpanExporter
 	grpcExporter, err = otlptracegrpc.New(
@@ -316,7 +322,7 @@ func newOtlpTraceExporters(ctx context.Context) (exporters []sdktrace.SpanExport
 	if err != nil {
 		return
 	}
-	// Create the http/protobufs exporter
+	// Create the http/protobuf exporter
 	var httpExporter sdktrace.SpanExporter
 	httpExporter, err = otlptracehttp.New(
 		ctx,

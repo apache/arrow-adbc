@@ -76,7 +76,7 @@ func (st *StatementImplBase) SetOption(key, value string) error {
 	case adbc.OptionKeyTelemetryTraceParent:
 		tp := strings.TrimSpace(value)
 		if !isValidateTraceParent(tp) {
-			st.ErrorHelper.Errorf(adbc.StatusInvalidArgument, "%s '%s' '%s'", StatementMessageIncorrectFormat, key, value)
+			return st.ErrorHelper.Errorf(adbc.StatusInvalidArgument, "%s '%s' '%s'", StatementMessageIncorrectFormat, key, value)
 		}
 		st.SetTraceParent(tp)
 		return nil
