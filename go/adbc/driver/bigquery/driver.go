@@ -111,15 +111,19 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	dbBase, err := driverbase.NewDatabaseImplBase(&d.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
 	db := &databaseImpl{
-		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
+		DatabaseImplBase: dbBase,
 		authType:         OptionValueAuthTypeDefault,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
 	}
 
-	return driverbase.NewDatabase(db), nil
+	return driverbase.NewDatabase(db), err
 }
 
 func stringToTable(defaultProjectID, defaultDatasetID, value string) (*bigquery.Table, error) {

@@ -19,7 +19,6 @@ package driverbase
 
 import (
 	"errors"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -28,11 +27,10 @@ import (
 )
 
 const (
-	defaultTracingFolderPath = ""
-	defaultLogNamePrefix     = "apache.adbc.go"
-	defaultFileSizeMaxKb     = int64(1024)
-	defaultFileCountMax      = 100
-	defaultTraceFileExt      = ".jsonl"
+	defaultLogNamePrefix = "apache.adbc.go"
+	defaultFileSizeMaxKb = int64(1024)
+	defaultFileCountMax  = 100
+	defaultTraceFileExt  = ".jsonl"
 )
 
 // Holds the configuration from the options
@@ -44,102 +42,93 @@ type config struct {
 }
 
 // An option for the RotatingFileWriter
-type RotatingFileWriterOption interface {
-	apply(config) config
-}
+type rotatingFileWriterOption func(*config)
 
 // Adds the TracingFolderPath option
-func WithTracingFolderPath(tracingFolderPath string) RotatingFileWriterOption {
-	return tracingFolderPathOption{tracingFolderPath}
-}
-
-type tracingFolderPathOption struct {
-	TracingFolderPath string
-}
-
-func (o tracingFolderPathOption) apply(cfg config) config {
-	cfg.TracingFolderPath = o.TracingFolderPath
-	return cfg
+func WithTracingFolderPath(tracingFolderPath string) rotatingFileWriterOption {
+	return func(cfg *config) {
+		cfg.TracingFolderPath = tracingFolderPath
+	}
 }
 
 // Adds the LogNamePrefix option
-func WithLogNamePrefix(logNamePrefix string) RotatingFileWriterOption {
-	return logNamePrefixOption{logNamePrefix}
-}
-
-type logNamePrefixOption struct {
-	LogNamePrefix string
-}
-
-func (o logNamePrefixOption) apply(cfg config) config {
-	cfg.LogNamePrefix = o.LogNamePrefix
-	return cfg
+func WithLogNamePrefix(logNamePrefix string) rotatingFileWriterOption {
+	return func(cfg *config) {
+		cfg.LogNamePrefix = logNamePrefix
+	}
 }
 
 // Adds the FileSizeMaxKb option
-func WithFileSizeMaxKb(fileSizeMaxKb int64) RotatingFileWriterOption {
-	return fileSizeMaxKbOption{fileSizeMaxKb}
-}
-
-type fileSizeMaxKbOption struct {
-	FileSizeMaxKb int64
-}
-
-func (o fileSizeMaxKbOption) apply(cfg config) config {
-	cfg.FileSizeMaxKb = o.FileSizeMaxKb
-	return cfg
+func WithFileSizeMaxKb(fileSizeMaxKb int64) rotatingFileWriterOption {
+	return func(cfg *config) {
+		cfg.FileSizeMaxKb = fileSizeMaxKb
+	}
 }
 
 // Adds the FileCountMax option
-func WithFileCountMax(fileCountMax int) RotatingFileWriterOption {
-	return fileCountMaxOption{fileCountMax}
+func WithFileCountMax(fileCountMax int) rotatingFileWriterOption {
+	return func(cfg *config) {
+		cfg.FileCountMax = fileCountMax
+	}
 }
 
-type fileCountMaxOption struct {
-	FileCountMax int
-}
-
-func (o fileCountMaxOption) apply(cfg config) config {
-	cfg.FileCountMax = o.FileCountMax
-	return cfg
-}
-
-func newConfig(options ...RotatingFileWriterOption) config {
-	cfg := config{
-		TracingFolderPath: defaultTracingFolderPath,
+func newConfig(options ...rotatingFileWriterOption) (cfg config, err error) {
+	cfg = config{
+		TracingFolderPath: "",
 		LogNamePrefix:     defaultLogNamePrefix,
 		FileSizeMaxKb:     defaultFileSizeMaxKb,
 		FileCountMax:      defaultFileCountMax,
 	}
 	for _, opt := range options {
-		// Applies the option value to the configuration
-		cfg = opt.apply(cfg)
+		opt(&cfg)
 	}
-	return cfg
+	// Ensure default for tracingFolderPath
+	if strings.TrimSpace(cfg.TracingFolderPath) == "" {
+		var fullPath string
+		fullPath, err = getDefaultTracingFolderPath()
+		if err != nil {
+			return
+		}
+		cfg.TracingFolderPath = fullPath
+	}
+
+	// Ensure default for logNamePrefix
+	if strings.TrimSpace(cfg.LogNamePrefix) == "" {
+		cfg.LogNamePrefix = defaultLogNamePrefix
+	}
+
+	// Ensure tracingFolderPath exists
+	const folderPermissions = 0644
+	err = os.MkdirAll(cfg.TracingFolderPath, folderPermissions)
+	if err != nil {
+		return
+	}
+	// Test if we can create/write a file in the traces folder
+	tempFile, err := os.CreateTemp(cfg.TracingFolderPath, cfg.LogNamePrefix)
+	if err != nil {
+		return
+	}
+	defer func() {
+		_ = tempFile.Close()
+		_ = os.Remove(tempFile.Name())
+	}()
+	_, err = tempFile.WriteString("file started")
+	if err != nil {
+		return
+	}
+
+	// Ensure default for fileSizeMaxKb
+	cfg.FileSizeMaxKb = max(defaultFileSizeMaxKb, cfg.FileSizeMaxKb)
+
+	// Ensure default for fileCountMax
+	cfg.FileCountMax = max(defaultFileCountMax, cfg.FileCountMax)
+
+	return
 }
 
 // A rotating file writer that writes bytes to new trace files into a given TracingFolderPath until the trace file exceeds FileSizeMaxKb in size.
 // Then a new trace file is created. If the number archived trace files exceeds FileCountMax, then the oldest file(s) are removed.
 // The files are named with the following pattern "<LogNamePrefix>-<current date/time UTC>.jsonl"
-type RotatingFileWriter interface {
-	// Extends
-	io.Writer
-	io.Closer
-
-	// Gets the path to the tracing folder
-	GetTracingFolderPath() string
-	// Gets the prefix for the log file name
-	GetLogNamePrefix() string
-	// Gets the maximum file size for the trace file
-	GetFileSizeMaxKb() int64
-	// Gets the maximum number of archive trace files to keep in the rotation
-	GetFileCountMax() int
-	// Gets the file stats for the current trace file
-	Stat() (fs.FileInfo, error)
-	// Clears the tracing folder of trace files with the given log file prefix
-	Clear() error
-}
-
 type rotatingFileWriterImpl struct {
 	TracingFolderPath string
 	LogNamePrefix     string
@@ -149,65 +138,17 @@ type rotatingFileWriterImpl struct {
 }
 
 // Creates a new RotatingFileWriter from the given options
-func NewRotatingFileWriter(options ...RotatingFileWriterOption) (RotatingFileWriter, error) {
-
-	cfg := newConfig(options...)
-
-	var tracingFolderPath = cfg.TracingFolderPath
-	// Ensure default for tracingFolderPath
-	if strings.TrimSpace(tracingFolderPath) == "" {
-		fullPath, err := getDefaultTracingFolderPath()
-		if err != nil {
-			return nil, err
-		}
-		tracingFolderPath = fullPath
-	}
-	// Ensure tracingFolderPath exists
-	err := os.MkdirAll(tracingFolderPath, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-
-	var logNamePrefix = cfg.LogNamePrefix
-	// Ensure default for logNamePrefix
-	if strings.TrimSpace(logNamePrefix) == "" {
-		namePrefix := defaultLogNamePrefix
-		logNamePrefix = namePrefix
-	}
-
-	var fileSizeMaxKb = cfg.FileSizeMaxKb
-	// Ensure default for fileSizeMaxKb
-	if fileSizeMaxKb <= 0 {
-		var maxKb = defaultFileSizeMaxKb
-		fileSizeMaxKb = maxKb
-	}
-
-	var fileCountMax = cfg.FileCountMax
-	// Ensure default for fileCountMax
-	if fileCountMax <= 0 {
-		var countMax = defaultFileCountMax
-		fileCountMax = countMax
-	}
-
-	// Test if we can create/write a file in the traces folder
-	tempFile, err := os.CreateTemp(tracingFolderPath, logNamePrefix)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = tempFile.Close()
-		_ = os.Remove(tempFile.Name())
-	}()
-	_, err = tempFile.WriteString("file started")
+func NewRotatingFileWriter(options ...rotatingFileWriterOption) (*rotatingFileWriterImpl, error) {
+	cfg, err := newConfig(options...)
 	if err != nil {
 		return nil, err
 	}
 
 	return &rotatingFileWriterImpl{
-		TracingFolderPath: tracingFolderPath,
-		LogNamePrefix:     logNamePrefix,
-		FileSizeMaxKb:     fileSizeMaxKb,
-		FileCountMax:      fileCountMax,
+		TracingFolderPath: cfg.TracingFolderPath,
+		LogNamePrefix:     cfg.LogNamePrefix,
+		FileSizeMaxKb:     cfg.FileSizeMaxKb,
+		FileCountMax:      cfg.FileCountMax,
 		CurrentWriter:     nil,
 	}, nil
 }
@@ -242,8 +183,8 @@ func (base *rotatingFileWriterImpl) Clear() error {
 	if err != nil {
 		return err
 	}
-	for _, file := range logFiles {
-		err := os.Remove(filepath.Join(base.TracingFolderPath, file.Name()))
+	for _, filePath := range logFiles {
+		err := os.Remove(filePath)
 		if err != nil {
 			return err
 		}
@@ -274,17 +215,15 @@ func (base *rotatingFileWriterImpl) GetFileCountMax() int {
 	return base.FileCountMax
 }
 
-func (base *rotatingFileWriterImpl) Write(p []byte) (int, error) {
-	err := (error)(nil)
-
+func (base *rotatingFileWriterImpl) Write(p []byte) (nBytes int, err error) {
 	// Check to see if file needs to rotate
 	if err = maybeCloseCurrentWriter(base); err != nil {
-		return 0, err
+		return
 	}
 
 	// Ensure we have a current writer
 	if err = ensureCurrentWriter(base); err != nil {
-		return 0, err
+		return
 	}
 
 	// Perform the write
@@ -344,9 +283,8 @@ func ensureCurrentWriter(base *rotatingFileWriterImpl) error {
 }
 
 func buildNewFileName(base *rotatingFileWriterImpl) string {
-	now := time.Now().UTC()
-	safeTimeStamp := strings.ReplaceAll(strings.ReplaceAll(strings.Replace(strings.Replace(now.Format(time.RFC3339Nano), "Z", "", 1), "T", "-", 1), ":", "-"), ".", "-")
-	fileName := base.LogNamePrefix + "-" + safeTimeStamp + defaultTraceFileExt
+	timeStamp := time.Now().UTC().Format("2006-01-02-15-04-05.999999999")
+	fileName := base.LogNamePrefix + "-" + timeStamp + defaultTraceFileExt
 	fullPath := filepath.Join(base.TracingFolderPath, fileName)
 	return fullPath
 }
@@ -356,15 +294,14 @@ func getCandidateLogFileName(base *rotatingFileWriterImpl) (bool, string, error)
 	if err != nil || len(logFiles) < 1 {
 		return false, "", err
 	}
-	lastLogFile := logFiles[len(logFiles)-1]
+	lastLogFilePath := logFiles[len(logFiles)-1]
 	fileSizeMaxBytes := base.FileSizeMaxKb * 1024
-	fileInfo, err := lastLogFile.Info()
+	fileInfo, err := os.Stat(lastLogFilePath)
 	if err != nil || fileInfo.Size() >= fileSizeMaxBytes {
 		return false, "", err
 	}
-	// Return full path name
-	fullPathFileName := filepath.Join(base.TracingFolderPath, lastLogFile.Name())
-	return true, fullPathFileName, nil
+	// Return path
+	return true, lastLogFilePath, nil
 }
 
 func removeOldFiles(base *rotatingFileWriterImpl) error {
@@ -372,33 +309,20 @@ func removeOldFiles(base *rotatingFileWriterImpl) error {
 	if err != nil {
 		return nil
 	}
-	len := len(logFiles)
-	if len > int(base.FileCountMax) {
-		numToRemove := len - int(base.FileCountMax)
-		for index, file := range logFiles {
-			if index < numToRemove {
-				err := os.Remove(filepath.Join(base.TracingFolderPath, file.Name()))
-				if err != nil {
-					return err
-				}
+	nFiles := len(logFiles)
+	if nFiles > int(base.FileCountMax) {
+		numToRemove := nFiles - int(base.FileCountMax)
+		for _, filePath := range logFiles[:numToRemove-1] {
+			err := os.Remove(filePath)
+			if err != nil {
+				return err
 			}
 		}
 	}
 	return nil
 }
 
-func getLogFiles(folderPath string, prefix string, ext string) ([]os.DirEntry, error) {
-	files, err := os.ReadDir(folderPath)
-	if err != nil {
-		return nil, err
-	}
-
-	var logFiles []os.DirEntry
-	for _, file := range files {
-		baseName := filepath.Base(file.Name())
-		if strings.HasPrefix(baseName, prefix) && strings.HasSuffix(baseName, ext) {
-			logFiles = append(logFiles, file)
-		}
-	}
-	return logFiles, nil
+func getLogFiles(folderPath string, prefix string, ext string) (logFiles []string, err error) {
+	filePattern := filepath.Join(folderPath, prefix+"*"+ext)
+	return filepath.Glob(filePattern)
 }

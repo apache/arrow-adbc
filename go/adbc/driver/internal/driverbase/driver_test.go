@@ -445,10 +445,15 @@ type driverImpl struct {
 }
 
 func (drv *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	dbBase, err := driverbase.NewDatabaseImplBase(&drv.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
 	db := driverbase.NewDatabase(
-		&databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&drv.DriverImplBase),
-			drv:        drv,
-			useHelpers: drv.useHelpers,
+		&databaseImpl{
+			DatabaseImplBase: dbBase,
+			drv:              drv,
+			useHelpers:       drv.useHelpers,
 		})
 	db.SetLogger(slog.New(drv.handler))
 	return db, nil

@@ -23,13 +23,14 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -37,7 +38,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const driverNamespace = "apache.arrow.adbc"
+const (
+	driverNamespace    = "apache.arrow.adbc"
+	otelTracesExporter = "OTEL_TRACES_EXPORTER"
+)
 
 type traceExporterType int
 
@@ -64,12 +68,9 @@ func (te traceExporterType) String() string {
 	}[te]
 }
 
-func (te traceExporterType) EnumIndex() int {
-	return int(te)
-}
-
 const (
-	DatabaseMessageOptionUnknown = "Unknown database option"
+	DatabaseMessageOptionUnknown                   = "Unknown database option"
+	DatabaseMessageOtelTracesExporterOptionUnknown = "Unknown " + otelTracesExporter + " option"
 )
 
 // DatabaseImpl is an interface that drivers implement to provide
@@ -106,7 +107,7 @@ type DatabaseImplBase struct {
 //
 //   - driver is a DriverImplBase containing the common resources from the parent
 //     driver, allowing the Arrow allocator and error handler to be reused.
-func NewDatabaseImplBase(driver *DriverImplBase) DatabaseImplBase {
+func NewDatabaseImplBase(driver *DriverImplBase) (DatabaseImplBase, error) {
 	database := DatabaseImplBase{
 		Alloc:       driver.Alloc,
 		ErrorHelper: driver.ErrorHelper,
@@ -114,8 +115,8 @@ func NewDatabaseImplBase(driver *DriverImplBase) DatabaseImplBase {
 		Logger:      nilLogger(),
 		Tracer:      nilTracer(),
 	}
-	database.InitTracing(driver.DriverInfo.GetName(), getDriverVersion(driver.DriverInfo))
-	return database
+	err := database.InitTracing(driver.DriverInfo.GetName(), getDriverVersion(driver.DriverInfo))
+	return database, err
 }
 
 func (base *DatabaseImplBase) Base() *DatabaseImplBase {
@@ -158,13 +159,12 @@ func (base *database) Close() error {
 	return base.Base().Close()
 }
 
-func (base *DatabaseImplBase) Close() error {
-	var err error = nil
+func (base *DatabaseImplBase) Close() (err error) {
 	if base.Base().tracerShutdownFunc != nil {
 		err = base.Base().tracerShutdownFunc(context.Background())
 		base.Base().tracerShutdownFunc = nil
 	}
-	return err
+	return
 }
 
 func (base *DatabaseImplBase) Open(ctx context.Context) (adbc.Connection, error) {
@@ -204,37 +204,83 @@ func (base *database) InitTracing(driverName string, driverVersion string) {
 	base.Base().InitTracing(driverName, driverVersion)
 }
 
-func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion string) {
-	var exporter sdktrace.SpanExporter = nil
+func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion string) (err error) {
+	var exporter sdktrace.SpanExporter
+	var exporters []sdktrace.SpanExporter
 	var tracer trace.Tracer
 
-	exporterName := os.Getenv("OTEL_TRACES_EXPORTER")
-	exporterType, _ := tryParseTraceExporterType(exporterName)
+	exporterName := sync.OnceValue(func() string {
+		return os.Getenv(otelTracesExporter)
+	})
+	exporterType, ok := tryParseTraceExporterType(exporterName())
+	if !ok {
+		return base.ErrorHelper.Errorf(
+			adbc.StatusInvalidArgument,
+			"%s '%s'",
+			DatabaseMessageOtelTracesExporterOptionUnknown,
+			exporterName(),
+		)
+	}
 	switch exporterType {
+	case TraceExporterNone:
+		break
 	case TraceExporterConsole:
-		exporter, _ = newStdoutTraceExporter()
+		exporter, err = stdouttrace.New()
+		if err != nil {
+			return
+		}
+		exporters = append(exporters, exporter)
 	case TraceExporterOtlp:
-		exporter, _ = newOtlpTraceExporter(context.Background())
+		exporters, err = newOtlpTraceExporters(context.Background())
+		if err != nil {
+			return
+		}
 	case TraceExporterAdbcFile:
-		exporter, _ = newAdbcFileExporter(driverName)
+		exporter, err = newAdbcFileExporter(driverName)
+		if err != nil {
+			return
+		}
+		exporters = append(exporters, exporter)
+	default:
+		return base.ErrorHelper.Errorf(
+			adbc.StatusNotImplemented,
+			"%s '%s'",
+			DatabaseMessageOtelTracesExporterOptionUnknown,
+			exporterType.String(),
+		)
 	}
 
 	fullyQualifiedDriverName := driverNamespace + "." + driverName
-	if exporter != nil {
-		tracerProvider, err := newTracerProvider(exporter)
+	if len(exporters) > 0 {
+		tracer, err = newTracer(exporters, base, fullyQualifiedDriverName, driverVersion)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		base.Base().tracerShutdownFunc = tracerProvider.Shutdown
-		tracer = tracerProvider.Tracer(
-			fullyQualifiedDriverName,
-			trace.WithInstrumentationVersion(driverVersion),
-			trace.WithSchemaURL(semconv.SchemaURL),
-		)
 	} else {
 		tracer = otel.Tracer(fullyQualifiedDriverName)
 	}
 	base.Base().Tracer = tracer
+	return
+}
+
+func newTracer(
+	exporters []sdktrace.SpanExporter,
+	base *DatabaseImplBase,
+	fullyQualifiedDriverName string,
+	driverVersion string,
+) (tracer trace.Tracer, err error) {
+	var tracerProvider *sdktrace.TracerProvider
+	tracerProvider, err = newTracerProvider(exporters...)
+	if err != nil {
+		return
+	}
+	base.Base().tracerShutdownFunc = tracerProvider.Shutdown
+	tracer = tracerProvider.Tracer(
+		fullyQualifiedDriverName,
+		trace.WithInstrumentationVersion(driverVersion),
+		trace.WithSchemaURL(semconv.SchemaURL),
+	)
+	return
 }
 
 func tryParseTraceExporterType(value string) (traceExporterType, bool) {
@@ -245,9 +291,9 @@ func tryParseTraceExporterType(value string) (traceExporterType, bool) {
 }
 
 func getDriverVersion(driverInfo *DriverInfo) string {
-	var unknownDriverVersion = "unknown"
+	const unknownDriverVersion = "unknown"
 	value, ok := driverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
-	if !ok || value == nil {
+	if !ok {
 		return unknownDriverVersion
 	}
 	if driverVersion, ok := value.(string); ok {
@@ -256,41 +302,50 @@ func getDriverVersion(driverInfo *DriverInfo) string {
 	return unknownDriverVersion
 }
 
-func newOtlpTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
-	return otlptracegrpc.New(
+func newOtlpTraceExporters(ctx context.Context) (exporters []sdktrace.SpanExporter, err error) {
+	// Create the gRPC exporter
+	var grpcExporter sdktrace.SpanExporter
+	grpcExporter, err = otlptracegrpc.New(
 		ctx,
-		otlptracegrpc.WithEndpoint("localhost:4317"),
-		otlptracegrpc.WithInsecure(),
 		otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
 			Enabled:         true,
 			InitialInterval: 5 * time.Second,
 			MaxInterval:     30 * time.Second,
-			// MaxAttempts:     5,
 		}),
 	)
+	if err != nil {
+		return
+	}
+	// Create the http/protobufs exporter
+	var httpExporter sdktrace.SpanExporter
+	httpExporter, err = otlptracehttp.New(
+		ctx,
+		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
+			Enabled:         true,
+			InitialInterval: 5 * time.Second,
+			MaxInterval:     30 * time.Second,
+		}),
+	)
+	if err != nil {
+		return
+	}
+
+	exporters = append(exporters, grpcExporter, httpExporter)
+	return
 }
 
-func newAdbcFileExporter(driverName string) (exporter *stdouttrace.Exporter, err error) {
-	var fw io.Writer
+func newAdbcFileExporter(driverName string) (*stdouttrace.Exporter, error) {
+	var fileWriter io.Writer
 
 	fullyQualifiedDriverName := strings.ToLower(driverNamespace + "." + driverName)
-	if fw, err = NewRotatingFileWriter(WithLogNamePrefix(fullyQualifiedDriverName)); err != nil {
+	fileWriter, err := NewRotatingFileWriter(WithLogNamePrefix(fullyQualifiedDriverName))
+	if err != nil {
 		return nil, err
 	}
-	if exporter, err = stdouttrace.New(stdouttrace.WithWriter(fw)); err != nil {
-		return nil, err
-	}
-	return exporter, nil
+	return stdouttrace.New(stdouttrace.WithWriter(fileWriter))
 }
 
-func newStdoutTraceExporter() (exporter *stdouttrace.Exporter, err error) {
-	if exporter, err = stdouttrace.New(); err != nil {
-		return nil, err
-	}
-	return exporter, nil
-}
-
-func newTracerProvider(exporter sdktrace.SpanExporter) (*sdktrace.TracerProvider, error) {
+func newTracerProvider(exporters ...sdktrace.SpanExporter) (*sdktrace.TracerProvider, error) {
 	// Ensure default SDK resource and the required service name are set.
 	mergedResource, err := resource.Merge(
 		resource.Default(),
@@ -303,9 +358,14 @@ func newTracerProvider(exporter sdktrace.SpanExporter) (*sdktrace.TracerProvider
 		return nil, err
 	}
 
-	return sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
+	opts := []sdktrace.TracerProviderOption{
 		sdktrace.WithResource(mergedResource),
+	}
+	for _, exporter := range exporters {
+		opts = append(opts, sdktrace.WithBatcher(exporter))
+	}
+	return sdktrace.NewTracerProvider(
+		opts...,
 	), nil
 }
 

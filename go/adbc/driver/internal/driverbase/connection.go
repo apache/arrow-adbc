@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -42,6 +43,7 @@ const (
 	ConnectionMessageOptionUnsupported = "Unsupported connection option"
 	ConnectionMessageCannotCommit      = "Cannot commit when autocommit is enabled"
 	ConnectionMessageCannotRollback    = "Cannot rollback when autocommit is enabled"
+	ConnectionMessageIncorrectFormat   = "Incorrect or unsupported format"
 )
 
 // ConnectionImpl is an interface that drivers implement to provide
@@ -232,27 +234,24 @@ func (base *ConnectionImplBase) ReadPartition(ctx context.Context, serializedPar
 	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ReadPartition")
 }
 
-func MaybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) context.Context {
-	var hasTraceParent = false
+func maybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) (context.Context, error) {
 	var traceParentStr = ""
 	if st != nil && st.GetTraceParent() != "" {
 		traceParentStr = st.GetTraceParent()
-		hasTraceParent = true
 	} else if cnxn != nil && cnxn.GetTraceParent() != "" {
 		traceParentStr = cnxn.GetTraceParent()
-		hasTraceParent = true
 	}
-	if hasTraceParent {
-		spanContext, err := parseTraceparent(ctx, traceParentStr)
+	if traceParentStr != "" {
+		spanContext, err := propogateTraceParent(ctx, traceParentStr)
 		if err != nil {
-			return ctx
+			return ctx, err
 		}
 		ctx = trace.ContextWithRemoteSpanContext(ctx, spanContext)
 	}
-	return ctx
+	return ctx, nil
 }
 
-func parseTraceparent(ctx context.Context, traceParentStr string) (trace.SpanContext, error) {
+func propogateTraceParent(ctx context.Context, traceParentStr string) (trace.SpanContext, error) {
 	if strings.TrimSpace(traceParentStr) == "" {
 		return trace.SpanContext{}, fmt.Errorf("traceparent string is empty")
 	}
@@ -289,11 +288,15 @@ func (base *ConnectionImplBase) GetOptionInt(key string) (int64, error) {
 }
 
 func (base *ConnectionImplBase) SetOption(key string, val string) error {
-	switch key {
+	switch strings.ToLower(strings.TrimSpace(key)) {
 	case adbc.OptionKeyAutoCommit:
 		return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnsupported, key)
 	case adbc.OptionKeyTelemetryTraceParent:
-		base.traceParent = strings.TrimSpace(val)
+		tp := strings.TrimSpace(val)
+		if !isValidateTraceParent(tp) {
+			return base.ErrorHelper.Errorf(adbc.StatusInvalidArgument, "%s '%s' '%s'", ConnectionMessageIncorrectFormat, key, val)
+		}
+		base.SetTraceParent(tp)
 		return nil
 	}
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnknown, key)
@@ -399,7 +402,7 @@ func (cnxn *ConnectionImplBase) StartSpan(
 	opts ...trace.SpanStartOption,
 ) (context.Context, trace.Span) {
 	var span trace.Span
-	ctx = MaybeAddTraceParent(ctx, cnxn, nil)
+	ctx, _ = maybeAddTraceParent(ctx, cnxn, nil)
 	ctx, span = cnxn.Tracer.Start(ctx, spanName, opts...)
 	return ctx, span
 }
@@ -637,7 +640,8 @@ func (cnxn *connection) Close() error {
 	if err == nil {
 		cnxn.Base().Closed = true
 	}
-	return nil
+
+	return err
 }
 
 // ConstraintColumnUsage is a structured representation of adbc.UsageSchema
@@ -795,6 +799,21 @@ func ValueOrZero[T any](val *T) T {
 		return res
 	}
 	return *val
+}
+
+func isValidateTraceParent(traceParent string) bool {
+	// Supports version-format 00
+	// see: https://www.w3.org/TR/trace-context/#trace-context-http-headers-format
+	const tpPattern = `^(?<version>[0]{2})-(?<traceId>[0-9a-f]{32})-(?<parentId>[0-9a-f]{16})-(?<traceFlags>[0-9a-f]{2})$`
+	tpRegExp := regexp.MustCompile(tpPattern)
+	groupMatches := tpRegExp.FindStringSubmatch(traceParent)
+	if groupMatches == nil || len(groupMatches) != 4 {
+		return false
+	}
+	if groupMatches[2] == "00000000000000000000000000000000" || groupMatches[3] == "0000000000000000" {
+		return false
+	}
+	return true
 }
 
 var _ ConnectionImpl = (*ConnectionImplBase)(nil)

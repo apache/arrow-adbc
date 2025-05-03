@@ -114,7 +114,10 @@ func NewDriver(alloc memory.Allocator) Driver {
 // Additional grpc client options can can be passed as grpc.DialOption.
 // This enables the use of additional grpc client options not directly exposed by the options map.
 // such as grpc.WithStatsHandler() for enabling various telemetry handlers.
-func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, userDialOpts ...grpc.DialOption) (adbc.Database, error) {
+func (d *driverImpl) NewDatabaseWithOptions(
+	opts map[string]string,
+	userDialOpts ...grpc.DialOption,
+) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 	uri, ok := opts[adbc.OptionKeyURI]
 	if !ok {
@@ -125,8 +128,12 @@ func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, userDialOpts
 	}
 	delete(opts, adbc.OptionKeyURI)
 
+	dbBase, err := driverbase.NewDatabaseImplBase(&d.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
 	db := &databaseImpl{
-		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
+		DatabaseImplBase: dbBase,
 		timeout: timeoutOption{
 			// Match gRPC default
 			connectTimeout: time.Second * 20,
@@ -135,8 +142,8 @@ func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, userDialOpts
 		userDialOpts: userDialOpts,
 	}
 
-	var err error
-	if db.uri, err = url.Parse(uri); err != nil {
+	db.uri, err = url.Parse(uri)
+	if err != nil {
 		return nil, adbc.Error{Msg: err.Error(), Code: adbc.StatusInvalidArgument}
 	}
 
@@ -145,7 +152,7 @@ func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, userDialOpts
 
 	db.options = make(map[string]string)
 
-	if err := db.SetOptions(opts); err != nil {
+	if err = db.SetOptions(opts); err != nil {
 		return nil, err
 	}
 

@@ -30,6 +30,7 @@ const (
 	StatementMessageOptionUnsupported = "Unsupported connection option"
 	StatementMessageCannotCommit      = "Cannot commit when autocommit is enabled"
 	StatementMessageCannotRollback    = "Cannot rollback when autocommit is enabled"
+	StatementMessageIncorrectFormat   = "Incorrect or unsupported format"
 )
 
 type StatementImpl interface {
@@ -73,7 +74,11 @@ func NewStatement(impl StatementImpl) Statement {
 func (st *StatementImplBase) SetOption(key, value string) error {
 	switch strings.ToLower(strings.TrimSpace(key)) {
 	case adbc.OptionKeyTelemetryTraceParent:
-		st.SetTraceParent(strings.TrimSpace(value))
+		tp := strings.TrimSpace(value)
+		if !isValidateTraceParent(tp) {
+			st.ErrorHelper.Errorf(adbc.StatusInvalidArgument, "%s '%s' '%s'", StatementMessageIncorrectFormat, key, value)
+		}
+		st.SetTraceParent(tp)
 		return nil
 	}
 	return st.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", StatementMessageOptionUnknown, key)
@@ -125,7 +130,7 @@ func (st *StatementImplBase) StartSpan(
 	opts ...trace.SpanStartOption,
 ) (context.Context, trace.Span) {
 	var span trace.Span
-	ctx = MaybeAddTraceParent(ctx, st.cnxn, st)
+	ctx, _ = maybeAddTraceParent(ctx, st.cnxn, st)
 	ctx, span = st.Tracer.Start(ctx, spanName, opts...)
 	return ctx, span
 }

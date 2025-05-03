@@ -33,6 +33,7 @@ import (
 	"github.com/snowflakedb/gosnowflake"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -63,8 +64,6 @@ type statement struct {
 
 	bound      arrow.Record
 	streamBind array.RecordReader
-
-	traceParent string
 }
 
 // setQueryContext applies the query tag if present.
@@ -102,7 +101,7 @@ func (st *statement) GetOption(key string) (string, error) {
 	case OptionStatementQueryTag:
 		return st.queryTag, nil
 	case adbc.OptionKeyTelemetryTraceParent:
-		return st.traceParent, nil
+		return st.GetTraceParent(), nil
 	}
 	return "", adbc.Error{
 		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
@@ -223,13 +222,8 @@ func (st *statement) SetOption(key string, val string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-	case adbc.OptionKeyTelemetryTraceParent:
-		st.traceParent = strings.TrimSpace(val)
 	default:
-		return adbc.Error{
-			Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
-			Code: adbc.StatusNotImplemented,
-		}
+		return st.cnxn.Base().SetOption(key, val)
 	}
 	return nil
 }
@@ -476,13 +470,12 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 //
 // This invalidates any prior result sets on this statement.
 func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReader, nrows int64, err error) {
-	reader = nil
 	nrows = -1
-	err = nil
 
+	var span trace.Span
+	ctx, span = st.StartSpan(ctx, "ExecuteQuery")
 	ctx = st.setQueryContext(ctx)
 
-	_, span := st.StartSpan(ctx, "ExecuteQuery")
 	defer func() {
 		if !st.SetSpanOnError(span, err) {
 			span.SetAttributes(attribute.Int64("db.response.returned_rows", nrows))
@@ -545,11 +538,12 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (st *statement) ExecuteUpdate(ctx context.Context) (nrows int64, err error) {
-	ctx = st.setQueryContext(ctx)
-	err = nil
 	nrows = -1
 
-	_, span := st.StartSpan(ctx, "ExecuteUpdate")
+	var span trace.Span
+	ctx, span = st.StartSpan(ctx, "ExecuteUpdate")
+	ctx = st.setQueryContext(ctx)
+
 	defer func() {
 		if !st.SetSpanOnError(span, err) {
 			span.SetAttributes(attribute.Int64("db.response.returned_rows", nrows))
