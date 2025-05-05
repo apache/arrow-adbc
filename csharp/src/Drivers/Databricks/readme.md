@@ -23,14 +23,17 @@ The Databricks ADBC driver is built on top of the Spark ADBC driver and inherits
 
 The Databricks ADBC driver supports the following authentication methods:
 
-1. Token-based authentication using a [Databricks personal access token](https://docs.databricks.com/en/dev-tools/auth/pat.html)
-   - `adbc.databricks.oauth.oauth_grant_type`: Set to `access_token`
-2. Client credentials authentication. Include the following parameters:
-   - `adbc.databricks.oauth.grant_type`: Set to `client_credentials` to use OAuth client credentials flow, otherwise will default to `access_token`
-   - `adbc.databricks.oauth.client_id`: The OAuth client ID for client credentials authentication
-   - `adbc.databricks.oauth.client_secret`: The OAuth client secret for client credentials authentication
+1. **Token-based authentication** using a [Databricks personal access token](https://docs.databricks.com/en/dev-tools/auth/pat.html)
+   - Set `adbc.spark.auth_type` to `oauth`
+   - Set `adbc.databricks.oauth.grant_type` to `access_token` (this is the default if not specified)
+   - Set `adbc.spark.oauth.access_token` to your Databricks personal access token
 
-
+2. **OAuth Client Credentials Flow** for m2m authentication
+   - Set `adbc.spark.auth_type` to `oauth`
+   - Set `adbc.databricks.oauth.grant_type` to `client_credentials`
+   - Set `adbc.databricks.oauth.client_id` to your OAuth client ID
+   - Set `adbc.databricks.oauth.client_secret` to your OAuth client secret
+   - The driver will automatically handle token acquisition, renewal, and authentication with the Databricks service
 
 Basic (username and password) authentication is not supported at this time.
 

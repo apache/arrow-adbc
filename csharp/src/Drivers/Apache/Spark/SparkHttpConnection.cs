@@ -50,7 +50,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
             {
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
@@ -85,15 +84,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     break;
 
                 case SparkAuthType.OAuth:
-                    ValidateOAuthParameters(access_token);
+                    ValidateOAuthParameters();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
         }
 
-        protected virtual void ValidateOAuthParameters(string? access_token)
+        protected virtual void ValidateOAuthParameters()
         {
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             if (string.IsNullOrWhiteSpace(access_token))
                 throw new ArgumentException(
                     $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' but parameter '{SparkParameters.AccessToken}' is not set. Please provide a value for '{SparkParameters.AccessToken}'.",

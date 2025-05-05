@@ -120,19 +120,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// The OAuth grant type to use for authentication.
-        /// Supported values: "client_credentials"
+        /// Supported values:
+        /// - "access_token": Use a pre-generated Databricks personal access token (default)
+        /// - "client_credentials": Use OAuth client credentials flow for m2m authentication
+        /// When using "client_credentials", the driver will automatically handle token acquisition,
+        /// renewal, and authentication with the Databricks service.
         /// </summary>
         public const string OAuthGrantType = "adbc.databricks.oauth.grant_type";
 
         /// <summary>
         /// The OAuth client ID for client credentials flow.
         /// Required when grant_type is "client_credentials".
+        /// This is the client ID you obtained when registering your application with Databricks.
         /// </summary>
         public const string OAuthClientId = "adbc.databricks.oauth.client_id";
 
         /// <summary>
         /// The OAuth client secret for client credentials flow.
         /// Required when grant_type is "client_credentials".
+        /// This is the client secret you obtained when registering your application with Databricks.
         /// </summary>
         public const string OAuthClientSecret = "adbc.databricks.oauth.client_secret";
     }
@@ -147,14 +153,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         public static class OAuthGrantTypes
         {
+            /// <summary>
+            /// Use a pre-generated Databricks personal access token for authentication.
+            /// When using this grant type, you must provide the token via the
+            /// adbc.spark.oauth.access_token parameter.
+            /// </summary>
             public const string AccessToken = "access_token";
-            public const string ClientCredentials = "client_credentials";
 
-            public static readonly HashSet<string> ValidGrantTypes = new()
-            {
-                AccessToken,
-                ClientCredentials
-            };
+            /// <summary>
+            /// Use OAuth client credentials flow for m2m authentication.
+            /// When using this grant type, you must provide:
+            /// - adbc.databricks.oauth.client_id: The OAuth client ID
+            /// - adbc.databricks.oauth.client_secret: The OAuth client secret
+            /// The driver will automatically handle token acquisition, renewal, and
+            /// authentication with the Databricks service.
+            /// </summary>
+            public const string ClientCredentials = "client_credentials";
         }
     }
 }

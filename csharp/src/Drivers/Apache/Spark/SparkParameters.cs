@@ -27,7 +27,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string Path = "adbc.spark.path";
         public const string Token = "adbc.spark.token";
 
-        // access_token is required when authType is oauth, unless grant type is client_credentials
+        // access_token is required when authType is oauth
         public const string AccessToken = "adbc.spark.access_token";
         public const string AuthType = "adbc.spark.auth_type";
         public const string Type = "adbc.spark.type";

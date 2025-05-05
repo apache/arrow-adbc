@@ -25,6 +25,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -165,19 +166,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
             if (TemporarilyUnavailableRetry)
             {
-            // Add OAuth handler if OAuth authentication is being used
+                // Add OAuth handler if OAuth authentication is being used
                 baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
             }
 
             // Add OAuth handler if OAuth authentication is being used
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
-                authType.ToLower() == SparkAuthTypeConstants.OAuth.ToLower() && 
-                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantType) &&
-                grantType == DatabricksConstants.OAuthGrantTypes.ClientCredentials)
+                SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue) &&
+                authTypeValue == SparkAuthType.OAuth &&
+                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr) &&
+                DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
+                grantType == DatabricksOAuthGrantType.ClientCredentials)
             {
-                // Try to get hostname from properties or extract from URI
-                string? host = null;
-                if (Properties.TryGetValue(SparkParameters.HostName, out host) && !string.IsNullOrEmpty(host))
+                // Note: We assume that properties have already been validated
+                if (Properties.TryGetValue(SparkParameters.HostName, out string? host) && !string.IsNullOrEmpty(host))
                 {
                     // Use hostname directly if provided
                 }
@@ -190,36 +192,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     }
                 }
 
-                if (string.IsNullOrEmpty(host))
-                {
-                    throw new ArgumentException("Either hostname or URI must be provided for OAuth authentication");
-                }
-                
                 Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
                 Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
 
-                if (string.IsNullOrEmpty(clientId))
-                {
-                    throw new ArgumentException(
-                        $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientId}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientId}'.",
-                        nameof(Properties));
-                }
-                if (string.IsNullOrEmpty(clientSecret))
-                {
-                    throw new ArgumentException(
-                        $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientSecret}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientSecret}'.",
-                        nameof(Properties));
-                }
-
-                var tokenProvider = new Auth.OAuthClientCredentialsProvider(
-                    clientId,
-                    clientSecret,
-                    host,
+                var tokenProvider = new OAuthClientCredentialsProvider(
+                    clientId!,
+                    clientSecret!,
+                    host!,
                     timeoutMinutes: 1
                 );
 
-                return new Auth.OAuthDelegatingHandler(baseHandler, tokenProvider);
-            
+                return new OAuthDelegatingHandler(baseHandler, tokenProvider);
             }
 
             return baseHandler;
@@ -434,8 +417,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             if (authType == SparkAuthType.OAuth)
             {
-                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantType);
-                if (grantType == DatabricksConstants.OAuthGrantTypes.ClientCredentials)
+                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr);
+                if (DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
+                    grantType == DatabricksOAuthGrantType.ClientCredentials)
                 {
                     // Return null for client credentials flow since OAuth handler will handle authentication
                     return null;
@@ -444,17 +428,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return base.GetAuthenticationHeaderValue(authType);
         }
 
-        protected override void ValidateOAuthParameters(string? access_token)
+        protected override void ValidateOAuthParameters()
         {
-            Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantType);
+            Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr);
+            DatabricksOAuthGrantType grantType;
 
-            // validate that it's a valid auth_type value
-            if (!string.IsNullOrEmpty(grantType) && !DatabricksConstants.OAuthGrantTypes.ValidGrantTypes.Contains(grantType))
+            if (!DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out grantType))
             {
-                throw new ArgumentOutOfRangeException(DatabricksParameters.OAuthGrantType, grantType, $"Unsupported {DatabricksParameters.OAuthGrantType} value. Should be one of: {string.Join(", ", DatabricksConstants.OAuthGrantTypes.ValidGrantTypes)}");
+                throw new ArgumentOutOfRangeException(
+                    DatabricksParameters.OAuthGrantType,
+                    grantTypeStr,
+                    $"Unsupported {DatabricksParameters.OAuthGrantType} value. Refer to the Databricks documentation for valid values."
+                );
             }
 
-            if (grantType == DatabricksConstants.OAuthGrantTypes.ClientCredentials)
+            // If we have a valid grant type, validate the required parameters
+            if (grantType == DatabricksOAuthGrantType.ClientCredentials)
             {
                 Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
                 Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
@@ -475,7 +464,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             else
             {
                 // For other auth flows, use default OAuth validation
-                base.ValidateOAuthParameters(access_token);
+                base.ValidateOAuthParameters();
             }
         }
     }
