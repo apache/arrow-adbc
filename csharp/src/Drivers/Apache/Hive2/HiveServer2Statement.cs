@@ -620,6 +620,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // Extract column data
             using (var stream = columnsResult.Stream)
             {
+                // Metadata queries typically return small amounts of data, so we expect all results to be in a single batch
                 columnsBatch = await stream.ReadNextRecordBatchAsync(cancellationToken);
                 if (columnsBatch == null) return columnsResult;
             }
@@ -642,15 +643,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             // 5. Process PK and FK data using helper methods with selected fields
-            ProcessRelationshipData(pkResult, "PK_", "COLUMN_NAME",
+            await ProcessRelationshipData(pkResult, "PK_", "COLUMN_NAME",
                 new[] { "COLUMN_NAME", "KEY_SEQ" }, // Selected PK fields
                 ref pkBatch, colNames, columnsBatch.Length,
-                ref allFields, combinedData, cancellationToken);
+                allFields, combinedData, cancellationToken);
 
-            ProcessRelationshipData(fkResult, "FK_", "FKCOLUMN_NAME",
+            await ProcessRelationshipData(fkResult, "FK_", "FKCOLUMN_NAME",
                 new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" }, // Selected FK fields
                 ref fkBatch, colNames, columnsBatch.Length,
-                ref allFields, combinedData, cancellationToken);
+                allFields, combinedData, cancellationToken);
 
             // 6. Return the combined result
             var combinedSchema = new Schema(allFields, columnsResult.Stream.Schema.Metadata);
@@ -658,20 +659,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         // Helper method to process relationship data (PK or FK) with selected fields
-        private void ProcessRelationshipData(QueryResult result, string prefix, string columnNameField,
+        private async Task ProcessRelationshipData(QueryResult result, string prefix, string columnNameField,
             string[] includeFields, ref RecordBatch? batch, StringArray colNames, int rowCount,
-            ref List<Field> allFields, List<IArrowArray> combinedData, CancellationToken cancellationToken)
+            List<Field> allFields, List<IArrowArray> combinedData, CancellationToken cancellationToken)
         {
             if (result.Stream == null) return;
 
             // Build column map and read batch
+            // Use case-insensitive comparison since JDBC/ODBC metadata is typically case-insensitive
             Dictionary<string, int> map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             using (var stream = result.Stream)
             {
                 var colIndex = result.Stream.Schema.GetFieldIndex(columnNameField);
                 if (colIndex >= 0)
                 {
-                    batch = stream.ReadNextRecordBatchAsync(cancellationToken).Result;
+                    // Metadata queries return small result sets that fit in a single batch
+                    batch = await stream.ReadNextRecordBatchAsync(cancellationToken);
                     if (batch != null && batch.Length > 0)
                     {
                         var keyColNames = (StringArray)batch.Column(colIndex);
