@@ -19,23 +19,25 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 
-internal class OAuthDelegatingHandler : DelegatingHandler
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
 {
-    private readonly OAuthClientCredentialsProvider _tokenProvider;
-
-    public OAuthDelegatingHandler(HttpMessageHandler innerHandler, OAuthClientCredentialsProvider tokenProvider)
-        : base(innerHandler)
+    internal class OAuthDelegatingHandler : DelegatingHandler
     {
-        _tokenProvider = tokenProvider ?? throw new ArgumentNullException(nameof(tokenProvider));
-    }
+        private readonly OAuthClientCredentialsProvider _tokenProvider;
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        string accessToken = await _tokenProvider.GetAccessTokenAsync(cancellationToken);
-        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-        HttpResponseMessage response =  await base.SendAsync(request, cancellationToken);
-        return response;
+        public OAuthDelegatingHandler(HttpMessageHandler innerHandler, OAuthClientCredentialsProvider tokenProvider)
+            : base(innerHandler)
+        {
+            _tokenProvider = tokenProvider ?? throw new ArgumentNullException(nameof(tokenProvider));
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            string accessToken = await _tokenProvider.GetAccessTokenAsync(cancellationToken);
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            HttpResponseMessage response =  await base.SendAsync(request, cancellationToken);
+            return response;
+        }
     }
 }

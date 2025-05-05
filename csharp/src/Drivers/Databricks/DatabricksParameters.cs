@@ -116,6 +116,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string CloudFetchPrefetchEnabled = "adbc.databricks.cloudfetch.prefetch_enabled";
+
+        /// <summary>
+        /// The OAuth grant type to use for authentication.
+        /// Supported values: "client_credentials"
+        /// </summary>
+        public const string OAuthGrantType = "adbc.databricks.oauth.grant_type";
+
+        /// <summary>
+        /// The OAuth client ID for client credentials flow.
+        /// Required when grant_type is "client_credentials".
+        /// </summary>
+        public const string OAuthClientId = "adbc.databricks.oauth.client_id";
+
+        /// <summary>
+        /// The OAuth client secret for client credentials flow.
+        /// Required when grant_type is "client_credentials".
+        /// </summary>
+        public const string OAuthClientSecret = "adbc.databricks.oauth.client_secret";
     }
 
     /// <summary>
@@ -123,6 +141,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     public class DatabricksConstants
     {
-
+        /// <summary>
+        /// OAuth grant type constants
+        /// </summary>
+        public static class OAuthGrantTypes
+        {
+            public const string AccessToken = "access_token";
+            public const string ClientCredentials = "client_credentials";
+        }
     }
 }

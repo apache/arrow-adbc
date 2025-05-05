@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
@@ -170,7 +171,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             // Add OAuth handler if OAuth authentication is being used
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
-                authType.ToLower() == SparkAuthTypeConstants.OAuth.ToLower())
+                authType.ToLower() == SparkAuthTypeConstants.OAuth.ToLower() && 
+                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantType) &&
+                grantType == DatabricksConstants.OAuthGrantTypes.ClientCredentials)
             {
                 // Try to get hostname from properties or extract from URI
                 string? host = null;
@@ -191,27 +194,32 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     throw new ArgumentException("Either hostname or URI must be provided for OAuth authentication");
                 }
+                
+                Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
+                Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
 
-                Properties.TryGetValue(SparkParameters.AuthFlow, out string? authFlow);
-
-                if (authFlow == "1")
+                if (string.IsNullOrEmpty(clientId))
                 {
-                    Properties.TryGetValue(SparkParameters.OAuthClientId, out string? clientId);
-                    Properties.TryGetValue(SparkParameters.OAuthClientSecret, out string? clientSecret);
-                    var tokenProvider = new Auth.OAuthClientCredentialsProvider(
-                        clientId!,
-                        clientSecret!,
-                        host,
-                        timeoutMinutes: 1
-                    );
-
-                    return new OAuthDelegatingHandler(baseHandler, tokenProvider);
+                    throw new ArgumentException(
+                        $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientId}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientId}'.",
+                        nameof(Properties));
                 }
-                else
+                if (string.IsNullOrEmpty(clientSecret))
                 {
-                    // For other auth flows, use default OAuth handling
-                    return baseHandler;
+                    throw new ArgumentException(
+                        $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientSecret}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientSecret}'.",
+                        nameof(Properties));
                 }
+
+                var tokenProvider = new Auth.OAuthClientCredentialsProvider(
+                    clientId,
+                    clientSecret,
+                    host,
+                    timeoutMinutes: 1
+                );
+
+                return new Auth.OAuthDelegatingHandler(baseHandler, tokenProvider);
+            
             }
 
             return baseHandler;
@@ -421,5 +429,48 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             Task.FromResult(response.DirectResults.ResultSet.Results);
         protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
+
+        protected override AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
+        {
+            if (authType == SparkAuthType.OAuth)
+            {
+                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantType);
+                if (grantType == DatabricksConstants.OAuthGrantTypes.ClientCredentials)
+                {
+                    // Return null for client credentials flow since OAuth handler will handle authentication
+                    return null;
+                }
+            }
+            return base.GetAuthenticationHeaderValue(authType);
+        }
+
+        protected override void ValidateOAuthParameters(string? access_token)
+        {
+            Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantType);
+
+            if (grantType == DatabricksConstants.OAuthGrantTypes.ClientCredentials)
+            {
+                Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
+                Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
+
+                if (string.IsNullOrEmpty(clientId))
+                {
+                    throw new ArgumentException(
+                        $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientId}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientId}'.",
+                        nameof(Properties));
+                }
+                if (string.IsNullOrEmpty(clientSecret))
+                {
+                    throw new ArgumentException(
+                        $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientSecret}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientSecret}'.",
+                        nameof(Properties));
+                }
+            }
+            else
+            {
+                // For other auth flows, use default OAuth validation
+                base.ValidateOAuthParameters(access_token);
+            }
+        }
     }
 }
