@@ -26,9 +26,9 @@ The Databricks ADBC driver supports the following authentication methods:
 1. Token-based authentication using a [Databricks personal access token](https://docs.databricks.com/en/dev-tools/auth/pat.html)
    - `adbc.databricks.oauth.oauth_grant_type`: Set to `access_token`
 2. Client credentials authentication. Include the following parameters:
-   - `adbc.databricks.oauth.oauth_grant_type`: Set to `client_credentials` to use OAuth client credentials flow, otherwise will default to `access_token`
-   - `adbc.databricks.oauth.oauth_client_id`: The OAuth client ID for client credentials authentication
-   - `adbc.databricks.oauth.oauth_client_secret`: The OAuth client secret for client credentials authentication
+   - `adbc.databricks.oauth.grant_type`: Set to `client_credentials` to use OAuth client credentials flow, otherwise will default to `access_token`
+   - `adbc.databricks.oauth.client_id`: The OAuth client ID for client credentials authentication
+   - `adbc.databricks.oauth.client_secret`: The OAuth client secret for client credentials authentication
 
 
 

@@ -448,6 +448,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantType);
 
+            // validate that it's a valid auth_type value
+            if (!string.IsNullOrEmpty(grantType) && !DatabricksConstants.OAuthGrantTypes.ValidGrantTypes.Contains(grantType))
+            {
+                throw new ArgumentOutOfRangeException(DatabricksParameters.OAuthGrantType, grantType, $"Unsupported {DatabricksParameters.OAuthGrantType} value. Should be one of: {string.Join(", ", DatabricksConstants.OAuthGrantTypes.ValidGrantTypes)}");
+            }
+
             if (grantType == DatabricksConstants.OAuthGrantTypes.ClientCredentials)
             {
                 Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);

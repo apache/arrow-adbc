@@ -16,6 +16,7 @@
  */
 
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -148,6 +149,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             public const string AccessToken = "access_token";
             public const string ClientCredentials = "client_credentials";
+
+            public static readonly HashSet<string> ValidGrantTypes = new()
+            {
+                AccessToken,
+                ClientCredentials
+            };
         }
     }
 }
