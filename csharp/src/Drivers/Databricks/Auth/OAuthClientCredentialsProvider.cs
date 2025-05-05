@@ -117,7 +117,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             var requestContent = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                new KeyValuePair<string, string>("scope", "all-apis")
+                new KeyValuePair<string, string>("scope", "sql")
             });
 
             var request = new HttpRequestMessage(HttpMethod.Post, _tokenEndpoint)
