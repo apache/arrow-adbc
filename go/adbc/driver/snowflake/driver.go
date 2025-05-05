@@ -18,6 +18,7 @@
 package snowflake
 
 import (
+	"context"
 	"errors"
 	"maps"
 	"net/http"
@@ -202,7 +203,7 @@ type Driver interface {
 	adbc.Driver
 
 	// NewDatabaseWithOptions creates a new Snowflake database with the provided options.
-	NewDatabaseWithOptions(map[string]string, ...Option) (adbc.Database, error)
+	NewDatabaseWithOptions(context.Context, map[string]string, ...Option) (adbc.Database, error)
 }
 
 var _ Driver = (*driverImpl)(nil)
@@ -223,16 +224,21 @@ func NewDriver(alloc memory.Allocator) Driver {
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	return d.NewDatabaseWithOptions(opts)
+	return d.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithOptions(ctx, opts)
 }
 
 func (d *driverImpl) NewDatabaseWithOptions(
+	ctx context.Context,
 	opts map[string]string,
 	optFuncs ...Option,
 ) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 
-	dbBase, err := driverbase.NewDatabaseImplBase(&d.DriverImplBase)
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
 	if err != nil {
 		return nil, err
 	}

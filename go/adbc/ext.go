@@ -33,7 +33,7 @@ type DatabaseLogging interface {
 }
 
 type OTelTracingInit interface {
-	InitTracing(driverName string, driverVersion string) error
+	InitTracing(ctx context.Context, driverName string, driverVersion string) error
 }
 
 type OTelTracing interface {

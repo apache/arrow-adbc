@@ -235,14 +235,14 @@ func (base *ConnectionImplBase) ReadPartition(ctx context.Context, serializedPar
 }
 
 func maybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) (context.Context, error) {
-	var traceParentStr = ""
+	var traceParentStr string
 	if st != nil && st.GetTraceParent() != "" {
 		traceParentStr = st.GetTraceParent()
 	} else if cnxn != nil && cnxn.GetTraceParent() != "" {
 		traceParentStr = cnxn.GetTraceParent()
 	}
 	if traceParentStr != "" {
-		spanContext, err := propogateTraceParent(ctx, traceParentStr)
+		spanContext, err := propagateTraceParent(ctx, traceParentStr)
 		if err != nil {
 			return ctx, err
 		}
@@ -251,7 +251,7 @@ func maybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTe
 	return ctx, nil
 }
 
-func propogateTraceParent(ctx context.Context, traceParentStr string) (trace.SpanContext, error) {
+func propagateTraceParent(ctx context.Context, traceParentStr string) (trace.SpanContext, error) {
 	if strings.TrimSpace(traceParentStr) == "" {
 		return trace.SpanContext{}, fmt.Errorf("traceparent string is empty")
 	}

@@ -18,6 +18,7 @@
 package bigquery
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"strings"
@@ -111,7 +112,11 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	dbBase, err := driverbase.NewDatabaseImplBase(&d.DriverImplBase)
+	return d.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
 	if err != nil {
 		return nil, err
 	}

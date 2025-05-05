@@ -32,6 +32,7 @@
 package flightsql
 
 import (
+	"context"
 	"net/url"
 	"time"
 
@@ -100,7 +101,7 @@ type driverImpl struct {
 // passed through the options map.
 type Driver interface {
 	adbc.Driver
-	NewDatabaseWithOptions(map[string]string, ...grpc.DialOption) (adbc.Database, error)
+	NewDatabaseWithOptions(context.Context, map[string]string, ...grpc.DialOption) (adbc.Database, error)
 }
 
 // NewDriver creates a new Flight SQL driver using the given Arrow allocator.
@@ -115,6 +116,7 @@ func NewDriver(alloc memory.Allocator) Driver {
 // This enables the use of additional grpc client options not directly exposed by the options map.
 // such as grpc.WithStatsHandler() for enabling various telemetry handlers.
 func (d *driverImpl) NewDatabaseWithOptions(
+	ctx context.Context,
 	opts map[string]string,
 	userDialOpts ...grpc.DialOption,
 ) (adbc.Database, error) {
@@ -128,7 +130,7 @@ func (d *driverImpl) NewDatabaseWithOptions(
 	}
 	delete(opts, adbc.OptionKeyURI)
 
-	dbBase, err := driverbase.NewDatabaseImplBase(&d.DriverImplBase)
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
 	if err != nil {
 		return nil, err
 	}
@@ -161,5 +163,9 @@ func (d *driverImpl) NewDatabaseWithOptions(
 
 // NewDatabase creates a new Flight SQL database using the given options.
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	return d.NewDatabaseWithOptions(opts)
+	return d.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithOptions(ctx, opts)
 }

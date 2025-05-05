@@ -81,6 +81,10 @@ func convOptions(incoming map[string]string, existing map[string]option) {
 type Driver struct{}
 
 func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (d Driver) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
 	dbOptions := make(map[string]option)
 	convOptions(opts, dbOptions)
 

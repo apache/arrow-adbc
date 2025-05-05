@@ -108,7 +108,7 @@ type DatabaseImplBase struct {
 //
 //   - driver is a DriverImplBase containing the common resources from the parent
 //     driver, allowing the Arrow allocator and error handler to be reused.
-func NewDatabaseImplBase(driver *DriverImplBase) (DatabaseImplBase, error) {
+func NewDatabaseImplBase(ctx context.Context, driver *DriverImplBase) (DatabaseImplBase, error) {
 	database := DatabaseImplBase{
 		Alloc:       driver.Alloc,
 		ErrorHelper: driver.ErrorHelper,
@@ -116,7 +116,7 @@ func NewDatabaseImplBase(driver *DriverImplBase) (DatabaseImplBase, error) {
 		Logger:      nilLogger(),
 		Tracer:      nilTracer(),
 	}
-	err := database.InitTracing(driver.DriverInfo.GetName(), getDriverVersion(driver.DriverInfo))
+	err := database.InitTracing(ctx, driver.DriverInfo.GetName(), getDriverVersion(driver.DriverInfo))
 	return database, err
 }
 
@@ -201,11 +201,11 @@ func (db *database) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (base *database) InitTracing(driverName string, driverVersion string) error {
-	return base.Base().InitTracing(driverName, driverVersion)
+func (base *database) InitTracing(ctx context.Context, driverName string, driverVersion string) error {
+	return base.Base().InitTracing(ctx, driverName, driverVersion)
 }
 
-func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion string) (err error) {
+func (base *DatabaseImplBase) InitTracing(ctx context.Context, driverName string, driverVersion string) (err error) {
 	fullyQualifiedDriverName := driverNamespace + "." + driverName
 
 	getExporterName := sync.OnceValue(func() string {
@@ -220,19 +220,56 @@ func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion strin
 	}
 
 	var (
-		exporter  sdktrace.SpanExporter
-		exporters []sdktrace.SpanExporter
-		tracer    trace.Tracer
+		exporterType traceExporterType
+		exporters    []sdktrace.SpanExporter
 	)
 
+	exporters, exporterType, err = getExporters(
+		ctx,
+		exporterName,
+		base,
+		driverName,
+	)
+	if err != nil {
+		return
+	}
+
+	if len(exporters) < 1 {
+		// This should not normally happen after a successful call to getExporters,
+		// but here for completeness
+		err = base.ErrorHelper.Errorf(
+			adbc.StatusInvalidState,
+			"%s '%s'",
+			DatabaseMessageNoOtelTracesExporters,
+			exporterType.String(),
+		)
+		return
+	}
+
+	base.Tracer, err = newTracer(exporters, base, fullyQualifiedDriverName, driverVersion)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func getExporters(
+	ctx context.Context,
+	exporterName string,
+	base *DatabaseImplBase,
+	driverName string,
+) (exporters []sdktrace.SpanExporter, exporterType traceExporterType, err error) {
+	var exporter sdktrace.SpanExporter
 	exporterType, ok := tryParseTraceExporterType(exporterName)
 	if !ok {
-		return base.ErrorHelper.Errorf(
+		err = base.ErrorHelper.Errorf(
 			adbc.StatusInvalidArgument,
 			"%s '%s'",
 			DatabaseMessageOtelTracesExporterOptionUnknown,
-			getExporterName(),
+			exporterName,
 		)
+		return
 	}
 	switch exporterType {
 	case TraceExporterNone:
@@ -244,7 +281,7 @@ func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion strin
 		}
 		exporters = append(exporters, exporter)
 	case TraceExporterOtlp:
-		exporters, err = newOtlpTraceExporters(context.Background())
+		exporters, err = newOtlpTraceExporters(ctx)
 		if err != nil {
 			return
 		}
@@ -255,29 +292,14 @@ func (base *DatabaseImplBase) InitTracing(driverName string, driverVersion strin
 		}
 		exporters = append(exporters, exporter)
 	default:
-		return base.ErrorHelper.Errorf(
+		err = base.ErrorHelper.Errorf(
 			adbc.StatusNotImplemented,
 			"%s '%s'",
 			DatabaseMessageOtelTracesExporterOptionUnknown,
 			exporterType.String(),
 		)
-	}
-
-	if len(exporters) < 1 {
-		return base.ErrorHelper.Errorf(
-			adbc.StatusInvalidState,
-			"%s '%s'",
-			DatabaseMessageNoOtelTracesExporters,
-			exporterType.String(),
-		)
-	}
-
-	tracer, err = newTracer(exporters, base, fullyQualifiedDriverName, driverVersion)
-	if err != nil {
 		return
 	}
-
-	base.Tracer = tracer
 	return
 }
 
