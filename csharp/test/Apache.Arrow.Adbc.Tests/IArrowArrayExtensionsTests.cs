@@ -16,18 +16,13 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Xunit;
 using Apache.Arrow.Adbc.Extensions;
+using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
 {
     public class IArrowArrayExtensionsTests
     {
-
         [Fact]
         public void ValidateTime32()
         {
