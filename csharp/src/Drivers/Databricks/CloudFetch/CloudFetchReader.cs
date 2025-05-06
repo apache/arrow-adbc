@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
 * this work for additional information regarding copyright ownership.
@@ -36,7 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
     {
         private readonly Schema schema;
         private readonly bool isLz4Compressed;
-        private readonly ICloudFetchDownloadManager downloadManager;
+        private ICloudFetchDownloadManager? downloadManager;
         private ArrowStreamReader? currentReader;
         private IDownloadResult? currentDownloadResult;
         private bool isPrefetchEnabled;
@@ -136,6 +136,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                         this.currentDownloadResult = await this.downloadManager.GetNextDownloadedFileAsync(cancellationToken);
                         if (this.currentDownloadResult == null)
                         {
+                            this.downloadManager.Dispose();
+                            this.downloadManager = null;
                             // No more files
                             return null;
                         }

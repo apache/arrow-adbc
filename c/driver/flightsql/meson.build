@@ -55,6 +55,11 @@ pkg.generate(
     filebase: 'adbc-driver-flightsql',
 )
 
+adbc_driver_flightsql_dep = declare_dependency(
+    include_directories: include_dir,
+    link_with: adbc_driver_flightsql_lib,
+)
+
 exc = executable(
     'adbc-driver-flightsql-test',
     'dremio_flightsql_test.cc',

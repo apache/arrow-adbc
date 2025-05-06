@@ -47,8 +47,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private int _columnCount;
     private List<global::Apache.Hive.Service.Rpc.Thrift.TSparkArrowBatch> _arrowBatches;
     private List<global::Apache.Hive.Service.Rpc.Thrift.TSparkArrowResultLink> _resultLinks;
-    private List<global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloudResultFile> _cloudFetchResults;
-    private byte[] _smallInlineCloudResult;
 
     public long StartRowOffset { get; set; }
 
@@ -119,32 +117,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public List<global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloudResultFile> CloudFetchResults
-    {
-      get
-      {
-        return _cloudFetchResults;
-      }
-      set
-      {
-        __isset.cloudFetchResults = true;
-        this._cloudFetchResults = value;
-      }
-    }
-
-    public byte[] SmallInlineCloudResult
-    {
-      get
-      {
-        return _smallInlineCloudResult;
-      }
-      set
-      {
-        __isset.smallInlineCloudResult = true;
-        this._smallInlineCloudResult = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
@@ -154,8 +126,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public bool columnCount;
       public bool arrowBatches;
       public bool resultLinks;
-      public bool cloudFetchResults;
-      public bool smallInlineCloudResult;
     }
 
     public TRowSet()
@@ -303,37 +273,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            case 3329:
-              if (field.Type == TType.List)
-              {
-                {
-                  var _list229 = await iprot.ReadListBeginAsync(cancellationToken);
-                  CloudFetchResults = new List<global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloudResultFile>(_list229.Count);
-                  for(int _i230 = 0; _i230 < _list229.Count; ++_i230)
-                  {
-                    global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloudResultFile _elem231;
-                    _elem231 = new global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloudResultFile();
-                    await _elem231.ReadAsync(iprot, cancellationToken);
-                    CloudFetchResults.Add(_elem231);
-                  }
-                  await iprot.ReadListEndAsync(cancellationToken);
-                }
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3330:
-              if (field.Type == TType.String)
-              {
-                SmallInlineCloudResult = await iprot.ReadBinaryAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
             default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
@@ -446,29 +385,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteListEndAsync(cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((CloudFetchResults != null) && __isset.cloudFetchResults)
-        {
-          tmp233.Name = "cloudFetchResults";
-          tmp233.Type = TType.List;
-          tmp233.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp233, cancellationToken);
-          await oprot.WriteListBeginAsync(new TList(TType.Struct, CloudFetchResults.Count), cancellationToken);
-          foreach (global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloudResultFile _iter238 in CloudFetchResults)
-          {
-            await _iter238.WriteAsync(oprot, cancellationToken);
-          }
-          await oprot.WriteListEndAsync(cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((SmallInlineCloudResult != null) && __isset.smallInlineCloudResult)
-        {
-          tmp233.Name = "smallInlineCloudResult";
-          tmp233.Type = TType.String;
-          tmp233.ID = 3330;
-          await oprot.WriteFieldBeginAsync(tmp233, cancellationToken);
-          await oprot.WriteBinaryAsync(SmallInlineCloudResult, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -488,9 +404,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         && ((__isset.binaryColumns == other.__isset.binaryColumns) && ((!__isset.binaryColumns) || (TCollections.Equals(BinaryColumns, other.BinaryColumns))))
         && ((__isset.columnCount == other.__isset.columnCount) && ((!__isset.columnCount) || (global::System.Object.Equals(ColumnCount, other.ColumnCount))))
         && ((__isset.arrowBatches == other.__isset.arrowBatches) && ((!__isset.arrowBatches) || (TCollections.Equals(ArrowBatches, other.ArrowBatches))))
-        && ((__isset.resultLinks == other.__isset.resultLinks) && ((!__isset.resultLinks) || (TCollections.Equals(ResultLinks, other.ResultLinks))))
-        && ((__isset.cloudFetchResults == other.__isset.cloudFetchResults) && ((!__isset.cloudFetchResults) || (TCollections.Equals(CloudFetchResults, other.CloudFetchResults))))
-        && ((__isset.smallInlineCloudResult == other.__isset.smallInlineCloudResult) && ((!__isset.smallInlineCloudResult) || (TCollections.Equals(SmallInlineCloudResult, other.SmallInlineCloudResult))));
+        && ((__isset.resultLinks == other.__isset.resultLinks) && ((!__isset.resultLinks) || (TCollections.Equals(ResultLinks, other.ResultLinks))));
     }
 
     public override int GetHashCode() {
@@ -520,14 +434,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((ResultLinks != null) && __isset.resultLinks)
         {
           hashcode = (hashcode * 397) + TCollections.GetHashCode(ResultLinks);
-        }
-        if((CloudFetchResults != null) && __isset.cloudFetchResults)
-        {
-          hashcode = (hashcode * 397) + TCollections.GetHashCode(CloudFetchResults);
-        }
-        if((SmallInlineCloudResult != null) && __isset.smallInlineCloudResult)
-        {
-          hashcode = (hashcode * 397) + SmallInlineCloudResult.GetHashCode();
         }
       }
       return hashcode;
@@ -567,16 +473,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp239.Append(", ResultLinks: ");
         ResultLinks.ToString(tmp239);
-      }
-      if((CloudFetchResults != null) && __isset.cloudFetchResults)
-      {
-        tmp239.Append(", CloudFetchResults: ");
-        CloudFetchResults.ToString(tmp239);
-      }
-      if((SmallInlineCloudResult != null) && __isset.smallInlineCloudResult)
-      {
-        tmp239.Append(", SmallInlineCloudResult: ");
-        SmallInlineCloudResult.ToString(tmp239);
       }
       tmp239.Append(')');
       return tmp239.ToString();

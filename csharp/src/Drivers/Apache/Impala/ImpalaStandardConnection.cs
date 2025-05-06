@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -95,7 +96,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
             Properties.TryGetValue(ImpalaParameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
-            Properties.TryGetValue(ImpalaParameters.TLSOptions, out string? tlsOptions);
+            TlsOptions = HiveServer2TlsImpl.GetStandardTlsOptions(Properties);
         }
 
         protected override TTransport CreateTransport()
@@ -106,8 +107,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
             // Delay the open connection until later.
             bool connectClient = false;
-            TSocketTransport transport = new(hostName!, int.Parse(port!), connectClient, config: new());
-            TBufferedTransport bufferedTransport = new TBufferedTransport(transport);
+            TTransport transport;
+            if (TlsOptions.IsTlsEnabled)
+            {
+                if (IPAddress.TryParse(hostName!, out var address))
+                {
+                    transport = new TTlsSocketTransport(address!, int.Parse(port!), config: new(), 0, !string.IsNullOrEmpty(TlsOptions.TrustedCertificatePath) ? new X509Certificate2(TlsOptions.TrustedCertificatePath!) : null, certValidator: HiveServer2TlsImpl.GetCertificateValidator(TlsOptions));
+                }
+                else
+                {
+                    transport = new TTlsSocketTransport(hostName!, int.Parse(port!), config: new(), 0, !string.IsNullOrEmpty(TlsOptions.TrustedCertificatePath) ? new X509Certificate2(TlsOptions.TrustedCertificatePath!) : null, certValidator: HiveServer2TlsImpl.GetCertificateValidator(TlsOptions));
+                }
+            }
+            else
+            {
+                transport = new TSocketTransport(hostName!, int.Parse(port!), connectClient, config: new());
+            }
+
+            TBufferedTransport bufferedTransport = new(transport);
             return bufferedTransport;
         }
 

@@ -50,7 +50,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
             {
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
@@ -85,14 +84,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     break;
 
                 case SparkAuthType.OAuth:
-                    if (string.IsNullOrWhiteSpace(access_token))
-                        throw new ArgumentException(
-                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' but parameter '{SparkParameters.AccessToken}' is not set. Please provide a value for '{SparkParameters.AccessToken}'.",
-                            nameof(Properties));
+                    ValidateOAuthParameters();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
+        }
+
+        protected virtual void ValidateOAuthParameters()
+        {
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
+            if (string.IsNullOrWhiteSpace(access_token))
+                throw new ArgumentException(
+                    $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' but parameter '{SparkParameters.AccessToken}' is not set. Please provide a value for '{SparkParameters.AccessToken}'.",
+                    nameof(Properties));
         }
 
         protected override void ValidateConnection()
@@ -157,14 +162,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
-            Properties.TryGetValue(SparkParameters.Token, out string? token);
-            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
-            Properties.TryGetValue(AdbcOptions.Username, out string? username);
-            Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName, TlsOptions.IsTlsEnabled);
-            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, access_token);
+            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue);
 
             HttpClient httpClient = new(CreateHttpHandler());
             httpClient.BaseAddress = baseAddress;
@@ -185,8 +186,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return transport;
         }
 
-        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password, string? access_token)
+        protected virtual AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
         {
+            Properties.TryGetValue(SparkParameters.Token, out string? token);
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
+            Properties.TryGetValue(AdbcOptions.Username, out string? username);
+            Properties.TryGetValue(AdbcOptions.Password, out string? password);
             if (!string.IsNullOrEmpty(token) && (authType == SparkAuthType.Empty || authType == SparkAuthType.Token))
             {
                 return new AuthenticationHeaderValue(BearerAuthenticationScheme, token);

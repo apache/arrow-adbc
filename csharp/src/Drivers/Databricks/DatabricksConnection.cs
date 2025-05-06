@@ -20,10 +20,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -33,6 +35,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     internal class DatabricksConnection : SparkHttpConnection
     {
         private bool _applySSPWithQueries = false;
+        private bool _enableDirectResults = true;
+
+        internal static TSparkGetDirectResults defaultGetDirectResults = new()
+        {
+            MaxRows = 2000000,
+            MaxBytes = 404857600
+        };
 
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
@@ -59,6 +68,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 else
                 {
                     throw new ArgumentException($"Parameter '{DatabricksParameters.ApplySSPWithQueries}' value '{applySSPWithQueriesStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.EnableDirectResults, out string? enableDirectResultsStr))
+            {
+                if (bool.TryParse(enableDirectResultsStr, out bool enableDirectResultsValue))
+                {
+                    _enableDirectResults = enableDirectResultsValue;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableDirectResults}' value '{enableDirectResultsStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
 
@@ -111,6 +132,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal bool ApplySSPWithQueries => _applySSPWithQueries;
 
         /// <summary>
+        /// Gets whether direct results are enabled.
+        /// </summary>
+        internal bool EnableDirectResults => _enableDirectResults;
+
+        /// <summary>
         /// Gets whether CloudFetch is enabled.
         /// </summary>
         internal bool UseCloudFetch => _useCloudFetch;
@@ -137,13 +163,66 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override HttpMessageHandler CreateHttpHandler()
         {
-            var baseHandler = base.CreateHttpHandler();
+            HttpMessageHandler baseHandler = base.CreateHttpHandler();
             if (TemporarilyUnavailableRetry)
             {
-                return new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
+                // Add OAuth handler if OAuth authentication is being used
+                baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
             }
+
+            // Add OAuth handler if OAuth authentication is being used
+            if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
+                SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue) &&
+                authTypeValue == SparkAuthType.OAuth &&
+                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr) &&
+                DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
+                grantType == DatabricksOAuthGrantType.ClientCredentials)
+            {
+                // Note: We assume that properties have already been validated
+                if (Properties.TryGetValue(SparkParameters.HostName, out string? host) && !string.IsNullOrEmpty(host))
+                {
+                    // Use hostname directly if provided
+                }
+                else if (Properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrEmpty(uri))
+                {
+                    // Extract hostname from URI if URI is provided
+                    if (Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsedUri))
+                    {
+                        host = parsedUri.Host;
+                    }
+                }
+
+                Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
+                Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
+
+                var tokenProvider = new OAuthClientCredentialsProvider(
+                    clientId!,
+                    clientSecret!,
+                    host!,
+                    timeoutMinutes: 1
+                );
+
+                return new OAuthDelegatingHandler(baseHandler, tokenProvider);
+            }
+
             return baseHandler;
         }
+
+        protected internal override bool AreResultsAvailableDirectly => _enableDirectResults;
+
+        protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetCatalogsReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetSchemasReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = defaultGetDirectResults;
+
+        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = defaultGetDirectResults;
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {
@@ -315,5 +394,60 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
             Task.FromResult(response.DirectResults.ResultSet.Results);
+
+        protected override AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
+        {
+            if (authType == SparkAuthType.OAuth)
+            {
+                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr);
+                if (DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
+                    grantType == DatabricksOAuthGrantType.ClientCredentials)
+                {
+                    // Return null for client credentials flow since OAuth handler will handle authentication
+                    return null;
+                }
+            }
+            return base.GetAuthenticationHeaderValue(authType);
+        }
+
+        protected override void ValidateOAuthParameters()
+        {
+            Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr);
+            DatabricksOAuthGrantType grantType;
+
+            if (!DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out grantType))
+            {
+                throw new ArgumentOutOfRangeException(
+                    DatabricksParameters.OAuthGrantType,
+                    grantTypeStr,
+                    $"Unsupported {DatabricksParameters.OAuthGrantType} value. Refer to the Databricks documentation for valid values."
+                );
+            }
+
+            // If we have a valid grant type, validate the required parameters
+            if (grantType == DatabricksOAuthGrantType.ClientCredentials)
+            {
+                Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
+                Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
+
+                if (string.IsNullOrEmpty(clientId))
+                {
+                    throw new ArgumentException(
+                        $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientId}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientId}'.",
+                        nameof(Properties));
+                }
+                if (string.IsNullOrEmpty(clientSecret))
+                {
+                    throw new ArgumentException(
+                        $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientSecret}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientSecret}'.",
+                        nameof(Properties));
+                }
+            }
+            else
+            {
+                // For other auth flows, use default OAuth validation
+                base.ValidateOAuthParameters();
+            }
+        }
     }
 }

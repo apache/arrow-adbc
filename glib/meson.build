@@ -57,10 +57,10 @@ if adbc_build_dir != ''
     adbc_build_dir = meson.source_root() / adbc_build_dir
 endif
 
+c_compiler = meson.get_compiler('c')
 if adbc_build_dir == ''
     adbc_driver_manager = dependency('adbc-driver-manager')
 else
-    c_compiler = meson.get_compiler('c')
     adbc_driver_manager = c_compiler.find_library(
         'adbc_driver_manager',
         dirs: [adbc_build_dir],
@@ -74,6 +74,18 @@ generate_vapi = get_option('vapi')
 if generate_vapi
     pkgconfig_variables += ['vapidir=@0@'.format(vapi_dir)]
     add_languages('vala')
+endif
+
+# Specify -fPIE explicitly for g-ir-scanner because PIE is disabled by
+# default on AlmaLinux 9 RPM build by
+# LDFLAGS="-specs=/usr/lib/rpm/redhat/redhat-hardened-ld".
+gir_scanner_cflags = c_compiler.get_supported_arguments('-fPIE')
+if gir_scanner_cflags.length() == 0
+    gir_scanner_extra_args = []
+else
+    gir_scanner_extra_args = ['--cflags-begin'] + gir_scanner_cflags + [
+        '--cflags-end',
+    ]
 endif
 
 subdir('adbc-glib')
