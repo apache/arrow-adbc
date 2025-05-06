@@ -721,7 +721,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             for (int colIdx = 0; colIdx < columnsSchema.FieldsList.Count; colIdx++)
             {
                 if (columnsBatches.Count == 0)
-                    continue;        
+                    continue;
                 var builder = new StringArray.Builder();
                 foreach (var batch in columnsBatches)
                 {
@@ -732,7 +732,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     }
                 }
                 combinedData.Add(builder.Build());
-                
             }
 
             // 5. Process PK and FK data using helper methods with selected fields
