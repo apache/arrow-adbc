@@ -384,7 +384,7 @@ func (suite *SnowflakeTests) TestNewDatabaseWithOptions() {
 
 	t.Run("WithTransporter", func(t *testing.T) {
 		transport := &customTransport{base: gosnowflake.SnowflakeTransport}
-		db, err := drv.NewDatabaseWithOptions(suite.ctx, suite.Quirks.DatabaseOptions(),
+		db, err := drv.NewDatabaseWithOptions(suite.Quirks.DatabaseOptions(),
 			driver.WithTransporter(transport))
 		suite.NoError(err)
 		suite.NotNil(db)

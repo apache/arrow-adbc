@@ -94,11 +94,7 @@ func (suite *ServerBasedTests) setupDatabase(dbArgs map[string]string, dialOpts 
 		"uri": uri,
 	}
 	maps.Copy(args, dbArgs)
-	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabaseWithOptions(
-		context.Background(),
-		args,
-		dialOpts...,
-	)
+	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabaseWithOptions(args, dialOpts...)
 	suite.Require().NoError(err)
 }
 

@@ -203,7 +203,8 @@ type Driver interface {
 	adbc.Driver
 
 	// NewDatabaseWithOptions creates a new Snowflake database with the provided options.
-	NewDatabaseWithOptions(context.Context, map[string]string, ...Option) (adbc.Database, error)
+	NewDatabaseWithOptions(map[string]string, ...Option) (adbc.Database, error)
+	NewDatabaseWithOptionsContext(context.Context, map[string]string, ...Option) (adbc.Database, error)
 }
 
 var _ Driver = (*driverImpl)(nil)
@@ -228,17 +229,24 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 }
 
 func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
-	return d.NewDatabaseWithOptions(ctx, opts)
+	return d.NewDatabaseWithOptionsContext(ctx, opts)
 }
 
 func (d *driverImpl) NewDatabaseWithOptions(
+	opts map[string]string,
+	optFuncs ...Option,
+) (adbc.Database, error) {
+	return d.NewDatabaseWithOptionsContext(context.Background(), opts, optFuncs...)
+}
+
+func (d *driverImpl) NewDatabaseWithOptionsContext(
 	ctx context.Context,
 	opts map[string]string,
 	optFuncs ...Option,
 ) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 
-	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
+	dbBase, err := driverbase.NewDatabaseImplBase(context.Background(), &d.DriverImplBase)
 	if err != nil {
 		return nil, err
 	}
