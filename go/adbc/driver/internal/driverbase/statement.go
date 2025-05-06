@@ -135,6 +135,6 @@ func (st *StatementImplBase) StartSpan(
 	return ctx, span
 }
 
-func (st *StatementImplBase) SetSpanOnError(span trace.Span, err error) bool {
-	return st.cnxn.Base().SetSpanOnError(span, err)
+func (st *StatementImplBase) SetErrorOnSpan(span trace.Span, err error) bool {
+	return st.cnxn.Base().SetErrorOnSpan(span, err)
 }

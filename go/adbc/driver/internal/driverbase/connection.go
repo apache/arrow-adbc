@@ -46,6 +46,11 @@ const (
 	ConnectionMessageIncorrectFormat   = "Incorrect or unsupported format"
 )
 
+// Trace parent pattern and regular expression
+const tpPattern = `^(?<version>[0]{2})-(?<traceId>[0-9a-f]{32})-(?<parentId>[0-9a-f]{16})-(?<traceFlags>[0-9a-f]{2})$`
+
+var tpRegExp = regexp.MustCompile(tpPattern)
+
 // ConnectionImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
 type ConnectionImpl interface {
@@ -368,13 +373,11 @@ func (cnxn *ConnectionImplBase) StartSpan(
 	spanName string,
 	opts ...trace.SpanStartOption,
 ) (context.Context, trace.Span) {
-	var span trace.Span
 	ctx, _ = maybeAddTraceParent(ctx, cnxn, nil)
-	ctx, span = cnxn.Tracer.Start(ctx, spanName, opts...)
-	return ctx, span
+	return cnxn.Tracer.Start(ctx, spanName, opts...)
 }
 
-func (cnxn *ConnectionImplBase) SetSpanOnError(span trace.Span, err error) bool {
+func (cnxn *ConnectionImplBase) SetErrorOnSpan(span trace.Span, err error) bool {
 	if err != nil {
 		span.RecordError(err)
 		if adbcError, ok := err.(adbc.Error); ok {
@@ -787,7 +790,7 @@ func maybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTe
 
 func propagateTraceParent(ctx context.Context, traceParentStr string) (trace.SpanContext, error) {
 	if strings.TrimSpace(traceParentStr) == "" {
-		return trace.SpanContext{}, fmt.Errorf("traceparent string is empty")
+		return trace.SpanContext{}, errors.New("traceparent string is empty")
 	}
 
 	propagator := propagation.TraceContext{}
@@ -796,7 +799,7 @@ func propagateTraceParent(ctx context.Context, traceParentStr string) (trace.Spa
 
 	spanContext := trace.SpanContextFromContext(extractedContext)
 	if !spanContext.IsValid() {
-		return trace.SpanContext{}, fmt.Errorf("invalid traceparent string")
+		return trace.SpanContext{}, errors.New("invalid traceparent string")
 	}
 	return spanContext, nil
 }
@@ -804,8 +807,6 @@ func propagateTraceParent(ctx context.Context, traceParentStr string) (trace.Spa
 func isValidateTraceParent(traceParent string) bool {
 	// Supports version-format 00
 	// see: https://www.w3.org/TR/trace-context/#trace-context-http-headers-format
-	const tpPattern = `^(?<version>[0]{2})-(?<traceId>[0-9a-f]{32})-(?<parentId>[0-9a-f]{16})-(?<traceFlags>[0-9a-f]{2})$`
-	tpRegExp := regexp.MustCompile(tpPattern)
 	groupMatches := tpRegExp.FindStringSubmatch(traceParent)
 	if groupMatches == nil || len(groupMatches) != 4 {
 		return false

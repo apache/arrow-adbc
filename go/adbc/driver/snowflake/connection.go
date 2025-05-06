@@ -175,7 +175,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	var span trace.Span
 	ctx, span = c.StartSpan(ctx, "GetObjects")
 	defer func() {
-		if !c.SetSpanOnError(span, err) {
+		if !c.SetErrorOnSpan(span, err) {
 			span.SetStatus(codes.Ok, "")
 		}
 		span.End()

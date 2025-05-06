@@ -84,12 +84,10 @@ func newConfig(options ...rotatingFileWriterOption) (cfg config, err error) {
 	}
 	// Ensure default for tracingFolderPath
 	if strings.TrimSpace(cfg.TracingFolderPath) == "" {
-		var fullPath string
-		fullPath, err = getDefaultTracingFolderPath()
+		cfg.TracingFolderPath, err = getDefaultTracingFolderPath()
 		if err != nil {
 			return
 		}
-		cfg.TracingFolderPath = fullPath
 	}
 
 	// Ensure default for logNamePrefix
