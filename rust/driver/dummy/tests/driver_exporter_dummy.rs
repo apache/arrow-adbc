@@ -73,7 +73,7 @@ fn get_exported() -> (
         AdbcVersion::V110,
     )
     .unwrap();
-    let mut database = driver.new_database().unwrap();
+    let database = driver.new_database().unwrap();
     let mut connection = database.new_connection().unwrap();
     let statement = connection.new_statement().unwrap();
     (driver, database, connection, statement)
@@ -81,7 +81,7 @@ fn get_exported() -> (
 
 fn get_native() -> (DummyDriver, DummyDatabase, DummyConnection, DummyStatement) {
     let mut driver = DummyDriver {};
-    let mut database = driver.new_database().unwrap();
+    let database = driver.new_database().unwrap();
     let mut connection = database.new_connection().unwrap();
     let statement = connection.new_statement().unwrap();
     (driver, database, connection, statement)
@@ -197,7 +197,7 @@ fn test_database_options() {
 
 #[test]
 fn test_connection_options() {
-    let (_, mut database, _, _) = get_exported();
+    let (_, database, _, _) = get_exported();
 
     // Pre-init options
     let options = [

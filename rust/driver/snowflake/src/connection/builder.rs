@@ -93,7 +93,7 @@ impl Builder {
 impl Builder {
     /// Attempt to initialize a [`Connection`] using the values provided to
     /// this builder using the provided [`Database`].
-    pub fn build(self, database: &mut Database) -> Result<Connection> {
+    pub fn build(self, database: &Database) -> Result<Connection> {
         database.new_connection_with_opts(self)
     }
 }

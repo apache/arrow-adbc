@@ -34,7 +34,7 @@ fn get_connection() -> ManagedConnection {
     )
     .unwrap();
 
-    let mut database = driver.new_database().unwrap();
+    let database = driver.new_database().unwrap();
 
     database.new_connection().unwrap()
 }
