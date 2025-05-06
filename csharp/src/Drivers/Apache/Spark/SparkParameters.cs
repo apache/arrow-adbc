@@ -34,6 +34,48 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         public const string DataTypeConv = "adbc.spark.data_type_conv";
         public const string ConnectTimeoutMilliseconds = "adbc.spark.connect_timeout_ms";
         public const string UserAgentEntry = "adbc.spark.user_agent_entry";
+        
+        // Proxy configuration parameters
+        /// <summary>
+        /// Whether to use a proxy for HTTP connections.
+        /// Default value is 0 (disabled) if not specified.
+        /// </summary>
+        public const string UseProxy = "UseProxy";
+
+        /// <summary>
+        /// Hostname or IP address of the proxy server.
+        /// Required when UseProxy is set to 1.
+        /// </summary>
+        public const string ProxyHost = "ProxyHost";
+
+        /// <summary>
+        /// Port number of the proxy server.
+        /// Default value is 8080 if not specified.
+        /// </summary>
+        public const string ProxyPort = "ProxyPort";
+
+        /// <summary>
+        /// Comma-separated list of hosts or domains that should bypass the proxy.
+        /// For example: "localhost,127.0.0.1,.internal.domain.com"
+        /// </summary>
+        public const string ProxyIgnoreList = "ProxyIgnoreList";
+
+        /// <summary>
+        /// Whether to enable proxy authentication.
+        /// Default value is 0 (disabled) if not specified.
+        /// </summary>
+        public const string ProxyAuth = "ProxyAuth";
+
+        /// <summary>
+        /// Username for proxy authentication.
+        /// Required when ProxyAuth is set to 1.
+        /// </summary>
+        public const string ProxyUID = "ProxyUID";
+
+        /// <summary>
+        /// Password for proxy authentication.
+        /// </summary>
+        public const string ProxyPWD = "ProxyPWD";
     }
 
     public static class SparkAuthTypeConstants
