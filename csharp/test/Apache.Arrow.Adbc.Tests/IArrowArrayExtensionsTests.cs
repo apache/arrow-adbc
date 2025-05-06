@@ -54,7 +54,28 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
-        public void ValidateTime64() { }
+        public void ValidateTime64()
+        {
+            TimeSpan t = TimeSpan.FromMinutes(5);
+            long microseconds = Convert.ToInt64(t.TotalMinutes * 60 * 1_000_000);
+            Time64Array.Builder secondBuilder = new Time64Array.Builder(Types.TimeUnit.Microsecond);
+            secondBuilder.Append(microseconds);
+            Time64Array t64microseconds = secondBuilder.Build();
 
+            Assert.Equal(microseconds, t64microseconds.GetValue(0));
+            Assert.Equal(microseconds, t64microseconds.GetMicroSeconds(0));
+            Assert.Equal(t, t64microseconds.ValueAt(0));
+            Assert.Equal(t, t64microseconds.Data.DataType.GetValueConverter().Invoke(t64microseconds, 0));
+
+            long nanoseconds = Convert.ToInt64(t.TotalMinutes * 60 * 1_000_000_000);
+            Time64Array.Builder msbuilder = new Time64Array.Builder(Types.TimeUnit.Nanosecond);
+            msbuilder.Append(nanoseconds);
+            Time64Array t64ns = msbuilder.Build();
+
+            Assert.Equal(nanoseconds, t64ns.GetValue(0));
+            Assert.Equal(nanoseconds, t64ns.GetNanoSeconds(0));
+            Assert.Equal(t, t64ns.ValueAt(0));
+            Assert.Equal(t, t64ns.Data.DataType.GetValueConverter().Invoke(t64ns, 0));
+        }
     }
 }

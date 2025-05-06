@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// <returns></returns>
         internal static Dictionary<string, string> GetBigQueryParameters(BigQueryTestEnvironment testEnvironment)
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>{};
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
 
             if (!string.IsNullOrEmpty(testEnvironment.ProjectId))
             {
