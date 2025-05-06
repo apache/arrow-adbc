@@ -117,7 +117,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             var requestContent = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                new KeyValuePair<string, string>("scope", "all-apis")
+                new KeyValuePair<string, string>("scope", "sql")
             });
 
             var request = new HttpRequestMessage(HttpMethod.Post, _tokenEndpoint)
@@ -168,8 +168,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             };
         }
 
-        private async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
+        public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
         {
+            // First try to get cached token without acquiring lock
+            if (GetValidCachedToken() is string cachedToken)
+            {
+                return cachedToken;
+            }
+
             await _tokenLock.WaitAsync(cancellationToken);
 
             try
@@ -187,24 +193,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 _tokenLock.Release();
             }
         }
-
-
-        /// <summary>
-        /// Gets an OAuth access token using the client credentials grant type.
-        /// </summary>
-        /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
-        /// <returns>The access token.</returns>
-        public string GetAccessToken(CancellationToken cancellationToken = default)
-        {
-            // First try to get cached token without acquiring lock
-            if (GetValidCachedToken() is string cachedToken)
-            {
-                return cachedToken;
-            }
-
-            return GetAccessTokenAsync(cancellationToken).GetAwaiter().GetResult();
-        }
-
 
         public void Dispose()
         {
