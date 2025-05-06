@@ -614,8 +614,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             // 2. Read all batches into memory
             RecordBatch? columnsBatch = null;
-            RecordBatch? pkBatch = null;
-            RecordBatch? fkBatch = null;
+
 
             // Extract column data
             using (var stream = columnsResult.Stream)
@@ -645,12 +644,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // 5. Process PK and FK data using helper methods with selected fields
             await ProcessRelationshipData(pkResult, "PK_", "COLUMN_NAME",
                 new[] { "COLUMN_NAME", "KEY_SEQ" }, // Selected PK fields
-                ref pkBatch, colNames, columnsBatch.Length,
+                colNames, columnsBatch.Length,
                 allFields, combinedData, cancellationToken);
 
             await ProcessRelationshipData(fkResult, "FK_", "FKCOLUMN_NAME",
                 new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" }, // Selected FK fields
-                ref fkBatch, colNames, columnsBatch.Length,
+                colNames, columnsBatch.Length,
                 allFields, combinedData, cancellationToken);
 
             // 6. Return the combined result
@@ -660,11 +659,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         // Helper method to process relationship data (PK or FK) with selected fields
         private async Task ProcessRelationshipData(QueryResult result, string prefix, string columnNameField,
-            string[] includeFields, ref RecordBatch? batch, StringArray colNames, int rowCount,
+            string[] includeFields, StringArray colNames, int rowCount,
             List<Field> allFields, List<IArrowArray> combinedData, CancellationToken cancellationToken)
         {
             if (result.Stream == null) return;
 
+            RecordBatch? batch = null;
             // Build column map and read batch
             // Use case-insensitive comparison since JDBC/ODBC metadata is typically case-insensitive
             Dictionary<string, int> map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
