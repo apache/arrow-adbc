@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -591,6 +592,77 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(enhancedSchema, enhancedData));
         }
 
+        // Helper method to read all batches from a stream
+        private async Task<(List<RecordBatch> Batches, Schema Schema, int TotalRows)> ReadAllBatchesAsync(
+            IArrowArrayStream stream, CancellationToken cancellationToken)
+        {
+            List<RecordBatch> batches = new List<RecordBatch>();
+            int totalRows = 0;
+            Schema schema = stream.Schema;
+            
+            // Read all batches
+            while (true)
+            {
+                var batch = await stream.ReadNextRecordBatchAsync(cancellationToken);
+                if (batch == null) break;
+                
+                if (batch.Length > 0)
+                {
+                    batches.Add(batch);
+                    totalRows += batch.Length;
+                }
+                else
+                {
+                    batch.Dispose();
+                }
+            }
+            
+            return (batches, schema, totalRows);
+        }
+        
+        // Helper method to create empty string columns filled with nulls
+        private List<IArrowArray> CreateEmptyStringColumns(string[] fieldNames, int rowCount)
+        {
+            var result = new List<IArrowArray>();
+            
+            foreach (var fieldName in fieldNames)
+            {
+                var builder = new StringArray.Builder();
+                for (int i = 0; i < rowCount; i++)
+                {
+                    builder.AppendNull();
+                }
+                result.Add(builder.Build());
+            }
+            
+            return result;
+        }
+        
+        // Helper method to append a value to a string builder based on its type
+        private void AppendValueToBuilder(StringArray.Builder builder, IArrowArray columnArray, int rowIndex)
+        {
+            if (columnArray.IsNull(rowIndex))
+            {
+                builder.AppendNull();
+                return;
+            }
+            
+            if (columnArray is StringArray strArray)
+                builder.Append(strArray.GetString(rowIndex));
+            else if (columnArray is Int8Array int8Array && !int8Array.IsNull(rowIndex))
+                builder.Append(int8Array.GetValue(rowIndex).ToString());
+            else if (columnArray is Int16Array int16Array && !int16Array.IsNull(rowIndex))
+                builder.Append(int16Array.GetValue(rowIndex).ToString());
+            else if (columnArray is Int32Array int32Array && !int32Array.IsNull(rowIndex))
+                builder.Append(int32Array.GetValue(rowIndex).ToString());
+            else if (columnArray is Int64Array int64Array && !int64Array.IsNull(rowIndex))
+                builder.Append(int64Array.GetValue(rowIndex).ToString());
+            else if (columnArray is BooleanArray boolArray && !boolArray.IsNull(rowIndex))
+                builder.Append(boolArray.GetValue(rowIndex).ToString());
+            else
+                builder.Append("?");
+        }
+
         private async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
         {
             // 1. Get all three results at once
@@ -611,50 +683,111 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             var fkResult = await GetQueryResult(resp.DirectResults, cancellationToken);
 
-
             // 2. Read all batches into memory
-            RecordBatch? columnsBatch = null;
-
+            List<RecordBatch> columnsBatches;
+            int totalRows;
+            Schema columnsSchema;
+            StringArray? columnNames = null;
+            int colNameIndex = -1;
 
             // Extract column data
             using (var stream = columnsResult.Stream)
             {
-                // Metadata queries typically return small amounts of data, so we expect all results to be in a single batch
-                columnsBatch = await stream.ReadNextRecordBatchAsync(cancellationToken);
-                if (columnsBatch == null) return columnsResult;
+                colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
+                if (colNameIndex < 0) return columnsResult; // Can't match without column names
+                
+                var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
+                columnsBatches = batchResult.Batches;
+                columnsSchema = batchResult.Schema;
+                totalRows = batchResult.TotalRows;
+                
+                if (columnsBatches.Count == 0) return columnsResult;
+                
+                // Create column names array from all batches
+                var builder = new StringArray.Builder();
+                foreach (var batch in columnsBatches)
+                {
+                    StringArray batchColNames = (StringArray)batch.Column(colNameIndex);
+                    for (int i = 0; i < batch.Length; i++)
+                    {
+                        builder.Append(batchColNames.GetString(i));
+                    }
+                }
+                columnNames = builder.Build();
             }
 
-            // 3. Find column name index
-            var colNameIndex = columnsResult.Stream.Schema.GetFieldIndex("COLUMN_NAME");
-            if (colNameIndex < 0) return columnsResult; // Can't match without column names
-
-            // Get column names
-            var colNames = (StringArray)columnsBatch.Column(colNameIndex);
-
-            // 4. Create combined schema and prepare data
-            var allFields = new List<Field>(columnsResult.Stream.Schema.FieldsList);
+            // 3. Create combined schema and prepare data
+            var allFields = new List<Field>(columnsSchema.FieldsList);
             var combinedData = new List<IArrowArray>();
 
-            // Add all columns data
-            for (int i = 0; i < columnsBatch.ColumnCount; i++)
+            // 4. Add all columns data by combining all batches
+            // Create a combined array for each column across all batches
+            for (int colIdx = 0; colIdx < columnsSchema.FieldsList.Count; colIdx++)
             {
-                combinedData.Add(columnsBatch.Column(i));
+                if (columnsBatches.Count == 0)
+                    continue;
+                
+                var dataType = columnsSchema.GetFieldByIndex(colIdx).DataType;
+                
+                // Handle Int32 columns specially
+                /*
+                if (dataType is Int32Type)
+                {
+                    var builder = new Int32Array.Builder();
+                    foreach (var batch in columnsBatches)
+                    {
+                        Int32Array intArray = (Int32Array)batch.Column(colIdx);
+                        for (int i = 0; i < intArray.Length; i++)
+                        {
+                            if (intArray.IsNull(i))
+                                builder.AppendNull();
+                            else
+                            {
+                                int? value = intArray.GetValue(i);
+                                builder.Append(value.GetValueOrDefault(0));
+                            }
+                        }
+                    }
+                    combinedData.Add(builder.Build());
+                }
+                */
+                // For all other types, convert to string
+                //else
+                {
+                    var builder = new StringArray.Builder();
+                    foreach (var batch in columnsBatches)
+                    {
+                        var columnArray = batch.Column(colIdx);
+                        for (int i = 0; i < columnArray.Length; i++)
+                        {
+                            AppendValueToBuilder(builder, columnArray, i);
+                        }
+                    }
+                    combinedData.Add(builder.Build());
+                }
             }
 
             // 5. Process PK and FK data using helper methods with selected fields
             await ProcessRelationshipData(pkResult, "PK_", "COLUMN_NAME",
-                new[] { "COLUMN_NAME", "KEY_SEQ" }, // Selected PK fields
-                colNames, columnsBatch.Length,
+                new[] { "COLUMN_NAME" }, // Selected PK fields
+                columnNames, totalRows,
                 allFields, combinedData, cancellationToken);
 
             await ProcessRelationshipData(fkResult, "FK_", "FKCOLUMN_NAME",
                 new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" }, // Selected FK fields
-                colNames, columnsBatch.Length,
+                columnNames, totalRows,
                 allFields, combinedData, cancellationToken);
 
             // 6. Return the combined result
-            var combinedSchema = new Schema(allFields, columnsResult.Stream.Schema.Metadata);
-            return new QueryResult(columnsBatch.Length, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
+            var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
+
+            // 7. Clean up batches
+            foreach (var batch in columnsBatches)
+            {
+                batch.Dispose();
+            }
+
+            return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
 
         // Helper method to process relationship data (PK or FK) with selected fields
@@ -662,68 +795,139 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string[] includeFields, StringArray colNames, int rowCount,
             List<Field> allFields, List<IArrowArray> combinedData, CancellationToken cancellationToken)
         {
-            if (result.Stream == null) return;
-
-            RecordBatch? batch = null;
-            // Build column map and read batch
-            // Use case-insensitive comparison since JDBC/ODBC metadata is typically case-insensitive
-            Dictionary<string, int> map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            using (var stream = result.Stream)
-            {
-                var colIndex = result.Stream.Schema.GetFieldIndex(columnNameField);
-                if (colIndex >= 0)
-                {
-                    // Metadata queries return small result sets that fit in a single batch
-                    batch = await stream.ReadNextRecordBatchAsync(cancellationToken);
-                    if (batch != null && batch.Length > 0)
-                    {
-                        var keyColNames = (StringArray)batch.Column(colIndex);
-                        for (int i = 0; i < batch.Length; i++)
-                        {
-                            string? colName = keyColNames.GetString(i);
-                            if (!string.IsNullOrEmpty(colName))
-                                map[colName] = i;
-                        }
-                    }
-                }
-            }
-
-            if (batch == null) return;
-
-            // Add only the selected fields to schema
+            // First ensure we always add the fields to the schema, even if there's no data
             foreach (var fieldName in includeFields)
             {
-                int fieldIndex = result.Stream.Schema.GetFieldIndex(fieldName);
-                if (fieldIndex >= 0)
+                allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
+            }
+            
+    
+            Schema? streamSchema = null;
+            int relationColIndex = -1;
+            List<RecordBatch> relationBatches = new List<RecordBatch>();
+            
+            // Early return with empty columns if there's no valid relationship data
+            bool hasValidData = result.Stream != null;
+            // Try to read schema and batches if we have a stream
+            if (hasValidData)
+            {
+                using (var stream = result.Stream)
                 {
-                    allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
-
-                    // Create string arrays for the selected fields
-                    var builder = new StringArray.Builder();
-                    for (int i = 0; i < rowCount; i++)
+                    streamSchema = stream!.Schema;
+                    if (streamSchema != null)
                     {
-                        string? colName = colNames.GetString(i);
-                        if (!string.IsNullOrEmpty(colName) && map.TryGetValue(colName, out int rowIndex))
+                        relationColIndex = streamSchema.GetFieldIndex(columnNameField);
+                        
+                        // Check if key column exists
+                        if (relationColIndex >= 0)
                         {
-                            if (batch.Column(fieldIndex).IsNull(rowIndex))
-                            {
-                                builder.AppendNull();
-                            }
-                            else
-                            {
-                                builder.Append(batch.Column(fieldIndex) is StringArray strArray
-                                    ? strArray.GetString(rowIndex)
-                                    : batch.Column(fieldIndex).ToString());
-                            }
+                            // Read all batches
+                            var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
+                            relationBatches = batchResult.Batches;
+                            
+                            // Update validity based on having batches
+                            hasValidData = relationBatches.Count > 0;
                         }
                         else
                         {
-                            builder.AppendNull();
+                            hasValidData = false;
                         }
                     }
-                    combinedData.Add(builder.Build());
+                    else
+                    {
+                        hasValidData = false;
+                    }
                 }
+            }
+            
+            // If no valid data, add empty columns and return
+            if (!hasValidData)
+            {
+                var emptyColumns = CreateEmptyStringColumns(includeFields, rowCount);
+                combinedData.AddRange(emptyColumns);
+                return;
+            }
+            
+            // At this point, we know streamSchema is not null because hasValidData would be false otherwise
+            Dictionary<string, int> fieldIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var fieldName in includeFields)
+            {
+                int fieldIndex = streamSchema!.GetFieldIndex(fieldName);
+                if (fieldIndex >= 0)
+                {
+                    fieldIndexMap[fieldName] = fieldIndex;
+                }
+            }
+
+            // Build column map from relationship data 
+            Dictionary<string, (int batchIndex, int rowIndex)> relationMap = new Dictionary<string, (int, int)>(StringComparer.OrdinalIgnoreCase);
+            for (int batchIndex = 0; batchIndex < relationBatches.Count; batchIndex++)
+            {
+                var batch = relationBatches[batchIndex];
+                var keyColNames = (StringArray)batch.Column(relationColIndex);
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    string? colName = keyColNames.GetString(i);
+                    if (!string.IsNullOrEmpty(colName))
+                        relationMap[colName] = (batchIndex, i);
+                }
+            }
+            
+            // Create builders for all fields
+            Dictionary<int, StringArray.Builder> builders = new Dictionary<int, StringArray.Builder>();
+            foreach (var fieldName in includeFields)
+            {
+                builders[builders.Count] = new StringArray.Builder();
+            }
+            
+            // Process all batches
+            for (int i = 0; i < rowCount; i++)
+            {
+                string? colName = colNames.GetString(i);
+                if (!string.IsNullOrEmpty(colName) && relationMap.TryGetValue(colName, out var relation))
+                {
+                    // Process all fields for this match from the correct batch
+                    var batch = relationBatches[relation.batchIndex];
+                    
+                    int builderIndex = 0;
+                    foreach (var fieldName in includeFields)
+                    {
+                        var builder = builders[builderIndex++];
+                        
+                        if (!fieldIndexMap.TryGetValue(fieldName, out int fieldIndex) || 
+                            batch.Column(fieldIndex).IsNull(relation.rowIndex))
+                        {
+                            builder.AppendNull();
+                        }
+                        else
+                        {
+                            AppendValueToBuilder(builder, batch.Column(fieldIndex), relation.rowIndex);
+                        }
+                    }
+                }
+                else
+                {
+                    // Add null values for each field for this unmatched row
+                    foreach (var builder in builders.Values)
+                    {
+                        builder.AppendNull();
+                    }
+                }
+            }
+            
+            // Add built arrays to combined data
+            foreach (var builder in builders.Values)
+            {
+                combinedData.Add(builder.Build());
+            }
+            
+            // Clean up batches
+            foreach (var batch in relationBatches)
+            {
+                batch.Dispose();
             }
         }
     }
 }
+
+
