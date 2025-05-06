@@ -410,33 +410,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
-            // Common variables declared upfront
-            TGetResultSetMetadataResp metadata;
-            Schema schema;
-            TRowSet rowSet;
-
             // For GetColumns, we need to enhance the result with BASE_TYPE_NAME
-            if (Connection.AreResultsAvailableDirectly() && resp.DirectResults?.ResultSet?.Results != null)
-            {
-                // Get data from direct results
-                metadata = resp.DirectResults.ResultSetMetadata;
-                schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
-                rowSet = resp.DirectResults.ResultSet.Results;
-            }
-            else
+            if (!Connection.TryGetDirectResults(resp.DirectResults, out TGetResultSetMetadataResp? metadata, out TRowSet? rowSet))
             {
                 // Poll and fetch results
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
 
                 // Get metadata
                 metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
-                schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
 
                 // Fetch the results
                 rowSet = await Connection.FetchResultsAsync(OperationHandle!, BatchSize, cancellationToken);
             }
 
             // Common processing for both paths
+            Schema schema = Connection.SchemaParser.GetArrowSchema(metadata!.Schema, Connection.DataTypeConversion);
             int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
             int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
             IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
@@ -453,21 +441,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
         {
-            Schema schema;
-            if (Connection.AreResultsAvailableDirectly() && directResults?.ResultSet?.Results != null)
+            if (Connection.TryGetDirectResults(directResults, out QueryResult? result))
             {
-                TGetResultSetMetadataResp resultSetMetadata = directResults.ResultSetMetadata;
-                schema = Connection.SchemaParser.GetArrowSchema(resultSetMetadata.Schema, Connection.DataTypeConversion);
-                TRowSet rowSet = directResults.ResultSet.Results;
-                int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
-                int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
-                IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
-
-                return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(schema, data));
+                return result!;
             }
 
             await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
-            schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
+            Schema schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
 
             return new QueryResult(-1, Connection.NewReader(this, schema));
         }

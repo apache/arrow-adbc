@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -377,10 +378,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
                 {
                     TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
-                    if (AreResultsAvailableDirectly())
-                    {
-                        SetDirectResults(getCatalogsReq);
-                    }
+                    TrySetGetDirectResults(getCatalogsReq);
 
                     TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, cancellationToken).Result;
 
@@ -416,10 +414,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     TGetSchemasReq getSchemasReq = new TGetSchemasReq(SessionHandle);
                     getSchemasReq.CatalogName = catalogPattern;
                     getSchemasReq.SchemaName = dbSchemaPattern;
-                    if (AreResultsAvailableDirectly())
-                    {
-                        SetDirectResults(getSchemasReq);
-                    }
+                    TrySetGetDirectResults(getSchemasReq);
 
                     TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq, cancellationToken).Result;
                     if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
@@ -449,10 +444,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     getTablesReq.CatalogName = catalogPattern;
                     getTablesReq.SchemaName = dbSchemaPattern;
                     getTablesReq.TableName = tableNamePattern;
-                    if (AreResultsAvailableDirectly())
-                    {
-                        SetDirectResults(getTablesReq);
-                    }
+                    TrySetGetDirectResults(getTablesReq);
 
                     TGetTablesResp getTablesResp = Client.GetTables(getTablesReq, cancellationToken).Result;
                     if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
@@ -486,10 +478,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     columnsReq.CatalogName = catalogPattern;
                     columnsReq.SchemaName = dbSchemaPattern;
                     columnsReq.TableName = tableNamePattern;
-                    if (AreResultsAvailableDirectly())
-                    {
-                        SetDirectResults(columnsReq);
-                    }
+                    TrySetGetDirectResults(columnsReq);
 
                     if (!string.IsNullOrEmpty(columnNamePattern))
                         columnsReq.ColumnName = columnNamePattern;
@@ -594,10 +583,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
             };
 
-            if (AreResultsAvailableDirectly())
-            {
-                SetDirectResults(req);
-            }
+            TrySetGetDirectResults(req);
 
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
             try
@@ -774,33 +760,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected abstract int ColumnMapIndexOffset { get; }
 
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp, CancellationToken cancellationToken = default);
-        protected abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp, CancellationToken cancellationToken = default);
-        protected internal abstract Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
-        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
-        protected internal abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default);
+        protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default);
+        protected abstract Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default);
 
-        protected internal virtual bool AreResultsAvailableDirectly() => false;
-
-        protected virtual void SetDirectResults(TGetColumnsReq request) => throw new System.NotImplementedException();
-
-        protected virtual void SetDirectResults(TGetCatalogsReq request) => throw new System.NotImplementedException();
-
-        protected virtual void SetDirectResults(TGetSchemasReq request) => throw new System.NotImplementedException();
-
-        protected virtual void SetDirectResults(TGetTablesReq request) => throw new System.NotImplementedException();
-
-        protected virtual void SetDirectResults(TGetTableTypesReq request) => throw new System.NotImplementedException();
-
-        protected virtual void SetDirectResults(TGetPrimaryKeysReq request) => throw new System.NotImplementedException();
-
-        protected virtual void SetDirectResults(TGetCrossReferenceReq request) => throw new System.NotImplementedException();
+        protected internal virtual bool TrySetGetDirectResults(IRequest request) => false;
+        protected internal virtual bool TryGetDirectResults(TSparkDirectResults? directResults, [MaybeNullWhen(false)] out QueryResult result)
+        {
+            result = null;
+            return false;
+        }
+        protected internal virtual bool TryGetDirectResults(
+            TSparkDirectResults? directResults,
+            [MaybeNullWhen(false)] out TGetResultSetMetadataResp metadata,
+            [MaybeNullWhen(false)] out TRowSet rowSet)
+        {
+            metadata = null;
+            rowSet = null;
+            return false;
+        }
 
         protected internal abstract int PositionRequiredOffset { get; }
 
@@ -923,10 +900,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetCatalogsReq req = new TGetCatalogsReq(SessionHandle);
-            if (AreResultsAvailableDirectly())
-            {
-                SetDirectResults(req);
-            }
+            TrySetGetDirectResults(req);
 
             TGetCatalogsResp resp = await Client.GetCatalogs(req, cancellationToken);
             if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
@@ -950,10 +924,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetSchemasReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
-            {
-                SetDirectResults(req);
-            }
+            TrySetGetDirectResults(req);
+
             if (catalogName != null)
             {
                 req.CatalogName = catalogName;
@@ -987,10 +959,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetTablesReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
-            {
-                SetDirectResults(req);
-            }
+            TrySetGetDirectResults(req);
+
             if (catalogName != null)
             {
                 req.CatalogName = catalogName;
@@ -1032,10 +1002,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetColumnsReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
-            {
-                SetDirectResults(req);
-            }
+            TrySetGetDirectResults(req);
+
             if (catalogName != null)
             {
                 req.CatalogName = catalogName;
@@ -1076,10 +1044,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetPrimaryKeysReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
-            {
-                SetDirectResults(req);
-            }
+            TrySetGetDirectResults(req);
+
             if (catalogName != null)
             {
                 req.CatalogName = catalogName!;
@@ -1119,10 +1085,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             TGetCrossReferenceReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly())
-            {
-                SetDirectResults(req);
-            }
+            TrySetGetDirectResults(req);
+
             if (catalogName != null)
             {
                 req.ParentCatalogName = catalogName!;
@@ -1255,10 +1219,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             getColumnsReq.CatalogName = catalog;
             getColumnsReq.SchemaName = dbSchema;
             getColumnsReq.TableName = tableName;
-            if (AreResultsAvailableDirectly())
-            {
-                SetDirectResults(getColumnsReq);
-            }
+            TrySetGetDirectResults(getColumnsReq);
 
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
             try
