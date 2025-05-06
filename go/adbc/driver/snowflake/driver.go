@@ -246,7 +246,7 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(
 ) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 
-	dbBase, err := driverbase.NewDatabaseImplBase(context.Background(), &d.DriverImplBase)
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
 	if err != nil {
 		return nil, err
 	}

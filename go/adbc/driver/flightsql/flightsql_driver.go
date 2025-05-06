@@ -145,8 +145,7 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map
 		userDialOpts: userDialOpts,
 	}
 
-	db.uri, err = url.Parse(uri)
-	if err != nil {
+	if db.uri, err = url.Parse(uri); err != nil {
 		return nil, adbc.Error{Msg: err.Error(), Code: adbc.StatusInvalidArgument}
 	}
 

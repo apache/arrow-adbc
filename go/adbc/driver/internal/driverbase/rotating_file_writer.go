@@ -154,11 +154,11 @@ func NewRotatingFileWriter(options ...rotatingFileWriterOption) (*rotatingFileWr
 }
 
 func getDefaultTracingFolderPath() (string, error) {
-	userHome, err := os.UserHomeDir()
+	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
-	fullPath := filepath.Join(userHome, ".adbc", "traces")
+	fullPath := filepath.Join(userConfigDir, ".adbc", "traces")
 	return fullPath, nil
 }
 

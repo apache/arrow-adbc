@@ -84,7 +84,7 @@ func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	return d.NewDatabaseWithContext(context.Background(), opts)
 }
 
-func (d Driver) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+func (d Driver) NewDatabaseWithContext(_ context.Context, opts map[string]string) (adbc.Database, error) {
 	dbOptions := make(map[string]option)
 	convOptions(opts, dbOptions)
 

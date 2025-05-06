@@ -19,7 +19,6 @@ package driverbase
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -73,6 +72,10 @@ const (
 	DatabaseMessageOtelTracesExporterOptionUnknown = "Unknown " + otelTracesExporter + " option"
 	DatabaseMessageNoOtelTracesExporters           = "No trace exporters added"
 )
+
+var getExporterName = sync.OnceValue(func() string {
+	return os.Getenv(otelTracesExporter)
+})
 
 // DatabaseImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
@@ -208,9 +211,6 @@ func (base *database) InitTracing(ctx context.Context, driverName string, driver
 func (base *DatabaseImplBase) InitTracing(ctx context.Context, driverName string, driverVersion string) (err error) {
 	fullyQualifiedDriverName := driverNamespace + "." + driverName
 
-	getExporterName := sync.OnceValue(func() string {
-		return os.Getenv(otelTracesExporter)
-	})
 	exporterName := getExporterName()
 
 	// Empty exporter
@@ -247,9 +247,6 @@ func (base *DatabaseImplBase) InitTracing(ctx context.Context, driverName string
 	}
 
 	base.Tracer, err = newTracer(exporters, base, fullyQualifiedDriverName, driverVersion)
-	if err != nil {
-		return
-	}
 
 	return
 }
@@ -298,7 +295,6 @@ func getExporters(
 			DatabaseMessageOtelTracesExporterOptionUnknown,
 			exporterType.String(),
 		)
-		return
 	}
 	return
 }
@@ -342,7 +338,7 @@ func getDriverVersion(driverInfo *DriverInfo) string {
 	return unknownDriverVersion
 }
 
-func newOtlpTraceExporters(ctx context.Context) (exporters []sdktrace.SpanExporter, err error) {
+func newOtlpTraceExporters(ctx context.Context) ([]sdktrace.SpanExporter, error) {
 	// Configure these exporters using environment variables
 	// see: https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/
 	// see: https://opentelemetry.io/docs/specs/otel/protocol/exporter/
@@ -350,8 +346,7 @@ func newOtlpTraceExporters(ctx context.Context) (exporters []sdktrace.SpanExport
 	// see: https://pkg.go.dev/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp
 
 	// Create the gRPC exporter
-	var grpcExporter sdktrace.SpanExporter
-	grpcExporter, err = otlptracegrpc.New(
+	grpcExporter, err := otlptracegrpc.New(
 		ctx,
 		otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
 			Enabled:         true,
@@ -360,11 +355,10 @@ func newOtlpTraceExporters(ctx context.Context) (exporters []sdktrace.SpanExport
 		}),
 	)
 	if err != nil {
-		return
+		return nil, err
 	}
 	// Create the http/protobuf exporter
-	var httpExporter sdktrace.SpanExporter
-	httpExporter, err = otlptracehttp.New(
+	httpExporter, err := otlptracehttp.New(
 		ctx,
 		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
 			Enabled:         true,
@@ -373,16 +367,13 @@ func newOtlpTraceExporters(ctx context.Context) (exporters []sdktrace.SpanExport
 		}),
 	)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	exporters = append(exporters, grpcExporter, httpExporter)
-	return
+	return []sdktrace.SpanExporter{grpcExporter, httpExporter}, nil
 }
 
 func newAdbcFileExporter(driverName string) (*stdouttrace.Exporter, error) {
-	var fileWriter io.Writer
-
 	fullyQualifiedDriverName := strings.ToLower(driverNamespace + "." + driverName)
 	fileWriter, err := NewRotatingFileWriter(WithLogNamePrefix(fullyQualifiedDriverName))
 	if err != nil {

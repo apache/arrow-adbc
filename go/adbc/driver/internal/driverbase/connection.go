@@ -234,39 +234,6 @@ func (base *ConnectionImplBase) ReadPartition(ctx context.Context, serializedPar
 	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "ReadPartition")
 }
 
-func maybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) (context.Context, error) {
-	var traceParentStr string
-	if st != nil && st.GetTraceParent() != "" {
-		traceParentStr = st.GetTraceParent()
-	} else if cnxn != nil && cnxn.GetTraceParent() != "" {
-		traceParentStr = cnxn.GetTraceParent()
-	}
-	if traceParentStr != "" {
-		spanContext, err := propagateTraceParent(ctx, traceParentStr)
-		if err != nil {
-			return ctx, err
-		}
-		ctx = trace.ContextWithRemoteSpanContext(ctx, spanContext)
-	}
-	return ctx, nil
-}
-
-func propagateTraceParent(ctx context.Context, traceParentStr string) (trace.SpanContext, error) {
-	if strings.TrimSpace(traceParentStr) == "" {
-		return trace.SpanContext{}, fmt.Errorf("traceparent string is empty")
-	}
-
-	propagator := propagation.TraceContext{}
-	carrier := propagation.MapCarrier{"traceparent": traceParentStr}
-	extractedContext := propagator.Extract(ctx, carrier)
-
-	spanContext := trace.SpanContextFromContext(extractedContext)
-	if !spanContext.IsValid() {
-		return trace.SpanContext{}, fmt.Errorf("invalid traceparent string")
-	}
-	return spanContext, nil
-}
-
 func (base *ConnectionImplBase) GetOption(key string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(key)) {
 	case adbc.OptionKeyTelemetryTraceParent:
@@ -799,6 +766,39 @@ func ValueOrZero[T any](val *T) T {
 		return res
 	}
 	return *val
+}
+
+func maybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) (context.Context, error) {
+	var traceParentStr string
+	if st != nil && st.GetTraceParent() != "" {
+		traceParentStr = st.GetTraceParent()
+	} else if cnxn != nil && cnxn.GetTraceParent() != "" {
+		traceParentStr = cnxn.GetTraceParent()
+	}
+	if traceParentStr != "" {
+		spanContext, err := propagateTraceParent(ctx, traceParentStr)
+		if err != nil {
+			return ctx, err
+		}
+		ctx = trace.ContextWithRemoteSpanContext(ctx, spanContext)
+	}
+	return ctx, nil
+}
+
+func propagateTraceParent(ctx context.Context, traceParentStr string) (trace.SpanContext, error) {
+	if strings.TrimSpace(traceParentStr) == "" {
+		return trace.SpanContext{}, fmt.Errorf("traceparent string is empty")
+	}
+
+	propagator := propagation.TraceContext{}
+	carrier := propagation.MapCarrier{"traceparent": traceParentStr}
+	extractedContext := propagator.Extract(ctx, carrier)
+
+	spanContext := trace.SpanContextFromContext(extractedContext)
+	if !spanContext.IsValid() {
+		return trace.SpanContext{}, fmt.Errorf("invalid traceparent string")
+	}
+	return spanContext, nil
 }
 
 func isValidateTraceParent(traceParent string) bool {

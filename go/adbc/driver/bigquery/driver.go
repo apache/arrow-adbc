@@ -128,7 +128,7 @@ func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string
 		return nil, err
 	}
 
-	return driverbase.NewDatabase(db), err
+	return driverbase.NewDatabase(db), nil
 }
 
 func stringToTable(defaultProjectID, defaultDatasetID, value string) (*bigquery.Table, error) {

@@ -538,8 +538,8 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
-func (st *statement) ExecuteUpdate(ctx context.Context) (nrows int64, err error) {
-	nrows = -1
+func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err error) {
+	numRows = -1
 
 	var span trace.Span
 	ctx, span = st.StartSpan(ctx, "ExecuteUpdate")
@@ -547,15 +547,15 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (nrows int64, err error)
 
 	defer func() {
 		if !st.SetSpanOnError(span, err) {
-			span.SetAttributes(attribute.Int64("db.response.returned_rows", nrows))
+			span.SetAttributes(attribute.Int64("db.response.returned_rows", numRows))
 			span.SetStatus(codes.Ok, codes.Ok.String())
 		}
 		span.End()
 	}()
 
 	if st.targetTable != "" {
-		nrows, err = st.executeIngest(ctx)
-		return nrows, err
+		numRows, err = st.executeIngest(ctx)
+		return
 	}
 
 	if st.query == "" {
@@ -563,11 +563,11 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (nrows int64, err error)
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
 		}
-		return -1, err
+		return
 	}
 
 	if st.streamBind != nil || st.bound != nil {
-		nrows = 0
+		numRows = 0
 		bind := snowflakeBindReader{
 			currentBatch: st.bound,
 			stream:       st.streamBind,
@@ -590,26 +590,26 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (nrows int64, err error)
 			}
 			n, err := r.RowsAffected()
 			if err != nil {
-				nrows = -1
-			} else if nrows >= 0 {
-				nrows += n
+				numRows = -1
+			} else if numRows >= 0 {
+				numRows += n
 			}
 		}
-		return nrows, nil
+		return
 	}
 
 	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)
 	if err != nil {
 		err = errToAdbcErr(adbc.StatusIO, err)
-		return -1, err
+		return
 	}
 
-	nrows, err = r.RowsAffected()
+	numRows, err = r.RowsAffected()
 	if err != nil {
-		nrows = -1
+		numRows = -1
 	}
 
-	return nrows, nil
+	return
 }
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
