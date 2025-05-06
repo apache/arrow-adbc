@@ -655,10 +655,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 builder.Append(int16Array.GetValue(rowIndex).ToString());
             else if (columnArray is Int32Array int32Array && !int32Array.IsNull(rowIndex))
                 builder.Append(int32Array.GetValue(rowIndex).ToString());
-            else if (columnArray is Int64Array int64Array && !int64Array.IsNull(rowIndex))
-                builder.Append(int64Array.GetValue(rowIndex).ToString());
-            else if (columnArray is BooleanArray boolArray && !boolArray.IsNull(rowIndex))
-                builder.Append(boolArray.GetValue(rowIndex).ToString());
             else
                 builder.Append("?");
         }
@@ -725,46 +721,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             for (int colIdx = 0; colIdx < columnsSchema.FieldsList.Count; colIdx++)
             {
                 if (columnsBatches.Count == 0)
-                    continue;
-                
-                var dataType = columnsSchema.GetFieldByIndex(colIdx).DataType;
-                
-                // Handle Int32 columns specially
-                /*
-                if (dataType is Int32Type)
+                    continue;        
+                var builder = new StringArray.Builder();
+                foreach (var batch in columnsBatches)
                 {
-                    var builder = new Int32Array.Builder();
-                    foreach (var batch in columnsBatches)
+                    var columnArray = batch.Column(colIdx);
+                    for (int i = 0; i < columnArray.Length; i++)
                     {
-                        Int32Array intArray = (Int32Array)batch.Column(colIdx);
-                        for (int i = 0; i < intArray.Length; i++)
-                        {
-                            if (intArray.IsNull(i))
-                                builder.AppendNull();
-                            else
-                            {
-                                int? value = intArray.GetValue(i);
-                                builder.Append(value.GetValueOrDefault(0));
-                            }
-                        }
+                        AppendValueToBuilder(builder, columnArray, i);
                     }
-                    combinedData.Add(builder.Build());
                 }
-                */
-                // For all other types, convert to string
-                //else
-                {
-                    var builder = new StringArray.Builder();
-                    foreach (var batch in columnsBatches)
-                    {
-                        var columnArray = batch.Column(colIdx);
-                        for (int i = 0; i < columnArray.Length; i++)
-                        {
-                            AppendValueToBuilder(builder, columnArray, i);
-                        }
-                    }
-                    combinedData.Add(builder.Build());
-                }
+                combinedData.Add(builder.Build());
+                
             }
 
             // 5. Process PK and FK data using helper methods with selected fields
