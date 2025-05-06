@@ -36,8 +36,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         private const string BasicAuthenticationScheme = "Basic";
 
+        private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
+
         public HiveServer2HttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            ValidateProperties();
+            _proxyConfigurator = HiveServer2ProxyConfigurator.FromProperties(properties);
+            _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
         }
 
         protected override void ValidateAuthentication()
@@ -138,7 +143,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName, TlsOptions.IsTlsEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
-            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
             httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;

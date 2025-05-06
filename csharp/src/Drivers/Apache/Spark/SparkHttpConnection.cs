@@ -39,8 +39,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
+        protected readonly HiveServer2ProxyConfigurator _proxyConfigurator;
+
         public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            _proxyConfigurator = HiveServer2ProxyConfigurator.FromProperties(properties);
         }
 
         protected override void ValidateAuthentication()
@@ -148,7 +151,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected virtual HttpMessageHandler CreateHttpHandler()
         {
-            return HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
+            return HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
         }
 
         protected override TTransport CreateTransport()

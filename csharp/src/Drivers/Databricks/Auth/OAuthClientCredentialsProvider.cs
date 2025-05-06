@@ -72,6 +72,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             string clientSecret,
             string host,
             string scope = "sql",
+            HttpClient httpClient,
             int timeoutMinutes = 1,
             int refreshBufferMinutes = 5)
         {
@@ -83,7 +84,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
             _tokenEndpoint = DetermineTokenEndpoint();
 
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
             _httpClient.Timeout = TimeSpan.FromMinutes(_timeoutMinutes);
         }
 
