@@ -39,9 +39,15 @@ namespace Apache.Arrow.Adbc.Tests
 
             Assert.Equal(seconds, t32seconds.GetValue(0));
             Assert.Equal(seconds, t32seconds.GetSeconds(0));
+
+#if NET6_0_OR_GREATER
+            TimeOnly timeOnlySeconds = new TimeOnly(t.Ticks);
+            Assert.Equal(timeOnlySeconds, t32seconds.ValueAt(0));
+            Assert.Equal(timeOnlySeconds, t32seconds.Data.DataType.GetValueConverter().Invoke(t32seconds, 0));
+#else
             Assert.Equal(t, t32seconds.ValueAt(0));
             Assert.Equal(t, t32seconds.Data.DataType.GetValueConverter().Invoke(t32seconds, 0));
-
+#endif
             int totalMs = Convert.ToInt32(t.TotalMilliseconds);
             Time32Array.Builder msbuilder = new Time32Array.Builder(Types.TimeUnit.Millisecond);
             msbuilder.Append(totalMs);
@@ -49,8 +55,15 @@ namespace Apache.Arrow.Adbc.Tests
 
             Assert.Equal(totalMs, t32ms.GetValue(0));
             Assert.Equal(totalMs, t32ms.GetMilliSeconds(0));
+
+#if NET6_0_OR_GREATER
+            TimeOnly timeOnlyMs = new TimeOnly(t.Ticks);
+            Assert.Equal(timeOnlyMs, t32ms.ValueAt(0));
+            Assert.Equal(timeOnlyMs, t32ms.Data.DataType.GetValueConverter().Invoke(t32ms, 0));
+#else
             Assert.Equal(t, t32ms.ValueAt(0));
             Assert.Equal(t, t32ms.Data.DataType.GetValueConverter().Invoke(t32ms, 0));
+#endif
         }
 
         [Fact]
@@ -64,9 +77,15 @@ namespace Apache.Arrow.Adbc.Tests
 
             Assert.Equal(microseconds, t64microseconds.GetValue(0));
             Assert.Equal(microseconds, t64microseconds.GetMicroSeconds(0));
+
+#if NET6_0_OR_GREATER
+            TimeOnly timeOnlyMicroseconds = new TimeOnly(t.Ticks);
+            Assert.Equal(timeOnlyMicroseconds, t64microseconds.ValueAt(0));
+            Assert.Equal(timeOnlyMicroseconds, t64microseconds.Data.DataType.GetValueConverter().Invoke(t64microseconds, 0));
+#else
             Assert.Equal(t, t64microseconds.ValueAt(0));
             Assert.Equal(t, t64microseconds.Data.DataType.GetValueConverter().Invoke(t64microseconds, 0));
-
+#endif
             long nanoseconds = Convert.ToInt64(t.TotalMinutes * 60 * 1_000_000_000);
             Time64Array.Builder msbuilder = new Time64Array.Builder(Types.TimeUnit.Nanosecond);
             msbuilder.Append(nanoseconds);
@@ -74,8 +93,15 @@ namespace Apache.Arrow.Adbc.Tests
 
             Assert.Equal(nanoseconds, t64ns.GetValue(0));
             Assert.Equal(nanoseconds, t64ns.GetNanoSeconds(0));
+
+#if NET6_0_OR_GREATER
+            TimeOnly timeOnlyNanoseconds = new TimeOnly(t.Ticks);
+            Assert.Equal(timeOnlyNanoseconds, t64ns.ValueAt(0));
+            Assert.Equal(timeOnlyNanoseconds, t64ns.Data.DataType.GetValueConverter().Invoke(t64ns, 0));
+#else
             Assert.Equal(t, t64ns.ValueAt(0));
             Assert.Equal(t, t64ns.Data.DataType.GetValueConverter().Invoke(t64ns, 0));
+#endif
         }
     }
 }
