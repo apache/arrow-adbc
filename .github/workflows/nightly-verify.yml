@@ -39,6 +39,10 @@ defaults:
     # 'bash' will expand to -eo pipefail
     shell: bash
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   source:
     # For cron: only run on the main repo, not forks
@@ -201,3 +205,30 @@ jobs:
         run: |
           pushd arrow-adbc
           docker compose run -e PYTHON=3.12 --rm python-debug
+
+  source-verify-docker:
+    name: "Verify Source (OS)/${{ matrix.os }} ${{ matrix.version }}"
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 2
+      matrix:
+        include:
+          - os: ubuntu
+            version: "22.04"
+          - os: ubuntu
+            version: "24.04"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: arrow-adbc
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Verify
+        env:
+          OS: ${{ matrix.os }}
+          OS_VERSION: ${{ matrix.version }}
+        run: |
+          pushd arrow-adbc
+          env ${OS@U}=${OS_VERSION} docker compose run --rm verify-all-${OS}

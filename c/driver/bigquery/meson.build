@@ -55,6 +55,11 @@ pkg.generate(
     filebase: 'adbc-driver-bigquery',
 )
 
+adbc_driver_bigquery_dep = declare_dependency(
+    include_directories: include_dir,
+    link_with: adbc_driver_bigquery_lib,
+)
+
 exc = executable(
     'adbc-driver-bigquery-test',
     'bigquery_test.cc',

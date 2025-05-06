@@ -41,6 +41,11 @@ pkg.generate(
     filebase: 'adbc-driver-postgresql',
 )
 
+adbc_driver_postgresql_dep = declare_dependency(
+    include_directories: include_dir,
+    link_with: adbc_postgres_driver_lib,
+)
+
 postgres_tests = {
     'driver-postgresql': {
         'src_name': 'driver_postgresql',

@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Xunit;
@@ -35,42 +36,40 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }
 
+        public static IEnumerable<object[]> TestCases()
+        {
+            // Test cases format: (query, expected row count, use cloud fetch, enable direct results)
+
+            string smallQuery = $"SELECT * FROM range(1000)";
+            yield return new object[] { smallQuery, 1000, true, true };
+            yield return new object[] { smallQuery, 1000, false, true };
+            yield return new object[] { smallQuery, 1000, true, false };
+            yield return new object[] { smallQuery, 1000, false, false };
+
+            string largeQuery = $"SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000";
+            yield return new object[] { largeQuery, 1000000, true, true };
+            yield return new object[] { largeQuery, 1000000, false, true };
+            yield return new object[] { largeQuery, 1000000, true, false };
+            yield return new object[] { largeQuery, 1000000, false, false };
+        }
+
         /// <summary>
-        /// Integration test for running a large query against a real Databricks cluster.
+        /// Integration test for running queries against a real Databricks cluster with different CloudFetch settings.
         /// </summary>
-        [Fact]
-        public async Task TestRealDatabricksCloudFetchSmallResultSet()
+        [Theory]
+        [MemberData(nameof(TestCases))]
+        private async Task TestRealDatabricksCloudFetch(string query, int rowCount, bool useCloudFetch, bool enableDirectResults)
         {
-            await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM range(1000)", 1000);
-        }
-
-        [Fact]
-        public async Task TestRealDatabricksCloudFetchLargeResultSet()
-        {
-            await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000);
-        }
-
-        [Fact]
-        public async Task TestRealDatabricksNoCloudFetchSmallResultSet()
-        {
-            await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM range(1000)", 1000, false);
-        }
-
-        [Fact]
-        public async Task TestRealDatabricksNoCloudFetchLargeResultSet()
-        {
-            await TestRealDatabricksCloudFetchLargeQuery("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000, false);
-        }
-
-        private async Task TestRealDatabricksCloudFetchLargeQuery(string query, int rowCount, bool useCloudFetch = true)
-        {
-            // Create a statement with CloudFetch enabled
-            var statement = Connection.CreateStatement();
-            statement.SetOption(DatabricksParameters.UseCloudFetch, useCloudFetch.ToString());
-            statement.SetOption(DatabricksParameters.CanDecompressLz4, "true");
-            statement.SetOption(DatabricksParameters.MaxBytesPerFile, "10485760"); // 10MB
+            var connection = NewConnection(TestConfiguration, new Dictionary<string, string>
+            {
+                [DatabricksParameters.UseCloudFetch] = useCloudFetch.ToString(),
+                [DatabricksParameters.EnableDirectResults] = enableDirectResults.ToString(),
+                [DatabricksParameters.CanDecompressLz4] = "true",
+                [DatabricksParameters.MaxBytesPerFile] = "10485760" // 10MB
+            });
 
             // Execute a query that generates a large result set using range function
+            var statement = connection.CreateStatement();
             statement.SqlQuery = query;
 
             // Execute the query and get the result
@@ -90,6 +89,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             }
 
             Assert.True(totalRows >= rowCount);
+
+            Assert.Null(await result.Stream.ReadNextRecordBatchAsync());
 
             // Also log to the test output helper if available
             OutputHelper?.WriteLine($"Read {totalRows} rows from range function");

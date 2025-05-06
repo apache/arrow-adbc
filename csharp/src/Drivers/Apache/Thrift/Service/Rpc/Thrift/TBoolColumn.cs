@@ -9,7 +9,6 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using Apache.Arrow;
-using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Thrift.Protocol;
 using Thrift.Protocol.Entities;
@@ -53,7 +52,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         ArrowBuffer.BitmapBuilder values = null;
         byte[] nulls = null;
-        Stream transport = ((IPeekableTransport)iprot.Transport).Input;
         int length = -1;
 
         await iprot.ReadStructBeginAsync(cancellationToken);
@@ -77,7 +75,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                   byte[] buffer = new byte[length];
                   var memory = buffer.AsMemory();
                   iprot.Transport.CheckReadBytesAvailable(buffer.Length);
-                  await transport.ReadExactlyAsync(memory, cancellationToken);
+                  await iprot.Transport.ReadExactlyAsync(buffer.AsMemory(0, length), cancellationToken);
 
                   values = new ArrowBuffer.BitmapBuilder(length);
                   for (int _i134 = 0; _i134 < length; ++_i134)

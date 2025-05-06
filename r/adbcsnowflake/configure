@@ -144,7 +144,7 @@ fi
 # On OSX we need -framework Security because of some dependency somewhere
 if [ `uname` = "Darwin" ]; then
   PKG_LIBS="-framework Security -lresolv $PKG_LIBS"
-elif uname | grep -e "MSYS" >/dev/null ; then
+elif uname | grep -e "MSYS" -e "MINGW" >/dev/null; then
   # Windows
   PKG_LIBS="$PKG_LIBS"
 else

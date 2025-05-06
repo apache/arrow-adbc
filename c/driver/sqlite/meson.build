@@ -39,6 +39,11 @@ pkg.generate(
     filebase: 'adbc-driver-sqlite',
 )
 
+adbc_driver_sqlite_dep = declare_dependency(
+    include_directories: include_dir,
+    link_with: adbc_sqlite3_driver_lib,
+)
+
 exc = executable(
     'adbc-driver-sqlite-test',
     sources: ['sqlite_test.cc'],

@@ -91,7 +91,7 @@ pkgconfig.generate(
 adbc_glib_gir = gnome.generate_gir(
     libadbc_glib,
     export_packages: 'adbc-glib',
-    extra_args: ['--warn-all'],
+    extra_args: gir_scanner_extra_args,
     fatal_warnings: gi_fatal_warnings,
     header: 'adbc-glib/adbc-glib.h',
     identifier_prefix: 'GADBC',

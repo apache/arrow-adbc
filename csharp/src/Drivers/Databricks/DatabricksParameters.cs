@@ -16,6 +16,7 @@
  */
 
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -62,11 +63,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const string CloudFetchTimeoutMinutes = "adbc.databricks.cloudfetch.timeout_minutes";
 
         /// <summary>
+        /// Whether to enable the use of direct results when executing queries.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string EnableDirectResults = "adbc.databricks.enable_direct_results";
+
+        /// <summary>
         /// Whether to apply service side properties (SSP) with queries. If false, SSP will be applied
         /// by setting the Thrift configuration when the session is opened.
         /// Default value is false if not specified.
         /// </summary>
         public const string ApplySSPWithQueries = "adbc.databricks.apply_ssp_with_queries";
+
 
         /// <summary>
         /// Prefix for server-side properties. Properties with this prefix will be passed to the server
@@ -85,6 +93,54 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is 900 seconds (15 minutes). Set to 0 to retry indefinitely.
         /// </summary>
         public const string TemporarilyUnavailableRetryTimeout = "adbc.spark.temporarily_unavailable_retry_timeout";
+
+        /// <summary>
+        /// Maximum number of parallel downloads for CloudFetch operations.
+        /// Default value is 3 if not specified.
+        /// </summary>
+        public const string CloudFetchParallelDownloads = "adbc.databricks.cloudfetch.parallel_downloads";
+
+        /// <summary>
+        /// Number of files to prefetch in CloudFetch operations.
+        /// Default value is 2 if not specified.
+        /// </summary>
+        public const string CloudFetchPrefetchCount = "adbc.databricks.cloudfetch.prefetch_count";
+
+        /// <summary>
+        /// Maximum memory buffer size in MB for CloudFetch prefetched files.
+        /// Default value is 200MB if not specified.
+        /// </summary>
+        public const string CloudFetchMemoryBufferSize = "adbc.databricks.cloudfetch.memory_buffer_size_mb";
+
+        /// <summary>
+        /// Whether CloudFetch prefetch functionality is enabled.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string CloudFetchPrefetchEnabled = "adbc.databricks.cloudfetch.prefetch_enabled";
+
+        /// <summary>
+        /// The OAuth grant type to use for authentication.
+        /// Supported values:
+        /// - "access_token": Use a pre-generated Databricks personal access token (default)
+        /// - "client_credentials": Use OAuth client credentials flow for m2m authentication
+        /// When using "client_credentials", the driver will automatically handle token acquisition,
+        /// renewal, and authentication with the Databricks service.
+        /// </summary>
+        public const string OAuthGrantType = "adbc.databricks.oauth.grant_type";
+
+        /// <summary>
+        /// The OAuth client ID for client credentials flow.
+        /// Required when grant_type is "client_credentials".
+        /// This is the client ID you obtained when registering your application with Databricks.
+        /// </summary>
+        public const string OAuthClientId = "adbc.databricks.oauth.client_id";
+
+        /// <summary>
+        /// The OAuth client secret for client credentials flow.
+        /// Required when grant_type is "client_credentials".
+        /// This is the client secret you obtained when registering your application with Databricks.
+        /// </summary>
+        public const string OAuthClientSecret = "adbc.databricks.oauth.client_secret";
     }
 
     /// <summary>
@@ -92,6 +148,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     public class DatabricksConstants
     {
+        /// <summary>
+        /// OAuth grant type constants
+        /// </summary>
+        public static class OAuthGrantTypes
+        {
+            /// <summary>
+            /// Use a pre-generated Databricks personal access token for authentication.
+            /// When using this grant type, you must provide the token via the
+            /// adbc.spark.oauth.access_token parameter.
+            /// </summary>
+            public const string AccessToken = "access_token";
 
+            /// <summary>
+            /// Use OAuth client credentials flow for m2m authentication.
+            /// When using this grant type, you must provide:
+            /// - adbc.databricks.oauth.client_id: The OAuth client ID
+            /// - adbc.databricks.oauth.client_secret: The OAuth client secret
+            /// The driver will automatically handle token acquisition, renewal, and
+            /// authentication with the Databricks service.
+            /// </summary>
+            public const string ClientCredentials = "client_credentials";
+        }
     }
 }

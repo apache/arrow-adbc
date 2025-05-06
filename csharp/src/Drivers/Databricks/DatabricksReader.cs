@@ -39,6 +39,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             this.statement = statement;
             this.schema = schema;
             this.isLz4Compressed = isLz4Compressed;
+
+            // If we have direct results, initialize the batches from them
+            if (statement.HasDirectResults)
+            {
+                this.batches = statement.DirectResults!.ResultSet.Results.ArrowBatches;
+
+                if (!statement.DirectResults.ResultSet.HasMoreRows)
+                {
+                    this.statement = null;
+                }
+            }
         }
 
         public Schema Schema { get { return schema; } }

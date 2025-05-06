@@ -15,13 +15,25 @@
 * limitations under the License.
 */
 
-using System.IO;
+using System.Text.Json.Serialization;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache
+namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
-    internal interface IPeekableTransport
+    /// <summary>
+    /// The token response from BigQuery
+    /// </summary>
+    internal class BigQueryStsTokenResponse
     {
-        Stream Input { get; }
-        Stream Output { get; }
+        [JsonPropertyName("access_token")]
+        public string? AccessToken { get; set; }
+
+        [JsonPropertyName("issued_token_type")]
+        public string? IssuedTokenType { get; set; }
+
+        [JsonPropertyName("token_type")]
+        public string? TokenType { get; set; }
+
+        [JsonPropertyName("expires_in")]
+        public int? ExpiresIn { get; set; }
     }
 }
