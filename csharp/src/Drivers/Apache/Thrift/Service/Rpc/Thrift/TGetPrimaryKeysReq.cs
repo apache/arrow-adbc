@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  internal partial class TGetPrimaryKeysReq : TBase
+  internal partial class TGetPrimaryKeysReq : TBase, IRequest
   {
     private string _catalogName;
     private string _schemaName;

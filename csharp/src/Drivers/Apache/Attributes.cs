@@ -15,16 +15,14 @@
 * limitations under the License.
 */
 
-namespace Apache.Hive.Service.Rpc.Thrift
-{
-    internal interface IRequest
-    {
-        TSparkGetDirectResults GetDirectResults { get; set; }
-    }
+#if !NET5_0_OR_GREATER
 
-    internal interface IResponse
+namespace System.Diagnostics.CodeAnalysis
+{
+    sealed class MaybeNullWhenAttribute : Attribute
     {
-        TOperationHandle OperationHandle { get; set; }
-        TSparkDirectResults DirectResults { get; set; }
+        public MaybeNullWhenAttribute(bool returnValue) { }
     }
 }
+
+#endif
