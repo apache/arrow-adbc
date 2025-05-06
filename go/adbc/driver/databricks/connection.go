@@ -24,7 +24,13 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/databricks/databricks-sdk-go"
+	"github.com/databricks/databricks-sdk-go/service/compute"
 	"github.com/databricks/databricks-sdk-go/service/sql"
+)
+
+const (
+	ModeWarehouse = "warehouse"
+	ModeCluster   = "cluster"
 )
 
 type connectionImpl struct {
@@ -35,6 +41,12 @@ type connectionImpl struct {
 	catalog string
 	// Default Schema name (optional)
 	dbSchema string
+
+	// Warehouse or Cluster Mode
+	mode string
+
+	// Context ID for commands to be executed on a cluster
+	contextId string
 }
 
 func sanitizeSchema(schema string) (string, error) {
@@ -47,6 +59,13 @@ func (conn *connectionImpl) StatementExecution() sql.StatementExecutionInterface
 		return nil
 	}
 	return conn.client.StatementExecution
+}
+
+func (conn *connectionImpl) CommandExecution() compute.CommandExecutionInterface {
+	if conn.client == nil {
+		return nil
+	}
+	return conn.client.CommandExecution
 }
 
 // driverbase.CurrentNamespacer {{{
@@ -150,11 +169,18 @@ func (conn *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog st
 	return res, nil
 }
 
-// }}}
 
 // NewStatement initializes a new statement object tied to this connection
 func (conn *connectionImpl) NewStatement() (adbc.Statement, error) {
-	return NewStatement(conn)
+	if conn.mode == ModeWarehouse {
+		return NewStatement(conn)
+	}
+	err := conn.ensureClusterContext()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewCommand(conn)
 }
 
 // Close closes this connection and releases any associated resources.
@@ -162,5 +188,43 @@ func (conn *connectionImpl) Close() error {
 	// TODO: think about the consequences of this to statements and readers
 	conn.client = nil
 	conn.Closed = true
+	return nil
+}
+
+func (conn *connectionImpl) ensureClusterContext() (error) {
+	// If the context already exists, don't create a new one and assume the cluster is running
+	if conn.contextId != "" {
+		return nil
+	}
+	// Otherwise, check the cluster state, if it's not running, start it
+	cluster, err := conn.client.Clusters.Get(context.Background(), compute.GetClusterRequest{
+		ClusterId: conn.client.Config.ClusterID,
+	})
+	if err != nil {
+		return err
+	}
+	if cluster.State != compute.StateRunning {
+		// Start() is idempotent, so it's safe to call it if the cluster is already running or pending
+		wait, err := conn.client.Clusters.Start(context.Background(), compute.StartCluster{
+			ClusterId: conn.client.Config.ClusterID,
+		})
+		if err != nil {
+			return err
+		}
+		_, err = wait.Get()
+		if err != nil {
+			return err
+		}
+	}
+
+	// Create a new context if it doesn't exist
+	res, err := conn.client.CommandExecution.Create(context.Background(), compute.CreateContext{
+			ClusterId: conn.client.Config.ClusterID,
+			Language:  compute.LanguageSql,
+		})
+	if err != nil {
+		return err
+	}
+	conn.contextId = res.ContextId
 	return nil
 }

@@ -69,7 +69,7 @@ func (c *chunkResponse) Next() bool {
 	return c.reader.Next()
 }
 
-type reader struct {
+type statementReader struct {
 	refCount int64
 
 	stmtExecution sql.StatementExecutionInterface
@@ -111,9 +111,9 @@ type reader struct {
 }
 
 func newRecordReader(
-	ctx context.Context, stmtExecution sql.StatementExecutionInterface, statementId string, result *sql.ResultData, manifest *sql.ResultManifest) (*reader, error) {
+	ctx context.Context, stmtExecution sql.StatementExecutionInterface, statementId string, result *sql.ResultData, manifest *sql.ResultManifest) (*statementReader, error) {
 	ctx, cancelFn := context.WithCancel(ctx)
-	r := &reader{
+	r := &statementReader{
 		refCount: 1,
 
 		// TODO: context
@@ -130,7 +130,7 @@ func newRecordReader(
 		chunkChan:       make(chan chunkResponse),
 		activeChunk:     nil,
 
-		schema: nil, // TODO: build schema when there are no chunks
+		schema: nil,
 		rec:    nil,
 		err:    nil,
 
@@ -153,11 +153,11 @@ func newRecordReader(
 	return r, nil
 }
 
-func (r *reader) Retain() {
+func (r *statementReader) Retain() {
 	atomic.AddInt64(&r.refCount, 1)
 }
 
-func (r *reader) Release() {
+func (r *statementReader) Release() {
 	if atomic.AddInt64(&r.refCount, -1) == 0 {
 		if r.activeChunk != nil {
 			r.activeChunk.Release()
@@ -173,7 +173,7 @@ func (r *reader) Release() {
 // \pre: loadingChunkIdx == -1 implies chunkChan is closed (INVARIANT II)
 // \post: if returns true, r.Record() != nil && r.err == nil
 // \post: if returns false, r.Record() == nil and r.err *MUST* be checked
-func (r *reader) Next() bool {
+func (r *statementReader) Next() bool {
 	if r.rec != nil {
 		r.rec.Release()
 		r.rec = nil
@@ -224,11 +224,13 @@ func (r *reader) Next() bool {
 	return r.Next()
 }
 
-func (r *reader) Schema() *arrow.Schema {
+func (r *statementReader) Schema() *arrow.Schema {
 	if r.schema == nil {
 		if r.activeChunk == nil {
 			if r.loadingChunkIdx == -1 {
-				return nil // TODO: need to derive schema from the JSON manifest :(
+				// TODO: need to derive schema from the JSON manifest :(
+				// For now if we don't have a chunk, we return an empty schema
+				return arrow.NewSchema(make([]arrow.Field, 0), nil)
 			}
 			chunk, err := r.consumeLoadingChunk(context.TODO())
 			if err != nil {
@@ -244,7 +246,7 @@ func (r *reader) Schema() *arrow.Schema {
 }
 
 // \pre: r.activeChunk == nil && r.loadingChunkIdx != -1
-func (r *reader) consumeLoadingChunk(ctx context.Context) (*chunkResponse, error) {
+func (r *statementReader) consumeLoadingChunk(ctx context.Context) (*chunkResponse, error) {
 	// wait for the loading chunk
 	startWait := time.Now()
 	chunk := <-r.chunkChan
@@ -272,11 +274,11 @@ func (r *reader) consumeLoadingChunk(ctx context.Context) (*chunkResponse, error
 }
 
 // \pre: Next() returned true
-func (r *reader) Record() arrow.Record {
+func (r *statementReader) Record() arrow.Record {
 	return r.rec
 }
 
-func (r *reader) Err() error {
+func (r *statementReader) Err() error {
 	if r.err == nil {
 		return nil
 	}
@@ -292,7 +294,7 @@ func (r *reader) Err() error {
 	}
 }
 
-func (r *reader) Throughput() float64 {
+func (r *statementReader) Throughput() float64 {
 	elapsed := time.Since(r.startTime)
 	elapsedSeconds := elapsed.Seconds()
 	return float64(r.BytesReceived) / elapsedSeconds
@@ -302,7 +304,7 @@ func (r *reader) Throughput() float64 {
 // when a response is received and data is available for streaming.
 //
 // NOTE: The caller is responsible for closing the response body in .inner.
-func (r *reader) startChunkDataRequest(ctx context.Context, chunkIndex int, externalLink *sql.ExternalLink) error {
+func (r *statementReader) startChunkDataRequest(ctx context.Context, chunkIndex int, externalLink *sql.ExternalLink) error {
 	url := ""
 	if externalLink != nil {
 		url = externalLink.ExternalLink

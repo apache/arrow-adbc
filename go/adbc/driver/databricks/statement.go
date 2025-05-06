@@ -211,7 +211,7 @@ func (stmt *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, in
 	return reader, reader.TotalRowCount, nil
 }
 
-func (stmt *statement) executeQueryInternal(ctx context.Context) (*reader, error) {
+func (stmt *statement) executeQueryInternal(ctx context.Context) (*statementReader, error) {
 	se := stmt.conn.StatementExecution()
 	res, err := se.ExecuteStatement(ctx, *stmt.req)
 	if err != nil {
@@ -245,7 +245,7 @@ func (stmt *statement) executeQueryInternal(ctx context.Context) (*reader, error
 		// TODO: make this configurable
 		timeout := 20 * time.Minute
 		return retries.Poll(ctx, timeout,
-			func() (*reader, *retries.Err) {
+			func() (*statementReader, *retries.Err) {
 				res, err := se.GetStatement(ctx, sql.GetStatementRequest{
 					StatementId: res.StatementId,
 				})
