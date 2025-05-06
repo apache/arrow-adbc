@@ -967,7 +967,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "TIMESTAMP":
                     return fieldBuilder.DataType(TimestampType.Default);
                 case "TIME":
-                    return fieldBuilder.DataType(Time64Type.Default);
+                    return fieldBuilder.DataType(Time64Type.Microsecond);
                 case "DATE":
                     return fieldBuilder.DataType(Date32Type.Default);
                 case "RECORD" or "STRUCT":

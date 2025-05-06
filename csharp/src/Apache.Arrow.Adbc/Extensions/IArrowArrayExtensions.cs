@@ -1,19 +1,19 @@
 ﻿/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* Licensed to the Apache Software Foundation (ASF) under one or more
+* contributor license agreements.  See the NOTICE file distributed with
+* this work for additional information regarding copyright ownership.
+* The ASF licenses this file to You under the Apache License, Version 2.0
+* (the "License"); you may not use this file except in compliance with
+* the License.  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 using System;
 using System.Collections;
@@ -111,20 +111,22 @@ namespace Apache.Arrow.Adbc.Extensions
 #else
                 case ArrowTypeId.Time32:
                     Time32Array time32Array = (Time32Array)arrowArray;
-                    if (time32Array.IsNull(index)) { return null; }
+                    int? time32 = time32Array.GetValue(index);
+                    if (time32 == null) { return null; }
                     return ((Time32Type)time32Array.Data.DataType).Unit switch
                     {
-                        TimeUnit.Second => TimeSpan.FromSeconds(time32Array.GetSeconds(index)!.Value),
-                        TimeUnit.Millisecond => TimeSpan.FromMilliseconds(time32Array.GetMilliSeconds(index)!.Value),
+                        TimeUnit.Second => TimeSpan.FromSeconds(time32.Value),
+                        TimeUnit.Millisecond => TimeSpan.FromMilliseconds(time32.Value),
                         _ => throw new InvalidDataException("Unsupported time unit for Time32Type")
                     };
                 case ArrowTypeId.Time64:
                     Time64Array time64Array = (Time64Array)arrowArray;
-                    if (time64Array.IsNull(index)) { return null; }
+                    long? time64 = time64Array.GetValue(index);
+                    if (time64 == null) { return null; }
                     return ((Time64Type)time64Array.Data.DataType).Unit switch
                     {
-                        TimeUnit.Microsecond => TimeSpan.FromTicks(time64Array.GetMicroSeconds(index)!.Value * 10),
-                        TimeUnit.Nanosecond => TimeSpan.FromTicks(time64Array.GetNanoSeconds(index)!.Value / 100),
+                        TimeUnit.Microsecond => TimeSpan.FromTicks(time64.Value * 10),
+                        TimeUnit.Nanosecond => TimeSpan.FromTicks(time64.Value / 100),
                         _ => throw new InvalidDataException("Unsupported time unit for Time64Type")
                     };
 #endif
@@ -244,9 +246,9 @@ namespace Apache.Arrow.Adbc.Extensions
                     switch (time32Type.Unit)
                     {
                         case TimeUnit.Second:
-                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromSeconds(((Time32Array)array).GetSeconds(index)!.Value);
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromSeconds(((Time32Array)array).GetValue(index)!.Value);
                         case TimeUnit.Millisecond:
-                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromMilliseconds(((Time32Array)array).GetMilliSeconds(index)!.Value);
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromMilliseconds(((Time32Array)array).GetValue(index)!.Value);
                         default:
                             throw new InvalidDataException("Unsupported time unit for Time32Type");
                     }
@@ -255,7 +257,7 @@ namespace Apache.Arrow.Adbc.Extensions
                     switch (time64Type.Unit)
                     {
                         case TimeUnit.Microsecond:
-                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetMicroSeconds(index)!.Value * 10);
+                            return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetValue(index)!.Value * 10);
                         case TimeUnit.Nanosecond:
                             return (array, index) => array.IsNull(index) ? null : TimeSpan.FromTicks(((Time64Array)array).GetValue(index)!.Value / 100);
                         default:
