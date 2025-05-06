@@ -154,7 +154,7 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map
 
 	db.options = make(map[string]string)
 
-	if err = db.SetOptions(opts); err != nil {
+	if err := db.SetOptions(opts); err != nil {
 		return nil, err
 	}
 
