@@ -25,6 +25,7 @@ using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
+using Apache.Arrow;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
@@ -638,25 +639,76 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return result;
         }
         
-        // Helper method to append a value to a string builder based on its type
-        private void AppendValueToBuilder(StringArray.Builder builder, IArrowArray columnArray, int rowIndex)
+        // Helper class to manage builder creation and value appending 
+        // This is only for metadata query result so we only have int or string types
+        private class TypedBuilder
         {
-            if (columnArray.IsNull(rowIndex))
+            private readonly IArrowArrayBuilder _builder;
+            private readonly ArrowTypeId _typeId;
+            
+            public TypedBuilder(ArrowTypeId typeId)
             {
-                builder.AppendNull();
-                return;
+                _typeId = typeId;
+                _builder = CreateBuilder(typeId);
+            }
+
+            private static IArrowArrayBuilder CreateBuilder(ArrowTypeId typeId) => typeId switch
+            {
+                ArrowTypeId.Int16 => new Int16Array.Builder(),
+                ArrowTypeId.Int32 => new Int32Array.Builder(),
+                _ => new StringArray.Builder() // Default to string for unsupported types
+            };
+            
+            public void AppendNull()
+            {
+                switch (_typeId)
+                {
+                    case ArrowTypeId.Int16:
+                        ((Int16Array.Builder)_builder).AppendNull();
+                        break;
+                    case ArrowTypeId.Int32:
+                        ((Int32Array.Builder)_builder).AppendNull();
+                        break;
+                    default:
+                        ((StringArray.Builder)_builder).AppendNull();
+                        break;
+                }
+            }
+
+            public IArrowArray Build() => _typeId switch
+            {
+                ArrowTypeId.Int16 => ((Int16Array.Builder)_builder).Build(),
+                ArrowTypeId.Int32 => ((Int32Array.Builder)_builder).Build(),
+                _ => ((StringArray.Builder)_builder).Build()
+            };
+            
+            public void AppendValue(IArrowArray columnArray, int rowIndex)
+            {
+                try
+                {
+                    switch (_typeId)
+                    {
+                        case ArrowTypeId.Int16:
+                            ((Int16Array.Builder)_builder).Append(((Int16Array)columnArray).GetValue(rowIndex)!.Value);
+                            break;
+                        case ArrowTypeId.Int32:
+                            ((Int32Array.Builder)_builder).Append(((Int32Array)columnArray).GetValue(rowIndex)!.Value);
+                            break;
+                        default: // Handles String and other types that default to StringArray.Builder
+                            // Try to cast to StringArray and get string value - if it fails, 
+                            // the outer try-catch will handle it and call AppendNull()
+                            ((StringArray.Builder)_builder).Append(((StringArray)columnArray).GetString(rowIndex));
+                            break;
+                    }
+                }
+                catch
+                {
+                    // If any conversion fails or columnArray is null, append null as fallback
+                    AppendNull();
+                }
             }
             
-            if (columnArray is StringArray strArray)
-                builder.Append(strArray.GetString(rowIndex));
-            else if (columnArray is Int8Array int8Array && !int8Array.IsNull(rowIndex))
-                builder.Append(int8Array.GetValue(rowIndex).ToString());
-            else if (columnArray is Int16Array int16Array && !int16Array.IsNull(rowIndex))
-                builder.Append(int16Array.GetValue(rowIndex).ToString());
-            else if (columnArray is Int32Array int32Array && !int32Array.IsNull(rowIndex))
-                builder.Append(int32Array.GetValue(rowIndex).ToString());
-            else
-                builder.Append("?");
+     
         }
 
         private async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
@@ -722,16 +774,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 if (columnsBatches.Count == 0)
                     continue;
-                var builder = new StringArray.Builder();
+                
+                var field = columnsSchema.GetFieldByIndex(colIdx);
+                var dataType = field.DataType;
+                
+                // Create a TypedBuilder that handles both creation and appending
+                var typedBuilder = new TypedBuilder(dataType.TypeId);
+                
                 foreach (var batch in columnsBatches)
                 {
                     var columnArray = batch.Column(colIdx);
                     for (int i = 0; i < columnArray.Length; i++)
                     {
-                        AppendValueToBuilder(builder, columnArray, i);
+                        typedBuilder.AppendValue(columnArray, i);
                     }
                 }
-                combinedData.Add(builder.Build());
+                
+                combinedData.Add(typedBuilder.Build());
             }
 
             // 5. Process PK and FK data using helper methods with selected fields
@@ -767,8 +826,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
             }
-            
-    
+
             Schema? streamSchema = null;
             int relationColIndex = -1;
             List<RecordBatch> relationBatches = new List<RecordBatch>();
@@ -841,12 +899,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             
             // Create builders for all fields
-            Dictionary<int, StringArray.Builder> builders = new Dictionary<int, StringArray.Builder>();
+            Dictionary<int, TypedBuilder> builders = new Dictionary<int, TypedBuilder>();
             foreach (var fieldName in includeFields)
             {
-                builders[builders.Count] = new StringArray.Builder();
+                // Use StringArray for relationship fields
+                builders[builders.Count] = new TypedBuilder(ArrowTypeId.String);
             }
-            
+
             // Process all batches
             for (int i = 0; i < rowCount; i++)
             {
@@ -861,14 +920,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     {
                         var builder = builders[builderIndex++];
                         
-                        if (!fieldIndexMap.TryGetValue(fieldName, out int fieldIndex) || 
+                        if (!fieldIndexMap.TryGetValue(fieldName, out int fieldIndex) ||
                             batch.Column(fieldIndex).IsNull(relation.rowIndex))
                         {
+                            // Use the specific null-handling code for each builder type instead of passing null
                             builder.AppendNull();
                         }
                         else
                         {
-                            AppendValueToBuilder(builder, batch.Column(fieldIndex), relation.rowIndex);
+                            builder.AppendValue(batch.Column(fieldIndex), relation.rowIndex);
                         }
                     }
                 }
@@ -877,6 +937,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     // Add null values for each field for this unmatched row
                     foreach (var builder in builders.Values)
                     {
+                        // Use the specific null-handling code for each builder type instead of passing null
                         builder.AppendNull();
                     }
                 }
