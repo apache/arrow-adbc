@@ -146,4 +146,4 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2.Tests
             Assert.Contains("^.*\\.internal\\.domain\\.com$", bypassList);
         }
     }
-} 
+}

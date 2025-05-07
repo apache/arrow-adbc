@@ -104,14 +104,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         /// <summary>
         /// Password for proxy authentication.
+        /// Required when ProxyAuth is set to 1.
         /// </summary>
         public const string ProxyPWD = "ProxyPWD";
-
-        /// <summary>
-        /// Whether to enable detailed SSL error messages.
-        /// Default value is 0 (disabled) if not specified.
-        /// When enabled, SSL certificate errors will be logged with detailed information.
-        /// </summary>
-        public const string AllowDetailedSSLErrorMessages = "AllowDetailedSSLErrorMessages";
     }
 }
