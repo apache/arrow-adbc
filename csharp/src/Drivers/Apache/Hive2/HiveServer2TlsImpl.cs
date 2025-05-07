@@ -24,7 +24,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    class TlsProperties
+    public class TlsProperties
     {
         public bool IsTlsEnabled { get; set; } = true;
         public bool DisableServerCertificateValidation { get; set; }
@@ -75,6 +75,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         static internal HttpClientHandler NewHttpClientHandler(TlsProperties tlsProperties)
         {
             HttpClientHandler httpClientHandler = new();
+            return ConfigureHttpClientHandlerTlsProperties(httpClientHandler, tlsProperties);
+        }
+
+        static internal HttpClientHandler ConfigureHttpClientHandlerTlsProperties(HttpClientHandler httpClientHandler, TlsProperties tlsProperties)
+        {
             if (tlsProperties.IsTlsEnabled)
             {
                 httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>

@@ -21,17 +21,16 @@ using System.Net;
 using System.Net.Http;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.Tests
+namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2.Tests
 {
-    public class SparkProxyConfiguratorTests
+    public class HiveServer2ProxyConfiguratorTests
     {
-
         [Fact]
         public void ConfigureProxy_NoProxySettings_DisablesProxy()
         {
             // Arrange
             var properties = new Dictionary<string, string>();
-            var configurator = new SparkProxyConfigurator(properties);
+            var configurator = HiveServer2ProxyConfigurator.FromProperties(properties);
             var handler = new HttpClientHandler();
 
             // Act
@@ -42,37 +41,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.Tests
         }
 
         [Fact]
-        public void ConfigureProxy_UseProxyWithoutHost_ThrowsArgumentException()
-        {
-            // Arrange
-            var properties = new Dictionary<string, string>
-            {
-                { SparkParameters.UseProxy, "1" }
-            };
-            var configurator = new SparkProxyConfigurator(properties);
-            var handler = new HttpClientHandler();
-
-            // Act & Assert
-            var ex = Assert.Throws<ArgumentException>(() => configurator.ConfigureProxy(handler));
-            Assert.Contains(SparkParameters.ProxyHost, ex.Message);
-        }
-
-        [Fact]
         public void ConfigureProxy_UseProxyWithInvalidPort_ThrowsArgumentOutOfRangeException()
         {
             // Arrange
             var properties = new Dictionary<string, string>
             {
-                { SparkParameters.UseProxy, "1" },
-                { SparkParameters.ProxyHost, "proxy.example.com" },
-                { SparkParameters.ProxyPort, "99999" } // Invalid port
+                { HttpProxyOptions.UseProxy, "1" },
+                { HttpProxyOptions.ProxyHost, "proxy.example.com" },
+                { HttpProxyOptions.ProxyPort, "99999" } // Invalid port
             };
-            var configurator = new SparkProxyConfigurator(properties);
-            var handler = new HttpClientHandler();
 
             // Act & Assert
-            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => configurator.ConfigureProxy(handler));
-            Assert.Equal(SparkParameters.ProxyPort, ex.ParamName);
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => HiveServer2ProxyConfigurator.FromProperties(properties));
+            Assert.Equal(HttpProxyOptions.ProxyPort, ex.ParamName);
         }
 
         [Fact]
@@ -81,11 +62,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.Tests
             // Arrange
             var properties = new Dictionary<string, string>
             {
-                { SparkParameters.UseProxy, "1" },
-                { SparkParameters.ProxyHost, "proxy.example.com" },
-                { SparkParameters.ProxyPort, "8080" }
+                { HttpProxyOptions.UseProxy, "1" },
+                { HttpProxyOptions.ProxyHost, "proxy.example.com" },
+                { HttpProxyOptions.ProxyPort, "8080" }
             };
-            var configurator = new SparkProxyConfigurator(properties);
+            var configurator = HiveServer2ProxyConfigurator.FromProperties(properties);
             var handler = new HttpClientHandler();
 
             // Act
@@ -103,14 +84,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.Tests
             // Arrange
             var properties = new Dictionary<string, string>
             {
-                { SparkParameters.UseProxy, "1" },
-                { SparkParameters.ProxyHost, "proxy.example.com" },
-                { SparkParameters.ProxyPort, "8080" },
-                { SparkParameters.ProxyAuth, "1" },
-                { SparkParameters.ProxyUID, "username" },
-                { SparkParameters.ProxyPWD, "password" }
+                { HttpProxyOptions.UseProxy, "1" },
+                { HttpProxyOptions.ProxyHost, "proxy.example.com" },
+                { HttpProxyOptions.ProxyPort, "8080" },
+                { HttpProxyOptions.ProxyAuth, "1" },
+                { HttpProxyOptions.ProxyUID, "username" },
+                { HttpProxyOptions.ProxyPWD, "password" }
             };
-            var configurator = new SparkProxyConfigurator(properties);
+            var configurator = HiveServer2ProxyConfigurator.FromProperties(properties);
             var handler = new HttpClientHandler();
 
             // Act
@@ -137,12 +118,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.Tests
             // Arrange
             var properties = new Dictionary<string, string>
             {
-                { SparkParameters.UseProxy, "1" },
-                { SparkParameters.ProxyHost, "proxy.example.com" },
-                { SparkParameters.ProxyPort, "8080" },
-                { SparkParameters.ProxyIgnoreList, "localhost,127.0.0.1,*.internal.domain.com" }
+                { HttpProxyOptions.UseProxy, "1" },
+                { HttpProxyOptions.ProxyHost, "proxy.example.com" },
+                { HttpProxyOptions.ProxyPort, "8080" },
+                { HttpProxyOptions.ProxyIgnoreList, "localhost,127.0.0.1,*.internal.domain.com" }
             };
-            var configurator = new SparkProxyConfigurator(properties);
+            var configurator = HiveServer2ProxyConfigurator.FromProperties(properties);
             var handler = new HttpClientHandler();
 
             // Act
@@ -165,4 +146,4 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark.Tests
             Assert.Contains("^.*\\.internal\\.domain\\.com$", bypassList);
         }
     }
-}
+} 

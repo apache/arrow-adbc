@@ -63,4 +63,55 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string TrustedCertificatePath = "adbc.standard_options.tls.trusted_certificate_path";
         public const string DisableServerCertificateValidation = "adbc.standard_options.tls.disable_server_certificate_validation";
     }
+
+    public static class HttpProxyOptions
+    {
+        /// <summary>
+        /// Whether to use a proxy for HTTP connections.
+        /// Default value is 0 (disabled) if not specified.
+        /// </summary>
+        public const string UseProxy = "UseProxy";
+
+        /// <summary>
+        /// Hostname or IP address of the proxy server.
+        /// Required when UseProxy is set to 1.
+        /// </summary>
+        public const string ProxyHost = "ProxyHost";
+
+        /// <summary>
+        /// Port number of the proxy server.
+        /// Default value is 8080 if not specified.
+        /// </summary>
+        public const string ProxyPort = "ProxyPort";
+
+        /// <summary>
+        /// Comma-separated list of hosts or domains that should bypass the proxy.
+        /// For example: "localhost,127.0.0.1,.internal.domain.com"
+        /// </summary>
+        public const string ProxyIgnoreList = "ProxyIgnoreList";
+
+        /// <summary>
+        /// Whether to enable proxy authentication.
+        /// Default value is 0 (disabled) if not specified.
+        /// </summary>
+        public const string ProxyAuth = "ProxyAuth";
+
+        /// <summary>
+        /// Username for proxy authentication.
+        /// Required when ProxyAuth is set to 1.
+        /// </summary>
+        public const string ProxyUID = "ProxyUID";
+
+        /// <summary>
+        /// Password for proxy authentication.
+        /// </summary>
+        public const string ProxyPWD = "ProxyPWD";
+
+        /// <summary>
+        /// Whether to enable detailed SSL error messages.
+        /// Default value is 0 (disabled) if not specified.
+        /// When enabled, SSL certificate errors will be logged with detailed information.
+        /// </summary>
+        public const string AllowDetailedSSLErrorMessages = "AllowDetailedSSLErrorMessages";
+    }
 }
