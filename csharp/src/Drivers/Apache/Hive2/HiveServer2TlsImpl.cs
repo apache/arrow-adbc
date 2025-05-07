@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return tlsProperties;
         }
 
-        static internal HttpClientHandler NewHttpClientHandler(TlsProperties tlsProperties)
+        static internal HttpClientHandler NewHttpClientHandler(TlsProperties tlsProperties, HiveServer2ProxyConfigurator? proxyConfigurator)
         {
             HttpClientHandler httpClientHandler = new();
             if (tlsProperties.IsTlsEnabled)
@@ -98,6 +98,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     // Build the chain and verify
                     return chain2.Build(certificate);
                 };
+            }
+            if (proxyConfigurator != null)
+            {
+                proxyConfigurator.ConfigureProxy(httpClientHandler);
             }
             return httpClientHandler;
         }

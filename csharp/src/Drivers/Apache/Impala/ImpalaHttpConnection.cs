@@ -38,8 +38,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     {
         private const string BasicAuthenticationScheme = "Basic";
 
+        private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
+
         public ImpalaHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            _proxyConfigurator = HiveServer2ProxyConfigurator.FromProperties(properties);
         }
 
         protected override void ValidateAuthentication()
@@ -142,7 +145,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName, TlsOptions.IsTlsEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
-            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
