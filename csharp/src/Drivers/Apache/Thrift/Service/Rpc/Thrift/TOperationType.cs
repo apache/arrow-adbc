@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TOperationType
+  internal enum TOperationType
   {
     EXECUTE_STATEMENT = 0,
     GET_TYPE_INFO = 1,

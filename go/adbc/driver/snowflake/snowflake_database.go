@@ -189,8 +189,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 
 // SetOptionInternal sets the option for the database.
 //
-// cnOptions() is nil is SetOptionInternal() is being called when setting an
-// option post-initialization.
+// cnOptions is nil if the option is being set post-initialiation.
 func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[string]string) error {
 	var err error
 	var ok bool

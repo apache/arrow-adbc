@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TExpressionInfo : TBase
+  internal partial class TExpressionInfo : TBase
   {
     private string _className;
     private string _usage;

@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TTypeDesc : TBase
+  internal partial class TTypeDesc : TBase
   {
 
     public List<global::Apache.Hive.Service.Rpc.Thrift.TTypeEntry> Types { get; set; }

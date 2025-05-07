@@ -67,13 +67,20 @@ services:
     command: |
       /bin/bash -c 'git config --global --add safe.directory /adbc && source /opt/conda/etc/profile.d/conda.sh && mamba create -y -n adbc -c conda-forge go --file /adbc/ci/conda_env_cpp.txt --file /adbc/ci/conda_env_docs.txt --file /adbc/ci/conda_env_java.txt --file /adbc/ci/conda_env_python.txt && conda activate adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && /adbc/ci/scripts/go_build.sh /adbc /adbc/build && /adbc/ci/scripts/python_build.sh /adbc /adbc/build && /adbc/ci/scripts/r_build.sh /adbc && /adbc/ci/scripts/docs_build.sh /adbc'
 
-  ############################ Java JARs ######################################
+  ################################### Java ###################################
 
   java-dist:
     image: ${ARCH}/maven:${MAVEN}-jdk-${JDK}
     volumes:
       - .:/adbc:delegated
     command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
+
+  # Build the JNI and driver libraries
+  java-jni:
+    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c 'env CMAKE_BUILD_TYPE=Release /adbc/ci/scripts/java_jni_build.sh /adbc /adbc/dist /adbc/local'"
 
   ############################ Python conda ##################################
 
@@ -268,3 +275,12 @@ services:
       retries: 5
     ports:
       - "5432:5432"
+
+  ################################ Verification ################################
+
+  verify-all-ubuntu:
+    image: ubuntu:${UBUNTU}
+    volumes:
+      - .:/adbc:delegated
+    command: |
+      /adbc/ci/scripts/verify_ubuntu.sh /adbc

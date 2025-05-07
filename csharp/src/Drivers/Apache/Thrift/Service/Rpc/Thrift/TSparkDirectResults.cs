@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TSparkDirectResults : TBase
+  internal partial class TSparkDirectResults : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TGetOperationStatusResp _operationStatus;
     private global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp _resultSetMetadata;

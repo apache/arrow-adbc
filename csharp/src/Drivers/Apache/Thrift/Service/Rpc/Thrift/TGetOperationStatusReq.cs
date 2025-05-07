@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetOperationStatusReq : TBase
+  internal partial class TGetOperationStatusReq : TBase
   {
     private bool _getProgressUpdate;
     private bool _getResultSetMetadataOnCompletion;

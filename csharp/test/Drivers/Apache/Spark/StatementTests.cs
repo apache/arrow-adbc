@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
 using Xunit.Abstractions;
@@ -46,6 +47,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                 Add(new(null, longRunningQuery, typeof(TimeoutException)));
                 Add(new(0, longRunningQuery, null));
             }
+        }
+
+        protected override void PrepareCreateTableWithPrimaryKeys(out string sqlUpdate, out string tableNameParent, out string fullTableNameParent, out IReadOnlyList<string> primaryKeys)
+        {
+            CreateNewTableName(out tableNameParent, out fullTableNameParent);
+            sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameParent} (INDEX INT, NAME STRING, PRIMARY KEY (INDEX, NAME))";
+            primaryKeys = ["index", "name"];
         }
     }
 }

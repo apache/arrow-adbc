@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TDownloadDataReq : TBase
+  internal partial class TDownloadDataReq : TBase
   {
     private string _tableName;
     private string _query;

@@ -16,7 +16,6 @@
 */
 
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -25,21 +24,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
     public class StringValueTests(ITestOutputHelper output)
         : Common.StringValueTests<SparkTestConfiguration, SparkTestEnvironment>(output, new SparkTestEnvironment.Factory())
     {
-        [SkippableTheory]
-        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
-        internal async Task TestStringDataDatabricks(string? value, SparkServerType serverType)
-        {
-            Skip.If(TestEnvironment.ServerType != serverType);
-            await TestStringData(value);
-        }
-
-        [SkippableTheory]
-        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
-        internal async Task TestVarcharDataDatabricks(string? value, SparkServerType serverType)
-        {
-            Skip.If(TestEnvironment.ServerType != serverType);
-            await TestVarcharData(value);
-        }
 
         [SkippableTheory]
         [InlineData(null)]
@@ -50,18 +34,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             await base.TestCharData(value);
         }
-
-        [SkippableTheory]
-        [InlineData("String contains formatting characters tab\t, newline\n, carriage return\r.", SparkServerType.Databricks)]
-        internal async Task TestCharDataDatabricks(string? value, SparkServerType serverType)
-        {
-            Skip.If(TestEnvironment.ServerType != serverType);
-            await base.TestCharData(value);
-        }
-
         protected override async Task TestVarcharExceptionData(string value, string[] expectedTexts, string? expectedSqlState)
         {
-            Skip.If(TestEnvironment.ServerType == SparkServerType.Databricks);
             await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
         }
 
@@ -69,15 +43,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "Exceeds", "length limitation: 10" }, null)]
         public async Task TestVarcharExceptionDataSpark(string value, string[] expectedTexts, string? expectedSqlState)
         {
-            Skip.If(TestEnvironment.ServerType == SparkServerType.Databricks, $"Server type: {TestEnvironment.ServerType}");
-            await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
-        }
-
-        [SkippableTheory]
-        [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "DELTA_EXCEED_CHAR_VARCHAR_LIMIT", "DeltaInvariantViolationException" }, "22001")]
-        public async Task TestVarcharExceptionDataDatabricks(string value, string[] expectedTexts, string? expectedSqlState)
-        {
-            Skip.IfNot(TestEnvironment.ServerType == SparkServerType.Databricks, $"Server type: {TestEnvironment.ServerType}");
             await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
         }
     }

@@ -159,6 +159,12 @@ few optional authentication schemes:
   header will then be sent back as the ``authorization`` header on all
   future requests.
 
+- OAuth 2.0 authentication flows.
+
+  The client provides :ref:`configurations <oauth-configurations>` to allow client application to obtain access
+  tokens from an authorization server. The obtained token is then used
+  on the ``authorization`` header on all future requests.
+
 Bulk Ingestion
 --------------
 
@@ -246,9 +252,66 @@ to :c:struct:`AdbcDatabase`, :c:struct:`AdbcConnection`, and
   Add the header ``<HEADER NAME>`` to outgoing requests with the given
   value.
 
-    Python: :attr:`adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX`
+  Python: :attr:`adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX`
 
   .. warning:: Header names must be in all lowercase.
+
+
+OAuth 2.0 Options
+-----------------------
+.. _oauth-configurations:
+
+Supported configurations to obtain tokens using OAuth 2.0 authentication flows.
+
+``adbc.flight.sql.oauth.flow``
+  Specifies the OAuth 2.0 flow type to use. Possible values: ``client_credentials``, ``token_exchange``
+
+``adbc.flight.sql.oauth.client_id``
+  Unique identifier issued to the client application by the authorization server
+
+``adbc.flight.sql.oauth.client_secret``
+  Secret associated to the client_id. Used to authenticate the client application to the authorization server
+
+``adbc.flight.sql.oauth.token_uri``
+  The endpoint URL where the client application requests tokens from the authorization server
+
+``adbc.flight.sql.oauth.scope``
+  Space-separated list of permissions that the client is requesting access to (e.g ``"read.all offline_access"``)
+
+``adbc.flight.sql.oauth.exchange.subject_token``
+  The security token that the client application wants to exchange
+
+``adbc.flight.sql.oauth.exchange.subject_token_type``
+  Identifier for the type of the subject token.
+  Check list below for supported token types.
+
+``adbc.flight.sql.oauth.exchange.actor_token``
+  A security token that represents the identity of the acting party
+
+``adbc.flight.sql.oauth.exchange.actor_token_type``
+  Identifier for the type of the actor token.
+  Check list below for supported token types.
+``adbc.flight.sql.oauth.exchange.aud``
+  The intended audience for the requested security token
+
+``adbc.flight.sql.oauth.exchange.resource``
+  The resource server where the client intends to use the requested security token
+
+``adbc.flight.sql.oauth.exchange.scope``
+  Specific permissions requested for the new token
+
+``adbc.flight.sql.oauth.exchange.requested_token_type``
+  The type of token the client wants to receive in exchange.
+  Check list below for supported token types.
+
+
+Supported token types:
+  - ``urn:ietf:params:oauth:token-type:access_token``
+  - ``urn:ietf:params:oauth:token-type:refresh_token``
+  - ``urn:ietf:params:oauth:token-type:id_token``
+  - ``urn:ietf:params:oauth:token-type:saml1``
+  - ``urn:ietf:params:oauth:token-type:saml2``
+  - ``urn:ietf:params:oauth:token-type:jwt``
 
 Distributed Result Sets
 -----------------------

@@ -99,8 +99,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 // Await the fetch response
                 TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
 
-                int columnCount = GetColumnCount(response);
-                int rowCount = GetRowCount(response, columnCount);
+                int columnCount = GetColumnCount(response.Results);
+                int rowCount = GetRowCount(response.Results, columnCount);
                 if ((_enableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                 {
                     // This is the last batch
@@ -124,27 +124,34 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)
         {
-            IList<IArrowArray> columnData = [];
-            bool shouldConvertScalar = _dataTypeConversion.HasFlag(DataTypeConversion.Scalar);
-            for (int i = 0; i < columnCount; i++)
-            {
-                IArrowType? expectedType = shouldConvertScalar ? Schema.FieldsList[i].DataType : null;
-                IArrowArray columnArray = GetArray(response.Results.Columns[i], expectedType);
-                columnData.Add(columnArray);
-            }
+            IReadOnlyList<IArrowArray> columnData = GetArrowArrayData(response.Results, columnCount, Schema, _dataTypeConversion);
 
             return new RecordBatch(Schema, columnData, rowCount);
         }
 
-        private static int GetColumnCount(TFetchResultsResp response) =>
-            response.Results.Columns.Count;
+        internal static IReadOnlyList<IArrowArray> GetArrowArrayData(TRowSet response, int columnCount, Schema schema, DataTypeConversion dataTypeConversion)
+        {
+            List<IArrowArray> columnData = [];
+            bool shouldConvertScalar = dataTypeConversion.HasFlag(DataTypeConversion.Scalar);
+            for (int i = 0; i < columnCount; i++)
+            {
+                IArrowType? expectedType = shouldConvertScalar ? schema.FieldsList[i].DataType : null;
+                IArrowArray columnArray = GetArray(response.Columns[i], expectedType);
+                columnData.Add(columnArray);
+            }
 
-        private static int GetRowCount(TFetchResultsResp response, int columnCount) =>
-            columnCount > 0 ? GetArray(response.Results.Columns[0]).Length : 0;
+            return columnData;
+        }
+
+        internal static int GetColumnCount(TRowSet response) =>
+            response.Columns.Count;
+
+        internal static int GetRowCount(TRowSet response, int columnCount) =>
+            columnCount > 0 ? GetArray(response.Columns[0]).Length : 0;
 
         private static async Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
         {
-            var request = new TFetchResultsReq(statement.OperationHandle, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
+            var request = new TFetchResultsReq(statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
             return await statement.Connection.Client.FetchResults(request, cancellationToken);
         }
 

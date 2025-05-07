@@ -14,12 +14,10 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-using System.Collections.Generic;
-
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
     internal static class BigQueryTableTypes
     {
-        public static readonly string[] TableTypes = new string[]{ "BASE TABLE", "VIEW", "CLONE", "SNAPSHOT" };
+        public static readonly string[] TableTypes = new string[] { "BASE TABLE", "VIEW", "CLONE", "SNAPSHOT" };
     }
 }

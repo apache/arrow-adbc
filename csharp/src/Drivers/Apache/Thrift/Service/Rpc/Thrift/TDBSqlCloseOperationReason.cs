@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TDBSqlCloseOperationReason
+  internal enum TDBSqlCloseOperationReason
   {
     NONE = 0,
     COMMAND_INACTIVITY_TIMEOUT = 1,

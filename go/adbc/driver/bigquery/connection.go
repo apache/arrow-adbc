@@ -516,10 +516,8 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		switch c.authType {
 		case OptionValueAuthTypeJSONCredentialFile:
 			credentials = option.WithCredentialsFile(c.credentials)
-
 		case OptionValueAuthTypeJSONCredentialString:
 			credentials = option.WithCredentialsJSON([]byte(c.credentials))
-
 		case OptionValueAuthTypeUserAuthentication:
 			if c.clientID == "" {
 				return adbc.Error{

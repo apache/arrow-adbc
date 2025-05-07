@@ -21,7 +21,6 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +29,7 @@ using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
+using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
@@ -121,7 +121,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(HiveServer2Parameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName, TlsOptions.IsTlsEnabled)
             };
         }
 
@@ -129,8 +129,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             Properties.TryGetValue(HiveServer2Parameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
-            Properties.TryGetValue(HiveServer2Parameters.TLSOptions, out string? tlsOptions);
-            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
             Properties.TryGetValue(HiveServer2Parameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
             if (connectTimeoutMs != null)
             {
@@ -138,6 +136,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(HiveServer2Parameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
+            TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
         public override AdbcStatement CreateStatement()
@@ -145,7 +144,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return new HiveServer2Statement(this);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(
             statement,
             schema,
             dataTypeConversion: statement.Connection.DataTypeConversion,
@@ -166,10 +165,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName, TlsOptions.IsTlsEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
-            HttpClientHandler httpClientHandler = NewHttpClientHandler();
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
             httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
@@ -180,7 +179,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
 
             TConfiguration config = new();
-            ThriftHttpTransport transport = new(httpClient, config)
+            THttpTransport transport = new(httpClient, config)
             {
                 // This value can only be set before the first call/request. So if a new value for query timeout
                 // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
@@ -188,23 +187,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ConnectTimeout = int.MaxValue,
             };
             return transport;
-        }
-
-        private HttpClientHandler NewHttpClientHandler()
-        {
-            HttpClientHandler httpClientHandler = new();
-            if (TlsOptions != HiveServer2TlsOption.Empty)
-            {
-                httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
-                {
-                    if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowSelfSigned)) return false;
-                    if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowHostnameMismatch)) return false;
-
-                    return true;
-                };
-            }
-
-            return httpClientHandler;
         }
 
         private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(HiveServer2AuthType authType, string? username, string? password)
@@ -243,7 +225,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return req;
         }
 
-        protected override void SetPrecisionScaleAndTypeName(
+        internal override void SetPrecisionScaleAndTypeName(
             short colType,
             string typeName,
             TableInfo? tableInfo,
@@ -319,6 +301,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
@@ -328,6 +312,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
 
         protected internal override int PositionRequiredOffset => 0;

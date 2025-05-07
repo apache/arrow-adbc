@@ -19,15 +19,12 @@ sqlite3_dep = dependency('sqlite3')
 
 time_t_size = meson.get_compiler('c').sizeof(
     'time_t',
-    prefix : '#include <sys/types.h>',
+    prefix: '#include <sys/types.h>',
 )
 
 adbc_sqlite3_driver_lib = library(
     'adbc_driver_sqlite',
-    sources: [
-        'sqlite.cc',
-        'statement_reader.c',
-    ],
+    sources: ['sqlite.cc', 'statement_reader.c'],
     include_directories: [include_dir, c_dir],
     link_with: [adbc_common_lib, adbc_framework_lib],
     dependencies: [nanoarrow_dep, fmt_dep, sqlite3_dep],
@@ -42,16 +39,16 @@ pkg.generate(
     filebase: 'adbc-driver-sqlite',
 )
 
-if get_option('tests')
-    exc = executable(
-        'adbc-driver-sqlite-test',
-        sources: ['sqlite_test.cc'],
-        include_directories: [include_dir, c_dir, driver_dir],
-        link_with: [
-            adbc_common_lib,
-            adbc_sqlite3_driver_lib,
-        ],
-        dependencies: [sqlite3_dep, adbc_validation_dep],
-        )
-    test('adbc-driver-sqlite', exc)
-endif
+adbc_driver_sqlite_dep = declare_dependency(
+    include_directories: include_dir,
+    link_with: adbc_sqlite3_driver_lib,
+)
+
+exc = executable(
+    'adbc-driver-sqlite-test',
+    sources: ['sqlite_test.cc'],
+    include_directories: [include_dir, c_dir, driver_dir],
+    link_with: [adbc_common_lib, adbc_sqlite3_driver_lib],
+    dependencies: [sqlite3_dep, adbc_validation_dep],
+)
+test('adbc-driver-sqlite', exc)

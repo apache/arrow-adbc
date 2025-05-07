@@ -168,7 +168,7 @@ the form ``-D_option_:_value_``. For example, to build the a debug version of
 the SQLite3 driver along with tests, you would run:
 
 ```shell
-$ meson configure -Dbuildtype=debug -Dsqlite=true -Dtests=true build
+$ meson configure -Dbuildtype=debug -Dsqlite=enabled -Dtests=enabled build
 ```
 
 With the options set, you can then compile the project. For most dependencies,
@@ -315,6 +315,43 @@ mvn install -Perrorprone
 
 [checker-framework]: https://checkerframework.org/
 [errorprone]: https://errorprone.info/
+
+#### JNI
+
+To build the JNI bridge, the native components must be built.
+
+```
+# Build the driver manager
+export ADBC_BUILD_STATIC=ON
+export ADBC_BUILD_TESTS=OFF
+export ADBC_USE_ASAN=OFF
+export ADBC_USE_UBSAN=OFF
+export BUILD_ALL=OFF
+export BUILD_DRIVER_MANAGER=ON
+export BUILD_DRIVER_SQLITE=ON
+./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build $(pwd)/local
+
+# Build the JNI libraries
+./ci/scripts/java_jni_build.sh $(pwd) $(pwd)/java/build $(pwd)/local
+```
+
+Now build the Java code with the `jni` Maven profile enabled.  To run tests,
+the SQLite driver must also be present in (DY)LD_LIBRARY_PATH.
+
+```
+export LD_LIBRARY_PATH=$(pwd)/local/lib
+pushd java
+mvn install -Pjni
+popd
+```
+
+This will build a JAR with native libraries for a single platform.  If the
+native libraries are built for multiple platforms, they can all be copied to
+appropriate paths in the resources directory to build a single JAR that works
+across multiple platforms.
+
+You can also build and test in IntelliJ; simply edit the run/test
+configuration to add `LD_LIBRARY_PATH` to the environment.
 
 ### Python
 

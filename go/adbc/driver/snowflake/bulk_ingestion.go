@@ -158,9 +158,10 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	schema := st.bound.Schema()
 	r, w := io.Pipe()
 	bw := bufio.NewWriter(w)
-	g.Go(func() error {
-		defer w.Close()
-		defer bw.Flush()
+	g.Go(func() (err error) {
+		defer func() {
+			err = errors.Join(err, bw.Flush(), w.Close())
+		}()
 
 		err = writeParquet(schema, bw, recordCh, 0, parquetProps, arrowProps)
 		if err != io.EOF {
@@ -346,12 +347,21 @@ func writeParquet(
 	targetSize int,
 	parquetProps *parquet.WriterProperties,
 	arrowProps pqarrow.ArrowWriterProperties,
-) error {
+) (err error) {
 	pqWriter, err := pqarrow.NewFileWriter(schema, w, parquetProps, arrowProps)
 	if err != nil {
 		return err
 	}
-	defer pqWriter.Close()
+	defer func() {
+		writerErr := pqWriter.Close()
+		if writerErr != nil {
+			if err == io.EOF {
+				err = writerErr
+			} else {
+				err = errors.Join(err, writerErr)
+			}
+		}
+	}()
 
 	var bytesWritten int64
 	for rec := range in {
@@ -497,12 +507,14 @@ func uploadAllStreams(
 	return g.Wait()
 }
 
-func executeCopyQuery(ctx context.Context, cn snowflakeConn, tableName string, filesToCopy *fileSet) error {
+func executeCopyQuery(ctx context.Context, cn snowflakeConn, tableName string, filesToCopy *fileSet) (err error) {
 	rows, err := cn.QueryContext(ctx, copyQuery, []driver.NamedValue{{Value: tableName}})
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
 
 	fileColIdx := slices.Index(rows.Columns(), "file")
 	if fileColIdx < 0 {
@@ -638,12 +650,14 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 	return readyFn, stopFn, cancelFn
 }
 
-func countRowsInTable(ctx context.Context, db snowflakeConn, tableName string) (int64, error) {
+func countRowsInTable(ctx context.Context, db snowflakeConn, tableName string) (rowCount int64, err error) {
 	rows, err := db.QueryContext(ctx, countQuery, []driver.NamedValue{{Value: tableName}})
 	if err != nil {
 		return 0, errToAdbcErr(adbc.StatusIO, err)
 	}
-	defer rows.Close()
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
 
 	dest := make([]driver.Value, 1)
 	if err := rows.Next(dest); err != nil {
@@ -673,12 +687,12 @@ type bufferPool struct {
 }
 
 func (bp *bufferPool) GetBuffer() *bytes.Buffer {
-	return bp.Pool.Get().(*bytes.Buffer)
+	return bp.Get().(*bytes.Buffer)
 }
 
 func (bp *bufferPool) PutBuffer(buf *bytes.Buffer) {
 	buf.Reset()
-	bp.Pool.Put(buf)
+	bp.Put(buf)
 }
 
 type fileSet sync.Map

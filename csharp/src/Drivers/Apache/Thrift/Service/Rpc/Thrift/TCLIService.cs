@@ -39,9 +39,9 @@ using Thrift.Processor;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public partial class TCLIService
+  internal partial class TCLIService
   {
-    public interface IAsync
+    internal interface IAsync
     {
       global::System.Threading.Tasks.Task<global::Apache.Hive.Service.Rpc.Thrift.TOpenSessionResp> OpenSession(global::Apache.Hive.Service.Rpc.Thrift.TOpenSessionReq @req, CancellationToken cancellationToken = default);
 
@@ -96,7 +96,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     }
 
 
-    public class Client : TBaseClient, IDisposable, IAsync
+    internal class Client : TBaseClient, IDisposable, IAsync
     {
       public Client(TProtocol protocol) : this(protocol, protocol)
       {
@@ -1108,7 +1108,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
     }
 
-    public class AsyncProcessor : ITAsyncProcessor
+    internal class AsyncProcessor : ITAsyncProcessor
     {
       private readonly IAsync _iAsync;
       private readonly ILogger<AsyncProcessor> _logger;
@@ -1960,10 +1960,10 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
     }
 
-    public class InternalStructs
+    internal class InternalStructs
     {
 
-      public partial class OpenSession_args : TBase
+      internal partial class OpenSession_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TOpenSessionReq _req;
 
@@ -2095,7 +2095,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class OpenSession_result : TBase
+      internal partial class OpenSession_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TOpenSessionResp _success;
 
@@ -2231,7 +2231,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class CloseSession_args : TBase
+      internal partial class CloseSession_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TCloseSessionReq _req;
 
@@ -2363,7 +2363,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class CloseSession_result : TBase
+      internal partial class CloseSession_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TCloseSessionResp _success;
 
@@ -2499,7 +2499,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetInfo_args : TBase
+      internal partial class GetInfo_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetInfoReq _req;
 
@@ -2631,7 +2631,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetInfo_result : TBase
+      internal partial class GetInfo_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetInfoResp _success;
 
@@ -2767,7 +2767,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class ExecuteStatement_args : TBase
+      internal partial class ExecuteStatement_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TExecuteStatementReq _req;
 
@@ -2899,7 +2899,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class ExecuteStatement_result : TBase
+      internal partial class ExecuteStatement_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TExecuteStatementResp _success;
 
@@ -3035,7 +3035,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetTypeInfo_args : TBase
+      internal partial class GetTypeInfo_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetTypeInfoReq _req;
 
@@ -3167,7 +3167,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetTypeInfo_result : TBase
+      internal partial class GetTypeInfo_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetTypeInfoResp _success;
 
@@ -3303,7 +3303,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetCatalogs_args : TBase
+      internal partial class GetCatalogs_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetCatalogsReq _req;
 
@@ -3435,7 +3435,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetCatalogs_result : TBase
+      internal partial class GetCatalogs_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetCatalogsResp _success;
 
@@ -3571,7 +3571,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetSchemas_args : TBase
+      internal partial class GetSchemas_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetSchemasReq _req;
 
@@ -3703,7 +3703,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetSchemas_result : TBase
+      internal partial class GetSchemas_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetSchemasResp _success;
 
@@ -3839,7 +3839,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetTables_args : TBase
+      internal partial class GetTables_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetTablesReq _req;
 
@@ -3971,7 +3971,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetTables_result : TBase
+      internal partial class GetTables_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetTablesResp _success;
 
@@ -4107,7 +4107,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetTableTypes_args : TBase
+      internal partial class GetTableTypes_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetTableTypesReq _req;
 
@@ -4239,7 +4239,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetTableTypes_result : TBase
+      internal partial class GetTableTypes_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetTableTypesResp _success;
 
@@ -4375,7 +4375,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetColumns_args : TBase
+      internal partial class GetColumns_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetColumnsReq _req;
 
@@ -4507,7 +4507,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetColumns_result : TBase
+      internal partial class GetColumns_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetColumnsResp _success;
 
@@ -4643,7 +4643,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetFunctions_args : TBase
+      internal partial class GetFunctions_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetFunctionsReq _req;
 
@@ -4775,7 +4775,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetFunctions_result : TBase
+      internal partial class GetFunctions_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetFunctionsResp _success;
 
@@ -4911,7 +4911,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetPrimaryKeys_args : TBase
+      internal partial class GetPrimaryKeys_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetPrimaryKeysReq _req;
 
@@ -5043,7 +5043,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetPrimaryKeys_result : TBase
+      internal partial class GetPrimaryKeys_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetPrimaryKeysResp _success;
 
@@ -5179,7 +5179,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetCrossReference_args : TBase
+      internal partial class GetCrossReference_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetCrossReferenceReq _req;
 
@@ -5311,7 +5311,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetCrossReference_result : TBase
+      internal partial class GetCrossReference_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetCrossReferenceResp _success;
 
@@ -5447,7 +5447,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetOperationStatus_args : TBase
+      internal partial class GetOperationStatus_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetOperationStatusReq _req;
 
@@ -5579,7 +5579,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetOperationStatus_result : TBase
+      internal partial class GetOperationStatus_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetOperationStatusResp _success;
 
@@ -5715,7 +5715,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class CancelOperation_args : TBase
+      internal partial class CancelOperation_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TCancelOperationReq _req;
 
@@ -5847,7 +5847,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class CancelOperation_result : TBase
+      internal partial class CancelOperation_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TCancelOperationResp _success;
 
@@ -5983,7 +5983,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class CloseOperation_args : TBase
+      internal partial class CloseOperation_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TCloseOperationReq _req;
 
@@ -6115,7 +6115,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class CloseOperation_result : TBase
+      internal partial class CloseOperation_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TCloseOperationResp _success;
 
@@ -6251,7 +6251,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetResultSetMetadata_args : TBase
+      internal partial class GetResultSetMetadata_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataReq _req;
 
@@ -6383,7 +6383,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetResultSetMetadata_result : TBase
+      internal partial class GetResultSetMetadata_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp _success;
 
@@ -6519,7 +6519,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class FetchResults_args : TBase
+      internal partial class FetchResults_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TFetchResultsReq _req;
 
@@ -6651,7 +6651,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class FetchResults_result : TBase
+      internal partial class FetchResults_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TFetchResultsResp _success;
 
@@ -6787,7 +6787,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetDelegationToken_args : TBase
+      internal partial class GetDelegationToken_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetDelegationTokenReq _req;
 
@@ -6919,7 +6919,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetDelegationToken_result : TBase
+      internal partial class GetDelegationToken_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetDelegationTokenResp _success;
 
@@ -7055,7 +7055,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class CancelDelegationToken_args : TBase
+      internal partial class CancelDelegationToken_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TCancelDelegationTokenReq _req;
 
@@ -7187,7 +7187,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class CancelDelegationToken_result : TBase
+      internal partial class CancelDelegationToken_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TCancelDelegationTokenResp _success;
 
@@ -7323,7 +7323,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class RenewDelegationToken_args : TBase
+      internal partial class RenewDelegationToken_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TRenewDelegationTokenReq _req;
 
@@ -7455,7 +7455,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class RenewDelegationToken_result : TBase
+      internal partial class RenewDelegationToken_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TRenewDelegationTokenResp _success;
 
@@ -7591,7 +7591,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetQueryId_args : TBase
+      internal partial class GetQueryId_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdReq _req;
 
@@ -7723,7 +7723,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class GetQueryId_result : TBase
+      internal partial class GetQueryId_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TGetQueryIdResp _success;
 
@@ -7859,7 +7859,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class SetClientInfo_args : TBase
+      internal partial class SetClientInfo_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoReq _req;
 
@@ -7991,7 +7991,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class SetClientInfo_result : TBase
+      internal partial class SetClientInfo_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TSetClientInfoResp _success;
 
@@ -8127,7 +8127,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class UploadData_args : TBase
+      internal partial class UploadData_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TUploadDataReq _req;
 
@@ -8259,7 +8259,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class UploadData_result : TBase
+      internal partial class UploadData_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TUploadDataResp _success;
 
@@ -8395,7 +8395,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class DownloadData_args : TBase
+      internal partial class DownloadData_args : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataReq _req;
 
@@ -8527,7 +8527,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
 
 
-      public partial class DownloadData_result : TBase
+      internal partial class DownloadData_result : TBase
       {
         private global::Apache.Hive.Service.Rpc.Thrift.TDownloadDataResp _success;
 

@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TI64Value : TBase
+  internal partial class TI64Value : TBase
   {
     private long _value;
 

@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TCloseOperationReq : TBase
+  internal partial class TCloseOperationReq : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloseOperationReason _closeReason;
 

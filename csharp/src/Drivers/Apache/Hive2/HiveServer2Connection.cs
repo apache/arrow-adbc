@@ -83,7 +83,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             public string TableName { get; internal set; }
             public string ColumnName { get; internal set; }
             public string DataType { get; internal set; }
-            public string TypeName {  get; internal set; }
+            public string TypeName { get; internal set; }
             public string Nullable { get; internal set; }
             public string ColumnDef { get; internal set; }
             public string OrdinalPosition { get; internal set; }
@@ -342,7 +342,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal DataTypeConversion DataTypeConversion { get; set; } = DataTypeConversion.None;
 
-        protected internal HiveServer2TlsOption TlsOptions { get; set; } = HiveServer2TlsOption.Empty;
+        protected internal TlsProperties TlsOptions { get; set; } = new TlsProperties();
 
         protected internal int ConnectTimeoutMilliseconds { get; set; } = ConnectTimeoutMillisecondsDefault;
 
@@ -354,7 +354,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal abstract SchemaParser SchemaParser { get; }
 
-        internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema) where T : HiveServer2Statement;
+        internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) where T : HiveServer2Statement;
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
@@ -377,7 +377,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
                 {
                     TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
-                    if (AreResultsAvailableDirectly())
+                    if (AreResultsAvailableDirectly)
                     {
                         SetDirectResults(getCatalogsReq);
                     }
@@ -416,7 +416,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     TGetSchemasReq getSchemasReq = new TGetSchemasReq(SessionHandle);
                     getSchemasReq.CatalogName = catalogPattern;
                     getSchemasReq.SchemaName = dbSchemaPattern;
-                    if (AreResultsAvailableDirectly())
+                    if (AreResultsAvailableDirectly)
                     {
                         SetDirectResults(getSchemasReq);
                     }
@@ -449,7 +449,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     getTablesReq.CatalogName = catalogPattern;
                     getTablesReq.SchemaName = dbSchemaPattern;
                     getTablesReq.TableName = tableNamePattern;
-                    if (AreResultsAvailableDirectly())
+                    if (AreResultsAvailableDirectly)
                     {
                         SetDirectResults(getTablesReq);
                     }
@@ -486,7 +486,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     columnsReq.CatalogName = catalogPattern;
                     columnsReq.SchemaName = dbSchemaPattern;
                     columnsReq.TableName = tableNamePattern;
-                    if (AreResultsAvailableDirectly())
+                    if (AreResultsAvailableDirectly)
                     {
                         SetDirectResults(columnsReq);
                     }
@@ -594,7 +594,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
             };
 
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(req);
             }
@@ -731,7 +731,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return fileVersionInfo.ProductVersion ?? GetProductVersionDefault();
         }
 
-        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName)
+        protected static Uri GetBaseAddress(string? uri, string? hostName, string? path, string? port, string hostOptionName, bool isTlsEnabled)
         {
             // Uri property takes precedent.
             if (!string.IsNullOrWhiteSpace(uri))
@@ -755,8 +755,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             bool isPortSet = !string.IsNullOrEmpty(port);
             bool isValidPortNumber = int.TryParse(port, out int portNumber) && portNumber > 0;
-            bool isDefaultHttpsPort = !isPortSet || (isValidPortNumber && portNumber == 443);
-            string uriScheme = isDefaultHttpsPort ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+            string uriScheme = isTlsEnabled ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
             int uriPort;
             if (!isPortSet)
                 uriPort = -1;
@@ -769,7 +768,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return baseAddress;
         }
 
-        protected IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
+        internal IReadOnlyDictionary<string, int> GetColumnIndexMap(List<TColumnDesc> columns) => columns
            .Select(t => new { Index = t.Position - ColumnMapIndexOffset, t.ColumnName })
            .ToDictionary(t => t.ColumnName, t => t.Index);
 
@@ -780,12 +779,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected abstract Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TRowSet> GetRowSetAsync(TGetCatalogsResp getCatalogsResp, CancellationToken cancellationToken = default);
         protected abstract Task<TRowSet> GetRowSetAsync(TGetSchemasResp getSchemasResp, CancellationToken cancellationToken = default);
+        protected internal abstract Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default);
         protected abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default);
+        protected internal abstract Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default);
 
-        protected virtual bool AreResultsAvailableDirectly() => false;
+        protected internal virtual bool AreResultsAvailableDirectly => false;
 
         protected virtual void SetDirectResults(TGetColumnsReq request) => throw new System.NotImplementedException();
 
@@ -797,6 +798,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected virtual void SetDirectResults(TGetTableTypesReq request) => throw new System.NotImplementedException();
 
+        protected virtual void SetDirectResults(TGetPrimaryKeysReq request) => throw new System.NotImplementedException();
+
+        protected virtual void SetDirectResults(TGetCrossReferenceReq request) => throw new System.NotImplementedException();
+
         protected internal abstract int PositionRequiredOffset { get; }
 
         protected abstract string InfoDriverName { get; }
@@ -805,7 +810,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected abstract string ProductVersion { get; }
 
-        protected abstract bool GetObjectsPatternsRequireLowerCase {  get; }
+        protected abstract bool GetObjectsPatternsRequireLowerCase { get; }
 
         protected abstract bool IsColumnSizeValidForDecimal { get; }
 
@@ -910,6 +915,249 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 nullBitmapBuffer.Build());
         }
 
+        internal async Task<TGetCatalogsResp> GetCatalogsAsync(CancellationToken cancellationToken)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetCatalogsReq req = new TGetCatalogsReq(SessionHandle);
+            if (AreResultsAvailableDirectly)
+            {
+                SetDirectResults(req);
+            }
+
+            TGetCatalogsResp resp = await Client.GetCatalogs(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
+        }
+
+        internal async Task<TGetSchemasResp> GetSchemasAsync(
+            string? catalogName,
+            string? schemaName,
+            CancellationToken cancellationToken)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetSchemasReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly)
+            {
+                SetDirectResults(req);
+            }
+            if (catalogName != null)
+            {
+                req.CatalogName = catalogName;
+            }
+            if (schemaName != null)
+            {
+                req.SchemaName = schemaName;
+            }
+
+            TGetSchemasResp resp = await Client.GetSchemas(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
+        }
+
+        internal async Task<TGetTablesResp> GetTablesAsync(
+            string? catalogName,
+            string? schemaName,
+            string? tableName,
+            List<string>? tableTypes,
+            CancellationToken cancellationToken)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetTablesReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly)
+            {
+                SetDirectResults(req);
+            }
+            if (catalogName != null)
+            {
+                req.CatalogName = catalogName;
+            }
+            if (schemaName != null)
+            {
+                req.SchemaName = schemaName;
+            }
+            if (tableName != null)
+            {
+                req.TableName = tableName;
+            }
+            if (tableTypes != null && tableTypes.Count > 0)
+            {
+                req.TableTypes = tableTypes;
+            }
+
+            TGetTablesResp resp = await Client.GetTables(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
+        }
+
+        internal async Task<TGetColumnsResp> GetColumnsAsync(
+            string? catalogName,
+            string? schemaName,
+            string? tableName,
+            string? columnName,
+            CancellationToken cancellationToken)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetColumnsReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly)
+            {
+                SetDirectResults(req);
+            }
+            if (catalogName != null)
+            {
+                req.CatalogName = catalogName;
+            }
+            if (schemaName != null)
+            {
+                req.SchemaName = schemaName;
+            }
+            if (tableName != null)
+            {
+                req.TableName = tableName;
+            }
+            if (columnName != null)
+            {
+                req.ColumnName = columnName;
+            }
+
+            TGetColumnsResp resp = await Client.GetColumns(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
+        }
+
+        internal async Task<TGetPrimaryKeysResp> GetPrimaryKeysAsync(
+            string? catalogName,
+            string? schemaName,
+            string? tableName,
+            CancellationToken cancellationToken = default)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetPrimaryKeysReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly)
+            {
+                SetDirectResults(req);
+            }
+            if (catalogName != null)
+            {
+                req.CatalogName = catalogName!;
+            }
+            if (schemaName != null)
+            {
+                req.SchemaName = schemaName!;
+            }
+            if (tableName != null)
+            {
+                req.TableName = tableName!;
+            }
+
+            TGetPrimaryKeysResp resp = await Client.GetPrimaryKeys(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+
+            return resp;
+        }
+
+        internal async Task<TGetCrossReferenceResp> GetCrossReferenceAsync(
+            string? catalogName,
+            string? schemaName,
+            string? tableName,
+            string? foreignCatalogName,
+            string? foreignSchemaName,
+            string? foreignTableName,
+            CancellationToken cancellationToken = default)
+        {
+            if (SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TGetCrossReferenceReq req = new(SessionHandle);
+            if (AreResultsAvailableDirectly)
+            {
+                SetDirectResults(req);
+            }
+            if (catalogName != null)
+            {
+                req.ParentCatalogName = catalogName!;
+            }
+            if (schemaName != null)
+            {
+                req.ParentSchemaName = schemaName!;
+            }
+            if (tableName != null)
+            {
+                req.ParentTableName = tableName!;
+            }
+            if (foreignCatalogName != null)
+            {
+                req.ForeignCatalogName = foreignCatalogName!;
+            }
+            if (foreignSchemaName != null)
+            {
+                req.ForeignSchemaName = foreignSchemaName!;
+            }
+            if (foreignTableName != null)
+            {
+                req.ForeignTableName = foreignTableName!;
+            }
+
+            TGetCrossReferenceResp resp = await Client.GetCrossReference(req, cancellationToken);
+            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(resp.Status.ErrorMessage)
+                    .SetNativeError(resp.Status.ErrorCode)
+                    .SetSqlState(resp.Status.SqlState);
+            }
+            return resp;
+        }
+
         private static StructArray GetColumnSchema(TableInfo tableInfo)
         {
             StringArray.Builder columnNameBuilder = new StringArray.Builder();
@@ -994,12 +1242,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 nullBitmapBuffer.Build());
         }
 
-        protected abstract void SetPrecisionScaleAndTypeName(
-            short colType,
-            string typeName,
-            TableInfo? tableInfo,
-            int columnSize,
-            int decimalDigits);
+        internal abstract void SetPrecisionScaleAndTypeName(short columnType, string typeName, TableInfo? tableInfo, int columnSize, int decimalDigits);
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
@@ -1012,7 +1255,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             getColumnsReq.CatalogName = catalog;
             getColumnsReq.SchemaName = dbSchema;
             getColumnsReq.TableName = tableName;
-            if (AreResultsAvailableDirectly())
+            if (AreResultsAvailableDirectly)
             {
                 SetDirectResults(getColumnsReq);
             }
@@ -1116,7 +1359,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
+        internal async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
             await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
 
