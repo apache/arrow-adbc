@@ -56,7 +56,7 @@ mod tests {
         LazyLock::new(|| database::Builder::from_env()?.build(&mut DRIVER.deref().clone()?));
 
     static CONNECTION: LazyLock<Result<Connection>> =
-        LazyLock::new(|| connection::Builder::from_env()?.build(&mut DATABASE.deref().clone()?));
+        LazyLock::new(|| connection::Builder::from_env()?.build(&DATABASE.deref().clone()?));
 
     fn with_database(func: impl FnOnce(Database) -> Result<()>) -> Result<()> {
         DATABASE.deref().clone().and_then(func)
