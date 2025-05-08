@@ -336,8 +336,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             // Get the runtime version using GetInfo
             var infoCodes = new List<AdbcInfoCode> { AdbcInfoCode.VendorVersion };
             var infoValues = Connection.GetInfo(infoCodes);
-            //string runtimeVersion = infoValues[AdbcInfoCode.VendorVersion].GetString();
-            //OutputHelper?.WriteLine($"Databricks Runtime Version: {runtimeVersion}");
 
             // Set up statement for GetColumnsExtended
             var statement = Connection.CreateStatement();

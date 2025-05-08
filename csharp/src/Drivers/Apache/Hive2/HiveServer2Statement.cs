@@ -600,29 +600,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             List<RecordBatch> batches = new List<RecordBatch>();
             int totalRows = 0;
             Schema schema = stream.Schema;
-            
+
             // Read all batches
             while (true)
             {
                 var batch = await stream.ReadNextRecordBatchAsync(cancellationToken);
                 if (batch == null) break;
-                
+
                 if (batch.Length > 0)
                 {
-                    // Keep the batch and don't dispose it
                     batches.Add(batch);
                     totalRows += batch.Length;
                 }
                 else
                 {
-                    // Only dispose empty batches since they don't contain useful data
                     batch.Dispose();
                 }
             }
-            
+
             return (batches, schema, totalRows);
         }
-        
+
         private async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
         {
             // 1. Get all three results at once
@@ -655,16 +653,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
                 if (colNameIndex < 0) return columnsResult; // Can't match without column names
-                
+
                 var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
                 columnsBatches = batchResult.Batches;
                 columnsSchema = batchResult.Schema;
                 totalRows = batchResult.TotalRows;
-                
+
                 if (columnsBatches.Count == 0) return columnsResult;
-                
+
                 // Create column names array from all batches using ArrayDataConcatenator.Concatenate
-                List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch => 
+                List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch =>
                     batch.Column(colNameIndex).Data).ToList();
                 ArrayData? concatenatedColumnNames = ArrayDataConcatenator.Concatenate(columnNameArrayDataList);
                 columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
@@ -679,21 +677,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 if (columnsBatches.Count == 0)
                     continue;
-                
+
                 var field = columnsSchema.GetFieldByIndex(colIdx);
-                
+
                 // Collect arrays for this column from all batches
                 var columnArrays = new List<IArrowArray>();
                 foreach (var batch in columnsBatches)
                 {
                     columnArrays.Add(batch.Column(colIdx));
                 }
-                
+
                 List<ArrayData> arrayDataList = columnArrays.Select(arr => arr.Data).ToList();
                 ArrayData? concatenatedData = ArrayDataConcatenator.Concatenate(arrayDataList);
                 IArrowArray array = ArrowArrayFactory.BuildArray(concatenatedData);
-                combinedData.Add(array);        
-              
+                combinedData.Add(array);
+
             }
 
             // 5. Process PK and FK data using helper methods with selected fields
@@ -716,7 +714,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /**
          * Process relationship data (primary/foreign keys) from query results and add to the output.
          * This method handles data from PK/FK queries and correlates it with column data.
-         * 
+         *
          * How it works:
          * 1. Add relationship columns to the schema (PK/FK columns with prefixed names)
          * 2. Read relationship data from source records
@@ -733,7 +731,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
             }
-            
+
             // STEP 2: Create a dictionary to map column names to their relationship values
             // Structure: Dictionary<fieldName, Dictionary<columnName, relationshipValue>>
             // For primary keys - only columns that are PKs are stored:
@@ -741,7 +739,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // For foreign keys - only columns that are FKs are stored:
             // {"FKCOLUMN_NAME": {"DOLocationId": "LocationId"}}
             var relationData = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-            
+
             // STEP 3: Extract relationship data from the query result
             if (result.Stream != null)
             {
@@ -756,7 +754,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         {
                             var batch = await stream.ReadNextRecordBatchAsync(cancellationToken);
                             if (batch == null) break;
-                            
+
                             // STEP 3.2: Map field names to their column indices for quick lookup
                             Dictionary<string, int> fieldIndices = new Dictionary<string, int>();
                             foreach (var fieldName in includeFields)
@@ -764,17 +762,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                                 int index = stream.Schema.GetFieldIndex(fieldName);
                                 if (index >= 0) fieldIndices[fieldName] = index;
                             }
-                            
+
                             // STEP 3.3: Process each row in the batch
                             for (int i = 0; i < batch.Length; i++)
                             {
                                 // Get the key column value (e.g., column name this relationship applies to)
                                 StringArray keyCol = (StringArray)batch.Column(keyColIndex);
                                 if (keyCol.IsNull(i)) continue;
-                                
+
                                 string keyValue = keyCol.GetString(i);
                                 if (string.IsNullOrEmpty(keyValue)) continue;
-                                
+
                                 // STEP 3.4: For each included field, extract its value and store in our map
                                 foreach (var pair in fieldIndices)
                                 {
@@ -785,7 +783,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                                         relationData[pair.Key] = fieldData;
                                     }
                                     StringArray fieldArray = (StringArray)batch.Column(pair.Value);
-                                    // Store the relationship value: columnName -> value 
+                                    // Store the relationship value: columnName -> value
                                     relationData[pair.Key][keyValue] = fieldArray.GetString(i);
                                 }
                             }
@@ -793,7 +791,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     }
                 }
             }
-            
+
             // STEP 4: Build Arrow arrays for each relationship field
             // These arrays align with the main column results, so each row contains
             // the appropriate relationship value for its column
@@ -802,31 +800,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 // Create a string array builder
                 var builder = new StringArray.Builder();
                 var fieldData = relationData.ContainsKey(fieldName) ? relationData[fieldName] : null;
-                
+
                 // Process each column name in the main result
                 for (int i = 0; i < colNames.Length; i++)
                 {
                     string? colName = colNames.GetString(i);
                     string? value = null;
-                    
+
                     // Look up relationship value for this column
-                    if (!string.IsNullOrEmpty(colName) && 
-                        fieldData != null && 
+                    if (!string.IsNullOrEmpty(colName) &&
+                        fieldData != null &&
                         fieldData.TryGetValue(colName!, out var fieldValue))
                     {
                         value = fieldValue;
                     }
-                    
+
                     // Add to the array (empty string if no relationship exists)
                     builder.Append(value);
                 }
-                
+
                 // Add the completed array to our output data
                 combinedData.Add(builder.Build());
             }
         }
     }
 }
-
-
-
