@@ -196,15 +196,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
                 Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
                 Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
-                
+
                 HttpClient OauthHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
 
                 var tokenProvider = new OAuthClientCredentialsProvider(
+                    OauthHttpClient,
                     clientId!,
                     clientSecret!,
                     host!,
                     scope: scope ?? "sql",
-                    OauthHttpClient,
                     timeoutMinutes: 1
                 );
 

@@ -132,14 +132,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
                         parameters.Add(HttpTlsOptions.TrustedCertificatePath, tlsOptions.TrustedCertificatePath!);
                     }
                 }
-                
+
                 // Add proxy configuration if provided
                 if (testConfiguration.HttpOptions.Proxy != null)
                 {
                     ProxyTestConfiguration proxyOptions = testConfiguration.HttpOptions.Proxy;
-                    if (proxyOptions.UseProxy.HasValue)
+                    if (!string.IsNullOrEmpty(proxyOptions.UseProxy))
                     {
-                        parameters.Add(HttpProxyOptions.UseProxy, proxyOptions.UseProxy.Value ? "1" : "0");
+                        parameters.Add(HttpProxyOptions.UseProxy, proxyOptions.UseProxy!);
                     }
                     if (!string.IsNullOrEmpty(proxyOptions.ProxyHost))
                     {
@@ -149,9 +149,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
                     {
                         parameters.Add(HttpProxyOptions.ProxyPort, proxyOptions.ProxyPort.Value.ToString());
                     }
-                    if (proxyOptions.ProxyAuth.HasValue)
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyAuth))
                     {
-                        parameters.Add(HttpProxyOptions.ProxyAuth, proxyOptions.ProxyAuth.Value ? "1" : "0");
+                        parameters.Add(HttpProxyOptions.ProxyAuth, proxyOptions.ProxyAuth!);
                     }
                     if (!string.IsNullOrEmpty(proxyOptions.ProxyUid))
                     {

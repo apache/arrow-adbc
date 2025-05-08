@@ -40,9 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public HiveServer2HttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
-            ValidateProperties();
             _proxyConfigurator = HiveServer2ProxyConfigurator.FromProperties(properties);
-            _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
         }
 
         protected override void ValidateAuthentication()
