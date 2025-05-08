@@ -26,10 +26,8 @@ import (
 )
 
 const (
-	StatementMessageOptionUnknown     = "Unknown connection option"
-	StatementMessageOptionUnsupported = "Unsupported connection option"
-	StatementMessageCannotCommit      = "Cannot commit when autocommit is enabled"
-	StatementMessageCannotRollback    = "Cannot rollback when autocommit is enabled"
+	StatementMessageOptionUnknown     = "Unknown statement option"
+	StatementMessageOptionUnsupported = "Unsupported statement option"
 	StatementMessageIncorrectFormat   = "Incorrect or unsupported format"
 )
 
@@ -74,12 +72,7 @@ func NewStatement(impl StatementImpl) Statement {
 func (st *StatementImplBase) SetOption(key, value string) error {
 	switch strings.ToLower(strings.TrimSpace(key)) {
 	case adbc.OptionKeyTelemetryTraceParent:
-		tp := strings.TrimSpace(value)
-		if !isValidateTraceParent(tp) {
-			return st.ErrorHelper.Errorf(adbc.StatusInvalidArgument, "%s '%s' '%s'", StatementMessageIncorrectFormat, key, value)
-		}
-		st.SetTraceParent(tp)
-		return nil
+		return st.SetTraceParent(strings.TrimSpace(value))
 	}
 	return st.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", StatementMessageOptionUnknown, key)
 }
@@ -120,8 +113,18 @@ func (st *StatementImplBase) GetTraceParent() string {
 	return st.traceParent
 }
 
-func (st *StatementImplBase) SetTraceParent(traceParent string) {
+func (st *StatementImplBase) SetTraceParent(traceParent string) error {
+	if traceParent != "" && !isValidTraceParent(traceParent) {
+		return st.ErrorHelper.Errorf(
+			adbc.StatusInvalidArgument,
+			"%s '%s' '%s'",
+			StatementMessageIncorrectFormat,
+			adbc.OptionKeyTelemetryTraceParent,
+			traceParent,
+		)
+	}
 	st.traceParent = traceParent
+	return nil
 }
 
 func (st *StatementImplBase) StartSpan(

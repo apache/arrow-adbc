@@ -711,15 +711,17 @@ func (c *connectionImpl) Rollback(_ context.Context) error {
 // NewStatement initializes a new statement object tied to this connection
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	defaultIngestOptions := DefaultIngestOptions()
-	return &statement{
-		StatementImplBase:   driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper),
+	stmtBase := driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper)
+	stmt := &statement{
+		StatementImplBase:   stmtBase,
 		alloc:               c.db.Alloc,
 		cnxn:                c,
 		queueSize:           defaultStatementQueueSize,
 		prefetchConcurrency: defaultPrefetchConcurrency,
 		useHighPrecision:    c.useHighPrecision,
 		ingestOptions:       defaultIngestOptions,
-	}, nil
+	}
+	return driverbase.NewStatement(stmt), nil
 }
 
 // Close closes this connection and releases any associated resources.

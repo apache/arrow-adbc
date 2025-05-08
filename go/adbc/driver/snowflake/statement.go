@@ -66,6 +66,10 @@ type statement struct {
 	streamBind array.RecordReader
 }
 
+func (st *statement) Base() *driverbase.StatementImplBase {
+	return &st.StatementImplBase
+}
+
 // setQueryContext applies the query tag if present.
 func (st *statement) setQueryContext(ctx context.Context) context.Context {
 	if st.queryTag != "" {
@@ -100,14 +104,11 @@ func (st *statement) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStatementQueryTag:
 		return st.queryTag, nil
-	case adbc.OptionKeyTelemetryTraceParent:
-		return st.GetTraceParent(), nil
-	}
-	return "", adbc.Error{
-		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
-		Code: adbc.StatusNotFound,
+	default:
+		return st.Base().GetOption(key)
 	}
 }
+
 func (st *statement) GetOptionBytes(key string) ([]byte, error) {
 	return nil, adbc.Error{
 		Msg:  fmt.Sprintf("[Snowflake] Unknown statement option '%s'", key),
@@ -223,7 +224,7 @@ func (st *statement) SetOption(key string, val string) error {
 			}
 		}
 	default:
-		return st.cnxn.Base().SetOption(key, val)
+		return st.Base().SetOption(key, val)
 	}
 	return nil
 }

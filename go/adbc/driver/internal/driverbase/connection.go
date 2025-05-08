@@ -242,7 +242,7 @@ func (base *ConnectionImplBase) ReadPartition(ctx context.Context, serializedPar
 func (base *ConnectionImplBase) GetOption(key string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(key)) {
 	case adbc.OptionKeyTelemetryTraceParent:
-		return base.traceParent, nil
+		return base.GetTraceParent(), nil
 	}
 	return "", base.ErrorHelper.Errorf(adbc.StatusNotFound, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
@@ -264,12 +264,7 @@ func (base *ConnectionImplBase) SetOption(key string, val string) error {
 	case adbc.OptionKeyAutoCommit:
 		return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnsupported, key)
 	case adbc.OptionKeyTelemetryTraceParent:
-		tp := strings.TrimSpace(val)
-		if !isValidateTraceParent(tp) {
-			return base.ErrorHelper.Errorf(adbc.StatusInvalidArgument, "%s '%s' '%s'", ConnectionMessageIncorrectFormat, key, val)
-		}
-		base.SetTraceParent(tp)
-		return nil
+		return base.SetTraceParent(strings.TrimSpace(val))
 	}
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
@@ -364,8 +359,18 @@ func (cnxn *ConnectionImplBase) GetTraceParent() string {
 	return cnxn.traceParent
 }
 
-func (cnxn *ConnectionImplBase) SetTraceParent(traceParent string) {
+func (cnxn *ConnectionImplBase) SetTraceParent(traceParent string) error {
+	if traceParent != "" && !isValidTraceParent(traceParent) {
+		return cnxn.ErrorHelper.Errorf(
+			adbc.StatusInvalidArgument,
+			"%s '%s' '%s'",
+			ConnectionMessageIncorrectFormat,
+			adbc.OptionKeyTelemetryTraceParent,
+			traceParent,
+		)
+	}
 	cnxn.traceParent = traceParent
+	return nil
 }
 
 func (cnxn *ConnectionImplBase) StartSpan(
@@ -804,11 +809,11 @@ func propagateTraceParent(ctx context.Context, traceParentStr string) (trace.Spa
 	return spanContext, nil
 }
 
-func isValidateTraceParent(traceParent string) bool {
+func isValidTraceParent(traceParent string) bool {
 	// Supports version-format 00
 	// see: https://www.w3.org/TR/trace-context/#trace-context-http-headers-format
 	groupMatches := tpRegExp.FindStringSubmatch(traceParent)
-	if groupMatches == nil || len(groupMatches) != 4 {
+	if groupMatches == nil || len(groupMatches) != 5 {
 		return false
 	}
 	if groupMatches[2] == "00000000000000000000000000000000" || groupMatches[3] == "0000000000000000" {
