@@ -175,7 +175,8 @@ func (c *ConnectionTests) TestCloseConnTwice() {
 }
 
 func (c *ConnectionTests) TestConcurrent() {
-	cnxn, _ := c.DB.Open(context.Background())
+	cnxn, err := c.DB.Open(context.Background())
+	c.Require().NoError(err)
 	cnxn2, err := c.DB.Open(context.Background())
 	c.Require().NoError(err)
 
@@ -188,7 +189,8 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 	// even if not supported, drivers should act as if autocommit
 	// is enabled, and return INVALID_STATE if the client tries to
 	// commit or rollback
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	if getset, ok := cnxn.(adbc.GetSetOptions); ok {
@@ -199,7 +201,7 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 
 	expectedCode := adbc.StatusInvalidState
 	var adbcError adbc.Error
-	err := cnxn.Commit(ctx)
+	err = cnxn.Commit(ctx)
 	c.ErrorAs(err, &adbcError)
 	c.Equal(expectedCode, adbcError.Code)
 	err = cnxn.Rollback(ctx)
@@ -215,7 +217,8 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 
 func (c *ConnectionTests) TestAutocommitToggle() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	if !c.Quirks.SupportsTransactions() {
@@ -251,7 +254,8 @@ func (c *ConnectionTests) TestAutocommitToggle() {
 
 func (c *ConnectionTests) TestMetadataCurrentCatalog() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 	getset, ok := cnxn.(adbc.GetSetOptions)
 
@@ -271,7 +275,8 @@ func (c *ConnectionTests) TestMetadataCurrentCatalog() {
 
 func (c *ConnectionTests) TestMetadataCurrentDbSchema() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 	getset, ok := cnxn.(adbc.GetSetOptions)
 
@@ -291,7 +296,8 @@ func (c *ConnectionTests) TestMetadataCurrentDbSchema() {
 
 func (c *ConnectionTests) TestMetadataGetInfo() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	info := []adbc.InfoCode{
@@ -349,7 +355,8 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 
 func (c *ConnectionTests) TestMetadataGetStatistics() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	if c.Quirks.SupportsStatistics() {
@@ -383,7 +390,8 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 	defer rec.Release()
 
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.Require().NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	c.Require().NoError(c.Quirks.CreateSampleTable("sample_test", rec))
@@ -403,7 +411,8 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 
 func (c *ConnectionTests) TestMetadataGetTableTypes() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	rdr, err := cnxn.GetTableTypes(ctx)
@@ -416,7 +425,8 @@ func (c *ConnectionTests) TestMetadataGetTableTypes() {
 
 func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	ingestCatalogName := c.Quirks.Catalog()
