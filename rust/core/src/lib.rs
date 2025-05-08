@@ -121,11 +121,11 @@ pub trait Database: Optionable<Option = OptionDatabase> {
     type ConnectionType: Connection;
 
     /// Allocate and initialize a new connection without pre-init options.
-    fn new_connection(&mut self) -> Result<Self::ConnectionType>;
+    fn new_connection(&self) -> Result<Self::ConnectionType>;
 
     /// Allocate and initialize a new connection with pre-init options.
     fn new_connection_with_opts(
-        &mut self,
+        &self,
         opts: impl IntoIterator<Item = (options::OptionConnection, OptionValue)>,
     ) -> Result<Self::ConnectionType>;
 }

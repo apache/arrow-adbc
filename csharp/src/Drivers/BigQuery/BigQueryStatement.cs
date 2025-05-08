@@ -272,7 +272,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "TIMESTAMP":
                     return GetType(field, TimestampType.Default);
                 case "TIME":
-                    return GetType(field, Time64Type.Default);
+                    return GetType(field, Time64Type.Microsecond);
                 case "DATE":
                     return GetType(field, Date32Type.Default);
                 case "RECORD" or "STRUCT":
