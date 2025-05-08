@@ -75,7 +75,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new ArgumentNullException(nameof(proxyPort));
             }
 
-            if (proxyAuth)
+            if (useProxy && proxyAuth)
             {
                 if (proxyUid == null)
                     throw new ArgumentNullException(nameof(proxyUid));
@@ -90,7 +90,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             _proxyUid = proxyUid;
             _proxyPwd = proxyPwd;
 
-            if (!string.IsNullOrEmpty(proxyIgnoreList))
+            if (useProxy && !string.IsNullOrEmpty(proxyIgnoreList))
             {
                 _proxyBypassList = ParseProxyIgnoreList(proxyIgnoreList);
             }

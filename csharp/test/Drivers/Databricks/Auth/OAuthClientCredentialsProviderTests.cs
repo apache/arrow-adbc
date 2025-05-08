@@ -22,6 +22,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Xunit;
 using Xunit.Abstractions;
 using Apache.Arrow.Adbc.Tests.Drivers.Databricks;
+using System.Net.Http;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 {
@@ -38,6 +39,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
                 TestConfiguration.OAuthClientId,
                 TestConfiguration.OAuthClientSecret,
                 TestConfiguration.HostName,
+                new HttpClient(),
                 timeoutMinutes: 1);
         }
 
