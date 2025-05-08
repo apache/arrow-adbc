@@ -130,7 +130,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             try
             {
                 // Process direct results first, if available
-                if (_statement.HasDirectResults && _statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
+                if (_statement.HasDirectResults && _statement.Response!.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
                 {
                     // Yield execution so the download queue doesn't get blocked before downloader is started
                     await Task.Yield();
@@ -185,7 +185,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private async Task FetchNextResultBatchAsync(CancellationToken cancellationToken)
         {
             // Create fetch request
-            TFetchResultsReq request = new TFetchResultsReq(_statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
+            TFetchResultsReq request = new TFetchResultsReq(_statement.Response!.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
 
             // Set the start row offset if we have processed some links already
             if (_startOffset > 0)
@@ -239,7 +239,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
         private void ProcessDirectResultsAsync(CancellationToken cancellationToken)
         {
-            List<TSparkArrowResultLink> resultLinks = _statement.DirectResults!.ResultSet.Results.ResultLinks;
+            List<TSparkArrowResultLink> resultLinks = _statement.Response!.DirectResults!.ResultSet.Results.ResultLinks;
 
             foreach (var link in resultLinks)
             {
@@ -254,7 +254,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 _startOffset = lastLink.StartRowOffset + lastLink.RowCount;
             }
 
-            _hasMoreResults = _statement.DirectResults!.ResultSet.HasMoreRows;
+            _hasMoreResults = _statement.Response!.DirectResults!.ResultSet.HasMoreRows;
         }
     }
 }

@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  internal partial class TGetCrossReferenceReq : TBase, IRequest
+  internal partial class TGetCrossReferenceReq : TBase
   {
     private string _parentCatalogName;
     private string _parentSchemaName;

@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  internal partial class TExecuteStatementReq : TBase, IRequest
+  internal partial class TExecuteStatementReq : TBase
   {
     private Dictionary<string, string> _confOverlay;
     private bool _runAsync;

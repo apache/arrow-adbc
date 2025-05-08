@@ -19,17 +19,19 @@ using Thrift.Protocol;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-    internal interface IRequest
+    internal interface IResponse
     {
-        TSparkGetDirectResults? GetDirectResults { get; set; }
+        TStatus? Status { get; set; }
+        TOperationHandle? OperationHandle { get; set; }
+        TSparkDirectResults? DirectResults { get; set; }
     }
 
-    internal partial class TExecuteStatementReq : TBase, IRequest { }
-    internal partial class TGetCatalogsReq : TBase, IRequest { }
-    internal partial class TGetColumnsReq : TBase, IRequest { }
-    internal partial class TGetCrossReferenceReq : TBase, IRequest { }
-    internal partial class TGetPrimaryKeysReq : TBase, IRequest { }
-    internal partial class TGetSchemasReq : TBase, IRequest { }
-    internal partial class TGetTablesReq : TBase, IRequest { }
-    internal partial class TGetTableTypesReq : TBase, IRequest { }
+    internal partial class TExecuteStatementResp : TBase, IResponse { }
+    internal partial class TGetCatalogsResp : TBase, IResponse { }
+    internal partial class TGetColumnsResp : TBase, IResponse { }
+    internal partial class TGetCrossReferenceResp : TBase, IResponse { }
+    internal partial class TGetPrimaryKeysResp : TBase, IResponse { }
+    internal partial class TGetSchemasResp : TBase, IResponse { }
+    internal partial class TGetTablesResp : TBase, IResponse { }
+    internal partial class TGetTableTypesResp : TBase, IResponse { }
 }

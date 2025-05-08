@@ -374,10 +374,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         }
 
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
+            Task.FromResult(response.DirectResults!.ResultSetMetadata);
 
         protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
+            Task.FromResult(response.DirectResults!.ResultSet.Results);
 
         protected override AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
         {

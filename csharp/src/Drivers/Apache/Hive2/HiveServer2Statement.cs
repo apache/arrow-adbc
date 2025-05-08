@@ -101,7 +101,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return await ExecuteMetadataCommandQuery(cancellationToken);
             }
 
-            _directResults = null;
+            Response = null;
 
             // this could either:
             // take QueryTimeoutSeconds * 3
@@ -110,10 +110,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
 
             TGetResultSetMetadataResp metadata;
-            if (_directResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
+            if (Response!.DirectResults!.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
             {
                 // The initial response has result data so we don't need to poll
-                metadata = _directResults.ResultSetMetadata;
+                metadata = Response!.DirectResults.ResultSetMetadata;
             }
             else
             {
@@ -262,25 +262,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
             SetStatementProperties(executeRequest);
-            TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
-            if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            Response = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
+            if (Response.Status!.StatusCode == TStatusCode.ERROR_STATUS)
             {
-                throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
-                    .SetSqlState(executeResponse.Status.SqlState)
-                    .SetNativeError(executeResponse.Status.ErrorCode);
+                throw new HiveServer2Exception(Response.Status.ErrorMessage)
+                    .SetSqlState(Response.Status.SqlState)
+                    .SetNativeError(Response.Status.ErrorCode);
             }
-            OperationHandle = executeResponse.OperationHandle;
 
             // Capture direct results if they're available
-            if (executeResponse.DirectResults != null)
+            if (Response.DirectResults != null)
             {
-                _directResults = executeResponse.DirectResults;
-
-                if (!string.IsNullOrEmpty(_directResults.OperationStatus?.DisplayMessage))
+                if (!string.IsNullOrEmpty(Response.DirectResults.OperationStatus?.DisplayMessage))
                 {
-                    throw new HiveServer2Exception(_directResults.OperationStatus!.DisplayMessage)
-                        .SetSqlState(_directResults.OperationStatus.SqlState)
-                        .SetNativeError(_directResults.OperationStatus.ErrorCode);
+                    throw new HiveServer2Exception(Response.DirectResults.OperationStatus!.DisplayMessage)
+                        .SetSqlState(Response.DirectResults.OperationStatus.SqlState)
+                        .SetNativeError(Response.DirectResults.OperationStatus.ErrorCode);
                 }
             }
         }
@@ -305,11 +302,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal string? ForeignCatalogName { get; set; }
         protected internal string? ForeignSchemaName { get; set; }
         protected internal string? ForeignTableName { get; set; }
-        protected internal TSparkDirectResults? _directResults { get; set; }
 
         public HiveServer2Connection Connection { get; private set; }
 
-        public TOperationHandle? OperationHandle { get; private set; }
+        public IResponse? Response { get; private set; }
+        public TOperationHandle? OperationHandle => Response?.OperationHandle;
 
         // Keep the original Client property for internal use
         public TCLIService.Client Client => Connection.Client;
@@ -324,12 +321,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override void Dispose()
         {
-            if (OperationHandle != null)
+            if (Response != null)
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
+                TCloseOperationReq request = new TCloseOperationReq(Response.OperationHandle!);
                 Connection.Client.CloseOperation(request, cancellationToken).Wait();
-                OperationHandle = null;
+                Response = null;
             }
 
             base.Dispose();
@@ -370,7 +367,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
         {
-            TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
+            Response = await Connection.GetCrossReferenceAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
@@ -378,68 +375,62 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ForeignSchemaName,
                 ForeignTableName,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(cancellationToken);
         }
 
         private async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
-            TGetPrimaryKeysResp resp = await Connection.GetPrimaryKeysAsync(
+            Response = await Connection.GetPrimaryKeysAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(cancellationToken);
         }
 
         private async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
         {
-            TGetCatalogsResp resp = await Connection.GetCatalogsAsync(cancellationToken);
-            OperationHandle = resp.OperationHandle;
+            Response = await Connection.GetCatalogsAsync(cancellationToken);
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(cancellationToken);
         }
 
         private async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
         {
-            TGetSchemasResp resp = await Connection.GetSchemasAsync(
+            Response = await Connection.GetSchemasAsync(
                 CatalogName,
                 SchemaName,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(cancellationToken);
         }
 
         private async Task<QueryResult> GetTablesAsync(CancellationToken cancellationToken = default)
         {
             List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
-            TGetTablesResp resp = await Connection.GetTablesAsync(
+            Response = await Connection.GetTablesAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
                 tableTypesList,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(cancellationToken);
         }
 
         private async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
         {
-            TGetColumnsResp resp = await Connection.GetColumnsAsync(
+            Response = await Connection.GetColumnsAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
                 ColumnName,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
 
             // For GetColumns, we need to enhance the result with BASE_TYPE_NAME
-            if (!Connection.TryGetDirectResults(resp.DirectResults, out TGetResultSetMetadataResp? metadata, out TRowSet? rowSet))
+            if (!Connection.TryGetDirectResults(Response.DirectResults, out TGetResultSetMetadataResp? metadata, out TRowSet? rowSet))
             {
                 // Poll and fetch results
                 await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
@@ -467,9 +458,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
         }
 
-        private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
+        private async Task<QueryResult> GetQueryResult(CancellationToken cancellationToken)
         {
-            if (Connection.TryGetDirectResults(directResults, out QueryResult? result))
+            if (Connection.TryGetDirectResults(Response!.DirectResults, out QueryResult? result))
             {
                 return result!;
             }
@@ -608,7 +599,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             var pkResult = await GetPrimaryKeysAsync(cancellationToken);
 
             // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
-            var resp = await Connection.GetCrossReferenceAsync(
+            Response = await Connection.GetCrossReferenceAsync(
                 null,
                 null,
                 null,
@@ -617,7 +608,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TableName,
                 cancellationToken);
 
-            var fkResult = await GetQueryResult(resp.DirectResults, cancellationToken);
+            var fkResult = await GetQueryResult(cancellationToken);
 
             // 2. Read all batches into memory
             List<RecordBatch> columnsBatches;

@@ -25,19 +25,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
     internal interface IHiveServer2Statement
     {
         /// <summary>
-        /// Gets the operation handle.
+        /// Gets the operation response.
         /// </summary>
-        TOperationHandle? OperationHandle { get; }
+        IResponse? Response { get; }
 
         /// <summary>
         /// Gets the client.
         /// </summary>
         TCLIService.IAsync Client { get; }
-
-        /// <summary>
-        /// Gets the direct results.
-        /// </summary>
-        TSparkDirectResults? DirectResults { get; }
 
         /// <summary>
         /// Checks if direct results are available.

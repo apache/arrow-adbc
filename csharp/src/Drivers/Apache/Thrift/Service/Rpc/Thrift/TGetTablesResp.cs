@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  internal partial class TGetTablesResp : TBase, IResponse
+  internal partial class TGetTablesResp : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle _operationHandle;
     private global::Apache.Hive.Service.Rpc.Thrift.TSparkDirectResults _directResults;
