@@ -33,6 +33,7 @@ The Databricks ADBC driver supports the following authentication methods:
    - Set `adbc.databricks.oauth.grant_type` to `client_credentials`
    - Set `adbc.databricks.oauth.client_id` to your OAuth client ID
    - Set `adbc.databricks.oauth.client_secret` to your OAuth client secret
+   - Set `adbc.databricks.oauth.scope` to your auth scope (defaults to `"sql"`)
    - The driver will automatically handle token acquisition, renewal, and authentication with the Databricks service
 
 Basic (username and password) authentication is not supported at this time.
