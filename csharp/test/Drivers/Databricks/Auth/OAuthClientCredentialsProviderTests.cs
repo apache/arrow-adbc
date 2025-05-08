@@ -127,11 +127,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
-            var service = CreateService(scope: "custom_scope");
+            var service = CreateService(scope: TestConfiguration.OAuthScope ?? "sql");
             var token = await service.GetAccessTokenAsync();
 
             Assert.NotNull(token);
             Assert.NotEmpty(token);
-        }
+            Assert.Equal(TestConfiguration.OAuthScope, service.GetCachedTokenScope());
+        }  
     }
 }

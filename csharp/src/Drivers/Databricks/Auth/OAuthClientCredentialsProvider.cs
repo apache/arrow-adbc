@@ -215,5 +215,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             _httpClient.Dispose();
         }
 
+
+        public string GetCachedTokenScope()
+        {
+            return _cachedToken?.Scope;
+        }
+
     }
 }
