@@ -122,7 +122,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         public async Task CanGetColumnsWithBaseTypeName()
         {
             var statement = Connection.CreateStatement();
-            var res = Connection.GetInfo([AdbcInfoCode.VendorName, AdbcInfoCode.VendorVersion]);
             statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
             statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
             statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);

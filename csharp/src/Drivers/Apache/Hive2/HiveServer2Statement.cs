@@ -609,11 +609,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 
                 if (batch.Length > 0)
                 {
+                    // Keep the batch and don't dispose it
                     batches.Add(batch);
                     totalRows += batch.Length;
                 }
                 else
                 {
+                    // Only dispose empty batches since they don't contain useful data
                     batch.Dispose();
                 }
             }
@@ -621,96 +623,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return (batches, schema, totalRows);
         }
         
-        // Helper method to create empty string columns filled with nulls
-        private List<IArrowArray> CreateEmptyStringColumns(string[] fieldNames, int rowCount)
-        {
-            var result = new List<IArrowArray>();
-            
-            foreach (var fieldName in fieldNames)
-            {
-                var builder = new StringArray.Builder();
-                for (int i = 0; i < rowCount; i++)
-                {
-                    builder.AppendNull();
-                }
-                result.Add(builder.Build());
-            }
-            
-            return result;
-        }
-        
-        // Helper class to manage builder creation and value appending 
-        // This is only for metadata query result so we only have int or string types
-        private class TypedBuilder
-        {
-            private readonly IArrowArrayBuilder _builder;
-            private readonly ArrowTypeId _typeId;
-            
-            public TypedBuilder(ArrowTypeId typeId)
-            {
-                _typeId = typeId;
-                _builder = CreateBuilder(typeId);
-            }
-
-            private static IArrowArrayBuilder CreateBuilder(ArrowTypeId typeId) => typeId switch
-            {
-                ArrowTypeId.Int16 => new Int16Array.Builder(),
-                ArrowTypeId.Int32 => new Int32Array.Builder(),
-                _ => new StringArray.Builder() // Default to string for unsupported types
-            };
-            
-            public void AppendNull()
-            {
-                switch (_typeId)
-                {
-                    case ArrowTypeId.Int16:
-                        ((Int16Array.Builder)_builder).AppendNull();
-                        break;
-                    case ArrowTypeId.Int32:
-                        ((Int32Array.Builder)_builder).AppendNull();
-                        break;
-                    default:
-                        ((StringArray.Builder)_builder).AppendNull();
-                        break;
-                }
-            }
-
-            public IArrowArray Build() => _typeId switch
-            {
-                ArrowTypeId.Int16 => ((Int16Array.Builder)_builder).Build(),
-                ArrowTypeId.Int32 => ((Int32Array.Builder)_builder).Build(),
-                _ => ((StringArray.Builder)_builder).Build()
-            };
-            
-            public void AppendValue(IArrowArray columnArray, int rowIndex)
-            {
-                try
-                {
-                    switch (_typeId)
-                    {
-                        case ArrowTypeId.Int16:
-                            ((Int16Array.Builder)_builder).Append(((Int16Array)columnArray).GetValue(rowIndex)!.Value);
-                            break;
-                        case ArrowTypeId.Int32:
-                            ((Int32Array.Builder)_builder).Append(((Int32Array)columnArray).GetValue(rowIndex)!.Value);
-                            break;
-                        default: // Handles String and other types that default to StringArray.Builder
-                            // Try to cast to StringArray and get string value - if it fails, 
-                            // the outer try-catch will handle it and call AppendNull()
-                            ((StringArray.Builder)_builder).Append(((StringArray)columnArray).GetString(rowIndex));
-                            break;
-                    }
-                }
-                catch
-                {
-                    // If any conversion fails or columnArray is null, append null as fallback
-                    AppendNull();
-                }
-            }
-            
-     
-        }
-
         private async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
         {
             // 1. Get all three results at once
@@ -751,17 +663,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 
                 if (columnsBatches.Count == 0) return columnsResult;
                 
-                // Create column names array from all batches
-                var builder = new StringArray.Builder();
-                foreach (var batch in columnsBatches)
-                {
-                    StringArray batchColNames = (StringArray)batch.Column(colNameIndex);
-                    for (int i = 0; i < batch.Length; i++)
-                    {
-                        builder.Append(batchColNames.GetString(i));
-                    }
-                }
-                columnNames = builder.Build();
+                // Create column names array from all batches using ArrayDataConcatenator.Concatenate
+                List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch => 
+                    batch.Column(colNameIndex).Data).ToList();
+                ArrayData? concatenatedColumnNames = ArrayDataConcatenator.Concatenate(columnNameArrayDataList);
+                columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
             }
 
             // 3. Create combined schema and prepare data
@@ -769,37 +675,34 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             var combinedData = new List<IArrowArray>();
 
             // 4. Add all columns data by combining all batches
-            // Create a combined array for each column across all batches
             for (int colIdx = 0; colIdx < columnsSchema.FieldsList.Count; colIdx++)
             {
                 if (columnsBatches.Count == 0)
                     continue;
                 
                 var field = columnsSchema.GetFieldByIndex(colIdx);
-                var dataType = field.DataType;
                 
-                // Create a TypedBuilder that handles both creation and appending
-                var typedBuilder = new TypedBuilder(dataType.TypeId);
-                
+                // Collect arrays for this column from all batches
+                var columnArrays = new List<IArrowArray>();
                 foreach (var batch in columnsBatches)
                 {
-                    var columnArray = batch.Column(colIdx);
-                    for (int i = 0; i < columnArray.Length; i++)
-                    {
-                        typedBuilder.AppendValue(columnArray, i);
-                    }
+                    columnArrays.Add(batch.Column(colIdx));
                 }
                 
-                combinedData.Add(typedBuilder.Build());
+                List<ArrayData> arrayDataList = columnArrays.Select(arr => arr.Data).ToList();
+                ArrayData? concatenatedData = ArrayDataConcatenator.Concatenate(arrayDataList);
+                IArrowArray array = ArrowArrayFactory.BuildArray(concatenatedData);
+                combinedData.Add(array);        
+              
             }
 
             // 5. Process PK and FK data using helper methods with selected fields
-            await ProcessRelationshipData(pkResult, "PK_", "COLUMN_NAME",
+            await ProcessRelationshipDataSafe(pkResult, "PK_", "COLUMN_NAME",
                 new[] { "COLUMN_NAME" }, // Selected PK fields
                 columnNames, totalRows,
                 allFields, combinedData, cancellationToken);
 
-            await ProcessRelationshipData(fkResult, "FK_", "FKCOLUMN_NAME",
+            await ProcessRelationshipDataSafe(fkResult, "FK_", "FKCOLUMN_NAME",
                 new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" }, // Selected FK fields
                 columnNames, totalRows,
                 allFields, combinedData, cancellationToken);
@@ -807,155 +710,123 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // 6. Return the combined result
             var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
 
-            // 7. Clean up batches
-            foreach (var batch in columnsBatches)
-            {
-                batch.Dispose();
-            }
-
             return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
 
-        // Helper method to process relationship data (PK or FK) with selected fields
-        private async Task ProcessRelationshipData(QueryResult result, string prefix, string columnNameField,
+        /**
+         * Process relationship data (primary/foreign keys) from query results and add to the output.
+         * This method handles data from PK/FK queries and correlates it with column data.
+         * 
+         * How it works:
+         * 1. Add relationship columns to the schema (PK/FK columns with prefixed names)
+         * 2. Read relationship data from source records
+         * 3. Build a mapping of column names to their relationship values
+         * 4. Create arrays for each field, aligning values with the main column result
+         */
+        private async Task ProcessRelationshipDataSafe(QueryResult result, string prefix, string relationColNameField,
             string[] includeFields, StringArray colNames, int rowCount,
             List<Field> allFields, List<IArrowArray> combinedData, CancellationToken cancellationToken)
         {
-            // First ensure we always add the fields to the schema, even if there's no data
+            // STEP 1: Add relationship fields to the output schema
+            // Each field name is prefixed (e.g., "PK_" for primary keys, "FK_" for foreign keys)
             foreach (var fieldName in includeFields)
             {
                 allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
             }
-
-            Schema? streamSchema = null;
-            int relationColIndex = -1;
-            List<RecordBatch> relationBatches = new List<RecordBatch>();
             
-            // Early return with empty columns if there's no valid relationship data
-            bool hasValidData = result.Stream != null;
-            // Try to read schema and batches if we have a stream
-            if (hasValidData)
+            // STEP 2: Create a dictionary to map column names to their relationship values
+            // Structure: Dictionary<fieldName, Dictionary<columnName, relationshipValue>>
+            // For primary keys - only columns that are PKs are stored:
+            // {"COLUMN_NAME": {"id": "id"}}
+            // For foreign keys - only columns that are FKs are stored:
+            // {"FKCOLUMN_NAME": {"DOLocationId": "LocationId"}}
+            var relationData = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            
+            // STEP 3: Extract relationship data from the query result
+            if (result.Stream != null)
             {
                 using (var stream = result.Stream)
                 {
-                    streamSchema = stream!.Schema;
-                    if (streamSchema != null)
+                    // Find the column index that contains our key values (e.g., COLUMN_NAME for PK or FKCOLUMN_NAME for FK)
+                    int keyColIndex = stream.Schema.GetFieldIndex(relationColNameField);
+                    if (keyColIndex >= 0)
                     {
-                        relationColIndex = streamSchema.GetFieldIndex(columnNameField);
-                        
-                        // Check if key column exists
-                        if (relationColIndex >= 0)
+                        // STEP 3.1: Process each record batch from the relationship data source
+                        while (true)
                         {
-                            // Read all batches
-                            var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
-                            relationBatches = batchResult.Batches;
+                            var batch = await stream.ReadNextRecordBatchAsync(cancellationToken);
+                            if (batch == null) break;
                             
-                            // Update validity based on having batches
-                            hasValidData = relationBatches.Count > 0;
-                        }
-                        else
-                        {
-                            hasValidData = false;
+                            // STEP 3.2: Map field names to their column indices for quick lookup
+                            Dictionary<string, int> fieldIndices = new Dictionary<string, int>();
+                            foreach (var fieldName in includeFields)
+                            {
+                                int index = stream.Schema.GetFieldIndex(fieldName);
+                                if (index >= 0) fieldIndices[fieldName] = index;
+                            }
+                            
+                            // STEP 3.3: Process each row in the batch
+                            for (int i = 0; i < batch.Length; i++)
+                            {
+                                // Get the key column value (e.g., column name this relationship applies to)
+                                StringArray keyCol = (StringArray)batch.Column(keyColIndex);
+                                if (keyCol.IsNull(i)) continue;
+                                
+                                string keyValue = keyCol.GetString(i);
+                                if (string.IsNullOrEmpty(keyValue)) continue;
+                                
+                                // STEP 3.4: For each included field, extract its value and store in our map
+                                foreach (var pair in fieldIndices)
+                                {
+                                    // Ensure we have an entry for this field
+                                    if (!relationData.TryGetValue(pair.Key, out var fieldData))
+                                    {
+                                        fieldData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                        relationData[pair.Key] = fieldData;
+                                    }
+                                    StringArray fieldArray = (StringArray)batch.Column(pair.Value);
+                                    // Store the relationship value: columnName -> value 
+                                    relationData[pair.Key][keyValue] = fieldArray.GetString(i);
+                                }
+                            }
                         }
                     }
-                    else
-                    {
-                        hasValidData = false;
-                    }
                 }
             }
             
-            // If no valid data, add empty columns and return
-            if (!hasValidData)
-            {
-                var emptyColumns = CreateEmptyStringColumns(includeFields, rowCount);
-                combinedData.AddRange(emptyColumns);
-                return;
-            }
-            
-            // At this point, we know streamSchema is not null because hasValidData would be false otherwise
-            Dictionary<string, int> fieldIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            // STEP 4: Build Arrow arrays for each relationship field
+            // These arrays align with the main column results, so each row contains
+            // the appropriate relationship value for its column
             foreach (var fieldName in includeFields)
             {
-                int fieldIndex = streamSchema!.GetFieldIndex(fieldName);
-                if (fieldIndex >= 0)
+                // Create a string array builder
+                var builder = new StringArray.Builder();
+                var fieldData = relationData.ContainsKey(fieldName) ? relationData[fieldName] : null;
+                
+                // Process each column name in the main result
+                for (int i = 0; i < colNames.Length; i++)
                 {
-                    fieldIndexMap[fieldName] = fieldIndex;
-                }
-            }
-
-            // Build column map from relationship data 
-            Dictionary<string, (int batchIndex, int rowIndex)> relationMap = new Dictionary<string, (int, int)>(StringComparer.OrdinalIgnoreCase);
-            for (int batchIndex = 0; batchIndex < relationBatches.Count; batchIndex++)
-            {
-                var batch = relationBatches[batchIndex];
-                var keyColNames = (StringArray)batch.Column(relationColIndex);
-                for (int i = 0; i < batch.Length; i++)
-                {
-                    string? colName = keyColNames.GetString(i);
-                    if (!string.IsNullOrEmpty(colName))
-                        relationMap[colName] = (batchIndex, i);
-                }
-            }
-            
-            // Create builders for all fields
-            Dictionary<int, TypedBuilder> builders = new Dictionary<int, TypedBuilder>();
-            foreach (var fieldName in includeFields)
-            {
-                // Use StringArray for relationship fields
-                builders[builders.Count] = new TypedBuilder(ArrowTypeId.String);
-            }
-
-            // Process all batches
-            for (int i = 0; i < rowCount; i++)
-            {
-                string? colName = colNames.GetString(i);
-                if (!string.IsNullOrEmpty(colName) && relationMap.TryGetValue(colName, out var relation))
-                {
-                    // Process all fields for this match from the correct batch
-                    var batch = relationBatches[relation.batchIndex];
+                    string? colName = colNames.GetString(i);
+                    string? value = null;
                     
-                    int builderIndex = 0;
-                    foreach (var fieldName in includeFields)
+                    // Look up relationship value for this column
+                    if (!string.IsNullOrEmpty(colName) && 
+                        fieldData != null && 
+                        fieldData.TryGetValue(colName!, out var fieldValue))
                     {
-                        var builder = builders[builderIndex++];
-                        
-                        if (!fieldIndexMap.TryGetValue(fieldName, out int fieldIndex) ||
-                            batch.Column(fieldIndex).IsNull(relation.rowIndex))
-                        {
-                            // Use the specific null-handling code for each builder type instead of passing null
-                            builder.AppendNull();
-                        }
-                        else
-                        {
-                            builder.AppendValue(batch.Column(fieldIndex), relation.rowIndex);
-                        }
+                        value = fieldValue;
                     }
+                    
+                    // Add to the array (empty string if no relationship exists)
+                    builder.Append(value);
                 }
-                else
-                {
-                    // Add null values for each field for this unmatched row
-                    foreach (var builder in builders.Values)
-                    {
-                        // Use the specific null-handling code for each builder type instead of passing null
-                        builder.AppendNull();
-                    }
-                }
-            }
-            
-            // Add built arrays to combined data
-            foreach (var builder in builders.Values)
-            {
+                
+                // Add the completed array to our output data
                 combinedData.Add(builder.Build());
-            }
-            
-            // Clean up batches
-            foreach (var batch in relationBatches)
-            {
-                batch.Dispose();
             }
         }
     }
 }
+
 
 
