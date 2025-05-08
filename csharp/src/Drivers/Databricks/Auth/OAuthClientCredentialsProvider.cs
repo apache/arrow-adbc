@@ -47,6 +47,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             public DateTime ExpiresAt { get; set; }
             private readonly int _refreshBufferMinutes;
 
+            public string? Scope { get; set; }
+
             public TokenInfo(int refreshBufferMinutes)
             {
                 _refreshBufferMinutes = refreshBufferMinutes;
@@ -176,10 +178,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 throw new DatabricksException("OAuth expires_in value must be positive");
             }
 
+            if (!jsonDoc.RootElement.TryGetProperty("scope", out var scopeElement))
+            {
+                throw new DatabricksException("OAuth response did not contain scope");
+            }
+
+            string? scope = scopeElement.GetString();
+            if (string.IsNullOrEmpty(scope))
+            {
+                throw new DatabricksException("OAuth scope was null or empty");
+            }
+
             return new TokenInfo(_refreshBufferMinutes)
             {
                 AccessToken = accessToken!,
-                ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn)
+                ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn),
+                Scope = scope!
             };
         }
 
@@ -216,7 +230,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         }
 
 
-        public string GetCachedTokenScope()
+        public string? GetCachedTokenScope()
         {
             return _cachedToken?.Scope;
         }

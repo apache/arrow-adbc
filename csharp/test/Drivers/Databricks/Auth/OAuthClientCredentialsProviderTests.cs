@@ -126,13 +126,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         public async Task GetAccessToken_WithCustomScope_ReturnsToken()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
+            
+            String scope = "all-apis";
 
-            var service = CreateService(scope: TestConfiguration.OAuthScope ?? "sql");
+            var service = CreateService(scope: scope);
             var token = await service.GetAccessTokenAsync();
 
             Assert.NotNull(token);
             Assert.NotEmpty(token);
-            Assert.Equal(TestConfiguration.OAuthScope, service.GetCachedTokenScope());
+            Assert.Equal(scope, service.GetCachedTokenScope());
         }  
     }
 }
