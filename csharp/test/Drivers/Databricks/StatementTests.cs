@@ -330,6 +330,103 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, actualBatchLength);
         }
 
+        [SkippableFact]
+        public async Task CanGetColumnsExtended()
+        {
+            // Get the runtime version using GetInfo
+            var infoCodes = new List<AdbcInfoCode> { AdbcInfoCode.VendorVersion };
+            var infoValues = Connection.GetInfo(infoCodes);
+
+            // Set up statement for GetColumnsExtended
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
+            statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
+            statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+            statement.SqlQuery = "GetColumnsExtended";
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            // Verify schema has more fields than the regular GetColumns result (which has 24 fields)
+            // We expect additional PK and FK fields
+            OutputHelper?.WriteLine($"Column count in result schema: {queryResult.Stream.Schema.FieldsList.Count}");
+            Assert.True(queryResult.Stream.Schema.FieldsList.Count > 24,
+                "GetColumnsExtended should return more columns than GetColumns (at least 24+)");
+
+            // Verify that key fields from each original metadata call are present
+            bool hasColumnName = false;
+            bool hasPkKeySeq = false;
+            bool hasFkTableName = false;
+
+            foreach (var field in queryResult.Stream.Schema.FieldsList)
+            {
+                OutputHelper?.WriteLine($"Field in schema: {field.Name} ({field.DataType})");
+
+                if (field.Name.Equals("COLUMN_NAME", StringComparison.OrdinalIgnoreCase))
+                    hasColumnName = true;
+                else if (field.Name.Equals("PK_COLUMN_NAME", StringComparison.OrdinalIgnoreCase))
+                    hasPkKeySeq = true;
+                else if (field.Name.Equals("FK_PKTABLE_NAME", StringComparison.OrdinalIgnoreCase))
+                    hasFkTableName = true;
+            }
+
+            Assert.True(hasColumnName, "Schema should contain COLUMN_NAME field from GetColumns");
+            Assert.True(hasPkKeySeq, "Schema should contain PK_KEY_SEQ field from GetPrimaryKeys");
+            Assert.True(hasFkTableName, "Schema should contain FK_PKTABLE_NAME field from GetCrossReference");
+
+            // Read and verify data
+            int rowCount = 0;
+            while (queryResult.Stream != null)
+            {
+                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null) break;
+
+                rowCount += batch.Length;
+
+                // Output rows for debugging (limit to first 10)
+                if (batch.Length > 0)
+                {
+                    int rowsToPrint = Math.Min(batch.Length, 10); // Limit to 10 rows
+                    OutputHelper?.WriteLine($"Found {batch.Length} rows, showing first {rowsToPrint}:");
+
+                    for (int rowIndex = 0; rowIndex < rowsToPrint; rowIndex++)
+                    {
+                        OutputHelper?.WriteLine($"Row {rowIndex}:");
+                        for (int i = 0; i < batch.ColumnCount; i++)
+                        {
+                            string fieldName = queryResult.Stream.Schema.FieldsList[i].Name;
+                            string fieldValue = GetStringValue(batch.Column(i), rowIndex);
+                            OutputHelper?.WriteLine($"  {fieldName}: {fieldValue}");
+                        }
+                        OutputHelper?.WriteLine(""); // Add blank line between rows
+                    }
+                }
+            }
+
+            // Verify we got rows matching the expected column count
+            Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, rowCount);
+            OutputHelper?.WriteLine($"Successfully retrieved {rowCount} columns with extended information");
+        }
+
+        // Helper method to get string representation of array values
+        private string GetStringValue(IArrowArray array, int index)
+        {
+            if (array == null || index >= array.Length || array.IsNull(index))
+                return "null";
+
+            if (array is StringArray strArray)
+                return strArray.GetString(index) ?? "null";
+            else if (array is Int32Array int32Array)
+                return int32Array.GetValue(index).ToString() ?? "null";
+            else if (array is Int16Array int16Array)
+                return int16Array.GetValue(index).ToString() ?? "null";
+            else if (array is BooleanArray boolArray)
+                return boolArray.GetValue(index).ToString() ?? "null";
+
+            return "unknown";
+        }
+
         protected override void PrepareCreateTableWithPrimaryKeys(out string sqlUpdate, out string tableNameParent, out string fullTableNameParent, out IReadOnlyList<string> primaryKeys)
         {
             CreateNewTableName(out tableNameParent, out fullTableNameParent);
