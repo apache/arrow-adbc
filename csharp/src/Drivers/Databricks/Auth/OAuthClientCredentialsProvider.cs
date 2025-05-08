@@ -58,6 +58,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             string clientId,
             string clientSecret,
             string host,
+            HttpClient httpClient,
             int timeoutMinutes = 1)
         {
             _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
@@ -66,7 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             _timeoutMinutes = timeoutMinutes;
             _tokenEndpoint = DetermineTokenEndpoint();
 
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
             _httpClient.Timeout = TimeSpan.FromMinutes(_timeoutMinutes);
         }
 
