@@ -546,6 +546,9 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 
 	ctx, cancel := context.WithCancel(ctx)
 	g, ctx := errgroup.WithContext(ctx)
+	if concurrency == 0 {
+		concurrency = -1 // if concurrency is 0, then treat it as unlimited
+	}
 	g.SetLimit(concurrency)
 
 	done := make(chan struct{})
