@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TFetchResultsResp : TBase
+  internal partial class TFetchResultsResp : TBase
   {
     private bool _hasMoreRows;
     private global::Apache.Hive.Service.Rpc.Thrift.TRowSet _results;

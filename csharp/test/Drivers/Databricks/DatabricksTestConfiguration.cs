@@ -15,13 +15,17 @@
 * limitations under the License.
 */
 
-using System.IO;
+using System.Text.Json.Serialization;
+using Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
-    public interface IPeekableTransport
+    public class DatabricksTestConfiguration : SparkTestConfiguration
     {
-        Stream Input { get; }
-        Stream Output { get; }
+        [JsonPropertyName("oauth_client_id"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string OAuthClientId { get; set; } = string.Empty;
+
+        [JsonPropertyName("oauth_client_secret"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string OAuthClientSecret { get; set; } = string.Empty;
     }
 }

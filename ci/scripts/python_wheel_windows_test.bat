@@ -27,7 +27,7 @@ FOR %%c IN (adbc_driver_bigquery adbc_driver_manager adbc_driver_flightsql adbc_
     )
 )
 
-pip install importlib-resources pytest pyarrow pandas protobuf
+pip install importlib-resources pytest pyarrow pandas polars protobuf
 
 echo "=== (%PYTHON_VERSION%) Testing wheels ==="
 

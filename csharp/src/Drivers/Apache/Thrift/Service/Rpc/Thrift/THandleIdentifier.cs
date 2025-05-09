@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class THandleIdentifier : TBase
+  internal partial class THandleIdentifier : TBase
   {
     private short _executionVersion;
 

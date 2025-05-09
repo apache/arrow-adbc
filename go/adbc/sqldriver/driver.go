@@ -195,8 +195,7 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 	}
 
 	if err = s.SetSqlQuery(query); err != nil {
-		s.Close()
-		return nil, err
+		return nil, errors.Join(err, s.Close())
 	}
 
 	return (&stmt{stmt: s}).QueryContext(ctx, args)
@@ -250,13 +249,11 @@ func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, e
 	}
 
 	if err := s.SetSqlQuery(query); err != nil {
-		s.Close()
-		return nil, err
+		return nil, errors.Join(err, s.Close())
 	}
 
 	if err := s.Prepare(ctx); err != nil {
-		s.Close()
-		return nil, err
+		return nil, errors.Join(err, s.Close())
 	}
 
 	paramSchema, err := s.GetParameterSchema()
@@ -606,7 +603,9 @@ func (r *rows) Next(dest []driver.Value) error {
 			dest[i] = nil
 			continue
 		}
-
+		if colUnion, ok := col.(array.Union); ok {
+			col = colUnion.Field(colUnion.ChildID(int(r.curRow)))
+		}
 		switch col := col.(type) {
 		case *array.Boolean:
 			dest[i] = col.Value(int(r.curRow))

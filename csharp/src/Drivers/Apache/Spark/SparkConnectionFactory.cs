@@ -35,7 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             return serverTypeValue switch
             {
-                SparkServerType.Databricks => new SparkDatabricksConnection(properties),
                 SparkServerType.Http => new SparkHttpConnection(properties),
                 // TODO: Re-enable when properly supported
                 //SparkServerType.Standard => new SparkStandardConnection(properties),

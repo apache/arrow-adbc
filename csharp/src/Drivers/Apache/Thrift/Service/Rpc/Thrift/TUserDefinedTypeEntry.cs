@@ -41,7 +41,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TUserDefinedTypeEntry : TBase
+  internal partial class TUserDefinedTypeEntry : TBase
   {
 
     public string TypeClassName { get; set; }

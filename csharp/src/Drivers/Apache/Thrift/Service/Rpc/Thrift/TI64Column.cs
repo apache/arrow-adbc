@@ -11,7 +11,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using Apache.Arrow;
-using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Thrift.Protocol;
 using Thrift.Protocol.Entities;
@@ -30,7 +29,7 @@ using Thrift.Protocol.Utilities;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TI64Column : TBase
+  internal partial class TI64Column : TBase
   {
     public Int64Array Values { get; set; }
 
@@ -54,7 +53,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         byte[] nulls = null;
         byte[] buffer = null;
-        Stream transport = ((IPeekableTransport)iprot.Transport).Input;
         int length = -1;
 
         await iprot.ReadStructBeginAsync(cancellationToken);
@@ -78,7 +76,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                   buffer = new byte[length * sizeof(long)];
                   var memory = buffer.AsMemory();
                   iprot.Transport.CheckReadBytesAvailable(buffer.Length);
-                  await transport.ReadExactlyAsync(memory, cancellationToken);
+                  await iprot.Transport.ReadExactlyAsync(memory, cancellationToken);
                   for (int _i170 = 0; _i170 < length; ++_i170)
                   {
                     StreamExtensions.ReverseEndianI64AtOffset(memory.Span, _i170 * sizeof(long));

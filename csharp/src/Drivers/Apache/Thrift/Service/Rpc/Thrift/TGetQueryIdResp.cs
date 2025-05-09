@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetQueryIdResp : TBase
+  internal partial class TGetQueryIdResp : TBase
   {
 
     public string QueryId { get; set; }

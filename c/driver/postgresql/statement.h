@@ -39,8 +39,10 @@ namespace adbcpq {
 class PostgresConnection;
 class PostgresStatement;
 
+constexpr static int64_t kDefaultBatchSizeHintBytes = 16777216;
+
 /// \brief An ArrowArrayStream that reads tuples from a PGresult.
-class TupleReader final {
+class TupleReader final : public std::enable_shared_from_this<TupleReader> {
  public:
   TupleReader(PGconn* conn)
       : status_(ADBC_STATUS_OK),
@@ -50,7 +52,7 @@ class TupleReader final {
         pgbuf_(nullptr),
         copy_reader_(nullptr),
         row_id_(-1),
-        batch_size_hint_bytes_(16777216),
+        batch_size_hint_bytes_(kDefaultBatchSizeHintBytes),
         is_finished_(false) {
     ArrowErrorInit(&na_error_);
     data_.data.as_char = nullptr;
@@ -98,7 +100,8 @@ class PostgresStatement {
         query_(),
         prepared_(false),
         use_copy_(-1),
-        reader_(nullptr) {
+        reader_(nullptr),
+        batch_size_hint_bytes_(kDefaultBatchSizeHintBytes) {
     std::memset(&bind_, 0, sizeof(bind_));
   }
 
@@ -170,7 +173,8 @@ class PostgresStatement {
     bool temporary = false;
   } ingest_;
 
-  TupleReader reader_;
+  std::shared_ptr<TupleReader> reader_;
+  int64_t batch_size_hint_bytes_;
 
   int UseCopy();
 };

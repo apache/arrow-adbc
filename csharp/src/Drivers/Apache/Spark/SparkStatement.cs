@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -37,7 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // Set in combination with a CancellationToken.
             statement.QueryTimeout = QueryTimeoutSeconds;
             statement.CanReadArrowResult = true;
-            statement.CanDownloadResult = true;
+
 #pragma warning disable CS0618 // Type or member is obsolete
             statement.ConfOverlay = SparkConnection.timestampConfig;
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -52,14 +51,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 ComplexTypesAsArrow = false,
                 IntervalTypesAsArrow = false,
             };
-        }
-
-        /// <summary>
-        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
-        /// </summary>
-        public sealed class Options : ApacheParameters
-        {
-            // options specific to Spark go here
         }
     }
 }
