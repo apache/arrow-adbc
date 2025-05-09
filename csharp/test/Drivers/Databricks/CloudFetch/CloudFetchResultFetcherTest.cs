@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
 
             var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Response).Returns(CreateResponse());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
             var fetcher = new CloudFetchResultFetcher(
@@ -83,7 +83,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 .ReturnsAsync(CreateFetchResultsResponse(resultLinks, false));
 
             var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Response).Returns(CreateResponse());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
             var fetcher = new CloudFetchResultFetcher(
@@ -158,7 +158,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 .ReturnsAsync(CreateFetchResultsResponse(secondBatchLinks, false));
 
             var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Response).Returns(CreateResponse());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
             var fetcher = new CloudFetchResultFetcher(
@@ -211,7 +211,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
 
             var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Response).Returns(CreateResponse());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
             var fetcher = new CloudFetchResultFetcher(
@@ -256,7 +256,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 .ThrowsAsync(new InvalidOperationException("Test server error"));
 
             var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Response).Returns(CreateResponse());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
             var fetcher = new CloudFetchResultFetcher(
@@ -317,7 +317,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 });
 
             var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
+            mockStatement.Setup(s => s.Response).Returns(CreateResponse());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
             var fetcher = new CloudFetchResultFetcher(
@@ -344,9 +344,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             Assert.True(fetcher.IsCompleted);
         }
 
-        private TOperationHandle CreateOperationHandle()
+        private IResponse CreateResponse()
         {
-            return new TOperationHandle
+            var mockResponse = new Mock<IResponse>();
+            mockResponse.Setup(r => r.OperationHandle).Returns(new TOperationHandle
             {
                 OperationId = new THandleIdentifier
                 {
@@ -355,7 +356,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 },
                 OperationType = TOperationType.EXECUTE_STATEMENT,
                 HasResultSet = true
-            };
+            });
+            return mockResponse.Object;
         }
 
         private TFetchResultsResp CreateFetchResultsResponse(List<TSparkArrowResultLink> resultLinks, bool hasMoreRows)

@@ -43,9 +43,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // If we have direct results, initialize the batches from them
             if (statement.HasDirectResults)
             {
-                this.batches = statement.DirectResults!.ResultSet.Results.ArrowBatches;
+                this.batches = statement.Response!.DirectResults!.ResultSet.Results.ArrowBatches;
 
-                if (!statement.DirectResults.ResultSet.HasMoreRows)
+                if (!statement.Response!.DirectResults.ResultSet.HasMoreRows)
                 {
                     this.statement = null;
                 }

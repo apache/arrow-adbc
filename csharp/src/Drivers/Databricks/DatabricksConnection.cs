@@ -210,22 +210,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return baseHandler;
         }
 
-        protected internal override bool AreResultsAvailableDirectly => _enableDirectResults;
-
-        protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetCatalogsReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetSchemasReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = defaultGetDirectResults;
-
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {
             // Get result format from metadata response if available
@@ -391,29 +375,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults!.ResultSetMetadata);
 
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults!.ResultSet.Results);
 
         protected override AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
         {
