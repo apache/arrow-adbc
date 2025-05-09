@@ -118,7 +118,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 // if the authentication token was reset, then we need a new job with the latest token
                 BigQueryJob completedJob = await Client.GetJobAsync(jobReference);
-                return await completedJob.GetQueryResultsAsync();
+                return await completedJob.GetQueryResultsAsync(getQueryResultsOptions);
             };
 
             BigQueryResults results = await ExecuteWithRetriesAsync(getJobResults);
@@ -130,8 +130,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 clientMgr.UpdateCredential(Credential);
             });
 
-            // For multi-statement queries, the results.TableReference is null
-            if (results.TableReference == null)
+            // For multi-statement queries, StatementType == "SCRIPT"
+            if (results.TableReference == null || job.Statistics.Query.StatementType.Equals("SCRIPT", StringComparison.OrdinalIgnoreCase))
             {
                 string statementType = string.Empty;
                 if (Options?.TryGetValue(BigQueryParameters.StatementType, out string? statementTypeString) == true)
@@ -272,7 +272,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 case "TIMESTAMP":
                     return GetType(field, TimestampType.Default);
                 case "TIME":
-                    return GetType(field, Time64Type.Default);
+                    return GetType(field, Time64Type.Microsecond);
                 case "DATE":
                     return GetType(field, Date32Type.Default);
                 case "RECORD" or "STRUCT":

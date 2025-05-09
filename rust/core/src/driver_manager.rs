@@ -56,7 +56,7 @@
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let opts = [(OptionDatabase::Uri, ":memory:".into())];
 //! let mut driver = ManagedDriver::load_dynamic_from_name("adbc_driver_sqlite", None, AdbcVersion::V100)?;
-//! let mut database = driver.new_database_with_opts(opts)?;
+//! let database = driver.new_database_with_opts(opts)?;
 //! let mut connection = database.new_connection()?;
 //! let mut statement = connection.new_statement()?;
 //!
@@ -251,9 +251,7 @@ impl ManagedDriver {
     }
 
     /// Returns a new database using the loaded driver.
-    ///
-    /// This uses `&mut self` to prevent a deadlock.
-    fn database_new(&mut self) -> Result<ffi::FFI_AdbcDatabase> {
+    fn database_new(&self) -> Result<ffi::FFI_AdbcDatabase> {
         let driver = self.inner_ffi_driver();
         let mut database = ffi::FFI_AdbcDatabase::default();
 
@@ -267,12 +265,7 @@ impl ManagedDriver {
     }
 
     /// Initialize the given database using the loaded driver.
-    ///
-    /// This uses `&mut self` to prevent a deadlock.
-    fn database_init(
-        &mut self,
-        mut database: ffi::FFI_AdbcDatabase,
-    ) -> Result<ffi::FFI_AdbcDatabase> {
+    fn database_init(&self, mut database: ffi::FFI_AdbcDatabase) -> Result<ffi::FFI_AdbcDatabase> {
         let driver = self.inner_ffi_driver();
 
         // DatabaseInit
@@ -473,9 +466,7 @@ impl ManagedDatabase {
     }
 
     /// Returns a new connection using the loaded driver.
-    ///
-    /// This uses `&mut self` to prevent a deadlock.
-    fn connection_new(&mut self) -> Result<ffi::FFI_AdbcConnection> {
+    fn connection_new(&self) -> Result<ffi::FFI_AdbcConnection> {
         let driver = self.ffi_driver();
         let mut connection = ffi::FFI_AdbcConnection::default();
 
@@ -489,10 +480,8 @@ impl ManagedDatabase {
     }
 
     /// Initialize the given connection using the loaded driver.
-    ///
-    /// This uses `&mut self` to prevent a deadlock.
     fn connection_init(
-        &mut self,
+        &self,
         mut connection: ffi::FFI_AdbcConnection,
     ) -> Result<ffi::FFI_AdbcConnection> {
         let driver = self.ffi_driver();
@@ -577,7 +566,7 @@ impl Optionable for ManagedDatabase {
 impl Database for ManagedDatabase {
     type ConnectionType = ManagedConnection;
 
-    fn new_connection(&mut self) -> Result<Self::ConnectionType> {
+    fn new_connection(&self) -> Result<Self::ConnectionType> {
         // Construct a new connection.
         let connection = self.connection_new()?;
         // Initialize the connection.
@@ -592,7 +581,7 @@ impl Database for ManagedDatabase {
     }
 
     fn new_connection_with_opts(
-        &mut self,
+        &self,
         opts: impl IntoIterator<Item = (<Self::ConnectionType as Optionable>::Option, OptionValue)>,
     ) -> Result<Self::ConnectionType> {
         // Construct a new connection.

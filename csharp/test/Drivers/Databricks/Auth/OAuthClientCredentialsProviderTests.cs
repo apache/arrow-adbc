@@ -32,13 +32,35 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         {
         }
 
-        private OAuthClientCredentialsProvider CreateService()
+        private OAuthClientCredentialsProvider CreateService(int refreshBufferMinutes = 5)
         {
+            string host;
+            if (!string.IsNullOrEmpty(TestConfiguration.HostName))
+            {
+                host = TestConfiguration.HostName;
+            }
+            else if (!string.IsNullOrEmpty(TestConfiguration.Uri))
+            {
+                if (Uri.TryCreate(TestConfiguration.Uri, UriKind.Absolute, out Uri? parsedUri))
+                {
+                    host = parsedUri.Host;
+                }
+                else
+                {
+                    throw new ArgumentException($"Invalid URI format: {TestConfiguration.Uri}");
+                }
+            }
+            else
+            {
+                throw new ArgumentException("Either HostName or Uri must be provided in the test configuration");
+            }
+
             return new OAuthClientCredentialsProvider(
                 TestConfiguration.OAuthClientId,
                 TestConfiguration.OAuthClientSecret,
-                TestConfiguration.HostName,
-                timeoutMinutes: 1);
+                host,
+                timeoutMinutes: 1,
+                refreshBufferMinutes: refreshBufferMinutes);
         }
 
         [SkippableFact]
@@ -76,6 +98,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
             var token2 = await service.GetAccessTokenAsync();
 
             Assert.Equal(token1, token2);
+        }
+
+        [SkippableFact]
+        public async Task GetAccessToken_WithLargeRefreshBuffer_RefetchesToken()
+        {
+            Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
+
+            // Create service with a refresh buffer of 60 minutes (typical token lifetime)
+            var service = CreateService(refreshBufferMinutes: 60);
+
+            // Get initial token
+            var token1 = await service.GetAccessTokenAsync();
+
+            // Wait a short time to ensure we're not hitting any caching
+            await Task.Delay(100);
+
+            // Get second token - should be different since the refresh buffer is larger than token lifetime
+            var token2 = await service.GetAccessTokenAsync();
+
+            // Tokens should be different since we're forcing a refresh
+            Assert.NotEqual(token1, token2);
         }
     }
 }
