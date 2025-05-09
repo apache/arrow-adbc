@@ -141,6 +141,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// This is the client secret you obtained when registering your application with Databricks.
         /// </summary>
         public const string OAuthClientSecret = "adbc.databricks.oauth.client_secret";
+
+        /// <summary>
+        /// The OAuth scope for client credentials flow.
+        /// Optional when grant_type is "client_credentials".
+        /// Default value is "sql" if not specified.
+        /// </summary>
+        public const string OAuthScope = "adbc.databricks.oauth.scope";
     }
 
     /// <summary>

@@ -37,6 +37,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         private readonly string _tokenEndpoint;
         private readonly int _timeoutMinutes;
         private readonly int _refreshBufferMinutes;
+        private readonly string _scope;
         private readonly SemaphoreSlim _tokenLock = new SemaphoreSlim(1, 1);
         private TokenInfo? _cachedToken;
 
@@ -45,6 +46,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             public string? AccessToken { get; set; }
             public DateTime ExpiresAt { get; set; }
             private readonly int _refreshBufferMinutes;
+
+            public string? Scope { get; set; }
 
             public TokenInfo(int refreshBufferMinutes)
             {
@@ -60,13 +63,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         /// </summary>
         /// <param name="clientId">The OAuth client ID.</param>
         /// <param name="clientSecret">The OAuth client secret.</param>
-        /// <param name="baseUri">The base URI of the Databricks workspace.</param>
+        /// <param name="host">The base host of the Databricks workspace.</param>
+        /// <param name="scope">The scope for the OAuth token.</param>
         /// <param name="timeoutMinutes">The timeout in minutes for HTTP requests.</param>
         /// <param name="refreshBufferMinutes">The number of minutes before token expiration to refresh the token.</param>
         public OAuthClientCredentialsProvider(
             string clientId,
             string clientSecret,
             string host,
+            string scope = "sql",
             int timeoutMinutes = 1,
             int refreshBufferMinutes = 5)
         {
@@ -75,6 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _timeoutMinutes = timeoutMinutes;
             _refreshBufferMinutes = refreshBufferMinutes;
+            _scope = scope ?? throw new ArgumentNullException(nameof(scope));
             _tokenEndpoint = DetermineTokenEndpoint();
 
             _httpClient = new HttpClient();
@@ -128,7 +134,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             var requestContent = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                new KeyValuePair<string, string>("scope", "sql")
+                new KeyValuePair<string, string>("scope", _scope)
             });
 
             var request = new HttpRequestMessage(HttpMethod.Post, _tokenEndpoint)
@@ -172,10 +178,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 throw new DatabricksException("OAuth expires_in value must be positive");
             }
 
+            if (!jsonDoc.RootElement.TryGetProperty("scope", out var scopeElement))
+            {
+                throw new DatabricksException("OAuth response did not contain scope");
+            }
+
+            string? scope = scopeElement.GetString();
+            if (string.IsNullOrEmpty(scope))
+            {
+                throw new DatabricksException("OAuth scope was null or empty");
+            }
+
             return new TokenInfo(_refreshBufferMinutes)
             {
                 AccessToken = accessToken!,
-                ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn)
+                ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn),
+                Scope = scope!
             };
         }
 
@@ -211,5 +229,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             _httpClient.Dispose();
         }
 
+        public string? GetCachedTokenScope()
+        {
+            return _cachedToken?.Scope;
+        }
     }
 }
