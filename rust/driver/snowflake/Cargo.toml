@@ -29,6 +29,18 @@ homepage.workspace = true
 repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
+exclude = [
+    "go/adbc/driver/bigquery",
+    "go/adbc/driver/flightsql",
+    "go/adbc/driver/panicdummy",
+    "go/adbc/drivermgr",
+    "go/adbc/pkg/bigquery",
+    "go/adbc/pkg/flightsql",
+    "go/adbc/pkg/gen",
+    "go/adbc/pkg/panicdummy",
+    "go/adbc/sqldriver",
+    "go/adbc/validation",
+]
 
 [features]
 default = ["bundled", "env", "dotenv"]
