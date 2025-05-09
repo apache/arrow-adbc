@@ -439,7 +439,7 @@ class SqliteReaderTest : public ::testing::Test {
   }
   void TearDown() override {
     if (error.release) error.release(&error);
-    AdbcSqliteBinderRelease(&binder);
+    InternalAdbcSqliteBinderRelease(&binder);
     sqlite3_finalize(stmt);
     sqlite3_close(db);
   }
@@ -463,7 +463,7 @@ class SqliteReaderTest : public ::testing::Test {
   }
 
   void Bind(struct ArrowArrayStream* stream) {
-    ASSERT_THAT(AdbcSqliteBinderSetArrayStream(&binder, stream, &error),
+    ASSERT_THAT(InternalAdbcSqliteBinderSetArrayStream(&binder, stream, &error),
                 IsOkStatus(&error));
   }
 
@@ -482,8 +482,8 @@ class SqliteReaderTest : public ::testing::Test {
                                             /*pzTail=*/nullptr));
     struct AdbcSqliteBinder* binder =
         this->binder.schema.release ? &this->binder : nullptr;
-    ASSERT_THAT(AdbcSqliteExportReader(db, stmt, binder, infer_rows,
-                                       &reader->stream.value, &error),
+    ASSERT_THAT(InternalAdbcSqliteExportReader(db, stmt, binder, infer_rows,
+                                               &reader->stream.value, &error),
                 IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader->GetSchema());
   }

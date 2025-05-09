@@ -22,7 +22,8 @@
 #include "arrow-adbc/adbc.h"
 
 extern "C" {
-AdbcStatusCode SqliteDriverInit(int version, void* raw_driver, struct AdbcError* error);
+AdbcStatusCode AdbcDriverSqliteInit(int version, void* raw_driver,
+                                    struct AdbcError* error);
 
 static SEXP init_func_xptr = 0;
 
@@ -36,7 +37,7 @@ void R_init_adbcsqlite(DllInfo* dll) {
   R_useDynamicSymbols(dll, FALSE);
 
   init_func_xptr =
-      PROTECT(R_MakeExternalPtrFn((DL_FUNC)SqliteDriverInit, R_NilValue, R_NilValue));
+      PROTECT(R_MakeExternalPtrFn((DL_FUNC)AdbcDriverSqliteInit, R_NilValue, R_NilValue));
   Rf_setAttrib(init_func_xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
   R_PreserveObject(init_func_xptr);
   UNPROTECT(1);

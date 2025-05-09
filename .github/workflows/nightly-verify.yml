@@ -201,10 +201,23 @@ jobs:
           pushd arrow-adbc
           docker compose run --rm cpp-gcc-latest
 
-      - name: python-debug
+      - name: cpp-shared-no-common-entrypoints-test
         run: |
           pushd arrow-adbc
-          docker compose run -e PYTHON=3.12 --rm python-debug
+          docker compose run --rm cpp-shared-no-common-entrypoints-test
+
+      - name: cpp-static-test
+        run: |
+          pushd arrow-adbc
+          docker compose run --rm cpp-static-test
+
+      - name: python-debug
+        run: |
+          # Need to set this or ASAN inside the container gets stuck
+          # printing a loop of DEADLYSIGNAL
+          sudo sysctl vm.mmap_rnd_bits=28
+          pushd arrow-adbc
+          docker compose run -e PYTHON=3.13 --rm python-debug
 
   source-verify-docker:
     name: "Verify Source (OS)/${{ matrix.os }} ${{ matrix.version }}"

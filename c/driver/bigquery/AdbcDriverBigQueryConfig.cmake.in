@@ -33,7 +33,7 @@ if(ADBC_BUILD_SHARED)
 endif()
 
 if(ADBC_BUILD_STATIC)
-  adbc_add_shared_library(
+  adbc_add_static_library(
     AdbcDriverBigQuery::adbc_driver_bigquery_static
     adbc_driver_bigquery)
 endif()

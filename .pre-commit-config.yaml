@@ -114,7 +114,7 @@ repos:
       name: Ensure CGO adbc.h is syncd
       language: script
       pass_filenames: true
-      files: '^c/include/arrow-adbc/.*\.h$'
+      files: '^c/include/arrow-adbc/[^/]*\.h$'
       entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
     # https://infra.apache.org/github-actions-policy.html
     - id: check-pin
