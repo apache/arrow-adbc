@@ -20,6 +20,9 @@ package driverbase
 import (
 	"log/slog"
 	"os"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func nilLogger() *slog.Logger {
@@ -28,4 +31,8 @@ func nilLogger() *slog.Logger {
 		Level:     slog.LevelError,
 	})
 	return slog.New(h)
+}
+
+func nilTracer() trace.Tracer {
+	return otel.Tracer("")
 }

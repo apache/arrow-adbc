@@ -18,7 +18,10 @@
 package adbc
 
 import (
+	"context"
 	"log/slog"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // DatabaseLogging is a Database that also supports logging information to an
@@ -27,4 +30,15 @@ import (
 // EXPERIMENTAL. Not formally part of the ADBC APIs.
 type DatabaseLogging interface {
 	SetLogger(*slog.Logger)
+}
+
+type OTelTracingInit interface {
+	InitTracing(ctx context.Context, driverName string, driverVersion string) error
+}
+
+type OTelTracing interface {
+	SetTraceParent(string) error
+	GetTraceParent() string
+	StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span)
+	SetErrorOnSpan(span trace.Span, err error) bool
 }

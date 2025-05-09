@@ -250,6 +250,16 @@ const (
 	OptionKeyURI                      = "uri"
 	OptionKeyUsername                 = "username"
 	OptionKeyPassword                 = "password"
+	OptionKeyTelemetryTraceParent     = "adbc.telemetry.trace_parent"
+)
+
+type OptionTelemetryExporter string
+
+const (
+	TelemetryExporterNone     OptionTelemetryExporter = "none"
+	TelemetryExporterOtlp     OptionTelemetryExporter = "otlp"
+	TelemetryExporterConsole  OptionTelemetryExporter = "console"
+	TelemetryExporterAdbcFile OptionTelemetryExporter = "adbcfile"
 )
 
 type OptionIsolationLevel string
@@ -326,6 +336,7 @@ const (
 // or desire for it.
 type Driver interface {
 	NewDatabase(opts map[string]string) (Database, error)
+	NewDatabaseWithContext(ctx context.Context, opts map[string]string) (Database, error)
 }
 
 type Database interface {

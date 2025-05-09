@@ -445,10 +445,19 @@ type driverImpl struct {
 }
 
 func (drv *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return drv.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (drv *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &drv.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
 	db := driverbase.NewDatabase(
-		&databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&drv.DriverImplBase),
-			drv:        drv,
-			useHelpers: drv.useHelpers,
+		&databaseImpl{
+			DatabaseImplBase: dbBase,
+			drv:              drv,
+			useHelpers:       drv.useHelpers,
 		})
 	db.SetLogger(slog.New(drv.handler))
 	return db, nil
@@ -505,6 +514,63 @@ type connectionImpl struct {
 
 	currentCatalog  string
 	currentDbSchema string
+}
+
+func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
+	stmt := &statement{
+		StatementImplBase: driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper),
+		cnxn:              c,
+	}
+	return driverbase.NewStatement(stmt), nil
+}
+
+type statement struct {
+	driverbase.StatementImplBase
+	cnxn *connectionImpl
+}
+
+func (base *statement) Base() *driverbase.StatementImplBase {
+	return &base.StatementImplBase
+}
+
+func (base *statement) Bind(ctx context.Context, values arrow.Record) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Bind")
+}
+
+func (base *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "BindStream")
+}
+
+func (base *statement) Close() error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Close")
+}
+
+func (base *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
+	return nil, adbc.Partitions{}, 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecutePartitions")
+}
+
+func (base *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	return nil, 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteQuery")
+}
+
+func (base *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
+	return 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteUpdate")
+}
+
+func (base *statement) GetParameterSchema() (*arrow.Schema, error) {
+	return nil, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetParameterSchema")
+}
+
+func (base *statement) Prepare(ctx context.Context) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Prepare")
+}
+
+func (base *statement) SetSqlQuery(query string) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetSqlQuery")
+}
+
+func (base statement) SetSubstraitPlan(plan []byte) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetSubstraitPlan")
 }
 
 var dbObjects = map[string]map[string][]driverbase.TableInfo{
@@ -720,4 +786,83 @@ func TestRequiredList(t *testing.T) {
 
 	require.NoError(t, json.Unmarshal([]byte(`["d", "e", "f"]`), &v))
 	assert.Equal(t, driverbase.RequiredList([]string{"d", "e", "f"}), v)
+}
+
+func TestSetGetTraceParent(t *testing.T) {
+	var handler MockedHandler
+	handler.On("Handle", mock.Anything, mock.Anything).Return(nil)
+
+	ctx := context.TODO()
+	alloc := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	defer alloc.AssertSize(t, 0)
+
+	drv := NewDriver(alloc, &handler, false) // Do not use helper implementations; only default behavior
+
+	db, err := drv.NewDatabase(nil)
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, db)
+
+	cnxn, err := db.Open(ctx)
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, cnxn)
+
+	options, ok := cnxn.(adbc.GetSetOptions)
+	require.True(t, ok)
+
+	// Initial is blank
+	tpValue, err := options.GetOption(adbc.OptionKeyTelemetryTraceParent)
+	require.NoError(t, err)
+	require.Equal(t, "", tpValue)
+
+	var testCases = []struct {
+		value    string
+		expected string
+		err      error
+	}{
+		{"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", nil},
+		{"", "", nil},
+		{"x", "", adbc.Error{}},
+		{"00-00000000000000000000000000000000-00f067aa0ba902b7-01", "", adbc.Error{}},
+		{"00-4bf92f3577b34da6a3ce929d0e0e4736-0000000000000000-01", "", adbc.Error{}},
+		{"01-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", "", adbc.Error{}},
+	}
+
+	for _, testCase := range testCases {
+		err = options.SetOption(adbc.OptionKeyTelemetryTraceParent, testCase.value)
+		if testCase.err != nil {
+			require.Error(t, err)
+			require.IsType(t, testCase.err, err)
+			continue
+		} else {
+			require.NoError(t, err)
+		}
+		tpValue, err = options.GetOption(adbc.OptionKeyTelemetryTraceParent)
+		require.NoError(t, err)
+		require.Equal(t, testCase.expected, tpValue)
+	}
+
+	stmt, err := cnxn.NewStatement()
+	require.NoError(t, err)
+	options, ok = stmt.(adbc.GetSetOptions)
+	require.True(t, ok)
+
+	// Initial is blank
+	tpValue, err = options.GetOption(adbc.OptionKeyTelemetryTraceParent)
+	require.NoError(t, err)
+	require.Equal(t, "", tpValue)
+
+	for _, testCase := range testCases {
+		err = options.SetOption(adbc.OptionKeyTelemetryTraceParent, testCase.value)
+		if testCase.err != nil {
+			require.Error(t, err)
+			require.IsType(t, testCase.err, err)
+			continue
+		} else {
+			require.NoError(t, err)
+		}
+		tpValue, err = options.GetOption(adbc.OptionKeyTelemetryTraceParent)
+		require.NoError(t, err)
+		require.Equal(t, testCase.expected, tpValue)
+	}
+
 }
