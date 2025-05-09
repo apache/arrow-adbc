@@ -97,7 +97,27 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 		return
 	}
 
+	for i := 0; i < 5; i++ {
+		err.sqlstate[i] = C.char(adbcError.SqlState[i])
+	}
+
 	if err.vendor_code != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
+		// Caller is not interested in `private_data` if `vendor_code` is not
+		// `ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA` so let's use the field for
+		// `vendor_code` instead, but make sure it's not set to the value
+		// that would indicate `private_data` is set.
+		if adbcError.VendorCode != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
+			err.vendor_code = C.int(adbcError.VendorCode)
+		}
+		setErr(err, adbcError.Msg)
+		return
+	}
+
+	numDetails := len(adbcError.Details)
+	// If there are no details, but we have a `VendorCode`, let's override
+	// `vendor_code` and not populate `private_data` with the error details.
+	if numDetails == 0 && adbcError.VendorCode != 0 && adbcError.VendorCode != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
+		err.vendor_code = C.int(adbcError.VendorCode)
 		setErr(err, adbcError.Msg)
 		return
 	}
@@ -109,7 +129,6 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 	err.release = (*[0]byte)(C.FlightSQLReleaseErrWithDetails)
 	err.private_data = cErrPtr
 
-	numDetails := len(adbcError.Details)
 	if numDetails > 0 {
 		cErr.keys = (**C.cchar_t)(C.calloc(C.size_t(numDetails), C.size_t(unsafe.Sizeof((*C.cchar_t)(nil)))))
 		cErr.values = (**C.cuint8_t)(C.calloc(C.size_t(numDetails), C.size_t(unsafe.Sizeof((*C.cuint8_t)(nil)))))
