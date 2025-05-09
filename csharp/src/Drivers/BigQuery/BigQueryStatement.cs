@@ -123,7 +123,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             BigQueryResults results = await ExecuteWithRetriesAsync(getJobResults);
 
-            TokenProtectedReadClientManger clientMgr = new TokenProtectedReadClientManger(Credential);
+            TokenProtectedReadClientManger clientMgr = new TokenProtectedReadClientManger(Credential, this.bigQueryConnection.proxyAddress);
             clientMgr.UpdateToken = () => Task.Run(() =>
             {
                 this.bigQueryConnection.SetCredential();

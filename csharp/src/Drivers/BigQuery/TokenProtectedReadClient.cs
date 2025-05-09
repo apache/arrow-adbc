@@ -28,8 +28,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     internal class TokenProtectedReadClientManger : ITokenProtectedResource
     {
         BigQueryReadClient bigQueryReadClient;
+        string? proxyAddress;
 
-        public TokenProtectedReadClientManger(GoogleCredential credential)
+        public TokenProtectedReadClientManger(GoogleCredential credential, string? proxyAddress)
         {
             UpdateCredential(credential);
 
@@ -37,6 +38,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 throw new InvalidOperationException("could not create a read client");
             }
+
+            this.proxyAddress = proxyAddress;
         }
 
         public BigQueryReadClient ReadClient => bigQueryReadClient;
@@ -48,6 +51,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 throw new ArgumentNullException(nameof(credential));
             }
 
+            // There doesn't appear to be a way to set the proxy here other than
+            // https://grpc.github.io/grpc/core/md_doc_core_default_http_proxy_mapper.html
             BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
             readClientBuilder.Credential = credential;
             this.bigQueryReadClient = readClientBuilder.Build();
