@@ -53,6 +53,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private const bool DefaultRetryOnUnavailable= true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 500;
 
+        // Default namespace
+        private TNamespace? _defaultNamespace;
+
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
             ValidateProperties();
@@ -125,6 +128,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 _maxBytesPerFile = maxBytesPerFileValue;
             }
+
+            // Parse default namespace
+            string? defaultCatalog = null;
+            string? defaultSchema = null;
+            Properties.TryGetValue(DatabricksParameters.DefaultCatalog, out defaultCatalog);
+            Properties.TryGetValue(DatabricksParameters.DefaultSchema, out defaultSchema);
+
+            if (!string.IsNullOrEmpty(defaultCatalog))
+            {
+                _defaultNamespace = new TNamespace
+                {
+                    CatalogName = defaultCatalog,
+                    SchemaName = defaultSchema
+                };
+            }
+            else if (!string.IsNullOrEmpty(defaultSchema))
+            {
+                throw new ArgumentException($"Parameter '{DatabricksParameters.DefaultCatalog}' is not set but '{DatabricksParameters.DefaultSchema}' is set. Please provide a value for '{DatabricksParameters.DefaultCatalog}'.");
+            }
         }
 
         /// <summary>
@@ -151,6 +173,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the maximum bytes per file for CloudFetch.
         /// </summary>
         internal long MaxBytesPerFile => _maxBytesPerFile;
+
+        /// <summary>
+        /// Gets the default namespace to use for SQL queries.
+        /// </summary>
+        internal TNamespace? DefaultNamespace => _defaultNamespace;
 
         /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
@@ -284,6 +311,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
                 CanUseMultipleCatalogs = true,
             };
+
+            // Set default namespace if available
+            if (_defaultNamespace != null)
+            {
+                req.InitialNamespace = _defaultNamespace;
+            }
 
             // If not using queries to set server-side properties, include them in Configuration
             if (!_applySSPWithQueries)

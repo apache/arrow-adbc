@@ -19,13 +19,16 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
+using Apache.Arrow.Adbc;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks;
+using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
 using Xunit;
 using Xunit.Abstractions;
+using System.Reflection;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
@@ -314,6 +317,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TemporarilyUnavailableRetryTimeout] = "invalid" }, typeof(ArgumentOutOfRangeException)));
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TemporarilyUnavailableRetryTimeout] = "-1" }, typeof(ArgumentOutOfRangeException)));
             }
+        }
+
+        /// <summary>
+        /// Tests that default namespace is correctly stored in the connection.
+        /// </summary>
+        [SkippableFact]
+        internal void DefaultNamespace_StoredInConnection()
+        {
+            // Skip if default catalog or schema is not configured
+            Skip.If(string.IsNullOrEmpty(TestConfiguration.DefaultCatalog), "Default catalog not configured");
+            Skip.If(string.IsNullOrEmpty(TestConfiguration.DefaultSchema), "Default schema not configured");
+
+            // Act
+            using var connection = NewConnection();
+
+            // Assert
+            Assert.NotNull(connection);
+            Assert.IsType<DatabricksConnection>(connection);
+
+            var defaultNamespaceProperty = typeof(DatabricksConnection).GetProperty("DefaultNamespace", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            Assert.NotNull(defaultNamespaceProperty);
+
+            var namespaceValue = defaultNamespaceProperty.GetValue(connection) as TNamespace;
+            Assert.NotNull(namespaceValue);
+            Assert.Equal(TestConfiguration.DefaultCatalog, namespaceValue.CatalogName);
+            Assert.Equal(TestConfiguration.DefaultSchema, namespaceValue.SchemaName);
         }
     }
 }
