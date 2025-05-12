@@ -51,6 +51,7 @@ func init() {
 // vendor-specific functionality.
 type DriverImpl interface {
 	adbc.Driver
+	adbc.DriverWithContext
 	Base() *DriverImplBase
 }
 
@@ -74,7 +75,7 @@ func (base *DriverImplBase) NewDatabase(opts map[string]string) (adbc.Database, 
 }
 
 func (base *DriverImplBase) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
-	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewDatabaseContext")
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewDatabaseWithContext")
 }
 
 // NewDriverImplBase instantiates DriverImplBase.

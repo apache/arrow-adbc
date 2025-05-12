@@ -26,9 +26,9 @@ import (
 )
 
 const (
-	StatementMessageOptionUnknown     = "Unknown statement option"
-	StatementMessageOptionUnsupported = "Unsupported statement option"
-	StatementMessageIncorrectFormat   = "Incorrect or unsupported format"
+	StatementMessageOptionUnknown              = "Unknown statement option"
+	StatementMessageOptionUnsupported          = "Unsupported statement option"
+	StatementMessageTraceParentIncorrectFormat = "Incorrect or unsupported trace parent format"
 )
 
 type StatementImpl interface {
@@ -70,9 +70,10 @@ func NewStatement(impl StatementImpl) Statement {
 }
 
 func (st *StatementImplBase) SetOption(key, value string) error {
-	switch strings.ToLower(strings.TrimSpace(key)) {
+	switch strings.ToLower(key) {
 	case adbc.OptionKeyTelemetryTraceParent:
-		return st.SetTraceParent(strings.TrimSpace(value))
+		st.SetTraceParent(strings.TrimSpace(value))
+		return nil
 	}
 	return st.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", StatementMessageOptionUnknown, key)
 }
@@ -90,7 +91,7 @@ func (st *StatementImplBase) SetOptionDouble(key string, value float64) error {
 }
 
 func (st *StatementImplBase) GetOption(key string) (string, error) {
-	switch strings.ToLower(strings.TrimSpace(key)) {
+	switch strings.ToLower(key) {
 	case adbc.OptionKeyTelemetryTraceParent:
 		return st.GetTraceParent(), nil
 	}
@@ -113,18 +114,8 @@ func (st *StatementImplBase) GetTraceParent() string {
 	return st.traceParent
 }
 
-func (st *StatementImplBase) SetTraceParent(traceParent string) error {
-	if traceParent != "" && !isValidTraceParent(traceParent) {
-		return st.ErrorHelper.Errorf(
-			adbc.StatusInvalidArgument,
-			"%s '%s' '%s'",
-			StatementMessageIncorrectFormat,
-			adbc.OptionKeyTelemetryTraceParent,
-			traceParent,
-		)
-	}
+func (st *StatementImplBase) SetTraceParent(traceParent string) {
 	st.traceParent = traceParent
-	return nil
 }
 
 func (st *StatementImplBase) StartSpan(
@@ -136,8 +127,4 @@ func (st *StatementImplBase) StartSpan(
 	ctx, _ = maybeAddTraceParent(ctx, st.cnxn, st)
 	ctx, span = st.Tracer.Start(ctx, spanName, opts...)
 	return ctx, span
-}
-
-func (st *StatementImplBase) SetErrorOnSpan(span trace.Span, err error) bool {
-	return st.cnxn.Base().SetErrorOnSpan(span, err)
 }

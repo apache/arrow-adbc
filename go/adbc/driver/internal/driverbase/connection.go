@@ -24,32 +24,24 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
 const (
-	ConnectionMessageOptionUnknown     = "Unknown connection option"
-	ConnectionMessageOptionUnsupported = "Unsupported connection option"
-	ConnectionMessageCannotCommit      = "Cannot commit when autocommit is enabled"
-	ConnectionMessageCannotRollback    = "Cannot rollback when autocommit is enabled"
-	ConnectionMessageIncorrectFormat   = "Incorrect or unsupported format"
+	ConnectionMessageOptionUnknown              = "Unknown connection option"
+	ConnectionMessageOptionUnsupported          = "Unsupported connection option"
+	ConnectionMessageCannotCommit               = "Cannot commit when autocommit is enabled"
+	ConnectionMessageCannotRollback             = "Cannot rollback when autocommit is enabled"
+	ConnectionMessageTraceParentIncorrectFormat = "Incorrect or unsupported trace parent format"
 )
-
-// Trace parent pattern and regular expression
-const tpPattern = `^(?<version>[0]{2})-(?<traceId>[0-9a-f]{32})-(?<parentId>[0-9a-f]{16})-(?<traceFlags>[0-9a-f]{2})$`
-
-var tpRegExp = regexp.MustCompile(tpPattern)
 
 // ConnectionImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
@@ -240,7 +232,7 @@ func (base *ConnectionImplBase) ReadPartition(ctx context.Context, serializedPar
 }
 
 func (base *ConnectionImplBase) GetOption(key string) (string, error) {
-	switch strings.ToLower(strings.TrimSpace(key)) {
+	switch strings.ToLower(key) {
 	case adbc.OptionKeyTelemetryTraceParent:
 		return base.GetTraceParent(), nil
 	}
@@ -260,11 +252,12 @@ func (base *ConnectionImplBase) GetOptionInt(key string) (int64, error) {
 }
 
 func (base *ConnectionImplBase) SetOption(key string, val string) error {
-	switch strings.ToLower(strings.TrimSpace(key)) {
+	switch strings.ToLower(key) {
 	case adbc.OptionKeyAutoCommit:
 		return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnsupported, key)
 	case adbc.OptionKeyTelemetryTraceParent:
-		return base.SetTraceParent(strings.TrimSpace(val))
+		base.SetTraceParent(strings.TrimSpace(val))
+		return nil
 	}
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
@@ -359,18 +352,8 @@ func (cnxn *ConnectionImplBase) GetTraceParent() string {
 	return cnxn.traceParent
 }
 
-func (cnxn *ConnectionImplBase) SetTraceParent(traceParent string) error {
-	if traceParent != "" && !isValidTraceParent(traceParent) {
-		return cnxn.ErrorHelper.Errorf(
-			adbc.StatusInvalidArgument,
-			"%s '%s' '%s'",
-			ConnectionMessageIncorrectFormat,
-			adbc.OptionKeyTelemetryTraceParent,
-			traceParent,
-		)
-	}
+func (cnxn *ConnectionImplBase) SetTraceParent(traceParent string) {
 	cnxn.traceParent = traceParent
-	return nil
 }
 
 func (cnxn *ConnectionImplBase) StartSpan(
@@ -380,18 +363,6 @@ func (cnxn *ConnectionImplBase) StartSpan(
 ) (context.Context, trace.Span) {
 	ctx, _ = maybeAddTraceParent(ctx, cnxn, nil)
 	return cnxn.Tracer.Start(ctx, spanName, opts...)
-}
-
-func (cnxn *ConnectionImplBase) SetErrorOnSpan(span trace.Span, err error) bool {
-	if err != nil {
-		span.RecordError(err)
-		if adbcError, ok := err.(adbc.Error); ok {
-			span.SetAttributes(attribute.String("error.type", adbcError.Code.String()))
-		}
-		span.SetStatus(codes.Error, err.Error())
-		return true
-	}
-	return false
 }
 
 // GetObjects implements Connection.
@@ -807,19 +778,6 @@ func propagateTraceParent(ctx context.Context, traceParentStr string) (trace.Spa
 		return trace.SpanContext{}, errors.New("invalid traceparent string")
 	}
 	return spanContext, nil
-}
-
-func isValidTraceParent(traceParent string) bool {
-	// Supports version-format 00
-	// see: https://www.w3.org/TR/trace-context/#trace-context-http-headers-format
-	groupMatches := tpRegExp.FindStringSubmatch(traceParent)
-	if groupMatches == nil || len(groupMatches) != 5 {
-		return false
-	}
-	if groupMatches[2] == "00000000000000000000000000000000" || groupMatches[3] == "0000000000000000" {
-		return false
-	}
-	return true
 }
 
 var _ ConnectionImpl = (*ConnectionImplBase)(nil)

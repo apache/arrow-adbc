@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -478,7 +479,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 	ctx = st.setQueryContext(ctx)
 
 	defer func() {
-		if !st.SetErrorOnSpan(span, err) {
+		if !internal.SetErrorOnSpan(span, err) {
 			span.SetAttributes(attribute.Int64("db.response.returned_rows", nRows))
 			span.SetStatus(codes.Ok, "")
 		}
@@ -540,14 +541,12 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err error) {
-	numRows = -1
-
 	var span trace.Span
 	ctx, span = st.StartSpan(ctx, "ExecuteUpdate")
 	ctx = st.setQueryContext(ctx)
 
 	defer func() {
-		if !st.SetErrorOnSpan(span, err) {
+		if !internal.SetErrorOnSpan(span, err) {
 			span.SetAttributes(attribute.Int64("db.response.returned_rows", numRows))
 			span.SetStatus(codes.Ok, codes.Ok.String())
 		}
@@ -556,15 +555,16 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 
 	if st.targetTable != "" {
 		numRows, err = st.executeIngest(ctx)
-		return
+		return numRows, err
 	}
 
 	if st.query == "" {
+		numRows = -1
 		err = adbc.Error{
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
 		}
-		return
+		return numRows, err
 	}
 
 	if st.streamBind != nil || st.bound != nil {
@@ -582,12 +582,14 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 			if err == io.EOF {
 				break
 			} else if err != nil {
-				return -1, err
+				numRows = -1
+				return numRows, err
 			}
 			r, err := st.cnxn.cn.ExecContext(ctx, st.query, params)
 			if err != nil {
 				err = errToAdbcErr(adbc.StatusInternal, err)
-				return -1, err
+				numRows = -1
+				return numRows, err
 			}
 			n, err := r.RowsAffected()
 			if err != nil {
@@ -596,21 +598,23 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 				numRows += n
 			}
 		}
-		return
+		return numRows, nil
 	}
 
 	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)
 	if err != nil {
+		numRows = -1
 		err = errToAdbcErr(adbc.StatusIO, err)
-		return
+		return numRows, err
 	}
 
 	numRows, err = r.RowsAffected()
 	if err != nil {
 		numRows = -1
+		err = nil
 	}
 
-	return
+	return numRows, nil
 }
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.

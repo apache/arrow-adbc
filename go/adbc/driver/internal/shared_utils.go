@@ -27,6 +27,9 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -740,4 +743,16 @@ func ToXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
 	default:
 		return XdbcDataType_XDBC_UNKNOWN_TYPE
 	}
+}
+
+func SetErrorOnSpan(span trace.Span, err error) bool {
+	if err != nil {
+		span.RecordError(err)
+		if adbcError, ok := err.(adbc.Error); ok {
+			span.SetAttributes(attribute.String("error.type", adbcError.Code.String()))
+		}
+		span.SetStatus(codes.Error, err.Error())
+		return true
+	}
+	return false
 }
