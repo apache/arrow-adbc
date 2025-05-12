@@ -20,12 +20,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     internal enum HiveServer2TransportType
     {
         Http,
+        Standard,
+        Sasl,
         Empty = int.MaxValue,
     }
 
     internal static class HiveServer2TransportTypeParser
     {
-        internal const string SupportedList = HiveServer2TransportTypeConstants.Http;
+        internal const string SupportedList = HiveServer2TransportTypeConstants.Http + ", " +
+            HiveServer2TransportTypeConstants.Standard + ", " + HiveServer2TransportTypeConstants.Sasl;
 
         internal static bool TryParse(string? serverType, out HiveServer2TransportType serverTypeValue)
         {
@@ -37,6 +40,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     return true;
                 case HiveServer2TransportTypeConstants.Http:
                     serverTypeValue = HiveServer2TransportType.Http;
+                    return true;
+                case HiveServer2TransportTypeConstants.Standard:
+                    serverTypeValue = HiveServer2TransportType.Standard;
+                    return true;
+                case HiveServer2TransportTypeConstants.Sasl:
+                    serverTypeValue = HiveServer2TransportType.Sasl;
                     return true;
                 default:
                     serverTypeValue = default;
