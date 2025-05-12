@@ -37,6 +37,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private const int DefaultMemoryBufferSizeMB = 200;
         private const bool DefaultPrefetchEnabled = true;
         private const int DefaultFetchBatchSize = 2000000;
+        private const int DefaultTimeoutMinutes = 5;
 
         private readonly DatabricksStatement _statement;
         private readonly Schema _schema;
@@ -50,6 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private bool _isDisposed;
         private bool _isStarted;
         private CancellationTokenSource? _cancellationTokenSource;
+        private DatabricksHeartbeatService? _heartbeatService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloadManager"/> class.
@@ -137,7 +139,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             }
 
             // Parse timeout minutes
-            int timeoutMinutes = 5;
+            int timeoutMinutes = DefaultTimeoutMinutes;
             if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchTimeoutMinutes, out string? timeoutStr))
             {
                 if (int.TryParse(timeoutStr, out int parsedTimeout) && parsedTimeout > 0)
@@ -180,6 +182,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 _isLz4Compressed,
                 maxRetries,
                 retryDelayMs);
+
+            // Initialize the heartbeat service if enabled
+            _heartbeatService = new DatabricksHeartbeatService(_statement);
         }
 
         /// <summary>
@@ -253,6 +258,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             // Start the downloader
             await _downloader.StartAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
 
+            // Start the heartbeat service if enabled
+            _heartbeatService?.Start();
+
             _isStarted = true;
         }
 
@@ -263,6 +271,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             {
                 return;
             }
+
+            // Stop the heartbeat service
+            _heartbeatService?.Stop();
 
             // Cancel the token to signal all operations to stop
             _cancellationTokenSource?.Cancel();
@@ -290,6 +301,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
             // Stop the pipeline
             StopAsync().GetAwaiter().GetResult();
+
+            // Dispose the heartbeat service
+            _heartbeatService?.Dispose();
+            _heartbeatService = null;
 
             // Dispose the HTTP client
             _httpClient.Dispose();

@@ -33,6 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         int index;
         IArrowReader? reader;
         bool isLz4Compressed;
+        private DatabricksHeartbeatService? _heartbeatService;
 
         public DatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
         {
@@ -50,8 +51,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     this.statement = null;
                 }
             }
+            
+            _heartbeatService = new DatabricksHeartbeatService(statement, DatabricksConstants.DefaultHeartbeatIntervalSeconds);
+            _heartbeatService.Start();
         }
-
         public Schema Schema { get { return schema; } }
 
         public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
@@ -134,6 +137,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public void Dispose()
         {
+            // Dispose the heartbeat service
+            if (_heartbeatService != null)
+            {
+                _heartbeatService.Dispose();
+                _heartbeatService = null;
+            }
         }
     }
 }
