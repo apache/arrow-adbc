@@ -247,9 +247,9 @@ macro_rules! check_err {
 macro_rules! check_not_null {
     ($ptr:ident, $err_out:expr) => {
         let res = if $ptr.is_null() {
-            Err(Error::with_message_and_status(
+            Err($crate::error::Error::with_message_and_status(
                 format!("Passed null pointer for argument {:?}", stringify!($ptr)),
-                Status::InvalidArguments,
+                $crate::error::Status::InvalidArguments,
             ))
         } else {
             Ok(())
