@@ -22,6 +22,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -104,6 +105,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             // Assumption: hostName and port have already been validated.
             Properties.TryGetValue(ImpalaParameters.HostName, out string? hostName);
             Properties.TryGetValue(ImpalaParameters.Port, out string? port);
+            Properties.TryGetValue(ImpalaParameters.AuthType, out string? authType);
+            if (!ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(ImpalaParameters.AuthType, authType, $"Unsupported {ImpalaParameters.AuthType} value.");
+            }
 
             // Delay the open connection until later.
             bool connectClient = false;
@@ -123,9 +129,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             {
                 transport = new TSocketTransport(hostName!, int.Parse(port!), connectClient, config: new());
             }
-
             TBufferedTransport bufferedTransport = new(transport);
-            return bufferedTransport;
+            switch (authTypeValue)
+            {
+                case ImpalaAuthType.None:
+                    return bufferedTransport;
+
+                case ImpalaAuthType.Basic:
+                    Properties.TryGetValue(AdbcOptions.Username, out string? username);
+                    Properties.TryGetValue(AdbcOptions.Password, out string? password);
+
+                    if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                    {
+                        throw new InvalidOperationException("Username and password must be provided for this authentication type.");
+                    }
+
+                    PlainSaslMechanism saslMechanism = new(username, password);
+                    TSaslTransport saslTransport = new(bufferedTransport, saslMechanism, config: new());
+                    return new TFramedTransport(saslTransport);
+
+                default:
+                    throw new NotSupportedException($"Authentication type '{authTypeValue}' is not supported.");
+            }
         }
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
