@@ -15,21 +15,12 @@
 * limitations under the License.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
-using Thrift;
-using Thrift.Protocol;
-using Thrift.Transport;
-using Thrift.Transport.Client;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
@@ -64,7 +55,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected abstract void ValidateConnection();
 
         protected abstract void ValidateOptions();
-
 
         public override AdbcStatement CreateStatement()
         {
