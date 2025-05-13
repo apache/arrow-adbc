@@ -38,18 +38,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl
         /// <summary>
         /// Gets a value indicating whether the SASL negotiation process has completed.
         /// </summary>
-        bool IsNegotiationCompleted { get; }
-
-        /// <summary>
-        /// Gets a value indicating whether the authentication has been successfully completed.
-        /// </summary>
-        bool IsAuthenticated { get; }
-
-        /// <summary>
-        /// Sets the status of the authentication result.
-        /// Typically set to true if the authentication exchange is successful.
-        /// </summary>
-        /// <param name="success">True if authenticated; otherwise, false.</param>
-        void SetAuthenticated(bool success);
+        bool IsNegotiationCompleted { get; set; }
     }
 }

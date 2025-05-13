@@ -22,17 +22,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl;
 
 /// <summary>
 /// Implements the SASL PLAIN mechanism for simple username/password authentication.
-/// This mechanism sends credentials in plain text, and is typically used over secure transports (e.g., TLS).
 /// </summary>
 public class PlainSaslMechanism : ISaslMechanism
 {
-    private static readonly Encoding Utf8Encoding = Encoding.UTF8;
-
     private readonly string _username;
     private readonly string _password;
     private readonly string _authorizationId;
     private bool _isNegotiationCompleted;
-    private bool _isAuthenticated;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PlainSaslMechanism"/> class.
@@ -61,12 +57,9 @@ public class PlainSaslMechanism : ISaslMechanism
         return Encoding.UTF8.GetBytes(message);
     }
 
-    public bool IsNegotiationCompleted => _isNegotiationCompleted;
-
-    public bool IsAuthenticated => _isNegotiationCompleted && _isAuthenticated;
-
-    public void SetAuthenticated(bool success)
+    public bool IsNegotiationCompleted
     {
-        _isAuthenticated = success;
+        get => _isNegotiationCompleted;
+        set => _isNegotiationCompleted = value;
     }
 }

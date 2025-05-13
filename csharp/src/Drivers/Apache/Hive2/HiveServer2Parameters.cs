@@ -39,7 +39,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         public const string Http = "http";
         public const string Standard = "standard";
-        public const string Sasl = "sasl";
     }
 
     public static class DataTypeConversionOptions

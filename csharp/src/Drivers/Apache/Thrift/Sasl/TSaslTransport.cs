@@ -97,7 +97,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl
                 throw new AuthenticationException($"SASL {_saslMechanism.Name} authentication failed.");
             }
 
-            _saslMechanism.SetAuthenticated(true);
+            _saslMechanism.IsNegotiationCompleted = true;
         }
 
         private async Task SendMechanismAsync(string mechanismName, CancellationToken cancellationToken)

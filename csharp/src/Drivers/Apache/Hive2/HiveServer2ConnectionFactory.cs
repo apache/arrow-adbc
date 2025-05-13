@@ -37,7 +37,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 HiveServer2TransportType.Http => new HiveServer2HttpConnection(properties),
                 HiveServer2TransportType.Standard => new HiveServer2StandardConnection(properties),
-                HiveServer2TransportType.Sasl => new HiveServer2SaslConnection(properties),
                 _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{HiveServer2Parameters.TransportType}'. Supported types: {HiveServer2TransportTypeParser.SupportedList}"),
             };
         }
