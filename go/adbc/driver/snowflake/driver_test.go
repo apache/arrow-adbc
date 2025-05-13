@@ -1680,6 +1680,27 @@ func (suite *SnowflakeTests) TestTimestampSnow() {
 	}
 }
 
+func (suite *SnowflakeTests) TestTimestamp9999() {
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("select TO_TIMESTAMP('9999-12-31 00:00:00') As December31_9999, TO_TIMESTAMP('33-04-03 15:00:00') as April3_0033"))
+	rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.True(rdr.Next())
+	rec := rdr.Record()
+	for _, f := range rec.Schema().Fields() {
+		st, ok := f.Metadata.GetValue("SNOWFLAKE_TYPE")
+		if !ok {
+			continue
+		}
+		if st == "timestamp_ltz" {
+			suite.Require().IsType(&arrow.TimestampType{}, f.Type)
+			suite.Equal("America/New_York", f.Type.(*arrow.TimestampType).TimeZone)
+		}
+	}
+}
+
 func (suite *SnowflakeTests) TestUseHighPrecision() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "NUMBERTYPETEST"))
 
