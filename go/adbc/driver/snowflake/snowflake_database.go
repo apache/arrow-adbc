@@ -161,6 +161,9 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			Params: make(map[string]*string),
 		}
 	}
+	// XXX(https://github.com/apache/arrow-adbc/issues/2792): Snowflake
+	// has a tendency to spam the log by default, so set the log level
+	d.cfg.Tracing = "fatal"
 
 	// set default application name to track
 	// unless user overrides it

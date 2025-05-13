@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "adbc_core"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_datafusion"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "adbc_core",
  "arrow-array",
@@ -29,7 +29,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_dummy"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "adbc_core",
  "arrow-array",
@@ -40,7 +40,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_snowflake"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "adbc_core",
  "arrow-array",
@@ -1940,9 +1940,9 @@ checksum = "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa"
 
 [[package]]
 name = "libloading"
-version = "0.8.6"
+version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
+checksum = "6a793df0d7afeac54f95b471d3af7f0d4fb975699f972341a4b76988d49cdf0c"
 dependencies = [
  "cfg-if",
  "windows-targets",
@@ -2918,9 +2918,9 @@ dependencies = [
 
 [[package]]
 name = "test-with"
-version = "0.14.9"
+version = "0.14.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b81f4413c3bd5ce29fcc54572bc44122364be6f68f047844e034acdea8e7e47"
+checksum = "99ede0159d14173a6362219475c776e889bd35f486afdfeaf8a000e72947d12f"
 dependencies = [
  "proc-macro-error2",
  "proc-macro2",
@@ -2981,9 +2981,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.44.2"
+version = "1.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6b88822cbe49de4185e3a4cbf8321dd487cf5fe0c5c65695fef6346371e9c48"
+checksum = "2513ca694ef9ede0fb23fe71a4ee4107cb102b9dc1930f6d0fd77aae068ae165"
 dependencies = [
  "backtrace",
  "bytes",

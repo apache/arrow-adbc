@@ -32,29 +32,52 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         {
         }
 
-        private OAuthClientCredentialsProvider CreateService()
+        private OAuthClientCredentialsProvider CreateService(int refreshBufferMinutes = 5, string scope = "sql")
         {
+            string host;
+            if (!string.IsNullOrEmpty(TestConfiguration.HostName))
+            {
+                host = TestConfiguration.HostName;
+            }
+            else if (!string.IsNullOrEmpty(TestConfiguration.Uri))
+            {
+                if (Uri.TryCreate(TestConfiguration.Uri, UriKind.Absolute, out Uri? parsedUri))
+                {
+                    host = parsedUri.Host;
+                }
+                else
+                {
+                    throw new ArgumentException($"Invalid URI format: {TestConfiguration.Uri}");
+                }
+            }
+            else
+            {
+                throw new ArgumentException("Either HostName or Uri must be provided in the test configuration");
+            }
+
             return new OAuthClientCredentialsProvider(
                 TestConfiguration.OAuthClientId,
                 TestConfiguration.OAuthClientSecret,
-                TestConfiguration.HostName,
-                timeoutMinutes: 1);
+                host,
+                timeoutMinutes: 1,
+                refreshBufferMinutes: refreshBufferMinutes,
+                scope: scope);
         }
 
         [SkippableFact]
-        public void GetAccessToken_WithValidCredentials_ReturnsToken()
+        public async Task GetAccessToken_WithValidCredentials_ReturnsToken()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
             var service = CreateService();
-            var token = service.GetAccessToken();
+            var token = await service.GetAccessTokenAsync();
 
             Assert.NotNull(token);
             Assert.NotEmpty(token);
         }
 
         [SkippableFact]
-        public void GetAccessToken_WithCancellation_ThrowsOperationCanceledException()
+        public async Task GetAccessToken_WithCancellation_ThrowsOperationCanceledException()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
@@ -62,21 +85,54 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            var ex = Assert.ThrowsAny<OperationCanceledException>(() =>
-                service.GetAccessToken(cts.Token));
-            Assert.IsType<TaskCanceledException>(ex);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+                await service.GetAccessTokenAsync(cts.Token));
         }
 
         [SkippableFact]
-        public void GetAccessToken_MultipleCalls_ReusesCachedToken()
+        public async Task GetAccessToken_MultipleCalls_ReusesCachedToken()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
 
             var service = CreateService();
-            var token1 = service.GetAccessToken();
-            var token2 = service.GetAccessToken();
+            var token1 = await service.GetAccessTokenAsync();
+            var token2 = await service.GetAccessTokenAsync();
 
             Assert.Equal(token1, token2);
+        }
+
+        [SkippableFact]
+        public async Task GetAccessToken_WithLargeRefreshBuffer_RefetchesToken()
+        {
+            Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
+
+            // Create service with a refresh buffer of 60 minutes (typical token lifetime)
+            var service = CreateService(refreshBufferMinutes: 60);
+
+            // Get initial token
+            var token1 = await service.GetAccessTokenAsync();
+
+            // Wait a short time to ensure we're not hitting any caching
+            await Task.Delay(100);
+
+            // Get second token - should be different since the refresh buffer is larger than token lifetime
+            var token2 = await service.GetAccessTokenAsync();
+
+            // Tokens should be different since we're forcing a refresh
+            Assert.NotEqual(token1, token2);
+        }
+
+        [SkippableFact]
+        public async Task GetAccessToken_WithCustomScope_ReturnsToken()
+        {
+            Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
+            String scope = "all-apis";
+            var service = CreateService(scope: scope);
+            var token = await service.GetAccessTokenAsync();
+
+            Assert.NotNull(token);
+            Assert.NotEmpty(token);
+            Assert.Equal(scope, service.GetCachedTokenScope());
         }
     }
 }

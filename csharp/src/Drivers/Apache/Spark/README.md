@@ -27,7 +27,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | Property               | Description | Default |
 | :---                   | :---        | :---    |
 | `adbc.spark.type`      | (Required) Indicates the Spark server type. Currently only `http` (future: `standard`) | |
-| `adbc.spark.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only`, `basic`, and `token`. This property is optional. The authentication type can be inferred from `token`, `username`, and `password`. If a `token` value is provided, token authentication is used. Otherwise, if both `username` and `password` values are provided, basic authentication is used. | |
+| `adbc.spark.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only`, `basic`, `token`, and `auth_type`. This property is optional. The authentication type can be inferred from `token`, `username`, and `password`. If a `token` value is provided, token authentication is used. Otherwise, if both `username` and `password` values are provided, basic authentication is used. If `auth_type` is provided, token authentication is used by default, unless the driver or configuration explicitly overrides this behavior (e.g., in drivers like DatabricksDriver, which may support other grant types) | |
 | `adbc.spark.host`      | Host name for the data source. Do not include scheme or port number. Example: `sparkserver.region.cloudapp.azure.com` |  |
 | `adbc.spark.port`      | The port number the data source listens on for a new connections. | `443` |
 | `adbc.spark.path`      | The URI path on the data source server. Example: `sql/protocolv1/o/0123456789123456/01234-0123456-source` | |

@@ -93,6 +93,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 parameters.Add(SparkParameters.AuthType, testConfiguration.AuthType!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.OAuthGrantType))
+            {
+                parameters.Add(DatabricksParameters.OAuthGrantType, testConfiguration.OAuthGrantType!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.OAuthClientId))
+            {
+                parameters.Add(DatabricksParameters.OAuthClientId, testConfiguration.OAuthClientId!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.OAuthClientSecret))
+            {
+                parameters.Add(DatabricksParameters.OAuthClientSecret, testConfiguration.OAuthClientSecret!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.OAuthScope))
+            {
+                parameters.Add(DatabricksParameters.OAuthScope, testConfiguration.OAuthScope!);
+            }
             if (!string.IsNullOrEmpty(testConfiguration.Type))
             {
                 parameters.Add(SparkParameters.Type, testConfiguration.Type!);

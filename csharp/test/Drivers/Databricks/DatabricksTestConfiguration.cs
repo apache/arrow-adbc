@@ -22,10 +22,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
     public class DatabricksTestConfiguration : SparkTestConfiguration
     {
-        [JsonPropertyName("oauth_client_id"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonPropertyName("grant_type"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string OAuthGrantType { get; set; } = string.Empty;
+
+        [JsonPropertyName("client_id"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string OAuthClientId { get; set; } = string.Empty;
 
-        [JsonPropertyName("oauth_client_secret"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonPropertyName("client_secret"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string OAuthClientSecret { get; set; } = string.Empty;
+
+        [JsonPropertyName("scope"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string OAuthScope { get; set; } = string.Empty;
     }
 }

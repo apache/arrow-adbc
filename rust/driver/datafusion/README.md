@@ -36,7 +36,7 @@ fn main() {
     )
     .unwrap();
 
-    let mut database = driver.new_database().unwrap();
+    let database = driver.new_database().unwrap();
 
     let mut connection = database.new_connection().unwrap();
 

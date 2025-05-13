@@ -55,31 +55,8 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private List<global::Apache.Hive.Service.Rpc.Thrift.TSparkParameter> _parameters;
     private long _maxBytesPerBatch;
     private global::Apache.Hive.Service.Rpc.Thrift.TStatementConf _statementConf;
-    private global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier _operationId;
-    private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf _sessionConf;
-    private bool _rejectHighCostQueries;
-    private double _estimatedCost;
-    private short _executionVersion;
-    private byte[] _requestValidation;
     private global::Apache.Hive.Service.Rpc.Thrift.TResultPersistenceMode _resultPersistenceMode;
-    private bool _trimArrowBatchesToLimit;
-    private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlFetchDisposition _fetchDisposition;
     private bool _enforceResultPersistenceMode;
-    private List<global::Apache.Hive.Service.Rpc.Thrift.TDBSqlStatement> _statementList;
-    private bool _persistResultManifest;
-    private long _resultRetentionSeconds;
-    private long _resultByteLimit;
-    private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlResultFormat _resultDataFormat;
-    private string _originatingClientIdentity;
-    private bool _preferSingleFileResult;
-    private bool _preferDriverOnlyUpload;
-    private bool _enforceEmbeddedSchemaCorrectness;
-    private string _idempotencyToken;
-    private bool _throwErrorOnByteLimitTruncation;
-    private Dictionary<string, double> _queryStats;
-    private bool _ensureIdempotency;
-    private bool _allowAsyncSessionStateUpdate;
-    private bool _returnSmallResultsInlineWithCloudUpload;
 
     public global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle SessionHandle { get; set; }
 
@@ -255,85 +232,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier OperationId
-    {
-      get
-      {
-        return _operationId;
-      }
-      set
-      {
-        __isset.operationId = true;
-        this._operationId = value;
-      }
-    }
-
-    public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf SessionConf
-    {
-      get
-      {
-        return _sessionConf;
-      }
-      set
-      {
-        __isset.sessionConf = true;
-        this._sessionConf = value;
-      }
-    }
-
-    public bool RejectHighCostQueries
-    {
-      get
-      {
-        return _rejectHighCostQueries;
-      }
-      set
-      {
-        __isset.rejectHighCostQueries = true;
-        this._rejectHighCostQueries = value;
-      }
-    }
-
-    public double EstimatedCost
-    {
-      get
-      {
-        return _estimatedCost;
-      }
-      set
-      {
-        __isset.estimatedCost = true;
-        this._estimatedCost = value;
-      }
-    }
-
-    [Obsolete("This code is deprecated.")]
-    public short ExecutionVersion
-    {
-      get
-      {
-        return _executionVersion;
-      }
-      set
-      {
-        __isset.executionVersion = true;
-        this._executionVersion = value;
-      }
-    }
-
-    public byte[] RequestValidation
-    {
-      get
-      {
-        return _requestValidation;
-      }
-      set
-      {
-        __isset.requestValidation = true;
-        this._requestValidation = value;
-      }
-    }
-
     /// <summary>
     ///
     /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TResultPersistenceMode"/>
@@ -351,32 +249,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public bool TrimArrowBatchesToLimit
-    {
-      get
-      {
-        return _trimArrowBatchesToLimit;
-      }
-      set
-      {
-        __isset.trimArrowBatchesToLimit = true;
-        this._trimArrowBatchesToLimit = value;
-      }
-    }
-
-    public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlFetchDisposition FetchDisposition
-    {
-      get
-      {
-        return _fetchDisposition;
-      }
-      set
-      {
-        __isset.fetchDisposition = true;
-        this._fetchDisposition = value;
-      }
-    }
-
     public bool EnforceResultPersistenceMode
     {
       get
@@ -387,202 +259,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         __isset.enforceResultPersistenceMode = true;
         this._enforceResultPersistenceMode = value;
-      }
-    }
-
-    public List<global::Apache.Hive.Service.Rpc.Thrift.TDBSqlStatement> StatementList
-    {
-      get
-      {
-        return _statementList;
-      }
-      set
-      {
-        __isset.statementList = true;
-        this._statementList = value;
-      }
-    }
-
-    public bool PersistResultManifest
-    {
-      get
-      {
-        return _persistResultManifest;
-      }
-      set
-      {
-        __isset.persistResultManifest = true;
-        this._persistResultManifest = value;
-      }
-    }
-
-    public long ResultRetentionSeconds
-    {
-      get
-      {
-        return _resultRetentionSeconds;
-      }
-      set
-      {
-        __isset.resultRetentionSeconds = true;
-        this._resultRetentionSeconds = value;
-      }
-    }
-
-    public long ResultByteLimit
-    {
-      get
-      {
-        return _resultByteLimit;
-      }
-      set
-      {
-        __isset.resultByteLimit = true;
-        this._resultByteLimit = value;
-      }
-    }
-
-    public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlResultFormat ResultDataFormat
-    {
-      get
-      {
-        return _resultDataFormat;
-      }
-      set
-      {
-        __isset.resultDataFormat = true;
-        this._resultDataFormat = value;
-      }
-    }
-
-    public string OriginatingClientIdentity
-    {
-      get
-      {
-        return _originatingClientIdentity;
-      }
-      set
-      {
-        __isset.originatingClientIdentity = true;
-        this._originatingClientIdentity = value;
-      }
-    }
-
-    [Obsolete("This code is deprecated.")]
-    public bool PreferSingleFileResult
-    {
-      get
-      {
-        return _preferSingleFileResult;
-      }
-      set
-      {
-        __isset.preferSingleFileResult = true;
-        this._preferSingleFileResult = value;
-      }
-    }
-
-    public bool PreferDriverOnlyUpload
-    {
-      get
-      {
-        return _preferDriverOnlyUpload;
-      }
-      set
-      {
-        __isset.preferDriverOnlyUpload = true;
-        this._preferDriverOnlyUpload = value;
-      }
-    }
-
-    public bool EnforceEmbeddedSchemaCorrectness
-    {
-      get
-      {
-        return _enforceEmbeddedSchemaCorrectness;
-      }
-      set
-      {
-        __isset.enforceEmbeddedSchemaCorrectness = true;
-        this._enforceEmbeddedSchemaCorrectness = value;
-      }
-    }
-
-    public string IdempotencyToken
-    {
-      get
-      {
-        return _idempotencyToken;
-      }
-      set
-      {
-        __isset.idempotencyToken = true;
-        this._idempotencyToken = value;
-      }
-    }
-
-    public bool ThrowErrorOnByteLimitTruncation
-    {
-      get
-      {
-        return _throwErrorOnByteLimitTruncation;
-      }
-      set
-      {
-        __isset.throwErrorOnByteLimitTruncation = true;
-        this._throwErrorOnByteLimitTruncation = value;
-      }
-    }
-
-    public Dictionary<string, double> QueryStats
-    {
-      get
-      {
-        return _queryStats;
-      }
-      set
-      {
-        __isset.queryStats = true;
-        this._queryStats = value;
-      }
-    }
-
-    public bool EnsureIdempotency
-    {
-      get
-      {
-        return _ensureIdempotency;
-      }
-      set
-      {
-        __isset.ensureIdempotency = true;
-        this._ensureIdempotency = value;
-      }
-    }
-
-    public bool AllowAsyncSessionStateUpdate
-    {
-      get
-      {
-        return _allowAsyncSessionStateUpdate;
-      }
-      set
-      {
-        __isset.allowAsyncSessionStateUpdate = true;
-        this._allowAsyncSessionStateUpdate = value;
-      }
-    }
-
-    public bool ReturnSmallResultsInlineWithCloudUpload
-    {
-      get
-      {
-        return _returnSmallResultsInlineWithCloudUpload;
-      }
-      set
-      {
-        __isset.returnSmallResultsInlineWithCloudUpload = true;
-        this._returnSmallResultsInlineWithCloudUpload = value;
       }
     }
 
@@ -603,31 +279,8 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public bool @parameters;
       public bool maxBytesPerBatch;
       public bool statementConf;
-      public bool operationId;
-      public bool sessionConf;
-      public bool rejectHighCostQueries;
-      public bool estimatedCost;
-      public bool executionVersion;
-      public bool requestValidation;
       public bool resultPersistenceMode;
-      public bool trimArrowBatchesToLimit;
-      public bool fetchDisposition;
       public bool enforceResultPersistenceMode;
-      public bool statementList;
-      public bool persistResultManifest;
-      public bool resultRetentionSeconds;
-      public bool resultByteLimit;
-      public bool resultDataFormat;
-      public bool originatingClientIdentity;
-      public bool preferSingleFileResult;
-      public bool preferDriverOnlyUpload;
-      public bool enforceEmbeddedSchemaCorrectness;
-      public bool idempotencyToken;
-      public bool throwErrorOnByteLimitTruncation;
-      public bool queryStats;
-      public bool ensureIdempotency;
-      public bool allowAsyncSessionStateUpdate;
-      public bool returnSmallResultsInlineWithCloudUpload;
     }
 
     public TExecuteStatementReq()
@@ -636,8 +289,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       this.__isset.runAsync = true;
       this._queryTimeout = 0;
       this.__isset.queryTimeout = true;
-      this._enforceEmbeddedSchemaCorrectness = false;
-      this.__isset.enforceEmbeddedSchemaCorrectness = true;
     }
 
     public TExecuteStatementReq(global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle sessionHandle, string @statement) : this()
@@ -844,68 +495,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            case 3329:
-              if (field.Type == TType.Struct)
-              {
-                OperationId = new global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier();
-                await OperationId.ReadAsync(iprot, cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3330:
-              if (field.Type == TType.Struct)
-              {
-                SessionConf = new global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf();
-                await SessionConf.ReadAsync(iprot, cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3331:
-              if (field.Type == TType.Bool)
-              {
-                RejectHighCostQueries = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3332:
-              if (field.Type == TType.Double)
-              {
-                EstimatedCost = await iprot.ReadDoubleAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3333:
-              if (field.Type == TType.I16)
-              {
-                ExecutionVersion = await iprot.ReadI16Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3334:
-              if (field.Type == TType.String)
-              {
-                RequestValidation = await iprot.ReadBinaryAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
             case 3335:
               if (field.Type == TType.I32)
               {
@@ -916,204 +505,10 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            case 3336:
-              if (field.Type == TType.Bool)
-              {
-                TrimArrowBatchesToLimit = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3337:
-              if (field.Type == TType.I32)
-              {
-                FetchDisposition = (global::Apache.Hive.Service.Rpc.Thrift.TDBSqlFetchDisposition)await iprot.ReadI32Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
             case 3344:
               if (field.Type == TType.Bool)
               {
                 EnforceResultPersistenceMode = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3345:
-              if (field.Type == TType.List)
-              {
-                {
-                  var _list386 = await iprot.ReadListBeginAsync(cancellationToken);
-                  StatementList = new List<global::Apache.Hive.Service.Rpc.Thrift.TDBSqlStatement>(_list386.Count);
-                  for(int _i387 = 0; _i387 < _list386.Count; ++_i387)
-                  {
-                    global::Apache.Hive.Service.Rpc.Thrift.TDBSqlStatement _elem388;
-                    _elem388 = new global::Apache.Hive.Service.Rpc.Thrift.TDBSqlStatement();
-                    await _elem388.ReadAsync(iprot, cancellationToken);
-                    StatementList.Add(_elem388);
-                  }
-                  await iprot.ReadListEndAsync(cancellationToken);
-                }
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3346:
-              if (field.Type == TType.Bool)
-              {
-                PersistResultManifest = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3347:
-              if (field.Type == TType.I64)
-              {
-                ResultRetentionSeconds = await iprot.ReadI64Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3348:
-              if (field.Type == TType.I64)
-              {
-                ResultByteLimit = await iprot.ReadI64Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3349:
-              if (field.Type == TType.Struct)
-              {
-                ResultDataFormat = new global::Apache.Hive.Service.Rpc.Thrift.TDBSqlResultFormat();
-                await ResultDataFormat.ReadAsync(iprot, cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3350:
-              if (field.Type == TType.String)
-              {
-                OriginatingClientIdentity = await iprot.ReadStringAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3351:
-              if (field.Type == TType.Bool)
-              {
-                PreferSingleFileResult = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3352:
-              if (field.Type == TType.Bool)
-              {
-                PreferDriverOnlyUpload = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3353:
-              if (field.Type == TType.Bool)
-              {
-                EnforceEmbeddedSchemaCorrectness = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3360:
-              if (field.Type == TType.String)
-              {
-                IdempotencyToken = await iprot.ReadStringAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3361:
-              if (field.Type == TType.Bool)
-              {
-                ThrowErrorOnByteLimitTruncation = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3362:
-              if (field.Type == TType.Map)
-              {
-                {
-                  var _map389 = await iprot.ReadMapBeginAsync(cancellationToken);
-                  QueryStats = new Dictionary<string, double>(_map389.Count);
-                  for(int _i390 = 0; _i390 < _map389.Count; ++_i390)
-                  {
-                    string _key391;
-                    double _val392;
-                    _key391 = await iprot.ReadStringAsync(cancellationToken);
-                    _val392 = await iprot.ReadDoubleAsync(cancellationToken);
-                    QueryStats[_key391] = _val392;
-                  }
-                  await iprot.ReadMapEndAsync(cancellationToken);
-                }
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3363:
-              if (field.Type == TType.Bool)
-              {
-                EnsureIdempotency = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3364:
-              if (field.Type == TType.Bool)
-              {
-                AllowAsyncSessionStateUpdate = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3365:
-              if (field.Type == TType.Bool)
-              {
-                ReturnSmallResultsInlineWithCloudUpload = await iprot.ReadBoolAsync(cancellationToken);
               }
               else
               {
@@ -1298,60 +693,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await StatementConf.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((OperationId != null) && __isset.operationId)
-        {
-          tmp394.Name = "operationId";
-          tmp394.Type = TType.Struct;
-          tmp394.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await OperationId.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((SessionConf != null) && __isset.sessionConf)
-        {
-          tmp394.Name = "sessionConf";
-          tmp394.Type = TType.Struct;
-          tmp394.ID = 3330;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await SessionConf.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.rejectHighCostQueries)
-        {
-          tmp394.Name = "rejectHighCostQueries";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3331;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(RejectHighCostQueries, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.estimatedCost)
-        {
-          tmp394.Name = "estimatedCost";
-          tmp394.Type = TType.Double;
-          tmp394.ID = 3332;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteDoubleAsync(EstimatedCost, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.executionVersion)
-        {
-          tmp394.Name = "executionVersion";
-          tmp394.Type = TType.I16;
-          tmp394.ID = 3333;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteI16Async(ExecutionVersion, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((RequestValidation != null) && __isset.requestValidation)
-        {
-          tmp394.Name = "requestValidation";
-          tmp394.Type = TType.String;
-          tmp394.ID = 3334;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBinaryAsync(RequestValidation, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         if(__isset.resultPersistenceMode)
         {
           tmp394.Name = "resultPersistenceMode";
@@ -1361,24 +702,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteI32Async((int)ResultPersistenceMode, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.trimArrowBatchesToLimit)
-        {
-          tmp394.Name = "trimArrowBatchesToLimit";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3336;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(TrimArrowBatchesToLimit, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.fetchDisposition)
-        {
-          tmp394.Name = "fetchDisposition";
-          tmp394.Type = TType.I32;
-          tmp394.ID = 3337;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteI32Async((int)FetchDisposition, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         if(__isset.enforceResultPersistenceMode)
         {
           tmp394.Name = "enforceResultPersistenceMode";
@@ -1386,152 +709,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           tmp394.ID = 3344;
           await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
           await oprot.WriteBoolAsync(EnforceResultPersistenceMode, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((StatementList != null) && __isset.statementList)
-        {
-          tmp394.Name = "statementList";
-          tmp394.Type = TType.List;
-          tmp394.ID = 3345;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteListBeginAsync(new TList(TType.Struct, StatementList.Count), cancellationToken);
-          foreach (global::Apache.Hive.Service.Rpc.Thrift.TDBSqlStatement _iter397 in StatementList)
-          {
-            await _iter397.WriteAsync(oprot, cancellationToken);
-          }
-          await oprot.WriteListEndAsync(cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.persistResultManifest)
-        {
-          tmp394.Name = "persistResultManifest";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3346;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(PersistResultManifest, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.resultRetentionSeconds)
-        {
-          tmp394.Name = "resultRetentionSeconds";
-          tmp394.Type = TType.I64;
-          tmp394.ID = 3347;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteI64Async(ResultRetentionSeconds, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.resultByteLimit)
-        {
-          tmp394.Name = "resultByteLimit";
-          tmp394.Type = TType.I64;
-          tmp394.ID = 3348;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteI64Async(ResultByteLimit, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((ResultDataFormat != null) && __isset.resultDataFormat)
-        {
-          tmp394.Name = "resultDataFormat";
-          tmp394.Type = TType.Struct;
-          tmp394.ID = 3349;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await ResultDataFormat.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((OriginatingClientIdentity != null) && __isset.originatingClientIdentity)
-        {
-          tmp394.Name = "originatingClientIdentity";
-          tmp394.Type = TType.String;
-          tmp394.ID = 3350;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteStringAsync(OriginatingClientIdentity, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.preferSingleFileResult)
-        {
-          tmp394.Name = "preferSingleFileResult";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3351;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(PreferSingleFileResult, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.preferDriverOnlyUpload)
-        {
-          tmp394.Name = "preferDriverOnlyUpload";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3352;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(PreferDriverOnlyUpload, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.enforceEmbeddedSchemaCorrectness)
-        {
-          tmp394.Name = "enforceEmbeddedSchemaCorrectness";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3353;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(EnforceEmbeddedSchemaCorrectness, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((IdempotencyToken != null) && __isset.idempotencyToken)
-        {
-          tmp394.Name = "idempotencyToken";
-          tmp394.Type = TType.String;
-          tmp394.ID = 3360;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteStringAsync(IdempotencyToken, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.throwErrorOnByteLimitTruncation)
-        {
-          tmp394.Name = "throwErrorOnByteLimitTruncation";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3361;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(ThrowErrorOnByteLimitTruncation, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((QueryStats != null) && __isset.queryStats)
-        {
-          tmp394.Name = "queryStats";
-          tmp394.Type = TType.Map;
-          tmp394.ID = 3362;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteMapBeginAsync(new TMap(TType.String, TType.Double, QueryStats.Count), cancellationToken);
-          foreach (string _iter398 in QueryStats.Keys)
-          {
-            await oprot.WriteStringAsync(_iter398, cancellationToken);
-            await oprot.WriteDoubleAsync(QueryStats[_iter398], cancellationToken);
-          }
-          await oprot.WriteMapEndAsync(cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.ensureIdempotency)
-        {
-          tmp394.Name = "ensureIdempotency";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3363;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(EnsureIdempotency, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.allowAsyncSessionStateUpdate)
-        {
-          tmp394.Name = "allowAsyncSessionStateUpdate";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3364;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(AllowAsyncSessionStateUpdate, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.returnSmallResultsInlineWithCloudUpload)
-        {
-          tmp394.Name = "returnSmallResultsInlineWithCloudUpload";
-          tmp394.Type = TType.Bool;
-          tmp394.ID = 3365;
-          await oprot.WriteFieldBeginAsync(tmp394, cancellationToken);
-          await oprot.WriteBoolAsync(ReturnSmallResultsInlineWithCloudUpload, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
         await oprot.WriteFieldStopAsync(cancellationToken);
@@ -1562,31 +739,8 @@ namespace Apache.Hive.Service.Rpc.Thrift
         && ((__isset.@parameters == other.__isset.@parameters) && ((!__isset.@parameters) || (global::System.Object.Equals(Parameters, other.Parameters))))
         && ((__isset.maxBytesPerBatch == other.__isset.maxBytesPerBatch) && ((!__isset.maxBytesPerBatch) || (global::System.Object.Equals(MaxBytesPerBatch, other.MaxBytesPerBatch))))
         && ((__isset.statementConf == other.__isset.statementConf) && ((!__isset.statementConf) || (global::System.Object.Equals(StatementConf, other.StatementConf))))
-        && ((__isset.operationId == other.__isset.operationId) && ((!__isset.operationId) || (global::System.Object.Equals(OperationId, other.OperationId))))
-        && ((__isset.sessionConf == other.__isset.sessionConf) && ((!__isset.sessionConf) || (global::System.Object.Equals(SessionConf, other.SessionConf))))
-        && ((__isset.rejectHighCostQueries == other.__isset.rejectHighCostQueries) && ((!__isset.rejectHighCostQueries) || (global::System.Object.Equals(RejectHighCostQueries, other.RejectHighCostQueries))))
-        && ((__isset.estimatedCost == other.__isset.estimatedCost) && ((!__isset.estimatedCost) || (global::System.Object.Equals(EstimatedCost, other.EstimatedCost))))
-        && ((__isset.executionVersion == other.__isset.executionVersion) && ((!__isset.executionVersion) || (global::System.Object.Equals(ExecutionVersion, other.ExecutionVersion))))
-        && ((__isset.requestValidation == other.__isset.requestValidation) && ((!__isset.requestValidation) || (TCollections.Equals(RequestValidation, other.RequestValidation))))
         && ((__isset.resultPersistenceMode == other.__isset.resultPersistenceMode) && ((!__isset.resultPersistenceMode) || (global::System.Object.Equals(ResultPersistenceMode, other.ResultPersistenceMode))))
-        && ((__isset.trimArrowBatchesToLimit == other.__isset.trimArrowBatchesToLimit) && ((!__isset.trimArrowBatchesToLimit) || (global::System.Object.Equals(TrimArrowBatchesToLimit, other.TrimArrowBatchesToLimit))))
-        && ((__isset.fetchDisposition == other.__isset.fetchDisposition) && ((!__isset.fetchDisposition) || (global::System.Object.Equals(FetchDisposition, other.FetchDisposition))))
-        && ((__isset.enforceResultPersistenceMode == other.__isset.enforceResultPersistenceMode) && ((!__isset.enforceResultPersistenceMode) || (global::System.Object.Equals(EnforceResultPersistenceMode, other.EnforceResultPersistenceMode))))
-        && ((__isset.statementList == other.__isset.statementList) && ((!__isset.statementList) || (TCollections.Equals(StatementList, other.StatementList))))
-        && ((__isset.persistResultManifest == other.__isset.persistResultManifest) && ((!__isset.persistResultManifest) || (global::System.Object.Equals(PersistResultManifest, other.PersistResultManifest))))
-        && ((__isset.resultRetentionSeconds == other.__isset.resultRetentionSeconds) && ((!__isset.resultRetentionSeconds) || (global::System.Object.Equals(ResultRetentionSeconds, other.ResultRetentionSeconds))))
-        && ((__isset.resultByteLimit == other.__isset.resultByteLimit) && ((!__isset.resultByteLimit) || (global::System.Object.Equals(ResultByteLimit, other.ResultByteLimit))))
-        && ((__isset.resultDataFormat == other.__isset.resultDataFormat) && ((!__isset.resultDataFormat) || (global::System.Object.Equals(ResultDataFormat, other.ResultDataFormat))))
-        && ((__isset.originatingClientIdentity == other.__isset.originatingClientIdentity) && ((!__isset.originatingClientIdentity) || (global::System.Object.Equals(OriginatingClientIdentity, other.OriginatingClientIdentity))))
-        && ((__isset.preferSingleFileResult == other.__isset.preferSingleFileResult) && ((!__isset.preferSingleFileResult) || (global::System.Object.Equals(PreferSingleFileResult, other.PreferSingleFileResult))))
-        && ((__isset.preferDriverOnlyUpload == other.__isset.preferDriverOnlyUpload) && ((!__isset.preferDriverOnlyUpload) || (global::System.Object.Equals(PreferDriverOnlyUpload, other.PreferDriverOnlyUpload))))
-        && ((__isset.enforceEmbeddedSchemaCorrectness == other.__isset.enforceEmbeddedSchemaCorrectness) && ((!__isset.enforceEmbeddedSchemaCorrectness) || (global::System.Object.Equals(EnforceEmbeddedSchemaCorrectness, other.EnforceEmbeddedSchemaCorrectness))))
-        && ((__isset.idempotencyToken == other.__isset.idempotencyToken) && ((!__isset.idempotencyToken) || (global::System.Object.Equals(IdempotencyToken, other.IdempotencyToken))))
-        && ((__isset.throwErrorOnByteLimitTruncation == other.__isset.throwErrorOnByteLimitTruncation) && ((!__isset.throwErrorOnByteLimitTruncation) || (global::System.Object.Equals(ThrowErrorOnByteLimitTruncation, other.ThrowErrorOnByteLimitTruncation))))
-        && ((__isset.queryStats == other.__isset.queryStats) && ((!__isset.queryStats) || (TCollections.Equals(QueryStats, other.QueryStats))))
-        && ((__isset.ensureIdempotency == other.__isset.ensureIdempotency) && ((!__isset.ensureIdempotency) || (global::System.Object.Equals(EnsureIdempotency, other.EnsureIdempotency))))
-        && ((__isset.allowAsyncSessionStateUpdate == other.__isset.allowAsyncSessionStateUpdate) && ((!__isset.allowAsyncSessionStateUpdate) || (global::System.Object.Equals(AllowAsyncSessionStateUpdate, other.AllowAsyncSessionStateUpdate))))
-        && ((__isset.returnSmallResultsInlineWithCloudUpload == other.__isset.returnSmallResultsInlineWithCloudUpload) && ((!__isset.returnSmallResultsInlineWithCloudUpload) || (global::System.Object.Equals(ReturnSmallResultsInlineWithCloudUpload, other.ReturnSmallResultsInlineWithCloudUpload))));
+        && ((__isset.enforceResultPersistenceMode == other.__isset.enforceResultPersistenceMode) && ((!__isset.enforceResultPersistenceMode) || (global::System.Object.Equals(EnforceResultPersistenceMode, other.EnforceResultPersistenceMode))));
     }
 
     public override int GetHashCode() {
@@ -1652,105 +806,13 @@ namespace Apache.Hive.Service.Rpc.Thrift
         {
           hashcode = (hashcode * 397) + StatementConf.GetHashCode();
         }
-        if((OperationId != null) && __isset.operationId)
-        {
-          hashcode = (hashcode * 397) + OperationId.GetHashCode();
-        }
-        if((SessionConf != null) && __isset.sessionConf)
-        {
-          hashcode = (hashcode * 397) + SessionConf.GetHashCode();
-        }
-        if(__isset.rejectHighCostQueries)
-        {
-          hashcode = (hashcode * 397) + RejectHighCostQueries.GetHashCode();
-        }
-        if(__isset.estimatedCost)
-        {
-          hashcode = (hashcode * 397) + EstimatedCost.GetHashCode();
-        }
-        if(__isset.executionVersion)
-        {
-          hashcode = (hashcode * 397) + ExecutionVersion.GetHashCode();
-        }
-        if((RequestValidation != null) && __isset.requestValidation)
-        {
-          hashcode = (hashcode * 397) + RequestValidation.GetHashCode();
-        }
         if(__isset.resultPersistenceMode)
         {
           hashcode = (hashcode * 397) + ResultPersistenceMode.GetHashCode();
         }
-        if(__isset.trimArrowBatchesToLimit)
-        {
-          hashcode = (hashcode * 397) + TrimArrowBatchesToLimit.GetHashCode();
-        }
-        if(__isset.fetchDisposition)
-        {
-          hashcode = (hashcode * 397) + FetchDisposition.GetHashCode();
-        }
         if(__isset.enforceResultPersistenceMode)
         {
           hashcode = (hashcode * 397) + EnforceResultPersistenceMode.GetHashCode();
-        }
-        if((StatementList != null) && __isset.statementList)
-        {
-          hashcode = (hashcode * 397) + TCollections.GetHashCode(StatementList);
-        }
-        if(__isset.persistResultManifest)
-        {
-          hashcode = (hashcode * 397) + PersistResultManifest.GetHashCode();
-        }
-        if(__isset.resultRetentionSeconds)
-        {
-          hashcode = (hashcode * 397) + ResultRetentionSeconds.GetHashCode();
-        }
-        if(__isset.resultByteLimit)
-        {
-          hashcode = (hashcode * 397) + ResultByteLimit.GetHashCode();
-        }
-        if((ResultDataFormat != null) && __isset.resultDataFormat)
-        {
-          hashcode = (hashcode * 397) + ResultDataFormat.GetHashCode();
-        }
-        if((OriginatingClientIdentity != null) && __isset.originatingClientIdentity)
-        {
-          hashcode = (hashcode * 397) + OriginatingClientIdentity.GetHashCode();
-        }
-        if(__isset.preferSingleFileResult)
-        {
-          hashcode = (hashcode * 397) + PreferSingleFileResult.GetHashCode();
-        }
-        if(__isset.preferDriverOnlyUpload)
-        {
-          hashcode = (hashcode * 397) + PreferDriverOnlyUpload.GetHashCode();
-        }
-        if(__isset.enforceEmbeddedSchemaCorrectness)
-        {
-          hashcode = (hashcode * 397) + EnforceEmbeddedSchemaCorrectness.GetHashCode();
-        }
-        if((IdempotencyToken != null) && __isset.idempotencyToken)
-        {
-          hashcode = (hashcode * 397) + IdempotencyToken.GetHashCode();
-        }
-        if(__isset.throwErrorOnByteLimitTruncation)
-        {
-          hashcode = (hashcode * 397) + ThrowErrorOnByteLimitTruncation.GetHashCode();
-        }
-        if((QueryStats != null) && __isset.queryStats)
-        {
-          hashcode = (hashcode * 397) + TCollections.GetHashCode(QueryStats);
-        }
-        if(__isset.ensureIdempotency)
-        {
-          hashcode = (hashcode * 397) + EnsureIdempotency.GetHashCode();
-        }
-        if(__isset.allowAsyncSessionStateUpdate)
-        {
-          hashcode = (hashcode * 397) + AllowAsyncSessionStateUpdate.GetHashCode();
-        }
-        if(__isset.returnSmallResultsInlineWithCloudUpload)
-        {
-          hashcode = (hashcode * 397) + ReturnSmallResultsInlineWithCloudUpload.GetHashCode();
         }
       }
       return hashcode;
@@ -1834,130 +896,15 @@ namespace Apache.Hive.Service.Rpc.Thrift
         tmp399.Append(", StatementConf: ");
         StatementConf.ToString(tmp399);
       }
-      if((OperationId != null) && __isset.operationId)
-      {
-        tmp399.Append(", OperationId: ");
-        OperationId.ToString(tmp399);
-      }
-      if((SessionConf != null) && __isset.sessionConf)
-      {
-        tmp399.Append(", SessionConf: ");
-        SessionConf.ToString(tmp399);
-      }
-      if(__isset.rejectHighCostQueries)
-      {
-        tmp399.Append(", RejectHighCostQueries: ");
-        RejectHighCostQueries.ToString(tmp399);
-      }
-      if(__isset.estimatedCost)
-      {
-        tmp399.Append(", EstimatedCost: ");
-        EstimatedCost.ToString(tmp399);
-      }
-      if(__isset.executionVersion)
-      {
-        tmp399.Append(", ExecutionVersion: ");
-        ExecutionVersion.ToString(tmp399);
-      }
-      if((RequestValidation != null) && __isset.requestValidation)
-      {
-        tmp399.Append(", RequestValidation: ");
-        RequestValidation.ToString(tmp399);
-      }
       if(__isset.resultPersistenceMode)
       {
         tmp399.Append(", ResultPersistenceMode: ");
         ResultPersistenceMode.ToString(tmp399);
       }
-      if(__isset.trimArrowBatchesToLimit)
-      {
-        tmp399.Append(", TrimArrowBatchesToLimit: ");
-        TrimArrowBatchesToLimit.ToString(tmp399);
-      }
-      if(__isset.fetchDisposition)
-      {
-        tmp399.Append(", FetchDisposition: ");
-        FetchDisposition.ToString(tmp399);
-      }
       if(__isset.enforceResultPersistenceMode)
       {
         tmp399.Append(", EnforceResultPersistenceMode: ");
         EnforceResultPersistenceMode.ToString(tmp399);
-      }
-      if((StatementList != null) && __isset.statementList)
-      {
-        tmp399.Append(", StatementList: ");
-        StatementList.ToString(tmp399);
-      }
-      if(__isset.persistResultManifest)
-      {
-        tmp399.Append(", PersistResultManifest: ");
-        PersistResultManifest.ToString(tmp399);
-      }
-      if(__isset.resultRetentionSeconds)
-      {
-        tmp399.Append(", ResultRetentionSeconds: ");
-        ResultRetentionSeconds.ToString(tmp399);
-      }
-      if(__isset.resultByteLimit)
-      {
-        tmp399.Append(", ResultByteLimit: ");
-        ResultByteLimit.ToString(tmp399);
-      }
-      if((ResultDataFormat != null) && __isset.resultDataFormat)
-      {
-        tmp399.Append(", ResultDataFormat: ");
-        ResultDataFormat.ToString(tmp399);
-      }
-      if((OriginatingClientIdentity != null) && __isset.originatingClientIdentity)
-      {
-        tmp399.Append(", OriginatingClientIdentity: ");
-        OriginatingClientIdentity.ToString(tmp399);
-      }
-      if(__isset.preferSingleFileResult)
-      {
-        tmp399.Append(", PreferSingleFileResult: ");
-        PreferSingleFileResult.ToString(tmp399);
-      }
-      if(__isset.preferDriverOnlyUpload)
-      {
-        tmp399.Append(", PreferDriverOnlyUpload: ");
-        PreferDriverOnlyUpload.ToString(tmp399);
-      }
-      if(__isset.enforceEmbeddedSchemaCorrectness)
-      {
-        tmp399.Append(", EnforceEmbeddedSchemaCorrectness: ");
-        EnforceEmbeddedSchemaCorrectness.ToString(tmp399);
-      }
-      if((IdempotencyToken != null) && __isset.idempotencyToken)
-      {
-        tmp399.Append(", IdempotencyToken: ");
-        IdempotencyToken.ToString(tmp399);
-      }
-      if(__isset.throwErrorOnByteLimitTruncation)
-      {
-        tmp399.Append(", ThrowErrorOnByteLimitTruncation: ");
-        ThrowErrorOnByteLimitTruncation.ToString(tmp399);
-      }
-      if((QueryStats != null) && __isset.queryStats)
-      {
-        tmp399.Append(", QueryStats: ");
-        QueryStats.ToString(tmp399);
-      }
-      if(__isset.ensureIdempotency)
-      {
-        tmp399.Append(", EnsureIdempotency: ");
-        EnsureIdempotency.ToString(tmp399);
-      }
-      if(__isset.allowAsyncSessionStateUpdate)
-      {
-        tmp399.Append(", AllowAsyncSessionStateUpdate: ");
-        AllowAsyncSessionStateUpdate.ToString(tmp399);
-      }
-      if(__isset.returnSmallResultsInlineWithCloudUpload)
-      {
-        tmp399.Append(", ReturnSmallResultsInlineWithCloudUpload: ");
-        ReturnSmallResultsInlineWithCloudUpload.ToString(tmp399);
       }
       tmp399.Append(')');
       return tmp399.ToString();
