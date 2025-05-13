@@ -132,10 +132,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 baseTransport = new TSocketTransport(hostName!, portValue, connectClient, config: new());
             }
 
+            TBufferedTransport bufferedTransport = new TBufferedTransport(baseTransport);
             switch (authTypeValue)
             {
                 case HiveServer2AuthType.None:
-                    return new TBufferedTransport(baseTransport);
+                    return bufferedTransport;
 
                 case HiveServer2AuthType.Basic:
                     Properties.TryGetValue(AdbcOptions.Username, out string? username);
@@ -147,7 +148,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     }
 
                     PlainSaslMechanism saslMechanism = new(username, password);
-                    TSaslTransport saslTransport = new(baseTransport, saslMechanism, config: new());
+                    TSaslTransport saslTransport = new(bufferedTransport, saslMechanism, config: new());
                     return new TFramedTransport(saslTransport);
 
                 default:
