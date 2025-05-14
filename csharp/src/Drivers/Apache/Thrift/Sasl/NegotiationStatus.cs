@@ -15,12 +15,12 @@
 * limitations under the License.
 */
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl
+namespace Apache.Arrow.Adbc.Drivers.Apache
 {
     /// <summary>
     /// Represents the status of a SASL negotiation between client and server.
     /// </summary>
-    public sealed class NegotiationStatus
+    internal sealed class NegotiationStatus
     {
         public static readonly NegotiationStatus Start = new NegotiationStatus(0x01, nameof(Start));
         public static readonly NegotiationStatus Ok = new NegotiationStatus(0x02, nameof(Ok));

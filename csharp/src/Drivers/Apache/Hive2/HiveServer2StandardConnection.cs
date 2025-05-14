@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl;
 using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;

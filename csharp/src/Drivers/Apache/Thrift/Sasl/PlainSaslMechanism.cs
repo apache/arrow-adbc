@@ -18,48 +18,49 @@
 using System;
 using System.Text;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl;
-
-/// <summary>
-/// Implements the SASL PLAIN mechanism for simple username/password authentication.
-/// </summary>
-public class PlainSaslMechanism : ISaslMechanism
+namespace Apache.Arrow.Adbc.Drivers.Apache
 {
-    private readonly string _username;
-    private readonly string _password;
-    private readonly string _authorizationId;
-    private bool _isNegotiationCompleted;
-
     /// <summary>
-    /// Initializes a new instance of the <see cref="PlainSaslMechanism"/> class.
+    /// Implements the SASL PLAIN mechanism for simple username/password authentication.
     /// </summary>
-    /// <param name="username">The username for authentication.</param>
-    /// <param name="password">The password for authentication.</param>
-    public PlainSaslMechanism(string username, string password, string authorizationId = "")
+    internal class PlainSaslMechanism : ISaslMechanism
     {
-        _username = username ?? throw new ArgumentNullException(nameof(username));
-        _password = password ?? throw new ArgumentNullException(nameof(password));
-        _authorizationId = authorizationId;
-    }
+        private readonly string _username;
+        private readonly string _password;
+        private readonly string _authorizationId;
+        private bool _isNegotiationCompleted;
 
-    public string Name => "PLAIN";
-
-    public byte[] EvaluateChallenge(byte[]? challenge)
-    {
-        if (_isNegotiationCompleted)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PlainSaslMechanism"/> class.
+        /// </summary>
+        /// <param name="username">The username for authentication.</param>
+        /// <param name="password">The password for authentication.</param>
+        public PlainSaslMechanism(string username, string password, string authorizationId = "")
         {
-            // PLAIN is single-step, so return empty array if already done
-            return new byte[0];
+            _username = username ?? throw new ArgumentNullException(nameof(username));
+            _password = password ?? throw new ArgumentNullException(nameof(password));
+            _authorizationId = authorizationId;
         }
 
-        string message = $"{_authorizationId}\0{_username}\0{_password}";
-        _isNegotiationCompleted = true;
-        return Encoding.UTF8.GetBytes(message);
-    }
+        public string Name => "PLAIN";
 
-    public bool IsNegotiationCompleted
-    {
-        get => _isNegotiationCompleted;
-        set => _isNegotiationCompleted = value;
+        public byte[] EvaluateChallenge(byte[]? challenge)
+        {
+            if (_isNegotiationCompleted)
+            {
+                // PLAIN is single-step, so return empty array if already done
+                return [];
+            }
+
+            string message = $"{_authorizationId}\0{_username}\0{_password}";
+            _isNegotiationCompleted = true;
+            return Encoding.UTF8.GetBytes(message);
+        }
+
+        public bool IsNegotiationCompleted
+        {
+            get => _isNegotiationCompleted;
+            set => _isNegotiationCompleted = value;
+        }
     }
 }

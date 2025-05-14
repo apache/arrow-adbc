@@ -23,24 +23,25 @@ using System.Threading;
 using Thrift;
 using Thrift.Transport;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl
+namespace Apache.Arrow.Adbc.Drivers.Apache
 {
-    public class TSaslTransport : TEndpointTransport
+    internal class TSaslTransport : TEndpointTransport
     {
         private readonly TTransport _innerTransport;
         private readonly ISaslMechanism _saslMechanism;
+        private readonly TConfiguration _configuration;
+        private byte[] messageHeader = new byte[STATUS_BYTES + PAYLOAD_LENGTH_BYTES];
 
         protected const int MECHANISM_NAME_BYTES = 1;
         protected const int STATUS_BYTES = 1;
         protected const int PAYLOAD_LENGTH_BYTES = 4;
-
-        private byte[] messageHeader = new byte[STATUS_BYTES + PAYLOAD_LENGTH_BYTES];
 
         public TSaslTransport(TTransport innerTransport, ISaslMechanism saslMechanism, TConfiguration config)
             : base(config)
         {
             _innerTransport = innerTransport ?? throw new ArgumentNullException(nameof(innerTransport));
             _saslMechanism = saslMechanism ?? throw new ArgumentNullException(nameof(saslMechanism));
+            _configuration = config ?? new TConfiguration();
         }
 
         public override bool IsOpen => _innerTransport.IsOpen;
@@ -107,13 +108,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl
             await SendSaslMessageAsync(NegotiationStatus.Start, mechanismNameBytes, cancellationToken);
         }
 
-        
         protected async Task SendSaslMessageAsync(NegotiationStatus status, byte[] payload, CancellationToken cancellationToken)
         {
-            if (payload == null) payload = new byte[0];
+            payload ??= [];
             // Set status byte
             messageHeader[0] = status.Value;
-            // Encode payload length 
+            // Encode payload length
             EncodeBigEndian(payload.Length, messageHeader, STATUS_BYTES);
             await _innerTransport.WriteAsync(messageHeader, 0, messageHeader.Length);
             await _innerTransport.WriteAsync(payload, 0, payload.Length);
@@ -133,7 +133,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl
             }
 
             int payloadBytes = DecodeBigEndian(messageHeader, STATUS_BYTES);
-            if (payloadBytes < 0 || payloadBytes > new TConfiguration().MaxMessageSize)
+            if (payloadBytes < 0 || payloadBytes > _configuration.MaxMessageSize)
             {
                 throw new TTransportException($"Received payload size out of range: {payloadBytes}. Expected between 0 and {new TConfiguration().MaxMessageSize}.");
             }
@@ -167,7 +167,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl
         }
     }
 
-    public class SaslResponse
+    internal class SaslResponse
     {
         public NegotiationStatus status;
         public byte[] payload;

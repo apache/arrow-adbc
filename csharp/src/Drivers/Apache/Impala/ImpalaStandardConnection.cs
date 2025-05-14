@@ -22,7 +22,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -129,6 +128,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             {
                 transport = new TSocketTransport(hostName!, int.Parse(port!), connectClient, config: new());
             }
+
             TBufferedTransport bufferedTransport = new(transport);
             switch (authTypeValue)
             {
@@ -138,7 +138,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                 case ImpalaAuthType.Basic:
                     Properties.TryGetValue(AdbcOptions.Username, out string? username);
                     Properties.TryGetValue(AdbcOptions.Password, out string? password);
-
                     if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                     {
                         throw new InvalidOperationException("Username and password must be provided for this authentication type.");

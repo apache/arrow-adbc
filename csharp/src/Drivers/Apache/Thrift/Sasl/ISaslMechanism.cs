@@ -15,13 +15,13 @@
 * limitations under the License.
 */
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift.Sasl
+namespace Apache.Arrow.Adbc.Drivers.Apache
 {
     /// <summary>
     /// Defines the contract for implementing SASL authentication mechanisms (e.g., PLAIN, GSSAPI).
     /// This interface allows the client to authenticate over a Thrift transport using the selected SASL mechanism.
     /// </summary>
-    public interface ISaslMechanism
+    internal interface ISaslMechanism
     {
         /// <summary>
         /// Gets the name of the SASL mechanism (e.g., "PLAIN", "GSSAPI").
