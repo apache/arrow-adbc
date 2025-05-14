@@ -194,11 +194,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
                 Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
+                Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
 
                 var tokenProvider = new OAuthClientCredentialsProvider(
                     clientId!,
                     clientSecret!,
                     host!,
+                    scope: scope ?? "sql",
                     timeoutMinutes: 1
                 );
 

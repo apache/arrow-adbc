@@ -18,6 +18,7 @@
 package snowflake
 
 import (
+	"context"
 	"errors"
 	"maps"
 	"net/http"
@@ -203,6 +204,7 @@ type Driver interface {
 
 	// NewDatabaseWithOptions creates a new Snowflake database with the provided options.
 	NewDatabaseWithOptions(map[string]string, ...Option) (adbc.Database, error)
+	NewDatabaseWithOptionsContext(context.Context, map[string]string, ...Option) (adbc.Database, error)
 }
 
 var _ Driver = (*driverImpl)(nil)
@@ -223,19 +225,37 @@ func NewDriver(alloc memory.Allocator) Driver {
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	return d.NewDatabaseWithOptions(opts)
+	return d.NewDatabaseWithContext(context.Background(), opts)
 }
 
-func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, optFuncs ...Option) (adbc.Database, error) {
+func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithOptionsContext(ctx, opts)
+}
+
+func (d *driverImpl) NewDatabaseWithOptions(
+	opts map[string]string,
+	optFuncs ...Option,
+) (adbc.Database, error) {
+	return d.NewDatabaseWithOptionsContext(context.Background(), opts, optFuncs...)
+}
+
+func (d *driverImpl) NewDatabaseWithOptionsContext(
+	ctx context.Context,
+	opts map[string]string,
+	optFuncs ...Option,
+) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 
-	dbImplBase := driverbase.NewDatabaseImplBase(&d.DriverImplBase)
-	dv, _ := dbImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
+	dv, _ := dbBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	driverVersion := dv.(string)
 	defaultAppName := "[ADBC][Go-" + driverVersion + "]"
 
 	db := &databaseImpl{
-		DatabaseImplBase: dbImplBase,
+		DatabaseImplBase: dbBase,
 		useHighPrecision: true,
 		defaultAppName:   defaultAppName,
 	}

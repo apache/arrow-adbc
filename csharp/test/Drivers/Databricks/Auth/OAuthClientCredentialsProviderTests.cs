@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         {
         }
 
-        private OAuthClientCredentialsProvider CreateService(int refreshBufferMinutes = 5)
+        private OAuthClientCredentialsProvider CreateService(int refreshBufferMinutes = 5, string scope = "sql")
         {
             string host;
             if (!string.IsNullOrEmpty(TestConfiguration.HostName))
@@ -60,7 +60,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
                 TestConfiguration.OAuthClientSecret,
                 host,
                 timeoutMinutes: 1,
-                refreshBufferMinutes: refreshBufferMinutes);
+                refreshBufferMinutes: refreshBufferMinutes,
+                scope: scope);
         }
 
         [SkippableFact]
@@ -119,6 +120,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 
             // Tokens should be different since we're forcing a refresh
             Assert.NotEqual(token1, token2);
+        }
+
+        [SkippableFact]
+        public async Task GetAccessToken_WithCustomScope_ReturnsToken()
+        {
+            Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
+            String scope = "all-apis";
+            var service = CreateService(scope: scope);
+            var token = await service.GetAccessTokenAsync();
+
+            Assert.NotNull(token);
+            Assert.NotEmpty(token);
+            Assert.Equal(scope, service.GetCachedTokenScope());
         }
     }
 }

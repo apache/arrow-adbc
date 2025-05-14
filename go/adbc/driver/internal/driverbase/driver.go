@@ -21,6 +21,7 @@
 package driverbase
 
 import (
+	"context"
 	"runtime/debug"
 	"strings"
 
@@ -50,6 +51,7 @@ func init() {
 // vendor-specific functionality.
 type DriverImpl interface {
 	adbc.Driver
+	adbc.DriverWithContext
 	Base() *DriverImplBase
 }
 
@@ -70,6 +72,10 @@ type DriverImplBase struct {
 
 func (base *DriverImplBase) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewDatabase")
+}
+
+func (base *DriverImplBase) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewDatabaseWithContext")
 }
 
 // NewDriverImplBase instantiates DriverImplBase.

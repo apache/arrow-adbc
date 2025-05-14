@@ -38,6 +38,8 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -169,7 +171,16 @@ func isWildcardStr(ident string) bool {
 	return strings.ContainsAny(ident, "_%")
 }
 
-func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (rdr array.RecordReader, err error) {
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (reader array.RecordReader, err error) {
+	var span trace.Span
+	ctx, span = c.StartSpan(ctx, "GetObjects")
+	defer func() {
+		if !internal.SetErrorOnSpan(span, err) {
+			span.SetStatus(codes.Ok, "")
+		}
+		span.End()
+	}()
+
 	var (
 		pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
 		showSchemaQueryID, tableQueryID                     string
@@ -279,13 +290,14 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			catalog, dbSchema, tableName, &tableQueryID)
 	}
 
-	queryBytes, err := fs.ReadFile(queryTemplates, path.Join("queries", queryFile))
+	var queryBytes []byte
+	queryBytes, err = fs.ReadFile(queryTemplates, path.Join("queries", queryFile))
 	if err != nil {
 		return nil, err
 	}
 
 	// Need constraint subqueries to complete before we can query GetObjects
-	if err := gQueryIDs.Wait(); err != nil {
+	if err = gQueryIDs.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -316,7 +328,8 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	}
 
 	query := string(queryBytes)
-	rows, err := conn.QueryContext(ctx, query, nvargs)
+	var rows driver.Rows
+	rows, err = conn.QueryContext(ctx, query, nvargs)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
@@ -698,14 +711,17 @@ func (c *connectionImpl) Rollback(_ context.Context) error {
 // NewStatement initializes a new statement object tied to this connection
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	defaultIngestOptions := DefaultIngestOptions()
-	return &statement{
+	stmtBase := driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper)
+	stmt := &statement{
+		StatementImplBase:   stmtBase,
 		alloc:               c.db.Alloc,
 		cnxn:                c,
 		queueSize:           defaultStatementQueueSize,
 		prefetchConcurrency: defaultPrefetchConcurrency,
 		useHighPrecision:    c.useHighPrecision,
 		ingestOptions:       defaultIngestOptions,
-	}, nil
+	}
+	return driverbase.NewStatement(stmt), nil
 }
 
 // Close closes this connection and releases any associated resources.
@@ -750,9 +766,6 @@ func (c *connectionImpl) SetOption(key, value string) error {
 		}
 		return nil
 	default:
-		return adbc.Error{
-			Msg:  "[Snowflake] unknown connection option " + key + ": " + value,
-			Code: adbc.StatusInvalidArgument,
-		}
+		return c.Base().SetOption(key, value)
 	}
 }

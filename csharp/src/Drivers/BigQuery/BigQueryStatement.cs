@@ -93,27 +93,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
-            Func<Task<BigQueryJob>> checkJobStatus = async () =>
-            {
-                while (true)
-                {
-                    var jobWithStatus = await Client.GetJobAsync(jobReference);
-
-                    if (jobWithStatus.State == JobState.Done)
-                    {
-                        if (jobWithStatus.Status.ErrorResult != null)
-                        {
-                            // TODO: log
-                            Debug.WriteLine($"Error: {jobWithStatus.Status.ErrorResult.Message}");
-                        }
-
-                        return jobWithStatus;
-                    }
-                }
-            };
-
-            await ExecuteWithRetriesAsync<BigQueryJob>(checkJobStatus);
-
+            // We can't checkJobStatus, Otherwise, the timeout in QueryResultsOptions is meaningless.
+            // When encountering a long-running job, it should be controlled by the timeout in the Google SDK instead of blocking in a while loop.
             Func<Task<BigQueryResults>> getJobResults = async () =>
             {
                 // if the authentication token was reset, then we need a new job with the latest token
@@ -224,7 +205,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<UpdateResult> ExecuteUpdateInternalAsync()
         {
-            QueryOptions options = ValidateOptions();
             GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
             if (Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true &&
@@ -234,7 +214,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
             }
 
-            Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(SqlQuery, null, options, getQueryResultsOptions);
+            // Cannot set destination table in jobs with DDL statements, otherwise an error will be prompted
+            Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(SqlQuery, null, null, getQueryResultsOptions);
             BigQueryResults? result = await ExecuteWithRetriesAsync<BigQueryResults?>(func);
             long updatedRows = result?.NumDmlAffectedRows.HasValue == true ? result.NumDmlAffectedRows.Value : -1L;
 
