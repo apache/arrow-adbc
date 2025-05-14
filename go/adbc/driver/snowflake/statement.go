@@ -601,11 +601,9 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 		numRows, spanErr = r.RowsAffected()
 		if spanErr != nil {
 			numRows = -1
-			spanErr = nil
 		}
 
 		return nil
-
 	})
 	return numRows, err
 }
