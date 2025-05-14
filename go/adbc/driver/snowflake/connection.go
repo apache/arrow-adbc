@@ -38,7 +38,6 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
@@ -171,213 +170,213 @@ func isWildcardStr(ident string) bool {
 	return strings.ContainsAny(ident, "_%")
 }
 
-func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (reader array.RecordReader, err error) {
-	var span trace.Span
-	ctx, span = c.StartSpan(ctx, "GetObjects")
-	defer func() {
-		if !internal.SetErrorOnSpan(span, err) {
-			span.SetStatus(codes.Ok, "")
-		}
-		span.End()
-	}()
+func (c *connectionImpl) GetObjects(
+	ctx context.Context,
+	depth adbc.ObjectDepth,
+	catalog, dbSchema, tableName, columnName *string,
+	tableType []string,
+) (reader array.RecordReader, err error) {
+	err = internal.TraceSpan(ctx, c, "GetObjects", func(ctx context.Context, span trace.Span) (spanErr error) {
+		var (
+			pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
+			showSchemaQueryID, tableQueryID                     string
+		)
 
-	var (
-		pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
-		showSchemaQueryID, tableQueryID                     string
-	)
-
-	conn := c.cn
-	var hasViews, hasTables bool
-	for _, t := range tableType {
-		if strings.EqualFold("VIEW", t) {
-			hasViews = true
-		} else if strings.EqualFold("TABLE", t) {
-			hasTables = true
-		}
-	}
-
-	// force empty result from SHOW TABLES if tableType list is not empty
-	// and does not contain TABLE or VIEW in the list.
-	// we need this because we should have non-null db_schema_tables when
-	// depth is Tables, Columns or All.
-	var badTableType = "tabletypedoesnotexist"
-	if len(tableType) > 0 && depth >= adbc.ObjectDepthTables && !hasViews && !hasTables {
-		tableName = &badTableType
-		tableType = []string{"TABLE"}
-	}
-
-	gQueryIDs, gQueryIDsCtx := errgroup.WithContext(ctx)
-	queryFile := queryTemplateGetObjectsAll
-	switch depth {
-	case adbc.ObjectDepthCatalogs:
-		queryFile = queryTemplateGetObjectsTerseCatalogs
-		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
-			catalog, dbSchema, tableName, &terseDbQueryID)
-	case adbc.ObjectDepthDBSchemas:
-		queryFile = queryTemplateGetObjectsDbSchemas
-		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
-			catalog, dbSchema, tableName, &showSchemaQueryID)
-		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
-			catalog, dbSchema, tableName, &terseDbQueryID)
-	case adbc.ObjectDepthTables:
-		queryFile = queryTemplateGetObjectsTables
-		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
-			catalog, dbSchema, tableName, &showSchemaQueryID)
-		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
-			catalog, dbSchema, tableName, &terseDbQueryID)
-
-		objType := objObjects
-		if len(tableType) == 1 {
-			if strings.EqualFold("VIEW", tableType[0]) {
-				objType = objViews
-			} else if strings.EqualFold("TABLE", tableType[0]) {
-				objType = objTables
+		conn := c.cn
+		var hasViews, hasTables bool
+		for _, t := range tableType {
+			if strings.EqualFold("VIEW", t) {
+				hasViews = true
+			} else if strings.EqualFold("TABLE", t) {
+				hasTables = true
 			}
 		}
 
-		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objType,
-			catalog, dbSchema, tableName, &tableQueryID)
-	default:
-		var suffix string
-		if catalog == nil || isWildcardStr(*catalog) {
-			suffix = " IN ACCOUNT"
-		} else {
-			escapedCatalog := quoteTblName(*catalog)
-			if dbSchema == nil || isWildcardStr(*dbSchema) {
-				suffix = " IN DATABASE " + escapedCatalog
+		// force empty result from SHOW TABLES if tableType list is not empty
+		// and does not contain TABLE or VIEW in the list.
+		// we need this because we should have non-null db_schema_tables when
+		// depth is Tables, Columns or All.
+		var badTableType = "tabletypedoesnotexist"
+		if len(tableType) > 0 && depth >= adbc.ObjectDepthTables && !hasViews && !hasTables {
+			tableName = &badTableType
+			tableType = []string{"TABLE"}
+		}
+
+		gQueryIDs, gQueryIDsCtx := errgroup.WithContext(ctx)
+		queryFile := queryTemplateGetObjectsAll
+		switch depth {
+		case adbc.ObjectDepthCatalogs:
+			queryFile = queryTemplateGetObjectsTerseCatalogs
+			goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
+				catalog, dbSchema, tableName, &terseDbQueryID)
+		case adbc.ObjectDepthDBSchemas:
+			queryFile = queryTemplateGetObjectsDbSchemas
+			goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
+				catalog, dbSchema, tableName, &showSchemaQueryID)
+			goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
+				catalog, dbSchema, tableName, &terseDbQueryID)
+		case adbc.ObjectDepthTables:
+			queryFile = queryTemplateGetObjectsTables
+			goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
+				catalog, dbSchema, tableName, &showSchemaQueryID)
+			goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
+				catalog, dbSchema, tableName, &terseDbQueryID)
+
+			objType := objObjects
+			if len(tableType) == 1 {
+				if strings.EqualFold("VIEW", tableType[0]) {
+					objType = objViews
+				} else if strings.EqualFold("TABLE", tableType[0]) {
+					objType = objTables
+				}
+			}
+
+			goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objType,
+				catalog, dbSchema, tableName, &tableQueryID)
+		default:
+			var suffix string
+			if catalog == nil || isWildcardStr(*catalog) {
+				suffix = " IN ACCOUNT"
 			} else {
-				escapedSchema := quoteTblName(*dbSchema)
-				if tableName == nil || isWildcardStr(*tableName) {
-					suffix = " IN SCHEMA " + escapedCatalog + "." + escapedSchema
+				escapedCatalog := quoteTblName(*catalog)
+				if dbSchema == nil || isWildcardStr(*dbSchema) {
+					suffix = " IN DATABASE " + escapedCatalog
 				} else {
-					escapedTable := quoteTblName(*tableName)
-					suffix = " IN TABLE " + escapedCatalog + "." + escapedSchema + "." + escapedTable
-				}
-			}
-		}
-
-		// Detailed constraint info not available in information_schema
-		// Need to dispatch SHOW queries and use conn.Raw to extract the queryID for reuse in GetObjects query
-		gQueryIDs.Go(func() (err error) {
-			pkQueryID, err = getQueryID(gQueryIDsCtx, "SHOW PRIMARY KEYS /* ADBC:getObjectsTables */"+suffix, conn)
-			return err
-		})
-
-		gQueryIDs.Go(func() (err error) {
-			fkQueryID, err = getQueryID(gQueryIDsCtx, "SHOW IMPORTED KEYS /* ADBC:getObjectsTables */"+suffix, conn)
-			return err
-		})
-
-		gQueryIDs.Go(func() (err error) {
-			uniqueQueryID, err = getQueryID(gQueryIDsCtx, "SHOW UNIQUE KEYS /* ADBC:getObjectsTables */"+suffix, conn)
-			return err
-		})
-
-		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
-			catalog, dbSchema, tableName, &terseDbQueryID)
-		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
-			catalog, dbSchema, tableName, &showSchemaQueryID)
-
-		objType := objObjects
-		if len(tableType) == 1 {
-			if strings.EqualFold("VIEW", tableType[0]) {
-				objType = objViews
-			} else if strings.EqualFold("TABLE", tableType[0]) {
-				objType = objTables
-			}
-		}
-		goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objType,
-			catalog, dbSchema, tableName, &tableQueryID)
-	}
-
-	var queryBytes []byte
-	queryBytes, err = fs.ReadFile(queryTemplates, path.Join("queries", queryFile))
-	if err != nil {
-		return nil, err
-	}
-
-	// Need constraint subqueries to complete before we can query GetObjects
-	if err = gQueryIDs.Wait(); err != nil {
-		return nil, err
-	}
-
-	args := []sql.NamedArg{
-		// Optional filter patterns
-		driverbase.PatternToNamedArg("CATALOG", catalog),
-		driverbase.PatternToNamedArg("DB_SCHEMA", dbSchema),
-		driverbase.PatternToNamedArg("TABLE", tableName),
-		driverbase.PatternToNamedArg("COLUMN", columnName),
-
-		// QueryIDs for constraint data if depth is tables or deeper
-		// or if the depth is catalog and catalog is null
-		sql.Named("PK_QUERY_ID", pkQueryID),
-		sql.Named("FK_QUERY_ID", fkQueryID),
-		sql.Named("UNIQUE_QUERY_ID", uniqueQueryID),
-		sql.Named("SHOW_DB_QUERY_ID", terseDbQueryID),
-		sql.Named("SHOW_SCHEMA_QUERY_ID", showSchemaQueryID),
-		sql.Named("SHOW_TABLE_QUERY_ID", tableQueryID),
-	}
-
-	nvargs := make([]driver.NamedValue, len(args))
-	for i, arg := range args {
-		nvargs[i] = driver.NamedValue{
-			Name:    arg.Name,
-			Ordinal: i + 1,
-			Value:   arg.Value,
-		}
-	}
-
-	query := string(queryBytes)
-	var rows driver.Rows
-	rows, err = conn.QueryContext(ctx, query, nvargs)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-	defer func() {
-		err = errors.Join(err, rows.Close())
-	}()
-
-	catalogCh := make(chan driverbase.GetObjectsInfo, runtime.NumCPU())
-	errCh := make(chan error)
-
-	go func() {
-		defer close(catalogCh)
-		dest := make([]driver.Value, len(rows.Columns()))
-		for {
-			if err := rows.Next(dest); err != nil {
-				if errors.Is(err, io.EOF) {
-					return
-				}
-				errCh <- errToAdbcErr(adbc.StatusInvalidData, err)
-				return
-			}
-
-			var getObjectsCatalog driverbase.GetObjectsInfo
-			if err := getObjectsCatalog.Scan(dest[0]); err != nil {
-				errCh <- errToAdbcErr(adbc.StatusInvalidData, err)
-				return
-			}
-
-			// A few columns need additional processing outside of Snowflake
-			for i, sch := range getObjectsCatalog.CatalogDbSchemas {
-				for j, tab := range sch.DbSchemaTables {
-					for k, col := range tab.TableColumns {
-						field := c.toArrowField(col)
-						xdbcDataType := internal.ToXdbcDataType(field.Type)
-
-						if field.Type != nil {
-							getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcDataType = driverbase.Nullable(int16(field.Type.ID()))
-						}
-						getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcSqlDataType = driverbase.Nullable(int16(xdbcDataType))
+					escapedSchema := quoteTblName(*dbSchema)
+					if tableName == nil || isWildcardStr(*tableName) {
+						suffix = " IN SCHEMA " + escapedCatalog + "." + escapedSchema
+					} else {
+						escapedTable := quoteTblName(*tableName)
+						suffix = " IN TABLE " + escapedCatalog + "." + escapedSchema + "." + escapedTable
 					}
 				}
 			}
 
-			catalogCh <- getObjectsCatalog
-		}
-	}()
+			// Detailed constraint info not available in information_schema
+			// Need to dispatch SHOW queries and use conn.Raw to extract the queryID for reuse in GetObjects query
+			gQueryIDs.Go(func() (err error) {
+				pkQueryID, err = getQueryID(gQueryIDsCtx, "SHOW PRIMARY KEYS /* ADBC:getObjectsTables */"+suffix, conn)
+				return err
+			})
 
-	return driverbase.BuildGetObjectsRecordReader(c.Alloc, catalogCh, errCh)
+			gQueryIDs.Go(func() (err error) {
+				fkQueryID, err = getQueryID(gQueryIDsCtx, "SHOW IMPORTED KEYS /* ADBC:getObjectsTables */"+suffix, conn)
+				return err
+			})
+
+			gQueryIDs.Go(func() (err error) {
+				uniqueQueryID, err = getQueryID(gQueryIDsCtx, "SHOW UNIQUE KEYS /* ADBC:getObjectsTables */"+suffix, conn)
+				return err
+			})
+
+			goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objDatabases,
+				catalog, dbSchema, tableName, &terseDbQueryID)
+			goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objSchemas,
+				catalog, dbSchema, tableName, &showSchemaQueryID)
+
+			objType := objObjects
+			if len(tableType) == 1 {
+				if strings.EqualFold("VIEW", tableType[0]) {
+					objType = objViews
+				} else if strings.EqualFold("TABLE", tableType[0]) {
+					objType = objTables
+				}
+			}
+			goGetQueryID(gQueryIDsCtx, conn, gQueryIDs, objType,
+				catalog, dbSchema, tableName, &tableQueryID)
+		}
+
+		var queryBytes []byte
+		queryBytes, spanErr = fs.ReadFile(queryTemplates, path.Join("queries", queryFile))
+		if spanErr != nil {
+			return spanErr
+		}
+
+		// Need constraint subqueries to complete before we can query GetObjects
+		if spanErr = gQueryIDs.Wait(); spanErr != nil {
+			return spanErr
+		}
+
+		args := []sql.NamedArg{
+			// Optional filter patterns
+			driverbase.PatternToNamedArg("CATALOG", catalog),
+			driverbase.PatternToNamedArg("DB_SCHEMA", dbSchema),
+			driverbase.PatternToNamedArg("TABLE", tableName),
+			driverbase.PatternToNamedArg("COLUMN", columnName),
+
+			// QueryIDs for constraint data if depth is tables or deeper
+			// or if the depth is catalog and catalog is null
+			sql.Named("PK_QUERY_ID", pkQueryID),
+			sql.Named("FK_QUERY_ID", fkQueryID),
+			sql.Named("UNIQUE_QUERY_ID", uniqueQueryID),
+			sql.Named("SHOW_DB_QUERY_ID", terseDbQueryID),
+			sql.Named("SHOW_SCHEMA_QUERY_ID", showSchemaQueryID),
+			sql.Named("SHOW_TABLE_QUERY_ID", tableQueryID),
+		}
+
+		nvargs := make([]driver.NamedValue, len(args))
+		for i, arg := range args {
+			nvargs[i] = driver.NamedValue{
+				Name:    arg.Name,
+				Ordinal: i + 1,
+				Value:   arg.Value,
+			}
+		}
+
+		query := string(queryBytes)
+		var rows driver.Rows
+		rows, spanErr = conn.QueryContext(ctx, query, nvargs)
+		if spanErr != nil {
+			return errToAdbcErr(adbc.StatusIO, spanErr)
+		}
+		defer func() {
+			spanErr = errors.Join(spanErr, rows.Close())
+		}()
+
+		catalogCh := make(chan driverbase.GetObjectsInfo, runtime.NumCPU())
+		errCh := make(chan error)
+
+		go func() {
+			defer close(catalogCh)
+			dest := make([]driver.Value, len(rows.Columns()))
+			for {
+				if err := rows.Next(dest); err != nil {
+					if errors.Is(err, io.EOF) {
+						return
+					}
+					errCh <- errToAdbcErr(adbc.StatusInvalidData, err)
+					return
+				}
+
+				var getObjectsCatalog driverbase.GetObjectsInfo
+				if err := getObjectsCatalog.Scan(dest[0]); err != nil {
+					errCh <- errToAdbcErr(adbc.StatusInvalidData, err)
+					return
+				}
+
+				// A few columns need additional processing outside of Snowflake
+				for i, sch := range getObjectsCatalog.CatalogDbSchemas {
+					for j, tab := range sch.DbSchemaTables {
+						for k, col := range tab.TableColumns {
+							field := c.toArrowField(col)
+							xdbcDataType := internal.ToXdbcDataType(field.Type)
+
+							if field.Type != nil {
+								getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcDataType = driverbase.Nullable(int16(field.Type.ID()))
+							}
+							getObjectsCatalog.CatalogDbSchemas[i].DbSchemaTables[j].TableColumns[k].XdbcSqlDataType = driverbase.Nullable(int16(xdbcDataType))
+						}
+					}
+				}
+
+				catalogCh <- getObjectsCatalog
+			}
+		}()
+
+		reader, spanErr = driverbase.BuildGetObjectsRecordReader(c.Alloc, catalogCh, errCh)
+		return spanErr
+	})
+	return reader, err
 }
 
 // PrepareDriverInfo implements driverbase.DriverInfoPreparer.
@@ -625,59 +624,67 @@ func (c *connectionImpl) getStringQuery(query string) (value string, err error) 
 	return value, nil
 }
 
-func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (sc *arrow.Schema, err error) {
-	tblParts := make([]string, 0, 3)
-	if catalog != nil {
-		tblParts = append(tblParts, quoteTblName(*catalog))
-	}
-	if dbSchema != nil {
-		tblParts = append(tblParts, quoteTblName(*dbSchema))
-	}
-	tblParts = append(tblParts, quoteTblName(tableName))
-	fullyQualifiedTable := strings.Join(tblParts, ".")
+func (c *connectionImpl) GetTableSchema(
+	ctx context.Context,
+	catalog *string,
+	dbSchema *string,
+	tableName string,
+) (sc *arrow.Schema, err error) {
+	err = internal.TraceSpan(ctx, c, "GetTableSchema", func(ctx context.Context, span trace.Span) (spanErr error) {
+		tblParts := make([]string, 0, 3)
+		if catalog != nil {
+			tblParts = append(tblParts, quoteTblName(*catalog))
+		}
+		if dbSchema != nil {
+			tblParts = append(tblParts, quoteTblName(*dbSchema))
+		}
+		tblParts = append(tblParts, quoteTblName(tableName))
+		fullyQualifiedTable := strings.Join(tblParts, ".")
 
-	rows, err := c.cn.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable, nil)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
-	}
-	defer func() {
-		err = errors.Join(err, rows.Close())
-	}()
+		rows, spanErr := c.cn.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable, nil)
+		if spanErr != nil {
+			return errToAdbcErr(adbc.StatusIO, spanErr)
+		}
+		defer func() {
+			spanErr = errors.Join(spanErr, rows.Close())
+		}()
 
-	var (
-		name, typ, isnull, primary string
-		comment                    sql.NullString
-		fields                     = []arrow.Field{}
-	)
+		var (
+			name, typ, isnull, primary string
+			comment                    sql.NullString
+			fields                     = []arrow.Field{}
+		)
 
-	// columns are:
-	// name, type, kind, isnull, primary, unique, def, check, expr, comment, policyName, privDomain
-	dest := make([]driver.Value, len(rows.Columns()))
-	for {
-		if err := rows.Next(dest); err != nil {
-			if errors.Is(err, io.EOF) {
-				break
+		// columns are:
+		// name, type, kind, isnull, primary, unique, def, check, expr, comment, policyName, privDomain
+		dest := make([]driver.Value, len(rows.Columns()))
+		for {
+			if err := rows.Next(dest); err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return errToAdbcErr(adbc.StatusIO, err)
 			}
-			return nil, errToAdbcErr(adbc.StatusIO, err)
+
+			name = dest[0].(string)
+			typ = dest[1].(string)
+			isnull = dest[3].(string)
+			primary = dest[5].(string)
+			if err := comment.Scan(dest[9]); err != nil {
+				return errToAdbcErr(adbc.StatusIO, err)
+			}
+
+			f, err := descToField(name, typ, isnull, primary, comment)
+			if err != nil {
+				return err
+			}
+			fields = append(fields, f)
 		}
 
-		name = dest[0].(string)
-		typ = dest[1].(string)
-		isnull = dest[3].(string)
-		primary = dest[5].(string)
-		if err := comment.Scan(dest[9]); err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
-		}
-
-		f, err := descToField(name, typ, isnull, primary, comment)
-		if err != nil {
-			return nil, err
-		}
-		fields = append(fields, f)
-	}
-
-	sc = arrow.NewSchema(fields, nil)
-	return sc, nil
+		sc = arrow.NewSchema(fields, nil)
+		return nil
+	})
+	return sc, err
 }
 
 // Commit commits any pending transactions on this connection, it should

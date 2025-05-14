@@ -756,3 +756,18 @@ func SetErrorOnSpan(span trace.Span, err error) bool {
 	}
 	return false
 }
+
+type spanFunction func(ctx context.Context, span trace.Span) error
+
+func TraceSpan(ctx context.Context, tracing adbc.OTelTracing, spanName string, execFunc spanFunction) error {
+	var span trace.Span
+	ctx, span = tracing.StartSpan(ctx, spanName)
+	err := execFunc(ctx, span)
+	defer func() {
+		if !SetErrorOnSpan(span, err) {
+			span.SetStatus(codes.Ok, codes.Ok.String())
+		}
+		span.End()
+	}()
+	return err
+}
