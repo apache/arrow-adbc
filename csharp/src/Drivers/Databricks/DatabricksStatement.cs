@@ -16,7 +16,6 @@
 */
 
 using System;
-using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -50,22 +49,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.CanDecompressLZ4Result = canDecompressLz4;
             statement.MaxBytesPerFile = maxBytesPerFile;
 
-            if (Connection.AreResultsAvailableDirectly)
-            {
-                statement.GetDirectResults = DatabricksConnection.defaultGetDirectResults;
-            }
+            Connection.TrySetGetDirectResults(statement);
         }
 
         /// <summary>
         /// Checks if direct results are available.
         /// </summary>
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        public bool HasDirectResults => DirectResults?.ResultSet != null && DirectResults?.ResultSetMetadata != null;
-
-        public TSparkDirectResults? DirectResults
-        {
-            get { return _directResults; }
-        }
+        public bool HasDirectResults => Response!.DirectResults?.ResultSet != null && Response!.DirectResults?.ResultSetMetadata != null;
 
         // Cast the Client to IAsync for CloudFetch compatibility
         TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
