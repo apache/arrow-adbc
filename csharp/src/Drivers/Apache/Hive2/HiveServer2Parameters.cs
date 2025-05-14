@@ -70,42 +70,42 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// Whether to use a proxy for HTTP connections.
         /// Default value is 0 (disabled) if not specified.
         /// </summary>
-        public const string UseProxy = "UseProxy";
+        public const string UseProxy = "adbc.proxy_options.use_proxy";
 
         /// <summary>
         /// Hostname or IP address of the proxy server.
         /// Required when UseProxy is set to 1.
         /// </summary>
-        public const string ProxyHost = "ProxyHost";
+        public const string ProxyHost = "adbc.proxy_options.proxy_host";
 
         /// <summary>
         /// Port number of the proxy server.
         /// Default value is 8080 if not specified.
         /// </summary>
-        public const string ProxyPort = "ProxyPort";
+        public const string ProxyPort = "adbc.proxy_options.proxy_port";
 
         /// <summary>
         /// Comma-separated list of hosts or domains that should bypass the proxy.
         /// For example: "localhost,127.0.0.1,.internal.domain.com"
         /// </summary>
-        public const string ProxyIgnoreList = "ProxyIgnoreList";
+        public const string ProxyIgnoreList = "adbc.proxy_options.proxy_ignore_list";
 
         /// <summary>
         /// Whether to enable proxy authentication.
         /// Default value is 0 (disabled) if not specified.
         /// </summary>
-        public const string ProxyAuth = "ProxyAuth";
+        public const string ProxyAuth = "adbc.proxy_options.proxy_auth";
 
         /// <summary>
         /// Username for proxy authentication.
         /// Required when ProxyAuth is set to 1.
         /// </summary>
-        public const string ProxyUID = "ProxyUID";
+        public const string ProxyUID = "adbc.proxy_options.proxy_uid";
 
         /// <summary>
         /// Password for proxy authentication.
         /// Required when ProxyAuth is set to 1.
         /// </summary>
-        public const string ProxyPWD = "ProxyPWD";
+        public const string ProxyPWD = "adbc.proxy_options.proxy_pwd";
     }
 }
