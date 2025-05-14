@@ -28,9 +28,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     internal class TokenProtectedReadClientManger : ITokenProtectedResource
     {
         BigQueryReadClient bigQueryReadClient;
-        string? proxyAddress;
 
-        public TokenProtectedReadClientManger(GoogleCredential credential, string? proxyAddress)
+        public TokenProtectedReadClientManger(GoogleCredential credential)
         {
             UpdateCredential(credential);
 
@@ -38,8 +37,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 throw new InvalidOperationException("could not create a read client");
             }
-
-            this.proxyAddress = proxyAddress;
         }
 
         public BigQueryReadClient ReadClient => bigQueryReadClient;
