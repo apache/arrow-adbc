@@ -24,19 +24,23 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
 const (
-	ConnectionMessageOptionUnknown     = "Unknown connection option"
-	ConnectionMessageOptionUnsupported = "Unsupported connection option"
-	ConnectionMessageCannotCommit      = "Cannot commit when autocommit is enabled"
-	ConnectionMessageCannotRollback    = "Cannot rollback when autocommit is enabled"
+	ConnectionMessageOptionUnknown              = "Unknown connection option"
+	ConnectionMessageOptionUnsupported          = "Unsupported connection option"
+	ConnectionMessageCannotCommit               = "Cannot commit when autocommit is enabled"
+	ConnectionMessageCannotRollback             = "Cannot rollback when autocommit is enabled"
+	ConnectionMessageTraceParentIncorrectFormat = "Incorrect or unsupported trace parent format"
 )
 
 // ConnectionImpl is an interface that drivers implement to provide
@@ -44,6 +48,7 @@ const (
 type ConnectionImpl interface {
 	adbc.Connection
 	adbc.GetSetOptions
+	adbc.OTelTracing
 	Base() *ConnectionImplBase
 }
 
@@ -107,9 +112,12 @@ type ConnectionImplBase struct {
 	ErrorHelper ErrorHelper
 	DriverInfo  *DriverInfo
 	Logger      *slog.Logger
+	Tracer      trace.Tracer
 
 	Autocommit bool
 	Closed     bool
+
+	traceParent string
 }
 
 // NewConnectionImplBase instantiates ConnectionImplBase.
@@ -122,6 +130,7 @@ func NewConnectionImplBase(database *DatabaseImplBase) ConnectionImplBase {
 		ErrorHelper: database.ErrorHelper,
 		DriverInfo:  database.DriverInfo,
 		Logger:      database.Logger,
+		Tracer:      database.Tracer,
 		Autocommit:  true,
 		Closed:      false,
 	}
@@ -223,6 +232,10 @@ func (base *ConnectionImplBase) ReadPartition(ctx context.Context, serializedPar
 }
 
 func (base *ConnectionImplBase) GetOption(key string) (string, error) {
+	switch strings.ToLower(key) {
+	case adbc.OptionKeyTelemetryTraceParent:
+		return base.GetTraceParent(), nil
+	}
 	return "", base.ErrorHelper.Errorf(adbc.StatusNotFound, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
 
@@ -239,9 +252,12 @@ func (base *ConnectionImplBase) GetOptionInt(key string) (int64, error) {
 }
 
 func (base *ConnectionImplBase) SetOption(key string, val string) error {
-	switch key {
+	switch strings.ToLower(key) {
 	case adbc.OptionKeyAutoCommit:
 		return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnsupported, key)
+	case adbc.OptionKeyTelemetryTraceParent:
+		base.SetTraceParent(strings.TrimSpace(val))
+		return nil
 	}
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
@@ -330,6 +346,23 @@ func (b *ConnectionBuilder) Connection() Connection {
 	conn := b.connection
 	b.connection = nil
 	return conn
+}
+
+func (cnxn *ConnectionImplBase) GetTraceParent() string {
+	return cnxn.traceParent
+}
+
+func (cnxn *ConnectionImplBase) SetTraceParent(traceParent string) {
+	cnxn.traceParent = traceParent
+}
+
+func (cnxn *ConnectionImplBase) StartSpan(
+	ctx context.Context,
+	spanName string,
+	opts ...trace.SpanStartOption,
+) (context.Context, trace.Span) {
+	ctx, _ = maybeAddTraceParent(ctx, cnxn, nil)
+	return cnxn.Tracer.Start(ctx, spanName, opts...)
 }
 
 // GetObjects implements Connection.
@@ -712,6 +745,39 @@ func ValueOrZero[T any](val *T) T {
 		return res
 	}
 	return *val
+}
+
+func maybeAddTraceParent(ctx context.Context, cnxn adbc.OTelTracing, st adbc.OTelTracing) (context.Context, error) {
+	var traceParentStr string
+	if st != nil && st.GetTraceParent() != "" {
+		traceParentStr = st.GetTraceParent()
+	} else if cnxn != nil && cnxn.GetTraceParent() != "" {
+		traceParentStr = cnxn.GetTraceParent()
+	}
+	if traceParentStr != "" {
+		spanContext, err := propagateTraceParent(ctx, traceParentStr)
+		if err != nil {
+			return ctx, err
+		}
+		ctx = trace.ContextWithRemoteSpanContext(ctx, spanContext)
+	}
+	return ctx, nil
+}
+
+func propagateTraceParent(ctx context.Context, traceParentStr string) (trace.SpanContext, error) {
+	if strings.TrimSpace(traceParentStr) == "" {
+		return trace.SpanContext{}, errors.New("traceparent string is empty")
+	}
+
+	propagator := propagation.TraceContext{}
+	carrier := propagation.MapCarrier{"traceparent": traceParentStr}
+	extractedContext := propagator.Extract(ctx, carrier)
+
+	spanContext := trace.SpanContextFromContext(extractedContext)
+	if !spanContext.IsValid() {
+		return trace.SpanContext{}, errors.New("invalid traceparent string")
+	}
+	return spanContext, nil
 }
 
 var _ ConnectionImpl = (*ConnectionImplBase)(nil)
