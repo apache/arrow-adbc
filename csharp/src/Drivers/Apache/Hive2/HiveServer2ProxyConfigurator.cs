@@ -24,21 +24,9 @@ using System.Text.RegularExpressions;
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     /// <summary>
-    /// Interface for proxy configuration
-    /// </summary>
-    public interface IProxyConfigurator
-    {
-        /// <summary>
-        /// Configures proxy settings on an HttpClientHandler
-        /// </summary>
-        /// <param name="handler">The HttpClientHandler to configure</param>
-        void ConfigureProxy(HttpClientHandler handler);
-    }
-
-    /// <summary>
     /// Default implementation of proxy configuration for HTTP connections
     /// </summary>
-    public class HiveServer2ProxyConfigurator : IProxyConfigurator
+    internal class HiveServer2ProxyConfigurator
     {
         private readonly bool _useProxy;
         private readonly string? _proxyHost;
@@ -58,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <param name="proxyUid">The proxy username</param>
         /// <param name="proxyPwd">The proxy password</param>
         /// <param name="proxyIgnoreList">Comma-separated list of hosts to bypass the proxy</param>
-        public HiveServer2ProxyConfigurator(
+        internal HiveServer2ProxyConfigurator(
             bool useProxy,
             int? proxyPort = null,
             string? proxyHost = null,
@@ -100,10 +88,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// Initializes a new instance of the <see cref="HiveServer2ProxyConfigurator"/> class from connection properties.
         /// </summary>
         /// <param name="properties">The connection properties</param>
-        public static HiveServer2ProxyConfigurator FromProperties(IReadOnlyDictionary<string, string> properties)
+        internal static HiveServer2ProxyConfigurator FromProperties(IReadOnlyDictionary<string, string> properties)
         {
-            bool useProxy = properties.TryGetValue(HttpProxyOptions.UseProxy, out string? useProxyStr) &&
-                useProxyStr == "1";
+            bool useProxy = properties.TryGetValue(HttpProxyOptions.UseProxy, out string? useProxyStr) && bool.TryParse(useProxyStr, out bool useProxyBool) && useProxyBool;
 
             if (!useProxy)
             {
@@ -114,13 +101,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             if (!properties.TryGetValue(HttpProxyOptions.ProxyHost, out string? proxyHost) ||
                 string.IsNullOrEmpty(proxyHost))
             {
-                throw new ArgumentException($"Parameter '{HttpProxyOptions.UseProxy}' is set to '1' but '{HttpProxyOptions.ProxyHost}' is not specified");
+                throw new ArgumentException($"Parameter '{HttpProxyOptions.UseProxy}' is set to 'true' but '{HttpProxyOptions.ProxyHost}' is not specified");
             }
 
             // Get proxy port
             if (!properties.TryGetValue(HttpProxyOptions.ProxyPort, out string? proxyPortStr))
             {
-                throw new ArgumentException($"Parameter '{HttpProxyOptions.ProxyPort}' is required when '{HttpProxyOptions.UseProxy}' is set to '1'");
+                throw new ArgumentException($"Parameter '{HttpProxyOptions.ProxyPort}' is required when '{HttpProxyOptions.UseProxy}' is set to 'true'");
             }
 
             if (!int.TryParse(proxyPortStr, out int proxyPort) || proxyPort <= 0 || proxyPort > 65535)
@@ -131,8 +118,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             // Get proxy authentication settings
-            bool proxyAuth = properties.TryGetValue(HttpProxyOptions.ProxyAuth, out string? proxyAuthStr) &&
-                proxyAuthStr == "1";
+            bool proxyAuth = properties.TryGetValue(HttpProxyOptions.ProxyAuth, out string? proxyAuthStr) && bool.TryParse(proxyAuthStr, out bool proxyAuthBool) && proxyAuthBool;
 
             string? proxyUid = null;
             string? proxyPwd = null;
@@ -144,12 +130,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 if (string.IsNullOrEmpty(proxyUid))
                 {
-                    throw new ArgumentException($"Parameter '{HttpProxyOptions.ProxyAuth}' is set to '1' but '{HttpProxyOptions.ProxyUID}' is not specified");
+                    throw new ArgumentException($"Parameter '{HttpProxyOptions.ProxyAuth}' is set to 'true' but '{HttpProxyOptions.ProxyUID}' is not specified");
                 }
 
                 if (string.IsNullOrEmpty(proxyPwd))
                 {
-                    throw new ArgumentException($"Parameter '{HttpProxyOptions.ProxyAuth}' is set to '1' but '{HttpProxyOptions.ProxyPWD}' is not specified");
+                    throw new ArgumentException($"Parameter '{HttpProxyOptions.ProxyAuth}' is set to 'true' but '{HttpProxyOptions.ProxyPWD}' is not specified");
                 }
             }
 
@@ -171,7 +157,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// Configures proxy settings on an HttpClientHandler
         /// </summary>
         /// <param name="handler">The HttpClientHandler to configure</param>
-        public void ConfigureProxy(HttpClientHandler handler)
+        internal void ConfigureProxy(HttpClientHandler handler)
         {
             if (_useProxy)
             {
@@ -200,6 +186,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
+        // http client bypass list in c# expects regex strings, hence why some handling is done to make hosts in regex format.
+        // I assume we don't want to expect users to pass in regex strings (though we still allow for wildcard pattern here)
         private static string[] ParseProxyIgnoreList(string? proxyIgnoreList)
         {
             if (string.IsNullOrEmpty(proxyIgnoreList))

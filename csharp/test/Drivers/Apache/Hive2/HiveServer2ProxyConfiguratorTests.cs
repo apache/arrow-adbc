@@ -84,10 +84,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2.Tests
             // Arrange
             var properties = new Dictionary<string, string>
             {
-                { HttpProxyOptions.UseProxy, "1" },
+                { HttpProxyOptions.UseProxy, "true" },
                 { HttpProxyOptions.ProxyHost, "proxy.example.com" },
                 { HttpProxyOptions.ProxyPort, "8080" },
-                { HttpProxyOptions.ProxyAuth, "1" },
+                { HttpProxyOptions.ProxyAuth, "true" },
                 { HttpProxyOptions.ProxyUID, "username" },
                 { HttpProxyOptions.ProxyPWD, "password" }
             };
