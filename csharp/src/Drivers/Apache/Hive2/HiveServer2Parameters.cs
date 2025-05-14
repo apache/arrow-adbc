@@ -38,6 +38,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     public static class HiveServer2TransportTypeConstants
     {
         public const string Http = "http";
+        public const string Standard = "standard";
     }
 
     public static class DataTypeConversionOptions
