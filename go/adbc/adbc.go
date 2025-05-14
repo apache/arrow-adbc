@@ -250,11 +250,14 @@ const (
 	OptionKeyURI                      = "uri"
 	OptionKeyUsername                 = "username"
 	OptionKeyPassword                 = "password"
-	OptionKeyTelemetryTraceParent     = "adbc.telemetry.trace_parent"
+	// EXPERIMENTAL. Sets/Gets the trace parent on OpenTelemetry traces
+	OptionKeyTelemetryTraceParent = "adbc.telemetry.trace_parent"
 )
 
+// EXPERIMENTAL. Traces Telemetry exporter option type
 type OptionTelemetryExporter string
 
+// EXPERIMENTAL. Traces Telemetry exporter options
 const (
 	TelemetryExporterNone     OptionTelemetryExporter = "none"
 	TelemetryExporterOtlp     OptionTelemetryExporter = "otlp"
