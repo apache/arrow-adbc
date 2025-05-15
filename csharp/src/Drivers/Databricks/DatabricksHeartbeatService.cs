@@ -24,85 +24,58 @@ using Apache.Hive.Service.Rpc.Thrift;
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
-    /// Service that sends periodic heartbeats to the Databricks cluster/warehouse to keep it alive.
+    /// Service that sends periodic heartbeats to the Databricks warehouse to keep it alive. 
+    /// Specifically, this is to keep the command results and session alive, if reading results takes a long time.
     /// </summary>
     internal class DatabricksHeartbeatService : IDisposable
     {
         private readonly IHiveServer2Statement _statement;
         private readonly int _heartbeatIntervalSeconds;
-        private Timer? _heartbeatTimer;
-        private CancellationTokenSource _cancellationTokenSource;
+        private readonly CancellationTokenSource _cts;
+        private Task? _heartbeatTask;
         private bool _isDisposed;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="DatabricksHeartbeatService"/> class.
-        /// </summary>
-        /// <param name="statement">The statement to use for sending heartbeats.</param>
-        public DatabricksHeartbeatService(IHiveServer2Statement statement)
+        public DatabricksHeartbeatService(IHiveServer2Statement statement, int intervalSeconds)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
-            _heartbeatIntervalSeconds = DatabricksConstants.DefaultHeartbeatIntervalSeconds;
-            _cancellationTokenSource = new CancellationTokenSource();
+            _heartbeatIntervalSeconds = intervalSeconds;
+            _cts = new CancellationTokenSource();
         }
 
         public void Start()
         {
-            if (_heartbeatIntervalSeconds <= 0)
-            {
-                return; // Heartbeats are disabled
-            }
-
-            _heartbeatTimer = new Timer(
-                async _ => await SendHeartbeatAsync(),
-                null,
-                TimeSpan.FromSeconds(_heartbeatIntervalSeconds),
-                TimeSpan.FromSeconds(_heartbeatIntervalSeconds));
+            if (_heartbeatIntervalSeconds <= 0) return;
+            _heartbeatTask = Task.Run(() => PollOperationStatus(_cts.Token));
         }
 
-        public void Stop()
+        private async Task PollOperationStatus(CancellationToken cancellationToken)
         {
-            if (_heartbeatTimer != null)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                _heartbeatTimer.Dispose();
-                _heartbeatTimer = null;
-            }
-
-            _cancellationTokenSource.Cancel();
-        }
-
-        private async Task SendHeartbeatAsync()
-        {
-            try
-            {
-                if (_isDisposed || _cancellationTokenSource.IsCancellationRequested)
-                {
-                    return;
-                }
-
                 var operationHandle = _statement.OperationHandle;
-                if (operationHandle == null)
-                {
-                    return;
-                }
+                if (operationHandle == null) break;
 
                 var request = new TGetOperationStatusReq(operationHandle);
-                await _statement.Client.GetOperationStatus(request, _cancellationTokenSource.Token);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Heartbeat error: {ex.Message}");
+                var response = await _statement.Client.GetOperationStatus(request, cancellationToken);
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), cancellationToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
             }
         }
 
         public void Dispose()
         {
-            if (_isDisposed)
-            {
-                return;
-            }
+            if (_isDisposed) return;
 
-            Stop();
-            _cancellationTokenSource.Dispose();
+            _cts.Cancel();
+            _heartbeatTask?.Wait();
+            _cts.Dispose();
             _isDisposed = true;
         }
     }
