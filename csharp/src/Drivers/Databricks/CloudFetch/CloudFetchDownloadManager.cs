@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private bool _isDisposed;
         private bool _isStarted;
         private CancellationTokenSource? _cancellationTokenSource;
-        private DatabricksHeartbeatService? _heartbeatService;
+        private DatabricksOperationStatusPoller? _operationStatusPoller;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloadManager"/> class.
@@ -183,8 +183,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 maxRetries,
                 retryDelayMs);
 
-            // Initialize the heartbeat service if enabled
-            _heartbeatService = new DatabricksHeartbeatService(_statement);
+            // Initialize the operation status poller
+            _operationStatusPoller = new DatabricksOperationStatusPoller(_statement);
         }
 
         /// <summary>
@@ -258,8 +258,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             // Start the downloader
             await _downloader.StartAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
 
-            // Start the heartbeat service if enabled
-            _heartbeatService?.Start();
+            // Start the operation status poller
+            _operationStatusPoller?.Start();
 
             _isStarted = true;
         }
@@ -272,11 +272,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 return;
             }
 
-            // Stop the heartbeat service
-            _heartbeatService?.Stop();
-
             // Cancel the token to signal all operations to stop
             _cancellationTokenSource?.Cancel();
+
+            // Stop the operation status poller
+            DisposeOperationStatusPoller();
 
             // Stop the downloader
             await _downloader.StopAsync().ConfigureAwait(false);
@@ -302,9 +302,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             // Stop the pipeline
             StopAsync().GetAwaiter().GetResult();
 
-            // Dispose the heartbeat service
-            _heartbeatService?.Dispose();
-            _heartbeatService = null;
+            // Dispose the operation status poller
+            DisposeOperationStatusPoller();
 
             // Dispose the HTTP client
             _httpClient.Dispose();
@@ -339,6 +338,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             if (_isDisposed)
             {
                 throw new ObjectDisposedException(nameof(CloudFetchDownloadManager));
+            }
+        }
+
+
+        private void DisposeOperationStatusPoller()
+        {
+            if (_operationStatusPoller != null)
+            {
+                _operationStatusPoller.Dispose();
+                _operationStatusPoller = null;
             }
         }
     }

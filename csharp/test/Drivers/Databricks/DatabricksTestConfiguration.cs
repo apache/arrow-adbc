@@ -33,12 +33,5 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         [JsonPropertyName("scope"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string OAuthScope { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Duration in milliseconds for the sleep_udf function in heartbeat tests.
-        /// Default is 60000 (1 minute).
-        /// </summary>
-        [JsonPropertyName("heartbeat_sleep_ms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public int HeartbeatSleepMs { get; set; } = 60000;
     }
 }

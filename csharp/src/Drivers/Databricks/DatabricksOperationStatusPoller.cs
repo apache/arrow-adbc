@@ -24,28 +24,33 @@ using Apache.Hive.Service.Rpc.Thrift;
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
-    /// Service that sends periodic heartbeats to the Databricks warehouse to keep it alive. 
-    /// Specifically, this is to keep the command results and session alive, if reading results takes a long time.
+    /// Service that periodically polls the operation status of a Databricks warehouse query to keep it alive.
+    /// This is used to maintain the command results and session when reading results takes a long time.
     /// </summary>
-    internal class DatabricksHeartbeatService : IDisposable
+    internal class DatabricksOperationStatusPoller : IDisposable
     {
         private readonly IHiveServer2Statement _statement;
         private readonly int _heartbeatIntervalSeconds;
         private readonly CancellationTokenSource _cts;
-        private Task? _heartbeatTask;
+        private Task? _operationStatusPollingTask;
         private bool _isDisposed;
 
-        public DatabricksHeartbeatService(IHiveServer2Statement statement, int intervalSeconds)
+        public DatabricksOperationStatusPoller(IHiveServer2Statement statement, int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
-            _heartbeatIntervalSeconds = intervalSeconds;
+            _heartbeatIntervalSeconds = heartbeatIntervalSeconds;
             _cts = new CancellationTokenSource();
         }
 
         public void Start()
         {
             if (_heartbeatIntervalSeconds <= 0) return;
-            _heartbeatTask = Task.Run(() => PollOperationStatus(_cts.Token));
+            if (_operationStatusPollingTask == null)
+            {
+                _operationStatusPollingTask = Task.Run(() => PollOperationStatus(_cts.Token));
+            } else {
+                throw new InvalidOperationException("Operation status poller already started");
+            }
         }
 
         private async Task PollOperationStatus(CancellationToken cancellationToken)
@@ -66,6 +71,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     break;
                 }
+
+                // end the heartbeat if the command has terminated
+                if (response.OperationState == TOperationState.CANCELED_STATE ||
+                    response.OperationState == TOperationState.ERROR_STATE)
+                {
+                    break;
+                }
             }
         }
 
@@ -74,7 +86,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (_isDisposed) return;
 
             _cts.Cancel();
-            _heartbeatTask?.Wait();
+            _operationStatusPollingTask?.Wait();
             _cts.Dispose();
             _isDisposed = true;
         }

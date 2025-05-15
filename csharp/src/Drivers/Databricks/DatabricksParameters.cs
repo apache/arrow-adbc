@@ -159,7 +159,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Default heartbeat interval in seconds for long-running operations. Minimum warehouse timeout is 5 minutes; session timeout is 1 hour.
         /// </summary>
-        public const int DefaultHeartbeatIntervalSeconds = 120;
+        public const int DefaultOperationStatusPollingIntervalSeconds = 60;
 
         /// <summary>
         /// OAuth grant type constants

@@ -33,7 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         int index;
         IArrowReader? reader;
         bool isLz4Compressed;
-        private DatabricksHeartbeatService? _heartbeatService;
+        private DatabricksOperationStatusPoller? _operationStatusPoller;
 
         public DatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
         {
@@ -50,10 +50,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     this.statement = null;
                 }
+            } else {
+                _operationStatusPoller = new DatabricksOperationStatusPoller(statement);
+                _operationStatusPoller.Start();
             }
-            
-            _heartbeatService = new DatabricksHeartbeatService(statement, DatabricksConstants.DefaultHeartbeatIntervalSeconds);
-            _heartbeatService.Start();
         }
         public Schema Schema { get { return schema; } }
 
@@ -94,6 +94,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!response.HasMoreRows)
                 {
                     this.statement = null;
+                    DisposeOperationStatusPoller();
                 }
             }
         }
@@ -137,11 +138,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public void Dispose()
         {
-            // Dispose the heartbeat service
-            if (_heartbeatService != null)
+            DisposeOperationStatusPoller();
+        }
+
+        private void DisposeOperationStatusPoller()
+        {
+            if (_operationStatusPoller != null)
             {
-                _heartbeatService.Dispose();
-                _heartbeatService = null;
+                _operationStatusPoller.Dispose();
+                _operationStatusPoller = null;
             }
         }
     }
