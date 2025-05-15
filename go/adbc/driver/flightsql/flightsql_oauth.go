@@ -19,13 +19,42 @@ package flightsql
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net/http"
 
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 )
 
+// TokenSource supplies PerRPCCredentials from an oauth2.TokenSource.
+type FlightTokenSource struct {
+	oauth2.TokenSource
+}
+
+// GetRequestMetadata gets the request metadata as a map from a TokenSource.
+func (ts FlightTokenSource) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
+	token, err := ts.Token()
+	if err != nil {
+		return nil, err
+	}
+	// ri, _ := credentials.RequestInfoFromContext(ctx)
+	// if err = credentials.CheckSecurityLevel(ri.AuthInfo, credentials.PrivacyAndIntegrity); err != nil {
+	// 	return nil, fmt.Errorf("unable to transfer TokenSource PerRPCCredentials: %v", err)
+	// }
+	return map[string]string{
+		"authorization": token.Type() + " " + token.AccessToken,
+	}, nil
+}
+
+// RequireTransportSecurity indicates whether the credentials requires transport security.
+func (ts FlightTokenSource) RequireTransportSecurity() bool {
+	return false
+}
+
+// Bit flags for different OAuth authentication methods. Enables multiple authentication methods to be
+// specified simultaneaously if needed
 const (
 	ClientCredentials = "client_credentials"
 	TokenExchange     = "token_exchange"
@@ -54,6 +83,16 @@ var (
 	}
 )
 
+const (
+	ttPrefix              = "urn:ietf:params:oauth:token-type:"
+	TokenTypeAccessToken  = ttPrefix + "access_token"
+	TokenTypeRefreshToken = ttPrefix + "refresh_token"
+	TokenTypeIdToken      = ttPrefix + "id_token"
+	TokenTypeSaml1        = ttPrefix + "saml1"
+	TokenTypeSaml2        = ttPrefix + "saml2"
+	TokenTypeJWT          = ttPrefix + "jwt"
+)
+
 func parseOAuthOptions(options map[string]string, paramMap map[string]oAuthOption, flowName string) (map[string]string, error) {
 	params := map[string]string{}
 
@@ -69,16 +108,29 @@ func parseOAuthOptions(options map[string]string, paramMap map[string]oAuthOptio
 	return params, nil
 }
 
-func exchangeToken(conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption) (credentials.PerRPCCredentials, error) {
+func exchangeToken(conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption, tlsConfig *tls.Config) (credentials.PerRPCCredentials, error) {
 	ctx := context.Background()
+
+	if tlsConfig != nil {
+		// Set the HTTP client with custom TLS config in the context
+		httpClient := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConfig,
+			},
+		}
+
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
+	}
+
 	tok, err := conf.Exchange(ctx, "", codeOptions...)
 	if err != nil {
 		return nil, err
 	}
+	// return &FlightTokenSource{TokenSource: conf.TokenSource(ctx, tok)}, nil
 	return &oauth.TokenSource{TokenSource: conf.TokenSource(ctx, tok)}, nil
 }
 
-func newClientCredentials(options map[string]string) (credentials.PerRPCCredentials, error) {
+func newClientCredentials(options map[string]string, tlsConfig *tls.Config) (credentials.PerRPCCredentials, error) {
 	codeOptions := []oauth2.AuthCodeOption{
 		// Required value for client credentials requests as specified in https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.2
 		oauth2.SetAuthURLParam("grant_type", "client_credentials"),
@@ -101,10 +153,10 @@ func newClientCredentials(options map[string]string) (credentials.PerRPCCredenti
 		conf.Scopes = []string{scopes}
 	}
 
-	return exchangeToken(conf, codeOptions)
+	return exchangeToken(conf, codeOptions, tlsConfig)
 }
 
-func newTokenExchangeFlow(options map[string]string) (credentials.PerRPCCredentials, error) {
+func newTokenExchangeFlow(options map[string]string, tlsConfig *tls.Config) (credentials.PerRPCCredentials, error) {
 	tokenURI, ok := options[OptionKeyTokenURI]
 	if !ok {
 		return nil, fmt.Errorf("token exchange grant requires %s", OptionKeyTokenURI)
@@ -147,5 +199,5 @@ func newTokenExchangeFlow(options map[string]string) (credentials.PerRPCCredenti
 		}
 	}
 
-	return exchangeToken(conf, codeOptions)
+	return exchangeToken(conf, codeOptions, tlsConfig)
 }
