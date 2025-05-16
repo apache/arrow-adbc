@@ -135,7 +135,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             Properties.TryGetValue(DatabricksParameters.DefaultCatalog, out defaultCatalog);
             Properties.TryGetValue(DatabricksParameters.DefaultSchema, out defaultSchema);
 
-            if (!string.IsNullOrEmpty(defaultCatalog))
+            if (!string.IsNullOrWhiteSpace(defaultCatalog))
             {
                 _defaultNamespace = new TNamespace
                 {

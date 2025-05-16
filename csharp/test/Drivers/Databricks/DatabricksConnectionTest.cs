@@ -323,7 +323,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         /// Tests that default namespace is correctly stored in the connection.
         /// </summary>
         [SkippableFact]
-        internal void DefaultNamespace_StoredInConnection()
+        internal void DefaultNamespaceStoredInConnection()
         {
             // Skip if default catalog or schema is not configured
             Skip.If(string.IsNullOrEmpty(TestConfiguration.DefaultCatalog), "Default catalog not configured");
