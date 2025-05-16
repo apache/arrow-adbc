@@ -31,7 +31,7 @@ cat /adbc/ci/conda_env_cpp.txt /adbc/ci/conda_env_python.txt |\
 
 micromamba install -c conda-forge -y \
            -f /tmp/spec.txt \
-           "conda-forge/label/python_debug::python=${PYTHON}[build=*_cpython]"
+           "conda-forge/label/python_debug::python=${PYTHON}.*"
 micromamba clean --all -y
 
 export ADBC_USE_ASAN=ON

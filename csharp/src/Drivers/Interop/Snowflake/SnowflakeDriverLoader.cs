@@ -24,7 +24,7 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.Snowflake
     /// </summary>
     public class SnowflakeDriverLoader : AdbcDriverLoader
     {
-        public SnowflakeDriverLoader() : base("libadbc_driver_snowflake", "SnowflakeDriverInit")
+        public SnowflakeDriverLoader() : base("libadbc_driver_snowflake", "AdbcDriverSnowflakeInit")
         {
 
         }

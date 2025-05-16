@@ -33,7 +33,7 @@ if(ADBC_BUILD_SHARED)
 endif()
 
 if(ADBC_BUILD_STATIC)
-  adbc_add_shared_library(
+  adbc_add_static_library(
     AdbcDriverSnowflake::adbc_driver_snowflake_static
     adbc_driver_snowflake)
 endif()

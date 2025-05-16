@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-int AdbcStatusCodeToErrno(AdbcStatusCode code);
+int InternalAdbcStatusCodeToErrno(AdbcStatusCode code);
 
 // If using mingw's c99-compliant printf, we need a different format-checking attribute
 #if defined(__USE_MINGW_ANSI_STDIO) && defined(__MINGW_PRINTF_FORMAT)
@@ -41,64 +41,69 @@ int AdbcStatusCodeToErrno(AdbcStatusCode code);
 #endif
 
 /// Set error message using a format string.
-void SetError(struct AdbcError* error, const char* format,
-              ...) ADBC_CHECK_PRINTF_ATTRIBUTE;
+void InternalAdbcSetError(struct AdbcError* error, const char* format,
+                          ...) ADBC_CHECK_PRINTF_ATTRIBUTE;
 
 /// Set error message using a format string.
-void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args);
+void InternalAdbcSetErrorVariadic(struct AdbcError* error, const char* format,
+                                  va_list args);
 
 /// Add an error detail.
-void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* detail,
-                       size_t detail_length);
+void InternalAdbcAppendErrorDetail(struct AdbcError* error, const char* key,
+                                   const uint8_t* detail, size_t detail_length);
 
-int CommonErrorGetDetailCount(const struct AdbcError* error);
-struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int index);
-bool IsCommonError(const struct AdbcError* error);
+int InternalAdbcCommonErrorGetDetailCount(const struct AdbcError* error);
+struct AdbcErrorDetail InternalAdbcCommonErrorGetDetail(const struct AdbcError* error,
+                                                        int index);
+bool InternalAdbcIsCommonError(const struct AdbcError* error);
 
-struct StringBuilder {
+struct InternalAdbcStringBuilder {
   char* buffer;
   // Not including null terminator
   size_t size;
   size_t capacity;
 };
-int StringBuilderInit(struct StringBuilder* builder, size_t initial_size);
+int InternalAdbcStringBuilderInit(struct InternalAdbcStringBuilder* builder,
+                                  size_t initial_size);
 
-int ADBC_CHECK_PRINTF_ATTRIBUTE StringBuilderAppend(struct StringBuilder* builder,
-                                                    const char* fmt, ...);
-void StringBuilderReset(struct StringBuilder* builder);
+int ADBC_CHECK_PRINTF_ATTRIBUTE InternalAdbcStringBuilderAppend(
+    struct InternalAdbcStringBuilder* builder, const char* fmt, ...);
+void InternalAdbcStringBuilderReset(struct InternalAdbcStringBuilder* builder);
 
 #undef ADBC_CHECK_PRINTF_ATTRIBUTE
 
 /// Check an NanoArrow status code.
-#define CHECK_NA(CODE, EXPR, ERROR)                                                 \
-  do {                                                                              \
-    ArrowErrorCode arrow_error_code = (EXPR);                                       \
-    if (arrow_error_code != 0) {                                                    \
-      SetError(ERROR, "%s failed: (%d) %s\nDetail: %s:%d", #EXPR, arrow_error_code, \
-               strerror(arrow_error_code), __FILE__, __LINE__);                     \
-      return ADBC_STATUS_##CODE;                                                    \
-    }                                                                               \
+#define CHECK_NA(CODE, EXPR, ERROR)                                                \
+  do {                                                                             \
+    ArrowErrorCode arrow_error_code = (EXPR);                                      \
+    if (arrow_error_code != 0) {                                                   \
+      InternalAdbcSetError(ERROR, "%s failed: (%d) %s\nDetail: %s:%d", #EXPR,      \
+                           arrow_error_code, strerror(arrow_error_code), __FILE__, \
+                           __LINE__);                                              \
+      return ADBC_STATUS_##CODE;                                                   \
+    }                                                                              \
   } while (0)
 
 /// Check an NanoArrow status code.
-#define CHECK_NA_DETAIL(CODE, EXPR, NA_ERROR, ERROR)                                    \
-  do {                                                                                  \
-    ArrowErrorCode arrow_error_code = (EXPR);                                           \
-    if (arrow_error_code != 0) {                                                        \
-      SetError(ERROR, "%s failed: (%d) %s: %s\nDetail: %s:%d", #EXPR, arrow_error_code, \
-               strerror(arrow_error_code), (NA_ERROR)->message, __FILE__, __LINE__);    \
-      return ADBC_STATUS_##CODE;                                                        \
-    }                                                                                   \
+#define CHECK_NA_DETAIL(CODE, EXPR, NA_ERROR, ERROR)                              \
+  do {                                                                            \
+    ArrowErrorCode arrow_error_code = (EXPR);                                     \
+    if (arrow_error_code != 0) {                                                  \
+      InternalAdbcSetError(ERROR, "%s failed: (%d) %s: %s\nDetail: %s:%d", #EXPR, \
+                           arrow_error_code, strerror(arrow_error_code),          \
+                           (NA_ERROR)->message, __FILE__, __LINE__);              \
+      return ADBC_STATUS_##CODE;                                                  \
+    }                                                                             \
   } while (0)
 
 /// Check a generic status.
-#define RAISE(CODE, EXPR, ERRMSG, ERROR)                                       \
-  do {                                                                         \
-    if (!(EXPR)) {                                                             \
-      SetError(ERROR, "%s failed: %s\nDetail: %s:%d", #EXPR, ERRMSG, __FILE__, \
-               __LINE__);                                                      \
-      return ADBC_STATUS_##CODE;                                               \
-    }                                                                          \
+#define RAISE(CODE, EXPR, ERRMSG, ERROR)                                         \
+  do {                                                                           \
+    if (!(EXPR)) {                                                               \
+      InternalAdbcSetError(ERROR, "%s failed: %s\nDetail: %s:%d", #EXPR, ERRMSG, \
+                           __FILE__, __LINE__);                                  \
+      return ADBC_STATUS_##CODE;                                                 \
+    }                                                                            \
   } while (0)
 
 /// Check an NanoArrow status code.
@@ -217,24 +222,25 @@ struct AdbcGetObjectsData {
 
 // does not copy any data from array
 // returns NULL on error
-struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_view);
-void AdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data);
+struct AdbcGetObjectsData* InternalAdbcGetObjectsDataInit(
+    struct ArrowArrayView* array_view);
+void InternalAdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data);
 
 // returns NULL on error
 // for now all arguments are required
-struct AdbcGetObjectsCatalog* AdbcGetObjectsDataGetCatalogByName(
+struct AdbcGetObjectsCatalog* InternalAdbcGetObjectsDataGetCatalogByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name);
-struct AdbcGetObjectsSchema* AdbcGetObjectsDataGetSchemaByName(
+struct AdbcGetObjectsSchema* InternalAdbcGetObjectsDataGetSchemaByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name);
-struct AdbcGetObjectsTable* AdbcGetObjectsDataGetTableByName(
+struct AdbcGetObjectsTable* InternalAdbcGetObjectsDataGetTableByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name);
-struct AdbcGetObjectsColumn* AdbcGetObjectsDataGetColumnByName(
+struct AdbcGetObjectsColumn* InternalAdbcGetObjectsDataGetColumnByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const column_name);
-struct AdbcGetObjectsConstraint* AdbcGetObjectsDataGetConstraintByName(
+struct AdbcGetObjectsConstraint* InternalAdbcGetObjectsDataGetConstraintByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const constraint_name);

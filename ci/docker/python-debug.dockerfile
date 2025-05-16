@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM ghcr.io/mamba-org/micromamba:bookworm
+FROM ghcr.io/mamba-org/micromamba:debian-slim
 
 ARG ARCH
 ARG GO
