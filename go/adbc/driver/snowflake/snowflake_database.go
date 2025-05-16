@@ -279,9 +279,6 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 		}
 		d.cfg.ClientTimeout = dur
 	case OptionApplicationName:
-		if !strings.HasPrefix(v, "[ADBC]") {
-			v = d.defaultAppName + v
-		}
 		d.cfg.Application = v
 	case OptionSSLSkipVerify:
 		switch v {
