@@ -28,31 +28,6 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 )
 
-// TokenSource supplies PerRPCCredentials from an oauth2.TokenSource.
-type FlightTokenSource struct {
-	oauth2.TokenSource
-}
-
-// GetRequestMetadata gets the request metadata as a map from a TokenSource.
-func (ts FlightTokenSource) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
-	token, err := ts.Token()
-	if err != nil {
-		return nil, err
-	}
-	// ri, _ := credentials.RequestInfoFromContext(ctx)
-	// if err = credentials.CheckSecurityLevel(ri.AuthInfo, credentials.PrivacyAndIntegrity); err != nil {
-	// 	return nil, fmt.Errorf("unable to transfer TokenSource PerRPCCredentials: %v", err)
-	// }
-	return map[string]string{
-		"authorization": token.Type() + " " + token.AccessToken,
-	}, nil
-}
-
-// RequireTransportSecurity indicates whether the credentials requires transport security.
-func (ts FlightTokenSource) RequireTransportSecurity() bool {
-	return false
-}
-
 // Bit flags for different OAuth authentication methods. Enables multiple authentication methods to be
 // specified simultaneaously if needed
 const (
@@ -126,7 +101,6 @@ func exchangeToken(conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption, tls
 	if err != nil {
 		return nil, err
 	}
-	// return &FlightTokenSource{TokenSource: conf.TokenSource(ctx, tok)}, nil
 	return &oauth.TokenSource{TokenSource: conf.TokenSource(ctx, tok)}, nil
 }
 
