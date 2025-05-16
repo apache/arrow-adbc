@@ -18,7 +18,6 @@
 
 using System.Net;
 using System.Net.Http;
-using Google.Api.Gax.Grpc;
 using Google.Apis.Http;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
