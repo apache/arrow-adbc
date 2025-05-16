@@ -28,8 +28,6 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 )
 
-// Bit flags for different OAuth authentication methods. Enables multiple authentication methods to be
-// specified simultaneaously if needed
 const (
 	ClientCredentials = "client_credentials"
 	TokenExchange     = "token_exchange"
@@ -56,16 +54,6 @@ var (
 		OptionKeyExchangeResource: {false, "resource"},
 		OptionKeyExchangeScope:    {false, "scope"},
 	}
-)
-
-const (
-	ttPrefix              = "urn:ietf:params:oauth:token-type:"
-	TokenTypeAccessToken  = ttPrefix + "access_token"
-	TokenTypeRefreshToken = ttPrefix + "refresh_token"
-	TokenTypeIdToken      = ttPrefix + "id_token"
-	TokenTypeSaml1        = ttPrefix + "saml1"
-	TokenTypeSaml2        = ttPrefix + "saml2"
-	TokenTypeJWT          = ttPrefix + "jwt"
 )
 
 func parseOAuthOptions(options map[string]string, paramMap map[string]oAuthOption, flowName string) (map[string]string, error) {

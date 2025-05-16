@@ -157,9 +157,6 @@ func (suite *ServerBasedTests) generateCertOption() (*tls.Config, string) {
 	suite.Require().NoError(err)
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
 	return tlsConfig, string(certBytes)
-	// tlsCreds := credentials.NewTLS(tlsConfig)
-
-	// return grpc.Creds(tlsCreds), string(certBytes)
 }
 
 func (suite *ServerBasedTests) openAndExecuteQuery(query string) {
