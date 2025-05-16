@@ -83,20 +83,24 @@ func parseOAuthOptions(options map[string]string, paramMap map[string]oAuthOptio
 	return params, nil
 }
 
-func exchangeToken(conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption, tlsConfig *tls.Config) (credentials.PerRPCCredentials, error) {
+func createOAuthContext(tlsConfig *tls.Config) context.Context {
 	ctx := context.Background()
 
-	if tlsConfig != nil {
-		// Set the HTTP client with custom TLS config in the context
-		httpClient := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
-			},
-		}
-
-		ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
+	if tlsConfig == nil {
+		return ctx
 	}
 
+	// Create a custom HTTP client with TLS config to use for oauth calls
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}
+
+	return context.WithValue(ctx, oauth2.HTTPClient, httpClient)
+}
+
+func exchangeToken(ctx context.Context, conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption) (credentials.PerRPCCredentials, error) {
 	tok, err := conf.Exchange(ctx, "", codeOptions...)
 	if err != nil {
 		return nil, err
@@ -105,6 +109,8 @@ func exchangeToken(conf *oauth2.Config, codeOptions []oauth2.AuthCodeOption, tls
 }
 
 func newClientCredentials(options map[string]string, tlsConfig *tls.Config) (credentials.PerRPCCredentials, error) {
+	ctx := createOAuthContext(tlsConfig)
+
 	codeOptions := []oauth2.AuthCodeOption{
 		// Required value for client credentials requests as specified in https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.2
 		oauth2.SetAuthURLParam("grant_type", "client_credentials"),
@@ -127,10 +133,12 @@ func newClientCredentials(options map[string]string, tlsConfig *tls.Config) (cre
 		conf.Scopes = []string{scopes}
 	}
 
-	return exchangeToken(conf, codeOptions, tlsConfig)
+	return exchangeToken(ctx, conf, codeOptions)
 }
 
 func newTokenExchangeFlow(options map[string]string, tlsConfig *tls.Config) (credentials.PerRPCCredentials, error) {
+	ctx := createOAuthContext(tlsConfig)
+
 	tokenURI, ok := options[OptionKeyTokenURI]
 	if !ok {
 		return nil, fmt.Errorf("token exchange grant requires %s", OptionKeyTokenURI)
@@ -173,5 +181,5 @@ func newTokenExchangeFlow(options map[string]string, tlsConfig *tls.Config) (cre
 		}
 	}
 
-	return exchangeToken(conf, codeOptions, tlsConfig)
+	return exchangeToken(ctx, conf, codeOptions)
 }
