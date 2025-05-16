@@ -124,7 +124,7 @@ func (suite *ServerBasedTests) TearDownSuite() {
 	suite.s.Shutdown()
 }
 
-func (suite *ServerBasedTests) generateCertOption() grpc.ServerOption {
+func (suite *ServerBasedTests) generateCertOption() (*tls.Config, string) {
 	// Generate a self-signed certificate in-process for testing
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	suite.Require().NoError(err)
@@ -156,9 +156,7 @@ func (suite *ServerBasedTests) generateCertOption() grpc.ServerOption {
 
 	suite.Require().NoError(err)
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
-	tlsCreds := credentials.NewTLS(tlsConfig)
-
-	return grpc.Creds(tlsCreds)
+	return tlsConfig, string(certBytes)
 }
 
 func (suite *ServerBasedTests) openAndExecuteQuery(query string) {
@@ -343,6 +341,7 @@ type OAuthTests struct {
 
 	oauthServer     *httptest.Server
 	mockOAuthServer *MockOAuthServer
+	pemCert         string
 }
 
 // MockOAuthServer simulates an OAuth 2.0 server for testing
@@ -421,12 +420,18 @@ func oauthTestUnary(ctx context.Context, req interface{}, info *grpc.UnaryServer
 }
 
 func (suite *OAuthTests) SetupSuite() {
+
+	tlsConfig, pemCertString := suite.generateCertOption()
+	suite.pemCert = pemCertString
+
 	suite.mockOAuthServer = &MockOAuthServer{}
-	suite.oauthServer = httptest.NewServer(http.HandlerFunc(suite.mockOAuthServer.handleTokenRequest))
+	suite.oauthServer = httptest.NewUnstartedServer(http.HandlerFunc(suite.mockOAuthServer.handleTokenRequest))
+	suite.oauthServer.TLS = tlsConfig
+	suite.oauthServer.StartTLS()
 
 	suite.setupFlightServer(&AuthnTestServer{}, []flight.ServerMiddleware{
 		{Unary: oauthTestUnary},
-	}, suite.generateCertOption())
+	}, grpc.Creds(credentials.NewTLS(tlsConfig)))
 }
 
 func (suite *OAuthTests) TearDownSuite() {
@@ -451,7 +456,7 @@ func (suite *OAuthTests) TestTokenExchangeFlow() {
 		driver.OptionKeySubjectToken:     "test-subject-token",
 		driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
-		driver.OptionSSLSkipVerify:       adbc.OptionValueEnabled,
+		driver.OptionSSLRootCerts:        suite.pemCert,
 	})
 	suite.Require().NoError(err)
 
@@ -465,7 +470,7 @@ func (suite *OAuthTests) TestClientCredentialsFlow() {
 		driver.OptionKeyClientId:     "test-client",
 		driver.OptionKeyClientSecret: "test-secret",
 		driver.OptionKeyTokenURI:     suite.oauthServer.URL,
-		driver.OptionSSLSkipVerify:   adbc.OptionValueEnabled,
+		driver.OptionSSLRootCerts:    suite.pemCert,
 	})
 	suite.Require().NoError(err)
 

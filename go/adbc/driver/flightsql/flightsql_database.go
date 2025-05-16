@@ -183,9 +183,9 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		var err error
 		switch flow {
 		case ClientCredentials:
-			d.oauthToken, err = newClientCredentials(cnOptions)
+			d.oauthToken, err = newClientCredentials(cnOptions, &tlsConfig)
 		case TokenExchange:
-			d.oauthToken, err = newTokenExchangeFlow(cnOptions)
+			d.oauthToken, err = newTokenExchangeFlow(cnOptions, &tlsConfig)
 		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("oauth flow not implemented: %s", flow),
