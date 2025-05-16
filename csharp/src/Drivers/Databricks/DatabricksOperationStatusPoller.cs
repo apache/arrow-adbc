@@ -31,64 +31,70 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         private readonly IHiveServer2Statement _statement;
         private readonly int _heartbeatIntervalSeconds;
-        private readonly CancellationTokenSource _cts;
+        // internal cancellation token source - won't affect the external token
+        private CancellationTokenSource? _internalCts;
         private Task? _operationStatusPollingTask;
-        private bool _isDisposed;
 
         public DatabricksOperationStatusPoller(IHiveServer2Statement statement, int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _heartbeatIntervalSeconds = heartbeatIntervalSeconds;
-            _cts = new CancellationTokenSource();
         }
 
-        public void Start()
+        public bool IsStarted => _operationStatusPollingTask != null;
+
+        /// <summary>
+        /// Starts the operation status poller. Continues polling every minute until the operation is canceled/errored
+        /// the token is canceled, or the operation status poller is disposed.
+        /// </summary>
+        /// <param name="externalToken">The external cancellation token.</param>
+        public void Start(CancellationToken externalToken = default)
         {
-            if (_heartbeatIntervalSeconds <= 0) return;
-            if (_operationStatusPollingTask == null)
+            if (IsStarted)
             {
-                _operationStatusPollingTask = Task.Run(() => PollOperationStatus(_cts.Token));
-            } else {
                 throw new InvalidOperationException("Operation status poller already started");
             }
+            _internalCts = new CancellationTokenSource();
+            // create a linked token to the external token so that the external token can cancel the operation status polling task if needed
+            var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(_internalCts.Token, externalToken).Token;
+            _operationStatusPollingTask = Task.Run(() => PollOperationStatus(linkedToken));
         }
 
         private async Task PollOperationStatus(CancellationToken cancellationToken)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                var operationHandle = _statement.OperationHandle;
-                if (operationHandle == null) break;
-
-                var request = new TGetOperationStatusReq(operationHandle);
-                var response = await _statement.Client.GetOperationStatus(request, cancellationToken);
-
-                try
+                while (!cancellationToken.IsCancellationRequested)
                 {
+                    var operationHandle = _statement.OperationHandle;
+                    if (operationHandle == null) break;
+
+                    var request = new TGetOperationStatusReq(operationHandle);
+                    var response = await _statement.Client.GetOperationStatus(request, cancellationToken);
                     await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), cancellationToken);
-                }
-                catch (TaskCanceledException)
-                {
-                    break;
-                }
 
-                // end the heartbeat if the command has terminated
-                if (response.OperationState == TOperationState.CANCELED_STATE ||
-                    response.OperationState == TOperationState.ERROR_STATE)
-                {
-                    break;
+                    // end the heartbeat if the command has terminated
+                    if (response.OperationState == TOperationState.CANCELED_STATE ||
+                        response.OperationState == TOperationState.ERROR_STATE)
+                    {
+                        break;
+                    }
                 }
+            }
+            catch (TaskCanceledException)
+            {
+                // ignore
             }
         }
 
         public void Dispose()
         {
-            if (_isDisposed) return;
-
-            _cts.Cancel();
-            _operationStatusPollingTask?.Wait();
-            _cts.Dispose();
-            _isDisposed = true;
+            if (_internalCts != null)
+            {
+                _internalCts.Cancel();
+                _operationStatusPollingTask?.Wait();
+                _internalCts.Dispose();
+            }
         }
     }
 }

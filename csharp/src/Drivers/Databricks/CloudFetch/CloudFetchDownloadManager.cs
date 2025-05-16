@@ -252,14 +252,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             // Create a new cancellation token source
             _cancellationTokenSource = new CancellationTokenSource();
 
+            // Start the operation status poller
+            _operationStatusPoller?.Start(_cancellationTokenSource.Token);
+
             // Start the result fetcher
             await _resultFetcher.StartAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
 
             // Start the downloader
             await _downloader.StartAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
-
-            // Start the operation status poller
-            _operationStatusPoller?.Start();
 
             _isStarted = true;
         }

@@ -62,7 +62,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         public const string CloudFetchTimeoutMinutes = "adbc.databricks.cloudfetch.timeout_minutes";
 
-
         /// <summary>
         /// Whether to enable the use of direct results when executing queries.
         /// Default value is true if not specified.
@@ -157,7 +156,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     public class DatabricksConstants
     {
         /// <summary>
-        /// Default heartbeat interval in seconds for long-running operations. Minimum warehouse timeout is 5 minutes; session timeout is 1 hour.
+        /// Default heartbeat interval in seconds for long-running operations
         /// </summary>
         public const int DefaultOperationStatusPollingIntervalSeconds = 60;
 

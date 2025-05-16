@@ -49,16 +49,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!statement.DirectResults.ResultSet.HasMoreRows)
                 {
                     this.statement = null;
+                    return;
                 }
-            } else {
-                _operationStatusPoller = new DatabricksOperationStatusPoller(statement);
-                _operationStatusPoller.Start();
             }
+            _operationStatusPoller = new DatabricksOperationStatusPoller(statement);
         }
+
         public Schema Schema { get { return schema; } }
 
         public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
+            if (_operationStatusPoller != null && !_operationStatusPoller.IsStarted)
+            {
+                _operationStatusPoller.Start(cancellationToken);
+            }
             while (true)
             {
                 if (this.reader != null)
