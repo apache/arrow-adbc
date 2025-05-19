@@ -109,13 +109,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 parameters.Add(DatabricksParameters.OAuthScope, testConfiguration.OAuthScope!);
             }
-            if (!string.IsNullOrEmpty(testConfiguration.DefaultCatalog))
+            if (!string.IsNullOrEmpty(testConfiguration.Catalog))
             {
-                parameters.Add(DatabricksParameters.DefaultCatalog, testConfiguration.DefaultCatalog!);
+                parameters.Add(AdbcOptions.Connection.CurrentCatalog, testConfiguration.Catalog!);
             }
-            if (!string.IsNullOrEmpty(testConfiguration.DefaultSchema))
+            if (!string.IsNullOrEmpty(testConfiguration.DbSchema))
             {
-                parameters.Add(DatabricksParameters.DefaultSchema, testConfiguration.DefaultSchema!);
+                parameters.Add(AdbcOptions.Connection.CurrentDbSchema, testConfiguration.DbSchema!);
             }
             if (!string.IsNullOrEmpty(testConfiguration.Type))
             {

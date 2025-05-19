@@ -132,8 +132,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Parse default namespace
             string? defaultCatalog = null;
             string? defaultSchema = null;
-            Properties.TryGetValue(DatabricksParameters.DefaultCatalog, out defaultCatalog);
-            Properties.TryGetValue(DatabricksParameters.DefaultSchema, out defaultSchema);
+            Properties.TryGetValue(AdbcOptions.Connection.CurrentCatalog, out defaultCatalog);
+            Properties.TryGetValue(AdbcOptions.Connection.CurrentDbSchema, out defaultSchema);
 
             if (!string.IsNullOrWhiteSpace(defaultCatalog))
             {
@@ -145,7 +145,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
             else if (!string.IsNullOrEmpty(defaultSchema))
             {
-                throw new ArgumentException($"Parameter '{DatabricksParameters.DefaultCatalog}' is not set but '{DatabricksParameters.DefaultSchema}' is set. Please provide a value for '{DatabricksParameters.DefaultCatalog}'.");
+                throw new ArgumentException($"Parameter '{AdbcOptions.Connection.CurrentCatalog}' is not set but '{AdbcOptions.Connection.CurrentDbSchema}' is set. Please provide a value for '{AdbcOptions.Connection.CurrentCatalog}'.");
             }
         }
 

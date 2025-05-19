@@ -148,16 +148,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is "sql" if not specified.
         /// </summary>
         public const string OAuthScope = "adbc.databricks.oauth.scope";
-
-        /// <summary>
-        /// Default catalog to use for SQL queries. Similar to using `USE CATALOG` in SQL.
-        /// </summary>
-        public const string DefaultCatalog = "adbc.databricks.catalog";
-
-        /// <summary>
-        /// Default schema to use for SQL queries. Similar to using `USE SCHEMA` in SQL.
-        /// </summary>
-        public const string DefaultSchema = "adbc.databricks.schema";
     }
 
     /// <summary>

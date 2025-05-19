@@ -15,20 +15,20 @@
 * limitations under the License.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Net;
 using Apache.Arrow.Adbc;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Hive.Service.Rpc.Thrift;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Net;
+using System.Reflection;
 using Thrift.Transport;
 using Xunit;
 using Xunit.Abstractions;
-using System.Reflection;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
@@ -320,14 +320,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         /// <summary>
-        /// Tests that default namespace is correctly stored in the connection.
+        /// Tests that default namespace is correctly stored in the connection namespace.
         /// </summary>
         [SkippableFact]
         internal void DefaultNamespaceStoredInConnection()
         {
             // Skip if default catalog or schema is not configured
-            Skip.If(string.IsNullOrEmpty(TestConfiguration.DefaultCatalog), "Default catalog not configured");
-            Skip.If(string.IsNullOrEmpty(TestConfiguration.DefaultSchema), "Default schema not configured");
+            Skip.If(string.IsNullOrEmpty(TestConfiguration.Catalog), "Default catalog not configured");
+            Skip.If(string.IsNullOrEmpty(TestConfiguration.DbSchema), "Default schema not configured");
 
             // Act
             using var connection = NewConnection();
@@ -336,13 +336,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.NotNull(connection);
             Assert.IsType<DatabricksConnection>(connection);
 
-            var defaultNamespaceProperty = typeof(DatabricksConnection).GetProperty("DefaultNamespace", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
-            Assert.NotNull(defaultNamespaceProperty);
-
-            var namespaceValue = defaultNamespaceProperty.GetValue(connection) as TNamespace;
-            Assert.NotNull(namespaceValue);
-            Assert.Equal(TestConfiguration.DefaultCatalog, namespaceValue.CatalogName);
-            Assert.Equal(TestConfiguration.DefaultSchema, namespaceValue.SchemaName);
+            var defaultNamespace = ((DatabricksConnection)connection).DefaultNamespace;
+            Assert.NotNull(defaultNamespace);
+            Assert.Equal(TestConfiguration.Catalog, defaultNamespace.CatalogName);
+            Assert.Equal(TestConfiguration.DbSchema, defaultNamespace.SchemaName);
         }
     }
 }
