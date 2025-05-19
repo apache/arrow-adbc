@@ -24,6 +24,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
@@ -196,7 +197,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
                 Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
 
+                HttpClient OauthHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
+
                 var tokenProvider = new OAuthClientCredentialsProvider(
+                    OauthHttpClient,
                     clientId!,
                     clientSecret!,
                     host!,
@@ -255,7 +259,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Choose the appropriate reader based on the result format
             if (resultFormat == TSparkRowSetType.URL_BASED_SET)
             {
-                return new CloudFetchReader(databricksStatement, schema, isLz4Compressed);
+                HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
+                return new CloudFetchReader(databricksStatement, schema, isLz4Compressed, cloudFetchHttpClient);
             }
             else
             {
