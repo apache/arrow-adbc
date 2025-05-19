@@ -58,7 +58,7 @@ else:
 
 import adbc_driver_manager
 
-from . import _lib
+from . import _dbapi_backend, _lib
 from ._lib import _blocking_call
 
 if typing.TYPE_CHECKING:
@@ -303,7 +303,12 @@ class Connection(_Closeable):
         conn_kwargs: Optional[Dict[str, str]] = None,
         *,
         autocommit=False,
+        backend: Optional[_dbapi_backend.DbapiBackend] = None,
     ) -> None:
+        if backend is None:
+            backend = _dbapi_backend.default_backend()
+
+        self._backend = backend
         self._closed = False
         if isinstance(db, _SharedDatabase):
             self._db = db.clone()
@@ -455,8 +460,6 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
-
         if depth in ("all", "columns"):
             c_depth = _lib.GetObjectsDepth.ALL
         elif depth == "catalogs":
@@ -479,7 +482,7 @@ class Connection(_Closeable):
             ),
             self._conn.cancel,
         )
-        return pyarrow.RecordBatchReader._import_from_c(handle.address)
+        return self._backend.import_array_stream(handle)
 
     def adbc_get_table_schema(
         self,
@@ -504,8 +507,6 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
-
         handle = _blocking_call(
             self._conn.get_table_schema,
             (
@@ -516,7 +517,7 @@ class Connection(_Closeable):
             {},
             self._conn.cancel,
         )
-        return pyarrow.Schema._import_from_c(handle.address)
+        return self._backend.import_schema(handle)
 
     def adbc_get_table_types(self) -> List[str]:
         """
@@ -706,11 +707,7 @@ class Cursor(_Closeable):
         if _is_arrow_data(parameters):
             self._bind(parameters)
         elif parameters:
-            _requires_pyarrow()
-            rb = pyarrow.record_batch(
-                [[param_value] for param_value in parameters],
-                names=[str(i) for i in range(len(parameters))],
-            )
+            rb = self._conn._backend.convert_bind_parameters(parameters)
             self._bind(rb)
 
     def execute(self, operation: Union[bytes, str], parameters=None) -> None:
@@ -762,18 +759,14 @@ class Cursor(_Closeable):
         if _is_arrow_data(seq_of_parameters):
             arrow_parameters = seq_of_parameters
         elif seq_of_parameters:
-            _requires_pyarrow()
-            arrow_parameters = pyarrow.RecordBatch.from_pydict(
-                {
-                    str(col_idx): pyarrow.array(x)
-                    for col_idx, x in enumerate(map(list, zip(*seq_of_parameters)))
-                },
+            arrow_parameters = self._conn._backend.convert_executemany_parameters(
+                seq_of_parameters
             )
         else:
-            _requires_pyarrow()
-            arrow_parameters = pyarrow.record_batch([])
+            arrow_parameters = None
 
-        self._bind(arrow_parameters)
+        if arrow_parameters is not None:
+            self._bind(arrow_parameters)
         self._rowcount = _blocking_call(
             self._stmt.execute_update, (), {}, self._stmt.cancel
         )
@@ -958,8 +951,7 @@ class Cursor(_Closeable):
             self._stmt.bind_stream(data)
         elif _lib.is_pycapsule(data, b"arrow_array_stream"):
             self._stmt.bind_stream(data)
-        else:
-            _requires_pyarrow()
+        elif _has_pyarrow:
             if isinstance(data, pyarrow.dataset.Dataset):
                 data = typing.cast(pyarrow.dataset.Dataset, data).scanner().to_reader()
             elif isinstance(data, pyarrow.dataset.Scanner):
@@ -974,6 +966,8 @@ class Cursor(_Closeable):
             else:
                 # Should be impossible from above but let's be explicit
                 raise TypeError(f"Cannot bind {type(data)}")
+        else:
+            raise TypeError(f"Cannot bind {type(data)}")
 
         self._last_query = None
         return _blocking_call(self._stmt.execute_update, (), {}, self._stmt.cancel)
@@ -999,14 +993,13 @@ class Cursor(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
         self._clear()
         self._prepare_execute(operation, parameters)
         partitions, schema_handle, self._rowcount = _blocking_call(
             self._stmt.execute_partitions, (), {}, self._stmt.cancel
         )
         if schema_handle and schema_handle.address:
-            schema = pyarrow.Schema._import_from_c(schema_handle.address)
+            schema = self._conn._backend.import_schema(schema_handle)
         else:
             schema = None
         return partitions, schema
@@ -1024,11 +1017,10 @@ class Cursor(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
         self._clear()
         self._prepare_execute(operation, parameters)
         schema = _blocking_call(self._stmt.execute_schema, (), {}, self._stmt.cancel)
-        return pyarrow.Schema._import_from_c(schema.address)
+        return self._conn._backend.import_schema(schema)
 
     def adbc_prepare(self, operation: Union[bytes, str]) -> Optional["pyarrow.Schema"]:
         """
@@ -1048,7 +1040,6 @@ class Cursor(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
         self._clear()
         self._prepare_execute(operation)
 
@@ -1058,7 +1049,7 @@ class Cursor(_Closeable):
             )
         except NotSupportedError:
             return None
-        return pyarrow.Schema._import_from_c(handle.address)
+        return self._conn._backend.import_schema(handle)
 
     def adbc_read_partition(self, partition: bytes) -> None:
         """
@@ -1218,7 +1209,9 @@ class Cursor(_Closeable):
 class _RowIterator(_Closeable):
     """Track state needed to iterate over the result set."""
 
-    def __init__(self, stmt, handle: _lib.ArrowArrayStreamHandle) -> None:
+    def __init__(
+        self, stmt: _lib.AdbcStatement, handle: _lib.ArrowArrayStreamHandle
+    ) -> None:
         self._stmt = stmt
         self._handle: Optional[_lib.ArrowArrayStreamHandle] = handle
         self._reader: Optional["_reader.AdbcRecordBatchReader"] = None

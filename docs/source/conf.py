@@ -56,15 +56,18 @@ templates_path = ["_templates"]
 
 
 def on_missing_reference(app, env, node, contnode):
-    if str(contnode) == "polars.DataFrame":
+    if str(contnode) in {
         # Polars does something odd with Sphinx such that polars.DataFrame
         # isn't xrefable; suppress the warning.
-        return contnode
-    elif str(contnode) == "CapsuleType":
+        "polars.DataFrame",
         # CapsuleType is only in 3.13+
+        "CapsuleType",
+        # Internal API
+        "DbapiBackend",
+    }:
         return contnode
-    else:
-        return None
+
+    return None
 
 
 def setup(app):
