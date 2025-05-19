@@ -41,15 +41,15 @@ struct ADBC_EXPORT AdbcSqliteBinder {
 };
 
 ADBC_EXPORT
-AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
-                                              struct ArrowArrayStream* values,
-                                              struct AdbcError* error);
+AdbcStatusCode InternalAdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
+                                                      struct ArrowArrayStream* values,
+                                                      struct AdbcError* error);
 ADBC_EXPORT
-AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3* conn,
-                                        sqlite3_stmt* stmt, char* finished,
-                                        struct AdbcError* error);
+AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
+                                                sqlite3* conn, sqlite3_stmt* stmt,
+                                                char* finished, struct AdbcError* error);
 ADBC_EXPORT
-void AdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder);
+void InternalAdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder);
 
 /// \brief Initialize an ArrowArrayStream from a sqlite3_stmt.
 /// \param[in] db The SQLite connection.
@@ -59,10 +59,11 @@ void AdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder);
 /// \param[out] stream The stream to export to.
 /// \param[out] error Error details, if needed.
 ADBC_EXPORT
-AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
-                                      struct AdbcSqliteBinder* binder, size_t batch_size,
-                                      struct ArrowArrayStream* stream,
-                                      struct AdbcError* error);
+AdbcStatusCode InternalAdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
+                                              struct AdbcSqliteBinder* binder,
+                                              size_t batch_size,
+                                              struct ArrowArrayStream* stream,
+                                              struct AdbcError* error);
 
 #ifdef __cplusplus
 }

@@ -19,12 +19,8 @@
   global:
     # Only expose symbols from the ADBC API
     Adbc*;
-
-    # Expose driver-specific initialization routines
-    FlightSQLDriverInit;
-    PostgresqlDriverInit;
-    SnowflakeDriverInit;
-    SqliteDriverInit;
+    # Needed for tests, but namespaced so they are clearly not for public use
+    InternalAdbc*;
 
     extern "C++" {
         Adbc*;

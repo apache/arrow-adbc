@@ -26,4 +26,5 @@ C and C++
    driver_manager
    concurrency
    driver_example
+   static_linking
    api/index

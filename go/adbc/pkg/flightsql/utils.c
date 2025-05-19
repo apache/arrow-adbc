@@ -85,6 +85,7 @@ struct AdbcErrorDetail FlightSQLErrorGetDetail(const struct AdbcError* error,
   };
 }
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return FlightSQLErrorGetDetailCount(error);
 }
@@ -430,7 +431,14 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
-  return FlightSQLDriverInit(version, driver, error);
+  return AdbcDriverFlightsqlInit(version, driver, error);
+}
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
+
+ADBC_EXPORT
+AdbcStatusCode FlightSqlDriverInit(int version, void* driver, struct AdbcError* error) {
+  // For backwards compatibility
+  return AdbcDriverFlightsqlInit(version, driver, error);
 }
 
 int FlightSQLArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);

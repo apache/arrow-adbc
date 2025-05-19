@@ -1813,8 +1813,8 @@ func SnowflakeStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 	return C.ADBC_STATUS_OK
 }
 
-//export SnowflakeDriverInit
-func SnowflakeDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export AdbcDriverSnowflakeInit
+func AdbcDriverSnowflakeInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 
 	switch version {

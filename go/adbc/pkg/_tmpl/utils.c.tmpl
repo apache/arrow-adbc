@@ -83,6 +83,7 @@ struct AdbcErrorDetail {{.Prefix}}ErrorGetDetail(const struct AdbcError* error,
   };
 }
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return {{.Prefix}}ErrorGetDetailCount(error);
 }
@@ -428,8 +429,9 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
-  return {{.Prefix}}DriverInit(version, driver, error);
+  return AdbcDriver{{.Prefix}}Init(version, driver, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 int {{.Prefix}}ArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
 int {{.Prefix}}ArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);
