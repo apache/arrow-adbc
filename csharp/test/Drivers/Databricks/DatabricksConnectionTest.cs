@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
 using System.Reflection;
+using System.Threading.Tasks;
 using Thrift.Transport;
 using Xunit;
 using Xunit.Abstractions;
@@ -340,6 +341,56 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.NotNull(defaultNamespace);
             Assert.Equal(TestConfiguration.Catalog, defaultNamespace.CatalogName);
             Assert.Equal(TestConfiguration.DbSchema, defaultNamespace.SchemaName);
+        }
+
+        [SkippableFact]
+        public async Task SetDefaultCatalogAndSchemaOptionsTest()
+        {
+            string? defaultCatalog = null;
+            string? defaultSchema = null;
+            if (!string.IsNullOrEmpty(TestConfiguration.Catalog))
+            {
+                defaultCatalog = TestConfiguration.Catalog;
+            }
+            else
+            {
+                Skip.If(true, "No catalog specified in environment variable DATABRICKS_CATALOG or test configuration");
+            }
+
+            if (!string.IsNullOrEmpty(TestConfiguration.DbSchema))
+            {
+                defaultSchema = TestConfiguration.DbSchema;
+            }
+
+            AdbcConnection connection = NewConnection();
+            AdbcStatement statement = connection.CreateStatement();
+
+            // Verify the settings were applied by querying the current catalog and schema
+            statement.SqlQuery = "SELECT current_catalog()" + (defaultSchema != null ? ", current_schema()" : "");
+            var result = await statement.ExecuteQueryAsync();
+            Assert.NotNull(result.Stream);
+
+            var batch = await result.Stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            Assert.Equal(1, batch.Length);
+            Assert.Equal(defaultSchema != null ? 2 : 1, batch.ColumnCount);
+
+            // Get the values from the result
+            var catalogArray = (StringArray)batch.Column(0);
+
+            string actualCatalog = catalogArray.GetString(0) ?? string.Empty;
+
+            // Verify the values match what we set
+            Assert.Equal(defaultCatalog, actualCatalog);
+
+            if (defaultSchema != null)
+            {
+                var schemaArray = (StringArray)batch.Column(1);
+                string actualSchema = schemaArray.GetString(0) ?? string.Empty;
+                Assert.Equal(defaultSchema, actualSchema);
+            }
+
+            OutputHelper?.WriteLine($"Successfully set and verified default catalog: {defaultCatalog} and schema: {defaultSchema}");
         }
     }
 }
