@@ -156,6 +156,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     public class DatabricksConstants
     {
         /// <summary>
+        /// Default heartbeat interval in seconds for long-running operations
+        /// </summary>
+        public const int DefaultOperationStatusPollingIntervalSeconds = 60;
+
+        /// <summary>
         /// OAuth grant type constants
         /// </summary>
         public static class OAuthGrantTypes

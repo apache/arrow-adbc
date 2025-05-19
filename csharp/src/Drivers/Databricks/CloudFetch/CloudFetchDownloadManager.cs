@@ -37,6 +37,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private const int DefaultMemoryBufferSizeMB = 200;
         private const bool DefaultPrefetchEnabled = true;
         private const int DefaultFetchBatchSize = 2000000;
+        private const int DefaultTimeoutMinutes = 5;
 
         private readonly DatabricksStatement _statement;
         private readonly Schema _schema;
@@ -50,6 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private bool _isDisposed;
         private bool _isStarted;
         private CancellationTokenSource? _cancellationTokenSource;
+        private DatabricksOperationStatusPoller? _operationStatusPoller;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloadManager"/> class.
@@ -137,7 +139,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             }
 
             // Parse timeout minutes
-            int timeoutMinutes = 5;
+            int timeoutMinutes = DefaultTimeoutMinutes;
             if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchTimeoutMinutes, out string? timeoutStr))
             {
                 if (int.TryParse(timeoutStr, out int parsedTimeout) && parsedTimeout > 0)
@@ -180,6 +182,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 _isLz4Compressed,
                 maxRetries,
                 retryDelayMs);
+
+            // Initialize the operation status poller
+            _operationStatusPoller = new DatabricksOperationStatusPoller(_statement);
         }
 
         /// <summary>
@@ -247,6 +252,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             // Create a new cancellation token source
             _cancellationTokenSource = new CancellationTokenSource();
 
+            // Start the operation status poller
+            _operationStatusPoller?.Start(_cancellationTokenSource.Token);
+
             // Start the result fetcher
             await _resultFetcher.StartAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
 
@@ -266,6 +274,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
             // Cancel the token to signal all operations to stop
             _cancellationTokenSource?.Cancel();
+
+            // Stop the operation status poller
+            DisposeOperationStatusPoller();
 
             // Stop the downloader
             await _downloader.StopAsync().ConfigureAwait(false);
@@ -290,6 +301,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
             // Stop the pipeline
             StopAsync().GetAwaiter().GetResult();
+
+            // Dispose the operation status poller
+            DisposeOperationStatusPoller();
 
             // Dispose the HTTP client
             _httpClient.Dispose();
@@ -324,6 +338,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             if (_isDisposed)
             {
                 throw new ObjectDisposedException(nameof(CloudFetchDownloadManager));
+            }
+        }
+
+
+        private void DisposeOperationStatusPoller()
+        {
+            if (_operationStatusPoller != null)
+            {
+                _operationStatusPoller.Dispose();
+                _operationStatusPoller = null;
             }
         }
     }
