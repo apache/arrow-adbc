@@ -55,6 +55,14 @@ The following parameters can be used to configure the driver behavior. The param
 **adbc.bigquery.client_secret**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The OAuth client secret. Required for `user` authentication.
 
+**adbc.bigquery.client.proxy**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the HTTP proxy to use when calling to Google's HTTP endpoints such as `accounts.google.com` and `bigquery.googleapis.com`. Example value is `127.0.0.1:8888`.
+
+>
+> NOTE: Does not currently support proxy calls to `bigquerystorage.googleapis.com`
+> due to limitations in the underlying gRPC libraries. The [gRPC Core documents](https://grpc.github.io/grpc/core/md_doc_core_default_http_proxy_mapper.html) outline how the values should be set using environment variables when calling to the gRPC backend.
+>
+
 **adbc.bigquery.client.timeout**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the timeout (in seconds) for the BigQueryClient. Similar to a ConnectionTimeout.
 
