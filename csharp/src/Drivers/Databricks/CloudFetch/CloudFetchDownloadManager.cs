@@ -157,8 +157,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), prefetchCount * 2);
             _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), prefetchCount * 2);
 
-            // Initialize the HTTP client
             _httpClient = httpClient;
+            _httpClient.Timeout = TimeSpan.FromMinutes(timeoutMinutes);
 
             // Initialize the result fetcher
             _resultFetcher = new CloudFetchResultFetcher(

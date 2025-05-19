@@ -14,15 +14,13 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-
+using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
+using System.Net.Http;
 using Xunit;
 using Xunit.Abstractions;
-using Apache.Arrow.Adbc.Tests.Drivers.Databricks;
-using System.Net.Http;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 {
@@ -61,9 +59,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
                 TestConfiguration.OAuthClientId,
                 TestConfiguration.OAuthClientSecret,
                 host,
+                scope,
                 timeoutMinutes: 1,
-                refreshBufferMinutes: refreshBufferMinutes,
-                scope: scope);
+                refreshBufferMinutes: refreshBufferMinutes);
         }
 
         [SkippableFact]
