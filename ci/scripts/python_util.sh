@@ -189,6 +189,7 @@ import $component.dbapi
         fi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
-        python -m pytest -vvx --import-mode append "${test_files[@]}"
+        # set env var so that we don't skip tests if we somehow accidentally installed pyarrow
+        env ADBC_NO_SKIP_TESTS=1 python -m pytest -vvx --import-mode append "${test_files[@]}"
     done
 }
