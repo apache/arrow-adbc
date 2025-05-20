@@ -451,7 +451,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             using var statement = connection.CreateStatement();
 
             // Execute a query that should return data - using a larger dataset to ensure multiple batches
-            statement.SqlQuery = "SELECT id, CAST(id AS STRING) as id_string, id * 2 as id_doubled FROM RANGE(3000000)";
+            statement.SqlQuery = "SELECT id, CAST(id AS STRING) as id_string, id * 2 as id_doubled FROM RANGE(30000000)";
             QueryResult result = statement.ExecuteQuery();
 
             Assert.NotNull(result.Stream);
@@ -482,7 +482,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             }
 
             // Verify we got all rows
-            Assert.Equal(3000000, totalRows);
+            Assert.Equal(30000000, totalRows);
             Assert.True(batchCount > 1, "Should have read multiple batches");
             OutputHelper?.WriteLine($"Successfully read {totalRows} rows in {batchCount} batches after 30 minute delay with {configName}");
         }

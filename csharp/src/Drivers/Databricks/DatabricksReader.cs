@@ -73,6 +73,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 if (this.statement == null)
                 {
+                    StopOperationStatusPoller();
                     return null;
                 }
 
@@ -85,7 +86,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!response.HasMoreRows)
                 {
                     this.statement = null;
-                    StopOperationStatusPoller();
                 }
             }
         }
