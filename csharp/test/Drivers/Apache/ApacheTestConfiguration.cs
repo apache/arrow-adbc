@@ -62,6 +62,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
 
         [JsonPropertyName("http_options"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public HttpTestConfiguration? HttpOptions { get; set; }
+
+        [JsonPropertyName("catalog"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Catalog { get; set; } = string.Empty;
+
+        [JsonPropertyName("db_schema"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string DbSchema { get; set; } = string.Empty;
     }
 
     public class HttpTestConfiguration
