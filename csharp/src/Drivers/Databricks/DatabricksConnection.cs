@@ -24,6 +24,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
@@ -51,6 +52,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
         private const bool DefaultRetryOnUnavailable= true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 500;
+
+        // Default namespace
+        private TNamespace? _defaultNamespace;
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -124,6 +128,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 _maxBytesPerFile = maxBytesPerFileValue;
             }
+
+            // Parse default namespace
+            string? defaultCatalog = null;
+            string? defaultSchema = null;
+            Properties.TryGetValue(AdbcOptions.Connection.CurrentCatalog, out defaultCatalog);
+            Properties.TryGetValue(AdbcOptions.Connection.CurrentDbSchema, out defaultSchema);
+
+            if (!string.IsNullOrWhiteSpace(defaultCatalog))
+            {
+                _defaultNamespace = new TNamespace
+                {
+                    CatalogName = defaultCatalog,
+                    SchemaName = defaultSchema
+                };
+            }
+            else if (!string.IsNullOrEmpty(defaultSchema))
+            {
+                throw new ArgumentException($"Parameter '{AdbcOptions.Connection.CurrentCatalog}' is not set but '{AdbcOptions.Connection.CurrentDbSchema}' is set. Please provide a value for '{AdbcOptions.Connection.CurrentCatalog}'.");
+            }
         }
 
         /// <summary>
@@ -150,6 +173,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the maximum bytes per file for CloudFetch.
         /// </summary>
         internal long MaxBytesPerFile => _maxBytesPerFile;
+
+        /// <summary>
+        /// Gets the default namespace to use for SQL queries.
+        /// </summary>
+        internal TNamespace? DefaultNamespace => _defaultNamespace;
 
         /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
@@ -196,7 +224,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
                 Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
 
+                HttpClient OauthHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
+
                 var tokenProvider = new OAuthClientCredentialsProvider(
+                    OauthHttpClient,
                     clientId!,
                     clientSecret!,
                     host!,
@@ -255,7 +286,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Choose the appropriate reader based on the result format
             if (resultFormat == TSparkRowSetType.URL_BASED_SET)
             {
-                return new CloudFetchReader(databricksStatement, schema, isLz4Compressed);
+                HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
+                return new CloudFetchReader(databricksStatement, schema, isLz4Compressed, cloudFetchHttpClient);
             }
             else
             {
@@ -279,6 +311,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
                 CanUseMultipleCatalogs = true,
             };
+
+            // Set default namespace if available
+            if (_defaultNamespace != null)
+            {
+                req.InitialNamespace = _defaultNamespace;
+            }
 
             // If not using queries to set server-side properties, include them in Configuration
             if (!_applySSPWithQueries)

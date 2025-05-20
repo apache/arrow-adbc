@@ -39,7 +39,7 @@ pub use builder::*;
 static DRIVER: LazyLock<Result<ManagedDriver>> = LazyLock::new(|| {
     ManagedDriver::load_dynamic_from_name(
         "adbc_driver_snowflake",
-        Some(b"SnowflakeDriverInit"),
+        Some(b"AdbcDriverSnowflakeInit"),
         Default::default(),
     )
 });
@@ -65,7 +65,7 @@ impl fmt::Debug for Driver {
 
 #[cfg(any(feature = "bundled", feature = "linked"))]
 extern "C" {
-    #[link_name = "SnowflakeDriverInit"]
+    #[link_name = "AdbcDriverSnowflakeInit"]
     fn init(version: c_int, raw_driver: *mut c_void, err: *mut FFI_AdbcError)
         -> FFI_AdbcStatusCode;
 }

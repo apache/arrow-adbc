@@ -61,6 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         /// <summary>
         /// Initializes a new instance of the <see cref="OAuthClientCredentialsService"/> class.
         /// </summary>
+        /// <param name="httpClient">The HTTP client to use for requests.</param>
         /// <param name="clientId">The OAuth client ID.</param>
         /// <param name="clientSecret">The OAuth client secret.</param>
         /// <param name="host">The base host of the Databricks workspace.</param>
@@ -68,6 +69,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         /// <param name="timeoutMinutes">The timeout in minutes for HTTP requests.</param>
         /// <param name="refreshBufferMinutes">The number of minutes before token expiration to refresh the token.</param>
         public OAuthClientCredentialsProvider(
+            HttpClient httpClient,
             string clientId,
             string clientSecret,
             string host,
@@ -83,7 +85,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
             _tokenEndpoint = DetermineTokenEndpoint();
 
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
             _httpClient.Timeout = TimeSpan.FromMinutes(_timeoutMinutes);
         }
 

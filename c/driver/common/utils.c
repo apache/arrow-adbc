@@ -27,7 +27,7 @@
 
 static size_t kErrorBufferSize = 1024;
 
-int AdbcStatusCodeToErrno(AdbcStatusCode code) {
+int InternalAdbcStatusCodeToErrno(AdbcStatusCode code) {
   switch (code) {
     case ADBC_STATUS_OK:
       return 0;
@@ -104,14 +104,15 @@ static void ReleaseError(struct AdbcError* error) {
   error->release = NULL;
 }
 
-void SetError(struct AdbcError* error, const char* format, ...) {
+void InternalAdbcSetError(struct AdbcError* error, const char* format, ...) {
   va_list args;
   va_start(args, format);
-  SetErrorVariadic(error, format, args);
+  InternalAdbcSetErrorVariadic(error, format, args);
   va_end(args);
 }
 
-void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args) {
+void InternalAdbcSetErrorVariadic(struct AdbcError* error, const char* format,
+                                  va_list args) {
   if (!error) return;
   if (error->release) {
     // TODO: combine the errors if possible
@@ -147,8 +148,8 @@ void SetErrorVariadic(struct AdbcError* error, const char* format, va_list args)
   vsnprintf(error->message, kErrorBufferSize, format, args);
 }
 
-void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* detail,
-                       size_t detail_length) {
+void InternalAdbcAppendErrorDetail(struct AdbcError* error, const char* key,
+                                   const uint8_t* detail, size_t detail_length) {
   if (error->release != ReleaseErrorWithDetails) return;
 
   struct AdbcErrorDetails* details = (struct AdbcErrorDetails*)error->private_data;
@@ -212,7 +213,7 @@ void AppendErrorDetail(struct AdbcError* error, const char* key, const uint8_t* 
   details->count++;
 }
 
-int CommonErrorGetDetailCount(const struct AdbcError* error) {
+int InternalAdbcCommonErrorGetDetailCount(const struct AdbcError* error) {
   if (error->release != ReleaseErrorWithDetails) {
     return 0;
   }
@@ -220,7 +221,8 @@ int CommonErrorGetDetailCount(const struct AdbcError* error) {
   return details->count;
 }
 
-struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int index) {
+struct AdbcErrorDetail InternalAdbcCommonErrorGetDetail(const struct AdbcError* error,
+                                                        int index) {
   if (error->release != ReleaseErrorWithDetails) {
     return (struct AdbcErrorDetail){NULL, NULL, 0};
   }
@@ -235,11 +237,12 @@ struct AdbcErrorDetail CommonErrorGetDetail(const struct AdbcError* error, int i
   };
 }
 
-bool IsCommonError(const struct AdbcError* error) {
+bool InternalAdbcIsCommonError(const struct AdbcError* error) {
   return error->release == ReleaseErrorWithDetails || error->release == ReleaseError;
 }
 
-int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
+int InternalAdbcStringBuilderInit(struct InternalAdbcStringBuilder* builder,
+                                  size_t initial_size) {
   builder->buffer = (char*)malloc(initial_size);
   if (builder->buffer == NULL) return errno;
 
@@ -248,7 +251,8 @@ int StringBuilderInit(struct StringBuilder* builder, size_t initial_size) {
 
   return 0;
 }
-int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
+int InternalAdbcStringBuilderAppend(struct InternalAdbcStringBuilder* builder,
+                                    const char* fmt, ...) {
   va_list argptr;
   int bytes_available = (int)builder->capacity - (int)builder->size;
 
@@ -278,16 +282,16 @@ int StringBuilderAppend(struct StringBuilder* builder, const char* fmt, ...) {
 
   return 0;
 }
-void StringBuilderReset(struct StringBuilder* builder) {
+void InternalAdbcStringBuilderReset(struct InternalAdbcStringBuilder* builder) {
   if (builder->buffer) {
     free(builder->buffer);
   }
   memset(builder, 0, sizeof(*builder));
 }
 
-AdbcStatusCode AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
-                                               struct ArrowArray* array,
-                                               struct AdbcError* error) {
+AdbcStatusCode InternalAdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
+                                                       struct ArrowArray* array,
+                                                       struct AdbcError* error) {
   // TODO: use C equivalent of UniqueSchema to avoid incomplete schema
   // on error
   ArrowSchemaInit(schema);
@@ -351,10 +355,10 @@ AdbcStatusCode AdbcInitConnectionGetInfoSchema(struct ArrowSchema* schema,
   return ADBC_STATUS_OK;
 }  // NOLINT(whitespace/indent)
 
-AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
-                                                 uint32_t info_code,
-                                                 const char* info_value,
-                                                 struct AdbcError* error) {
+AdbcStatusCode InternalAdbcConnectionGetInfoAppendString(struct ArrowArray* array,
+                                                         uint32_t info_code,
+                                                         const char* info_value,
+                                                         struct AdbcError* error) {
   CHECK_NA(INTERNAL, ArrowArrayAppendUInt(array->children[0], info_code), error);
   // Append to type variant
   struct ArrowStringView value = ArrowCharView(info_value);
@@ -366,9 +370,10 @@ AdbcStatusCode AdbcConnectionGetInfoAppendString(struct ArrowArray* array,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode AdbcConnectionGetInfoAppendInt(struct ArrowArray* array,
-                                              uint32_t info_code, int64_t info_value,
-                                              struct AdbcError* error) {
+AdbcStatusCode InternalAdbcConnectionGetInfoAppendInt(struct ArrowArray* array,
+                                                      uint32_t info_code,
+                                                      int64_t info_value,
+                                                      struct AdbcError* error) {
   CHECK_NA(INTERNAL, ArrowArrayAppendUInt(array->children[0], info_code), error);
   // Append to type variant
   CHECK_NA(INTERNAL, ArrowArrayAppendInt(array->children[1]->children[2], info_value),
@@ -379,8 +384,8 @@ AdbcStatusCode AdbcConnectionGetInfoAppendInt(struct ArrowArray* array,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
-                                               struct AdbcError* error) {
+AdbcStatusCode InternalAdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
+                                                       struct AdbcError* error) {
   ArrowSchemaInit(schema);
   CHECK_NA(INTERNAL, ArrowSchemaSetTypeStruct(schema, /*num_columns=*/2), error);
   CHECK_NA(INTERNAL, ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_STRING),
@@ -563,7 +568,8 @@ AdbcStatusCode AdbcInitConnectionObjectsSchema(struct ArrowSchema* schema,
   return ADBC_STATUS_OK;
 }
 
-struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_view) {
+struct AdbcGetObjectsData* InternalAdbcGetObjectsDataInit(
+    struct ArrowArrayView* array_view) {
   struct AdbcGetObjectsData* get_objects_data =
       (struct AdbcGetObjectsData*)calloc(1, sizeof(struct AdbcGetObjectsData));
   if (get_objects_data == NULL) {
@@ -895,11 +901,11 @@ struct AdbcGetObjectsData* AdbcGetObjectsDataInit(struct ArrowArrayView* array_v
   return get_objects_data;
 
 error_handler:
-  AdbcGetObjectsDataDelete(get_objects_data);
+  InternalAdbcGetObjectsDataDelete(get_objects_data);
   return NULL;
 }
 
-void AdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data) {
+void InternalAdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data) {
   for (int64_t catalog_index = 0; catalog_index < get_objects_data->n_catalogs;
        catalog_index++) {
     struct AdbcGetObjectsCatalog* catalog = get_objects_data->catalogs[catalog_index];
@@ -946,7 +952,7 @@ void AdbcGetObjectsDataDelete(struct AdbcGetObjectsData* get_objects_data) {
   free(get_objects_data);
 }
 
-struct AdbcGetObjectsCatalog* AdbcGetObjectsDataGetCatalogByName(
+struct AdbcGetObjectsCatalog* InternalAdbcGetObjectsDataGetCatalogByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name) {
   if (catalog_name != NULL) {
     for (int64_t i = 0; i < get_objects_data->n_catalogs; i++) {
@@ -960,12 +966,12 @@ struct AdbcGetObjectsCatalog* AdbcGetObjectsDataGetCatalogByName(
   return NULL;
 }
 
-struct AdbcGetObjectsSchema* AdbcGetObjectsDataGetSchemaByName(
+struct AdbcGetObjectsSchema* InternalAdbcGetObjectsDataGetSchemaByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name) {
   if (schema_name != NULL) {
     struct AdbcGetObjectsCatalog* catalog =
-        AdbcGetObjectsDataGetCatalogByName(get_objects_data, catalog_name);
+        InternalAdbcGetObjectsDataGetCatalogByName(get_objects_data, catalog_name);
     if (catalog != NULL) {
       for (int64_t i = 0; i < catalog->n_db_schemas; i++) {
         struct AdbcGetObjectsSchema* schema = catalog->catalog_db_schemas[i];
@@ -979,12 +985,12 @@ struct AdbcGetObjectsSchema* AdbcGetObjectsDataGetSchemaByName(
   return NULL;
 }
 
-struct AdbcGetObjectsTable* AdbcGetObjectsDataGetTableByName(
+struct AdbcGetObjectsTable* InternalAdbcGetObjectsDataGetTableByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name) {
   if (table_name != NULL) {
-    struct AdbcGetObjectsSchema* schema =
-        AdbcGetObjectsDataGetSchemaByName(get_objects_data, catalog_name, schema_name);
+    struct AdbcGetObjectsSchema* schema = InternalAdbcGetObjectsDataGetSchemaByName(
+        get_objects_data, catalog_name, schema_name);
     if (schema != NULL) {
       for (int64_t i = 0; i < schema->n_db_schema_tables; i++) {
         struct AdbcGetObjectsTable* table = schema->db_schema_tables[i];
@@ -998,12 +1004,12 @@ struct AdbcGetObjectsTable* AdbcGetObjectsDataGetTableByName(
   return NULL;
 }
 
-struct AdbcGetObjectsColumn* AdbcGetObjectsDataGetColumnByName(
+struct AdbcGetObjectsColumn* InternalAdbcGetObjectsDataGetColumnByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const column_name) {
   if (column_name != NULL) {
-    struct AdbcGetObjectsTable* table = AdbcGetObjectsDataGetTableByName(
+    struct AdbcGetObjectsTable* table = InternalAdbcGetObjectsDataGetTableByName(
         get_objects_data, catalog_name, schema_name, table_name);
     if (table != NULL) {
       for (int64_t i = 0; i < table->n_table_columns; i++) {
@@ -1018,12 +1024,12 @@ struct AdbcGetObjectsColumn* AdbcGetObjectsDataGetColumnByName(
   return NULL;
 }
 
-struct AdbcGetObjectsConstraint* AdbcGetObjectsDataGetConstraintByName(
+struct AdbcGetObjectsConstraint* InternalAdbcGetObjectsDataGetConstraintByName(
     struct AdbcGetObjectsData* get_objects_data, const char* const catalog_name,
     const char* const schema_name, const char* const table_name,
     const char* const constraint_name) {
   if (constraint_name != NULL) {
-    struct AdbcGetObjectsTable* table = AdbcGetObjectsDataGetTableByName(
+    struct AdbcGetObjectsTable* table = InternalAdbcGetObjectsDataGetTableByName(
         get_objects_data, catalog_name, schema_name, table_name);
     if (table != NULL) {
       for (int64_t i = 0; i < table->n_table_constraints; i++) {

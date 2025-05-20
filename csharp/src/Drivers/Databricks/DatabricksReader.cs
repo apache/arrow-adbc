@@ -33,6 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         int index;
         IArrowReader? reader;
         bool isLz4Compressed;
+        private DatabricksOperationStatusPoller? _operationStatusPoller;
 
         public DatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
         {
@@ -48,14 +49,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!statement.DirectResults.ResultSet.HasMoreRows)
                 {
                     this.statement = null;
+                    return;
                 }
             }
+            _operationStatusPoller = new DatabricksOperationStatusPoller(statement);
         }
 
         public Schema Schema { get { return schema; } }
 
         public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
+            if (_operationStatusPoller != null && !_operationStatusPoller.IsStarted)
+            {
+                _operationStatusPoller.Start(cancellationToken);
+            }
             while (true)
             {
                 if (this.reader != null)
@@ -91,6 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!response.HasMoreRows)
                 {
                     this.statement = null;
+                    DisposeOperationStatusPoller();
                 }
             }
         }
@@ -134,6 +142,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public void Dispose()
         {
+            DisposeOperationStatusPoller();
+        }
+
+        private void DisposeOperationStatusPoller()
+        {
+            if (_operationStatusPoller != null)
+            {
+                _operationStatusPoller.Dispose();
+                _operationStatusPoller = null;
+            }
         }
     }
 }

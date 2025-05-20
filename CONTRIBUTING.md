@@ -92,6 +92,7 @@ You can use CMake presets to build and test:
 $ mkdir build
 $ cd build
 $ cmake ../c --preset debug
+$ cmake --build .
 # ctest reads presets from PWD
 $ cd ../c
 $ ctest --preset debug --test-dir ../build
