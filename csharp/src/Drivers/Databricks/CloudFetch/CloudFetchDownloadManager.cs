@@ -273,7 +273,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             _cancellationTokenSource?.Cancel();
 
             // Stop the operation status poller
-            DisposeOperationStatusPoller();
+            _operationStatusPoller?.Stop();
 
             // Stop the downloader
             await _downloader.StopAsync().ConfigureAwait(false);

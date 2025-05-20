@@ -53,16 +53,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
             _operationStatusPoller = new DatabricksOperationStatusPoller(statement);
+            _operationStatusPoller.Start();
         }
 
         public Schema Schema { get { return schema; } }
 
         public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            if (_operationStatusPoller != null && !_operationStatusPoller.IsStarted)
-            {
-                _operationStatusPoller.Start(cancellationToken);
-            }
             while (true)
             {
                 if (this.reader != null)
@@ -98,7 +95,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!response.HasMoreRows)
                 {
                     this.statement = null;
-                    DisposeOperationStatusPoller();
+                    _operationStatusPoller?.Stop();
                 }
             }
         }
