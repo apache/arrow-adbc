@@ -181,14 +181,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 						continue
 					}
 
-					t := time.Unix(epoch[i], int64(fraction[i]))
-					unit := getSafeTimeUnit(t, dt.TimeUnit())
-					v, err := arrow.TimestampFromTime(t, unit)
-
-					if unit != f.Type.(*arrow.TimestampType).Unit {
-						f.Type = &arrow.TimestampType{Unit: unit}
-					}
-
+					v, err := arrow.TimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit())
 					if err != nil {
 						return nil, err
 					}
@@ -214,9 +207,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 							continue
 						}
 
-						t := time.Unix(epoch[i], int64(fraction[i]))
-						unit := getSafeTimeUnit(t, dt.TimeUnit())
-						v, err := arrow.TimestampFromTime(t, unit)
+						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit())
 						if err != nil {
 							return nil, err
 						}
@@ -255,9 +246,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 						}
 
 						loc := gosnowflake.Location(int(tzoffset[i]) - 1440)
-						t := time.Unix(epoch[i], 0).In(loc)
-						unit := getSafeTimeUnit(t, dt.Unit)
-						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], 0).In(loc), unit)
+						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], 0).In(loc), dt.Unit)
 						if err != nil {
 							return nil, err
 						}
@@ -274,9 +263,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 						}
 
 						loc := gosnowflake.Location(int(tzoffset[i]) - 1440)
-						t := time.Unix(epoch[i], int64(fraction[i])).In(loc)
-						unit := getSafeTimeUnit(t, dt.Unit)
-						v, err := arrow.TimestampFromTime(t, unit)
+						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], int64(fraction[i])).In(loc), dt.Unit)
 						if err != nil {
 							return nil, err
 						}
@@ -295,22 +282,6 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 	meta := sc.Metadata()
 	out := arrow.NewSchema(fields, &meta)
 	return out, getRecTransformer(out, transformers)
-}
-
-func getSafeTimeUnit(t time.Time, unit arrow.TimeUnit) arrow.TimeUnit {
-	// Internally, arrow.TimestampFromTime will call val.UnixNano() for nanoseconds, which results
-	// in an overflow if val is outside the range of int64. So we need to check for that here and `hack`
-	// the call to call Timestamp(val.Unix()) instead.
-
-	unixTime := t.Unix()
-
-	if unit == arrow.Nanosecond && (unixTime < -9223372036 || unixTime > 9223372036) {
-		// If the time is outside the range of int64, we need to convert it to seconds and use that instead.
-		// This is a hack to avoid overflow issues with the arrow library.
-		return arrow.Second
-	}
-
-	return unit
 }
 
 func integerToDecimal128(ctx context.Context, a arrow.Array, dt *arrow.Decimal128Type) (arrow.Array, error) {

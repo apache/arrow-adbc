@@ -263,15 +263,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                new SampleData()
                 {
                     Query = "SELECT " +
-                               "CAST('9999-12-31 00:00:00' as TIMESTAMP_NTZ(9)) As December31_9999, " +
-                               "CAST('2001-09-11 13:46:00' as TIMESTAMP_NTZ(9)) As September11_2001 ",
-                               //"CAST('33-04-03 15:00:00' as TIMESTAMP_NTZ(9)) as April3_0033",
+                               "CAST('9999-12-31 00:00:00' as TIMESTAMP_NTZ(0)) As December31_9999, " +
+                               "CAST('2001-09-11 13:46:00' as TIMESTAMP_NTZ(0)) As September11_2001, " +
+                               "CAST('33-04-03 15:00:00' as TIMESTAMP_NTZ(0)) as April3_0033",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
-                        {
-                            new ColumnNetTypeArrowTypeValue("DECEMBER31_9999", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(9999,12,31, 0,0,0), TimeSpan.Zero)),
-                            new ColumnNetTypeArrowTypeValue("SEPTEMBER11_2001", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2001,9,11, 13,46,0), TimeSpan.Zero))//,
-  //                          new ColumnNetTypeArrowTypeValue("APRIL3_0033", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(33,4,9, 15,0,0), TimeSpan.Zero)),
-                        }
+                    {
+                        new ColumnNetTypeArrowTypeValue("DECEMBER31_9999", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(9999,12,31, 0,0,0), TimeSpan.Zero)),
+                        new ColumnNetTypeArrowTypeValue("SEPTEMBER11_2001", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2001,9,11, 13,46,0), TimeSpan.Zero)),
+                        new ColumnNetTypeArrowTypeValue("APRIL3_0033", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(0033,4,9, 15,0,0), TimeSpan.FromHours(-5))),
+                    }
                 });
 
 
