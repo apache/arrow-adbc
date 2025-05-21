@@ -92,7 +92,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Maximum total time in seconds to retry 503 responses before failing.
         /// Default value is 900 seconds (15 minutes). Set to 0 to retry indefinitely.
         /// </summary>
-        public const string TemporarilyUnavailableRetryTimeout = "adbc.spark.temporarily_unavailable_retry_timeout";
+        public const string TemporarilyUnavailableRetryTimeout = "adbc.databricks.temporarily.unavailable.retry.timeout";
 
         /// <summary>
         /// Maximum number of parallel downloads for CloudFetch operations.
@@ -148,6 +148,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is "sql" if not specified.
         /// </summary>
         public const string OAuthScope = "adbc.databricks.oauth.scope";
+
+        /// <summary>
+        /// Whether to use multiple catalogs.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string CanUseMultipleCatalogs = "adbc.databricks.enable_multiple_catalog_support";
     }
 
     /// <summary>

@@ -479,5 +479,88 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.True(batchCount > 1, "Should have read multiple batches");
             OutputHelper?.WriteLine($"Successfully read {totalRows} rows in {batchCount} batches after 30 minute delay with {configName}");
         }
+
+        [SkippableTheory]
+        [InlineData("1", true)]  // Should allow multiple catalogs
+        [InlineData("0", false)] // Should only use default catalog
+        public async Task CanUseMultipleCatalogsAffectsMetadataQueries(string canUseMultipleCatalogs, bool shouldAllowMultipleCatalogs)
+        {
+            // Create a connection with the specified CanUseMultipleCatalogs setting
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            testConfig.CanUseMultipleCatalogs = canUseMultipleCatalogs;
+            using var connection = NewConnection(testConfig);
+
+            // Test each metadata query type
+            await TestMetadataQuery(connection, "GetSchemas", shouldAllowMultipleCatalogs);
+            await TestMetadataQuery(connection, "GetTables", shouldAllowMultipleCatalogs);
+        }
+
+        private async Task TestMetadataQuery(AdbcConnection connection, string queryType, bool shouldAllowMultipleCatalogs)
+        {
+            OutputHelper?.WriteLine($"Testing {queryType} with CanUseMultipleCatalogs={shouldAllowMultipleCatalogs}");
+
+            var statement = connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+
+            // Do not pass in catalog so it is set to null
+            // Use default as schema name, it is the default schema name
+            statement.SetOption(ApacheParameters.SchemaName, "default");
+            statement.SqlQuery = queryType;
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            int rowCount = 0;
+            HashSet<string> foundCatalogs = new HashSet<string>();
+            string? defaultCatalog = null;
+
+            while (queryResult.Stream != null)
+            {
+                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null) break;
+
+                rowCount += batch.Length;
+
+                // Check catalog values in each row
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    for (int j = 0; j < batch.ColumnCount; j++)
+                    {
+                        if (queryResult.Stream.Schema.FieldsList[j].Name.Equals("TABLE_CATALOG", StringComparison.OrdinalIgnoreCase) ||
+                            queryResult.Stream.Schema.FieldsList[j].Name.Equals("TABLE_CAT", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? catalog = GetStringValue(batch.Column(j), i);
+                            if (!string.IsNullOrEmpty(catalog))
+                            {
+                                foundCatalogs.Add(catalog);
+                                // Store the first catalog we find as the default catalog
+                                defaultCatalog ??= catalog;
+                            }
+                        }
+                    }
+                }
+            }
+
+            OutputHelper?.WriteLine($"{queryType} returned {rowCount} rows, found {foundCatalogs.Count} different catalogs: {string.Join(", ", foundCatalogs)}");
+
+            // Verify behavior based on CanUseMultipleCatalogs setting
+            if (!shouldAllowMultipleCatalogs)
+            {
+                // When CanUseMultipleCatalogs is false, all results should be from the default catalog (hive_metastore)
+                Assert.True(foundCatalogs.Count == 1,
+                    $"{queryType} should only return results from the default catalog when CanUseMultipleCatalogs is false");
+                OutputHelper?.WriteLine($"All results are from default catalog: {defaultCatalog}");
+            }
+            else
+            {
+                // When CanUseMultipleCatalogs is true, we may have results from multiple catalogs
+                Assert.True(foundCatalogs.Count > 1,
+                    $"{queryType} should return results from at least one catalog when CanUseMultipleCatalogs is true");
+                if (foundCatalogs.Count > 1)
+                {
+                    OutputHelper?.WriteLine($"Found results from multiple catalogs: {string.Join(", ", foundCatalogs)}");
+                }
+            }
+        }
     }
 }

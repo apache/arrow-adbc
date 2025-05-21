@@ -141,6 +141,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 parameters.Add(ApacheParameters.QueryTimeoutSeconds, testConfiguration.QueryTimeoutSeconds!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.CanUseMultipleCatalogs))
+            {
+                parameters.Add(DatabricksParameters.CanUseMultipleCatalogs, testConfiguration.CanUseMultipleCatalogs!);
+            }
             if (testConfiguration.HttpOptions != null)
             {
                 if (testConfiguration.HttpOptions.Tls != null)
