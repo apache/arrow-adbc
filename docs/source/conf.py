@@ -56,7 +56,6 @@ templates_path = ["_templates"]
 
 
 def on_missing_reference(app, env, node, contnode):
-    print(str(contnode))
     if str(contnode) in {
         # Polars does something odd with Sphinx such that polars.DataFrame
         # isn't xrefable; suppress the warning.
