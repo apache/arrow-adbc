@@ -39,7 +39,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             this.schema = schema;
             this.isLz4Compressed = isLz4Compressed;
             this.statement = statement;
-            if (statement.DirectResults != null && !statement.DirectResults.ResultSet.HasMoreRows) {
+            if (statement.DirectResults != null && !statement.DirectResults.ResultSet.HasMoreRows)
+            {
                 return;
             }
             operationStatusPoller = new DatabricksOperationStatusPoller(statement);
@@ -64,7 +65,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             DisposeResources();
             isDisposed = true;
         }
-
 
         protected virtual void DisposeResources()
         {
