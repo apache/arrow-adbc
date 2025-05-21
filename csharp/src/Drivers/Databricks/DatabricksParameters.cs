@@ -92,7 +92,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Maximum total time in seconds to retry 503 responses before failing.
         /// Default value is 900 seconds (15 minutes). Set to 0 to retry indefinitely.
         /// </summary>
-        public const string TemporarilyUnavailableRetryTimeout = "adbc.databricks.temporarily.unavailable.retry.timeout";
+        public const string TemporarilyUnavailableRetryTimeout = "adbc.spark.temporarily.unavailable.retry.timeout";
 
         /// <summary>
         /// Maximum number of parallel downloads for CloudFetch operations.
