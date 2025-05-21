@@ -29,12 +29,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Whether to use CloudFetch for retrieving results.
         /// Default value is true if not specified.
+        /// Will not use cloudfetch if DBR version < 8.4.1
         /// </summary>
         public const string UseCloudFetch = "adbc.databricks.cloudfetch.enabled";
 
         /// <summary>
         /// Whether the client can decompress LZ4 compressed results.
         /// Default value is true if not specified.
+        /// Will not use lz4 decompression if DBR version < 11.0.0
         /// </summary>
         public const string CanDecompressLz4 = "adbc.databricks.cloudfetch.lz4.enabled";
 

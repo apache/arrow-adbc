@@ -44,6 +44,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private TCLIService.IAsync? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
+        internal TProtocolVersion _protocolVersion;
 
         readonly AdbcInfoCode[] infoSupportedCodes = [
             AdbcInfoCode.DriverName,
@@ -300,6 +301,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
 
+        internal TProtocolVersion ProtocolVersion => _protocolVersion;
+
         internal async Task OpenAsync()
         {
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
@@ -312,6 +315,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TOpenSessionReq request = CreateSessionRequest();
 
                 TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
+
+                // rely on server-side to determine common protocol version
+                _protocolVersion = session.ServerProtocolVersion;
+                ValidateServerVersion(_protocolVersion);
 
                 // Explicitly check the session status
                 if (session == null)
@@ -341,6 +348,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
         {
             return new TCLIService.Client(protocol);
+        }
+
+        protected virtual void ValidateServerVersion(TProtocolVersion protocolVersion)
+        {
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }

@@ -284,6 +284,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return baseHandler;
         }
 
+        protected override void ValidateServerVersion(TProtocolVersion protocolVersion)
+        {
+            if (!ProtocolFeatureNegotiator.IsDatabricksProtocolVersion(protocolVersion))
+            {
+                throw new HiveServer2Exception("Server protocol version is too old. Please upgrade the server.");
+            }
+        }
+
         protected internal override bool AreResultsAvailableDirectly => _enableDirectResults;
 
         protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = defaultGetDirectResults;
