@@ -153,7 +153,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Whether to use multiple catalogs.
         /// Default value is true if not specified.
         /// </summary>
-        public const string CanUseMultipleCatalogs = "adbc.databricks.enable_multiple_catalog_support";
+        public const string EnableMultipleCatalogSupport = "adbc.databricks.enable_multiple_catalog_support";
     }
 
     /// <summary>

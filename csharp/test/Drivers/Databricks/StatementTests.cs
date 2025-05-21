@@ -483,11 +483,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         [SkippableTheory]
         [InlineData("1", true)]  // Should allow multiple catalogs
         [InlineData("0", false)] // Should only use default catalog
-        public async Task CanUseMultipleCatalogsAffectsMetadataQueries(string canUseMultipleCatalogs, bool shouldAllowMultipleCatalogs)
+        public async Task EnableMultipleCatalogSupportAffectsMetadataQueries(string enableMultipleCatalogSupport, bool shouldAllowMultipleCatalogs)
         {
-            // Create a connection with the specified CanUseMultipleCatalogs setting
+            // Create a connection with the specified EnableMultipleCatalogSupport setting
             var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
-            testConfig.CanUseMultipleCatalogs = canUseMultipleCatalogs;
+            testConfig.EnableMultipleCatalogSupport = enableMultipleCatalogSupport;
             using var connection = NewConnection(testConfig);
 
             // Test each metadata query type
@@ -497,7 +497,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         private async Task TestMetadataQuery(AdbcConnection connection, string queryType, bool shouldAllowMultipleCatalogs)
         {
-            OutputHelper?.WriteLine($"Testing {queryType} with CanUseMultipleCatalogs={shouldAllowMultipleCatalogs}");
+            OutputHelper?.WriteLine($"Testing {queryType} with EnableMultipleCatalogSupport={shouldAllowMultipleCatalogs}");
 
             var statement = connection.CreateStatement();
             statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
@@ -543,19 +543,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
             OutputHelper?.WriteLine($"{queryType} returned {rowCount} rows, found {foundCatalogs.Count} different catalogs: {string.Join(", ", foundCatalogs)}");
 
-            // Verify behavior based on CanUseMultipleCatalogs setting
+            // Verify behavior based on EnableMultipleCatalogSupport setting
             if (!shouldAllowMultipleCatalogs)
             {
-                // When CanUseMultipleCatalogs is false, all results should be from the default catalog (hive_metastore)
+                // When EnableMultipleCatalogSupport is false, all results should be from the default catalog, so count should be one
                 Assert.True(foundCatalogs.Count == 1,
-                    $"{queryType} should only return results from the default catalog when CanUseMultipleCatalogs is false");
+                    $"{queryType} should only return results from the default catalog when EnableMultipleCatalogSupport is false");
                 OutputHelper?.WriteLine($"All results are from default catalog: {defaultCatalog}");
             }
             else
             {
-                // When CanUseMultipleCatalogs is true, we may have results from multiple catalogs
+                // When EnableMultipleCatalogSupport is true, we may have results from multiple catalogs
                 Assert.True(foundCatalogs.Count > 1,
-                    $"{queryType} should return results from at least one catalog when CanUseMultipleCatalogs is true");
+                    $"{queryType} should return results from at least one catalog when EnableMultipleCatalogSupport is true");
                 if (foundCatalogs.Count > 1)
                 {
                     OutputHelper?.WriteLine($"Found results from multiple catalogs: {string.Join(", ", foundCatalogs)}");

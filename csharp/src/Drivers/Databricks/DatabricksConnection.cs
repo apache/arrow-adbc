@@ -37,7 +37,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
-        private bool _canUseMultipleCatalogs = true;
+        private bool _enableMultipleCatalogSupport = true;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
@@ -64,24 +64,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private void ValidateProperties()
         {
-            if (Properties.TryGetValue(DatabricksParameters.CanUseMultipleCatalogs, out string? canUseMultipleCatalogsStr))
+            if (Properties.TryGetValue(DatabricksParameters.EnableMultipleCatalogSupport, out string? enableMultipleCatalogSupportStr))
             {
-                if (bool.TryParse(canUseMultipleCatalogsStr, out bool canUseMultipleCatalogsValue))
+                if (bool.TryParse(enableMultipleCatalogSupportStr, out bool enableMultipleCatalogSupportValue))
                 {
-                    _canUseMultipleCatalogs = canUseMultipleCatalogsValue;
+                    _enableMultipleCatalogSupport = enableMultipleCatalogSupportValue;
                 }
                 // PowerBI will pass in "1" and "0" as strings, so we need to handle that
-                else if (canUseMultipleCatalogsStr == "1")
+                else if (enableMultipleCatalogSupportStr == "1")
                 {
-                    _canUseMultipleCatalogs = true;
+                    _enableMultipleCatalogSupport = true;
                 }
-                else if (canUseMultipleCatalogsStr == "0")
+                else if (enableMultipleCatalogSupportStr == "0")
                 {
-                    _canUseMultipleCatalogs = false;
+                    _enableMultipleCatalogSupport = false;
                 }
                 else
                 {
-                    throw new ArgumentException($"Parameter '{DatabricksParameters.CanUseMultipleCatalogs}' value '{canUseMultipleCatalogsStr}' could not be parsed. Valid values are 'true', 'false', '1', or '0'.");
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableMultipleCatalogSupport}' value '{enableMultipleCatalogSupportStr}' could not be parsed. Valid values are 'true', 'false', '1', or '0'.");
                 }
             }
 
@@ -331,7 +331,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
                 Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
-                CanUseMultipleCatalogs = _canUseMultipleCatalogs,
+                CanUseMultipleCatalogs = _enableMultipleCatalogSupport,
             };
 
             // Set default namespace if available
