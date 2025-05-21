@@ -148,6 +148,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is "sql" if not specified.
         /// </summary>
         public const string OAuthScope = "adbc.databricks.oauth.scope";
+
+        /// <summary>
+        /// Whether to use multiple catalogs.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string EnableMultipleCatalogSupport = "adbc.databricks.enable_multiple_catalog_support";
     }
 
     /// <summary>

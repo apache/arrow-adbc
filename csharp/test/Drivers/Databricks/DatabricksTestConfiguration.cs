@@ -33,5 +33,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         [JsonPropertyName("scope"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string OAuthScope { get; set; } = string.Empty;
+
+        [JsonPropertyName("enableMultipleCatalogSupport")]
+        public string EnableMultipleCatalogSupport { get; set; } = string.Empty;
     }
 }
