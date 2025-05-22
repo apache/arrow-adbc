@@ -29,12 +29,15 @@ namespace Apache.Arrow.Adbc.Tracing
 
         protected TracingConnection(IReadOnlyDictionary<string, string> properties, Assembly? executingAssembly = default)
         {
+            executingAssembly ??= CallingAssembly;
             _tracerProvider = ActivityTrace.InitTracerProvider(out string activitySourceName, out _, executingAssembly);
             properties.TryGetValue(AdbcOptions.Telemetry.TraceParent, out string? traceParent);
             Trace = new ActivityTrace(activitySourceName, traceParent);
         }
 
         public ActivityTrace Trace { get; }
+
+        public abstract Assembly CallingAssembly { get; }
 
         protected virtual void Dispose(bool disposing)
         {

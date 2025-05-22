@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -197,5 +198,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override ImpalaServerType ServerType => ImpalaServerType.Standard;
 
         protected override int ColumnMapIndexOffset => 0;
+
+        public override Assembly CallingAssembly => GetType().Assembly;
     }
 }

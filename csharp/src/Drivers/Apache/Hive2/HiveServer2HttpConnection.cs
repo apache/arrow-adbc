@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;
@@ -23,6 +22,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -200,5 +200,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Http;
+
+        public override Assembly CallingAssembly => GetType().Assembly;
     }
 }

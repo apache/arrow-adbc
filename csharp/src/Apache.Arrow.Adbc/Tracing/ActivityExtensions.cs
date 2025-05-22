@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -25,27 +26,53 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <summary>
         /// Add a new <see cref="ActivityEvent"/> object to the <see cref="Activity.Events" /> list.
         /// </summary>
-        /// <param name="activity">The activity to add the event to.</param>
         /// <param name="eventName">The name of the event.</param>
         /// <param name="tags">The optional list of tags to attach to the event.</param>
         /// <returns><see langword="this"/> for convenient chaining.</returns>
-        public static Activity AddEvent(this Activity activity, string eventName, IReadOnlyList<KeyValuePair<string, object?>>? tags = default)
+        public static Activity? AddEvent(this Activity? activity, string eventName, IReadOnlyList<KeyValuePair<string, object?>>? tags = default)
         {
+            if (activity == null) return activity;
             ActivityTagsCollection? tagsCollection = tags == null ? null : new ActivityTagsCollection(tags);
-            return activity.AddEvent(new ActivityEvent(eventName, tags: tagsCollection));
+            return activity?.AddEvent(new ActivityEvent(eventName, tags: tagsCollection));
         }
 
         /// <summary>
         /// Add a new <see cref="ActivityLink"/> to the <see cref="Activity.Links"/> list.
         /// </summary>
-        /// <param name="activity">The activity to add the event to.</param>
         /// <param name="traceParent">The traceParent id for the associated <see cref="ActivityContext"/>.</param>
         /// <param name="tags">The optional list of tags to attach to the event.</param>
         /// <returns><see langword="this"/> for convenient chaining.</returns>
-        public static Activity AddLink(this Activity activity, string traceParent, IReadOnlyList<KeyValuePair<string, object?>>? tags = default)
+        public static Activity? AddLink(this Activity? activity, string traceParent, IReadOnlyList<KeyValuePair<string, object?>>? tags = default)
         {
+            if (activity == null) return activity;
             ActivityTagsCollection? tagsCollection = tags == null ? null : new ActivityTagsCollection(tags);
-            return activity.AddLink(new ActivityLink(ActivityContext.Parse(traceParent, null), tags: tagsCollection));
+            return activity?.AddLink(new ActivityLink(ActivityContext.Parse(traceParent, null), tags: tagsCollection));
+        }
+
+        /// <summary>
+        /// Update the Activity to have a tag with an additional 'key' and value 'value'.
+        /// This shows up in the <see cref="TagObjects"/> enumeration. It is meant for information that
+        /// is useful to log but not needed for runtime control (for the latter, <see cref="Baggage"/>)
+        /// </summary>
+        /// <returns><see langword="this" /> for convenient chaining.</returns>
+        /// <param name="key">The tag key name as a function</param>
+        /// <param name="value">The tag value mapped to the input key as a function</param>
+        public static Activity? AddTag(this Activity? activity, Func<string> key, Func<object?> value)
+        {
+            return activity?.AddTag(key(), value());
+        }
+
+        /// <summary>
+        /// Update the Activity to have a tag with an additional 'key' and value 'value'.
+        /// This shows up in the <see cref="TagObjects"/> enumeration. It is meant for information that
+        /// is useful to log but not needed for runtime control (for the latter, <see cref="Baggage"/>)
+        /// </summary>
+        /// <returns><see langword="this" /> for convenient chaining.</returns>
+        /// <param name="key">The tag key name</param>
+        /// <param name="value">The tag value mapped to the input key as a function</param>
+        public static Activity? AddTag(this Activity? activity, string key, Func<object?> value)
+        {
+            return activity?.AddTag(key, value());
         }
     }
 }

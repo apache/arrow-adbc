@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tracing
         {
             public static string Parameter(string name)
             {
-                return "db.operation.parameter" + name;
+                return $"db.operation.parameter.{name}";
             }
         }
 

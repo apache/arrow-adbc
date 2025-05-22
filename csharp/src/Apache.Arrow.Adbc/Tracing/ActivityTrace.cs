@@ -311,9 +311,10 @@ namespace Apache.Arrow.Adbc.Tracing
 
         public static TracerProvider? InitTracerProvider(out string activitySourceName, out string activitySourceVersion, Assembly? executingAssembly = default)
         {
-            AssemblyName s_assemblyName = executingAssembly?.GetName() ?? Assembly.GetExecutingAssembly().GetName();
-            string sourceName = s_assemblyName.Name ?? DefaultSourceName;
-            string sourceVersion = s_assemblyName.Version?.ToString() ?? DefaultSourceVersion;
+            executingAssembly ??= Assembly.GetExecutingAssembly();
+            AssemblyName assemblyName = executingAssembly.GetName();
+            string sourceName = (assemblyName.Name ?? DefaultSourceName).ToLowerInvariant();
+            string sourceVersion = (assemblyName.Version?.ToString() ?? DefaultSourceVersion).ToLowerInvariant();
             activitySourceName = sourceName;
             activitySourceVersion = sourceVersion;
 
@@ -343,7 +344,7 @@ namespace Apache.Arrow.Adbc.Tracing
                         resource.AddService(
                             serviceName: sourceName,
                             serviceVersion: sourceVersion))
-                    .AddAdbcFileExporter()
+                    .AddAdbcFileExporter(sourceName)
                     .Build(),
                 _ => throw new AdbcException(
                         $"Unsupported {TracesExporterEnvironment} option: '{tracesExporter}'",

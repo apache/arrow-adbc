@@ -101,6 +101,7 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
                 bool newFileRequired = false;
                 using (FileStream fileStream = _currentTraceFileInfo!.OpenWrite())
                 {
+                    fileStream.Position = fileStream.Length;
                     hasMoreData = false;
                     await foreach (Stream stream in streams)
                     {

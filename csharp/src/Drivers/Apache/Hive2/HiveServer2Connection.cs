@@ -30,7 +30,6 @@ using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
-using OpenTelemetry.Trace;
 using Thrift.Protocol;
 using Thrift.Transport;
 
@@ -1433,12 +1432,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
-            const int strValTypeID = 0;
-            const int boolValTypeId = 1;
+            return Trace.TraceActivity(activity =>
+            {
+                const int strValTypeID = 0;
+                const int boolValTypeId = 1;
 
-            UnionType infoUnionType = new UnionType(
-                new Field[]
-                {
+                UnionType infoUnionType = new UnionType(
+                    new Field[]
+                    {
                     new Field("string_value", StringType.Default, true),
                     new Field("bool_value", BooleanType.Default, true),
                     new Field("int64_value", Int64Type.Default, true),
@@ -1463,114 +1464,123 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         ),
                         true
                     )
-                },
-                new int[] { 0, 1, 2, 3, 4, 5 },
-                UnionMode.Dense);
+                    },
+                    new int[] { 0, 1, 2, 3, 4, 5 },
+                    UnionMode.Dense);
 
-            if (codes.Count == 0)
-            {
-                codes = infoSupportedCodes;
-            }
-
-            UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
-            ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
-            ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
-            StringArray.Builder stringInfoBuilder = new StringArray.Builder();
-            BooleanArray.Builder booleanInfoBuilder = new BooleanArray.Builder();
-
-            int nullCount = 0;
-            int arrayLength = codes.Count;
-            int offset = 0;
-
-            foreach (AdbcInfoCode code in codes)
-            {
-                switch (code)
+                if (codes.Count == 0)
                 {
-                    case AdbcInfoCode.DriverName:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(InfoDriverName);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.DriverVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(ProductVersion);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.DriverArrowVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(InfoDriverArrowVersion);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.VendorName:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        string vendorName = VendorName;
-                        stringInfoBuilder.Append(vendorName);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.VendorVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        string? vendorVersion = VendorVersion;
-                        stringInfoBuilder.Append(vendorVersion);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.VendorSql:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(boolValTypeId);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.AppendNull();
-                        booleanInfoBuilder.Append(InfoVendorSql);
-                        break;
-                    default:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.AppendNull();
-                        booleanInfoBuilder.AppendNull();
-                        nullCount++;
-                        break;
+                    codes = infoSupportedCodes;
                 }
-            }
 
-            StructType entryType = new StructType(
-                new Field[] {
+                UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
+                ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
+                ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
+                StringArray.Builder stringInfoBuilder = new StringArray.Builder();
+                BooleanArray.Builder booleanInfoBuilder = new BooleanArray.Builder();
+
+                int nullCount = 0;
+                int arrayLength = codes.Count;
+                int offset = 0;
+
+                foreach (AdbcInfoCode code in codes)
+                {
+                    Func<string> tagKey = () => TagOptions.Operation.Parameter(code.ToString().ToLowerInvariant());
+                    Func<object?> tagValue = () => null;
+                    switch (code)
+                    {
+                        case AdbcInfoCode.DriverName:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.Append(InfoDriverName);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => InfoDriverName;
+                            break;
+                        case AdbcInfoCode.DriverVersion:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.Append(ProductVersion);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => ProductVersion;
+                            break;
+                        case AdbcInfoCode.DriverArrowVersion:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.Append(InfoDriverArrowVersion);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => InfoDriverArrowVersion;
+                            break;
+                        case AdbcInfoCode.VendorName:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            string vendorName = VendorName;
+                            stringInfoBuilder.Append(vendorName);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => vendorName;
+                            break;
+                        case AdbcInfoCode.VendorVersion:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            string? vendorVersion = VendorVersion;
+                            stringInfoBuilder.Append(vendorVersion);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => vendorVersion;
+                            break;
+                        case AdbcInfoCode.VendorSql:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(boolValTypeId);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.AppendNull();
+                            booleanInfoBuilder.Append(InfoVendorSql);
+                            tagValue = () => InfoVendorSql;
+                            break;
+                        default:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.AppendNull();
+                            booleanInfoBuilder.AppendNull();
+                            nullCount++;
+                            break;
+                    }
+                    activity?.AddTag(tagKey, tagValue);
+                }
+
+                StructType entryType = new StructType(
+                    new Field[] {
                     new Field("key", Int32Type.Default, false),
                     new Field("value", Int32Type.Default, true)});
 
-            StructArray entriesDataArray = new StructArray(entryType, 0,
-                new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
-                new ArrowBuffer.BitmapBuilder().Build());
+                StructArray entriesDataArray = new StructArray(entryType, 0,
+                    new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
+                    new ArrowBuffer.BitmapBuilder().Build());
 
-            IArrowArray[] childrenArrays = new IArrowArray[]
-            {
+                IArrowArray[] childrenArrays = new IArrowArray[]
+                {
                 stringInfoBuilder.Build(),
                 booleanInfoBuilder.Build(),
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
                 new List<IArrowArray?>(){ entriesDataArray }.BuildListArrayForType(entryType)
-            };
+                };
 
-            DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
+                DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
 
-            IArrowArray[] dataArrays = new IArrowArray[]
-            {
+                IArrowArray[] dataArrays = new IArrowArray[]
+                {
                 infoNameBuilder.Build(),
                 infoValue
-            };
-            StandardSchemas.GetInfoSchema.Validate(dataArrays);
+                };
+                StandardSchemas.GetInfoSchema.Validate(dataArrays);
 
-            return new HiveInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
-
+                return new HiveInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
+            });
         }
 
         internal struct TableInfo(string type)
