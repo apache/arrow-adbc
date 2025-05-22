@@ -16,7 +16,6 @@
 */
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -38,7 +37,9 @@ namespace Apache.Arrow.Adbc.Tracing
         private const string ProductVersionDefault = "1.0.0";
         private static readonly string s_assemblyVersion = GetProductVersion();
         private bool _disposedValue;
-        private const string OTelTracesExporter = "OTEL_TRACES_EXPORTER";
+        private const string DefaultSourceName = "apache.arrow.adbc";
+        private const string DefaultSourceVersion = "0.0.0.0";
+        private const string TracesExporterEnvironment = AdbcOptions.Telemetry.Traces.Exporter.Environment;
 
         /// <summary>
         /// Constructs a new <see cref="ActivityTrace"/> object. If <paramref name="activitySourceName"/> is set, it provides the
@@ -308,56 +309,46 @@ namespace Apache.Arrow.Adbc.Tracing
             GC.SuppressFinalize(this);
         }
 
-        public static (TracerProvider?, string, string) InitTracerProvider(Type sourceType)
+        public static TracerProvider? InitTracerProvider(out string activitySourceName, out string activitySourceVersion, Assembly? executingAssembly = default)
         {
-            AssemblyName s_assemblyName = sourceType.Assembly.GetName();
-            string activitySourceName = s_assemblyName.Name!;
-            string activitySourceVersion = s_assemblyName.Version!.ToString();
+            AssemblyName s_assemblyName = executingAssembly?.GetName() ?? Assembly.GetExecutingAssembly().GetName();
+            string sourceName = s_assemblyName.Name ?? DefaultSourceName;
+            string sourceVersion = s_assemblyName.Version?.ToString() ?? DefaultSourceVersion;
+            activitySourceName = sourceName;
+            activitySourceVersion = sourceVersion;
 
-            string? tracesExporter = Environment.GetEnvironmentVariable(OTelTracesExporter);
+            string? tracesExporter = Environment.GetEnvironmentVariable(TracesExporterEnvironment);
             return tracesExporter switch
             {
-                null or "" => (null, activitySourceName, activitySourceVersion),// Do not create a listener/exporter
-                "otlp" => (Sdk.CreateTracerProviderBuilder()
-                    .AddSource(activitySourceName)
+                null or "" => null,// Do not create a listener/exporter
+                AdbcOptions.Telemetry.Traces.Exporter.Otlp => Sdk.CreateTracerProviderBuilder()
+                    .AddSource(sourceName)
                     .ConfigureResource(resource =>
                         resource.AddService(
-                            serviceName: activitySourceName,
-                            serviceVersion: activitySourceVersion))
+                            serviceName: sourceName,
+                            serviceVersion: sourceVersion))
                     .AddOtlpExporter()
                     .Build(),
-                    activitySourceName,
-                    activitySourceVersion),
-                "console" => (Sdk.CreateTracerProviderBuilder()
-                    .AddSource(activitySourceName)
+                AdbcOptions.Telemetry.Traces.Exporter.Console => Sdk.CreateTracerProviderBuilder()
+                    .AddSource(sourceName)
                     .ConfigureResource(resource =>
                         resource.AddService(
-                            serviceName: activitySourceName,
-                            serviceVersion: activitySourceVersion))
+                            serviceName: sourceName,
+                            serviceVersion: sourceVersion))
                     .AddConsoleExporter()
                     .Build(),
-                    activitySourceName,
-                    activitySourceVersion),
-                "adbcfile" => (Sdk.CreateTracerProviderBuilder()
-                    .AddSource(activitySourceName)
+                AdbcOptions.Telemetry.Traces.Exporter.AdbcFile => Sdk.CreateTracerProviderBuilder()
+                    .AddSource(sourceName)
                     .ConfigureResource(resource =>
                         resource.AddService(
-                            serviceName: activitySourceName,
-                            serviceVersion: activitySourceVersion))
+                            serviceName: sourceName,
+                            serviceVersion: sourceVersion))
                     .AddAdbcFileExporter()
                     .Build(),
-                    activitySourceName,
-                    activitySourceVersion),
                 _ => throw new AdbcException(
-                        $"Unsupported {OTelTracesExporter} option: '{tracesExporter}'",
+                        $"Unsupported {TracesExporterEnvironment} option: '{tracesExporter}'",
                         AdbcStatusCode.InvalidArgument),
             };
-        }
-
-        public static ActivityTrace NewActivityTrace(string activitySourceName, IReadOnlyDictionary<string, string> parameters)
-        {
-            parameters.TryGetValue(AdbcOptions.Telemetry.TraceParent, out string? traceParent);
-            return new ActivityTrace(activitySourceName, traceParent);
         }
 
         private static void WriteTraceException(Exception exception, Activity? activity)

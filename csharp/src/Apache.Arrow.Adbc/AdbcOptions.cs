@@ -215,6 +215,18 @@ namespace Apache.Arrow.Adbc
             /// EXPERIMENTAL. Sets/Gets the trace parent on OpenTelemetry traces
             /// </summary>
             public const string TraceParent = "adbc.telemetry.trace_parent";
+
+            public static class Traces
+            {
+                public static class Exporter
+                {
+                    public const string Environment = "OTEL_TRACES_EXPORTER";
+
+                    public const string Otlp = "otlp";
+                    public const string Console = "console";
+                    public const string AdbcFile = "adbcfile";
+                }
+            }
         }
 
         public static string GetEnabled(bool value) => value ? Enabled : Disabled;

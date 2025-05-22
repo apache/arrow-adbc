@@ -36,7 +36,7 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal abstract class HiveServer2Connection : AdbcConnection
+    internal abstract class HiveServer2Connection : TracingConnection
     {
         internal const bool InfoVendorSql = true;
         internal const long BatchSizeDefault = 50000;
@@ -44,10 +44,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const int ConnectTimeoutMillisecondsDefault = 30000;
         private TTransport? _transport;
         private TCLIService.Client? _client;
-        private readonly TracerProvider? _tracerProvider;
-        private readonly string _activitySourceName;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
+        private bool _isDisposed;
 
         readonly AdbcInfoCode[] infoSupportedCodes = [
             AdbcInfoCode.DriverName,
@@ -273,11 +272,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
+            : base(properties)
         {
             Properties = properties;
-
-            (_tracerProvider, _activitySourceName, _) = ActivityTrace.InitTracerProvider(typeof(HiveServer2Connection));
-            ActivityTrace = ActivityTrace.NewActivityTrace(_activitySourceName, properties);
 
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
@@ -369,7 +366,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
-            return ActivityTrace.TraceActivity(activity =>
+            return Trace.TraceActivity(activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -702,18 +699,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            if (_client != null && SessionHandle != null)
+            if (!_isDisposed)
             {
-                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                TCloseSessionReq r6 = new(SessionHandle);
-                _client.CloseSession(r6, cancellationToken).Wait();
-                _transport?.Close();
-                _client.Dispose();
-                _transport = null;
-                _client = null;
+                if (disposing)
+                {
+                    if (_client != null && SessionHandle != null)
+                    {
+                        CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                        TCloseSessionReq r6 = new(SessionHandle);
+                        _client.CloseSession(r6, cancellationToken).Wait();
+                        _transport?.Close();
+                        _client.Dispose();
+                        _transport = null;
+                        _client = null;
+                    }
+                }
+                _isDisposed = true;
             }
+            base.Dispose(disposing);
         }
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
@@ -828,14 +833,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected abstract bool IsColumnSizeValidForDecimal { get; }
 
-        protected internal ActivityTrace ActivityTrace { get; }
-
         public override void SetOption(string key, string value)
         {
             switch (key.ToLowerInvariant())
             {
                 case AdbcOptions.Telemetry.TraceParent:
-                    ActivityTrace.TraceParent = string.IsNullOrEmpty(value) ? null : value;
+                    Trace.TraceParent = string.IsNullOrEmpty(value) ? null : value;
                     return;
             }
             if (SessionHandle != null)
@@ -947,7 +950,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task<TGetCatalogsResp> GetCatalogsAsync(CancellationToken cancellationToken)
         {
-            return await ActivityTrace.TraceActivityAsync(async activity =>
+            return await Trace.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -977,7 +980,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? schemaName,
             CancellationToken cancellationToken)
         {
-            return await ActivityTrace.TraceActivityAsync(async activity =>
+            return await Trace.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1017,7 +1020,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             List<string>? tableTypes,
             CancellationToken cancellationToken)
         {
-            return await ActivityTrace.TraceActivityAsync(async activity =>
+            return await Trace.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1065,7 +1068,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? columnName,
             CancellationToken cancellationToken)
         {
-            return await ActivityTrace.TraceActivityAsync(async activity =>
+            return await Trace.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1112,7 +1115,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? tableName,
             CancellationToken cancellationToken = default)
         {
-            return await ActivityTrace.TraceActivityAsync(async activity =>
+            return await Trace.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1158,7 +1161,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? foreignTableName,
             CancellationToken cancellationToken = default)
         {
-            return await ActivityTrace.TraceActivityAsync(async activity =>
+            return await Trace.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {

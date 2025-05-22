@@ -52,7 +52,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ValidateOptions(connection.Properties);
         }
 
-        protected ActivityTrace ActivityTrace => Connection.ActivityTrace;
+        protected internal ActivityTrace Trace => Connection.Trace;
 
         protected string? TraceParent { get; private set; } = null;
 
@@ -101,7 +101,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
         {
-            return await ActivityTrace.TraceActivityAsync(async activity =>
+            return await Trace.TraceActivityAsync(async activity =>
             {
                 if (IsMetadataCommand)
                 {
@@ -154,7 +154,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
         {
-            return await ActivityTrace.TraceActivityAsync(async activity =>
+            return await Trace.TraceActivityAsync(async activity =>
             {
                 long? affectedRows = null;
                 try
@@ -208,7 +208,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
-            return await ActivityTrace.TraceActivityAsync(async _ =>
+            return await Trace.TraceActivityAsync(async _ =>
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 try
@@ -284,7 +284,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
-            await ActivityTrace.TraceActivityAsync(async activity =>
+            await Trace.TraceActivityAsync(async activity =>
             {
                 if (Connection.SessionHandle == null)
                 {

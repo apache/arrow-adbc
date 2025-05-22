@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public Schema Schema { get { return schema; } }
 
-        protected ActivityTrace ActivityTrace => statement.Connection.ActivityTrace;
+        protected ActivityTrace Trace => statement.Trace;
 
         protected void StopOperationStatusPoller()
         {
