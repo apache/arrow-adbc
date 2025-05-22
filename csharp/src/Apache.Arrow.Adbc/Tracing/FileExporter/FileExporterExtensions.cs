@@ -32,13 +32,28 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
         /// The <see cref="TracerProviderBuilder"/> to add to.
         /// Ensure to call <see cref="TracerProviderBuilder.AddSource"/> before calling this method.
         /// </param>
+        /// <returns>The previous <see cref="TracerProviderBuilder"/> with the exporter added.</returns>
+        /// <remarks>
+        /// Note that only one global instance of the exporter is added.
+        /// If there is already an existing exporter for the same source and location, no new one is added.
+        /// </remarks>
+        public static TracerProviderBuilder AddAdbcFileExporter(this TracerProviderBuilder builder)
+            => builder.AddAdbcFileExporter(null, null);
+
+        /// <summary>
+        /// Adds an ADBC file exporter to listen for and write trace entries into files.
+        /// </summary>
+        /// <param name="builder">
+        /// The <see cref="TracerProviderBuilder"/> to add to.
+        /// Ensure to call <see cref="TracerProviderBuilder.AddSource"/> before calling this method.
+        /// </param>
         /// <param name="configure">The configuratio action to set the <see cref="FileExporterOptions"/> with.</param>
         /// <returns>The previous <see cref="TracerProviderBuilder"/> with the exporter added.</returns>
         /// <remarks>
         /// Note that only one global instance of the exporter is added.
         /// If there is already an existing exporter for the same source and location, no new one is added.
         /// </remarks>
-        public static TracerProviderBuilder AddAdbcFileExporter(this TracerProviderBuilder builder, Action<FileExporterOptions>? configure = default)
+        public static TracerProviderBuilder AddAdbcFileExporter(this TracerProviderBuilder builder, Action<FileExporterOptions>? configure)
            => builder.AddAdbcFileExporter(null, configure);
 
         /// <summary>
@@ -57,8 +72,8 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
         /// </remarks>
         public static TracerProviderBuilder AddAdbcFileExporter(
             this TracerProviderBuilder builder,
-            string? name = default,
-            Action<FileExporterOptions>? configure = default)
+            string? name,
+            Action<FileExporterOptions>? configure)
         {
             name ??= Options.DefaultName;
 

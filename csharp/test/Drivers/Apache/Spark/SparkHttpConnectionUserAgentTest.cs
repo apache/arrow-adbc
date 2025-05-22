@@ -17,9 +17,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Reflection;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Tracing;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark

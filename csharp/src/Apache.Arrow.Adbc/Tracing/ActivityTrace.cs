@@ -16,11 +16,16 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing.FileExporter;
+using OpenTelemetry;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -33,10 +38,11 @@ namespace Apache.Arrow.Adbc.Tracing
         private const string ProductVersionDefault = "1.0.0";
         private static readonly string s_assemblyVersion = GetProductVersion();
         private bool _disposedValue;
+        private const string OTelTracesExporter = "OTEL_TRACES_EXPORTER";
 
         /// <summary>
         /// Constructs a new <see cref="ActivityTrace"/> object. If <paramref name="activitySourceName"/> is set, it provides the
-        /// activity source name, otherwise the current assembly name is used as the acctivity source name.
+        /// activity source name, otherwise the current assembly name is used as the activity source name.
         /// </summary>
         /// <param name="activitySourceName"></param>
         public ActivityTrace(string? activitySourceName = default, string? traceParent = default)
@@ -300,6 +306,58 @@ namespace Apache.Arrow.Adbc.Tracing
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public static (TracerProvider?, string, string) InitTracerProvider(Type sourceType)
+        {
+            AssemblyName s_assemblyName = sourceType.Assembly.GetName();
+            string activitySourceName = s_assemblyName.Name!;
+            string activitySourceVersion = s_assemblyName.Version!.ToString();
+
+            string? tracesExporter = Environment.GetEnvironmentVariable(OTelTracesExporter);
+            return tracesExporter switch
+            {
+                null or "" => (null, activitySourceName, activitySourceVersion),// Do not create a listener/exporter
+                "otlp" => (Sdk.CreateTracerProviderBuilder()
+                    .AddSource(activitySourceName)
+                    .ConfigureResource(resource =>
+                        resource.AddService(
+                            serviceName: activitySourceName,
+                            serviceVersion: activitySourceVersion))
+                    .AddOtlpExporter()
+                    .Build(),
+                    activitySourceName,
+                    activitySourceVersion),
+                "console" => (Sdk.CreateTracerProviderBuilder()
+                    .AddSource(activitySourceName)
+                    .ConfigureResource(resource =>
+                        resource.AddService(
+                            serviceName: activitySourceName,
+                            serviceVersion: activitySourceVersion))
+                    .AddConsoleExporter()
+                    .Build(),
+                    activitySourceName,
+                    activitySourceVersion),
+                "adbcfile" => (Sdk.CreateTracerProviderBuilder()
+                    .AddSource(activitySourceName)
+                    .ConfigureResource(resource =>
+                        resource.AddService(
+                            serviceName: activitySourceName,
+                            serviceVersion: activitySourceVersion))
+                    .AddAdbcFileExporter()
+                    .Build(),
+                    activitySourceName,
+                    activitySourceVersion),
+                _ => throw new AdbcException(
+                        $"Unsupported {OTelTracesExporter} option: '{tracesExporter}'",
+                        AdbcStatusCode.InvalidArgument),
+            };
+        }
+
+        public static ActivityTrace NewActivityTrace(string activitySourceName, IReadOnlyDictionary<string, string> parameters)
+        {
+            parameters.TryGetValue(AdbcOptions.Telemetry.TraceParent, out string? traceParent);
+            return new ActivityTrace(activitySourceName, traceParent);
         }
 
         private static void WriteTraceException(Exception exception, Activity? activity)

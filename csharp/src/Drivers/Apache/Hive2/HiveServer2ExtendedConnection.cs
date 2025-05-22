@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using System;

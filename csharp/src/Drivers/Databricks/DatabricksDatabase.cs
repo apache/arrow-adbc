@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -32,6 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             this.properties = properties;
         }
+
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
             IReadOnlyDictionary<string, string> mergedProperties = options == null

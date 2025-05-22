@@ -28,6 +28,7 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -50,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
-        private const bool DefaultRetryOnUnavailable= true;
+        private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 500;
 
         // Default namespace
@@ -139,8 +140,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _defaultNamespace = new TNamespace
                 {
-                    CatalogName = defaultCatalog,
-                    SchemaName = defaultSchema
+                    CatalogName = defaultCatalog!,
+                    SchemaName = defaultSchema!,
                 };
             }
             else if (!string.IsNullOrEmpty(defaultSchema))
@@ -403,7 +404,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override void ValidateOptions()
         {
-             base.ValidateOptions();
+            base.ValidateOptions();
 
             if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetry, out string? tempUnavailableRetryStr))
             {
@@ -417,7 +418,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
 
-            if(Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
+            if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
             {
                 if (!int.TryParse(tempUnavailableRetryTimeoutStr, out int tempUnavailableRetryTimeoutValue) ||
                     tempUnavailableRetryTimeoutValue < 0)
