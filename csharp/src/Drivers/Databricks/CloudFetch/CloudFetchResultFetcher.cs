@@ -19,21 +19,27 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
-    /// Fetches result chunks from the Thrift server.
+    /// Fetches result chunks from the Thrift server and manages URL caching and refreshing.
     /// </summary>
-    internal sealed class CloudFetchResultFetcher : ICloudFetchResultFetcher
+    internal class CloudFetchResultFetcher : ICloudFetchResultFetcher
     {
         private readonly IHiveServer2Statement _statement;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
+        private readonly SemaphoreSlim _fetchLock = new SemaphoreSlim(1, 1);
+        private readonly ConcurrentDictionary<long, IDownloadResult> _urlsByOffset = new ConcurrentDictionary<long, IDownloadResult>();
+        private readonly int _expirationBufferSeconds;
+        private readonly IClock _clock;
         private long _startOffset;
+        private long _lastFetchedOffset = 0;
         private bool _hasMoreResults;
         private bool _isCompleted;
         private Task? _fetchTask;
@@ -47,19 +53,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// <param name="statement">The HiveServer2 statement interface.</param>
         /// <param name="memoryManager">The memory buffer manager.</param>
         /// <param name="downloadQueue">The queue to add download tasks to.</param>
-        /// <param name="prefetchCount">The number of result chunks to prefetch.</param>
+        /// <param name="batchSize">The number of rows to fetch in each batch.</param>
+        /// <param name="expirationBufferSeconds">Buffer time in seconds before URL expiration to trigger refresh.</param>
+        /// <param name="clock">Clock implementation for time operations. If null, uses system clock.</param>
         public CloudFetchResultFetcher(
             IHiveServer2Statement statement,
             ICloudFetchMemoryBufferManager memoryManager,
             BlockingCollection<IDownloadResult> downloadQueue,
-            long batchSize)
+            long batchSize,
+            int expirationBufferSeconds = 60,
+            IClock? clock = null)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _memoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
             _downloadQueue = downloadQueue ?? throw new ArgumentNullException(nameof(downloadQueue));
+            _batchSize = batchSize;
+            _expirationBufferSeconds = expirationBufferSeconds;
+            _clock = clock ?? new SystemClock();
             _hasMoreResults = true;
             _isCompleted = false;
-            _batchSize = batchSize;
         }
 
         /// <inheritdoc />
@@ -84,9 +96,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
             // Reset state
             _startOffset = 0;
+            _lastFetchedOffset = 0;
             _hasMoreResults = true;
             _isCompleted = false;
             _error = null;
+            _urlsByOffset.Clear();
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _fetchTask = FetchResultsAsync(_cancellationTokenSource.Token);
@@ -124,6 +138,75 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 _fetchTask = null;
             }
         }
+        /// <inheritdoc />
+        public async Task<TSparkArrowResultLink?> GetUrlAsync(long offset, CancellationToken cancellationToken)
+        {
+            // Check if we have a non-expired URL in the cache
+            if (_urlsByOffset.TryGetValue(offset, out var cachedResult) && !cachedResult.IsExpiredOrExpiringSoon(_expirationBufferSeconds))
+            {
+                return cachedResult.Link;
+            }
+
+            // Need to fetch or refresh the URL
+            await _fetchLock.WaitAsync(cancellationToken);
+            try
+            {
+                // Create fetch request for the specific offset
+                TFetchResultsReq request = new TFetchResultsReq(
+                    _statement.OperationHandle!,
+                    TFetchOrientation.FETCH_NEXT,
+                    1);
+
+                request.StartRowOffset = offset;
+
+                // Fetch results
+                TFetchResultsResp response = await _statement.Client.FetchResults(request, cancellationToken);
+
+                // Process the results
+                if (response.Status.StatusCode == TStatusCode.SUCCESS_STATUS &&
+                    response.Results.__isset.resultLinks &&
+                    response.Results.ResultLinks != null &&
+                    response.Results.ResultLinks.Count > 0)
+                {
+                    var refreshedLink = response.Results.ResultLinks.FirstOrDefault(l => l.StartRowOffset == offset);
+                    if (refreshedLink != null)
+                    {
+                        Trace.TraceInformation($"Successfully fetched URL for offset {offset}");
+                        
+                        // Create a download result for the refreshed link
+                        var downloadResult = new DownloadResult(refreshedLink, _memoryManager);
+                        _urlsByOffset[offset] = downloadResult;
+                        
+                        return refreshedLink;
+                    }
+                }
+
+                Trace.TraceWarning($"Failed to fetch URL for offset {offset}");
+                return null;
+            }
+            finally
+            {
+                _fetchLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Gets all currently cached URLs.
+        /// </summary>
+        /// <returns>A dictionary mapping offsets to their URL links.</returns>
+        public Dictionary<long, TSparkArrowResultLink> GetAllCachedUrls()
+        {
+            return _urlsByOffset.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Link);
+        }
+
+        /// <summary>
+        /// Clears all cached URLs.
+        /// </summary>
+        public void ClearCache()
+        {
+            _urlsByOffset.Clear();
+            _lastFetchedOffset = 0;
+        }
 
         private async Task FetchResultsAsync(CancellationToken cancellationToken)
         {
@@ -143,7 +226,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                     try
                     {
                         // Fetch more results from the server
-                        await FetchNextResultBatchAsync(cancellationToken).ConfigureAwait(false);
+                        await FetchNextResultBatchAsync(null, cancellationToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
@@ -155,7 +238,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                         Debug.WriteLine($"Error fetching results: {ex.Message}");
                         _error = ex;
                         _hasMoreResults = false;
-                        break;
+                        throw;
                     }
                 }
 
@@ -182,15 +265,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             }
         }
 
-        private async Task FetchNextResultBatchAsync(CancellationToken cancellationToken)
+        private async Task FetchNextResultBatchAsync(long? offset, CancellationToken cancellationToken)
         {
             // Create fetch request
             TFetchResultsReq request = new TFetchResultsReq(_statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
 
-            // Set the start row offset if we have processed some links already
-            if (_startOffset > 0)
+            // Set the start row offset
+            long startOffset = offset ?? _startOffset;
+            if (startOffset > 0)
             {
-                request.StartRowOffset = _startOffset;
+                request.StartRowOffset = startOffset;
             }
 
             // Fetch results
@@ -212,19 +296,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 response.Results.ResultLinks.Count > 0)
             {
                 List<TSparkArrowResultLink> resultLinks = response.Results.ResultLinks;
+                long maxOffset = 0;
 
-                // Add each link to the download queue
+                // Process each link
                 foreach (var link in resultLinks)
                 {
+                    // Create download result
                     var downloadResult = new DownloadResult(link, _memoryManager);
+                    
+                    // Add to download queue and cache
                     _downloadQueue.Add(downloadResult, cancellationToken);
+                    _urlsByOffset[link.StartRowOffset] = downloadResult;
+                    
+                    // Track the maximum offset for future fetches
+                    long endOffset = link.StartRowOffset + link.RowCount;
+                    maxOffset = Math.Max(maxOffset, endOffset);
                 }
 
                 // Update the start offset for the next fetch
-                if (resultLinks.Count > 0)
+                if (!offset.HasValue)  // Only update if this was a sequential fetch
                 {
-                    var lastLink = resultLinks[resultLinks.Count - 1];
-                    _startOffset = lastLink.StartRowOffset + lastLink.RowCount;
+                    _startOffset = maxOffset;
+                    _lastFetchedOffset = maxOffset;
                 }
 
                 // Update whether there are more results
@@ -240,20 +333,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private void ProcessDirectResultsAsync(CancellationToken cancellationToken)
         {
             List<TSparkArrowResultLink> resultLinks = _statement.DirectResults!.ResultSet.Results.ResultLinks;
+            long maxOffset = 0;
 
+            // Process each link
             foreach (var link in resultLinks)
             {
+                // Create download result
                 var downloadResult = new DownloadResult(link, _memoryManager);
+                
+                // Add to download queue and cache
                 _downloadQueue.Add(downloadResult, cancellationToken);
+                _urlsByOffset[link.StartRowOffset] = downloadResult;
+                
+                // Track the maximum offset for future fetches
+                long endOffset = link.StartRowOffset + link.RowCount;
+                maxOffset = Math.Max(maxOffset, endOffset);
             }
 
             // Update the start offset for the next fetch
-            if (resultLinks.Count > 0)
-            {
-                var lastLink = resultLinks[resultLinks.Count - 1];
-                _startOffset = lastLink.StartRowOffset + lastLink.RowCount;
-            }
+            _startOffset = maxOffset;
+            _lastFetchedOffset = maxOffset;
 
+            // Update whether there are more results
             _hasMoreResults = _statement.DirectResults!.ResultSet.HasMoreRows;
         }
     }

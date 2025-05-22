@@ -24,7 +24,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using K4os.Compression.LZ4.Streams;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
     /// Downloads files from URLs.
@@ -35,10 +35,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private readonly BlockingCollection<IDownloadResult> _resultQueue;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
         private readonly HttpClient _httpClient;
+        private readonly ICloudFetchResultFetcher _resultFetcher;
         private readonly int _maxParallelDownloads;
         private readonly bool _isLz4Compressed;
         private readonly int _maxRetries;
         private readonly int _retryDelayMs;
+        private readonly int _maxUrlRefreshAttempts;
+        private readonly int _urlExpirationBufferSeconds;
         private readonly SemaphoreSlim _downloadSemaphore;
         private Task? _downloadTask;
         private CancellationTokenSource? _cancellationTokenSource;
@@ -53,29 +56,37 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// <param name="resultQueue">The queue to add completed downloads to.</param>
         /// <param name="memoryManager">The memory buffer manager.</param>
         /// <param name="httpClient">The HTTP client to use for downloads.</param>
+        /// <param name="resultFetcher">The result fetcher that manages URLs.</param>
         /// <param name="maxParallelDownloads">The maximum number of parallel downloads.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        /// <param name="logger">The logger instance.</param>
         /// <param name="maxRetries">The maximum number of retry attempts.</param>
         /// <param name="retryDelayMs">The delay between retry attempts in milliseconds.</param>
+        /// <param name="maxUrlRefreshAttempts">The maximum number of URL refresh attempts.</param>
+        /// <param name="urlExpirationBufferSeconds">Buffer time in seconds before URL expiration to trigger refresh.</param>
         public CloudFetchDownloader(
             BlockingCollection<IDownloadResult> downloadQueue,
             BlockingCollection<IDownloadResult> resultQueue,
             ICloudFetchMemoryBufferManager memoryManager,
             HttpClient httpClient,
+            ICloudFetchResultFetcher resultFetcher,
             int maxParallelDownloads,
             bool isLz4Compressed,
             int maxRetries = 3,
-            int retryDelayMs = 500)
+            int retryDelayMs = 500,
+            int maxUrlRefreshAttempts = 3,
+            int urlExpirationBufferSeconds = 60)
         {
             _downloadQueue = downloadQueue ?? throw new ArgumentNullException(nameof(downloadQueue));
             _resultQueue = resultQueue ?? throw new ArgumentNullException(nameof(resultQueue));
             _memoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _resultFetcher = resultFetcher ?? throw new ArgumentNullException(nameof(resultFetcher));
             _maxParallelDownloads = maxParallelDownloads > 0 ? maxParallelDownloads : throw new ArgumentOutOfRangeException(nameof(maxParallelDownloads));
             _isLz4Compressed = isLz4Compressed;
             _maxRetries = maxRetries > 0 ? maxRetries : throw new ArgumentOutOfRangeException(nameof(maxRetries));
             _retryDelayMs = retryDelayMs > 0 ? retryDelayMs : throw new ArgumentOutOfRangeException(nameof(retryDelayMs));
+            _maxUrlRefreshAttempts = maxUrlRefreshAttempts > 0 ? maxUrlRefreshAttempts : throw new ArgumentOutOfRangeException(nameof(maxUrlRefreshAttempts));
+            _urlExpirationBufferSeconds = urlExpirationBufferSeconds > 0 ? urlExpirationBufferSeconds : throw new ArgumentOutOfRangeException(nameof(urlExpirationBufferSeconds));
             _downloadSemaphore = new SemaphoreSlim(_maxParallelDownloads, _maxParallelDownloads);
             _isCompleted = false;
         }
@@ -237,6 +248,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                         break;
                     }
 
+                    // Check if the URL is expired or about to expire
+                    if (downloadResult.IsExpiredOrExpiringSoon(_urlExpirationBufferSeconds))
+                    {
+                        // Get a refreshed URL before starting the download
+                        var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
+                        if (refreshedLink != null)
+                        {
+                            // Update the download result with the refreshed link
+                            downloadResult.UpdateWithRefreshedLink(refreshedLink);
+                            Trace.TraceInformation($"Updated URL for file at offset {refreshedLink.StartRowOffset} before download");
+                        }
+                    }
+
                     // Acquire a download slot
                     await _downloadSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
@@ -340,6 +364,37 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                         url,
                         HttpCompletionOption.ResponseHeadersRead,
                         cancellationToken).ConfigureAwait(false);
+
+                    // Check if the response indicates an expired URL (typically 403 or 401)
+                    if (response.StatusCode == System.Net.HttpStatusCode.Forbidden ||
+                        response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        // If we've already tried refreshing too many times, fail
+                        if (downloadResult.RefreshAttempts >= _maxUrlRefreshAttempts)
+                        {
+                            throw new InvalidOperationException($"Failed to download file after {downloadResult.RefreshAttempts} URL refresh attempts.");
+                        }
+
+                        // Try to refresh the URL
+                        var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
+                        if (refreshedLink != null)
+                        {
+                            // Update the download result with the refreshed link
+                            downloadResult.UpdateWithRefreshedLink(refreshedLink);
+                            url = refreshedLink.FileLink;
+                            sanitizedUrl = SanitizeUrl(url);
+
+                            Trace.TraceInformation($"URL for file at offset {refreshedLink.StartRowOffset} was refreshed after expired URL response");
+
+                            // Continue to the next retry attempt with the refreshed URL
+                            continue;
+                        }
+                        else
+                        {
+                            // If refresh failed, throw an exception
+                            throw new InvalidOperationException("Failed to refresh expired URL.");
+                        }
+                    }
 
                     response.EnsureSuccessStatusCode();
 
