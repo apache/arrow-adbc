@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 if (!statement.DirectResults.ResultSet.HasMoreRows)
                 {
-                    this.statement = null;
+                    this.hasNoMoreRows = true;
                     return;
                 }
             }
@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 this.batches = null;
                 this.index = 0;
 
-                if (this.statement == null)
+                if (this.hasNoMoreRows)
                 {
                     StopOperationStatusPoller();
                     return null;
@@ -83,10 +83,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // Make sure we get the arrowBatches
                 this.batches = response.Results.ArrowBatches;
 
-                if (!response.HasMoreRows)
-                {
-                    this.statement = null;
-                }
+                this.hasNoMoreRows = !response.HasMoreRows;
             }
         }
 

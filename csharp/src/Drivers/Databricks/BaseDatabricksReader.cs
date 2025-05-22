@@ -33,6 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected readonly Schema schema;
         protected readonly bool isLz4Compressed;
         protected DatabricksOperationStatusPoller? operationStatusPoller;
+        protected bool hasNoMoreRows = false;
         private bool isDisposed;
 
         protected BaseDatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
