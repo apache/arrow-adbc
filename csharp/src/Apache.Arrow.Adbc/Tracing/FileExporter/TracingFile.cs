@@ -107,8 +107,7 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
                     {
                         await stream.CopyToAsync(fileStream);
 
-                        _currentTraceFileInfo.Refresh();
-                        if (_currentTraceFileInfo.Length >= _maxFileSizeKb * 1024)
+                        if (fileStream.Length >= _maxFileSizeKb * 1024)
                         {
                             hasMoreData = true;
                             newFileRequired = true;
