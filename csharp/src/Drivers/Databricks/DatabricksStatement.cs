@@ -16,6 +16,8 @@
 */
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
@@ -26,11 +28,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// <summary>
     /// Databricks-specific implementation of <see cref="AdbcStatement"/>
     /// </summary>
-    internal class DatabricksStatement : SparkStatement, IHiveServer2Statement
+    internal class DatabricksStatement : SparkStatement, IHiveServer2Statement, IDisposable
     {
         private bool useCloudFetch;
         private bool canDecompressLz4;
         private long maxBytesPerFile;
+
+        // Semaphore lock to ensure that polling and fetching results do not both use transport at the same time
+        private readonly SemaphoreSlim _clientSemaphore = new SemaphoreSlim(1, 1);
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -69,6 +74,58 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         // Cast the Client to IAsync for CloudFetch compatibility
         TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
+
+        /// <summary>
+        /// Executes a client operation in a thread-safe manner.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the result.</typeparam>
+        /// <param name="operation">The operation to execute.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation with the result.</returns>
+        public async Task<TResult> ExecuteClientOperationAsync<TResult>(
+            Func<TCLIService.IAsync, CancellationToken, Task<TResult>> operation,
+            CancellationToken cancellationToken)
+        {
+            await _clientSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await operation(Connection.Client, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _clientSemaphore.Release();
+            }
+        }
+
+        /// <summary>
+        /// Gets the operation status in a thread-safe manner.
+        /// </summary>
+        /// <param name="request">The get operation status request.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation with the result.</returns>
+        public Task<TGetOperationStatusResp> GetOperationStatusAsync(
+            TGetOperationStatusReq request,
+            CancellationToken cancellationToken)
+        {
+            return ExecuteClientOperationAsync(
+                (client, token) => client.GetOperationStatus(request, token),
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Fetches results in a thread-safe manner.
+        /// </summary>
+        /// <param name="request">The fetch results request.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation with the result.</returns>
+        public Task<TFetchResultsResp> FetchResultsAsync(
+            TFetchResultsReq request,
+            CancellationToken cancellationToken)
+        {
+            return ExecuteClientOperationAsync(
+                (client, token) => client.FetchResults(request, token),
+                cancellationToken);
+        }
 
         public override void SetOption(string key, string value)
         {
@@ -150,6 +207,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal void SetMaxBytesPerFile(long maxBytesPerFile)
         {
             this.maxBytesPerFile = maxBytesPerFile;
+        }
+
+        /// <summary>
+        /// Disposes the resources used by the statement.
+        /// </summary>
+        public override void Dispose()
+        {
+            _clientSemaphore.Dispose();
+            base.Dispose();
         }
     }
 }

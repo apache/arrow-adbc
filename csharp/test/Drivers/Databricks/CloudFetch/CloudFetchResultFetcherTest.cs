@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Xunit;
@@ -45,11 +46,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
         public async Task StartAsync_CalledTwice_ThrowsException()
         {
             // Arrange
-            var mockClient = new Mock<TCLIService.IAsync>();
+            var mockClient = new Mock<TCLIService.Client>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
 
-            var mockStatement = new Mock<IHiveServer2Statement>();
+            var mockStatement = new Mock<DatabricksStatement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
@@ -78,11 +79,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 CreateTestResultLink(200, 100, "http://test.com/file3")
             };
 
-            var mockClient = new Mock<TCLIService.IAsync>();
+            var mockClient = new Mock<TCLIService.Client>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateFetchResultsResponse(resultLinks, false));
 
-            var mockStatement = new Mock<IHiveServer2Statement>();
+            var mockStatement = new Mock<DatabricksStatement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
@@ -152,12 +153,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 CreateTestResultLink(300, 100, "http://test.com/file4")
             };
 
-            var mockClient = new Mock<TCLIService.IAsync>();
+            var mockClient = new Mock<TCLIService.Client>();
             mockClient.SetupSequence(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateFetchResultsResponse(firstBatchLinks, true))
                 .ReturnsAsync(CreateFetchResultsResponse(secondBatchLinks, false));
 
-            var mockStatement = new Mock<IHiveServer2Statement>();
+            var mockStatement = new Mock<DatabricksStatement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
@@ -206,11 +207,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
         public async Task FetchResultsAsync_WithEmptyResults_CompletesGracefully()
         {
             // Arrange
-            var mockClient = new Mock<TCLIService.IAsync>();
+            var mockClient = new Mock<TCLIService.Client>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
 
-            var mockStatement = new Mock<IHiveServer2Statement>();
+            var mockStatement = new Mock<DatabricksStatement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
@@ -251,11 +252,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
         public async Task FetchResultsAsync_WithServerError_SetsErrorState()
         {
             // Arrange
-            var mockClient = new Mock<TCLIService.IAsync>();
+            var mockClient = new Mock<TCLIService.Client>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Test server error"));
 
-            var mockStatement = new Mock<IHiveServer2Statement>();
+            var mockStatement = new Mock<DatabricksStatement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 
@@ -295,7 +296,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             var fetchStarted = new TaskCompletionSource<bool>();
             var fetchCancelled = new TaskCompletionSource<bool>();
 
-            var mockClient = new Mock<TCLIService.IAsync>();
+            var mockClient = new Mock<TCLIService.Client>();
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .Returns(async (TFetchResultsReq req, CancellationToken token) =>
                 {
@@ -316,7 +317,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                     return CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false);
                 });
 
-            var mockStatement = new Mock<IHiveServer2Statement>();
+            var mockStatement = new Mock<DatabricksStatement>();
             mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
             mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
 

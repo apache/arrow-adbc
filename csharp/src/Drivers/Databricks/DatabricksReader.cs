@@ -78,7 +78,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
 
                 TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
-                TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
+                TFetchResultsResp response = await this.statement.FetchResultsAsync(request, cancellationToken);
 
                 // Make sure we get the arrowBatches
                 this.batches = response.Results.ArrowBatches;
