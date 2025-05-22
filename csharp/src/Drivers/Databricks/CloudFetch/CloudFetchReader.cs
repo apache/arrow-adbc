@@ -16,14 +16,15 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tracing;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Ipc;
+using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
@@ -31,16 +32,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
     /// Reader for CloudFetch results from Databricks Spark Thrift server.
     /// Handles downloading and processing URL-based result sets.
     /// </summary>
-    internal sealed class CloudFetchReader : IArrowArrayStream
+    internal sealed class CloudFetchReader : BaseDatabricksReader
     {
-        private readonly Schema schema;
-        private readonly bool isLz4Compressed;
         private ICloudFetchDownloadManager? downloadManager;
         private ArrowStreamReader? currentReader;
         private IDownloadResult? currentDownloadResult;
         private bool isPrefetchEnabled;
-        private bool isDisposed;
-        private HiveServer2Statement statement;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchReader"/> class.
@@ -49,56 +46,44 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
         public CloudFetchReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, HttpClient httpClient)
+            : base(statement, schema, isLz4Compressed)
         {
-            this.schema = schema;
-            this.isLz4Compressed = isLz4Compressed;
-            this.statement = statement;
-            ActivityTrace.TraceActivity(activity =>
+            // Check if prefetch is enabled
+            var connectionProps = statement.Connection.Properties;
+            isPrefetchEnabled = true; // Default to true
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchPrefetchEnabled, out string? prefetchEnabledStr))
             {
-                // Check if prefetch is enabled
-                var connectionProps = statement.Connection.Properties;
-                isPrefetchEnabled = true; // Default to true
-                if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchPrefetchEnabled, out string? prefetchEnabledStr))
+                if (bool.TryParse(prefetchEnabledStr, out bool parsedPrefetchEnabled))
                 {
-                    if (bool.TryParse(prefetchEnabledStr, out bool parsedPrefetchEnabled))
-                    {
-                        isPrefetchEnabled = parsedPrefetchEnabled;
-                    }
-                    else
-                    {
-                        throw new ArgumentException($"Invalid value for {DatabricksParameters.CloudFetchPrefetchEnabled}: {prefetchEnabledStr}. Expected a boolean value.");
-                    }
-                }
-
-                // Initialize the download manager
-                if (isPrefetchEnabled)
-                {
-                    downloadManager = new CloudFetchDownloadManager(statement, schema, isLz4Compressed, httpClient);
-                    downloadManager.StartAsync().Wait();
+                    isPrefetchEnabled = parsedPrefetchEnabled;
                 }
                 else
                 {
-                    // For now, we only support the prefetch implementation
-                    // This flag is reserved for future use if we need to support a non-prefetch mode
-                    downloadManager = new CloudFetchDownloadManager(statement, schema, isLz4Compressed, httpClient);
-                    downloadManager.StartAsync().Wait();
+                    throw new ArgumentException($"Invalid value for {DatabricksParameters.CloudFetchPrefetchEnabled}: {prefetchEnabledStr}. Expected a boolean value.");
                 }
-            });
+            }
+
+            // Initialize the download manager
+            if (isPrefetchEnabled)
+            {
+                downloadManager = new CloudFetchDownloadManager(statement, schema, isLz4Compressed, httpClient);
+                downloadManager.StartAsync().Wait();
+            }
+            else
+            {
+                // For now, we only support the prefetch implementation
+                // This flag is reserved for future use if we need to support a non-prefetch mode
+                downloadManager = new CloudFetchDownloadManager(statement, schema, isLz4Compressed, httpClient);
+                downloadManager.StartAsync().Wait();
+            }
         }
-
-        private ActivityTrace ActivityTrace => this.statement.Connection.ActivityTrace;
-
-        /// <summary>
-        /// Gets the Arrow schema.
-        /// </summary>
-        public Schema Schema { get { return schema; } }
 
         /// <summary>
         /// Reads the next record batch from the result set.
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The next record batch, or null if there are no more batches.</returns>
-        public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             return await ActivityTrace.TraceActivityAsync(async activity =>
             {
@@ -172,22 +157,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                         }
                     }
 
+                    StopOperationStatusPoller();
                     // If we get here, there are no more files
                     return null;
                 }
             });
         }
 
-        /// <summary>
-        /// Disposes the reader.
-        /// </summary>
-        public void Dispose()
+        protected override void DisposeResources()
         {
-            if (isDisposed)
-            {
-                return;
-            }
-
             if (this.currentReader != null)
             {
                 this.currentReader.Dispose();
@@ -203,16 +181,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             if (this.downloadManager != null)
             {
                 this.downloadManager.Dispose();
-            }
-
-            isDisposed = true;
-        }
-
-        private void ThrowIfDisposed()
-        {
-            if (isDisposed)
-            {
-                throw new ObjectDisposedException(nameof(CloudFetchReader));
+                this.downloadManager = null;
             }
         }
     }

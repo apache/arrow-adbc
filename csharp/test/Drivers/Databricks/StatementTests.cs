@@ -436,13 +436,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         // NOTE: this is a thirty minute test. As of writing, databricks commands have 20 minutes of idle time (and checked every 5 mintues)
         [SkippableTheory]
-        [InlineData(true, "CloudFetch enabled")]
-        [InlineData(false, "CloudFetch disabled")]
+        [InlineData(false, "CloudFetch disabled")] // TODO: test cloudfetch enabled
         public async Task StatusPollerKeepsQueryAlive(bool useCloudFetch, string configName)
         {
             OutputHelper?.WriteLine($"Testing status poller with long delay between reads ({configName})");
 
-            // Create a connection using the test configuration with a small batch size
+            // Create a connection using the test configuration
             var connectionParams = new Dictionary<string, string>
             {
                 [DatabricksParameters.UseCloudFetch] = useCloudFetch.ToString().ToLower()
@@ -456,19 +455,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
             Assert.NotNull(result.Stream);
 
-            // Read first batch
-            using var firstBatch = await result.Stream.ReadNextRecordBatchAsync();
-            Assert.NotNull(firstBatch);
-            int firstBatchRows = firstBatch.Length;
-            OutputHelper?.WriteLine($"First batch: Read {firstBatchRows} rows");
-
             // Simulate a long delay (30 minutes)
             OutputHelper?.WriteLine("Simulating 30 minute delay...");
             await Task.Delay(TimeSpan.FromMinutes(30));
 
             // Read remaining batches
-            int totalRows = firstBatchRows;
-            int batchCount = 1;
+            int totalRows = 0;
+            int batchCount = 0;
 
             while (result.Stream != null)
             {

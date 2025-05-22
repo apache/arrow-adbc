@@ -87,6 +87,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
+        public void Stop()
+        {
+            _internalCts?.Cancel();
+        }
+
         public void Dispose()
         {
             if (_internalCts != null)
