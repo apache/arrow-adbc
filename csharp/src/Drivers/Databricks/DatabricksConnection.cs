@@ -30,6 +30,9 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift.Protocol;
+using Thrift.Transport;
+using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -466,6 +469,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
             return base.GetAuthenticationHeaderValue(authType);
+        }
+
+        /// <summary>
+        /// Gets a fresh Thrift client for fetching results.
+        /// This helps avoid "stream already consumed" errors when a Thrift transport has already been used.
+        /// </summary>
+        /// <returns>A fresh Thrift client instance.</returns>
+        internal TCLIService.IAsync GetFreshClient()
+        {
+            // Create a new transport and protocol
+            TTransport transport = CreateTransport();
+            TProtocol protocol = new TBinaryProtocol(transport);
+
+            // Open the transport synchronously to make it available immediately
+            if (!transport.IsOpen)
+            {
+                transport.OpenAsync().GetAwaiter().GetResult();
+            }
+
+            // Return a new client that uses the fresh transport
+            return new TCLIService.Client(protocol);
         }
 
         protected override void ValidateOAuthParameters()

@@ -20,7 +20,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
     /// Represents a downloaded result file with its associated metadata.
@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         }
 
         /// <inheritdoc />
-        public TSparkArrowResultLink Link { get; }
+        public TSparkArrowResultLink Link { get; private set; }
 
         /// <inheritdoc />
         public Stream DataStream
@@ -71,6 +71,36 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
         /// <inheritdoc />
         public bool IsCompleted => _downloadCompletionSource.Task.IsCompleted && !_downloadCompletionSource.Task.IsFaulted;
+
+        /// <summary>
+        /// Gets the number of URL refresh attempts for this download.
+        /// </summary>
+        public int RefreshAttempts { get; private set; } = 0;
+
+        /// <summary>
+        /// Checks if the URL is expired or about to expire.
+        /// </summary>
+        /// <param name="expirationBufferSeconds">Buffer time in seconds before expiration to consider a URL as expiring soon.</param>
+        /// <returns>True if the URL is expired or about to expire, false otherwise.</returns>
+        public bool IsExpiredOrExpiringSoon(int expirationBufferSeconds = 60)
+        {
+            // Convert expiry time to DateTime
+            var expiryTime = DateTimeOffset.FromUnixTimeMilliseconds(Link.ExpiryTime).UtcDateTime;
+
+            // Check if the URL is already expired or will expire soon
+            return DateTime.UtcNow.AddSeconds(expirationBufferSeconds) >= expiryTime;
+        }
+
+        /// <summary>
+        /// Updates this download result with a refreshed link.
+        /// </summary>
+        /// <param name="refreshedLink">The refreshed link information.</param>
+        public void UpdateWithRefreshedLink(TSparkArrowResultLink refreshedLink)
+        {
+            ThrowIfDisposed();
+            Link = refreshedLink ?? throw new ArgumentNullException(nameof(refreshedLink));
+            RefreshAttempts++;
+        }
 
         /// <inheritdoc />
         public void SetCompleted(Stream dataStream, long size)

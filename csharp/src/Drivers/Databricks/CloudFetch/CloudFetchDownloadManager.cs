@@ -22,9 +22,8 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Databricks;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
     /// Manages the CloudFetch download pipeline.
@@ -38,6 +37,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private const bool DefaultPrefetchEnabled = true;
         private const int DefaultFetchBatchSize = 2000000;
         private const int DefaultTimeoutMinutes = 5;
+        private const int DefaultMaxUrlRefreshAttempts = 3;
+        private const int DefaultUrlExpirationBufferSeconds = 60;
 
         private readonly DatabricksStatement _statement;
         private readonly Schema _schema;
@@ -45,6 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
         private readonly BlockingCollection<IDownloadResult> _resultQueue;
+        private readonly CloudFetchUrlManager _urlManager;
         private readonly ICloudFetchResultFetcher _resultFetcher;
         private readonly ICloudFetchDownloader _downloader;
         private readonly HttpClient _httpClient;
@@ -151,6 +153,34 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 }
             }
 
+            // Parse URL expiration buffer seconds
+            int urlExpirationBufferSeconds = DefaultUrlExpirationBufferSeconds;
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchUrlExpirationBufferSeconds, out string? urlExpirationBufferStr))
+            {
+                if (int.TryParse(urlExpirationBufferStr, out int parsedUrlExpirationBuffer) && parsedUrlExpirationBuffer > 0)
+                {
+                    urlExpirationBufferSeconds = parsedUrlExpirationBuffer;
+                }
+                else
+                {
+                    throw new ArgumentException($"Invalid value for {DatabricksParameters.CloudFetchUrlExpirationBufferSeconds}: {urlExpirationBufferStr}. Expected a positive integer.");
+                }
+            }
+
+            // Parse max URL refresh attempts
+            int maxUrlRefreshAttempts = DefaultMaxUrlRefreshAttempts;
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchMaxUrlRefreshAttempts, out string? maxUrlRefreshAttemptsStr))
+            {
+                if (int.TryParse(maxUrlRefreshAttemptsStr, out int parsedMaxUrlRefreshAttempts) && parsedMaxUrlRefreshAttempts > 0)
+                {
+                    maxUrlRefreshAttempts = parsedMaxUrlRefreshAttempts;
+                }
+                else
+                {
+                    throw new ArgumentException($"Invalid value for {DatabricksParameters.CloudFetchMaxUrlRefreshAttempts}: {maxUrlRefreshAttemptsStr}. Expected a positive integer.");
+                }
+            }
+
             // Initialize the memory manager
             _memoryManager = new CloudFetchMemoryBufferManager(memoryBufferSizeMB);
 
@@ -160,6 +190,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
 
             _httpClient = httpClient;
             _httpClient.Timeout = TimeSpan.FromMinutes(timeoutMinutes);
+
+            // Initialize the URL manager
+            _urlManager = new CloudFetchUrlManager(_statement, urlExpirationBufferSeconds);
 
             // Initialize the result fetcher
             _resultFetcher = new CloudFetchResultFetcher(
@@ -174,10 +207,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                 _resultQueue,
                 _memoryManager,
                 _httpClient,
+                _urlManager,
                 parallelDownloads,
                 _isLz4Compressed,
                 maxRetries,
-                retryDelayMs);
+                retryDelayMs,
+                maxUrlRefreshAttempts,
+                urlExpirationBufferSeconds);
         }
 
         /// <summary>
@@ -206,6 +242,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             _memoryManager = new CloudFetchMemoryBufferManager(DefaultMemoryBufferSizeMB);
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
             _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
+            _urlManager = new CloudFetchUrlManager(_statement);
             _httpClient = new HttpClient();
         }
 

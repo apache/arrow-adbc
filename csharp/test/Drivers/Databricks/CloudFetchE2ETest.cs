@@ -53,6 +53,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             yield return new object[] { largeQuery, 1000000, false, false };
         }
 
+        [Fact]
+        public async Task SingleTest()
+        {
+            await TestRealDatabricksCloudFetch("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000, true, true);
+        }
+
         /// <summary>
         /// Integration test for running queries against a real Databricks cluster with different CloudFetch settings.
         /// </summary>
@@ -65,7 +71,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 [DatabricksParameters.UseCloudFetch] = useCloudFetch.ToString(),
                 [DatabricksParameters.EnableDirectResults] = enableDirectResults.ToString(),
                 [DatabricksParameters.CanDecompressLz4] = "true",
-                [DatabricksParameters.MaxBytesPerFile] = "10485760" // 10MB
+                [DatabricksParameters.MaxBytesPerFile] = "10485760", // 10MB
+                [DatabricksParameters.CloudFetchUrlExpirationBufferSeconds] = (15 * 60 - 2).ToString(),
             });
 
             // Execute a query that generates a large result set using range function

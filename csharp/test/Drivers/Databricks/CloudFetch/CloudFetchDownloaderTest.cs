@@ -24,25 +24,29 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Moq.Protected;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 {
     public class CloudFetchDownloaderTest
     {
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
         private readonly BlockingCollection<IDownloadResult> _resultQueue;
         private readonly Mock<ICloudFetchMemoryBufferManager> _mockMemoryManager;
+        private readonly Mock<IHiveServer2Statement> _mockStatement;
+        private readonly CloudFetchUrlManager _urlManager;
 
         public CloudFetchDownloaderTest()
         {
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
             _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
             _mockMemoryManager = new Mock<ICloudFetchMemoryBufferManager>();
+            _mockStatement = new Mock<IHiveServer2Statement>();
+            _urlManager = new CloudFetchUrlManager(_mockStatement.Object);
 
             // Set up memory manager defaults
             _mockMemoryManager.Setup(m => m.TryAcquireMemory(It.IsAny<long>())).Returns(true);
@@ -77,6 +81,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 _resultQueue,
                 _mockMemoryManager.Object,
                 httpClient,
+                _urlManager,
                 3, // maxParallelDownloads
                 false); // isLz4Compressed
 
@@ -108,9 +113,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
 
             // Create a test download result
             var mockDownloadResult = new Mock<IDownloadResult>();
-            var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
+            var resultLink = new TSparkArrowResultLink {
+                FileLink = "http://test.com/file1",
+                ExpiryTime = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds() // Set expiry 30 minutes in the future
+            };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
             mockDownloadResult.Setup(r => r.Size).Returns(testContentBytes.Length);
+            mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
+            mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
 
             // Capture the stream and size passed to SetCompleted
             Stream? capturedStream = null;
@@ -128,6 +138,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 _resultQueue,
                 _mockMemoryManager.Object,
                 httpClient,
+                _urlManager,
                 1, // maxParallelDownloads
                 false, // isLz4Compressed
                 1, // maxRetries
@@ -189,9 +200,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
 
             // Create a test download result
             var mockDownloadResult = new Mock<IDownloadResult>();
-            var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
+            var resultLink = new TSparkArrowResultLink {
+                FileLink = "http://test.com/file1",
+                ExpiryTime = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds() // Set expiry 30 minutes in the future
+            };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
             mockDownloadResult.Setup(r => r.Size).Returns(1000); // Some arbitrary size
+            mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
+            mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
 
             // Capture when SetFailed is called
             Exception? capturedException = null;
@@ -204,6 +220,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 _resultQueue,
                 _mockMemoryManager.Object,
                 httpClient,
+                _urlManager,
                 1, // maxParallelDownloads
                 false, // isLz4Compressed
                 1, // maxRetries
@@ -256,9 +273,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
 
             // Create test download results
             var mockDownloadResult = new Mock<IDownloadResult>();
-            var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
+            var resultLink = new TSparkArrowResultLink {
+                FileLink = "http://test.com/file1",
+                ExpiryTime = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds() // Set expiry 30 minutes in the future
+            };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
             mockDownloadResult.Setup(r => r.Size).Returns(100);
+            mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
+            mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
 
             // Capture when SetFailed is called
             Exception? capturedException = null;
@@ -271,6 +293,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 _resultQueue,
                 _mockMemoryManager.Object,
                 httpClient,
+                _urlManager,
                 1, // maxParallelDownloads
                 false, // isLz4Compressed
                 1, // maxRetries
@@ -345,9 +368,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
 
             // Create a test download result
             var mockDownloadResult = new Mock<IDownloadResult>();
-            var resultLink = new TSparkArrowResultLink { FileLink = "http://test.com/file1" };
+            var resultLink = new TSparkArrowResultLink {
+                FileLink = "http://test.com/file1",
+                ExpiryTime = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds() // Set expiry 30 minutes in the future
+            };
             mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
             mockDownloadResult.Setup(r => r.Size).Returns(100);
+            mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
+            mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
 
             // Create the downloader and add the download to the queue
             var downloader = new CloudFetchDownloader(
@@ -355,6 +383,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 _resultQueue,
                 _mockMemoryManager.Object,
                 httpClient,
+                _urlManager,
                 1, // maxParallelDownloads
                 false); // isLz4Compressed
 
@@ -429,9 +458,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
             for (int i = 0; i < totalDownloads; i++)
             {
                 var mockDownloadResult = new Mock<IDownloadResult>();
-                var resultLink = new TSparkArrowResultLink { FileLink = $"http://test.com/file{i}" };
+                var resultLink = new TSparkArrowResultLink {
+                    FileLink = $"http://test.com/file{i}",
+                    ExpiryTime = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds() // Set expiry 30 minutes in the future
+                };
                 mockDownloadResult.Setup(r => r.Link).Returns(resultLink);
                 mockDownloadResult.Setup(r => r.Size).Returns(100);
+                mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
+                mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
                 mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()))
                     .Callback<Stream, long>((_, _) => { });
                 downloadResults[i] = mockDownloadResult.Object;
@@ -443,6 +477,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
                 _resultQueue,
                 _mockMemoryManager.Object,
                 httpClient,
+                _urlManager,
                 maxParallelDownloads,
                 false); // isLz4Compressed
 

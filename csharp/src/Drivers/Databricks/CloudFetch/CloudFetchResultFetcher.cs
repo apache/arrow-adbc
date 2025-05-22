@@ -23,7 +23,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
     /// Fetches result chunks from the Thrift server.
@@ -155,7 +155,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
                         Debug.WriteLine($"Error fetching results: {ex.Message}");
                         _error = ex;
                         _hasMoreResults = false;
-                        break;
+                        throw;
                     }
                 }
 
