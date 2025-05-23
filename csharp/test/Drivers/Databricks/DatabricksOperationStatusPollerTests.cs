@@ -30,8 +30,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
     public class DatabricksOperationStatusPollerTests
     {
         private readonly ITestOutputHelper _outputHelper;
-        private readonly Mock<DatabricksStatement> _mockStatement;
-        private readonly Mock<TCLIService.Client> _mockClient;
+        private readonly Mock<IHiveServer2Statement> _mockStatement;
+        private readonly Mock<TCLIService.IAsync> _mockClient;
         private readonly TOperationHandle _operationHandle;
 
         private readonly int _heartbeatIntervalSeconds = 1000;
@@ -39,8 +39,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         public DatabricksOperationStatusPollerTests(ITestOutputHelper outputHelper)
         {
             _outputHelper = outputHelper;
-            _mockClient = new Mock<TCLIService.Client>();
-            _mockStatement = new Mock<DatabricksStatement>();
+            _mockClient = new Mock<TCLIService.IAsync>();
+            _mockStatement = new Mock<IHiveServer2Statement>();
             _operationHandle = new TOperationHandle
             {
                 OperationId = new THandleIdentifier { Guid = new byte[] { 1, 2, 3, 4 } },

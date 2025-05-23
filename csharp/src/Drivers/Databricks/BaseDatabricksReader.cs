@@ -26,7 +26,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// <summary>
     /// Base class for Databricks readers that handles common functionality. Handles the operation status poller.
     /// </summary>
-    internal abstract class BaseDatabricksReader : IArrowArrayStream, IDisposable
+    internal abstract class BaseDatabricksReader : IArrowArrayStream
     {
         protected DatabricksStatement? statement;
         protected readonly Schema schema;

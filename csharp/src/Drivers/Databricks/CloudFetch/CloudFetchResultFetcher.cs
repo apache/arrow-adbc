@@ -21,7 +21,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
@@ -31,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
     /// </summary>
     internal sealed class CloudFetchResultFetcher : ICloudFetchResultFetcher
     {
-        private readonly DatabricksStatement _statement;
+        private readonly IHiveServer2Statement _statement;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
         private long _startOffset;
@@ -50,7 +49,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// <param name="downloadQueue">The queue to add download tasks to.</param>
         /// <param name="prefetchCount">The number of result chunks to prefetch.</param>
         public CloudFetchResultFetcher(
-            DatabricksStatement statement,
+            IHiveServer2Statement statement,
             ICloudFetchMemoryBufferManager memoryManager,
             BlockingCollection<IDownloadResult> downloadQueue,
             long batchSize)
@@ -198,8 +197,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             TFetchResultsResp response;
             try
             {
-                // Use thread-safe method to fetch results
-                response = await _statement.FetchResultsAsync(request, cancellationToken).ConfigureAwait(false);
+                response = await _statement.Client.FetchResults(request, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
