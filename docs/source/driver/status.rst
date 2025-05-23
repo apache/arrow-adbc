@@ -34,8 +34,8 @@ Implementation Status
 
 .. note::
 
-   Drivers that support C/C++ can also be used from C#, GLib, Go, R, Ruby, and
-   Rust, regardless of their implementation language.
+   Drivers that support C/C++ can also be used from C#, GLib, Go, Python, R,
+   Ruby, and Rust, regardless of their implementation language.
 
 .. list-table::
    :header-rows: 1
