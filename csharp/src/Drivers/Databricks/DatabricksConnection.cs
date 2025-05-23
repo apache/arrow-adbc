@@ -21,6 +21,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
@@ -508,5 +509,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 base.ValidateOAuthParameters();
             }
         }
+
+        public override Assembly CallingAssembly => GetType().Assembly;
     }
 }
