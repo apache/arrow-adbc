@@ -67,6 +67,7 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
             {
                 IOrderedEnumerable<FileInfo>? traceFileInfos = GetTracingFiles(_tracingDirectory, searchPattern);
                 FileInfo? mostRecentFile = traceFileInfos?.FirstOrDefault();
+                mostRecentFile?.Refresh();
 
                 // Use the latest file, if it is not maxxed-out, or start a new tracing file.
                 _currentTraceFileInfo = mostRecentFile != null && mostRecentFile.Length < _maxFileSizeKb * 1024
@@ -99,6 +100,7 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
             do
             {
                 bool newFileRequired = false;
+                _currentTraceFileInfo!.Refresh();
                 using (FileStream fileStream = _currentTraceFileInfo!.OpenWrite())
                 {
                     fileStream.Position = fileStream.Length;
