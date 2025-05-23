@@ -138,10 +138,31 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 _fetchTask = null;
             }
         }
+        public async Task<TSparkArrowResultLink?> GetUrlAsync1(long offset, CancellationToken cancellationToken)
+        {
+            await FetchNextResultBatchAsync(offset, cancellationToken);
+
+            if (_urlsByOffset.ContainsKey(offset))
+            {
+                return _urlsByOffset[offset];
+            }
+
+            return null;
+        }
 
         /// <inheritdoc />
         public async Task<TSparkArrowResultLink?> GetUrlAsync(long offset, CancellationToken cancellationToken)
         {
+            if(!_urlsByOffset.TryGetValue(offset, out var result))
+            {
+                return null;
+            }
+
+            if(!IsUrlExpiredOrExpiringSoon(result))
+            {
+                return result;
+            }
+
             // Need to fetch or refresh the URL
             await _fetchLock.WaitAsync(cancellationToken);
             try
@@ -157,23 +178,31 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 // Fetch results
                 TFetchResultsResp response = await _statement.Client.FetchResults(request, cancellationToken);
 
+                TSparkArrowResultLink? refreshedLink = null;
                 // Process the results
                 if (response.Status.StatusCode == TStatusCode.SUCCESS_STATUS &&
                     response.Results.__isset.resultLinks &&
                     response.Results.ResultLinks != null &&
                     response.Results.ResultLinks.Count > 0)
                 {
-                    var refreshedLink = response.Results.ResultLinks.FirstOrDefault(l => l.StartRowOffset == offset);
-                    if (refreshedLink != null)
+                    foreach(var resultLink in response.Results.ResultLinks)
                     {
-                        Trace.TraceInformation($"Successfully fetched URL for offset {offset}");
-                        _urlsByOffset[offset] = refreshedLink;
-                        return refreshedLink;
+                        if(_urlsByOffset.ContainsKey(resultLink.StartRowOffset))
+                        {
+                            Trace.TraceInformation($"Successfully fetched URL for offset {resultLink.StartRowOffset}");
+                            _urlsByOffset[resultLink.StartRowOffset] = resultLink;
+                        }
+
+
+                        if(resultLink.StartRowOffset ==offset)
+                        {
+                            refreshedLink = resultLink;
+                        }
                     }
                 }
 
                 Trace.TraceWarning($"Failed to fetch URL for offset {offset}");
-                return null;
+                return refreshedLink;
             }
             finally
             {
@@ -229,7 +258,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                     try
                     {
                         // Fetch more results from the server
-                        await FetchNextResultBatchAsync(cancellationToken).ConfigureAwait(false);
+                        await FetchNextResultBatchAsync(null, cancellationToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
@@ -268,10 +297,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             }
         }
 
-        private async Task FetchNextResultBatchAsync(CancellationToken cancellationToken)
+        private async Task FetchNextResultBatchAsync(long? offset, CancellationToken cancellationToken)
         {
             // Create fetch request
             TFetchResultsReq request = new TFetchResultsReq(_statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
+
+            if (offset.HasValue)
+            {
+                _startOffset = offset.Value;
+            }
 
             // Set the start row offset if we have processed some links already
             if (_startOffset > 0)
@@ -299,28 +333,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             {
                 List<TSparkArrowResultLink> resultLinks = response.Results.ResultLinks;
 
-                // Cache the URLs
-                foreach (var link in resultLinks)
-                {
-                    _urlsByOffset[link.StartRowOffset] = link;
-
-                    // Update the last fetched offset
-                    _lastFetchedOffset = Math.Max(_lastFetchedOffset, link.StartRowOffset + link.RowCount);
-                }
-
                 // Add each link to the download queue
                 foreach (var link in resultLinks)
                 {
-                    var downloadResult = new DownloadResult(link, _memoryManager);
-                    _downloadQueue.Add(downloadResult, cancellationToken);
+                    if (!_urlsByOffset.ContainsKey(link.StartRowOffset))
+                    {
+                        var downloadResult = new DownloadResult(link, _memoryManager);
+                        _downloadQueue.Add(downloadResult, cancellationToken);
+                    }
+
+                    _urlsByOffset[link.StartRowOffset] = link;
                 }
 
-                // Update the start offset for the next fetch
-                if (resultLinks.Count > 0)
-                {
-                    var lastLink = resultLinks[resultLinks.Count - 1];
-                    _startOffset = lastLink.StartRowOffset + lastLink.RowCount;
-                }
+                _startOffset = _lastFetchedOffset;
 
                 // Update whether there are more results
                 _hasMoreResults = response.HasMoreRows;
