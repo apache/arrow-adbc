@@ -248,12 +248,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                         break;
                     }
 
-                    // Check if there are any expired URLs that need refreshing
-                    if (_urlManager.HasExpiredOrExpiringSoonUrls())
-                    {
-                        await _urlManager.RefreshExpiredUrlsAsync(cancellationToken);
-                    }
-
                     // Check if the URL is expired or about to expire
                     if (downloadResult.IsExpiredOrExpiringSoon(_urlExpirationBufferSeconds))
                     {
