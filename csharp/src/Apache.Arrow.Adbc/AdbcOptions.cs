@@ -220,8 +220,6 @@ namespace Apache.Arrow.Adbc
             {
                 public static class Exporter
                 {
-                    public const string Environment = "OTEL_TRACES_EXPORTER";
-
                     public const string Otlp = "otlp";
                     public const string Console = "console";
                     public const string AdbcFile = "adbcfile";

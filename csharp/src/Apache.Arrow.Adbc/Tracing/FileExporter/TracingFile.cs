@@ -165,7 +165,10 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
             }
         }
 
-        private static async Task ActionWithRetryAsync<T>(Func<Task> action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
+        private static async Task ActionWithRetryAsync<T>(
+            Func<Task> action,
+            int maxRetries = 5,
+            CancellationToken cancellationToken = default) where T : Exception
         {
             int retryCount = 0;
             TimeSpan pauseTime = TimeSpan.FromMilliseconds(10);

@@ -22,7 +22,7 @@ using OpenTelemetry.Trace;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
-    internal abstract class TracingConnection : AdbcConnection
+    public abstract class TracingConnection : AdbcConnection
     {
         private TracerProvider? _tracerProvider;
         private bool _isDisposed;

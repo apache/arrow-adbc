@@ -36,10 +36,9 @@ namespace Apache.Arrow.Adbc.Tracing
     {
         private const string ProductVersionDefault = "1.0.0";
         private static readonly string s_assemblyVersion = GetProductVersion();
-        private bool _disposedValue;
-        private const string DefaultSourceName = "apache.arrow.adbc";
-        private const string DefaultSourceVersion = "0.0.0.0";
-        private const string TracesExporterEnvironment = AdbcOptions.Telemetry.Traces.Exporter.Environment;
+        private const string SourceNameDefault = "apache.arrow.adbc";
+        private const string OTelTracesExporterEnvironment = "OTEL_TRACES_EXPORTER";
+        private bool _isDisposed;
 
         /// <summary>
         /// Constructs a new <see cref="ActivityTrace"/> object. If <paramref name="activitySourceName"/> is set, it provides the
@@ -291,13 +290,13 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="disposing">An indicator of whether this method is being called from the <c>Dispose</c> method.</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposedValue)
+            if (!_isDisposed)
             {
                 if (disposing)
                 {
                     ActivitySource.Dispose();
                 }
-                _disposedValue = true;
+                _isDisposed = true;
             }
         }
 
@@ -313,12 +312,12 @@ namespace Apache.Arrow.Adbc.Tracing
         {
             executingAssembly ??= Assembly.GetExecutingAssembly();
             AssemblyName assemblyName = executingAssembly.GetName();
-            string sourceName = (assemblyName.Name ?? DefaultSourceName).ToLowerInvariant();
-            string sourceVersion = (assemblyName.Version?.ToString() ?? DefaultSourceVersion).ToLowerInvariant();
+            string sourceName = (assemblyName.Name ?? SourceNameDefault).ToLowerInvariant();
+            string sourceVersion = (assemblyName.Version?.ToString() ?? ProductVersionDefault).ToLowerInvariant();
             activitySourceName = sourceName;
             activitySourceVersion = sourceVersion;
 
-            string? tracesExporter = Environment.GetEnvironmentVariable(TracesExporterEnvironment);
+            string? tracesExporter = Environment.GetEnvironmentVariable(OTelTracesExporterEnvironment);
             return tracesExporter switch
             {
                 null or "" => null,// Do not create a listener/exporter
@@ -347,7 +346,7 @@ namespace Apache.Arrow.Adbc.Tracing
                     .AddAdbcFileExporter(sourceName)
                     .Build(),
                 _ => throw new AdbcException(
-                        $"Unsupported {TracesExporterEnvironment} option: '{tracesExporter}'",
+                        $"Unsupported {OTelTracesExporterEnvironment} option: '{tracesExporter}'",
                         AdbcStatusCode.InvalidArgument),
             };
         }

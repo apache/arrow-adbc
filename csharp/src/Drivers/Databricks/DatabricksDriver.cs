@@ -16,8 +16,6 @@
 */
 
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Tracing;
-using OpenTelemetry.Trace;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
