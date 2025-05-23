@@ -52,8 +52,6 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
             EnsureTraceDirectory();
         }
 
-        private object _lock = new();
-
         /// <summary>
         /// Writes lines of trace where each stream is a line in the trace file.
         /// </summary>
@@ -67,17 +65,14 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
             string searchPattern = _fileBaseName + "-trace-*.log";
             if (_currentTraceFileInfo == null)
             {
-                lock (_lock)
-                {
-                    IOrderedEnumerable<FileInfo>? traceFileInfos = GetTracingFiles(_tracingDirectory, searchPattern);
-                    FileInfo? mostRecentFile = traceFileInfos?.FirstOrDefault();
-                    mostRecentFile?.Refresh();
+                IOrderedEnumerable<FileInfo>? traceFileInfos = GetTracingFiles(_tracingDirectory, searchPattern);
+                FileInfo? mostRecentFile = traceFileInfos?.FirstOrDefault();
+                mostRecentFile?.Refresh();
 
-                    // Use the latest file, if it is not maxxed-out, or start a new tracing file.
-                    _currentTraceFileInfo = mostRecentFile != null && mostRecentFile.Length < _maxFileSizeKb * 1024
-                        ? mostRecentFile
-                        : new FileInfo(NewFileName());
-                }
+                // Use the latest file, if it is not maxxed-out, or start a new tracing file.
+                _currentTraceFileInfo = mostRecentFile != null && mostRecentFile.Length < _maxFileSizeKb * 1024
+                    ? mostRecentFile
+                    : new FileInfo(NewFileName());
             }
 
             // Write out to the file and retry if IO errors occur.
