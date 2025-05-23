@@ -130,7 +130,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing.FileExporter
                 string searchPattern = _activitySourceName + "-trace-*.log";
                 FileInfo[] files = [.. traceDirectory
                     .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
-                    .OrderBy(f => f.LastWriteTimeUtc)];
+                    .OrderByDescending(f => f.LastWriteTimeUtc)];
                 //FileInfo[] files = traceDirectory.GetFiles();
                 Assert.True(files.Length > 2, $"actual # of trace files: {files.Length}");
                 Assert.True(files.All(f => f.Name.StartsWith(_activitySourceName)));
