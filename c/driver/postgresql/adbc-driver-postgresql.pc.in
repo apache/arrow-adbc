@@ -24,3 +24,4 @@ Description: The ADBC PostgreSQL driver provides an ADBC driver for PostgreSQL.
 Version: @ADBC_VERSION@
 Libs: -L${libdir} -ladbc_driver_postgresql
 Cflags: -I${includedir}
+Cflags.private: -DADBC_STATIC
