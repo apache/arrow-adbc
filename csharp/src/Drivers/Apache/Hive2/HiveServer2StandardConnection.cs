@@ -19,6 +19,7 @@ using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -172,5 +173,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Standard;
+
+        public override Assembly CallingAssembly => GetType().Assembly;
     }
 }

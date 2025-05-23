@@ -19,6 +19,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -28,10 +29,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal abstract class BaseDatabricksReader : IArrowArrayStream
     {
-        protected DatabricksStatement? statement;
+        protected DatabricksStatement statement;
         protected readonly Schema schema;
         protected readonly bool isLz4Compressed;
         protected DatabricksOperationStatusPoller? operationStatusPoller;
+        protected bool hasNoMoreRows = false;
         private bool isDisposed;
 
         protected BaseDatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
@@ -48,6 +50,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         }
 
         public Schema Schema { get { return schema; } }
+
+        protected ActivityTrace Trace => statement.Trace;
 
         protected void StopOperationStatusPoller()
         {

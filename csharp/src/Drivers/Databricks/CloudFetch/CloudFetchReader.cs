@@ -85,80 +85,83 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// <returns>The next record batch, or null if there are no more batches.</returns>
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            ThrowIfDisposed();
-
-            while (true)
+            return await Trace.TraceActivityAsync(async activity =>
             {
-                // If we have a current reader, try to read the next batch
-                if (this.currentReader != null)
-                {
-                    RecordBatch? next = await this.currentReader.ReadNextRecordBatchAsync(cancellationToken);
-                    if (next != null)
-                    {
-                        return next;
-                    }
-                    else
-                    {
-                        // Clean up the current reader and download result
-                        this.currentReader.Dispose();
-                        this.currentReader = null;
+                ThrowIfDisposed();
 
-                        if (this.currentDownloadResult != null)
+                while (true)
+                {
+                    // If we have a current reader, try to read the next batch
+                    if (this.currentReader != null)
+                    {
+                        RecordBatch? next = await this.currentReader.ReadNextRecordBatchAsync(cancellationToken);
+                        if (next != null)
                         {
-                            this.currentDownloadResult.Dispose();
-                            this.currentDownloadResult = null;
+                            return next;
+                        }
+                        else
+                        {
+                            // Clean up the current reader and download result
+                            this.currentReader.Dispose();
+                            this.currentReader = null;
+
+                            if (this.currentDownloadResult != null)
+                            {
+                                this.currentDownloadResult.Dispose();
+                                this.currentDownloadResult = null;
+                            }
                         }
                     }
-                }
 
-                // If we don't have a current reader, get the next downloaded file
-                if (this.downloadManager != null)
-                {
-                    // Start the download manager if it's not already started
-                    if (!this.isPrefetchEnabled)
+                    // If we don't have a current reader, get the next downloaded file
+                    if (this.downloadManager != null)
                     {
-                        throw new InvalidOperationException("Prefetch must be enabled.");
-                    }
-
-                    try
-                    {
-                        // Get the next downloaded file
-                        this.currentDownloadResult = await this.downloadManager.GetNextDownloadedFileAsync(cancellationToken);
-                        if (this.currentDownloadResult == null)
+                        // Start the download manager if it's not already started
+                        if (!this.isPrefetchEnabled)
                         {
-                            this.downloadManager.Dispose();
-                            this.downloadManager = null;
-                            // No more files
-                            return null;
+                            throw new InvalidOperationException("Prefetch must be enabled.");
                         }
 
-                        await this.currentDownloadResult.DownloadCompletedTask;
-
-                        // Create a new reader for the downloaded file
                         try
                         {
-                            this.currentReader = new ArrowStreamReader(this.currentDownloadResult.DataStream);
-                            continue;
+                            // Get the next downloaded file
+                            this.currentDownloadResult = await this.downloadManager.GetNextDownloadedFileAsync(cancellationToken);
+                            if (this.currentDownloadResult == null)
+                            {
+                                this.downloadManager.Dispose();
+                                this.downloadManager = null;
+                                // No more files
+                                return null;
+                            }
+
+                            await this.currentDownloadResult.DownloadCompletedTask;
+
+                            // Create a new reader for the downloaded file
+                            try
+                            {
+                                this.currentReader = new ArrowStreamReader(this.currentDownloadResult.DataStream);
+                                continue;
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Error creating Arrow reader: {ex.Message}");
+                                this.currentDownloadResult.Dispose();
+                                this.currentDownloadResult = null;
+                                throw;
+                            }
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Error creating Arrow reader: {ex.Message}");
-                            this.currentDownloadResult.Dispose();
-                            this.currentDownloadResult = null;
+                            Debug.WriteLine($"Error getting next downloaded file: {ex.Message}");
                             throw;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error getting next downloaded file: {ex.Message}");
-                        throw;
-                    }
-                }
 
-                StopOperationStatusPoller();
-                // If we get here, there are no more files
-                return null;
-            }
+                    StopOperationStatusPoller();
+                    // If we get here, there are no more files
+                    return null;
+                }
+            });
         }
 
         protected override void DisposeResources()

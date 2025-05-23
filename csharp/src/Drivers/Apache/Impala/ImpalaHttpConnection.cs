@@ -21,10 +21,12 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
@@ -205,5 +207,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override ImpalaServerType ServerType => ImpalaServerType.Http;
 
         protected override int ColumnMapIndexOffset => 0;
+
+        public override Assembly CallingAssembly => GetType().Assembly;
     }
 }
