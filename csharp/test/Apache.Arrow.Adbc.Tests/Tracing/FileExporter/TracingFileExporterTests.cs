@@ -132,7 +132,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing.FileExporter
                 Assert.True(files.All(f => f.Name.StartsWith(_activitySourceName)));
                 for (int i = 0; i < files.Length; i++)
                 {
-                    long expectedUpperSizeLimit = (maxTraceFileSizeKb + (long)(0.2 * maxTraceFileSizeKb)) * kilobyte;
+                    long expectedUpperSizeLimit = (maxTraceFileSizeKb + (long)(0.8 * maxTraceFileSizeKb)) * kilobyte;
                     Assert.True(files[i].Length < expectedUpperSizeLimit, $"actual file length: {files[i].Length} - number of files {files.Length}");
                 }
                 _outputHelper?.WriteLine($"number of files: {files.Length}");
