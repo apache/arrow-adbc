@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing.FileExporter
         [Fact]
         internal async Task CanSetCustomMaxFileSize()
         {
-            const long maxTraceFileSizeKb = 15;
+            const long maxTraceFileSizeKb = 30;
             const long kilobyte = 1024;
             string customFolderName = TracingTests.NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
@@ -133,7 +133,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing.FileExporter
                 for (int i = 0; i < files.Length; i++)
                 {
                     long expectedUpperSizeLimit = (maxTraceFileSizeKb + (long)(0.8 * maxTraceFileSizeKb)) * kilobyte;
-                    Assert.True(files[i].Length < expectedUpperSizeLimit, $"actual file length: {files[i].Length} - number of files {files.Length}");
+                    Assert.True(files[i].Length < expectedUpperSizeLimit, $"actual file length: '{files[i].Length}' - number of files: '{files.Length}' - index: '{i}'");
                 }
                 _outputHelper?.WriteLine($"number of files: {files.Length}");
                 Console.WriteLine($"number of files: {files.Length}");
