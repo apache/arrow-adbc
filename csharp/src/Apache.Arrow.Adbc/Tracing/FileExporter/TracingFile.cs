@@ -112,14 +112,14 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
                     hasMoreData = false;
                     await foreach (Stream stream in streams)
                     {
-                        await stream.CopyToAsync(fileStream);
-
                         if (fileStream.Length >= _maxFileSizeKb * 1024)
                         {
                             hasMoreData = true;
                             newFileRequired = true;
                             break;
                         }
+
+                        await stream.CopyToAsync(fileStream);
                     }
                 }
                 if (newFileRequired)

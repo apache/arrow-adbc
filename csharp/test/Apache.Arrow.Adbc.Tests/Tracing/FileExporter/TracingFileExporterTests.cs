@@ -19,6 +19,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Adbc.Tracing.FileExporter;
@@ -134,10 +135,15 @@ namespace Apache.Arrow.Adbc.Tests.Tracing.FileExporter
                 //FileInfo[] files = traceDirectory.GetFiles();
                 Assert.True(files.Length > 2, $"actual # of trace files: {files.Length}");
                 Assert.True(files.All(f => f.Name.StartsWith(_activitySourceName)));
+                StringBuilder sb = new();
+                for (int i = 0; i < files.Length; i++)
+                {
+                    sb.AppendLine($"{i}: {files[i].Name}: {files[i].Length}: {files[i].LastWriteTimeUtc}");
+                }
                 for (int i = 0; i < files.Length; i++)
                 {
                     long expectedUpperSizeLimit = (maxTraceFileSizeKb + (long)(0.8 * maxTraceFileSizeKb)) * kilobyte;
-                    Assert.True(files[i].Length < expectedUpperSizeLimit, $"actual file length: '{files[i].Length}' - number of files: '{files.Length}' - index: '{i}'");
+                    Assert.True(files[i].Length < expectedUpperSizeLimit, sb.ToString());
                 }
                 _outputHelper?.WriteLine($"number of files: {files.Length}");
                 Console.WriteLine($"number of files: {files.Length}");
