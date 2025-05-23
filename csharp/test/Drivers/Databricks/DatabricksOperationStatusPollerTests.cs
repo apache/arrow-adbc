@@ -18,7 +18,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Databricks.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -31,8 +30,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
     public class DatabricksOperationStatusPollerTests
     {
         private readonly ITestOutputHelper _outputHelper;
-        private readonly Mock<IHiveServer2Statement> _mockStatement;
-        private readonly Mock<ThreadSafeClient> _mockClient;
+        private readonly Mock<DatabricksStatement> _mockStatement;
+        private readonly Mock<TCLIService.Client> _mockClient;
         private readonly TOperationHandle _operationHandle;
 
         private readonly int _heartbeatIntervalSeconds = 1000;
@@ -40,17 +39,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         public DatabricksOperationStatusPollerTests(ITestOutputHelper outputHelper)
         {
             _outputHelper = outputHelper;
-            var mockClient = new Mock<TCLIService.IAsync>();
-            var threadSafeClient = new Mock<ThreadSafeClient>(mockClient.Object);
-            _mockClient = threadSafeClient;
-            _mockStatement = new Mock<IHiveServer2Statement>();
+            _mockClient = new Mock<TCLIService.Client>();
+            _mockStatement = new Mock<DatabricksStatement>();
             _operationHandle = new TOperationHandle
             {
                 OperationId = new THandleIdentifier { Guid = new byte[] { 1, 2, 3, 4 } },
                 OperationType = TOperationType.EXECUTE_STATEMENT
             };
 
-            _mockStatement.Setup(s => s.ThreadSafeClient).Returns(_mockClient.Object);
+            _mockStatement.Setup(s => s.Client).Returns(_mockClient.Object);
             _mockStatement.Setup(s => s.OperationHandle).Returns(_operationHandle);
         }
 
@@ -60,7 +57,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             // Arrange
             var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
             var pollCount = 0;
-            _mockClient.Setup(c => c.GetOperationStatusAsync(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
+            _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TGetOperationStatusResp())
                 .Callback(() => pollCount++);
 
@@ -70,7 +67,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
             // Assert
             Assert.True(pollCount > 0, "Should have polled at least once");
-            _mockClient.Verify(c => c.GetOperationStatusAsync(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            _mockClient.Verify(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Fact]
@@ -79,7 +76,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             // Arrange
             var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
             var pollCount = 0;
-            _mockClient.Setup(c => c.GetOperationStatusAsync(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
+            _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TGetOperationStatusResp())
                 .Callback(() => pollCount++);
 
