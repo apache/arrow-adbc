@@ -22,7 +22,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
     /// Represents a downloaded result file with its associated metadata.
@@ -55,6 +55,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         bool IsCompleted { get; }
 
         /// <summary>
+        /// Gets the number of URL refresh attempts for this download.
+        /// </summary>
+        int RefreshAttempts { get; }
+
+        /// <summary>
         /// Sets the download as completed with the provided data stream.
         /// </summary>
         /// <param name="dataStream">The stream containing the downloaded data.</param>
@@ -66,6 +71,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// </summary>
         /// <param name="exception">The exception that caused the failure.</param>
         void SetFailed(Exception exception);
+
+        /// <summary>
+        /// Updates this download result with a refreshed link.
+        /// </summary>
+        /// <param name="refreshedLink">The refreshed link information.</param>
+        void UpdateWithRefreshedLink(TSparkArrowResultLink refreshedLink);
+
+        /// <summary>
+        /// Checks if the URL is expired or about to expire.
+        /// </summary>
+        /// <param name="expirationBufferSeconds">Buffer time in seconds before expiration to consider a URL as expiring soon.</param>
+        /// <returns>True if the URL is expired or about to expire, false otherwise.</returns>
+        bool IsExpiredOrExpiringSoon(int expirationBufferSeconds = 60);
     }
 
     /// <summary>
@@ -142,6 +160,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// Gets the error encountered by the fetcher, if any.
         /// </summary>
         Exception? Error { get; }
+
+        /// <summary>
+        /// Gets a URL for the specified offset, fetching or refreshing as needed.
+        /// </summary>
+        /// <param name="offset">The row offset for which to get a URL.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The URL link for the specified offset, or null if not available.</returns>
+        Task<TSparkArrowResultLink?> GetUrlAsync(long offset, CancellationToken cancellationToken);
     }
 
     /// <summary>

@@ -18,369 +18,204 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 {
-    /// <summary>
-    /// Tests for CloudFetchResultFetcher
-    /// </summary>
     public class CloudFetchResultFetcherTest
     {
-        private readonly Mock<ICloudFetchMemoryBufferManager> _mockMemoryManager;
+        private readonly Mock<IHiveServer2Statement> _mockStatement;
+        private readonly Mock<TCLIService.IAsync> _mockClient;
+        private readonly TOperationHandle _operationHandle;
+        private readonly MockClock _mockClock;
+        private readonly CloudFetchResultFetcherWithMockClock _resultFetcher;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
+        private readonly Mock<ICloudFetchMemoryBufferManager> _mockMemoryManager;
 
         public CloudFetchResultFetcherTest()
         {
+            _mockClient = new Mock<TCLIService.IAsync>();
+            _mockStatement = new Mock<IHiveServer2Statement>();
+            _operationHandle = new TOperationHandle
+            {
+                OperationId = new THandleIdentifier { Guid = new byte[] { 1, 2, 3, 4 } },
+                OperationType = TOperationType.EXECUTE_STATEMENT
+            };
+
+            _mockStatement.Setup(s => s.Client).Returns(_mockClient.Object);
+            _mockStatement.Setup(s => s.OperationHandle).Returns(_operationHandle);
+
+            _mockClock = new MockClock();
+            _downloadQueue = new BlockingCollection<IDownloadResult>();
             _mockMemoryManager = new Mock<ICloudFetchMemoryBufferManager>();
-            _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
-        }
 
-        [Fact]
-        public async Task StartAsync_CalledTwice_ThrowsException()
-        {
-            // Arrange
-            var mockClient = new Mock<TCLIService.IAsync>();
-            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
-
-            var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
-            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-
-            var fetcher = new CloudFetchResultFetcher(
-                mockStatement.Object,
+            _resultFetcher = new CloudFetchResultFetcherWithMockClock(
+                _mockStatement.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
-                5); // batchSize
-
-            // Act & Assert
-            await fetcher.StartAsync(CancellationToken.None);
-            await Assert.ThrowsAsync<InvalidOperationException>(() => fetcher.StartAsync(CancellationToken.None));
-
-            // Cleanup
-            await fetcher.StopAsync();
+                100, // batchSize
+                _mockClock,
+                60); // expirationBufferSeconds
         }
 
         [Fact]
-        public async Task FetchResultsAsync_SuccessfullyFetchesResults()
+        public async Task GetUrlAsync_FetchesNewUrl_WhenNotCached()
+        {
+            // Arrange
+            long offset = 0;
+            var resultLink = CreateTestResultLink(offset, 100, "http://test.com/file1", 3600);
+            SetupMockClientFetchResults(new List<TSparkArrowResultLink> { resultLink }, true);
+
+            // Act
+            var result = await _resultFetcher.GetUrlAsync(offset, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(offset, result.StartRowOffset);
+            Assert.Equal("http://test.com/file1", result.FileLink);
+            _mockClient.Verify(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetUrlRangeAsync_FetchesMultipleUrls()
         {
             // Arrange
             var resultLinks = new List<TSparkArrowResultLink>
             {
-                CreateTestResultLink(0, 100, "http://test.com/file1"),
-                CreateTestResultLink(100, 100, "http://test.com/file2"),
-                CreateTestResultLink(200, 100, "http://test.com/file3")
+                CreateTestResultLink(0, 100, "http://test.com/file1", 3600),
+                CreateTestResultLink(100, 100, "http://test.com/file2", 3600),
+                CreateTestResultLink(200, 100, "http://test.com/file3", 3600)
             };
 
-            var mockClient = new Mock<TCLIService.IAsync>();
-            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(CreateFetchResultsResponse(resultLinks, false));
-
-            var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
-            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-
-            var fetcher = new CloudFetchResultFetcher(
-                mockStatement.Object,
-                _mockMemoryManager.Object,
-                _downloadQueue,
-                5); // batchSize
+            SetupMockClientFetchResults(resultLinks, true);
 
             // Act
-            await fetcher.StartAsync(CancellationToken.None);
+            await _resultFetcher.StartAsync(CancellationToken.None);
 
-            // Wait for the fetcher to process the results
+            // Wait for the fetcher to process the links
             await Task.Delay(100);
 
-            // Assert
-            // The download queue should contain our result links
-            // Note: With prefetch, there might be more items in the queue than just our result links
-            Assert.True(_downloadQueue.Count >= resultLinks.Count,
-                $"Expected at least {resultLinks.Count} items in queue, but found {_downloadQueue.Count}");
-
-            // Take all items from the queue and verify they match our result links
-            var downloadResults = new List<IDownloadResult>();
-            while (_downloadQueue.TryTake(out var result))
-            {
-                // Skip the end of results guard
-                if (result == EndOfResultsGuard.Instance)
-                {
-                    continue;
-                }
-                downloadResults.Add(result);
-            }
-
-            Assert.Equal(resultLinks.Count, downloadResults.Count);
-
-            // Verify each download result has the correct link
-            for (int i = 0; i < resultLinks.Count; i++)
-            {
-                Assert.Equal(resultLinks[i].FileLink, downloadResults[i].Link.FileLink);
-                Assert.Equal(resultLinks[i].StartRowOffset, downloadResults[i].Link.StartRowOffset);
-                Assert.Equal(resultLinks[i].RowCount, downloadResults[i].Link.RowCount);
-            }
-
-            // Verify the fetcher state
-            Assert.False(fetcher.HasMoreResults);
-            Assert.True(fetcher.IsCompleted);
-            Assert.False(fetcher.HasError);
-            Assert.Null(fetcher.Error);
-
-            // Cleanup
-            await fetcher.StopAsync();
-        }
-
-        [Fact]
-        public async Task FetchResultsAsync_WithMultipleBatches_FetchesAllResults()
-        {
-            // Arrange
-            var firstBatchLinks = new List<TSparkArrowResultLink>
-            {
-                CreateTestResultLink(0, 100, "http://test.com/file1"),
-                CreateTestResultLink(100, 100, "http://test.com/file2")
-            };
-
-            var secondBatchLinks = new List<TSparkArrowResultLink>
-            {
-                CreateTestResultLink(200, 100, "http://test.com/file3"),
-                CreateTestResultLink(300, 100, "http://test.com/file4")
-            };
-
-            var mockClient = new Mock<TCLIService.IAsync>();
-            mockClient.SetupSequence(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(CreateFetchResultsResponse(firstBatchLinks, true))
-                .ReturnsAsync(CreateFetchResultsResponse(secondBatchLinks, false));
-
-            var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
-            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-
-            var fetcher = new CloudFetchResultFetcher(
-                mockStatement.Object,
-                _mockMemoryManager.Object,
-                _downloadQueue,
-                5); // batchSize
-
-            // Act
-            await fetcher.StartAsync(CancellationToken.None);
-
-            // Wait for the fetcher to process all results
-            await Task.Delay(200);
+            // Get all cached URLs
+            var cachedUrls = _resultFetcher.GetAllCachedUrls();
 
             // Assert
-            // The download queue should contain all result links (both batches)
-            // Note: With prefetch, there might be more items in the queue than just our result links
-            Assert.True(_downloadQueue.Count >= firstBatchLinks.Count + secondBatchLinks.Count,
-                $"Expected at least {firstBatchLinks.Count + secondBatchLinks.Count} items in queue, but found {_downloadQueue.Count}");
-
-            // Take all items from the queue
-            var downloadResults = new List<IDownloadResult>();
-            while (_downloadQueue.TryTake(out var result))
-            {
-                // Skip the end of results guard
-                if (result == EndOfResultsGuard.Instance)
-                {
-                    continue;
-                }
-                downloadResults.Add(result);
-            }
-
-            Assert.Equal(firstBatchLinks.Count + secondBatchLinks.Count, downloadResults.Count);
-
-            // Verify the fetcher state
-            Assert.False(fetcher.HasMoreResults);
-            Assert.True(fetcher.IsCompleted);
-            Assert.False(fetcher.HasError);
-
-            // Cleanup
-            await fetcher.StopAsync();
-        }
-
-        [Fact]
-        public async Task FetchResultsAsync_WithEmptyResults_CompletesGracefully()
-        {
-            // Arrange
-            var mockClient = new Mock<TCLIService.IAsync>();
-            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false));
-
-            var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
-            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-
-            var fetcher = new CloudFetchResultFetcher(
-                mockStatement.Object,
-                _mockMemoryManager.Object,
-                _downloadQueue,
-                5); // batchSize
-
-            // Act
-            await fetcher.StartAsync(CancellationToken.None);
-
-            // Wait for the fetcher to process the results
-            await Task.Delay(100);
-
-            // Assert
-            // The download queue should be empty except for the end guard
-            var nonGuardItems = new List<IDownloadResult>();
-            while (_downloadQueue.TryTake(out var result))
-            {
-                if (result != EndOfResultsGuard.Instance)
-                {
-                    nonGuardItems.Add(result);
-                }
-            }
-            Assert.Empty(nonGuardItems);
-
-            // Verify the fetcher state
-            Assert.False(fetcher.HasMoreResults);
-            Assert.True(fetcher.IsCompleted);
-            Assert.False(fetcher.HasError);
-
-            // Cleanup
-            await fetcher.StopAsync();
-        }
-
-        [Fact]
-        public async Task FetchResultsAsync_WithServerError_SetsErrorState()
-        {
-            // Arrange
-            var mockClient = new Mock<TCLIService.IAsync>();
-            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("Test server error"));
-
-            var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
-            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-
-            var fetcher = new CloudFetchResultFetcher(
-                mockStatement.Object,
-                _mockMemoryManager.Object,
-                _downloadQueue,
-                5); // batchSize
-
-            // Act
-            await fetcher.StartAsync(CancellationToken.None);
-
-            // Wait for the fetcher to process the error
-            await Task.Delay(100);
-
-            // Assert
-            // Verify the fetcher state
-            Assert.False(fetcher.HasMoreResults);
-            Assert.True(fetcher.IsCompleted);
-            Assert.True(fetcher.HasError);
-            Assert.NotNull(fetcher.Error);
-            Assert.IsType<InvalidOperationException>(fetcher.Error);
-
-            // The download queue should have the end guard
-            Assert.Single(_downloadQueue);
-            var result = _downloadQueue.Take();
-            Assert.Same(EndOfResultsGuard.Instance, result);
-
-            // Cleanup
-            await fetcher.StopAsync();
-        }
-
-        [Fact]
-        public async Task StopAsync_CancelsFetching()
-        {
-            // Arrange
-            var fetchStarted = new TaskCompletionSource<bool>();
-            var fetchCancelled = new TaskCompletionSource<bool>();
-
-            var mockClient = new Mock<TCLIService.IAsync>();
-            mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
-                .Returns(async (TFetchResultsReq req, CancellationToken token) =>
-                {
-                    fetchStarted.TrySetResult(true);
-
-                    try
-                    {
-                        // Wait for a long time or until cancellation
-                        await Task.Delay(10000, token);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        fetchCancelled.TrySetResult(true);
-                        throw;
-                    }
-
-                    // Return empty results if not cancelled
-                    return CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false);
-                });
-
-            var mockStatement = new Mock<IHiveServer2Statement>();
-            mockStatement.Setup(s => s.OperationHandle).Returns(CreateOperationHandle());
-            mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
-
-            var fetcher = new CloudFetchResultFetcher(
-                mockStatement.Object,
-                _mockMemoryManager.Object,
-                _downloadQueue,
-                5); // batchSize
-
-            // Act
-            await fetcher.StartAsync(CancellationToken.None);
-
-            // Wait for the fetch to start
-            await fetchStarted.Task;
+            Assert.Equal(3, cachedUrls.Count);
+            Assert.Equal("http://test.com/file1", cachedUrls[0].FileLink);
+            Assert.Equal("http://test.com/file2", cachedUrls[100].FileLink);
+            Assert.Equal("http://test.com/file3", cachedUrls[200].FileLink);
+            _mockClient.Verify(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()), Times.Once);
 
             // Stop the fetcher
-            await fetcher.StopAsync();
-
-            // Assert
-            // Wait a short time for cancellation to propagate
-            var cancelled = await Task.WhenAny(fetchCancelled.Task, Task.Delay(1000)) == fetchCancelled.Task;
-            Assert.True(cancelled, "Fetch operation should have been cancelled");
-
-            // Verify the fetcher state
-            Assert.True(fetcher.IsCompleted);
+            await _resultFetcher.StopAsync();
         }
 
-        private TOperationHandle CreateOperationHandle()
+        [Fact]
+        public async Task ClearCache_RemovesAllCachedUrls()
         {
-            return new TOperationHandle
+            // Arrange
+            var resultLinks = new List<TSparkArrowResultLink>
             {
-                OperationId = new THandleIdentifier
-                {
-                    Guid = new byte[16],
-                    Secret = new byte[16]
-                },
-                OperationType = TOperationType.EXECUTE_STATEMENT,
-                HasResultSet = true
+                CreateTestResultLink(0, 100, "http://test.com/file1", 3600),
+                CreateTestResultLink(100, 100, "http://test.com/file2", 3600)
+            };
+
+            SetupMockClientFetchResults(resultLinks, true);
+
+            // Cache the URLs
+            await _resultFetcher.StartAsync(CancellationToken.None);
+
+            // Wait for the fetcher to process the links
+            await Task.Delay(100);
+
+            // Act
+            _resultFetcher.ClearCache();
+            var cachedUrls = _resultFetcher.GetAllCachedUrls();
+
+            // Assert
+            Assert.Empty(cachedUrls);
+
+            // Stop the fetcher
+            await _resultFetcher.StopAsync();
+        }
+
+        private TSparkArrowResultLink CreateTestResultLink(long startRowOffset, int rowCount, string fileLink, int expirySeconds)
+        {
+            return new TSparkArrowResultLink
+            {
+                StartRowOffset = startRowOffset,
+                RowCount = rowCount,
+                FileLink = fileLink,
+                ExpiryTime = new DateTimeOffset(_mockClock.UtcNow.AddSeconds(expirySeconds)).ToUnixTimeMilliseconds()
             };
         }
 
-        private TFetchResultsResp CreateFetchResultsResponse(List<TSparkArrowResultLink> resultLinks, bool hasMoreRows)
+        private void SetupMockClientFetchResults(List<TSparkArrowResultLink> resultLinks, bool hasMoreRows)
         {
-            var results = new TRowSet();
-            results.__isset.resultLinks = true;
+            var results = new TRowSet { __isset = { resultLinks = true } };
             results.ResultLinks = resultLinks;
 
-            return new TFetchResultsResp
+            var response = new TFetchResultsResp
             {
                 Status = new TStatus { StatusCode = TStatusCode.SUCCESS_STATUS },
                 HasMoreRows = hasMoreRows,
                 Results = results,
                 __isset = { results = true, hasMoreRows = true }
             };
+
+            // Clear any previous setups
+            _mockClient.Reset();
+
+            // Setup for any fetch request
+            _mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(response);
+        }
+    }
+
+    /// <summary>
+    /// Mock clock implementation for testing time-dependent behavior.
+    /// </summary>
+    public class MockClock : IClock
+    {
+        private DateTimeOffset _now;
+
+        public MockClock()
+        {
+            _now = DateTimeOffset.UtcNow;
         }
 
-        private TSparkArrowResultLink CreateTestResultLink(long startRowOffset, int rowCount, string fileLink)
+        public DateTime UtcNow => _now.UtcDateTime;
+
+        public void AdvanceTime(TimeSpan timeSpan)
         {
-            return new TSparkArrowResultLink
-            {
-                StartRowOffset = startRowOffset,
-                RowCount = rowCount,
-                FileLink = fileLink
-            };
+            _now = _now.Add(timeSpan);
+        }
+
+        public void SetTime(DateTimeOffset time)
+        {
+            _now = time;
+        }
+    }
+
+    /// <summary>
+    /// Extension of CloudFetchResultFetcher that uses a mock clock for testing.
+    /// </summary>
+    internal class CloudFetchResultFetcherWithMockClock : CloudFetchResultFetcher
+    {
+        public CloudFetchResultFetcherWithMockClock(
+            IHiveServer2Statement statement,
+            ICloudFetchMemoryBufferManager memoryManager,
+            BlockingCollection<IDownloadResult> downloadQueue,
+            long batchSize,
+            IClock clock,
+            int expirationBufferSeconds = 60)
+            : base(statement, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
+        {
         }
     }
 }

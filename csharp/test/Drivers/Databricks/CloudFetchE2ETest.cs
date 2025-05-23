@@ -65,7 +65,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 [DatabricksParameters.UseCloudFetch] = useCloudFetch.ToString(),
                 [DatabricksParameters.EnableDirectResults] = enableDirectResults.ToString(),
                 [DatabricksParameters.CanDecompressLz4] = "true",
-                [DatabricksParameters.MaxBytesPerFile] = "10485760" // 10MB
+                [DatabricksParameters.MaxBytesPerFile] = "10485760", // 10MB
+                [DatabricksParameters.CloudFetchUrlExpirationBufferSeconds] = (15 * 60 - 2).ToString(),
             });
 
             // Execute a query that generates a large result set using range function
