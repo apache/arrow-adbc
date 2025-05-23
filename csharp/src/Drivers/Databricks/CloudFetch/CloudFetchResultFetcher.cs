@@ -139,78 +139,45 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             }
         }
 
-        /// <summary>
-        /// Gets a URL for the specified offset, fetching or refreshing as needed.
-        /// </summary>
-        /// <param name="offset">The row offset for which to get a URL.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>The URL link for the specified offset, or null if not available.</returns>
+        /// <inheritdoc />
         public async Task<TSparkArrowResultLink?> GetUrlAsync(long offset, CancellationToken cancellationToken)
         {
             // Need to fetch or refresh the URL
             await _fetchLock.WaitAsync(cancellationToken);
             try
             {
-                // Determine if we need to fetch new URLs or refresh existing ones
-                if (!_urlsByOffset.ContainsKey(offset) && _hasMoreResults)
+                // Create fetch request for the specific offset
+                TFetchResultsReq request = new TFetchResultsReq(
+                    _statement.OperationHandle!,
+                    TFetchOrientation.FETCH_NEXT,
+                    1);
+
+                request.StartRowOffset = offset;
+
+                // Fetch results
+                TFetchResultsResp response = await _statement.Client.FetchResults(request, cancellationToken);
+
+                // Process the results
+                if (response.Status.StatusCode == TStatusCode.SUCCESS_STATUS &&
+                    response.Results.__isset.resultLinks &&
+                    response.Results.ResultLinks != null &&
+                    response.Results.ResultLinks.Count > 0)
                 {
-                    // This is a new offset we haven't seen before - fetch new URLs
-                    var links = await FetchUrlBatchAsync(offset, 100, cancellationToken);
-                    return links.FirstOrDefault(l => l.StartRowOffset == offset);
+                    var refreshedLink = response.Results.ResultLinks.FirstOrDefault(l => l.StartRowOffset == offset);
+                    if (refreshedLink != null)
+                    {
+                        Trace.TraceInformation($"Successfully fetched URL for offset {offset}");
+                        _urlsByOffset[offset] = refreshedLink;
+                        return refreshedLink;
+                    }
                 }
-                else
-                {
-                    // We have the URL but it's expired - refresh it
-                    return await RefreshUrlAsync(offset, cancellationToken);
-                }
+
+                Trace.TraceWarning($"Failed to fetch URL for offset {offset}");
+                return null;
             }
             finally
             {
                 _fetchLock.Release();
-            }
-        }
-
-        /// <summary>
-        /// Checks if any URLs are expired or about to expire.
-        /// </summary>
-        /// <returns>True if any URLs are expired or about to expire, false otherwise.</returns>
-        public bool HasExpiredOrExpiringSoonUrls()
-        {
-            return _urlsByOffset.Values.Any(IsUrlExpiredOrExpiringSoon);
-        }
-
-        /// <summary>
-        /// Proactively refreshes URLs that are expired or about to expire.
-        /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        public async Task RefreshExpiredUrlsAsync(CancellationToken cancellationToken)
-        {
-            // Find the earliest offset that needs refreshing
-            long? earliestExpiredOffset = null;
-
-            foreach (var entry in _urlsByOffset)
-            {
-                if (IsUrlExpiredOrExpiringSoon(entry.Value))
-                {
-                    if (!earliestExpiredOffset.HasValue || entry.Key < earliestExpiredOffset.Value)
-                    {
-                        earliestExpiredOffset = entry.Key;
-                    }
-                }
-            }
-
-            if (earliestExpiredOffset.HasValue)
-            {
-                await _fetchLock.WaitAsync(cancellationToken);
-                try
-                {
-                    Trace.TraceInformation($"Proactively refreshing URLs starting from offset {earliestExpiredOffset.Value}");
-                    await FetchUrlBatchAsync(earliestExpiredOffset.Value, 100, cancellationToken);
-                }
-                finally
-                {
-                    _fetchLock.Release();
-                }
             }
         }
 

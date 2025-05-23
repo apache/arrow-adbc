@@ -53,12 +53,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             yield return new object[] { largeQuery, 1000000, false, false };
         }
 
-        [Fact]
-        public async Task SingleTest()
-        {
-            await TestRealDatabricksCloudFetch("SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000", 1000000, true, true);
-        }
-
         /// <summary>
         /// Integration test for running queries against a real Databricks cluster with different CloudFetch settings.
         /// </summary>

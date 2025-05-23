@@ -386,9 +386,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 
                             Trace.TraceInformation($"URL for file at offset {refreshedLink.StartRowOffset} was refreshed after expired URL response");
 
-                            // Also refresh other potentially expired URLs
-                            await _resultFetcher.RefreshExpiredUrlsAsync(cancellationToken);
-
                             // Continue to the next retry attempt with the refreshed URL
                             continue;
                         }
