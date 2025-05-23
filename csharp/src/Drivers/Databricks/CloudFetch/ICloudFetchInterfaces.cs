@@ -160,6 +160,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// Gets the error encountered by the fetcher, if any.
         /// </summary>
         Exception? Error { get; }
+
+        /// <summary>
+        /// Gets a URL for the specified offset, fetching or refreshing as needed.
+        /// </summary>
+        /// <param name="offset">The row offset for which to get a URL.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The URL link for the specified offset, or null if not available.</returns>
+        Task<TSparkArrowResultLink?> GetUrlAsync(long offset, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Checks if any URLs are expired or about to expire.
+        /// </summary>
+        /// <returns>True if any URLs are expired or about to expire, false otherwise.</returns>
+        bool HasExpiredOrExpiringSoonUrls();
+
+        /// <summary>
+        /// Proactively refreshes URLs that are expired or about to expire.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        Task RefreshExpiredUrlsAsync(CancellationToken cancellationToken);
     }
 
     /// <summary>

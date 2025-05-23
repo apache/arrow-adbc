@@ -46,7 +46,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
         private readonly BlockingCollection<IDownloadResult> _resultQueue;
-        private readonly CloudFetchUrlManager _urlManager;
         private readonly ICloudFetchResultFetcher _resultFetcher;
         private readonly ICloudFetchDownloader _downloader;
         private readonly HttpClient _httpClient;
@@ -191,15 +190,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             _httpClient = httpClient;
             _httpClient.Timeout = TimeSpan.FromMinutes(timeoutMinutes);
 
-            // Initialize the URL manager
-            _urlManager = new CloudFetchUrlManager(_statement, urlExpirationBufferSeconds);
-
-            // Initialize the result fetcher
+            // Initialize the result fetcher with URL management capabilities
             _resultFetcher = new CloudFetchResultFetcher(
                 _statement,
                 _memoryManager,
                 _downloadQueue,
-                DefaultFetchBatchSize);
+                DefaultFetchBatchSize,
+                urlExpirationBufferSeconds);
 
             // Initialize the downloader
             _downloader = new CloudFetchDownloader(
@@ -207,7 +204,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 _resultQueue,
                 _memoryManager,
                 _httpClient,
-                _urlManager,
+                _resultFetcher,
                 parallelDownloads,
                 _isLz4Compressed,
                 maxRetries,
@@ -242,7 +239,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             _memoryManager = new CloudFetchMemoryBufferManager(DefaultMemoryBufferSizeMB);
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
             _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
-            _urlManager = new CloudFetchUrlManager(_statement);
             _httpClient = new HttpClient();
         }
 

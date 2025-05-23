@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         private readonly BlockingCollection<IDownloadResult> _resultQueue;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
         private readonly HttpClient _httpClient;
-        private readonly CloudFetchUrlManager _urlManager;
+        private readonly ICloudFetchResultFetcher _resultFetcher;
         private readonly int _maxParallelDownloads;
         private readonly bool _isLz4Compressed;
         private readonly int _maxRetries;
@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// <param name="resultQueue">The queue to add completed downloads to.</param>
         /// <param name="memoryManager">The memory buffer manager.</param>
         /// <param name="httpClient">The HTTP client to use for downloads.</param>
-        /// <param name="urlManager">The URL manager for handling URL expiration.</param>
+        /// <param name="resultFetcher">The result fetcher that manages URLs.</param>
         /// <param name="maxParallelDownloads">The maximum number of parallel downloads.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
         /// <param name="maxRetries">The maximum number of retry attempts.</param>
@@ -68,7 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             BlockingCollection<IDownloadResult> resultQueue,
             ICloudFetchMemoryBufferManager memoryManager,
             HttpClient httpClient,
-            CloudFetchUrlManager urlManager,
+            ICloudFetchResultFetcher resultFetcher,
             int maxParallelDownloads,
             bool isLz4Compressed,
             int maxRetries = 3,
@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             _resultQueue = resultQueue ?? throw new ArgumentNullException(nameof(resultQueue));
             _memoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _urlManager = urlManager ?? throw new ArgumentNullException(nameof(urlManager));
+            _resultFetcher = resultFetcher ?? throw new ArgumentNullException(nameof(resultFetcher));
             _maxParallelDownloads = maxParallelDownloads > 0 ? maxParallelDownloads : throw new ArgumentOutOfRangeException(nameof(maxParallelDownloads));
             _isLz4Compressed = isLz4Compressed;
             _maxRetries = maxRetries > 0 ? maxRetries : throw new ArgumentOutOfRangeException(nameof(maxRetries));
@@ -252,7 +252,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                     if (downloadResult.IsExpiredOrExpiringSoon(_urlExpirationBufferSeconds))
                     {
                         // Get a refreshed URL before starting the download
-                        var refreshedLink = await _urlManager.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
+                        var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
                         if (refreshedLink != null)
                         {
                             // Update the download result with the refreshed link
@@ -376,7 +376,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                         }
 
                         // Try to refresh the URL
-                        var refreshedLink = await _urlManager.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
+                        var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
                         if (refreshedLink != null)
                         {
                             // Update the download result with the refreshed link
@@ -387,7 +387,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                             Trace.TraceInformation($"URL for file at offset {refreshedLink.StartRowOffset} was refreshed after expired URL response");
 
                             // Also refresh other potentially expired URLs
-                            await _urlManager.RefreshExpiredUrlsAsync(cancellationToken);
+                            await _resultFetcher.RefreshExpiredUrlsAsync(cancellationToken);
 
                             // Continue to the next retry attempt with the refreshed URL
                             continue;
