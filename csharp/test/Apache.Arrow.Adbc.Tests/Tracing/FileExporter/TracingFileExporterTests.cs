@@ -127,7 +127,11 @@ namespace Apache.Arrow.Adbc.Tests.Tracing.FileExporter
 
                 Assert.True(Directory.Exists(traceFolder));
                 DirectoryInfo traceDirectory = new(traceFolder);
-                FileInfo[] files = traceDirectory.GetFiles();
+                string searchPattern = _activitySourceName + "-trace-*.log";
+                FileInfo[] files = [.. traceDirectory
+                    .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
+                    .OrderBy(f => f.LastWriteTimeUtc)];
+                //FileInfo[] files = traceDirectory.GetFiles();
                 Assert.True(files.Length > 2, $"actual # of trace files: {files.Length}");
                 Assert.True(files.All(f => f.Name.StartsWith(_activitySourceName)));
                 for (int i = 0; i < files.Length; i++)
