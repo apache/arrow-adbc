@@ -25,11 +25,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift.Protocol;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -59,6 +61,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
             ValidateProperties();
+        }
+
+        protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
+        {
+            return new ThreadSafeClient(new TCLIService.Client(protocol));
         }
 
         private void ValidateProperties()
