@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using Apache.Arrow.Adbc.Drivers.Apache.Databricks.Client;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
@@ -32,7 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// <summary>
         /// Gets the client.
         /// </summary>
-        TCLIService.IAsync Client { get; }
+        ThreadSafeClient ThreadSafeClient { get; }
 
         /// <summary>
         /// Gets the direct results.

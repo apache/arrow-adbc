@@ -29,13 +29,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal class DatabricksOperationStatusPoller : IDisposable
     {
-        private readonly DatabricksStatement _statement;
+        private readonly IHiveServer2Statement _statement;
         private readonly int _heartbeatIntervalSeconds;
         // internal cancellation token source - won't affect the external token
         private CancellationTokenSource? _internalCts;
         private Task? _operationStatusPollingTask;
 
-        public DatabricksOperationStatusPoller(DatabricksStatement statement, int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds)
+        public DatabricksOperationStatusPoller(IHiveServer2Statement statement, int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _heartbeatIntervalSeconds = heartbeatIntervalSeconds;
@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                     var request = new TGetOperationStatusReq(operationHandle);
 
-                    var response = await _statement.GetOperationStatusAsync(request, cancellationToken);
+                    var response = await _statement.ThreadSafeClient.GetOperationStatusAsync(request, cancellationToken);
                     await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), cancellationToken);
 
                     // end the heartbeat if the command has terminated
