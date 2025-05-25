@@ -95,7 +95,7 @@ if(MSVC)
   add_compile_options(/wd5027)
   add_compile_options(/wd5039)
   add_compile_options(/wd5045)
-  add_compile_options(/wd5246)
+  add_compile_options(/wd5246) 
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
        OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -143,6 +143,18 @@ endmacro()
 # Common testing setup
 add_custom_target(all-tests)
 if(ADBC_BUILD_TESTS)
+  if(MSVC)
+    # MSVC emitted warnings for testing code
+    add_compile_options(/wd5204)
+    add_compile_options(/wd5026)
+    add_compile_options(/wd4266)
+    add_compile_options(/wd4265)
+    add_compile_options(/wd5262)
+    add_compile_options(/wd4146)
+    add_compile_options(/wd4244)
+    add_compile_options(/wd4307)
+  endif()
+
   find_package(GTest)
   if(NOT GTest_FOUND)
     message(STATUS "Building googletest from source")
