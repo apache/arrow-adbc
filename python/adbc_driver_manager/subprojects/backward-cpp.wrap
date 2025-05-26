@@ -1,0 +1,30 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+[wrap-file]
+directory = backward-cpp-1.6
+source_url = https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz
+source_filename = backward-cpp-1.6.tar.gz
+source_hash = c654d0923d43f1cea23d086729673498e4741fb2457e806cfaeaea7b20c97c10
+patch_filename = backward-cpp_1.6-3_patch.zip
+patch_url = https://wrapdb.mesonbuild.com/v2/backward-cpp_1.6-3/get_patch
+patch_hash = 219b7a62f8f05037586ec90ba02b6d552d356f6f1d1171e5803bbe483daf69f0
+source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/backward-cpp_1.6-3/backward-cpp-1.6.tar.gz
+wrapdb_version = 1.6-3
+
+[provide]
+backward-cpp = backward_dep
