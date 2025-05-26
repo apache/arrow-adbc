@@ -17,6 +17,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#define LANG_CODE_US_ENGLISH 0x0409
+#define CHARSET_UNICODE 0x04b0
+#define US_ENGLISH_UNICODE "040904b0"
+
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION @ADBC_VERSION_MAJOR@,@ADBC_VERSION_MINOR@,@ADBC_VERSION_PATCH@,0
 PRODUCTVERSION @ADBC_VERSION_MAJOR@,@ADBC_VERSION_MINOR@,@ADBC_VERSION_PATCH@,0
@@ -28,7 +32,7 @@ FILESUBTYPE VFT2_UNKNOWN
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904b0"
+        BLOCK US_ENGLISH_UNICODE
         BEGIN
             VALUE "FileDescription", "ADBC: Arrow Database Connectivity"
             VALUE "FileVersion", "@ADBC_FULL_SO_VERSION@"
@@ -39,6 +43,6 @@ BEGIN
     END
     BLOCK "VarFileInfo"
     BEGIN
-        VALUE "Translation", 0x409, 1200
+        VALUE "Translation", LANG_CODE_US_ENGLISH, CHARSET_UNICODE
     END
 END
