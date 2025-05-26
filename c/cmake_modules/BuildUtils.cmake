@@ -244,7 +244,7 @@ function(ADD_ARROW_LIB LIB_NAME)
     if(MSVC)
         # Binaries generated on Windows need file version information, otherwise when the binary is part of a Windows installer
         # the installer won't know to update a previously installed version.
-        set(VERSION_RC_TEMPLATE "${CMAKE_SOURCE_DIR}/cmake_modules/version.rc.in")
+        set(VERSION_RC_TEMPLATE "${CMAKE_SOURCE_DIR}/version.rc.in")
         configure_file(
             "${VERSION_RC_TEMPLATE}"
             "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}_version.rc"
