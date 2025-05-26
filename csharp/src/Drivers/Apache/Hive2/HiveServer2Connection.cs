@@ -306,7 +306,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            await Trace.TraceActivity(async activity =>
+            await TraceActivity(async activity =>
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
                 try
@@ -363,7 +363,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
-            return Trace.TraceActivity(activity =>
+            return TraceActivity(activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -556,7 +556,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetTableTypes()
         {
-            return Trace.TraceActivity(activity =>
+            return TraceActivity(activity =>
             {
                 TGetTableTypesReq req = new()
                 {
@@ -623,7 +623,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
-            return Trace.TraceActivity(activity =>
+            return TraceActivity(activity =>
             {
                 TGetInfoReq req = new()
                 {
@@ -652,7 +652,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected override void Dispose(bool disposing)
         {
-            Trace.TraceActivity(activity =>
+            TraceActivity(activity =>
             {
                 if (!_isDisposed)
                 {
@@ -795,7 +795,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             switch (key.ToLowerInvariant())
             {
                 case AdbcOptions.Telemetry.TraceParent:
-                    Trace.TraceParent = string.IsNullOrEmpty(value) ? null : value;
+                    TraceParent = string.IsNullOrEmpty(value) ? null : value;
                     return;
             }
             if (SessionHandle != null)
@@ -907,7 +907,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task<TGetCatalogsResp> GetCatalogsAsync(CancellationToken cancellationToken)
         {
-            return await Trace.TraceActivityAsync(async activity =>
+            return await TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -932,7 +932,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? schemaName,
             CancellationToken cancellationToken)
         {
-            return await Trace.TraceActivityAsync(async activity =>
+            return await TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -967,7 +967,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             List<string>? tableTypes,
             CancellationToken cancellationToken)
         {
-            return await Trace.TraceActivityAsync(async activity =>
+            return await TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1010,7 +1010,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? columnName,
             CancellationToken cancellationToken)
         {
-            return await Trace.TraceActivityAsync(async activity =>
+            return await TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1052,7 +1052,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? tableName,
             CancellationToken cancellationToken = default)
         {
-            return await Trace.TraceActivityAsync(async activity =>
+            return await TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1093,7 +1093,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? foreignTableName,
             CancellationToken cancellationToken = default)
         {
-            return await Trace.TraceActivityAsync(async activity =>
+            return await TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1224,7 +1224,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
-            return Trace.TraceActivity(activity =>
+            return TraceActivity(activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1360,7 +1360,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
-            return Trace.TraceActivity(activity =>
+            return TraceActivity(activity =>
             {
                 const int strValTypeID = 0;
                 const int boolValTypeId = 1;

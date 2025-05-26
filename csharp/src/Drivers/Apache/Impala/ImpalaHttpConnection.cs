@@ -208,6 +208,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         protected override int ColumnMapIndexOffset => 0;
 
-        public override Assembly CallingAssembly => GetType().Assembly;
+        public override Assembly TracingAssembly => GetType().Assembly;
     }
 }

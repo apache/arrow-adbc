@@ -509,6 +509,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
-        public override Assembly CallingAssembly => GetType().Assembly;
+        public override Assembly TracingAssembly => GetType().Assembly;
     }
 }

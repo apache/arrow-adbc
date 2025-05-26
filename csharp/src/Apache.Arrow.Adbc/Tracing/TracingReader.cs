@@ -18,39 +18,31 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using OpenTelemetry.Trace;
+using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
-    public abstract class TracingConnection : AdbcConnection, IActivityTracer
+    public abstract class TracingReader : IArrowArrayStream, IActivityTracer
     {
-        private TracerProvider? _tracerProvider;
         private bool _isDisposed;
-        internal readonly ActivityTrace _trace;
+        private readonly TracingStatement _statement;
 
-        protected TracingConnection(IReadOnlyDictionary<string, string> properties)
+        protected TracingReader(TracingStatement statement)
         {
-            _tracerProvider = ActivityTrace.InitTracerProvider(out string activitySourceName, out _, TracingAssembly);
-            properties.TryGetValue(AdbcOptions.Telemetry.TraceParent, out string? traceParent);
-            _trace = new ActivityTrace(activitySourceName, traceParent);
+            _statement = statement;
         }
 
-        public abstract Assembly TracingAssembly { get; }
+        public abstract Schema Schema { get; }
 
-        protected string? TraceParent
-        {
-            get
-            {
-                return _trace.TraceParent;
-            }
-            set
-            {
-                _trace.TraceParent = value;
-            }
-        }
+        public abstract ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default);
+
+        private ActivityTrace Trace => _statement._trace;
+
+        private string? TraceParent => _statement.TraceParent;
 
         protected virtual void Dispose(bool disposing)
         {
@@ -58,18 +50,23 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 if (disposing)
                 {
-                    if (_tracerProvider != null)
-                    {
-                        _tracerProvider.Dispose();
-                        _tracerProvider = null;
-                    }
+                    // TODO: dispose managed state (managed objects)
                 }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
                 _isDisposed = true;
             }
         }
 
-        // Note: if base class implements this code, remove this override
-        public override void Dispose()
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~TracingReader()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
@@ -78,22 +75,22 @@ namespace Apache.Arrow.Adbc.Tracing
 
         public void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            _trace.TraceActivity(call, activityName, traceParent ?? TraceParent);
+            TraceActivity(call, activityName, traceParent ?? TraceParent);
         }
 
         public T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            return _trace.TraceActivity(call, activityName, traceParent ?? TraceParent);
+            return Trace.TraceActivity(call, activityName, traceParent ?? TraceParent);
         }
 
         public Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            return _trace.TraceActivityAsync(call, activityName, traceParent ?? TraceParent);
+            return Trace.TraceActivityAsync(call, activityName, traceParent ?? TraceParent);
         }
 
         public Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            return _trace.TraceActivityAsync(call, activityName, traceParent ?? TraceParent);
+            return Trace.TraceActivityAsync(call, activityName, traceParent ?? TraceParent);
         }
     }
 }

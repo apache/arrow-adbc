@@ -28,7 +28,7 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Statement : AdbcStatement
+    internal class HiveServer2Statement : TracingStatement
     {
         private const string GetPrimaryKeysCommandName = "getprimarykeys";
         private const string GetCrossReferenceCommandName = "getcrossreference";
@@ -47,14 +47,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             GetColumnsExtendedCommandName;
 
         internal HiveServer2Statement(HiveServer2Connection connection)
+            : base(connection)
         {
             Connection = connection;
             ValidateOptions(connection.Properties);
         }
-
-        protected internal ActivityTrace Trace => Connection.Trace;
-
-        protected string? TraceParent { get; private set; } = null;
 
         protected virtual void SetStatementProperties(TExecuteStatementReq statement)
         {
@@ -101,7 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
         {
-            return await Trace.TraceActivityAsync(async activity =>
+            return await TraceActivityAsync(async activity =>
             {
                 if (IsMetadataCommand)
                 {
@@ -154,7 +151,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
         {
-            return await Trace.TraceActivityAsync(async activity =>
+            return await TraceActivityAsync(async activity =>
             {
                 long? affectedRows = null;
                 try
@@ -208,7 +205,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
-            return await Trace.TraceActivityAsync(async _ =>
+            return await TraceActivityAsync(async _ =>
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 try
@@ -284,7 +281,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
-            await Trace.TraceActivityAsync(async activity =>
+            await TraceActivityAsync(async activity =>
             {
                 if (Connection.SessionHandle == null)
                 {

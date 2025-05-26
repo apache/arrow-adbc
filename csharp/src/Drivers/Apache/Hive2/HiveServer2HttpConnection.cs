@@ -201,6 +201,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Http;
 
-        public override Assembly CallingAssembly => GetType().Assembly;
+        public override Assembly TracingAssembly => GetType().Assembly;
     }
 }

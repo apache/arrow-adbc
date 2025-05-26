@@ -245,6 +245,11 @@ namespace Apache.Arrow.Adbc.Tracing
         }
 
         /// <summary>
+        /// Gets or sets the trace parent context.
+        /// </summary>
+        public string? TraceParent { get; set; }
+
+        /// <summary>
         /// Writes the exception to the trace by adding an exception event to the current activity (span).
         /// </summary>
         /// <param name="exception">The exception to trace.</param>
@@ -255,24 +260,8 @@ namespace Apache.Arrow.Adbc.Tracing
         /// For example, <c>escaped</c> should be <c>true</c> if the exception is caught and re-thrown.
         /// However, <c>escaped</c> should be set to <c>false</c> if execution continues in the current scope.
         /// </param>
-        public static void TraceException(Exception exception, Activity? activity) =>
+        private static void TraceException(Exception exception, Activity? activity) =>
             WriteTraceException(exception, activity);
-
-        /// <summary>
-        /// Starts an <see cref="Activity"/> on the <see cref="ActivityTrace.ActivitySource"/> if there is
-        /// and active listener on the source.
-        /// </summary>
-        /// <param name="methodName">The name of the method for the activity.</param>
-        /// <returns>If there is an active listener on the source, an <see cref="Activity"/> is returned, null otherwise.</returns>
-        public Activity? StartActivity([CallerMemberName] string? activityName = default, string? traceParent = default)
-        {
-            return StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
-        }
-
-        /// <summary>
-        /// Gets or sets the trace parent context.
-        /// </summary>
-        public string? TraceParent { get; set; }
 
         /// <summary>
         /// Gets the product version from the file version of the current assembly.
@@ -308,7 +297,7 @@ namespace Apache.Arrow.Adbc.Tracing
             GC.SuppressFinalize(this);
         }
 
-        public static TracerProvider? InitTracerProvider(out string activitySourceName, out string activitySourceVersion, Assembly? executingAssembly = default)
+        internal static TracerProvider? InitTracerProvider(out string activitySourceName, out string activitySourceVersion, Assembly? executingAssembly = default)
         {
             executingAssembly ??= Assembly.GetExecutingAssembly();
             AssemblyName assemblyName = executingAssembly.GetName();

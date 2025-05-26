@@ -271,7 +271,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override int ColumnMapIndexOffset => 1;
 
-        public override Assembly CallingAssembly => GetType().Assembly;
+        public override Assembly TracingAssembly => GetType().Assembly;
 
         private string GetUserAgent()
         {
