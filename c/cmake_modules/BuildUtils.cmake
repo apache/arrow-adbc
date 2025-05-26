@@ -241,7 +241,7 @@ function(ADD_ARROW_LIB LIB_NAME)
                                      VERSION "${ADBC_FULL_SO_VERSION}"
                                      SOVERSION "${ADBC_SO_VERSION}")
                                      
-    if(MSVC)
+    if(WIN32)
         # Binaries generated on Windows need file version information, otherwise when the binary is part of a Windows installer
         # the installer won't know to update a previously installed version.
         set(VERSION_RC_TEMPLATE "${CMAKE_SOURCE_DIR}/version.rc.in")

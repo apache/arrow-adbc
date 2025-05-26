@@ -19,7 +19,7 @@ find_program(GO_BIN "go" REQUIRED)
 message(STATUS "Detecting Go executable: Found ${GO_BIN}")
 
 # Find tools for generating import libraries on Windows
-if(MSVC)
+if(WIN32)
   # msys64 is needed for dlltool and gendef
   find_program(DLLTOOL_BIN "dlltool")
   find_program(GENDEF_BIN "gendef")
@@ -200,7 +200,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
       list(APPEND GO_ENV_VARS "GOARCH=arm64")
     endif()
 
-    if(MSVC)
+    if(WIN32)
       # On Windows with MSVC, generate a lib from the DLL file created by go. Binaries generated on Windows have their version
       # as part of the DLL/file details, therefore the generated DLL file name does not need to have the version info.
       set(LIBOUT_IMPORT_LIB "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_IMPORT_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_IMPORT_LIBRARY_SUFFIX}")
