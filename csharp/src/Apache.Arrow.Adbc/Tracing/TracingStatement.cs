@@ -32,26 +32,26 @@ namespace Apache.Arrow.Adbc.Tracing
             _trace = connection._trace;
         }
 
-        protected string? TraceParent { get; set; }
+        internal string? TraceParent { get; set; }
 
         public void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            _trace.TraceActivity(call, activityName, traceParent);
+            _trace.TraceActivity(call, activityName, traceParent ?? TraceParent);
         }
 
         public T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            return TraceActivity(call, activityName, traceParent);
+            return TraceActivity(call, activityName, traceParent ?? TraceParent);
         }
 
         public Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            return _trace.TraceActivityAsync(call, activityName, traceParent);
+            return _trace.TraceActivityAsync(call, activityName, traceParent ?? TraceParent);
         }
 
         public Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            return _trace.TraceActivityAsync(call, activityName, traceParent);
+            return _trace.TraceActivityAsync(call, activityName, traceParent ?? TraceParent);
         }
     }
 }
