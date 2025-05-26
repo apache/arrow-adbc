@@ -829,9 +829,70 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 </pre></div>
 </div>
 </section>
+<section id="execute-a-statement-without-copy">
+<span id="recipe-postgresql-statement-nocopy"></span><h2>Execute a statement without COPY<a class="headerlink" href="#execute-a-statement-without-copy" title="Link to this heading">¶</a></h2>
+<p id="index-5">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_execute_nocopy.py">postgresql_execute_nocopy.py</a></p>
+<p>The ADBC driver tries to execute queries with COPY by default since it is
+faster for large result sets.  PostgreSQL does not support <code class="docutils literal notranslate"><span class="pre">COPY</span></code> for all
+kinds of queries, however.  For example, <code class="docutils literal notranslate"><span class="pre">SHOW</span></code> queries will not work.
+In this case, you can explicitly disable the <code class="docutils literal notranslate"><span class="pre">COPY</span></code> optimization.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">27</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos">28</span>
+<span class="linenos">29</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">30</span>
+<span class="linenos">31</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
+<span class="linenos">32</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The option can be set when creating the cursor:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">36</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span>
+<span class="linenos">37</span>    <span class="n">adbc_stmt_kwargs</span><span class="o">=</span><span class="p">{</span>
+<span class="linenos">38</span>        <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">StatementOptions</span><span class="o">.</span><span class="n">USE_COPY</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="linenos">39</span>    <span class="p">}</span>
+<span class="linenos">40</span><span class="p">)</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">41</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SHOW ALL&quot;</span><span class="p">)</span>
+<span class="linenos">42</span>    <span class="nb">print</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">()</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or it can be set afterwards:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">50</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">51</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_statement</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span>
+<span class="linenos">52</span>        <span class="o">**</span><span class="p">{</span>
+<span class="linenos">53</span>            <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">StatementOptions</span><span class="o">.</span><span class="n">USE_COPY</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="linenos">54</span>        <span class="p">}</span>
+<span class="linenos">55</span>    <span class="p">)</span>
+<span class="linenos">56</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SHOW ALL&quot;</span><span class="p">)</span>
+<span class="linenos">57</span>    <span class="nb">print</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">()</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Without the option, the query fails as the driver attempts to execute the
+query with <code class="docutils literal notranslate"><span class="pre">COPY</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">66</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">67</span>    <span class="k">try</span><span class="p">:</span>
+<span class="linenos">68</span>        <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SHOW ALL&quot;</span><span class="p">)</span>
+<span class="linenos">69</span>    <span class="k">except</span> <span class="n">conn</span><span class="o">.</span><span class="n">Error</span><span class="p">:</span>
+<span class="linenos">70</span>        <span class="k">pass</span>
+<span class="linenos">71</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">72</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Expected error&quot;</span><span class="p">)</span>
+<span class="linenos">73</span>
+<span class="linenos">74</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">stdout</span><a class="headerlink" href="#id2" title="Link to this code">¶</a></div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>name: string
+setting: string
+description: string
+name: string
+setting: string
+description: string
+</pre></div>
+</div>
+</div>
+</section>
 <section id="get-the-arrow-schema-of-a-table">
 <h2>Get the Arrow schema of a table<a class="headerlink" href="#get-the-arrow-schema-of-a-table" title="Link to this heading">¶</a></h2>
-<p id="index-5">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_table_schema.py">postgresql_get_table_schema.py</a></p>
+<p id="index-6">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_table_schema.py">postgresql_get_table_schema.py</a></p>
 <p>ADBC lets you get the schema of a table as an Arrow schema.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">25</span>
@@ -890,7 +951,7 @@ decimals do not map onto Arrow decimals.</p>
 </section>
 <section id="get-the-arrow-schema-of-a-query">
 <h2>Get the Arrow schema of a query<a class="headerlink" href="#get-the-arrow-schema-of-a-query" title="Link to this heading">¶</a></h2>
-<p id="index-6">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_query_schema.py">postgresql_get_query_schema.py</a></p>
+<p id="index-7">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_query_schema.py">postgresql_get_query_schema.py</a></p>
 <p>ADBC lets you get the schema of a result set, without executing the query.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">25</span>
@@ -933,7 +994,7 @@ decimals do not map onto Arrow decimals.</p>
 </section>
 <section id="list-catalogs-schemas-and-tables">
 <h2>List catalogs, schemas, and tables<a class="headerlink" href="#list-catalogs-schemas-and-tables" title="Link to this heading">¶</a></h2>
-<p id="index-7">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_list_catalogs.py">postgresql_list_catalogs.py</a></p>
+<p id="index-8">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_list_catalogs.py">postgresql_list_catalogs.py</a></p>
 <p>ADBC allows listing tables, catalogs, and schemas in the database.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">25</span>
@@ -977,7 +1038,7 @@ decimals do not map onto Arrow decimals.</p>
 </section>
 <section id="connection-pooling-with-sqlalchemy">
 <h2>Connection pooling with SQLAlchemy<a class="headerlink" href="#connection-pooling-with-sqlalchemy" title="Link to this heading">¶</a></h2>
-<p id="index-8">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pool.py">postgresql_pool.py</a></p>
+<p id="index-9">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pool.py">postgresql_pool.py</a></p>
 <p>ADBC does not implement connection pooling, as this is not generally a
 feature of DBAPI drivers.  Instead, use a third party connection pool
 like the one built into <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/pooling.html">SQLAlchemy</a>.</p>
@@ -1026,7 +1087,7 @@ protocol, unlike the underlying ADBC connection.</p>
 </section>
 <section id="using-pandas-and-adbc">
 <h2>Using Pandas and ADBC<a class="headerlink" href="#using-pandas-and-adbc" title="Link to this heading">¶</a></h2>
-<p id="index-9">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pandas.py">postgresql_pandas.py</a></p>
+<p id="index-10">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pandas.py">postgresql_pandas.py</a></p>
 <p>ADBC is integrated into <a class="reference external" href="https://pandas.pydata.org/">pandas</a>, a popular dataframe library.  Pandas can
 use ADBC to exchange data with PostgreSQL and other databases.  Compared to
 using SQLAlchemy or other options, using ADBC with pandas can have better
@@ -1069,7 +1130,7 @@ level API, especially for those already using pandas.</p>
 </section>
 <section id="using-polars-and-adbc">
 <h2>Using Polars and ADBC<a class="headerlink" href="#using-polars-and-adbc" title="Link to this heading">¶</a></h2>
-<p id="index-10">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_polars.py">postgresql_polars.py</a></p>
+<p id="index-11">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_polars.py">postgresql_polars.py</a></p>
 <p>ADBC can be used with <a class="reference external" href="https://pola.rs/">Polars</a>, a dataframe library written in Rust.  As per
 its documentation:</p>
 <blockquote>
@@ -1180,6 +1241,7 @@ United States and other countries.
 <li><a class="reference internal" href="#create-append-to-a-table-from-an-arrow-table">Create/append to a table from an Arrow table</a></li>
 <li><a class="reference internal" href="#create-append-to-a-temporary-table">Create/append to a temporary table</a></li>
 <li><a class="reference internal" href="#execute-a-statement-with-bind-parameters">Execute a statement with bind parameters</a></li>
+<li><a class="reference internal" href="#execute-a-statement-without-copy">Execute a statement without COPY</a></li>
 <li><a class="reference internal" href="#get-the-arrow-schema-of-a-table">Get the Arrow schema of a table</a></li>
 <li><a class="reference internal" href="#get-the-arrow-schema-of-a-query">Get the Arrow schema of a query</a></li>
 <li><a class="reference internal" href="#list-catalogs-schemas-and-tables">List catalogs, schemas, and tables</a></li>

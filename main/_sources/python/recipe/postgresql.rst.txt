@@ -46,6 +46,13 @@ Execute a statement with bind parameters
 
 .. recipe:: postgresql_execute_bind.py
 
+.. _recipe-postgresql-statement-nocopy:
+
+Execute a statement without COPY
+================================
+
+.. recipe:: postgresql_execute_nocopy.py
+
 Get the Arrow schema of a table
 ===============================
 

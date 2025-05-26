@@ -168,18 +168,17 @@ the :c:struct:`AdbcDatabase`.  This should be a `connection URI
 Supported Features
 ==================
 
-The PostgreSQL driver mostly supports features defined in the ADBC API
-specification 1.0.0, but not all cases are fully implemented
-(particularly around bind parameters and prepared statements).
+The PostgreSQL driver supports features defined in the ADBC API specification
+1.0.0.
 
-Bind Parameters and Prepared Statements
----------------------------------------
+COPY query execution
+--------------------
 
-The PostgreSQL driver only supports executing prepared statements with
-parameters that do not return result sets (basically, an INSERT with
-parameters).  Queries that return result sets are difficult with prepared
-statements because the driver is built around using COPY for best
-performance, which is not supported in this context.
+The PostgreSQL driver executes queries with ``COPY`` for best performance.
+PostgreSQL does not support this for all queries, however (such as ``SHOW``).
+The optimization can be disabled by the statement option
+``adbc.postgresql.use_copy``.  For an example, see
+:ref:`recipe-postgresql-statement-nocopy`.
 
 Bulk Ingestion
 --------------
