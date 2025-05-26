@@ -16,7 +16,7 @@ BEGIN
             VALUE "FileDescription", "ADBC: Arrow Database Connectivity"
             VALUE "FileVersion", "@ADBC_FULL_SO_VERSION@"
             VALUE "ProductVersion", "@ADBC_FULL_SO_VERSION@"
-            VALUE "CompanyName", "Apache"
+            VALUE "CompanyName", "Apache Software Foundation"
             VALUE "ProductName", "@LIB_NAME@"
         END
     END
