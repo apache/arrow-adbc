@@ -105,7 +105,7 @@ function adbcInjectVersionSwitcher() {
             const stableVersion = stableVersions[0][1].match(/^(.+) \(current\)/)[1];
             if (currentVersion !== stableVersion) {
                 warningBanner = `This is documentation for version ${currentVersion}.`;
-                redirectText = `Switch to stable version`;
+                redirectText = `Switch to current stable version`;
             }
         }
     }
