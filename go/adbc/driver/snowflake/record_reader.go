@@ -343,6 +343,8 @@ func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, 
 			fields[i].Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
 		case "binary":
 			fields[i].Type = arrow.BinaryTypes.Binary
+		case "boolean":
+			fields[i].Type = arrow.FixedWidthTypes.Boolean
 		default:
 			fields[i].Type = arrow.BinaryTypes.String
 		}
