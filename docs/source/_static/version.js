@@ -77,9 +77,10 @@ function adbcInjectVersionSwitcher() {
     // version documentation
 
     // If the user has dismissed the popup, don't show it again
+    const storageKey = "adbc-ignored-version-warnings";
     const ignoreVersionWarnings = new Set();
     try {
-        const savedVersions = JSON.parse(window.localStorage["ignored-version-warnings"]);
+        const savedVersions = JSON.parse(window.localStorage[storageKey]);
         for (const version of savedVersions) {
             ignoreVersionWarnings.add(version);
         }
@@ -129,7 +130,7 @@ function adbcInjectVersionSwitcher() {
         hide.addEventListener("click", (e) => {
             container.remove();
             ignoreVersionWarnings.add(currentVersion);
-            window.localStorage["ignored-version-warnings"] =
+            window.localStorage[storageKey] =
                 JSON.stringify(Array.from(ignoreVersionWarnings));
         });
 
