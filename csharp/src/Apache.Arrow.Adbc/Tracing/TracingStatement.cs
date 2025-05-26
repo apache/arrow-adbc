@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Tracing
             _trace = connection._trace;
         }
 
-        internal string? TraceParent { get; set; }
+        protected internal string? TraceParent { get; set; }
 
         public void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
