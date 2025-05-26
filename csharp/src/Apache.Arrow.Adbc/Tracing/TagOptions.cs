@@ -57,7 +57,7 @@ namespace Apache.Arrow.Adbc.Tracing
             public static class Response
             {
                 public const string ReturnedRows = "db.response.returned_rows";
-                public const string StatusCode = "db.response.status_cod";
+                public const string StatusCode = "db.response.status_code";
             }
         }
     }

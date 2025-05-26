@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -48,43 +49,51 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            ThrowIfDisposed();
-
-            while (true)
+            return await statement.Trace.TraceActivity(async activity =>
             {
-                if (this.reader != null)
+                ThrowIfDisposed();
+
+                while (true)
                 {
-                    RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
-                    if (next != null)
+                    if (this.reader != null)
                     {
-                        return next;
+                        RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        if (next != null)
+                        {
+                            activity?.AddTag(TagOptions.Db.Response.ReturnedRows, next.Length);
+                            return next;
+                        }
+                        this.reader = null;
                     }
-                    this.reader = null;
+
+                    if (this.batches != null && this.index < this.batches.Count)
+                    {
+                        ProcessFetchedBatches();
+                        continue;
+                    }
+
+                    this.batches = null;
+                    this.index = 0;
+
+                    if (this.hasNoMoreRows)
+                    {
+                        StopOperationStatusPoller();
+                        return null;
+                    }
+
+                    TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+                    TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
+
+                    // Make sure we get the arrowBatches
+                    this.batches = response.Results.ArrowBatches;
+                    for (int i = 0; i < this.batches.Count; i++)
+                    {
+                        activity?.AddTag(TagOptions.Db.Response.ReturnedRows, this.batches[i].RowCount);
+                    }
+
+                    this.hasNoMoreRows = !response.HasMoreRows;
                 }
-
-                if (this.batches != null && this.index < this.batches.Count)
-                {
-                    ProcessFetchedBatches();
-                    continue;
-                }
-
-                this.batches = null;
-                this.index = 0;
-
-                if (this.hasNoMoreRows)
-                {
-                    StopOperationStatusPoller();
-                    return null;
-                }
-
-                TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
-                TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
-
-                // Make sure we get the arrowBatches
-                this.batches = response.Results.ArrowBatches;
-
-                this.hasNoMoreRows = !response.HasMoreRows;
-            }
+            });
         }
 
         private void ProcessFetchedBatches()

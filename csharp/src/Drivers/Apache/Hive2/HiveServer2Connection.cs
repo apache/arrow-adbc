@@ -306,40 +306,38 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
-            try
+            await Trace.TraceActivity(async activity =>
             {
-                TTransport transport = CreateTransport();
-                TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
-                _transport = protocol.Transport;
-                _client = new TCLIService.Client(protocol);
-                TOpenSessionReq request = CreateSessionRequest();
-
-                TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
-
-                // Explicitly check the session status
-                if (session == null)
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
+                try
                 {
-                    throw new HiveServer2Exception("Unable to open session. Unknown error.");
-                }
-                else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-                {
-                    throw new HiveServer2Exception(session.Status.ErrorMessage)
-                        .SetNativeError(session.Status.ErrorCode)
-                        .SetSqlState(session.Status.SqlState);
-                }
+                    TTransport transport = CreateTransport();
+                    TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
+                    _transport = protocol.Transport;
+                    _client = new TCLIService.Client(protocol);
+                    TOpenSessionReq request = CreateSessionRequest();
 
-                SessionHandle = session.SessionHandle;
-            }
-            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
-            {
-                throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                // Handle other exceptions if necessary
-                throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
-            }
+                    TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
+
+                    // Explicitly check the session status
+                    if (session == null)
+                    {
+                        throw new HiveServer2Exception("Unable to open session. Unknown error.");
+                    }
+                    ApacheUtility.HandleThriftResponse(session.Status, GetResponseHandlers(activity));
+
+                    SessionHandle = session.SessionHandle;
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    // Handle other exceptions if necessary
+                    throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
+                }
+            });
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }
@@ -385,18 +383,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     }
                     if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
                     {
-                        TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
-                        if (AreResultsAvailableDirectly)
-                        {
-                            SetDirectResults(getCatalogsReq);
-                        }
+                        TGetCatalogsResp getCatalogsResp = GetCatalogsAsync(cancellationToken).Result;
 
-                        TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, cancellationToken).Result;
-
-                        if (getCatalogsResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                        {
-                            throw new Exception(getCatalogsResp.Status.ErrorMessage);
-                        }
                         var catalogsMetadata = GetResultSetMetadataAsync(getCatalogsResp, cancellationToken).Result;
                         IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
 
@@ -422,19 +410,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.DbSchemas)
                     {
-                        TGetSchemasReq getSchemasReq = new TGetSchemasReq(SessionHandle);
-                        getSchemasReq.CatalogName = catalogPattern;
-                        getSchemasReq.SchemaName = dbSchemaPattern;
-                        if (AreResultsAvailableDirectly)
-                        {
-                            SetDirectResults(getSchemasReq);
-                        }
-
-                        TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq, cancellationToken).Result;
-                        if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                        {
-                            throw new Exception(getSchemasResp.Status.ErrorMessage);
-                        }
+                        TGetSchemasResp getSchemasResp = GetSchemasAsync(catalogPattern, dbSchemaPattern, cancellationToken).Result;
 
                         TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadataAsync(getSchemasResp, cancellationToken).Result;
                         IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
@@ -454,20 +430,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Tables)
                     {
-                        TGetTablesReq getTablesReq = new TGetTablesReq(SessionHandle);
-                        getTablesReq.CatalogName = catalogPattern;
-                        getTablesReq.SchemaName = dbSchemaPattern;
-                        getTablesReq.TableName = tableNamePattern;
-                        if (AreResultsAvailableDirectly)
-                        {
-                            SetDirectResults(getTablesReq);
-                        }
-
-                        TGetTablesResp getTablesResp = Client.GetTables(getTablesReq, cancellationToken).Result;
-                        if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                        {
-                            throw new Exception(getTablesResp.Status.ErrorMessage);
-                        }
+                        TGetTablesResp getTablesResp = GetTablesAsync(
+                            catalogPattern,
+                            dbSchemaPattern,
+                            tableNamePattern,
+                            tableTypes?.ToList(),
+                            cancellationToken).Result;
 
                         TGetResultSetMetadataResp tableMetadata = GetResultSetMetadataAsync(getTablesResp, cancellationToken).Result;
                         IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(tableMetadata.Schema.Columns);
@@ -491,23 +459,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     if (depth == GetObjectsDepth.All)
                     {
-                        TGetColumnsReq columnsReq = new TGetColumnsReq(SessionHandle);
-                        columnsReq.CatalogName = catalogPattern;
-                        columnsReq.SchemaName = dbSchemaPattern;
-                        columnsReq.TableName = tableNamePattern;
-                        if (AreResultsAvailableDirectly)
-                        {
-                            SetDirectResults(columnsReq);
-                        }
-
-                        if (!string.IsNullOrEmpty(columnNamePattern))
-                            columnsReq.ColumnName = columnNamePattern;
-
-                        var columnsResponse = Client.GetColumns(columnsReq, cancellationToken).Result;
-                        if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                        {
-                            throw new Exception(columnsResponse.Status.ErrorMessage);
-                        }
+                        TGetColumnsResp columnsResponse = GetColumnsAsync(
+                            catalogPattern,
+                            dbSchemaPattern,
+                            tableNamePattern,
+                            columnNamePattern,
+                            cancellationToken).Result;
 
                         TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadataAsync(columnsResponse, cancellationToken).Result;
                         IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
@@ -599,51 +556,48 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetTableTypes()
         {
-            TGetTableTypesReq req = new()
+            return Trace.TraceActivity(activity =>
             {
-                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
-            };
-
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(req);
-            }
-
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
-
-                if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                TGetTableTypesReq req = new()
                 {
-                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                        .SetNativeError(resp.Status.ErrorCode)
-                        .SetSqlState(resp.Status.SqlState);
-                }
-
-                TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
-                StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
-
-                HashSet<string> distinctTableTypes = new HashSet<string>(tableTypes);
-
-                StringArray.Builder tableTypesBuilder = new StringArray.Builder();
-                tableTypesBuilder.AppendRange(distinctTableTypes);
-
-                IArrowArray[] dataArrays = new IArrowArray[]
-                {
-                tableTypesBuilder.Build()
+                    SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
                 };
 
-                return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
-            }
-            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
-            }
+                if (AreResultsAvailableDirectly)
+                {
+                    SetDirectResults(req);
+                }
+
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                try
+                {
+                    TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
+                    ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+
+                    TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
+                    StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
+
+                    HashSet<string> distinctTableTypes = new HashSet<string>(tableTypes);
+
+                    StringArray.Builder tableTypesBuilder = new StringArray.Builder();
+                    tableTypesBuilder.AppendRange(distinctTableTypes);
+
+                    IArrowArray[] dataArrays = new IArrowArray[]
+                    {
+                tableTypesBuilder.Build()
+                    };
+
+                    return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+                }
+            });
         }
 
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
@@ -669,55 +623,59 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
-            TGetInfoReq req = new()
+            return Trace.TraceActivity(activity =>
             {
-                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
-                InfoType = infoType,
-            };
-
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
-                if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                TGetInfoReq req = new()
                 {
-                    throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
-                        .SetNativeError(getInfoResp.Status.ErrorCode)
-                        .SetSqlState(getInfoResp.Status.SqlState);
-                }
+                    SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
+                    InfoType = infoType,
+                };
 
-                return getInfoResp.InfoValue.StringValue;
-            }
-            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
-            }
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                try
+                {
+                    TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
+                    ApacheUtility.HandleThriftResponse(getInfoResp.Status, GetResponseHandlers(activity));
+
+                    return getInfoResp.InfoValue.StringValue;
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+                }
+            });
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (!_isDisposed)
+            Trace.TraceActivity(activity =>
             {
-                if (disposing)
+                if (!_isDisposed)
                 {
-                    if (_client != null && SessionHandle != null)
+                    if (disposing)
                     {
-                        CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                        TCloseSessionReq r6 = new(SessionHandle);
-                        _client.CloseSession(r6, cancellationToken).Wait();
-                        _transport?.Close();
-                        _client.Dispose();
-                        _transport = null;
-                        _client = null;
+                        if (_client != null && SessionHandle != null)
+                        {
+                            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+
+                            TCloseSessionReq r6 = new(SessionHandle);
+                            var resp = _client.CloseSession(r6, cancellationToken).Result;
+                            ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+
+                            _transport?.Close();
+                            _client.Dispose();
+                            _transport = null;
+                            _client = null;
+                        }
                     }
+                    _isDisposed = true;
                 }
-                _isDisposed = true;
-            }
-            base.Dispose(disposing);
+                base.Dispose(disposing);
+            });
         }
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
@@ -963,12 +921,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetCatalogsResp resp = await Client.GetCatalogs(req, cancellationToken);
-                if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-                {
-                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                        .SetNativeError(resp.Status.ErrorCode)
-                        .SetSqlState(resp.Status.SqlState);
-                }
+                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
 
                 return resp;
             });
@@ -1001,12 +954,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetSchemasResp resp = await Client.GetSchemas(req, cancellationToken);
-                if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-                {
-                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                        .SetNativeError(resp.Status.ErrorCode)
-                        .SetSqlState(resp.Status.SqlState);
-                }
+                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
 
                 return resp;
             });
@@ -1049,12 +997,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetTablesResp resp = await Client.GetTables(req, cancellationToken);
-                if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-                {
-                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                        .SetNativeError(resp.Status.ErrorCode)
-                        .SetSqlState(resp.Status.SqlState);
-                }
+                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
 
                 return resp;
             });
@@ -1097,12 +1040,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetColumnsResp resp = await Client.GetColumns(req, cancellationToken);
-                if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-                {
-                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                        .SetNativeError(resp.Status.ErrorCode)
-                        .SetSqlState(resp.Status.SqlState);
-                }
+                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
 
                 return resp;
             });
@@ -1140,12 +1078,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetPrimaryKeysResp resp = await Client.GetPrimaryKeys(req, cancellationToken);
-                if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-                {
-                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                        .SetNativeError(resp.Status.ErrorCode)
-                        .SetSqlState(resp.Status.SqlState);
-                }
+                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
 
                 return resp;
             });
@@ -1198,12 +1131,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetCrossReferenceResp resp = await Client.GetCrossReference(req, cancellationToken);
-                if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-                {
-                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                        .SetNativeError(resp.Status.ErrorCode)
-                        .SetSqlState(resp.Status.SqlState);
-                }
+                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
                 return resp;
             });
         }
@@ -1296,57 +1224,57 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
-            if (SessionHandle == null)
+            return Trace.TraceActivity(activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
-
-            TGetColumnsReq getColumnsReq = new TGetColumnsReq(SessionHandle);
-            getColumnsReq.CatalogName = catalog;
-            getColumnsReq.SchemaName = dbSchema;
-            getColumnsReq.TableName = tableName;
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(getColumnsReq);
-            }
-
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                var columnsResponse = Client.GetColumns(getColumnsReq, cancellationToken).Result;
-                if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                if (SessionHandle == null)
                 {
-                    throw new Exception(columnsResponse.Status.ErrorMessage);
+                    throw new InvalidOperationException("Invalid session");
                 }
 
-                TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
-                List<TColumn> columns = rowSet.Columns;
-                int rowCount = rowSet.Columns[3].StringVal.Values.Length;
-
-                Field[] fields = new Field[rowCount];
-                for (int i = 0; i < rowCount; i++)
+                TGetColumnsReq getColumnsReq = new TGetColumnsReq(SessionHandle);
+                getColumnsReq.CatalogName = catalog;
+                getColumnsReq.SchemaName = dbSchema;
+                getColumnsReq.TableName = tableName;
+                if (AreResultsAvailableDirectly)
                 {
-                    string columnName = columns[3].StringVal.Values.GetString(i);
-                    int? columnType = columns[4].I32Val.Values.GetValue(i);
-                    string typeName = columns[5].StringVal.Values.GetString(i);
-                    // Note: the following two columns do not seem to be set correctly for DECIMAL types.
-                    bool isColumnSizeValid = IsColumnSizeValidForDecimal;
-                    int? columnSize = columns[6].I32Val.Values.GetValue(i);
-                    int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
-                    bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
-                    IArrowType dataType = HiveServer2Connection.GetArrowType(columnType!.Value, typeName, isColumnSizeValid, columnSize, decimalDigits);
-                    fields[i] = new Field(columnName, dataType, nullable);
+                    SetDirectResults(getColumnsReq);
                 }
-                return new Schema(fields, null);
-            }
-            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
-            }
+
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                try
+                {
+                    var columnsResponse = Client.GetColumns(getColumnsReq, cancellationToken).Result;
+                    ApacheUtility.HandleThriftResponse(columnsResponse.Status, GetResponseHandlers(activity));
+
+                    TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
+                    List<TColumn> columns = rowSet.Columns;
+                    int rowCount = rowSet.Columns[3].StringVal.Values.Length;
+
+                    Field[] fields = new Field[rowCount];
+                    for (int i = 0; i < rowCount; i++)
+                    {
+                        string columnName = columns[3].StringVal.Values.GetString(i);
+                        int? columnType = columns[4].I32Val.Values.GetValue(i);
+                        string typeName = columns[5].StringVal.Values.GetString(i);
+                        // Note: the following two columns do not seem to be set correctly for DECIMAL types.
+                        bool isColumnSizeValid = IsColumnSizeValidForDecimal;
+                        int? columnSize = columns[6].I32Val.Values.GetValue(i);
+                        int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
+                        bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
+                        IArrowType dataType = HiveServer2Connection.GetArrowType(columnType!.Value, typeName, isColumnSizeValid, columnSize, decimalDigits);
+                        fields[i] = new Field(columnName, dataType, nullable);
+                    }
+                    return new Schema(fields, null);
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+                }
+            });
         }
 
         private static IArrowType GetArrowType(int columnTypeId, string typeName, bool isColumnSizeValid, int? columnSize, int? decimalDigits)
@@ -1645,5 +1573,38 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                        (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested);
             }
         }
+
+        private static readonly IReadOnlyCollection<ApacheUtility.ThriftResponseHandler> s_errorHandlers =
+        [
+            new() { StatusCode = TStatusCode.ERROR_STATUS, Handler = (status) => ThrowErrorResponse(status)},
+            new() { StatusCode = TStatusCode.INVALID_HANDLE_STATUS, Handler = (status) => ThrowErrorResponse(status)},
+            new() { StatusCode = TStatusCode.STILL_EXECUTING_STATUS, Handler = (status) => ThrowErrorResponse(status, AdbcStatusCode.InvalidState) },
+        ];
+
+        internal static IReadOnlyCollection<ApacheUtility.ThriftResponseHandler> GetResponseHandlers(Activity? activity) =>
+            s_errorHandlers.Concat(
+                [
+                    new()
+                    {
+                        StatusCode = TStatusCode.SUCCESS_STATUS,
+                        Handler = (status) => activity?.AddTag(TagOptions.Db.Response.StatusCode, status.StatusCode)
+                    },
+                    new()
+                    {
+                        StatusCode = TStatusCode.SUCCESS_WITH_INFO_STATUS,
+                        Handler = (status) =>
+                        {
+                            activity?.AddTag(TagOptions.Db.Response.StatusCode, status.StatusCode);
+                            activity?.AddTag("db.response.info_messages", string.Join(Environment.NewLine, status.InfoMessages));
+                        }
+                    },
+                ])
+            .ToList()
+            .AsReadOnly();
+
+        private static void ThrowErrorResponse(TStatus status, AdbcStatusCode adbcStatusCode = AdbcStatusCode.InternalError) =>
+            throw new HiveServer2Exception(status.ErrorMessage, adbcStatusCode)
+                .SetSqlState(status.SqlState)
+                .SetNativeError(status.ErrorCode);
     }
 }
