@@ -200,7 +200,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     activity?.AddTag(TagOptions.Db.Response.ReturnedRows, affectedRows ?? -1);
                 }
-            }, traceParent: TraceParent);
+            });
         }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
@@ -222,7 +222,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
                 }
-            }, traceParent: TraceParent);
+            });
         }
 
         public override void SetOption(string key, string value)
@@ -311,7 +311,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             .SetNativeError(_directResults.OperationStatus.ErrorCode);
                     }
                 }
-            }, traceParent: TraceParent);
+            });
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
