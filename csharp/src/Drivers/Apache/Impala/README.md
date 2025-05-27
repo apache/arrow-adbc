@@ -120,7 +120,7 @@ If the environment variable is not set or empty, it behaves the same as for `non
 | `none` | No exporter is activated |
 | `otlp` | The [OpenTelemetry Protocol (OTLP)](https://opentelemetry.io/docs/specs/otlp/) exporter is activated with default settings. |
 | `console` | The console exporter is activated which writes human-readable trace information to `stdout` |
-| `adbcfile` | The ADBC file exporter is activated. It writes trace information into files stored in the local application data folder. This folder is `~\AppData\Local\Apache.Arrow.Adbc\traces` (Windows) or `~/.local/share/Apache.Arrow.Adbc/traces` (MacOS/Linus) |
+| `adbcfile` | The ADBC file exporter is activated. It writes trace information into files stored in the local application data folder. This folder is `~\AppData\Local\Apache.Arrow.Adbc\traces` (Windows) or `~/.local/share/Apache.Arrow.Adbc/traces` (MacOS/Linux) |
 
 ### Configuring the OTLP Exporter
 
