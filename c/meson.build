@@ -69,10 +69,7 @@ endif
 
 subdir('driver/common')
 subdir('driver/framework')
-
-if get_option('tests').enabled()
-    subdir('validation')
-endif
+subdir('validation')
 
 if get_option('bigquery').enabled()
     subdir('driver/bigquery')

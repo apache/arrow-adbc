@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal const int PollTimeMillisecondsDefault = 500;
         private const int ConnectTimeoutMillisecondsDefault = 30000;
         private TTransport? _transport;
-        private TCLIService.Client? _client;
+        private TCLIService.IAsync? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
 
@@ -287,7 +287,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        internal TCLIService.Client Client
+        internal TCLIService.IAsync Client
         {
             get { return _client ?? throw new InvalidOperationException("connection not open"); }
         }
@@ -308,7 +308,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TTransport transport = CreateTransport();
                 TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
                 _transport = protocol.Transport;
-                _client = new TCLIService.Client(protocol);
+                _client = CreateTCLIServiceClient(protocol);
                 TOpenSessionReq request = CreateSessionRequest();
 
                 TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
@@ -336,6 +336,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 // Handle other exceptions if necessary
                 throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
             }
+        }
+
+        protected virtual TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
+        {
+            return new TCLIService.Client(protocol);
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }
@@ -696,7 +701,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TCloseSessionReq r6 = new(SessionHandle);
                 _client.CloseSession(r6, cancellationToken).Wait();
                 _transport?.Close();
-                _client.Dispose();
+                if (_client is IDisposable disposableClient)
+                {
+                    disposableClient.Dispose();
+                }
                 _transport = null;
                 _client = null;
             }

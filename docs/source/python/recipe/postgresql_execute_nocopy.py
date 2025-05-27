@@ -19,10 +19,10 @@
 # RECIPE KEYWORDS: statement options
 # RECIPE STARTS HERE
 
-#: PostgreSQL does not support ``COPY`` for all kinds of queries, for example,
-#: queries that use ``SHOW``.  But the ADBC driver tries to execute queries
-#: with COPY by default since it is faster for large result sets.  In this
-#: case, you can explicitly disable the ``COPY`` optimization.
+#: The ADBC driver tries to execute queries with COPY by default since it is
+#: faster for large result sets.  PostgreSQL does not support ``COPY`` for all
+#: kinds of queries, however.  For example, ``SHOW`` queries will not work.
+#: In this case, you can explicitly disable the ``COPY`` optimization.
 
 import os
 

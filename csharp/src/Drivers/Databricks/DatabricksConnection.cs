@@ -25,11 +25,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift.Protocol;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -62,6 +64,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             ValidateProperties();
         }
 
+        protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
+        {
+            return new ThreadSafeClient(new TCLIService.Client(protocol));
+        }
+
         private void ValidateProperties()
         {
             if (Properties.TryGetValue(DatabricksParameters.EnableMultipleCatalogSupport, out string? enableMultipleCatalogSupportStr))
@@ -70,18 +77,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     _enableMultipleCatalogSupport = enableMultipleCatalogSupportValue;
                 }
-                // PowerBI will pass in "1" and "0" as strings, so we need to handle that
-                else if (enableMultipleCatalogSupportStr == "1")
-                {
-                    _enableMultipleCatalogSupport = true;
-                }
-                else if (enableMultipleCatalogSupportStr == "0")
-                {
-                    _enableMultipleCatalogSupport = false;
-                }
                 else
                 {
-                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableMultipleCatalogSupport}' value '{enableMultipleCatalogSupportStr}' could not be parsed. Valid values are 'true', 'false', '1', or '0'.");
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableMultipleCatalogSupport}' value '{enableMultipleCatalogSupportStr}' could not be parsed. Valid values are 'true', 'false'.");
                 }
             }
 
