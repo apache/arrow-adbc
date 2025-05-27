@@ -42,7 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal const int PollTimeMillisecondsDefault = 500;
         private const int ConnectTimeoutMillisecondsDefault = 30000;
         private TTransport? _transport;
-        private TCLIService.Client? _client;
+        private TCLIService.IAsync? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
         private bool _isDisposed;
@@ -291,7 +291,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        internal TCLIService.Client Client
+        internal TCLIService.IAsync Client
         {
             get { return _client ?? throw new InvalidOperationException("connection not open"); }
         }
@@ -338,6 +338,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
                 }
             });
+        }
+
+        protected virtual TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
+        {
+            return new TCLIService.Client(protocol);
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }

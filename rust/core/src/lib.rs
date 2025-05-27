@@ -28,7 +28,7 @@
 //! This library currently provides:
 //! - An abstract Rust API to be implemented by vendor-specific drivers.
 //! - A driver manager which implements this same API, but dynamically loads
-//!   drivers internally and forwards calls appropriately using the [C API](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
+//!   drivers internally and forwards calls appropriately using the [C API](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h).
 //! - A driver exporter that takes an implementation of the abstract API and
 //!   turns it into an object file that implements the C API.
 //!
