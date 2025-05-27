@@ -345,7 +345,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private Dictionary<string, string> GetServerSideProperties()
         {
             return Properties
-                .Where(p => p.Key.StartsWith(DatabricksParameters.ServerSidePropertyPrefix))
+                .Where(p => p.Key.ToLowerInvariant().StartsWith(DatabricksParameters.ServerSidePropertyPrefix))
                 .ToDictionary(
                     p => p.Key.Substring(DatabricksParameters.ServerSidePropertyPrefix.Length),
                     p => p.Value
