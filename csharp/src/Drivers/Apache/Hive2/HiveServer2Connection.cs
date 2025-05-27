@@ -314,7 +314,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     TTransport transport = CreateTransport();
                     TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
                     _transport = protocol.Transport;
-                    _client = new TCLIService.Client(protocol);
+                    _client = CreateTCLIServiceClient(protocol);
                     TOpenSessionReq request = CreateSessionRequest();
 
                     TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
@@ -672,7 +672,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
 
                             _transport?.Close();
-                            _client.Dispose();
+                            if (_client is IDisposable disposableClient)
+                            {
+                                disposableClient.Dispose();
+                            }
                             _transport = null;
                             _client = null;
                         }
