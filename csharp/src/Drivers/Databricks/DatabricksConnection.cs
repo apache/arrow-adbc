@@ -200,6 +200,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal TNamespace? DefaultNamespace => _defaultNamespace;
 
         /// <summary>
+        /// Gets whether multiple catalog is supported
+        /// </summary>
+        internal bool EnableMultipleCatalogSupport => _enableMultipleCatalogSupport;
+
+        /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
         /// </summary>
         protected bool TemporarilyUnavailableRetry { get; private set; } = DefaultRetryOnUnavailable;
