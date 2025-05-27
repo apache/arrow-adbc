@@ -191,7 +191,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
         {
             // If EnableMultipleCatalogSupport is false, return a single catalog "SPARK" without making an RPC call
-            if (enableMultipleCatalogSupport)
+            if (!enableMultipleCatalogSupport)
             {
                 // Create a schema with a single column TABLE_CAT
                 var field = new Field("TABLE_CAT", StringType.Default, true);
@@ -225,9 +225,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HandleSparkCatalog();
 
             // If EnableMultipleCatalogSupport is false and catalog is not null or SPARK, return empty result without RPC call
-            if (enableMultipleCatalogSupport && CatalogName != null)
+            if (!enableMultipleCatalogSupport && CatalogName != null)
             {
-                // Create a schema with TABLE_CATALOG and TABLE_SCHEMA columns
+                // Create a schema with TABLE_SCHEM and TABLE_CATALOG columns
                 var fields = new[]
                 {
                     new Field("TABLE_SCHEM", StringType.Default, true),
@@ -262,7 +262,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HandleSparkCatalog();
 
             // If EnableMultipleCatalogSupport is false and catalog is not null or SPARK, return empty result without RPC call
-            if (enableMultipleCatalogSupport && CatalogName != null)
+            if (!enableMultipleCatalogSupport && CatalogName != null)
             {
                 // Correct schema for GetTables
                 var fields = new[]
@@ -317,7 +317,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Handle SPARK catalog case
             HandleSparkCatalog();
 
-            // If EnableMultipleCatalogSupport is false and catalog is not null or SPARK, return empty result without RPC call
+            // If EnableMultipleCatalogSupport is false and catalog is not null, return empty result without RPC call
             if (!enableMultipleCatalogSupport && CatalogName != null)
             {
                 // Correct schema for GetColumns

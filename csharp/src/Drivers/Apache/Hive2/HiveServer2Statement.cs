@@ -352,7 +352,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected virtual async Task<QueryResult> ExecuteMetadataCommandQuery(CancellationToken cancellationToken)
+        private async Task<QueryResult> ExecuteMetadataCommandQuery(CancellationToken cancellationToken)
         {
             return SqlQuery?.ToLowerInvariant() switch
             {

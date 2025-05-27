@@ -15,8 +15,6 @@
 * limitations under the License.
 */
 
-using System.Threading;
-using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -53,12 +51,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 ComplexTypesAsArrow = false,
                 IntervalTypesAsArrow = false,
             };
-        }
-
-        // Override ExecuteMetadataCommandQuery to allow derived classes to override it
-        protected override async Task<QueryResult> ExecuteMetadataCommandQuery(CancellationToken cancellationToken)
-        {
-            return await base.ExecuteMetadataCommandQuery(cancellationToken);
         }
     }
 }
