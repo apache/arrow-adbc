@@ -220,6 +220,7 @@ namespace Apache.Arrow.Adbc
             {
                 public static class Exporter
                 {
+                    public const string None = "none";
                     public const string Otlp = "otlp";
                     public const string Console = "console";
                     public const string AdbcFile = "adbcfile";

@@ -306,34 +306,38 @@ namespace Apache.Arrow.Adbc.Tracing
             activitySourceName = sourceName;
             activitySourceVersion = sourceVersion;
 
-            string? tracesExporter = Environment.GetEnvironmentVariable(OTelTracesExporterEnvironment);
+            string? tracesExporter = Environment.GetEnvironmentVariable(OTelTracesExporterEnvironment)?.ToLowerInvariant();
             return tracesExporter switch
             {
-                null or "" => null,// Do not create a listener/exporter
-                AdbcOptions.Telemetry.Traces.Exporter.Otlp => Sdk.CreateTracerProviderBuilder()
-                    .AddSource(sourceName)
-                    .ConfigureResource(resource =>
-                        resource.AddService(
-                            serviceName: sourceName,
-                            serviceVersion: sourceVersion))
-                    .AddOtlpExporter()
-                    .Build(),
-                AdbcOptions.Telemetry.Traces.Exporter.Console => Sdk.CreateTracerProviderBuilder()
-                    .AddSource(sourceName)
-                    .ConfigureResource(resource =>
-                        resource.AddService(
-                            serviceName: sourceName,
-                            serviceVersion: sourceVersion))
-                    .AddConsoleExporter()
-                    .Build(),
-                AdbcOptions.Telemetry.Traces.Exporter.AdbcFile => Sdk.CreateTracerProviderBuilder()
-                    .AddSource(sourceName)
-                    .ConfigureResource(resource =>
-                        resource.AddService(
-                            serviceName: sourceName,
-                            serviceVersion: sourceVersion))
-                    .AddAdbcFileExporter(sourceName)
-                    .Build(),
+                null or "" or AdbcOptions.Telemetry.Traces.Exporter.None =>
+                    null, // Do not create a listener/exporter
+                AdbcOptions.Telemetry.Traces.Exporter.Otlp =>
+                    Sdk.CreateTracerProviderBuilder()
+                        .AddSource(sourceName)
+                        .ConfigureResource(resource =>
+                            resource.AddService(
+                                serviceName: sourceName,
+                                serviceVersion: sourceVersion))
+                        .AddOtlpExporter()
+                        .Build(),
+                AdbcOptions.Telemetry.Traces.Exporter.Console =>
+                    Sdk.CreateTracerProviderBuilder()
+                        .AddSource(sourceName)
+                        .ConfigureResource(resource =>
+                            resource.AddService(
+                                serviceName: sourceName,
+                                serviceVersion: sourceVersion))
+                        .AddConsoleExporter()
+                        .Build(),
+                AdbcOptions.Telemetry.Traces.Exporter.AdbcFile =>
+                    Sdk.CreateTracerProviderBuilder()
+                        .AddSource(sourceName)
+                        .ConfigureResource(resource =>
+                            resource.AddService(
+                                serviceName: sourceName,
+                                serviceVersion: sourceVersion))
+                        .AddAdbcFileExporter(sourceName)
+                        .Build(),
                 _ => throw new AdbcException(
                         $"Unsupported {OTelTracesExporterEnvironment} option: '{tracesExporter}'",
                         AdbcStatusCode.InvalidArgument),
