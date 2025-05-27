@@ -481,8 +481,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         [SkippableTheory]
-        [InlineData("1", true)]  // Should allow multiple catalogs
-        [InlineData("0", false)] // Should only use default catalog
+        [InlineData("true", true)]  // Should allow multiple catalogs
+        [InlineData("false", false)] // Should only use default catalog
         public async Task EnableMultipleCatalogSupportAffectsMetadataQueries(string enableMultipleCatalogSupport, bool shouldAllowMultipleCatalogs)
         {
             // Create a connection with the specified EnableMultipleCatalogSupport setting

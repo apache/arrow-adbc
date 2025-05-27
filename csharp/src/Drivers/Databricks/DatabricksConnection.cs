@@ -70,18 +70,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     _enableMultipleCatalogSupport = enableMultipleCatalogSupportValue;
                 }
-                // PowerBI will pass in "1" and "0" as strings, so we need to handle that
-                else if (enableMultipleCatalogSupportStr == "1")
-                {
-                    _enableMultipleCatalogSupport = true;
-                }
-                else if (enableMultipleCatalogSupportStr == "0")
-                {
-                    _enableMultipleCatalogSupport = false;
-                }
                 else
                 {
-                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableMultipleCatalogSupport}' value '{enableMultipleCatalogSupportStr}' could not be parsed. Valid values are 'true', 'false', '1', or '0'.");
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableMultipleCatalogSupport}' value '{enableMultipleCatalogSupportStr}' could not be parsed. Valid values are 'true', 'false'.");
                 }
             }
 
