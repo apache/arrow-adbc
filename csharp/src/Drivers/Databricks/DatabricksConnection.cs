@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
-        private bool _enableMultipleCatalogSupport = true;
+        internal bool _enableMultipleCatalogSupport = true;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
