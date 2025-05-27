@@ -36,6 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool useCloudFetch;
         private bool canDecompressLz4;
         private long maxBytesPerFile;
+        private bool enableMultipleCatalogSupport;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -44,6 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             useCloudFetch = connection.UseCloudFetch;
             canDecompressLz4 = connection.CanDecompressLz4;
             maxBytesPerFile = connection.MaxBytesPerFile;
+            enableMultipleCatalogSupport = connection.EnableMultipleCatalogSupport;
         }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
@@ -158,22 +160,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         }
 
         /// <summary>
-        /// Gets the Databricks connection.
-        /// </summary>
-        protected DatabricksConnection DatabricksConnection => (DatabricksConnection)Connection;
-
-        /// <summary>
         /// Helper method to handle the special case for the "SPARK" catalog in metadata queries.
-        /// 
+        ///
         /// Why:
         /// - In Databricks, the legacy "SPARK" catalog is used as a placeholder to represent the default catalog.
         /// - When a client requests metadata for the "SPARK" catalog, the underlying API expects a null catalog name
         ///   to trigger default catalog behavior. Passing "SPARK" directly would not return the expected results.
-        /// 
+        ///
         /// What it does:
         /// - If the CatalogName property is set to "SPARK" (case-insensitive), this method sets it to null.
         /// - This ensures that downstream API calls behave as if no catalog was specified, returning default catalog metadata.
-        /// 
+        ///
         /// This logic is required to maintain compatibility with legacy tools and standards that expect "SPARK" to act as a default catalog alias.
         /// </summary>
         private void HandleSparkCatalog()
@@ -194,7 +191,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
         {
             // If EnableMultipleCatalogSupport is false, return a single catalog "SPARK" without making an RPC call
-            if (!DatabricksConnection._enableMultipleCatalogSupport)
+            if (enableMultipleCatalogSupport)
             {
                 // Create a schema with a single column TABLE_CAT
                 var field = new Field("TABLE_CAT", StringType.Default, true);
@@ -228,7 +225,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HandleSparkCatalog();
 
             // If EnableMultipleCatalogSupport is false and catalog is not null or SPARK, return empty result without RPC call
-            if (!DatabricksConnection._enableMultipleCatalogSupport && CatalogName != null)
+            if (enableMultipleCatalogSupport && CatalogName != null)
             {
                 // Create a schema with TABLE_CATALOG and TABLE_SCHEMA columns
                 var fields = new[]
@@ -265,7 +262,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HandleSparkCatalog();
 
             // If EnableMultipleCatalogSupport is false and catalog is not null or SPARK, return empty result without RPC call
-            if (!DatabricksConnection._enableMultipleCatalogSupport && CatalogName != null)
+            if (enableMultipleCatalogSupport && CatalogName != null)
             {
                 // Correct schema for GetTables
                 var fields = new[]
@@ -321,7 +318,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HandleSparkCatalog();
 
             // If EnableMultipleCatalogSupport is false and catalog is not null or SPARK, return empty result without RPC call
-            if (!DatabricksConnection._enableMultipleCatalogSupport && CatalogName != null)
+            if (!enableMultipleCatalogSupport && CatalogName != null)
             {
                 // Correct schema for GetColumns
                 var fields = new[]

@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         private const string GetPrimaryKeysCommandName = "getprimarykeys";
         private const string GetCrossReferenceCommandName = "getcrossreference";
-        protected const string GetCatalogsCommandName = "getcatalogs";
+        private const string GetCatalogsCommandName = "getcatalogs";
         private const string GetSchemasCommandName = "getschemas";
         private const string GetTablesCommandName = "gettables";
         private const string GetColumnsCommandName = "getcolumns";
