@@ -80,7 +80,8 @@ function(generate_import_library DLL_PATH LIB_PATH DEF_PATH)
                       COMMENT "Generating .def file from ${DLL_PATH}")
         
   add_custom_command(OUTPUT "${LIB_PATH}"
-                      COMMAND ${DLLTOOL_BIN} -d "${DEF_PATH}" -l "${LIB_PATH}" -D "${DLL_PATH}"
+                     COMMAND ${DLLTOOL_BIN} -d "${DEF_PATH}" -l "${LIB_PATH}" -D
+                             "${DLL_PATH}"
                       DEPENDS "${DEF_PATH}"
                       COMMENT "Generating import library ${LIB_PATH}")
 endfunction()
@@ -203,42 +204,43 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     if(WIN32)
       # On Windows with MSVC, generate a lib from the DLL file created by go. Binaries generated on Windows have their version
       # as part of the DLL/file details, therefore the generated DLL file name does not need to have the version info.
-      set(LIBOUT_IMPORT_LIB "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_IMPORT_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_IMPORT_LIBRARY_SUFFIX}")
+      set(LIBOUT_IMPORT_LIB
+          "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_IMPORT_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_IMPORT_LIBRARY_SUFFIX}"
+      )
       set(LIBOUT_DEF_FILE "${CMAKE_CURRENT_BINARY_DIR}/${GO_LIBNAME}.def")
 
       add_custom_command(OUTPUT "${LIBOUT_SHARED}"
                          WORKING_DIRECTORY ${GO_MOD_DIR}
                          DEPENDS ${ARG_SOURCES}
                          COMMAND ${CMAKE_COMMAND} -E env ${GO_ENV_VARS} ${GO_BIN} build
-                                 ${GO_BUILD_TAGS} "${GO_BUILD_FLAGS}" -o
-                                 ${LIBOUT_SHARED}
+                                 ${GO_BUILD_TAGS} "${GO_BUILD_FLAGS}" -o ${LIBOUT_SHARED}
                                  -buildmode=c-shared ${GO_LDFLAGS} .
-                         COMMAND ${CMAKE_COMMAND} -E remove -f
-                                 "${LIBOUT_SHARED}.h"
+                         COMMAND ${CMAKE_COMMAND} -E remove -f "${LIBOUT_SHARED}.h"
                          COMMENT "Building Go Shared lib ${GO_LIBNAME}"
                          COMMAND_EXPAND_LISTS)
 
       # Generate import library if tools are available
       if(GENDEF_BIN AND DLLTOOL_BIN)
-        generate_import_library("${LIBOUT_SHARED}" "${LIBOUT_IMPORT_LIB}" "${LIBOUT_DEF_FILE}")
+        generate_import_library("${LIBOUT_SHARED}" "${LIBOUT_IMPORT_LIB}"
+                                "${LIBOUT_DEF_FILE}")
         set(IMPORT_LIB_OUTPUTS "${LIBOUT_IMPORT_LIB}" "${LIBOUT_DEF_FILE}")
       else()
         set(IMPORT_LIB_OUTPUTS)
-        message(WARNING "Import library generation tools not found. You may need to link directly to the DLL or use delay-loading.")
+        message(WARNING "Import library generation tools not found. You may need to link directly to the DLL or use delay-loading."
+        )
       endif()
 
-      add_custom_target(${GO_LIBNAME}_target ALL
-                        DEPENDS "${LIBOUT_SHARED}"
+      add_custom_target(${GO_LIBNAME}_target ALL DEPENDS "${LIBOUT_SHARED}"
                                 ${IMPORT_LIB_OUTPUTS})
       
       add_library(${GO_LIBNAME}_shared SHARED IMPORTED GLOBAL)
-      set_target_properties(${GO_LIBNAME}_shared
-                            PROPERTIES IMPORTED_LOCATION "${LIBOUT_SHARED}")
+      set_target_properties(${GO_LIBNAME}_shared PROPERTIES IMPORTED_LOCATION
+                                                            "${LIBOUT_SHARED}")
       
       # Set import library if it was generated
       if(IMPORT_LIB_OUTPUTS)
-        set_target_properties(${GO_LIBNAME}_shared
-                              PROPERTIES IMPORTED_IMPLIB "${LIBOUT_IMPORT_LIB}")
+        set_target_properties(${GO_LIBNAME}_shared PROPERTIES IMPORTED_IMPLIB
+                                                              "${LIBOUT_IMPORT_LIB}")
       endif()
     else()
       add_custom_command(OUTPUT "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"

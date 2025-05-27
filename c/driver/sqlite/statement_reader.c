@@ -428,7 +428,8 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
           struct ArrowSchemaView bind_schema_view;
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable : 4244) // RAISE_NA returns ArrowErrorCode, but this function returns AdbcStatusCode
+#pragma warning(disable : 4244)  // RAISE_NA returns ArrowErrorCode, but this function
+                                 // returns AdbcStatusCode
 #endif
           RAISE_NA(ArrowSchemaViewInit(&bind_schema_view, binder->schema.children[col],
                                        &arrow_error));
