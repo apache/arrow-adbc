@@ -33,6 +33,7 @@ updates:
       opentelemetry:
         applies-to: version-updates
         patterns:
+          - "go.opentelemetry.io/otel"
           - "go.opentelemetry.io/otel/*"
   - package-ecosystem: "maven"
     directory: "/java/"
