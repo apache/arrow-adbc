@@ -409,7 +409,7 @@ different ADBC features is still ongoing.</p>
 wire protocol and has a basic level of support in the ADBC
 PostgreSQL driver. Because Redshift does not support reading or
 writing COPY in PostgreSQL binary format, the optimizations that
-accellerate non-Redshift queries are not enabled when connecting
+accelerate non-Redshift queries are not enabled when connecting
 to a Redshift database. This functionality is experimental.</p>
 </div>
 <section id="installation">
@@ -738,7 +738,7 @@ returned a binary column from when it returned a binary column as a fallback.</p
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Currently, the driver also attaches a metadata key named
-<code class="docutils literal notranslate"><span class="pre">ADBC:posgresql:typname</span></code> to the schema field of the unknown
+<code class="docutils literal notranslate"><span class="pre">ADBC:postgresql:typname</span></code> to the schema field of the unknown
 column, but this has been deprecated in favor of the Opaque type
 and you should not rely on this key continuing to exist.</p>
 </div>

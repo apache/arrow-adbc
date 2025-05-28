@@ -640,7 +640,7 @@ and resource usage may be tuned with the following options on the <a class="refe
 but may need to be adjusted if running in a constrained environment. If set to 0, default value is used. Cannot be negative.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.statement.ingest_upload_concurrency</span></code></dt><dd><p>Number of Parquet files to upload in parallel. Greater concurrency can smooth out TCP congestion and help make
-use of available network bandwith, but will increase memory utilization. Default is 8. If set to 0, default value is used.
+use of available network bandwidth, but will increase memory utilization. Default is 8. If set to 0, default value is used.
 Cannot be negative.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.statement.ingest_copy_concurrency</span></code></dt><dd><p>Maximum number of COPY operations to run concurrently. Bulk ingestion performance is optimized by executing COPY
