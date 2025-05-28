@@ -40,6 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
+        private bool _enablePKFK = true;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
@@ -71,6 +72,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private void ValidateProperties()
         {
+            if (Properties.TryGetValue(DatabricksParameters.EnablePKFK, out string? enablePKFKStr))
+            {
+                if (bool.TryParse(enablePKFKStr, out bool enablePKFKValue))
+                {
+                    _enablePKFK = enablePKFKValue;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnablePKFK}' value '{enablePKFKStr}' could not be parsed. Valid values are 'true', 'false'.");
+                }
+            }
+
             if (Properties.TryGetValue(DatabricksParameters.EnableMultipleCatalogSupport, out string? enableMultipleCatalogSupportStr))
             {
                 if (bool.TryParse(enableMultipleCatalogSupportStr, out bool enableMultipleCatalogSupportValue))
@@ -198,6 +211,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the default namespace to use for SQL queries.
         /// </summary>
         internal TNamespace? DefaultNamespace => _defaultNamespace;
+
+        /// <summary>
+        /// Gets whether multiple catalog is supported
+        /// </summary>
+        internal bool EnableMultipleCatalogSupport => _enableMultipleCatalogSupport;
+
+        /// <summary>
+        /// Gets whether PK/FK metadata call is enabled
+        /// </summary>
+        public bool EnablePKFK => _enablePKFK;
 
         /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.

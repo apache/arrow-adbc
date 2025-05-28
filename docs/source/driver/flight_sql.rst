@@ -223,7 +223,7 @@ The options used for creating the Flight RPC client can be customized.
 ``adbc.flight.sql.client_option.with_max_msg_size``
     The maximum message size to accept from the server.  The driver
     defaults to 16 MiB since Flight services tend to return larger
-    reponse payloads.  Should be a positive integer number of bytes.
+    response payloads.  Should be a positive integer number of bytes.
 
     Python: :attr:`adbc_driver_flightsql.DatabaseOptions.WITH_MAX_MSG_SIZE`
 

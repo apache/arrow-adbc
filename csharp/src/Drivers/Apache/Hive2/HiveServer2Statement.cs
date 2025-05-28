@@ -368,7 +368,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             };
         }
 
-        private async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
         {
             TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
                 CatalogName,
@@ -383,7 +383,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
 
-        private async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
             TGetPrimaryKeysResp resp = await Connection.GetPrimaryKeysAsync(
                 CatalogName,
@@ -395,7 +395,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
 
-        private async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
         {
             TGetCatalogsResp resp = await Connection.GetCatalogsAsync(cancellationToken);
             OperationHandle = resp.OperationHandle;
@@ -403,7 +403,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
 
-        private async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
         {
             TGetSchemasResp resp = await Connection.GetSchemasAsync(
                 CatalogName,
@@ -414,7 +414,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
 
-        private async Task<QueryResult> GetTablesAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetTablesAsync(CancellationToken cancellationToken = default)
         {
             List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
             TGetTablesResp resp = await Connection.GetTablesAsync(
@@ -428,7 +428,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
 
-        private async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
         {
             TGetColumnsResp resp = await Connection.GetColumnsAsync(
                 CatalogName,
