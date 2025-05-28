@@ -16,7 +16,6 @@
 */
 
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
@@ -37,6 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool canDecompressLz4;
         private long maxBytesPerFile;
         private bool enableMultipleCatalogSupport;
+        private bool enablePKFK;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -46,6 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             canDecompressLz4 = connection.CanDecompressLz4;
             maxBytesPerFile = connection.MaxBytesPerFile;
             enableMultipleCatalogSupport = connection.EnableMultipleCatalogSupport;
+            enablePKFK = connection.EnablePKFK;
         }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
@@ -385,6 +386,107 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             // Call the base implementation with the potentially modified catalog name
             return await base.GetColumnsAsync(cancellationToken);
+        }
+
+        internal bool ShouldReturnEmptyPkFkResult()
+        {
+            if (!enablePKFK)
+                return true;
+
+
+            // Handle special catalog cases
+            if (string.IsNullOrEmpty(CatalogName) ||
+                string.Equals(CatalogName, "SPARK", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(CatalogName, "hive_metastore", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        protected override async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
+        {
+            if (ShouldReturnEmptyPkFkResult())
+                return EmptyPrimaryKeysResult();
+
+            return await base.GetPrimaryKeysAsync(cancellationToken);
+        }
+
+        private QueryResult EmptyPrimaryKeysResult()
+        {
+            var fields = new[]
+            {
+                new Field("TABLE_CAT", StringType.Default, true),
+                new Field("TABLE_SCHEM", StringType.Default, true),
+                new Field("TABLE_NAME", StringType.Default, true),
+                new Field("COLUMN_NAME", StringType.Default, true),
+                new Field("KEQ_SEQ", Int32Type.Default, true),
+                new Field("PK_NAME", StringType.Default, true)
+            };
+            var schema = new Schema(fields, null);
+
+            var arrays = new IArrowArray[]
+            {
+                new StringArray.Builder().Build(), // TABLE_CAT
+                new StringArray.Builder().Build(), // TABLE_SCHEM
+                new StringArray.Builder().Build(), // TABLE_NAME
+                new StringArray.Builder().Build(), // COLUMN_NAME
+                new Int16Array.Builder().Build(),  // KEY_SEQ
+                new StringArray.Builder().Build()  // PK_NAME
+            };
+
+            return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
+        }
+
+        protected override async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
+        {
+            if (ShouldReturnEmptyPkFkResult())
+                return EmptyCrossReferenceResult();
+
+            return await base.GetCrossReferenceAsync(cancellationToken);
+        }
+
+        private QueryResult EmptyCrossReferenceResult()
+        {
+            var fields = new[]
+            {
+                new Field("PKTABLE_CAT", StringType.Default, true),
+                new Field("PKTABLE_SCHEM", StringType.Default, true),
+                new Field("PKTABLE_NAME", StringType.Default, true),
+                new Field("PKCOLUMN_NAME", StringType.Default, true),
+                new Field("FKTABLE_CAT", StringType.Default, true),
+                new Field("FKTABLE_SCHEM", StringType.Default, true),
+                new Field("FKTABLE_NAME", StringType.Default, true),
+                new Field("FKCOLUMN_NAME", StringType.Default, true),
+                new Field("KEY_SEQ", Int16Type.Default, true),
+                new Field("UPDATE_RULE", Int16Type.Default, true),
+                new Field("DELETE_RULE", Int16Type.Default, true),
+                new Field("FK_NAME", StringType.Default, true),
+                new Field("PK_NAME", StringType.Default, true),
+                new Field("DEFERRABILITY", Int16Type.Default, true)
+            };
+            var schema = new Schema(fields, null);
+
+            var arrays = new IArrowArray[]
+            {
+                new StringArray.Builder().Build(), // PKTABLE_CAT
+                new StringArray.Builder().Build(), // PKTABLE_SCHEM
+                new StringArray.Builder().Build(), // PKTABLE_NAME
+                new StringArray.Builder().Build(), // PKCOLUMN_NAME
+                new StringArray.Builder().Build(), // FKTABLE_CAT
+                new StringArray.Builder().Build(), // FKTABLE_SCHEM
+                new StringArray.Builder().Build(), // FKTABLE_NAME
+                new StringArray.Builder().Build(), // FKCOLUMN_NAME
+                new Int16Array.Builder().Build(),  // KEY_SEQ
+                new Int16Array.Builder().Build(),  // UPDATE_RULE
+                new Int16Array.Builder().Build(),  // DELETE_RULE
+                new StringArray.Builder().Build(), // FK_NAME
+                new StringArray.Builder().Build(), // PK_NAME
+                new Int16Array.Builder().Build()   // DEFERRABILITY
+            };
+
+            return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
         }
     }
 }

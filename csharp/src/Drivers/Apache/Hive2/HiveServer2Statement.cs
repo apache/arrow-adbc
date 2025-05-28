@@ -368,7 +368,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             };
         }
 
-        private async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
         {
             TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
                 CatalogName,
@@ -383,7 +383,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
 
-        private async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
             TGetPrimaryKeysResp resp = await Connection.GetPrimaryKeysAsync(
                 CatalogName,
