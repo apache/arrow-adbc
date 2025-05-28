@@ -83,30 +83,39 @@ func (st *statement) setQueryContext(ctx context.Context) context.Context {
 //
 // A statement instance should not be used after Close is called.
 func (st *statement) Close() error {
-	if st.cnxn == nil {
-		return adbc.Error{
-			Msg:  "statement already closed",
-			Code: adbc.StatusInvalidState}
-	}
+	err := internal.TraceSpan(context.Background(), st, "Close", func(ctx context.Context, span trace.Span) error {
+		if st.cnxn == nil {
+			return adbc.Error{
+				Msg:  "statement already closed",
+				Code: adbc.StatusInvalidState}
+		}
 
-	if st.bound != nil {
-		st.bound.Release()
-		st.bound = nil
-	} else if st.streamBind != nil {
-		st.streamBind.Release()
-		st.streamBind = nil
-	}
-	st.cnxn = nil
-	return nil
+		if st.bound != nil {
+			st.bound.Release()
+			st.bound = nil
+		} else if st.streamBind != nil {
+			st.streamBind.Release()
+			st.streamBind = nil
+		}
+		st.cnxn = nil
+		return nil
+	})
+	return err
 }
 
-func (st *statement) GetOption(key string) (string, error) {
-	switch key {
-	case OptionStatementQueryTag:
-		return st.queryTag, nil
-	default:
-		return st.Base().GetOption(key)
-	}
+func (st *statement) GetOption(key string) (value string, err error) {
+	err = internal.TraceSpan(context.Background(), st, "GetOption", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(attribute.String(internal.TraceAttributeDbDriverOptionGet, key))
+		switch key {
+		case OptionStatementQueryTag:
+			value = st.queryTag
+			return nil
+		default:
+			value, err = st.Base().GetOption(key)
+			return err
+		}
+	})
+	return value, err
 }
 
 func (st *statement) GetOptionBytes(key string) ([]byte, error) {
@@ -609,49 +618,56 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 }
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
-func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
-	ctx = st.setQueryContext(ctx)
+func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
+	err = internal.TraceSpan(ctx, st, "ExecuteSchema", func(ctx context.Context, span trace.Span) error {
+		ctx = st.setQueryContext(ctx)
 
-	if st.targetTable != "" {
-		return nil, adbc.Error{
-			Msg:  "cannot execute schema for ingestion",
-			Code: adbc.StatusInvalidState,
+		if st.targetTable != "" {
+			return adbc.Error{
+				Msg:  "cannot execute schema for ingestion",
+				Code: adbc.StatusInvalidState,
+			}
 		}
-	}
 
-	if st.query == "" {
-		return nil, adbc.Error{
-			Msg:  "cannot execute without a query",
-			Code: adbc.StatusInvalidState,
+		if st.query == "" {
+			return adbc.Error{
+				Msg:  "cannot execute without a query",
+				Code: adbc.StatusInvalidState,
+			}
 		}
-	}
 
-	if st.streamBind != nil || st.bound != nil {
-		return nil, adbc.Error{
-			Msg:  "executing schema with bound params not yet implemented",
-			Code: adbc.StatusNotImplemented,
+		if st.streamBind != nil || st.bound != nil {
+			return adbc.Error{
+				Msg:  "executing schema with bound params not yet implemented",
+				Code: adbc.StatusNotImplemented,
+			}
 		}
-	}
 
-	loader, err := st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
-	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusInternal, err)
-	}
+		loader, err := st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
+		if err != nil {
+			return errToAdbcErr(adbc.StatusInternal, err)
+		}
 
-	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
+		schema, err = rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
+		return err
+	})
+	return
 }
 
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
-func (st *statement) Prepare(_ context.Context) error {
-	if st.query == "" {
-		return adbc.Error{
-			Code: adbc.StatusInvalidState,
-			Msg:  "cannot prepare statement with no query",
+func (st *statement) Prepare(ctx context.Context) (err error) {
+	err = internal.TraceSpan(ctx, st, "Prepare", func(ctx context.Context, span trace.Span) error {
+		if st.query == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidState,
+				Msg:  "cannot prepare statement with no query",
+			}
 		}
-	}
-	// snowflake doesn't provide a "Prepare" api, this is a no-op
-	return nil
+		// snowflake doesn't provide a "Prepare" api, this is a no-op
+		return nil
+	})
+	return
 }
 
 // SetSubstraitPlan allows setting a serialized Substrait execution
@@ -663,11 +679,14 @@ func (st *statement) Prepare(_ context.Context) error {
 // Like SetSqlQuery, after this is called the query can be executed
 // using any of the Execute methods. If the query is expected to be
 // executed repeatedly, Prepare should be called first on the statement.
-func (st *statement) SetSubstraitPlan(plan []byte) error {
-	return adbc.Error{
-		Msg:  "Snowflake does not support Substrait plans",
-		Code: adbc.StatusNotImplemented,
-	}
+func (st *statement) SetSubstraitPlan(plan []byte) (err error) {
+	err = internal.TraceSpan(context.Background(), st, "SetSubstraitPlan", func(ctx context.Context, span trace.Span) error {
+		return adbc.Error{
+			Msg:  "Snowflake does not support Substrait plans",
+			Code: adbc.StatusNotImplemented,
+		}
+	})
+	return
 }
 
 // Bind uses an arrow record batch to bind parameters to the query.
@@ -676,20 +695,23 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 // The driver will call release on the passed in Record when it is done,
 // but it may not do this until the statement is closed or another
 // record is bound.
-func (st *statement) Bind(_ context.Context, values arrow.Record) error {
-	if st.streamBind != nil {
-		st.streamBind.Release()
-		st.streamBind = nil
-	} else if st.bound != nil {
-		st.bound.Release()
-		st.bound = nil
-	}
+func (st *statement) Bind(ctx context.Context, values arrow.Record) error {
+	err := internal.TraceSpan(ctx, st, "Bind", func(ctx context.Context, span trace.Span) error {
+		if st.streamBind != nil {
+			st.streamBind.Release()
+			st.streamBind = nil
+		} else if st.bound != nil {
+			st.bound.Release()
+			st.bound = nil
+		}
 
-	st.bound = values
-	if st.bound != nil {
-		st.bound.Retain()
-	}
-	return nil
+		st.bound = values
+		if st.bound != nil {
+			st.bound.Retain()
+		}
+		return nil
+	})
+	return err
 }
 
 // BindStream uses a record batch stream to bind parameters for this
@@ -697,20 +719,23 @@ func (st *statement) Bind(_ context.Context, values arrow.Record) error {
 //
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
-func (st *statement) BindStream(_ context.Context, stream array.RecordReader) error {
-	if st.streamBind != nil {
-		st.streamBind.Release()
-		st.streamBind = nil
-	} else if st.bound != nil {
-		st.bound.Release()
-		st.bound = nil
-	}
+func (st *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
+	err := internal.TraceSpan(ctx, st, "BindStream", func(ctx context.Context, span trace.Span) error {
+		if st.streamBind != nil {
+			st.streamBind.Release()
+			st.streamBind = nil
+		} else if st.bound != nil {
+			st.bound.Release()
+			st.bound = nil
+		}
 
-	st.streamBind = stream
-	if st.streamBind != nil {
-		st.streamBind.Retain()
-	}
-	return nil
+		st.streamBind = stream
+		if st.streamBind != nil {
+			st.streamBind.Retain()
+		}
+		return nil
+	})
+	return err
 }
 
 // GetParameterSchema returns an Arrow schema representation of
@@ -764,5 +789,5 @@ func (st *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc
 }
 
 func setNumRowsAttrib(span trace.Span, nRows int64) {
-	span.SetAttributes(attribute.Int64("db.response.returned_rows", nRows))
+	span.SetAttributes(attribute.Int64(internal.TraceAttributeDbResponseRetRows, nRows))
 }

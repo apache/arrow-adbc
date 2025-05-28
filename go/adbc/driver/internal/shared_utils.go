@@ -749,7 +749,7 @@ func SetErrorOnSpan(span trace.Span, err error) bool {
 	if err != nil {
 		span.RecordError(err)
 		if adbcError, ok := err.(adbc.Error); ok {
-			span.SetAttributes(attribute.String("error.type", adbcError.Code.String()))
+			span.SetAttributes(attribute.String(TraceAttributeErrorType, adbcError.Code.String()))
 		}
 		span.SetStatus(codes.Error, err.Error())
 		return true
@@ -757,11 +757,17 @@ func SetErrorOnSpan(span trace.Span, err error) bool {
 	return false
 }
 
-type spanFunction func(ctx context.Context, span trace.Span) error
-
-func TraceSpan(ctx context.Context, tracing adbc.OTelTracing, spanName string, execFunc spanFunction) error {
+func TraceSpan(
+	ctx context.Context,
+	tracing adbc.OTelTracing,
+	spanName string,
+	execFunc func(ctx context.Context, span trace.Span) error,
+	opts ...trace.SpanStartOption,
+) error {
 	var span trace.Span
-	ctx, span = tracing.StartSpan(ctx, spanName)
+	attrs := tracing.GetInitialSpanAttributes()
+	*attrs = append(*attrs, attribute.String(TraceAttributeDbOperationName, spanName))
+	ctx, span = tracing.StartSpan(ctx, spanName, trace.WithAttributes(*attrs...))
 	err := execFunc(ctx, span)
 	defer func() {
 		if !SetErrorOnSpan(span, err) {
@@ -771,3 +777,17 @@ func TraceSpan(ctx context.Context, tracing adbc.OTelTracing, spanName string, e
 	}()
 	return err
 }
+
+const (
+	TraceAttributeDbDriverOptionGet    = "db.driver.option.get"
+	TraceAttributeDbSystemName         = "db.system.name"
+	TraceAttributeDbNamespace          = "db.namespace"
+	TraceAttributeDbCollectionName     = "db.collection.name"
+	TraceAttributeDbOperationBatchSize = "db.operation.batch.size"
+	TraceAttributeDbOperationName      = "db.operation.name"
+	TraceAttributeDbResponseStatusCode = "db.response.status_code"
+	TraceAttributeDbResponseRetRows    = "db.response.returned_rows"
+	TraceAttributeErrorType            = "error.type"
+	TraceAttributeServerPort           = "server.port"
+	TraceAttributeServerAddress        = "server.address"
+)

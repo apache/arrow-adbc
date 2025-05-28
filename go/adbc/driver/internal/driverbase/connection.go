@@ -27,9 +27,11 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
@@ -363,6 +365,19 @@ func (cnxn *ConnectionImplBase) StartSpan(
 ) (context.Context, trace.Span) {
 	ctx, _ = maybeAddTraceParent(ctx, cnxn, nil)
 	return cnxn.Tracer.Start(ctx, spanName, opts...)
+}
+
+func (cnxn *ConnectionImplBase) GetInitialSpanAttributes() *[]attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	var systemName = cnxn.DriverInfo.GetName()
+	if value, ok := cnxn.DriverInfo.GetInfoForInfoCode(adbc.InfoVendorName); ok {
+		if s, ok := value.(string); ok {
+			systemName = s
+		}
+	}
+	attrs = append(attrs, attribute.String(internal.TraceAttributeDbSystemName, systemName))
+
+	return &attrs
 }
 
 // GetObjects implements Connection.

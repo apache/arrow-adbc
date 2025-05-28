@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -127,4 +128,9 @@ func (st *StatementImplBase) StartSpan(
 	ctx, _ = maybeAddTraceParent(ctx, st.cnxn, st)
 	ctx, span = st.Tracer.Start(ctx, spanName, opts...)
 	return ctx, span
+}
+
+func (st *StatementImplBase) GetInitialSpanAttributes() *[]attribute.KeyValue {
+	attrs := st.cnxn.GetInitialSpanAttributes()
+	return attrs
 }

@@ -21,6 +21,7 @@ import (
 	"context"
 	"log/slog"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -73,4 +74,6 @@ type OTelTracing interface {
 	// [set the status]: https://opentelemetry.io/docs/languages/go/instrumentation/#set-span-status
 	// [add attributes]: https://opentelemetry.io/docs/languages/go/instrumentation/#span-attributes
 	StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span)
+
+	GetInitialSpanAttributes() *[]attribute.KeyValue
 }
