@@ -122,7 +122,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             // Verify the fetcher completed
             Assert.True(_resultFetcher.IsCompleted);
             Assert.False(_resultFetcher.HasMoreResults);
-            
+
             // No need to stop explicitly as it should have completed naturally,
             // but it's good practice to clean up
             await _resultFetcher.StopAsync();
@@ -157,7 +157,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             // Verify the fetcher completed
             Assert.True(_resultFetcher.IsCompleted);
             Assert.False(_resultFetcher.HasMoreResults);
-            
+
             // Cleanup
             await _resultFetcher.StopAsync();
         }
