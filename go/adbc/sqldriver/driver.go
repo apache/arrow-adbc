@@ -192,7 +192,7 @@ func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
 }
 
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (rows driver.Rows, err error) {
-	err = utils.TraceSpan(ctx, c, "", func(ctx context.Context, span trace.Span) error {
+	err = utils.TraceSpan(ctx, c, "QueryContext", func(ctx context.Context, span trace.Span) error {
 		s, err := c.Conn.NewStatement()
 		if err != nil {
 			return err
