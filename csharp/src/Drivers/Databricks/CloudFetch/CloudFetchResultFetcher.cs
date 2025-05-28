@@ -172,11 +172,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                     if (refreshedLink != null)
                     {
                         Trace.TraceInformation($"Successfully fetched URL for offset {offset}");
-                        
+
                         // Create a download result for the refreshed link
                         var downloadResult = new DownloadResult(refreshedLink, _memoryManager);
                         _urlsByOffset[offset] = downloadResult;
-                        
+
                         return refreshedLink;
                     }
                 }
@@ -303,11 +303,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 {
                     // Create download result
                     var downloadResult = new DownloadResult(link, _memoryManager);
-                    
+
                     // Add to download queue and cache
                     _downloadQueue.Add(downloadResult, cancellationToken);
                     _urlsByOffset[link.StartRowOffset] = downloadResult;
-                    
+
                     // Track the maximum offset for future fetches
                     long endOffset = link.StartRowOffset + link.RowCount;
                     maxOffset = Math.Max(maxOffset, endOffset);
@@ -340,11 +340,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             {
                 // Create download result
                 var downloadResult = new DownloadResult(link, _memoryManager);
-                
+
                 // Add to download queue and cache
                 _downloadQueue.Add(downloadResult, cancellationToken);
                 _urlsByOffset[link.StartRowOffset] = downloadResult;
-                
+
                 // Track the maximum offset for future fetches
                 long endOffset = link.StartRowOffset + link.RowCount;
                 maxOffset = Math.Max(maxOffset, endOffset);
