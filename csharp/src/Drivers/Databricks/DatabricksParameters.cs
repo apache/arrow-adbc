@@ -155,6 +155,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string EnableMultipleCatalogSupport = "adbc.databricks.enable_multiple_catalog_support";
+
+        /// <summary>
+        /// Whether to enable primary key foreign key metadata call.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string EnablePKFK = "adbc.databricks.enable_pk_fk";
     }
 
     /// <summary>
