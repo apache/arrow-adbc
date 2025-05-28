@@ -288,15 +288,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new InvalidOperationException("Invalid session");
                 }
 
+                activity?.AddTag("db.client.connection.session_id", Connection.SessionHandle.SessionId.Guid, "N");
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
                 SetStatementProperties(executeRequest);
                 TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
-                if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                {
-                    throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
-                        .SetSqlState(executeResponse.Status.SqlState)
-                        .SetNativeError(executeResponse.Status.ErrorCode);
-                }
+                ApacheUtility.HandleThriftResponse(executeResponse.Status, HiveServer2Connection.GetResponseHandlers(activity));
+                activity?.AddTag("db.response.operation_id", executeResponse.OperationHandle.OperationId.Guid, "N");
+
                 OperationHandle = executeResponse.OperationHandle;
 
                 // Capture direct results if they're available
@@ -353,15 +351,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override void Dispose()
         {
-            if (OperationHandle != null)
+            TraceActivity(activity =>
             {
-                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
-                Connection.Client.CloseOperation(request, cancellationToken).Wait();
-                OperationHandle = null;
-            }
+                if (OperationHandle != null)
+                {
+                    CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                    activity?.AddTag("db.operation.operation_id", OperationHandle.OperationId.Guid, "N");
+                    TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
+                    TCloseOperationResp resp = Connection.Client.CloseOperation(request, cancellationToken).Result;
+                    ApacheUtility.HandleThriftResponse(resp.Status, HiveServer2Connection.GetResponseHandlers(activity));
+                    OperationHandle = null;
+                }
 
-            base.Dispose();
+                base.Dispose();
+            });
         }
 
         protected void ValidateOptions(IReadOnlyDictionary<string, string> properties)

@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -70,9 +71,36 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <returns><see langword="this" /> for convenient chaining.</returns>
         /// <param name="key">The tag key name</param>
         /// <param name="value">The tag value mapped to the input key as a function</param>
-        public static Activity? AddTag(this Activity? activity, string key, Func<object?> value)
+        /// <param name="guidFormat">The format indicator for 16-byte GUID arrays.</param>
+        public static Activity? AddTag(this Activity? activity, string key, byte[]? value, string? guidFormat)
         {
-            return activity?.AddTag(key, value());
+            if ( value == null)
+            {
+                return activity?.AddTag(key, value);
+            }
+            if (value.Length == 16)
+            {
+                return activity?.AddTag(key, new Guid(value).ToString(guidFormat));
+            }
+#if NET5_0_OR_GREATER
+            return activity?.AddTag(key, Convert.ToHexString(value));
+#else
+            return activity?.AddTag(key, ToHexString(value));
+#endif
+        }
+
+        private static string ToHexString(byte[] value)
+        {
+#if NET5_0_OR_GREATER
+            return Convert.ToHexString(value);
+#else
+            StringBuilder hex = new(value.Length * 2);
+            foreach (byte b in value)
+            {
+                hex.AppendFormat("{0:x2}", b);
+            }
+            return hex.ToString();
+#endif
         }
     }
 }
