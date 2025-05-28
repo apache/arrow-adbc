@@ -31,11 +31,14 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/utils"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/decimal128"
 	"github.com/apache/arrow-go/v18/arrow/decimal256"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func getIsolationlevel(lvl sql.IsolationLevel) adbc.OptionIsolationLevel {
@@ -188,17 +191,21 @@ func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
 	return c.QueryContext(context.Background(), query, namedValues)
 }
 
-func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	s, err := c.Conn.NewStatement()
-	if err != nil {
-		return nil, err
-	}
+func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (rows driver.Rows, err error) {
+	err = utils.TraceSpan(ctx, c, "", func(ctx context.Context, span trace.Span) error {
+		s, err := c.Conn.NewStatement()
+		if err != nil {
+			return err
+		}
 
-	if err = s.SetSqlQuery(query); err != nil {
-		return nil, errors.Join(err, s.Close())
-	}
+		if err = s.SetSqlQuery(query); err != nil {
+			return errors.Join(err, s.Close())
+		}
 
-	return (&stmt{stmt: s}).QueryContext(ctx, args)
+		rows, err = (&stmt{stmt: s}).QueryContext(ctx, args)
+		return err
+	})
+	return rows, err
 }
 
 // Begin exists to fulfill the Conn interface, but will return an error.
@@ -265,6 +272,33 @@ func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, e
 	}
 
 	return &stmt{stmt: s, paramSchema: paramSchema}, nil
+}
+
+func (c *conn) GetInitialSpanAttributes() *[]attribute.KeyValue {
+	if conn, ok := c.Conn.(adbc.OTelTracing); ok {
+		return conn.GetInitialSpanAttributes()
+	}
+	return &[]attribute.KeyValue{}
+}
+
+func (c *conn) GetTraceParent() string {
+	if conn, ok := c.Conn.(adbc.OTelTracing); ok {
+		return conn.GetTraceParent()
+	}
+	return ""
+}
+
+func (c *conn) SetTraceParent(traceParent string) {
+	if conn, ok := c.Conn.(adbc.OTelTracing); ok {
+		conn.SetTraceParent(traceParent)
+	}
+}
+
+func (c conn) StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	if conn, ok := c.Conn.(adbc.OTelTracing); ok {
+		return conn.StartSpan(ctx, spanName, opts...)
+	}
+	return ctx, trace.SpanFromContext(ctx)
 }
 
 type tx struct {

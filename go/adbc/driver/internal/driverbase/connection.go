@@ -27,7 +27,7 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/utils"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -150,63 +150,71 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Rollback")
 }
 
-func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
+func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
+	err = utils.TraceSpan(ctx, base, "", func(ctx context.Context, span trace.Span) error {
 
-	if len(infoCodes) == 0 {
-		infoCodes = base.DriverInfo.InfoSupportedCodes()
-	}
-
-	bldr := array.NewRecordBuilder(base.Alloc, adbc.GetInfoSchema)
-	defer bldr.Release()
-	bldr.Reserve(len(infoCodes))
-
-	infoNameBldr := bldr.Field(0).(*array.Uint32Builder)
-	infoValueBldr := bldr.Field(1).(*array.DenseUnionBuilder)
-	strInfoBldr := infoValueBldr.Child(int(adbc.InfoValueStringType)).(*array.StringBuilder)
-	intInfoBldr := infoValueBldr.Child(int(adbc.InfoValueInt64Type)).(*array.Int64Builder)
-	boolInfoBldr := infoValueBldr.Child(int(adbc.InfoValueBooleanType)).(*array.BooleanBuilder)
-
-	for _, code := range infoCodes {
-		infoNameBldr.Append(uint32(code))
-		value, ok := base.DriverInfo.GetInfoForInfoCode(code)
-
-		// We want to return a null value if the info_code requested is set to nil.
-		// The null value needs a type so we arbitrarily choose string (type_code: 0)
-		if value == nil {
-			value = ""
-			ok = false
+		if len(infoCodes) == 0 {
+			infoCodes = base.DriverInfo.InfoSupportedCodes()
 		}
 
-		switch v := value.(type) {
-		case string:
-			infoValueBldr.Append(adbc.InfoValueStringType)
-			if ok {
-				strInfoBldr.Append(v)
-			} else {
-				strInfoBldr.AppendNull()
-			}
-		case int64:
-			infoValueBldr.Append(adbc.InfoValueInt64Type)
-			if ok {
-				intInfoBldr.Append(v)
-			} else {
-				intInfoBldr.AppendNull()
-			}
-		case bool:
-			infoValueBldr.Append(adbc.InfoValueBooleanType)
-			if ok {
-				boolInfoBldr.Append(v)
-			} else {
-				boolInfoBldr.AppendNull()
-			}
-		default:
-			return nil, fmt.Errorf("no defined type code for info_value of type %T", v)
-		}
-	}
+		bldr := array.NewRecordBuilder(base.Alloc, adbc.GetInfoSchema)
+		defer bldr.Release()
+		bldr.Reserve(len(infoCodes))
 
-	final := bldr.NewRecord()
-	defer final.Release()
-	return array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
+		infoNameBldr := bldr.Field(0).(*array.Uint32Builder)
+		infoValueBldr := bldr.Field(1).(*array.DenseUnionBuilder)
+		strInfoBldr := infoValueBldr.Child(int(adbc.InfoValueStringType)).(*array.StringBuilder)
+		intInfoBldr := infoValueBldr.Child(int(adbc.InfoValueInt64Type)).(*array.Int64Builder)
+		boolInfoBldr := infoValueBldr.Child(int(adbc.InfoValueBooleanType)).(*array.BooleanBuilder)
+
+		for _, code := range infoCodes {
+			infoNameBldr.Append(uint32(code))
+			value, ok := base.DriverInfo.GetInfoForInfoCode(code)
+
+			// We want to return a null value if the info_code requested is set to nil.
+			// The null value needs a type so we arbitrarily choose string (type_code: 0)
+			if value == nil {
+				value = ""
+				ok = false
+			}
+
+			switch v := value.(type) {
+			case string:
+				infoValueBldr.Append(adbc.InfoValueStringType)
+				if ok {
+					strInfoBldr.Append(v)
+				} else {
+					strInfoBldr.AppendNull()
+				}
+				span.SetAttributes(attribute.String(code.String(), v))
+			case int64:
+				infoValueBldr.Append(adbc.InfoValueInt64Type)
+				if ok {
+					intInfoBldr.Append(v)
+				} else {
+					intInfoBldr.AppendNull()
+				}
+				span.SetAttributes(attribute.Int64(code.String(), v))
+			case bool:
+				infoValueBldr.Append(adbc.InfoValueBooleanType)
+				if ok {
+					boolInfoBldr.Append(v)
+				} else {
+					boolInfoBldr.AppendNull()
+				}
+				span.SetAttributes(attribute.Bool(code.String(), v))
+			default:
+				return fmt.Errorf("no defined type code for info_value of type %T", v)
+			}
+		}
+
+		final := bldr.NewRecord()
+		defer final.Release()
+		reader, err = array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
+		return err
+	})
+
+	return reader, err
 }
 
 func (base *ConnectionImplBase) Close() error {
@@ -375,7 +383,7 @@ func (cnxn *ConnectionImplBase) GetInitialSpanAttributes() *[]attribute.KeyValue
 			systemName = s
 		}
 	}
-	attrs = append(attrs, attribute.String(internal.TraceAttributeDbSystemName, systemName))
+	attrs = append(attrs, attribute.String(utils.TraceAttributeDbSystemName, systemName))
 
 	return &attrs
 }

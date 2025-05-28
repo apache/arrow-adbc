@@ -35,6 +35,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/utils"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
@@ -176,7 +177,7 @@ func (c *connectionImpl) GetObjects(
 	catalog, dbSchema, tableName, columnName *string,
 	tableType []string,
 ) (reader array.RecordReader, err error) {
-	err = internal.TraceSpan(ctx, c, "GetObjects", func(ctx context.Context, span trace.Span) (spanErr error) {
+	err = utils.TraceSpan(ctx, c, "GetObjects", func(ctx context.Context, span trace.Span) (spanErr error) {
 		var (
 			pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
 			showSchemaQueryID, tableQueryID                     string
@@ -630,7 +631,7 @@ func (c *connectionImpl) GetTableSchema(
 	dbSchema *string,
 	tableName string,
 ) (sc *arrow.Schema, err error) {
-	err = internal.TraceSpan(ctx, c, "GetTableSchema", func(ctx context.Context, span trace.Span) (spanErr error) {
+	err = utils.TraceSpan(ctx, c, "GetTableSchema", func(ctx context.Context, span trace.Span) (spanErr error) {
 		tblParts := make([]string, 0, 3)
 		if catalog != nil {
 			tblParts = append(tblParts, quoteTblName(*catalog))
@@ -682,7 +683,7 @@ func (c *connectionImpl) GetTableSchema(
 		}
 
 		sc = arrow.NewSchema(fields, nil)
-		return nil
+		return spanErr
 	})
 	return sc, err
 }
