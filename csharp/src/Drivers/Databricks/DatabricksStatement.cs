@@ -388,11 +388,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return await base.GetColumnsAsync(cancellationToken);
         }
 
+        /// <summary>
+        /// Determines whether PK/FK metadata queries (GetPrimaryKeys/GetCrossReference) should return an empty result set without hitting the server.
+        ///
+        /// Why:
+        /// - For certain catalog names (null, empty, "SPARK", "hive_metastore"), Databricks does not support PK/FK metadata,
+        ///   or these are legacy/synthesized catalogs that should gracefully return empty results for compatibility.
+        /// - The EnablePKFK flag allows the client to globally disable PK/FK metadata queries for performance or compatibility reasons.
+        ///
+        /// What it does:
+        /// - Returns true if PK/FK queries should return an empty result (and not hit the server), based on:
+        ///   - The EnablePKFK flag (if false, always return empty)
+        ///   - The catalog name (SPARK, hive_metastore, null, or empty string)
+        /// - Returns false if the query should proceed to the server (for valid, supported catalogs).
+        /// </summary>
         internal bool ShouldReturnEmptyPkFkResult()
         {
             if (!enablePKFK)
                 return true;
-
 
             // Handle special catalog cases
             if (string.IsNullOrEmpty(CatalogName) ||
@@ -432,7 +445,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 new StringArray.Builder().Build(), // TABLE_SCHEM
                 new StringArray.Builder().Build(), // TABLE_NAME
                 new StringArray.Builder().Build(), // COLUMN_NAME
-                new Int16Array.Builder().Build(),  // KEY_SEQ
+                new Int16Array.Builder().Build(),  // KEQ_SEQ
                 new StringArray.Builder().Build()  // PK_NAME
             };
 
