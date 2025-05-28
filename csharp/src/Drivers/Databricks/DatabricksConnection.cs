@@ -25,11 +25,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift.Protocol;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -37,6 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
+        private bool _enableMultipleCatalogSupport = true;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
@@ -61,8 +64,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             ValidateProperties();
         }
 
+        protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
+        {
+            return new ThreadSafeClient(new TCLIService.Client(protocol));
+        }
+
         private void ValidateProperties()
         {
+            if (Properties.TryGetValue(DatabricksParameters.EnableMultipleCatalogSupport, out string? enableMultipleCatalogSupportStr))
+            {
+                if (bool.TryParse(enableMultipleCatalogSupportStr, out bool enableMultipleCatalogSupportValue))
+                {
+                    _enableMultipleCatalogSupport = enableMultipleCatalogSupportValue;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableMultipleCatalogSupport}' value '{enableMultipleCatalogSupportStr}' could not be parsed. Valid values are 'true', 'false'.");
+                }
+            }
+
             if (Properties.TryGetValue(DatabricksParameters.ApplySSPWithQueries, out string? applySSPWithQueriesStr))
             {
                 if (bool.TryParse(applySSPWithQueriesStr, out bool applySSPWithQueriesValue))
@@ -309,7 +329,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
                 Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
-                CanUseMultipleCatalogs = true,
+                CanUseMultipleCatalogs = _enableMultipleCatalogSupport,
             };
 
             // Set default namespace if available
@@ -338,7 +358,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private Dictionary<string, string> GetServerSideProperties()
         {
             return Properties
-                .Where(p => p.Key.StartsWith(DatabricksParameters.ServerSidePropertyPrefix))
+                .Where(p => p.Key.ToLowerInvariant().StartsWith(DatabricksParameters.ServerSidePropertyPrefix))
                 .ToDictionary(
                     p => p.Key.Substring(DatabricksParameters.ServerSidePropertyPrefix.Length),
                     p => p.Value

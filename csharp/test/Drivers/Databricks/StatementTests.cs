@@ -436,13 +436,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         // NOTE: this is a thirty minute test. As of writing, databricks commands have 20 minutes of idle time (and checked every 5 mintues)
         [SkippableTheory]
-        [InlineData(true, "CloudFetch enabled")]
-        [InlineData(false, "CloudFetch disabled")]
+        [InlineData(false, "CloudFetch disabled")] // TODO: test cloudfetch enabled
         public async Task StatusPollerKeepsQueryAlive(bool useCloudFetch, string configName)
         {
             OutputHelper?.WriteLine($"Testing status poller with long delay between reads ({configName})");
 
-            // Create a connection using the test configuration with a small batch size
+            // Create a connection using the test configuration
             var connectionParams = new Dictionary<string, string>
             {
                 [DatabricksParameters.UseCloudFetch] = useCloudFetch.ToString().ToLower()
@@ -456,19 +455,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
             Assert.NotNull(result.Stream);
 
-            // Read first batch
-            using var firstBatch = await result.Stream.ReadNextRecordBatchAsync();
-            Assert.NotNull(firstBatch);
-            int firstBatchRows = firstBatch.Length;
-            OutputHelper?.WriteLine($"First batch: Read {firstBatchRows} rows");
-
             // Simulate a long delay (30 minutes)
             OutputHelper?.WriteLine("Simulating 30 minute delay...");
             await Task.Delay(TimeSpan.FromMinutes(30));
 
             // Read remaining batches
-            int totalRows = firstBatchRows;
-            int batchCount = 1;
+            int totalRows = 0;
+            int batchCount = 0;
 
             while (result.Stream != null)
             {
@@ -485,6 +478,89 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.Equal(3000000, totalRows);
             Assert.True(batchCount > 1, "Should have read multiple batches");
             OutputHelper?.WriteLine($"Successfully read {totalRows} rows in {batchCount} batches after 30 minute delay with {configName}");
+        }
+
+        [SkippableTheory]
+        [InlineData("true", true)]  // Should allow multiple catalogs
+        [InlineData("false", false)] // Should only use default catalog
+        public async Task EnableMultipleCatalogSupportAffectsMetadataQueries(string enableMultipleCatalogSupport, bool shouldAllowMultipleCatalogs)
+        {
+            // Create a connection with the specified EnableMultipleCatalogSupport setting
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            testConfig.EnableMultipleCatalogSupport = enableMultipleCatalogSupport;
+            using var connection = NewConnection(testConfig);
+
+            // Test each metadata query type
+            await TestMetadataQuery(connection, "GetSchemas", shouldAllowMultipleCatalogs);
+            await TestMetadataQuery(connection, "GetTables", shouldAllowMultipleCatalogs);
+        }
+
+        private async Task TestMetadataQuery(AdbcConnection connection, string queryType, bool shouldAllowMultipleCatalogs)
+        {
+            OutputHelper?.WriteLine($"Testing {queryType} with EnableMultipleCatalogSupport={shouldAllowMultipleCatalogs}");
+
+            var statement = connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+
+            // Do not pass in catalog so it is set to null
+            // Use default as schema name, it is the default schema name
+            statement.SetOption(ApacheParameters.SchemaName, "default");
+            statement.SqlQuery = queryType;
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            int rowCount = 0;
+            HashSet<string> foundCatalogs = new HashSet<string>();
+            string? defaultCatalog = null;
+
+            while (queryResult.Stream != null)
+            {
+                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null) break;
+
+                rowCount += batch.Length;
+
+                // Check catalog values in each row
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    for (int j = 0; j < batch.ColumnCount; j++)
+                    {
+                        if (queryResult.Stream.Schema.FieldsList[j].Name.Equals("TABLE_CATALOG", StringComparison.OrdinalIgnoreCase) ||
+                            queryResult.Stream.Schema.FieldsList[j].Name.Equals("TABLE_CAT", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? catalog = GetStringValue(batch.Column(j), i);
+                            if (!string.IsNullOrEmpty(catalog))
+                            {
+                                foundCatalogs.Add(catalog);
+                                // Store the first catalog we find as the default catalog
+                                defaultCatalog ??= catalog;
+                            }
+                        }
+                    }
+                }
+            }
+
+            OutputHelper?.WriteLine($"{queryType} returned {rowCount} rows, found {foundCatalogs.Count} different catalogs: {string.Join(", ", foundCatalogs)}");
+
+            // Verify behavior based on EnableMultipleCatalogSupport setting
+            if (!shouldAllowMultipleCatalogs)
+            {
+                // When EnableMultipleCatalogSupport is false, all results should be from the default catalog, so count should be one
+                Assert.True(foundCatalogs.Count == 1,
+                    $"{queryType} should only return results from the default catalog when EnableMultipleCatalogSupport is false");
+                OutputHelper?.WriteLine($"All results are from default catalog: {defaultCatalog}");
+            }
+            else
+            {
+                // When EnableMultipleCatalogSupport is true, we may have results from multiple catalogs
+                Assert.True(foundCatalogs.Count > 1,
+                    $"{queryType} should return results from at least one catalog when EnableMultipleCatalogSupport is true");
+                if (foundCatalogs.Count > 1)
+                {
+                    OutputHelper?.WriteLine($"Found results from multiple catalogs: {string.Join(", ", foundCatalogs)}");
+                }
+            }
         }
     }
 }

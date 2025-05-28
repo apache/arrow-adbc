@@ -1680,6 +1680,23 @@ func (suite *SnowflakeTests) TestTimestampSnow() {
 	}
 }
 
+func (suite *SnowflakeTests) TestBooleanType() {
+	suite.Require().NoError(suite.stmt.SetSqlQuery("select * from (SELECT CAST(TRUE  as BOOLEAN) as BOOLEANTYPE) as \"_\" where 0 = 1"))
+	rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	for _, f := range rdr.Schema().Fields() {
+		st, ok := f.Metadata.GetValue("SNOWFLAKE_TYPE")
+		if !ok {
+			continue
+		}
+		if st == "boolean" {
+			suite.Require().IsType(&arrow.BooleanType{}, f.Type)
+		}
+	}
+}
+
 func (suite *SnowflakeTests) TestUseHighPrecision() {
 	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "NUMBERTYPETEST"))
 

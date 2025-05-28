@@ -19,7 +19,7 @@
 //!
 //! The driver manager provides an implementation of the ADBC interface which
 //! uses FFI to wrap an object file implementation of
-//! [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
+//! [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h).
 //!
 //! There are two ways that drivers can be used:
 //! 1. By linking (either statically or dynamically) the driver implementation
