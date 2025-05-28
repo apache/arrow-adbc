@@ -32,8 +32,6 @@ using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
-using Thrift.Transport;
-using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {

@@ -39,7 +39,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         private readonly int _expirationBufferSeconds;
         private readonly IClock _clock;
         private long _startOffset;
-        private long _lastFetchedOffset = 0;
         private bool _hasMoreResults;
         private bool _isCompleted;
         private Task? _fetchTask;
@@ -96,7 +95,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 
             // Reset state
             _startOffset = 0;
-            _lastFetchedOffset = 0;
             _hasMoreResults = true;
             _isCompleted = false;
             _error = null;
@@ -205,7 +203,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         public void ClearCache()
         {
             _urlsByOffset.Clear();
-            _lastFetchedOffset = 0;
         }
 
         private async Task FetchResultsAsync(CancellationToken cancellationToken)
@@ -317,7 +314,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 if (!offset.HasValue)  // Only update if this was a sequential fetch
                 {
                     _startOffset = maxOffset;
-                    _lastFetchedOffset = maxOffset;
                 }
 
                 // Update whether there are more results
@@ -352,7 +348,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 
             // Update the start offset for the next fetch
             _startOffset = maxOffset;
-            _lastFetchedOffset = maxOffset;
 
             // Update whether there are more results
             _hasMoreResults = _statement.DirectResults!.ResultSet.HasMoreRows;

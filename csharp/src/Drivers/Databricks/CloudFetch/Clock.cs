@@ -22,7 +22,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
     /// <summary>
     /// Abstraction for time operations to enable testing with controlled time.
     /// </summary>
-    public interface IClock
+    internal interface IClock
     {
         /// <summary>
         /// Gets the current UTC time.
@@ -36,46 +36,5 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
     internal class SystemClock : IClock
     {
         public DateTime UtcNow => DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Test implementation that allows controlling time for testing scenarios.
-    /// </summary>
-    public class ControllableClock : IClock
-    {
-        private DateTime _currentTime;
-
-        public ControllableClock(DateTime? initialTime = null)
-        {
-            _currentTime = initialTime ?? DateTime.UtcNow;
-        }
-
-        public DateTime UtcNow => _currentTime;
-
-        /// <summary>
-        /// Advances the clock by the specified time span.
-        /// </summary>
-        /// <param name="timeSpan">The amount of time to advance.</param>
-        public void AdvanceTime(TimeSpan timeSpan)
-        {
-            _currentTime = _currentTime.Add(timeSpan);
-        }
-
-        /// <summary>
-        /// Sets the clock to a specific time.
-        /// </summary>
-        /// <param name="time">The time to set.</param>
-        public void SetTime(DateTime time)
-        {
-            _currentTime = time;
-        }
-
-        /// <summary>
-        /// Resets the clock to the current system time.
-        /// </summary>
-        public void Reset()
-        {
-            _currentTime = DateTime.UtcNow;
-        }
     }
 }
