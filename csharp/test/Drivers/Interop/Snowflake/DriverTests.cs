@@ -23,6 +23,7 @@ using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 {
@@ -73,10 +74,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             return GetPatterns(tableName);
         }
 
-        public DriverTests()
+        readonly ITestOutputHelper? _outputHelper;
+
+        public DriverTests(ITestOutputHelper? outputHelper)
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE));
             _testConfiguration = SnowflakeTestingUtils.TestConfiguration;
+            _outputHelper = outputHelper;
 
             _tableTypes = new List<string> { "BASE TABLE", "VIEW" };
             Dictionary<string, string> parameters = new Dictionary<string, string>();
@@ -191,11 +195,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [SkippableFact, Order(2)]
         public void CanGetInfo()
         {
-            using IArrowArrayStream stream = _connection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.VendorName });
+            using IArrowArrayStream stream = _connection.GetInfo(new List<AdbcInfoCode>() { AdbcInfoCode.DriverName, AdbcInfoCode.DriverVersion, AdbcInfoCode.DriverArrowVersion, AdbcInfoCode.VendorName, AdbcInfoCode.VendorVersion });
             using RecordBatch recordBatch = stream.ReadNextRecordBatchAsync().Result;
             UInt32Array infoNameArray = (UInt32Array)recordBatch.Column("info_name");
 
-            List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "VendorName" };
+            List<string> expectedValues = new List<string>() { "DriverName", "DriverVersion", "DriverArrowVersion", "VendorName", "VendorVersion" };
 
             for (int i = 0; i < infoNameArray.Length; i++)
             {
@@ -205,7 +209,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 Assert.Contains(value.ToString(), expectedValues);
 
                 StringArray stringArray = (StringArray)valueArray.Fields[0];
-                Console.WriteLine($"{value}={stringArray.GetString(i)}");
+                _outputHelper?.WriteLine($"{value}={stringArray.GetString(i)}");
             }
         }
 

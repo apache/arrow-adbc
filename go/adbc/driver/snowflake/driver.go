@@ -22,11 +22,11 @@ import (
 	"errors"
 	"maps"
 	"net/http"
-	"runtime/debug"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 )
@@ -119,19 +119,7 @@ const (
 	OptionValueAuthUserPassMFA = "auth_mfa"
 )
 
-var (
-	infoVendorVersion string
-)
-
 func init() {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, dep := range info.Deps {
-			switch dep.Path {
-			case "github.com/snowflakedb/gosnowflake":
-				infoVendorVersion = dep.Version
-			}
-		}
-	}
 
 	// Disable some stray logs
 	// https://github.com/snowflakedb/gosnowflake/pull/1332
@@ -216,11 +204,19 @@ type driverImpl struct {
 // NewDriver creates a new Snowflake driver using the given Arrow allocator.
 func NewDriver(alloc memory.Allocator) Driver {
 	info := driverbase.DefaultDriverInfo("Snowflake")
-	if infoVendorVersion != "" {
-		if err := info.RegisterInfoCode(adbc.InfoVendorVersion, infoVendorVersion); err != nil {
-			panic(err)
-		}
+
+	if err := info.RegisterInfoCode(adbc.InfoVendorVersion, gosnowflake.SnowflakeGoDriverVersion); err != nil {
+		panic(err)
 	}
+
+	if err := info.RegisterInfoCode(adbc.InfoDriverVersion, adbc.DriverVersion); err != nil {
+		panic(err)
+	}
+
+	if err := info.RegisterInfoCode(adbc.InfoDriverArrowVersion, arrow.PkgVersion); err != nil {
+		panic(err)
+	}
+
 	return &driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc)}
 }
 
