@@ -19,6 +19,17 @@
 
 # ADBC Snowflake Driver
 
+![Vendor: Snowflake](https://img.shields.io/badge/vendor-Snowflake-blue?style=flat-square)
+![Implementation: Go](https://img.shields.io/badge/implementation-Go-violet?style=flat-square)
+![Status: Stable](https://img.shields.io/badge/status-stable-green?style=flat-square)
+
+[![conda-forge: adbc-driver-snowflake](https://img.shields.io/conda/vn/conda-forge/adbc-driver-snowflake?label=conda-forge%3A%20adbc-driver-snowflake&style=flat-square)](https://anaconda.org/conda-forge/adbc-driver-snowflake)
+[![conda-forge: libadbc-driver-snowflake](https://img.shields.io/conda/vn/conda-forge/libadbc-driver-snowflake?label=conda-forge%3A%20libadbc-driver-snowflake&style=flat-square)](https://anaconda.org/conda-forge/libadbc-driver-snowflake)
+[![crates.io: adbc_snowflake](https://img.shields.io/crates/v/adbc_snowflake?style=flat-square)](https://crates.io/crates/adbc_snowflake)
+[![NuGet: Apache.Arrow.Adbc.Drivers.Interop.Snowflake](https://img.shields.io/nuget/v/Apache.Arrow.Adbc.Drivers.Interop.Snowflake)](https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.Interop.Snowflake)
+[![PyPI: adbc-driver-snowflake](https://img.shields.io/pypi/v/adbc-driver-snowflake?style=flat-square)](https://pypi.org/project/adbc-driver-snowflake/)
+[![R: adbcsnowflake](https://img.shields.io/github/r-package/v/apache/arrow-adbc?filename=r%2Fadbcsnowflake%2FDESCRIPTION&style=flat-square)](https://github.com/apache/arrow-adbc/tree/main/r/adbcsnowflake)
+
 This driver provides an interface to
 [Snowflake](https://www.snowflake.com/) using ADBC.
 

@@ -19,7 +19,7 @@
 PostgreSQL Driver
 =================
 
-**Available for:** C/C++, GLib/Ruby, Go, Python, R
+.. adbc_driver_status:: ../../../c/driver/postgresql/README.md
 
 The PostgreSQL driver provides access to any database that supports
 the PostgreSQL wire format.  It wraps `libpq`_, the client library for

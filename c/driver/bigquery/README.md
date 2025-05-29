@@ -19,6 +19,15 @@
 
 # ADBC BigQuery Driver
 
+![Vendor: Google BigQuery](https://img.shields.io/badge/vendor-sqlite-blue?style=flat-square)
+![Implementation: Go](https://img.shields.io/badge/language-Go-violet?style=flat-square)
+![Status: Experimental](https://img.shields.io/badge/status-experimental-red?style=flat-square)
+
+[![conda-forge: adbc-driver-bigquery](https://img.shields.io/conda/vn/conda-forge/adbc-driver-bigquery?label=conda-forge%3A%20adbc-driver-bigquery&style=flat-square)](https://anaconda.org/conda-forge/adbc-driver-bigquery)
+[![conda-forge: libadbc-driver-bigquery](https://img.shields.io/conda/vn/conda-forge/libadbc-driver-bigquery?label=conda-forge%3A%20libadbc-driver-bigquery&style=flat-square)](https://anaconda.org/conda-forge/libadbc-driver-bigquery)
+[![PyPI: adbc-driver-bigquery](https://img.shields.io/pypi/v/adbc-driver-bigquery?style=flat-square)](https://pypi.org/project/adbc-driver-bigquery/)
+[![R: adbcbigquery](https://img.shields.io/github/r-package/v/apache/arrow-adbc?filename=r%2Fadbcbigquery%2FDESCRIPTION&style=flat-square)](https://github.com/apache/arrow-adbc/tree/main/r/adbcbigquery)
+
 This driver provides an interface to
 [BigQuery](https://cloud.google.com/bigquery) using ADBC.
 
