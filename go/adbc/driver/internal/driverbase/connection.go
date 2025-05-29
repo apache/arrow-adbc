@@ -151,7 +151,7 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 }
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
-	ctx, span := utils.StartSpan(ctx, "GetInfo", base, trace.WithAttributes(base.GetInitialSpanAttributes()...))
+	_, span := utils.StartSpan(ctx, "GetInfo", base, trace.WithAttributes(base.GetInitialSpanAttributes()...))
 	defer utils.EndSpan(span, err)
 
 	if len(infoCodes) == 0 {
