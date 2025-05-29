@@ -16,7 +16,10 @@
 */
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
+using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache
 {
@@ -148,6 +151,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
 
             containedException = null;
             return false;
+        }
+
+        internal struct ThriftResponseHandler
+        {
+            public TStatusCode StatusCode;
+            public Action<TStatus> Handler;
+        }
+
+        internal static void HandleThriftResponse(TStatus status, IReadOnlyCollection<ThriftResponseHandler> handlers, string? operationName = default)
+        {
+            IEnumerable<ThriftResponseHandler> selectedHandlers = handlers.Where(handler => handler.StatusCode == status.StatusCode);
+            foreach (ThriftResponseHandler handler in selectedHandlers)
+            {
+                handler.Handler.Invoke(status);
+            }
         }
     }
 }

@@ -19,6 +19,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -26,15 +27,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// <summary>
     /// Base class for Databricks readers that handles common functionality. Handles the operation status poller.
     /// </summary>
-    internal abstract class BaseDatabricksReader : IArrowArrayStream
+    internal abstract class BaseDatabricksReader : TracingReader
     {
-        protected DatabricksStatement? statement;
+        protected DatabricksStatement statement;
         protected readonly Schema schema;
         protected readonly bool isLz4Compressed;
         protected DatabricksOperationStatusPoller? operationStatusPoller;
+        protected bool hasNoMoreRows = false;
         private bool isDisposed;
 
         protected BaseDatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
+            : base(statement)
         {
             this.schema = schema;
             this.isLz4Compressed = isLz4Compressed;
@@ -47,23 +50,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             operationStatusPoller.Start();
         }
 
-        public Schema Schema { get { return schema; } }
+        public override Schema Schema { get { return schema; } }
 
         protected void StopOperationStatusPoller()
         {
             operationStatusPoller?.Stop();
         }
 
-        public void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            if (isDisposed)
+            if (!isDisposed)
             {
-                return;
+                if (disposing)
+                {
+                    DisposeOperationStatusPoller();
+                    DisposeResources();
+                }
+                isDisposed = true;
             }
 
-            DisposeOperationStatusPoller();
-            DisposeResources();
-            isDisposed = true;
+            base.Dispose(disposing);
         }
 
         protected virtual void DisposeResources()
@@ -87,7 +93,5 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 throw new ObjectDisposedException(GetType().Name);
             }
         }
-
-        public abstract ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default);
     }
 }
