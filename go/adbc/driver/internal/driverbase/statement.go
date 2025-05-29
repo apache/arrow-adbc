@@ -124,13 +124,10 @@ func (st *StatementImplBase) StartSpan(
 	spanName string,
 	opts ...trace.SpanStartOption,
 ) (context.Context, trace.Span) {
-	var span trace.Span
 	ctx, _ = maybeAddTraceParent(ctx, st.cnxn, st)
-	ctx, span = st.Tracer.Start(ctx, spanName, opts...)
-	return ctx, span
+	return st.Tracer.Start(ctx, spanName, opts...)
 }
 
-func (st *StatementImplBase) GetInitialSpanAttributes() *[]attribute.KeyValue {
-	attrs := st.cnxn.GetInitialSpanAttributes()
-	return attrs
+func (st *StatementImplBase) GetInitialSpanAttributes() []attribute.KeyValue {
+	return st.cnxn.GetInitialSpanAttributes()
 }

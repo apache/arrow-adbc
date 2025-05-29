@@ -94,25 +94,29 @@ func SetErrorOnSpan(span trace.Span, err error) bool {
 	return false
 }
 
-func TraceSpan(
-	ctx context.Context,
-	tracing adbc.OTelTracing,
-	spanName string,
-	execFunc func(ctx context.Context, span trace.Span) error,
-	opts ...trace.SpanStartOption,
-) error {
-	var span trace.Span
+func StartSpan(ctx context.Context, spanName string, tracing adbc.OTelTracing, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	if tracing == nil {
+		return ctx, trace.SpanFromContext(ctx)
+	}
+
 	attrs := tracing.GetInitialSpanAttributes()
-	*attrs = append(*attrs, attribute.String(TraceAttributeDbOperationName, spanName))
-	ctx, span = tracing.StartSpan(ctx, spanName, trace.WithAttributes(*attrs...))
-	err := execFunc(ctx, span)
-	defer func() {
-		if !SetErrorOnSpan(span, err) {
-			span.SetStatus(codes.Ok, codes.Ok.String())
+	attrs = append(attrs, attribute.String(TraceAttributeDbOperationName, spanName))
+	opts = append(opts, trace.WithAttributes(attrs...))
+
+	return tracing.StartSpan(ctx, spanName, opts...)
+}
+
+func EndSpan(span trace.Span, err error, options ...trace.SpanEndOption) {
+	if err != nil {
+		span.RecordError(err)
+		if adbcError, ok := err.(adbc.Error); ok {
+			span.SetAttributes(attribute.String(TraceAttributeErrorType, adbcError.Code.String()))
 		}
-		span.End()
-	}()
-	return err
+		span.SetStatus(codes.Error, err.Error())
+	} else {
+		span.SetStatus(codes.Ok, "")
+	}
+	span.End(options...)
 }
 
 const (

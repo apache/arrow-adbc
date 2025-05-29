@@ -192,19 +192,19 @@ func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
 }
 
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (rows driver.Rows, err error) {
-	err = utils.TraceSpan(ctx, c, "QueryContext", func(ctx context.Context, span trace.Span) error {
-		s, err := c.Conn.NewStatement()
-		if err != nil {
-			return err
-		}
+	ctx, span := utils.StartSpan(ctx, "QueryContext", c)
+	defer utils.EndSpan(span, err)
 
-		if err = s.SetSqlQuery(query); err != nil {
-			return errors.Join(err, s.Close())
-		}
+	s, err := c.Conn.NewStatement()
+	if err != nil {
+		return nil, err
+	}
 
-		rows, err = (&stmt{stmt: s}).QueryContext(ctx, args)
-		return err
-	})
+	if err = s.SetSqlQuery(query); err != nil {
+		return nil, errors.Join(err, s.Close())
+	}
+
+	rows, err = (&stmt{stmt: s}).QueryContext(ctx, args)
 	return rows, err
 }
 
@@ -274,11 +274,11 @@ func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, e
 	return &stmt{stmt: s, paramSchema: paramSchema}, nil
 }
 
-func (c *conn) GetInitialSpanAttributes() *[]attribute.KeyValue {
+func (c *conn) GetInitialSpanAttributes() []attribute.KeyValue {
 	if conn, ok := c.Conn.(adbc.OTelTracing); ok {
 		return conn.GetInitialSpanAttributes()
 	}
-	return &[]attribute.KeyValue{}
+	return []attribute.KeyValue{}
 }
 
 func (c *conn) GetTraceParent() string {

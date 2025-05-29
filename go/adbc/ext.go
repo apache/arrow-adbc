@@ -75,5 +75,5 @@ type OTelTracing interface {
 	// [add attributes]: https://opentelemetry.io/docs/languages/go/instrumentation/#span-attributes
 	StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span)
 
-	GetInitialSpanAttributes() *[]attribute.KeyValue
+	GetInitialSpanAttributes() []attribute.KeyValue
 }

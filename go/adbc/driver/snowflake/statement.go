@@ -33,7 +33,6 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -82,24 +81,24 @@ func (st *statement) setQueryContext(ctx context.Context) context.Context {
 // and closes it (particularly if it is a prepared statement).
 //
 // A statement instance should not be used after Close is called.
-func (st *statement) Close() error {
-	err := utils.TraceSpan(context.Background(), st, "Close", func(ctx context.Context, span trace.Span) error {
-		if st.cnxn == nil {
-			return adbc.Error{
-				Msg:  "statement already closed",
-				Code: adbc.StatusInvalidState}
-		}
+func (st *statement) Close() (err error) {
+	_, span := utils.StartSpan(context.Background(), "Close", st)
+	defer utils.EndSpan(span, err)
 
-		if st.bound != nil {
-			st.bound.Release()
-			st.bound = nil
-		} else if st.streamBind != nil {
-			st.streamBind.Release()
-			st.streamBind = nil
-		}
-		st.cnxn = nil
-		return nil
-	})
+	if st.cnxn == nil {
+		return adbc.Error{
+			Msg:  "statement already closed",
+			Code: adbc.StatusInvalidState}
+	}
+
+	if st.bound != nil {
+		st.bound.Release()
+		st.bound = nil
+	} else if st.streamBind != nil {
+		st.streamBind.Release()
+		st.streamBind = nil
+	}
+	st.cnxn = nil
 	return err
 }
 
@@ -476,176 +475,175 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReader, nRows int64, err error) {
 	nRows = -1
 
-	err = utils.TraceSpan(ctx, st, "ExecuteQuery", func(ctx context.Context, span trace.Span) (spanErr error) {
-		ctx = st.setQueryContext(ctx)
-		defer func() {
-			span.SetAttributes(attribute.Int64(utils.TraceAttributeDbResponseRetRows, nRows))
-		}()
+	ctx, span := utils.StartSpan(ctx, "ExecuteQuery", st)
+	defer func() {
+		span.SetAttributes(attribute.Int64(utils.TraceAttributeDbResponseRetRows, nRows))
+		utils.EndSpan(span, err)
+	}()
 
-		if st.targetTable != "" {
-			nRows, spanErr = st.executeIngest(ctx)
-			return
-		}
+	ctx = st.setQueryContext(ctx)
 
-		if st.query == "" {
-			spanErr = adbc.Error{
-				Msg:  "cannot execute without a query",
-				Code: adbc.StatusInvalidState,
-			}
-			return
-		}
-
-		// for a bound stream reader we'd need to implement something to
-		// concatenate RecordReaders which doesn't exist yet. let's put
-		// that off for now.
-		if st.streamBind != nil || st.bound != nil {
-			bind := snowflakeBindReader{
-				doQuery: func(params []driver.NamedValue) (array.RecordReader, error) {
-					loader, err := st.cnxn.cn.QueryArrowStream(ctx, st.query, params...)
-					if err != nil {
-						return nil, errToAdbcErr(adbc.StatusInternal, err)
-					}
-					return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
-				},
-				currentBatch: st.bound,
-				stream:       st.streamBind,
-			}
-			st.bound = nil
-			st.streamBind = nil
-
-			rdr := concatReader{}
-			spanErr = rdr.Init(&bind)
-			if spanErr != nil {
-				return
-			}
-			reader = &rdr
-			return
-		}
-
-		var loader gosnowflake.ArrowStreamLoader
-		loader, spanErr = st.cnxn.cn.QueryArrowStream(ctx, st.query)
-		if spanErr != nil {
-			spanErr = errToAdbcErr(adbc.StatusInternal, spanErr)
-			return
-		}
-
-		reader, spanErr = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
-		nRows = loader.TotalRows()
+	if st.targetTable != "" {
+		nRows, err = st.executeIngest(ctx)
 		return
-	})
+	}
+
+	if st.query == "" {
+		err = adbc.Error{
+			Msg:  "cannot execute without a query",
+			Code: adbc.StatusInvalidState,
+		}
+		return
+	}
+
+	// for a bound stream reader we'd need to implement something to
+	// concatenate RecordReaders which doesn't exist yet. let's put
+	// that off for now.
+	if st.streamBind != nil || st.bound != nil {
+		bind := snowflakeBindReader{
+			doQuery: func(params []driver.NamedValue) (array.RecordReader, error) {
+				loader, err := st.cnxn.cn.QueryArrowStream(ctx, st.query, params...)
+				if err != nil {
+					return nil, errToAdbcErr(adbc.StatusInternal, err)
+				}
+				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+			},
+			currentBatch: st.bound,
+			stream:       st.streamBind,
+		}
+		st.bound = nil
+		st.streamBind = nil
+
+		rdr := concatReader{}
+		err = rdr.Init(&bind)
+		if err != nil {
+			return
+		}
+		reader = &rdr
+		return
+	}
+
+	var loader gosnowflake.ArrowStreamLoader
+	loader, err = st.cnxn.cn.QueryArrowStream(ctx, st.query)
+	if err != nil {
+		err = errToAdbcErr(adbc.StatusInternal, err)
+		return
+	}
+
+	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+	nRows = loader.TotalRows()
 	return
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err error) {
-	err = utils.TraceSpan(ctx, st, "ExecuteUpdate", func(ctx context.Context, span trace.Span) (spanErr error) {
-		ctx = st.setQueryContext(ctx)
+	ctx, span := utils.StartSpan(ctx, "ExecuteUpdate", st)
+	defer func() {
+		span.SetAttributes(attribute.Int64(utils.TraceAttributeDbResponseRetRows, numRows))
+		utils.EndSpan(span, err)
+	}()
 
-		defer func() {
-			span.SetAttributes(attribute.Int64(utils.TraceAttributeDbResponseRetRows, numRows))
-		}()
+	ctx = st.setQueryContext(ctx)
 
-		if st.targetTable != "" {
-			numRows, spanErr = st.executeIngest(ctx)
-			return spanErr
+	if st.targetTable != "" {
+		numRows, err = st.executeIngest(ctx)
+		return -1, err
+	}
+
+	if st.query == "" {
+		numRows = -1
+		err = adbc.Error{
+			Msg:  "cannot execute without a query",
+			Code: adbc.StatusInvalidState,
 		}
+		return -1, err
+	}
 
-		if st.query == "" {
-			numRows = -1
-			spanErr = adbc.Error{
-				Msg:  "cannot execute without a query",
-				Code: adbc.StatusInvalidState,
+	if st.streamBind != nil || st.bound != nil {
+		numRows = 0
+		bind := snowflakeBindReader{
+			currentBatch: st.bound,
+			stream:       st.streamBind,
+		}
+		st.bound = nil
+		st.streamBind = nil
+
+		defer bind.Release()
+		for {
+			params, err := bind.NextParams()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				numRows = -1
+				return numRows, err
 			}
-			return spanErr
-		}
-
-		if st.streamBind != nil || st.bound != nil {
-			numRows = 0
-			bind := snowflakeBindReader{
-				currentBatch: st.bound,
-				stream:       st.streamBind,
+			r, err := st.cnxn.cn.ExecContext(ctx, st.query, params)
+			if err != nil {
+				err = errToAdbcErr(adbc.StatusInternal, err)
+				numRows = -1
+				return numRows, err
 			}
-			st.bound = nil
-			st.streamBind = nil
-
-			defer bind.Release()
-			for {
-				params, err := bind.NextParams()
-				if err == io.EOF {
-					break
-				} else if err != nil {
-					numRows = -1
-					return err
-				}
-				r, err := st.cnxn.cn.ExecContext(ctx, st.query, params)
-				if err != nil {
-					err = errToAdbcErr(adbc.StatusInternal, err)
-					numRows = -1
-					return err
-				}
-				n, err := r.RowsAffected()
-				if err != nil {
-					numRows = -1
-				} else if numRows >= 0 {
-					numRows += n
-				}
+			n, err := r.RowsAffected()
+			if err != nil {
+				numRows = -1
+			} else if numRows >= 0 {
+				numRows += n
 			}
-			return nil
 		}
+		return numRows, nil
+	}
 
-		r, spanErr := st.cnxn.cn.ExecContext(ctx, st.query, nil)
-		if spanErr != nil {
-			numRows = -1
-			spanErr = errToAdbcErr(adbc.StatusIO, spanErr)
-			return spanErr
-		}
+	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)
+	if err != nil {
+		numRows = -1
+		err = errToAdbcErr(adbc.StatusIO, err)
+		return numRows, err
+	}
 
-		numRows, spanErr = r.RowsAffected()
-		if spanErr != nil {
-			numRows = -1
-		}
+	numRows, err = r.RowsAffected()
+	if err != nil {
+		numRows = -1
+	}
 
-		return nil
-	})
 	return numRows, err
 }
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
 func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
-	err = utils.TraceSpan(ctx, st, "ExecuteSchema", func(ctx context.Context, span trace.Span) error {
-		ctx = st.setQueryContext(ctx)
+	ctx, span := utils.StartSpan(ctx, "ExecuteSchema", st)
+	defer utils.EndSpan(span, err)
 
-		if st.targetTable != "" {
-			return adbc.Error{
-				Msg:  "cannot execute schema for ingestion",
-				Code: adbc.StatusInvalidState,
-			}
+	ctx = st.setQueryContext(ctx)
+
+	if st.targetTable != "" {
+		return nil, adbc.Error{
+			Msg:  "cannot execute schema for ingestion",
+			Code: adbc.StatusInvalidState,
 		}
+	}
 
-		if st.query == "" {
-			return adbc.Error{
-				Msg:  "cannot execute without a query",
-				Code: adbc.StatusInvalidState,
-			}
+	if st.query == "" {
+		return nil, adbc.Error{
+			Msg:  "cannot execute without a query",
+			Code: adbc.StatusInvalidState,
 		}
+	}
 
-		if st.streamBind != nil || st.bound != nil {
-			return adbc.Error{
-				Msg:  "executing schema with bound params not yet implemented",
-				Code: adbc.StatusNotImplemented,
-			}
+	if st.streamBind != nil || st.bound != nil {
+		return nil, adbc.Error{
+			Msg:  "executing schema with bound params not yet implemented",
+			Code: adbc.StatusNotImplemented,
 		}
+	}
 
-		loader, err := st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
-		if err != nil {
-			return errToAdbcErr(adbc.StatusInternal, err)
-		}
+	loader, err := st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
+	if err != nil {
+		return nil, errToAdbcErr(adbc.StatusInternal, err)
+	}
 
-		schema, err = rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
-		return err
-	})
-	return
+	schema, err = rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
+	return schema, err
 }
 
 // Prepare turns this statement into a prepared statement to be executed

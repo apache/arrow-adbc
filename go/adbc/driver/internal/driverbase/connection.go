@@ -151,69 +151,68 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 }
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
-	err = utils.TraceSpan(ctx, base, "GetInfo", func(ctx context.Context, span trace.Span) error {
+	ctx, span := utils.StartSpan(ctx, "GetInfo", base, trace.WithAttributes(base.GetInitialSpanAttributes()...))
+	defer utils.EndSpan(span, err)
 
-		if len(infoCodes) == 0 {
-			infoCodes = base.DriverInfo.InfoSupportedCodes()
+	if len(infoCodes) == 0 {
+		infoCodes = base.DriverInfo.InfoSupportedCodes()
+	}
+
+	bldr := array.NewRecordBuilder(base.Alloc, adbc.GetInfoSchema)
+	defer bldr.Release()
+	bldr.Reserve(len(infoCodes))
+
+	infoNameBldr := bldr.Field(0).(*array.Uint32Builder)
+	infoValueBldr := bldr.Field(1).(*array.DenseUnionBuilder)
+	strInfoBldr := infoValueBldr.Child(int(adbc.InfoValueStringType)).(*array.StringBuilder)
+	intInfoBldr := infoValueBldr.Child(int(adbc.InfoValueInt64Type)).(*array.Int64Builder)
+	boolInfoBldr := infoValueBldr.Child(int(adbc.InfoValueBooleanType)).(*array.BooleanBuilder)
+
+	for _, code := range infoCodes {
+		infoNameBldr.Append(uint32(code))
+		value, ok := base.DriverInfo.GetInfoForInfoCode(code)
+
+		// We want to return a null value if the info_code requested is set to nil.
+		// The null value needs a type so we arbitrarily choose string (type_code: 0)
+		if value == nil {
+			value = ""
+			ok = false
 		}
 
-		bldr := array.NewRecordBuilder(base.Alloc, adbc.GetInfoSchema)
-		defer bldr.Release()
-		bldr.Reserve(len(infoCodes))
-
-		infoNameBldr := bldr.Field(0).(*array.Uint32Builder)
-		infoValueBldr := bldr.Field(1).(*array.DenseUnionBuilder)
-		strInfoBldr := infoValueBldr.Child(int(adbc.InfoValueStringType)).(*array.StringBuilder)
-		intInfoBldr := infoValueBldr.Child(int(adbc.InfoValueInt64Type)).(*array.Int64Builder)
-		boolInfoBldr := infoValueBldr.Child(int(adbc.InfoValueBooleanType)).(*array.BooleanBuilder)
-
-		for _, code := range infoCodes {
-			infoNameBldr.Append(uint32(code))
-			value, ok := base.DriverInfo.GetInfoForInfoCode(code)
-
-			// We want to return a null value if the info_code requested is set to nil.
-			// The null value needs a type so we arbitrarily choose string (type_code: 0)
-			if value == nil {
-				value = ""
-				ok = false
+		switch v := value.(type) {
+		case string:
+			infoValueBldr.Append(adbc.InfoValueStringType)
+			if ok {
+				strInfoBldr.Append(v)
+			} else {
+				strInfoBldr.AppendNull()
 			}
-
-			switch v := value.(type) {
-			case string:
-				infoValueBldr.Append(adbc.InfoValueStringType)
-				if ok {
-					strInfoBldr.Append(v)
-				} else {
-					strInfoBldr.AppendNull()
-				}
-				span.SetAttributes(attribute.String(code.String(), v))
-			case int64:
-				infoValueBldr.Append(adbc.InfoValueInt64Type)
-				if ok {
-					intInfoBldr.Append(v)
-				} else {
-					intInfoBldr.AppendNull()
-				}
-				span.SetAttributes(attribute.Int64(code.String(), v))
-			case bool:
-				infoValueBldr.Append(adbc.InfoValueBooleanType)
-				if ok {
-					boolInfoBldr.Append(v)
-				} else {
-					boolInfoBldr.AppendNull()
-				}
-				span.SetAttributes(attribute.Bool(code.String(), v))
-			default:
-				return fmt.Errorf("no defined type code for info_value of type %T", v)
+			span.SetAttributes(attribute.String(code.String(), v))
+		case int64:
+			infoValueBldr.Append(adbc.InfoValueInt64Type)
+			if ok {
+				intInfoBldr.Append(v)
+			} else {
+				intInfoBldr.AppendNull()
 			}
+			span.SetAttributes(attribute.Int64(code.String(), v))
+		case bool:
+			infoValueBldr.Append(adbc.InfoValueBooleanType)
+			if ok {
+				boolInfoBldr.Append(v)
+			} else {
+				boolInfoBldr.AppendNull()
+			}
+			span.SetAttributes(attribute.Bool(code.String(), v))
+		default:
+			return nil, fmt.Errorf("no defined type code for info_value of type %T", v)
 		}
+	}
 
-		final := bldr.NewRecord()
-		defer final.Release()
-		reader, err = array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
-		return err
-	})
+	final := bldr.NewRecord()
+	defer final.Release()
 
+	reader, err = array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
 	return reader, err
 }
 
@@ -375,7 +374,7 @@ func (cnxn *ConnectionImplBase) StartSpan(
 	return cnxn.Tracer.Start(ctx, spanName, opts...)
 }
 
-func (cnxn *ConnectionImplBase) GetInitialSpanAttributes() *[]attribute.KeyValue {
+func (cnxn *ConnectionImplBase) GetInitialSpanAttributes() []attribute.KeyValue {
 	var attrs []attribute.KeyValue
 	var systemName = cnxn.DriverInfo.GetName()
 	if value, ok := cnxn.DriverInfo.GetInfoForInfoCode(adbc.InfoVendorName); ok {
@@ -385,7 +384,7 @@ func (cnxn *ConnectionImplBase) GetInitialSpanAttributes() *[]attribute.KeyValue
 	}
 	attrs = append(attrs, attribute.String(utils.TraceAttributeDbSystemName, systemName))
 
-	return &attrs
+	return attrs
 }
 
 // GetObjects implements Connection.
