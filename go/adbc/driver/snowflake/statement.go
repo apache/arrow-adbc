@@ -650,7 +650,7 @@ func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, e
 
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
-func (st *statement) Prepare(ctx context.Context) (err error) {
+func (st *statement) Prepare(_ context.Context) (err error) {
 	if st.query == "" {
 		return adbc.Error{
 			Code: adbc.StatusInvalidState,
@@ -683,7 +683,7 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 // The driver will call release on the passed in Record when it is done,
 // but it may not do this until the statement is closed or another
 // record is bound.
-func (st *statement) Bind(ctx context.Context, values arrow.Record) error {
+func (st *statement) Bind(_ context.Context, values arrow.Record) error {
 	if st.streamBind != nil {
 		st.streamBind.Release()
 		st.streamBind = nil
@@ -704,7 +704,7 @@ func (st *statement) Bind(ctx context.Context, values arrow.Record) error {
 //
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
-func (st *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
+func (st *statement) BindStream(_ context.Context, stream array.RecordReader) error {
 	if st.streamBind != nil {
 		st.streamBind.Release()
 		st.streamBind = nil
