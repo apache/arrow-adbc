@@ -650,7 +650,7 @@ func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, e
 
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
-func (st *statement) Prepare(_ context.Context) (err error) {
+func (st *statement) Prepare(_ context.Context) error {
 	if st.query == "" {
 		return adbc.Error{
 			Code: adbc.StatusInvalidState,
