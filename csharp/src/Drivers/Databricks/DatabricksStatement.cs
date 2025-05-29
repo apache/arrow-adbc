@@ -43,7 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             // Inherit CloudFetch settings from connection
             useCloudFetch = connection.UseCloudFetch;
-            canDecompressLz4 = connection.CanDecompressLz4;
+            canDecompressLz4 = connection.CanDecompressLz4 && ProtocolFeatureNegotiator.SupportsLZ4Compression(Connection.ProtocolVersion);
             maxBytesPerFile = connection.MaxBytesPerFile;
             enableMultipleCatalogSupport = connection.EnableMultipleCatalogSupport;
             enablePKFK = connection.EnablePKFK;
