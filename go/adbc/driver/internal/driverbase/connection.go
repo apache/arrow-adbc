@@ -205,7 +205,8 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 			}
 			span.SetAttributes(attribute.Bool(code.String(), v))
 		default:
-			return nil, fmt.Errorf("no defined type code for info_value of type %T", v)
+			err = fmt.Errorf("no defined type code for info_value of type %T", v)
+			return nil, err
 		}
 	}
 
