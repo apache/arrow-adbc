@@ -376,9 +376,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             await base.HandleOpenSessionResponse(session);
             if (session != null)
             {
-                if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName) && !session.__isset.initialNamespace) {
-                    // server version is too old. Explicitly set the namespace using queries
-                    // only set schema, since SET CATALOG is not older than initialNamespace
+                if (session.__isset.initialNamespace) {
+                    _defaultNamespace = session.InitialNamespace;
+                } else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName)) {
+                    // server version is too old. Explicitly set the schema using queries
                     await SetSchema(_defaultNamespace.SchemaName);
                 }
             }

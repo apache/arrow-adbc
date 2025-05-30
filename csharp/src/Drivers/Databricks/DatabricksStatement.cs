@@ -41,6 +41,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
         {
+            // set the catalog name for legacy compatibility
+            var defaultNamespace = ((DatabricksConnection)Connection).DefaultNamespace;
+            if (CatalogName == null && defaultNamespace != null && defaultNamespace.CatalogName != null)
+            {
+                CatalogName = defaultNamespace.CatalogName;
+            }
             // Inherit CloudFetch settings from connection
             useCloudFetch = connection.UseCloudFetch;
             canDecompressLz4 = connection.CanDecompressLz4;
