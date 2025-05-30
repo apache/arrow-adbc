@@ -27,10 +27,13 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
@@ -148,7 +151,9 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Rollback")
 }
 
-func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
+func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
+	_, span := internal.StartSpan(ctx, "GetInfo", base)
+	defer internal.EndSpan(span, err)
 
 	if len(infoCodes) == 0 {
 		infoCodes = base.DriverInfo.InfoSupportedCodes()
@@ -183,6 +188,7 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 			} else {
 				strInfoBldr.AppendNull()
 			}
+			span.SetAttributes(attribute.String(code.String(), v))
 		case int64:
 			infoValueBldr.Append(adbc.InfoValueInt64Type)
 			if ok {
@@ -190,6 +196,7 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 			} else {
 				intInfoBldr.AppendNull()
 			}
+			span.SetAttributes(attribute.Int64(code.String(), v))
 		case bool:
 			infoValueBldr.Append(adbc.InfoValueBooleanType)
 			if ok {
@@ -197,14 +204,18 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 			} else {
 				boolInfoBldr.AppendNull()
 			}
+			span.SetAttributes(attribute.Bool(code.String(), v))
 		default:
-			return nil, fmt.Errorf("no defined type code for info_value of type %T", v)
+			err = fmt.Errorf("no defined type code for info_value of type %T", v)
+			return nil, err
 		}
 	}
 
 	final := bldr.NewRecord()
 	defer final.Release()
-	return array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
+
+	reader, err = array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
+	return reader, err
 }
 
 func (base *ConnectionImplBase) Close() error {
@@ -363,6 +374,19 @@ func (cnxn *ConnectionImplBase) StartSpan(
 ) (context.Context, trace.Span) {
 	ctx, _ = maybeAddTraceParent(ctx, cnxn, nil)
 	return cnxn.Tracer.Start(ctx, spanName, opts...)
+}
+
+func (cnxn *ConnectionImplBase) GetInitialSpanAttributes() []attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	var systemName = cnxn.DriverInfo.GetName()
+	if value, ok := cnxn.DriverInfo.GetInfoForInfoCode(adbc.InfoVendorName); ok {
+		if s, ok := value.(string); ok {
+			systemName = s
+		}
+	}
+	attrs = append(attrs, semconv.DBSystemNameKey.String(systemName))
+
+	return attrs
 }
 
 // GetObjects implements Connection.
