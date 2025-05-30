@@ -347,10 +347,10 @@ jobs:
 
           # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
           cmake `
-            ..\c `
+            ../c `
             --preset multi-config-windows `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_INSTALL_PREFIX=..\local `
+            -DCMAKE_INSTALL_PREFIX=../local `
             -DCMAKE_VERBOSE_MAKEFILE=ON
           if (-not $?) { exit 1 }
 
