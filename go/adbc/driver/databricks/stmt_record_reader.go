@@ -20,6 +20,7 @@ package databricks
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -79,7 +80,6 @@ type statementReader struct {
 	StatementId string
 
 	// Fields from the execution response manifest:
-
 	// Array of result set chunk metadata.
 	Chunks []sql.BaseChunkInfo
 	// The total number of chunks that the result set has been divided into.
@@ -113,6 +113,11 @@ type statementReader struct {
 func newRecordReader(
 	ctx context.Context, stmtExecution sql.StatementExecutionInterface, statementId string, result *sql.ResultData, manifest *sql.ResultManifest) (*statementReader, error) {
 	ctx, cancelFn := context.WithCancel(ctx)
+	arrowSchema, err := ResultSchemaToArrowSchema(manifest.Schema)
+	if err != nil {
+		cancelFn()
+		return nil, fmt.Errorf("unable to parse schema from manifest: %v", manifest.Schema)
+	}
 	r := &statementReader{
 		refCount: 1,
 
@@ -130,7 +135,7 @@ func newRecordReader(
 		chunkChan:       make(chan chunkResponse),
 		activeChunk:     nil,
 
-		schema: nil,
+		schema: arrowSchema,
 		rec:    nil,
 		err:    nil,
 
@@ -208,6 +213,19 @@ func (r *statementReader) Next() bool {
 
 	if r.activeChunk.Next() {
 		r.rec = r.activeChunk.reader.Record()
+		// Validate schema compatibility
+		chunkSchema := r.activeChunk.Schema()
+		if len(r.schema.Fields()) != len(chunkSchema.Fields()) {
+			r.err = fmt.Errorf("chunk schema field count mismatch: expected %d, got %d", len(r.schema.Fields()), len(chunkSchema.Fields()))
+			return false
+		}
+		for i, field := range r.schema.Fields() {
+			chunkField := chunkSchema.Field(i)
+			if field.Type.ID() != chunkField.Type.ID() {
+				r.err = fmt.Errorf("chunk schema type mismatch at field %d (%s): expected %v, got %v", i, field.Name, field.Type, chunkField.Type)
+				return false
+			}
+		}
 		r.rec.Retain()
 		return true // post-condition holds: r.rec != nil
 	}
@@ -225,23 +243,6 @@ func (r *statementReader) Next() bool {
 }
 
 func (r *statementReader) Schema() *arrow.Schema {
-	if r.schema == nil {
-		if r.activeChunk == nil {
-			if r.loadingChunkIdx == -1 {
-				// TODO: need to derive schema from the JSON manifest :(
-				// For now if we don't have a chunk, we return an empty schema
-				return arrow.NewSchema(make([]arrow.Field, 0), nil)
-			}
-			chunk, err := r.consumeLoadingChunk(context.TODO())
-			if err != nil {
-				r.err = err
-				return nil // TODO: need to derive schema from the JSON manifest :(
-			}
-			r.activeChunk = chunk
-			r.activeChunk.Retain()
-		}
-		r.schema = r.activeChunk.Schema()
-	}
 	return r.schema
 }
 
@@ -338,7 +339,6 @@ func (r *statementReader) startChunkDataRequest(ctx context.Context, chunkIndex 
 		req.Header.Set(k, v)
 	}
 	res, err := r.httpClient.Do(req)
-
 	chunkBodyReader, err := ipc.NewReader(res.Body)
 	chunkRecordReader := array.RecordReader(chunkBodyReader)
 	r.chunkChan <- chunkResponse{
