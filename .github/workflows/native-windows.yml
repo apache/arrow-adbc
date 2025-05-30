@@ -338,6 +338,10 @@ jobs:
           git checkout 943c5ef1c8f6b5e6ced092b242c8299caae2ff01
           ./bootstrap-vcpkg.bat -disableMetrics
 
+          Pop-Location
+
+          ./vcpkg/vcpkg install libpq sqlite3
+
       - name: Build and Install (No ASan)
         run: |
           $env:VCPKG_ROOT = $(Join-Path $pwd "vcpkg")
