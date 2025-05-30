@@ -92,7 +92,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         {
             public LongRunningStatementTimeoutTestData()
             {
-                string longRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(100000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
+                string longRunningQuery = "SELECT * FROM abc.b LIMIT 100";
 
                 Add(new(5, longRunningQuery, typeof(TimeoutException)));
                 Add(new(null, longRunningQuery, typeof(TimeoutException)));
