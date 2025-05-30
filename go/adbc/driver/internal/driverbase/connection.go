@@ -27,7 +27,7 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/utils"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -152,8 +152,8 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 }
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
-	_, span := utils.StartSpan(ctx, "GetInfo", base)
-	defer utils.EndSpan(span, err)
+	_, span := internal.StartSpan(ctx, "GetInfo", base)
+	defer internal.EndSpan(span, err)
 
 	if len(infoCodes) == 0 {
 		infoCodes = base.DriverInfo.InfoSupportedCodes()

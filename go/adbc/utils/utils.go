@@ -18,13 +18,7 @@
 package utils
 
 import (
-	"context"
-
-	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
-	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
-	"go.opentelemetry.io/otel/trace"
 )
 
 func RemoveSchemaMetadata(schema *arrow.Schema) *arrow.Schema {
@@ -80,29 +74,4 @@ func removeFieldMetadata(field *arrow.Field) arrow.Field {
 		Nullable: field.Nullable,
 		Metadata: arrow.Metadata{},
 	}
-}
-
-func StartSpan(ctx context.Context, spanName string, tracing adbc.OTelTracing, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	if tracing == nil {
-		return ctx, trace.SpanFromContext(ctx)
-	}
-
-	attrs := tracing.GetInitialSpanAttributes()
-	attrs = append(attrs, semconv.DBOperationName(spanName))
-	opts = append(opts, trace.WithAttributes(attrs...))
-
-	return tracing.StartSpan(ctx, spanName, opts...)
-}
-
-func EndSpan(span trace.Span, err error, options ...trace.SpanEndOption) {
-	if err != nil {
-		span.RecordError(err)
-		if adbcError, ok := err.(adbc.Error); ok {
-			span.SetAttributes(semconv.ErrorTypeKey.String(adbcError.Code.String()))
-		}
-		span.SetStatus(codes.Error, err.Error())
-	} else {
-		span.SetStatus(codes.Ok, "")
-	}
-	span.End(options...)
 }

@@ -26,8 +26,8 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/apache/arrow-adbc/go/adbc/utils"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -82,8 +82,8 @@ func (st *statement) setQueryContext(ctx context.Context) context.Context {
 //
 // A statement instance should not be used after Close is called.
 func (st *statement) Close() (err error) {
-	_, span := utils.StartSpan(context.Background(), "Close", st)
-	defer utils.EndSpan(span, err)
+	_, span := internal.StartSpan(context.Background(), "Close", st)
+	defer internal.EndSpan(span, err)
 
 	if st.cnxn == nil {
 		err = adbc.Error{
@@ -476,10 +476,10 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReader, nRows int64, err error) {
 	nRows = -1
 
-	ctx, span := utils.StartSpan(ctx, "ExecuteQuery", st)
+	ctx, span := internal.StartSpan(ctx, "ExecuteQuery", st)
 	defer func() {
 		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(nRows))
-		utils.EndSpan(span, err)
+		internal.EndSpan(span, err)
 	}()
 
 	ctx = st.setQueryContext(ctx)
@@ -542,10 +542,10 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err error) {
-	ctx, span := utils.StartSpan(ctx, "ExecuteUpdate", st)
+	ctx, span := internal.StartSpan(ctx, "ExecuteUpdate", st)
 	defer func() {
 		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(numRows))
-		utils.EndSpan(span, err)
+		internal.EndSpan(span, err)
 	}()
 
 	ctx = st.setQueryContext(ctx)
@@ -616,8 +616,8 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
 func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
-	ctx, span := utils.StartSpan(ctx, "ExecuteSchema", st)
-	defer utils.EndSpan(span, err)
+	ctx, span := internal.StartSpan(ctx, "ExecuteSchema", st)
+	defer internal.EndSpan(span, err)
 
 	ctx = st.setQueryContext(ctx)
 
