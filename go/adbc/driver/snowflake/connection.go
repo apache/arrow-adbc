@@ -170,12 +170,7 @@ func isWildcardStr(ident string) bool {
 	return strings.ContainsAny(ident, "_%")
 }
 
-func (c *connectionImpl) GetObjects(
-	ctx context.Context,
-	depth adbc.ObjectDepth,
-	catalog, dbSchema, tableName, columnName *string,
-	tableType []string,
-) (reader array.RecordReader, err error) {
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (reader array.RecordReader, err error) {
 	ctx, span := utils.StartSpan(ctx, "GetObjects", c)
 	defer utils.EndSpan(span, err)
 
@@ -329,7 +324,8 @@ func (c *connectionImpl) GetObjects(
 	var rows driver.Rows
 	rows, err = conn.QueryContext(ctx, query, nvargs)
 	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
+		err = errToAdbcErr(adbc.StatusIO, err)
+		return nil, err
 	}
 	defer func() {
 		err = errors.Join(err, rows.Close())
@@ -342,7 +338,7 @@ func (c *connectionImpl) GetObjects(
 		defer close(catalogCh)
 		dest := make([]driver.Value, len(rows.Columns()))
 		for {
-			if err := rows.Next(dest); err != nil {
+			if err = rows.Next(dest); err != nil {
 				if errors.Is(err, io.EOF) {
 					return
 				}
@@ -351,7 +347,7 @@ func (c *connectionImpl) GetObjects(
 			}
 
 			var getObjectsCatalog driverbase.GetObjectsInfo
-			if err := getObjectsCatalog.Scan(dest[0]); err != nil {
+			if err = getObjectsCatalog.Scan(dest[0]); err != nil {
 				errCh <- errToAdbcErr(adbc.StatusInvalidData, err)
 				return
 			}
@@ -624,12 +620,7 @@ func (c *connectionImpl) getStringQuery(query string) (value string, err error) 
 	return value, nil
 }
 
-func (c *connectionImpl) GetTableSchema(
-	ctx context.Context,
-	catalog *string,
-	dbSchema *string,
-	tableName string,
-) (sc *arrow.Schema, err error) {
+func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (sc *arrow.Schema, err error) {
 	ctx, span := utils.StartSpan(ctx, "GetTableSchema", c)
 	defer utils.EndSpan(span, err)
 
@@ -643,12 +634,14 @@ func (c *connectionImpl) GetTableSchema(
 	tblParts = append(tblParts, quoteTblName(tableName))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
-	rows, spanErr := c.cn.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable, nil)
-	if spanErr != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, spanErr)
+	var rows driver.Rows
+	rows, err = c.cn.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable, nil)
+	if err != nil {
+		err = errToAdbcErr(adbc.StatusIO, err)
+		return nil, err
 	}
 	defer func() {
-		spanErr = errors.Join(spanErr, rows.Close())
+		err = errors.Join(err, rows.Close())
 	}()
 
 	var (
@@ -661,22 +654,25 @@ func (c *connectionImpl) GetTableSchema(
 	// name, type, kind, isnull, primary, unique, def, check, expr, comment, policyName, privDomain
 	dest := make([]driver.Value, len(rows.Columns()))
 	for {
-		if err := rows.Next(dest); err != nil {
+		if err = rows.Next(dest); err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return nil, errToAdbcErr(adbc.StatusIO, err)
+			err = errToAdbcErr(adbc.StatusIO, err)
+			return nil, err
 		}
 
 		name = dest[0].(string)
 		typ = dest[1].(string)
 		isnull = dest[3].(string)
 		primary = dest[5].(string)
-		if err := comment.Scan(dest[9]); err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
+		if err = comment.Scan(dest[9]); err != nil {
+			err = errToAdbcErr(adbc.StatusIO, err)
+			return nil, err
 		}
 
-		f, err := descToField(name, typ, isnull, primary, comment)
+		var f arrow.Field
+		f, err = descToField(name, typ, isnull, primary, comment)
 		if err != nil {
 			return nil, err
 		}

@@ -86,9 +86,10 @@ func (st *statement) Close() (err error) {
 	defer utils.EndSpan(span, err)
 
 	if st.cnxn == nil {
-		return adbc.Error{
+		err = adbc.Error{
 			Msg:  "statement already closed",
 			Code: adbc.StatusInvalidState}
+		return err
 	}
 
 	if st.bound != nil {
@@ -502,11 +503,14 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 	if st.streamBind != nil || st.bound != nil {
 		bind := snowflakeBindReader{
 			doQuery: func(params []driver.NamedValue) (array.RecordReader, error) {
-				loader, err := st.cnxn.cn.QueryArrowStream(ctx, st.query, params...)
+				var loader gosnowflake.ArrowStreamLoader
+				loader, err = st.cnxn.cn.QueryArrowStream(ctx, st.query, params...)
 				if err != nil {
-					return nil, errToAdbcErr(adbc.StatusInternal, err)
+					err = errToAdbcErr(adbc.StatusInternal, err)
+					return nil, err
 				}
-				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+				reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+				return reader, err
 			},
 			currentBatch: st.bound,
 			stream:       st.streamBind,
@@ -591,7 +595,8 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 				numRows += n
 			}
 		}
-		return numRows, nil
+		err = nil
+		return numRows, err
 	}
 
 	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)
@@ -617,29 +622,34 @@ func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, e
 	ctx = st.setQueryContext(ctx)
 
 	if st.targetTable != "" {
-		return nil, adbc.Error{
+		err = adbc.Error{
 			Msg:  "cannot execute schema for ingestion",
 			Code: adbc.StatusInvalidState,
 		}
+		return nil, err
 	}
 
 	if st.query == "" {
-		return nil, adbc.Error{
+		err = adbc.Error{
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
 		}
+		return nil, err
 	}
 
 	if st.streamBind != nil || st.bound != nil {
-		return nil, adbc.Error{
+		err = adbc.Error{
 			Msg:  "executing schema with bound params not yet implemented",
 			Code: adbc.StatusNotImplemented,
 		}
+		return nil, err
 	}
 
-	loader, err := st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
+	var loader gosnowflake.ArrowStreamLoader
+	loader, err = st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
 	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusInternal, err)
+		err := errToAdbcErr(adbc.StatusInternal, err)
+		return nil, err
 	}
 
 	schema, err = rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)

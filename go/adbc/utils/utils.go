@@ -82,18 +82,6 @@ func removeFieldMetadata(field *arrow.Field) arrow.Field {
 	}
 }
 
-func SetErrorOnSpan(span trace.Span, err error) bool {
-	if err != nil {
-		span.RecordError(err)
-		if adbcError, ok := err.(adbc.Error); ok {
-			span.SetAttributes(attribute.String(TraceAttributeErrorType, adbcError.Code.String()))
-		}
-		span.SetStatus(codes.Error, err.Error())
-		return true
-	}
-	return false
-}
-
 func StartSpan(ctx context.Context, spanName string, tracing adbc.OTelTracing, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	if tracing == nil {
 		return ctx, trace.SpanFromContext(ctx)
