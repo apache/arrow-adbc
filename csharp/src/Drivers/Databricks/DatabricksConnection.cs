@@ -168,17 +168,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             Properties.TryGetValue(AdbcOptions.Connection.CurrentCatalog, out defaultCatalog);
             Properties.TryGetValue(AdbcOptions.Connection.CurrentDbSchema, out defaultSchema);
 
-            if (!string.IsNullOrWhiteSpace(defaultCatalog))
+            if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
             {
                 _defaultNamespace = new TNamespace
                 {
                     CatalogName = defaultCatalog,
                     SchemaName = defaultSchema
                 };
-            }
-            else if (!string.IsNullOrEmpty(defaultSchema))
-            {
-                throw new ArgumentException($"Parameter '{AdbcOptions.Connection.CurrentCatalog}' is not set but '{AdbcOptions.Connection.CurrentDbSchema}' is set. Please provide a value for '{AdbcOptions.Connection.CurrentCatalog}'.");
             }
         }
 
@@ -372,6 +368,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
             return req;
+        }
+
+
+        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session)
+        {
+            await base.HandleOpenSessionResponse(session);
+            if (session != null)
+            {
+                if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName) && !session.__isset.initialNamespace) {
+                    // server version is too old. Explicitly set the namespace using queries
+                    // only set schema, since SET CATALOG is not older than initialNamespace
+                    await SetSchema(_defaultNamespace.SchemaName);
+                }
+            }
+        }
+
+        private async Task SetSchema(string schemaName) {
+            using var statement = new DatabricksStatement(this);
+            statement.SqlQuery = $"USE {schemaName}";
+            await statement.ExecuteUpdateAsync();
         }
 
         /// <summary>
