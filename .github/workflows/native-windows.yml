@@ -314,3 +314,45 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
+
+  # ------------------------------------------------------------
+  # MSVC/vcpkg build (no Conda)
+  # ------------------------------------------------------------
+  drivers-vcpkg:
+    name: "C/C++ (vcpkg/${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["windows-latest"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup vcpkg
+        run: |
+          git clone `
+            --shallow-since=2024-01-01 `
+            https://github.com/microsoft/vcpkg
+
+          Push-Location vcpkg
+          ./bootstrap-vcpkg.bat -disableMetrics
+
+      - name: Build and Install (No ASan)
+        run: |
+          $env:VCPKG_ROOT = $(Join-Path $pwd "vcpkg")
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          Push-Location build
+
+          # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
+          cmake `
+            ..\c `
+            --preset multi-config-windows `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX=..\local `
+            -DCMAKE_VERBOSE_MAKEFILE=ON
+          if (-not $?) { exit 1 }
+
+          cmake --build . --target install -j
+          if (-not $?) { exit 1 }
