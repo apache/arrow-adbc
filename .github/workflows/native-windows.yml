@@ -332,10 +332,10 @@ jobs:
 
       - name: Setup vcpkg
         run: |
-          git clone --branch 943c5ef1c8f6b5e6ced092b242c8299caae2ff01 `
-            https://github.com/microsoft/vcpkg
+          git clone --shallow-since=2021-04-01 https://github.com/microsoft/vcpkg
 
           Push-Location vcpkg
+          git checkout 943c5ef1c8f6b5e6ced092b242c8299caae2ff01
           ./bootstrap-vcpkg.bat -disableMetrics
 
       - name: Build and Install (No ASan)
