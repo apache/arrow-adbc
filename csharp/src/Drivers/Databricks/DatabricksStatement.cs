@@ -43,9 +43,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             // set the catalog name for legacy compatibility
             var defaultNamespace = ((DatabricksConnection)Connection).DefaultNamespace;
-            if (CatalogName == null && defaultNamespace != null && defaultNamespace.CatalogName != null)
-            {
-                CatalogName = defaultNamespace.CatalogName;
+            if (defaultNamespace != null) {
+                if (CatalogName == null)
+                {
+                    CatalogName = defaultNamespace.CatalogName;
+                }
+                if (SchemaName == null)
+                {
+                    SchemaName = defaultNamespace.SchemaName;
+                }
             }
             // Inherit CloudFetch settings from connection
             useCloudFetch = connection.UseCloudFetch;
