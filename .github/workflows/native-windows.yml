@@ -342,6 +342,9 @@ jobs:
 
           ./vcpkg/vcpkg install libpq sqlite3
 
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
       - name: Build and Install (No ASan)
         run: |
           $env:VCPKG_ROOT = $(Join-Path $pwd "vcpkg")
@@ -349,8 +352,12 @@ jobs:
           Push-Location build
 
           # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
-          cmake ../c --preset multi-config-windows -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="../local" -DCMAKE_VERBOSE_MAKEFILE=ON -DADBC_BUILD_TESTS=OFF
+          # Use the desired Visual Studio version as the generator, so that cmake generates the required vcxproj files in order to use msbuild for building and installing. 
+          cmake ../c -G "Visual Studio 17 2022" --preset multi-config-windows -DCMAKE_INSTALL_PREFIX="../local" -DCMAKE_VERBOSE_MAKEFILE=ON
           if (-not $?) { exit 1 }
 
-          cmake --build . --target install -j
+          msbuild ALL_BUILD.vcxproj /p:Configuration=Release /p:Platform=x64 /m
+          if (-not $?) { exit 1 }
+
+          msbuild INSTALL.vcxproj /p:Configuration=Release /p:Platform=x64 /m
           if (-not $?) { exit 1 }

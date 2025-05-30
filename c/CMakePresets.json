@@ -26,7 +26,7 @@
         {
             "name": "multi-config-windows",
             "displayName": "Multi config for Windows without ASAN/UBSAN",
-            "generator": "Ninja Multi-Config",
+            "generator": "Visual Studio 17 2022",
             "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -40,7 +40,9 @@
                 "ADBC_BUILD_STATIC": "OFF",
                 "ADBC_USE_ASAN": "OFF",
                 "ADBC_USE_UBSAN": "OFF",
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_C_COMPILER": "cl.exe",
+                "CMAKE_CXX_COMPILER": "cl.exe"
             }
         },
         {
