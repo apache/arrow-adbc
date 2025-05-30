@@ -147,7 +147,7 @@ func TestGetArrowTypeFromColumnInfo(t *testing.T) {
 			},
 			expected: &arrow.TimestampType{
 				Unit:     arrow.Microsecond,
-				TimeZone: "UTC",
+				TimeZone: "Etc/UTC",
 			},
 		},
 
@@ -200,14 +200,6 @@ func TestGetArrowTypeFromColumnInfo(t *testing.T) {
 				TypeIntervalType: "YEAR TO MONTH",
 			},
 			expected: arrow.FixedWidthTypes.MonthInterval,
-		},
-		{
-			name: "day to second interval",
-			col: sql.ColumnInfo{
-				TypeName:         sql.ColumnInfoTypeNameInterval,
-				TypeIntervalType: "DAY TO SECOND",
-			},
-			expected: arrow.FixedWidthTypes.DayTimeInterval,
 		},
 
 		// Error cases

@@ -146,7 +146,9 @@ func getArrowTypeFromColumnInfo(col sql.ColumnInfo) (arrow.DataType, error) {
 					return nil, fmt.Errorf("invalid decimal precision: %v", err)
 				}
 				precision = int(precision64)
-				if len(matches) == 2 {
+
+				// expect 3 matches total: DECIMAL, p, s
+				if len(matches) == 3 {
 					var scale64 int64
 					scale64, err = strconv.ParseInt(matches[2], 10, 8)
 					if err != nil {
