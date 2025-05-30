@@ -169,7 +169,6 @@ func (conn *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog st
 	return res, nil
 }
 
-
 // NewStatement initializes a new statement object tied to this connection
 func (conn *connectionImpl) NewStatement() (adbc.Statement, error) {
 	if conn.mode == ModeWarehouse {
@@ -191,7 +190,7 @@ func (conn *connectionImpl) Close() error {
 	return nil
 }
 
-func (conn *connectionImpl) ensureClusterContext() (error) {
+func (conn *connectionImpl) ensureClusterContext() error {
 	// If the context already exists, don't create a new one and assume the cluster is running
 	if conn.contextId != "" {
 		return nil
@@ -219,9 +218,9 @@ func (conn *connectionImpl) ensureClusterContext() (error) {
 
 	// Create a new context if it doesn't exist
 	res, err := conn.client.CommandExecution.Create(context.Background(), compute.CreateContext{
-			ClusterId: conn.client.Config.ClusterID,
-			Language:  compute.LanguageSql,
-		})
+		ClusterId: conn.client.Config.ClusterID,
+		Language:  compute.LanguageSql,
+	})
 	if err != nil {
 		return err
 	}

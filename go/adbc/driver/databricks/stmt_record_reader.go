@@ -20,6 +20,7 @@ package databricks
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -94,9 +95,10 @@ type statementReader struct {
 	// The reader for the already loaded chunk. If nil, poll for the next chunk.
 	activeChunk *chunkResponse
 
-	schema *arrow.Schema
-	rec    arrow.Record
-	err    error
+	derivedSchema *arrow.Schema
+	schema        *arrow.Schema
+	rec           arrow.Record
+	err           error
 
 	cancelFn context.CancelFunc
 
@@ -113,6 +115,11 @@ type statementReader struct {
 func newRecordReader(
 	ctx context.Context, stmtExecution sql.StatementExecutionInterface, statementId string, result *sql.ResultData, manifest *sql.ResultManifest) (*statementReader, error) {
 	ctx, cancelFn := context.WithCancel(ctx)
+	arrowSchema, err := ResultSchemaToArrowSchema(manifest.Schema)
+	if err != nil {
+		cancelFn()
+		return nil, fmt.Errorf("unable to parse schema from manifest: %v", err)
+	}
 	r := &statementReader{
 		refCount: 1,
 
@@ -130,9 +137,10 @@ func newRecordReader(
 		chunkChan:       make(chan chunkResponse),
 		activeChunk:     nil,
 
-		schema: nil,
-		rec:    nil,
-		err:    nil,
+		derivedSchema: arrowSchema,
+		schema:        nil,
+		rec:           nil,
+		err:           nil,
 
 		cancelFn: cancelFn,
 
@@ -228,19 +236,44 @@ func (r *statementReader) Schema() *arrow.Schema {
 	if r.schema == nil {
 		if r.activeChunk == nil {
 			if r.loadingChunkIdx == -1 {
-				// TODO: need to derive schema from the JSON manifest :(
-				// For now if we don't have a chunk, we return an empty schema
-				return arrow.NewSchema(make([]arrow.Field, 0), nil)
+				r.schema = r.derivedSchema
+				return r.schema
 			}
 			chunk, err := r.consumeLoadingChunk(context.TODO())
 			if err != nil {
 				r.err = err
-				return nil // TODO: need to derive schema from the JSON manifest :(
+				return r.derivedSchema
 			}
 			r.activeChunk = chunk
 			r.activeChunk.Retain()
 		}
+
+		// validate before caching
+
+		var schemaCandidate = r.activeChunk.Schema()
+		// swap our current schema in
 		r.schema = r.activeChunk.Schema()
+
+		if len(schemaCandidate.Fields()) != len(r.derivedSchema.Fields()) {
+			panic(fmt.Errorf("chunk schema field count mismatch: expected %d, got %d", len(r.derivedSchema.Fields()), len(r.schema.Fields())))
+		}
+
+		// get metadata from our derived schema
+		fields := make([]arrow.Field, r.schema.NumFields())
+		for i := range fields {
+			field := r.schema.Field(i)
+			derivedField := r.derivedSchema.Field(i)
+			// todo(jasonlin45): introduce some sort of logging here when it's less noisy so we can surface these
+			// if field.Type.Fingerprint() != derivedField.Type.Fingerprint() {
+			// fmt.Printf("schema type mismatch at field %d (%s): expected %v, got %v", derivedField.Type, field.Type)
+			// }
+			field.Metadata = derivedField.Metadata
+			fields[i] = field
+		}
+		metadata := r.derivedSchema.Metadata()
+
+		// swap enriched schema in
+		r.schema = arrow.NewSchema(fields, &metadata)
 	}
 	return r.schema
 }
@@ -344,7 +377,6 @@ func (r *statementReader) startChunkDataRequest(ctx context.Context, chunkIndex 
 		req.Header.Set(k, v)
 	}
 	res, err := r.httpClient.Do(req)
-
 	chunkBodyReader, err := ipc.NewReader(res.Body)
 	chunkRecordReader := array.RecordReader(chunkBodyReader)
 	r.chunkChan <- chunkResponse{
