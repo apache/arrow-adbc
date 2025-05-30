@@ -27,7 +27,7 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/sql"
 )
 
-const DbxSchemaTypeKey = "type_name"
+const DbxSchemaTypeText = "type_text"
 
 // Basic DBX Types to Arrow Types (no extra processing needed)
 // https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-datatypes
@@ -52,11 +52,11 @@ var basicTypeToArrowTypeMap = map[sql.ColumnInfoTypeName]arrow.DataType{
 	sql.ColumnInfoTypeNameNull:    arrow.Null,                    // untyped NULL - not supported by Delta Lake
 }
 
-func ClusterModeSchemaToArrowSchema(dbx_schema []map[string]interface{}) (*arrow.Schema, error) {
-	fields := make([]arrow.Field, len(dbx_schema))
-	for i, col := range dbx_schema {
+func ClusterModeSchemaToArrowSchema(dbxSchema []map[string]interface{}) (*arrow.Schema, error) {
+	fields := make([]arrow.Field, len(dbxSchema))
+	for i, col := range dbxSchema {
 		var arrowType arrow.DataType
-		colType := strings.Trim(col[DbxSchemaTypeKey].(string), "\"")
+		colType := strings.Trim(col["type"].(string), "\"")
 		switch {
 		case colType == "int":
 			arrowType = arrow.PrimitiveTypes.Int32
@@ -81,11 +81,11 @@ func ClusterModeSchemaToArrowSchema(dbx_schema []map[string]interface{}) (*arrow
 		case strings.HasPrefix(colType, "decimal"):
 			// Parse decimal precision and scale from format "decimal(precision,scale)"
 			if matches := regexp.MustCompile(`decimal\((\d+),(\d+)\)`).FindStringSubmatch(colType); matches != nil {
-				precision, _ := strconv.ParseInt(matches[1], 10, 32)
-				scale, _ := strconv.ParseInt(matches[2], 10, 32)
-				arrowType = &arrow.Decimal256Type{Precision: int32(precision), Scale: int32(scale)}
+				precision, _ := strconv.ParseInt(matches[1], 10, 8)
+				scale, _ := strconv.ParseInt(matches[2], 10, 8)
+				arrowType = &arrow.Decimal128Type{Precision: int32(precision), Scale: int32(scale)}
 			} else {
-				arrowType = &arrow.Decimal256Type{}
+				arrowType = &arrow.Decimal128Type{}
 			}
 		default:
 			err := fmt.Errorf("unsupported type: %v", colType)
@@ -96,7 +96,7 @@ func ClusterModeSchemaToArrowSchema(dbx_schema []map[string]interface{}) (*arrow
 			Type:     arrowType,
 			Nullable: true,
 			Metadata: arrow.MetadataFrom(map[string]string{
-				MetadataKeyDatabricksType: colType,
+				DbxSchemaTypeText: colType,
 			}),
 		}
 	}
@@ -104,9 +104,9 @@ func ClusterModeSchemaToArrowSchema(dbx_schema []map[string]interface{}) (*arrow
 	return arrow.NewSchema(fields, nil), nil
 }
 
-func ResultSchemaToArrowSchema(dbx_schema *sql.ResultSchema) (*arrow.Schema, error) {
-	fields := make([]arrow.Field, dbx_schema.ColumnCount)
-	for i, col := range dbx_schema.Columns {
+func ResultSchemaToArrowSchema(dbxSchema *sql.ResultSchema) (*arrow.Schema, error) {
+	fields := make([]arrow.Field, dbxSchema.ColumnCount)
+	for i, col := range dbxSchema.Columns {
 		arrowType, err := getArrowTypeFromColumnInfo(col)
 		if err != nil {
 			return nil, err
@@ -116,14 +116,14 @@ func ResultSchemaToArrowSchema(dbx_schema *sql.ResultSchema) (*arrow.Schema, err
 			Type:     arrowType,
 			Nullable: true,
 			Metadata: arrow.MetadataFrom(map[string]string{
-				MetadataKeyDatabricksType: string(col.TypeName),
-				"position":                col.Name,
-				"type_text":               col.TypeText,
+				"type_name":       string(col.TypeName),
+				"position":        col.Name,
+				DbxSchemaTypeText: col.TypeText,
 			}),
 		}
 	}
 	metadata := arrow.MetadataFrom(map[string]string{
-		"column_count": strconv.Itoa(dbx_schema.ColumnCount),
+		"column_count": strconv.Itoa(dbxSchema.ColumnCount),
 	})
 	return arrow.NewSchema(fields, &metadata), nil
 }
@@ -140,15 +140,19 @@ func getArrowTypeFromColumnInfo(col sql.ColumnInfo) (arrow.DataType, error) {
 			// "DECIMAL(p,s) and DECIMAL(p) with scale default at 0"
 			if matches := regexp.MustCompile(`DECIMAL\((\d+)(?:,?(\d+))?\)`).FindStringSubmatch(col.TypeText); matches != nil {
 				var err error
-				precision, err = strconv.Atoi(matches[1])
+				var precision64 int64
+				precision64, err = strconv.ParseInt(matches[1], 10, 8)
 				if err != nil {
 					return nil, fmt.Errorf("invalid decimal precision: %v", err)
 				}
+				precision = int(precision64)
 				if len(matches) == 2 {
-					scale, err = strconv.Atoi(matches[2])
+					var scale64 int64
+					scale64, err = strconv.ParseInt(matches[2], 10, 8)
 					if err != nil {
 						return nil, fmt.Errorf("invalid decimal scale: %v", err)
 					}
+					scale = int(scale64)
 				}
 			}
 		}
@@ -160,7 +164,7 @@ func getArrowTypeFromColumnInfo(col sql.ColumnInfo) (arrow.DataType, error) {
 	case sql.ColumnInfoTypeNameTimestamp:
 		return &arrow.TimestampType{
 			Unit:     arrow.Microsecond,
-			TimeZone: "UTC", // todo(jasonlin45): Support session timezone
+			TimeZone: "Etc/UTC", // todo(jasonlin45): Support session timezone
 		}, nil
 	case sql.ColumnInfoTypeNameArray:
 		// Only available from the full SQL type spec
@@ -270,11 +274,6 @@ func getArrowTypeFromColumnInfo(col sql.ColumnInfo) (arrow.DataType, error) {
 			switch {
 			case startUnit == "YEAR" && (endUnit == "" || endUnit == "MONTH"):
 				return arrow.FixedWidthTypes.MonthInterval, nil
-			case startUnit == "DAY" && (endUnit == "" || endUnit == "HOUR" || endUnit == "MINUTE" || endUnit == "SECOND"),
-				startUnit == "HOUR" && (endUnit == "" || endUnit == "MINUTE" || endUnit == "SECOND"),
-				startUnit == "MINUTE" && (endUnit == "" || endUnit == "SECOND"),
-				startUnit == "SECOND":
-				return arrow.FixedWidthTypes.DayTimeInterval, nil
 			default:
 				return nil, fmt.Errorf("unsupported interval qualifier: %s TO %s", startUnit, endUnit)
 			}

@@ -80,6 +80,7 @@ type statementReader struct {
 	StatementId string
 
 	// Fields from the execution response manifest:
+
 	// Array of result set chunk metadata.
 	Chunks []sql.BaseChunkInfo
 	// The total number of chunks that the result set has been divided into.
@@ -94,9 +95,10 @@ type statementReader struct {
 	// The reader for the already loaded chunk. If nil, poll for the next chunk.
 	activeChunk *chunkResponse
 
-	schema *arrow.Schema
-	rec    arrow.Record
-	err    error
+	derivedSchema *arrow.Schema
+	schema        *arrow.Schema
+	rec           arrow.Record
+	err           error
 
 	cancelFn context.CancelFunc
 
@@ -135,9 +137,10 @@ func newRecordReader(
 		chunkChan:       make(chan chunkResponse),
 		activeChunk:     nil,
 
-		schema: arrowSchema,
-		rec:    nil,
-		err:    nil,
+		derivedSchema: arrowSchema,
+		schema:        nil,
+		rec:           nil,
+		err:           nil,
 
 		cancelFn: cancelFn,
 
@@ -213,19 +216,6 @@ func (r *statementReader) Next() bool {
 
 	if r.activeChunk.Next() {
 		r.rec = r.activeChunk.reader.Record()
-		// Validate schema compatibility
-		chunkSchema := r.activeChunk.Schema()
-		if len(r.schema.Fields()) != len(chunkSchema.Fields()) {
-			r.err = fmt.Errorf("chunk schema field count mismatch: expected %d, got %d", len(r.schema.Fields()), len(chunkSchema.Fields()))
-			return false
-		}
-		for i, field := range r.schema.Fields() {
-			chunkField := chunkSchema.Field(i)
-			if field.Type.ID() != chunkField.Type.ID() {
-				r.err = fmt.Errorf("chunk schema type mismatch at field %d (%s): expected %v, got %v", i, field.Name, field.Type, chunkField.Type)
-				return false
-			}
-		}
 		r.rec.Retain()
 		return true // post-condition holds: r.rec != nil
 	}
@@ -243,6 +233,48 @@ func (r *statementReader) Next() bool {
 }
 
 func (r *statementReader) Schema() *arrow.Schema {
+	if r.schema == nil {
+		if r.activeChunk == nil {
+			if r.loadingChunkIdx == -1 {
+				r.schema = r.derivedSchema
+				return r.schema
+			}
+			chunk, err := r.consumeLoadingChunk(context.TODO())
+			if err != nil {
+				r.err = err
+				return r.derivedSchema
+			}
+			r.activeChunk = chunk
+			r.activeChunk.Retain()
+		}
+
+		// validate before caching
+
+		var schemaCandidate = r.activeChunk.Schema()
+		// swap our current schema in
+		r.schema = r.activeChunk.Schema()
+
+		if len(schemaCandidate.Fields()) != len(r.derivedSchema.Fields()) {
+			panic(fmt.Errorf("chunk schema field count mismatch: expected %d, got %d", len(r.derivedSchema.Fields()), len(r.schema.Fields())))
+		}
+
+		// get metadata from our derived schema
+		fields := make([]arrow.Field, r.schema.NumFields())
+		for i := range fields {
+			field := r.schema.Field(i)
+			derivedField := r.derivedSchema.Field(i)
+			// todo(jasonlin45): introduce some sort of logging here when it's less noisy so we can surface these
+			// if field.Type.Fingerprint() != derivedField.Type.Fingerprint() {
+			// fmt.Printf("schema type mismatch at field %d (%s): expected %v, got %v", derivedField.Type, field.Type)
+			// }
+			field.Metadata = derivedField.Metadata
+			fields[i] = field
+		}
+		metadata := r.derivedSchema.Metadata()
+
+		// swap enriched schema in
+		r.schema = arrow.NewSchema(fields, &metadata)
+	}
 	return r.schema
 }
 

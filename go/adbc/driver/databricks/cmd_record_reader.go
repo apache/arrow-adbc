@@ -27,8 +27,6 @@ import (
 	"github.com/databricks/databricks-sdk-go/service/compute"
 )
 
-const MetadataKeyDatabricksType = "DATABRICKS_TYPE"
-
 type commandReader struct {
 	refCount int64
 
