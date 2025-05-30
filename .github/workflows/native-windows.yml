@@ -332,8 +332,7 @@ jobs:
 
       - name: Setup vcpkg
         run: |
-          git clone `
-            --shallow-since=2024-01-01 `
+          git clone --branch 943c5ef1c8f6b5e6ced092b242c8299caae2ff01 `
             https://github.com/microsoft/vcpkg
 
           Push-Location vcpkg
@@ -346,12 +345,7 @@ jobs:
           Push-Location build
 
           # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
-          cmake `
-            ../c `
-            --preset multi-config-windows `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_INSTALL_PREFIX=../local `
-            -DCMAKE_VERBOSE_MAKEFILE=ON
+          cmake ../c --preset multi-config-windows -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="../local" -DCMAKE_VERBOSE_MAKEFILE=ON
           if (-not $?) { exit 1 }
 
           cmake --build . --target install -j
