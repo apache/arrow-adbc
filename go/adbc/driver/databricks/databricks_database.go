@@ -60,9 +60,9 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	conn := &connectionImpl{
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 		client:             client,
-		catalog:    		d.catalog,
-		dbSchema:      		d.dbSchema,
-		mode:          		mode,
+		catalog:            d.catalog,
+		dbSchema:           d.dbSchema,
+		mode:               mode,
 	}
 	return driverbase.NewConnectionBuilder(conn).
 		WithAutocommitSetter(conn).

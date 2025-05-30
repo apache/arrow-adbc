@@ -116,7 +116,7 @@ func newRecordReader(
 	arrowSchema, err := ResultSchemaToArrowSchema(manifest.Schema)
 	if err != nil {
 		cancelFn()
-		return nil, fmt.Errorf("unable to parse schema from manifest: %v", manifest.Schema)
+		return nil, fmt.Errorf("unable to parse schema from manifest: %v", err)
 	}
 	r := &statementReader{
 		refCount: 1,

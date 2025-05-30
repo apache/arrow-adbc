@@ -164,7 +164,7 @@ func getArrowTypeFromColumnInfo(col sql.ColumnInfo) (arrow.DataType, error) {
 		// Only available from the full SQL type spec
 		// parse from "ARRAY<elementType>"
 		if matches := regexp.MustCompile(`ARRAY<(.+)>`).FindStringSubmatch(col.TypeText); matches != nil {
-			elementType := matches[1]
+			elementType := strings.TrimSpace(matches[1])
 			// Create a temporary ColumnInfo to recursively parse the element type
 			elementCol := sql.ColumnInfo{
 				TypeName: sql.ColumnInfoTypeName(elementType),
@@ -180,8 +180,8 @@ func getArrowTypeFromColumnInfo(col sql.ColumnInfo) (arrow.DataType, error) {
 	case sql.ColumnInfoTypeNameMap:
 		// "MAP<keyType,valueType>"
 		if matches := regexp.MustCompile(`MAP<(.+),(.+)>`).FindStringSubmatch(col.TypeText); matches != nil {
-			keyType := matches[1]
-			valueType := matches[2]
+			keyType := strings.TrimSpace(matches[1])
+			valueType := strings.TrimSpace(matches[2])
 
 			// temporary ColumnInfo structs to recursively parse the types
 			keyCol := sql.ColumnInfo{
