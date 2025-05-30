@@ -105,6 +105,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 parameters.Add(DatabricksParameters.OAuthClientSecret, testConfiguration.OAuthClientSecret!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.OAuthScope))
+            {
+                parameters.Add(DatabricksParameters.OAuthScope, testConfiguration.OAuthScope!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.Catalog))
+            {
+                parameters.Add(AdbcOptions.Connection.CurrentCatalog, testConfiguration.Catalog!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.DbSchema))
+            {
+                parameters.Add(AdbcOptions.Connection.CurrentDbSchema, testConfiguration.DbSchema!);
+            }
             if (!string.IsNullOrEmpty(testConfiguration.Type))
             {
                 parameters.Add(SparkParameters.Type, testConfiguration.Type!);
@@ -128,6 +140,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             if (!string.IsNullOrEmpty(testConfiguration.QueryTimeoutSeconds))
             {
                 parameters.Add(ApacheParameters.QueryTimeoutSeconds, testConfiguration.QueryTimeoutSeconds!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.EnableMultipleCatalogSupport))
+            {
+                parameters.Add(DatabricksParameters.EnableMultipleCatalogSupport, testConfiguration.EnableMultipleCatalogSupport!);
             }
             if (testConfiguration.HttpOptions != null)
             {
@@ -153,6 +169,40 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                     if (!string.IsNullOrEmpty(tlsOptions.TrustedCertificatePath))
                     {
                         parameters.Add(HttpTlsOptions.TrustedCertificatePath, tlsOptions.TrustedCertificatePath!);
+                    }
+                }
+
+                // Add proxy configuration if provided
+                if (testConfiguration.HttpOptions.Proxy != null)
+                {
+                    ProxyTestConfiguration proxyOptions = testConfiguration.HttpOptions.Proxy;
+                    if (!string.IsNullOrEmpty(proxyOptions.UseProxy))
+                    {
+                        parameters.Add(HttpProxyOptions.UseProxy, proxyOptions.UseProxy!);
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyHost))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyHost, proxyOptions.ProxyHost!);
+                    }
+                    if (proxyOptions.ProxyPort.HasValue)
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyPort, proxyOptions.ProxyPort.Value.ToString());
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyAuth))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyAuth, proxyOptions.ProxyAuth!);
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyUid))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyUID, proxyOptions.ProxyUid!);
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyPwd))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyPWD, proxyOptions.ProxyPwd!);
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyIgnoreList))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyIgnoreList, proxyOptions.ProxyIgnoreList!);
                     }
                 }
             }

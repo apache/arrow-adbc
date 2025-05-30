@@ -186,9 +186,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-array"
-version = "55.0.0"
+version = "55.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cebfe926794fbc1f49ddd0cdaf898956ca9f6e79541efce62dabccfd81380472"
+checksum = "29ed77e22744475a9a53d00026cf8e166fe73cf42d89c4c4ae63607ee1cfcc3f"
 dependencies = [
  "ahash",
  "arrow-buffer",
@@ -203,9 +203,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-buffer"
-version = "55.0.0"
+version = "55.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0303c7ec4cf1a2c60310fc4d6bbc3350cd051a17bf9e9c0a8e47b4db79277824"
+checksum = "b0391c96eb58bf7389171d1e103112d3fc3e5625ca6b372d606f2688f1ea4cce"
 dependencies = [
  "bytes",
  "half",
@@ -251,9 +251,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-data"
-version = "55.0.0"
+version = "55.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8affacf3351a24039ea24adab06f316ded523b6f8c3dbe28fbac5f18743451b"
+checksum = "cf75ac27a08c7f48b88e5c923f267e980f27070147ab74615ad85b5c5f90473d"
 dependencies = [
  "arrow-buffer",
  "arrow-schema",
@@ -325,18 +325,18 @@ dependencies = [
 
 [[package]]
 name = "arrow-schema"
-version = "55.0.0"
+version = "55.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7450c76ab7c5a6805be3440dc2e2096010da58f7cab301fdc996a4ee3ee74e49"
+checksum = "73a47aa0c771b5381de2b7f16998d351a6f4eb839f1e13d48353e17e873d969b"
 dependencies = [
  "bitflags",
 ]
 
 [[package]]
 name = "arrow-select"
-version = "55.0.0"
+version = "55.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa5f5a93c75f46ef48e4001535e7b6c922eeb0aa20b73cf58d09e13d057490d8"
+checksum = "24b7b85575702b23b85272b01bc1c25a01c9b9852305e5d0078c79ba25d995d4"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -1940,9 +1940,9 @@ checksum = "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa"
 
 [[package]]
 name = "libloading"
-version = "0.8.6"
+version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
+checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
  "windows-targets",
@@ -2981,9 +2981,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.44.2"
+version = "1.45.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6b88822cbe49de4185e3a4cbf8321dd487cf5fe0c5c65695fef6346371e9c48"
+checksum = "75ef51a33ef1da925cea3e4eb122833cb377c61439ca401b770f54902b806779"
 dependencies = [
  "backtrace",
  "bytes",

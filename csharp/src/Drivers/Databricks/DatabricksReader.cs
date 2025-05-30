@@ -25,21 +25,14 @@ using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
-    internal sealed class DatabricksReader : IArrowArrayStream
+    internal sealed class DatabricksReader : BaseDatabricksReader
     {
-        DatabricksStatement? statement;
-        Schema schema;
         List<TSparkArrowBatch>? batches;
         int index;
         IArrowReader? reader;
-        bool isLz4Compressed;
 
-        public DatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
+        public DatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
         {
-            this.statement = statement;
-            this.schema = schema;
-            this.isLz4Compressed = isLz4Compressed;
-
             // If we have direct results, initialize the batches from them
             if (statement.HasDirectResults)
             {
@@ -48,14 +41,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!statement.DirectResults.ResultSet.HasMoreRows)
                 {
                     this.statement = null;
+                    return;
                 }
             }
         }
 
-        public Schema Schema { get { return schema; } }
-
-        public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfDisposed();
+
             while (true)
             {
                 if (this.reader != null)
@@ -79,6 +73,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 if (this.statement == null)
                 {
+                    StopOperationStatusPoller();
                     return null;
                 }
 
@@ -130,10 +125,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 throw new AdbcException(errorMessage, ex);
             }
             this.index++;
-        }
-
-        public void Dispose()
-        {
         }
     }
 }

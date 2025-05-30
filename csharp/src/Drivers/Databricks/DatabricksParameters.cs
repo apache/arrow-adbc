@@ -79,10 +79,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Prefix for server-side properties. Properties with this prefix will be passed to the server
         /// by executing a "set key=value" query when opening a session.
-        /// For example, a property with key "adbc.databricks.SSP_use_cached_result"
+        /// For example, a property with key "adbc.databricks.ssp_use_cached_result"
         /// and value "true" will result in executing "set use_cached_result=true" on the server.
         /// </summary>
-        public const string ServerSidePropertyPrefix = "adbc.databricks.SSP_";
+        public const string ServerSidePropertyPrefix = "adbc.databricks.ssp_";
+
         /// Controls whether to retry requests that receive a 503 response with a Retry-After header.
         /// Default value is true (enabled). Set to false to disable retry behavior.
         /// </summary>
@@ -141,6 +142,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// This is the client secret you obtained when registering your application with Databricks.
         /// </summary>
         public const string OAuthClientSecret = "adbc.databricks.oauth.client_secret";
+
+        /// <summary>
+        /// The OAuth scope for client credentials flow.
+        /// Optional when grant_type is "client_credentials".
+        /// Default value is "sql" if not specified.
+        /// </summary>
+        public const string OAuthScope = "adbc.databricks.oauth.scope";
+
+        /// <summary>
+        /// Whether to use multiple catalogs.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string EnableMultipleCatalogSupport = "adbc.databricks.enable_multiple_catalog_support";
     }
 
     /// <summary>
@@ -148,6 +162,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     public class DatabricksConstants
     {
+        /// <summary>
+        /// Default heartbeat interval in seconds for long-running operations
+        /// </summary>
+        public const int DefaultOperationStatusPollingIntervalSeconds = 60;
+
         /// <summary>
         /// OAuth grant type constants
         /// </summary>

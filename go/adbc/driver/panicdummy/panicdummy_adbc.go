@@ -50,7 +50,11 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 }
 
 func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	maybePanic("NewDatabase")
+	return d.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (d Driver) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	maybePanic("NewDatabaseWithContext")
 	return &database{}, nil
 }
 

@@ -1680,10 +1680,40 @@ func (suite *SnowflakeTests) TestTimestampSnow() {
 	}
 }
 
-func (suite *SnowflakeTests) TestTimestamp9999() {
-
-	suite.Require().NoError(suite.stmt.SetSqlQuery("select TO_TIMESTAMP('9999-12-31 00:00:00') As December31_9999, TO_TIMESTAMP('33-04-03 15:00:00') as April3_0033"))
+func (suite *SnowflakeTests) TestBooleanType() {
+	suite.Require().NoError(suite.stmt.SetSqlQuery("select * from (SELECT CAST(TRUE  as BOOLEAN) as BOOLEANTYPE) as \"_\" where 0 = 1"))
 	rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	for _, f := range rdr.Schema().Fields() {
+		st, ok := f.Metadata.GetValue("SNOWFLAKE_TYPE")
+		if !ok {
+			continue
+		}
+		if st == "boolean" {
+			suite.Require().IsType(&arrow.BooleanType{}, f.Type)
+		}
+	}
+}
+
+func (suite *SnowflakeTests) TestTimestampPrecision() {
+
+	opts := suite.Quirks.DatabaseOptions()
+	opts[driver.OptionTimestampPrecision] = driver.OptionValueMicrosecondPrecision
+
+	db, err := suite.driver.NewDatabase(opts)
+	suite.NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+	cnxn, err := db.Open(suite.ctx)
+	suite.NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+	stmt, _ := cnxn.NewStatement()
+
+	suite.Require().NoError(stmt.SetSqlQuery("select TO_TIMESTAMP('9999-12-31 23:59:59.999999999') As December31_9999, TO_TIMESTAMP('0001-01-01 00:00:00.000000000') as Jan01_0001"))
+	//suite.Require().NoError(stmt.SetSqlQuery("select * from DEMO_DB.PUBLIC.DATES"))
+
+	rdr, _, err := stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
 

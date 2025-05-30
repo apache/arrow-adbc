@@ -15,7 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-dl_dep = dependency('dl')
+if host_machine.system() != 'windows'
+    dl_dep = dependency('dl')
+else
+    dl_dep = declare_dependency()
+endif
 
 adbc_driver_manager_lib = library(
     'adbc_driver_manager',

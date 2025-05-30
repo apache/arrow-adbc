@@ -52,9 +52,9 @@ type databaseImpl struct {
 	driverbase.DatabaseImplBase
 	cfg *gosnowflake.Config
 
-	useHighPrecision bool
-
-	defaultAppName string
+	useHighPrecision   bool
+	timestampPrecision string
+	defaultAppName     string
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -133,6 +133,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil
+	case OptionTimestampPrecision:
+		return d.timestampPrecision, nil
 	default:
 		val, ok := d.cfg.Params[key]
 		if ok {
@@ -161,6 +163,9 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			Params: make(map[string]*string),
 		}
 	}
+	// XXX(https://github.com/apache/arrow-adbc/issues/2792): Snowflake
+	// has a tendency to spam the log by default, so set the log level
+	d.cfg.Tracing = "fatal"
 
 	// set default application name to track
 	// unless user overrides it
@@ -453,6 +458,16 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
+	case OptionTimestampPrecision:
+		switch v {
+		case OptionValueMicrosecondPrecision, OptionValueNanosecondPrecision, OptionValueMillisecondPrecision, OptionValueSecondPrecision:
+			d.timestampPrecision = v
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionTimestampPrecision, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
 	default:
 		d.cfg.Params[k] = &v
 	}
@@ -477,6 +492,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead
 		useHighPrecision:   d.useHighPrecision,
+		timstampPrecision:  d.timestampPrecision,
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
 

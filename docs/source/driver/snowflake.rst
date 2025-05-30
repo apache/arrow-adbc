@@ -291,7 +291,7 @@ and resource usage may be tuned with the following options on the :c:struct:`Adb
 
 ``adbc.snowflake.statement.ingest_upload_concurrency``
     Number of Parquet files to upload in parallel. Greater concurrency can smooth out TCP congestion and help make
-    use of available network bandwith, but will increase memory utilization. Default is 8. If set to 0, default value is used.
+    use of available network bandwidth, but will increase memory utilization. Default is 8. If set to 0, default value is used.
     Cannot be negative.
 
 ``adbc.snowflake.statement.ingest_copy_concurrency``

@@ -18,6 +18,7 @@
 package snowflake
 
 import (
+	"context"
 	"errors"
 	"maps"
 	"net/http"
@@ -72,6 +73,10 @@ const (
 	// with a scale of 0 will be returned as Int64 columns, and a non-zero
 	// scale will return a Float64 column.
 	OptionUseHighPrecision = "adbc.snowflake.sql.client_option.use_high_precision"
+	// What the timestamp precision should be used for the Snowflake connection.
+	// Can be `ns` (nanoseconds), `us` (microseconds), `ms` (milliseconds), or `s` (seconds).
+	// If not specified, the default is `ns` (nanoseconds).
+	OptionTimestampPrecision = "adbc.snowflake.sql.client_option.timestamp_precision"
 
 	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
 	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"
@@ -116,6 +121,11 @@ const (
 	OptionValueAuthJwt = "auth_jwt"
 	// use a username and password with mfa
 	OptionValueAuthUserPassMFA = "auth_mfa"
+
+	OptionValueMicrosecondPrecision = "us"
+	OptionValueMillisecondPrecision = "ms"
+	OptionValueNanosecondPrecision  = "ns"
+	OptionValueSecondPrecision      = "s"
 )
 
 var (
@@ -203,6 +213,7 @@ type Driver interface {
 
 	// NewDatabaseWithOptions creates a new Snowflake database with the provided options.
 	NewDatabaseWithOptions(map[string]string, ...Option) (adbc.Database, error)
+	NewDatabaseWithOptionsContext(context.Context, map[string]string, ...Option) (adbc.Database, error)
 }
 
 var _ Driver = (*driverImpl)(nil)
@@ -223,19 +234,37 @@ func NewDriver(alloc memory.Allocator) Driver {
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	return d.NewDatabaseWithOptions(opts)
+	return d.NewDatabaseWithContext(context.Background(), opts)
 }
 
-func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, optFuncs ...Option) (adbc.Database, error) {
+func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithOptionsContext(ctx, opts)
+}
+
+func (d *driverImpl) NewDatabaseWithOptions(
+	opts map[string]string,
+	optFuncs ...Option,
+) (adbc.Database, error) {
+	return d.NewDatabaseWithOptionsContext(context.Background(), opts, optFuncs...)
+}
+
+func (d *driverImpl) NewDatabaseWithOptionsContext(
+	ctx context.Context,
+	opts map[string]string,
+	optFuncs ...Option,
+) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 
-	dbImplBase := driverbase.NewDatabaseImplBase(&d.DriverImplBase)
-	dv, _ := dbImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
+	dv, _ := dbBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	driverVersion := dv.(string)
 	defaultAppName := "[ADBC][Go-" + driverVersion + "]"
 
 	db := &databaseImpl{
-		DatabaseImplBase: dbImplBase,
+		DatabaseImplBase: dbBase,
 		useHighPrecision: true,
 		defaultAppName:   defaultAppName,
 	}

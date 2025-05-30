@@ -37,6 +37,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         private const int DefaultMemoryBufferSizeMB = 200;
         private const bool DefaultPrefetchEnabled = true;
         private const int DefaultFetchBatchSize = 2000000;
+        private const int DefaultTimeoutMinutes = 5;
 
         private readonly DatabricksStatement _statement;
         private readonly Schema _schema;
@@ -57,7 +58,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         /// <param name="statement">The HiveServer2 statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        public CloudFetchDownloadManager(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
+        public CloudFetchDownloadManager(DatabricksStatement statement, Schema schema, bool isLz4Compressed, HttpClient httpClient)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
@@ -137,7 +138,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             }
 
             // Parse timeout minutes
-            int timeoutMinutes = 5;
+            int timeoutMinutes = DefaultTimeoutMinutes;
             if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchTimeoutMinutes, out string? timeoutStr))
             {
                 if (int.TryParse(timeoutStr, out int parsedTimeout) && parsedTimeout > 0)
@@ -157,11 +158,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), prefetchCount * 2);
             _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), prefetchCount * 2);
 
-            // Initialize the HTTP client
-            _httpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromMinutes(timeoutMinutes)
-            };
+            _httpClient = httpClient;
+            _httpClient.Timeout = TimeSpan.FromMinutes(timeoutMinutes);
 
             // Initialize the result fetcher
             _resultFetcher = new CloudFetchResultFetcher(

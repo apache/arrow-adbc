@@ -14,14 +14,13 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-
+using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
+using System.Net.Http;
 using Xunit;
 using Xunit.Abstractions;
-using Apache.Arrow.Adbc.Tests.Drivers.Databricks;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 {
@@ -32,7 +31,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         {
         }
 
-        private OAuthClientCredentialsProvider CreateService(int refreshBufferMinutes = 5)
+        private OAuthClientCredentialsProvider CreateService(int refreshBufferMinutes = 5, string scope = "sql")
         {
             string host;
             if (!string.IsNullOrEmpty(TestConfiguration.HostName))
@@ -56,9 +55,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
             }
 
             return new OAuthClientCredentialsProvider(
+                new HttpClient(),
                 TestConfiguration.OAuthClientId,
                 TestConfiguration.OAuthClientSecret,
                 host,
+                scope,
                 timeoutMinutes: 1,
                 refreshBufferMinutes: refreshBufferMinutes);
         }
@@ -119,6 +120,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 
             // Tokens should be different since we're forcing a refresh
             Assert.NotEqual(token1, token2);
+        }
+
+        [SkippableFact]
+        public async Task GetAccessToken_WithCustomScope_ReturnsToken()
+        {
+            Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.OAuthClientId), "OAuth credentials not configured");
+            String scope = "all-apis";
+            var service = CreateService(scope: scope);
+            var token = await service.GetAccessTokenAsync();
+
+            Assert.NotNull(token);
+            Assert.NotEmpty(token);
+            Assert.Equal(scope, service.GetCachedTokenScope());
         }
     }
 }
