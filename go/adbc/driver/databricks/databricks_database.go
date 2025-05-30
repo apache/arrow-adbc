@@ -40,15 +40,15 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	client, err := databricks.NewWorkspaceClient(d.config)
 	if err != nil {
 		if err == databricks.ErrNotWorkspaceClient {
-			return nil, adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  "[Databricks] " + err.Error(),
-			}
+			return nil, NewAdbcError(
+				"[Databricks] " + err.Error(),
+				adbc.StatusInvalidArgument,
+			)
 		}
-		return nil, adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  "[Databricks] " + err.Error(),
-		}
+		return nil, NewAdbcError(
+			"[Databricks] " + err.Error(),
+			adbc.StatusUnknown,
+		)
 	}
 	mode := ""
 	if d.config.WarehouseID != "" {

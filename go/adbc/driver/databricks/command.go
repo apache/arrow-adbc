@@ -67,15 +67,15 @@ func (cmd *command) resetCommand(sql string) error {
 func (cmd *command) SetOption(key, val string) error {
 	switch key {
 	case OptionBoolTruncated:
-		return adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("[Databricks] `%s` property is read-only", key),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("[Databricks] `%s` property is read-only", key),
+			adbc.StatusInvalidArgument,
+		)
 	default:
-		return adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("[Databricks] Unknown command string type option `%s`", key),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("[Databricks] Unknown command string type option `%s`", key),
+			adbc.StatusInvalidArgument,
+		)
 	}
 }
 
@@ -99,15 +99,15 @@ func (cmd *command) SetOptionInt(key string, value int64) error {
 	switch key {
 	case OptionIntRowLimit:
 		// CommandExecution API doesn't have a row limit option
-		return adbc.Error{
-			Code: adbc.StatusNotImplemented,
-			Msg:  fmt.Sprintf("[Databricks] Row limit not supported for CommandExecution API"),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("[Databricks] Row limit not supported for CommandExecution API"),
+			adbc.StatusNotImplemented,
+		)
 	default:
-		return adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("[Databricks] Unknown command integer type option `%s`", key),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("[Databricks] Unknown command integer type option `%s`", key),
+			adbc.StatusInvalidArgument,
+		)
 	}
 }
 
@@ -128,34 +128,34 @@ func (cmd *command) GetOptionInt(key string) (int64, error) {
 
 // SetOptionBytes sets a bytes option on this statement.
 func (cmd *command) SetOptionBytes(key string, value []byte) error {
-	return adbc.Error{
-		Msg:  fmt.Sprintf("[Databricks] Unknown command bytes type option '%s'", key),
-		Code: adbc.StatusNotImplemented,
-	}
+	return NewAdbcError(
+		fmt.Sprintf("[Databricks] Unknown command bytes type option '%s'", key),
+		adbc.StatusNotImplemented,
+	)
 }
 
 // GetOptionBytes gets a bytes option from this statement.
 func (cmd *command) GetOptionBytes(key string) ([]byte, error) {
-	return nil, adbc.Error{
-		Msg:  fmt.Sprintf("[Databricks] Unknown command option '%s'", key),
-		Code: adbc.StatusNotFound,
-	}
+	return nil, NewAdbcError(
+		fmt.Sprintf("[Databricks] Unknown command option '%s'", key),
+		adbc.StatusNotFound,
+	)
 }
 
 // SetOptionDouble sets a double option on this statement.
 func (cmd *command) SetOptionDouble(key string, value float64) error {
-	return adbc.Error{
-		Msg:  fmt.Sprintf("[Databricks] Unknown command double type option '%s'", key),
-		Code: adbc.StatusNotImplemented,
-	}
+	return NewAdbcError(
+		fmt.Sprintf("[Databricks] Unknown command double type option '%s'", key),
+		adbc.StatusNotImplemented,
+	)
 }
 
 // GetOptionDouble gets a double option from this statement.
 func (cmd *command) GetOptionDouble(key string) (float64, error) {
-	return 0, adbc.Error{
-		Msg:  fmt.Sprintf("[Databricks] Unknown command option '%s'", key),
-		Code: adbc.StatusNotFound,
-	}
+	return 0, NewAdbcError(
+		fmt.Sprintf("[Databricks] Unknown command option '%s'", key),
+		adbc.StatusNotFound,
+	)
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -168,10 +168,10 @@ func (cmd *command) SetSqlQuery(query string) error {
 // of rows affected if known, otherwise it will be -1.
 func (cmd *command) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
 	if cmd.req.Command == "" {
-		return nil, -1, adbc.Error{
-			Code: adbc.StatusInvalidState,
-			Msg:  "ExecuteQuery called before SetSqlQuery",
-		}
+		return nil, -1, NewAdbcError(
+			"ExecuteQuery called before SetSqlQuery",
+			adbc.StatusInvalidState,
+		)
 	}
 	reader, err := cmd.executeQueryInternal(ctx)
 	if err != nil {
@@ -184,18 +184,18 @@ func (cmd *command) executeQueryInternal(ctx context.Context) (*commandReader, e
 	ce := cmd.conn.CommandExecution()
 	executor, err := ce.Start(ctx, cmd.conn.client.Config.ClusterID, compute.LanguageSql)
 	if err != nil {
-		return nil, adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("[Databricks] failed to start command execution: %s", err),
-		}
+		return nil, NewAdbcError(
+			fmt.Sprintf("[Databricks] failed to start command execution: %s", err),
+			adbc.StatusUnknown,
+		)
 	}
 
 	res, err := executor.Execute(ctx, cmd.req.Command)
 	if err != nil {
-		return nil, adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("[Databricks] failed to execute command: %s", err),
-		}
+		return nil, NewAdbcError(
+			fmt.Sprintf("[Databricks] failed to execute command: %s", err),
+			adbc.StatusUnknown,
+		)
 	}
 
 	for {
@@ -206,15 +206,15 @@ func (cmd *command) executeQueryInternal(ctx context.Context) (*commandReader, e
 		case compute.ResultTypeText:
 			return NewCommandRecordReader(ce, cmd.commandId, res)
 		case compute.ResultTypeError:
-			return nil, adbc.Error{
-				Code: adbc.StatusUnknown,
-				Msg:  fmt.Sprintf("[Databricks] command execution failed: %s", res.Error()),
-			}
+			return nil, NewAdbcError(
+				fmt.Sprintf("[Databricks] command execution failed: %s", res.Error()),
+				adbc.StatusUnknown,
+			)
 		default:
-			return nil, adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  fmt.Sprintf("[Databricks] Unexpected command result type: %s", res.ResultType),
-			}
+			return nil, NewAdbcError(
+				fmt.Sprintf("[Databricks] Unexpected command result type: %s", res.ResultType),
+				adbc.StatusInternal,
+			)
 		}
 	}
 }
@@ -223,34 +223,34 @@ func (cmd *command) executeQueryInternal(ctx context.Context) (*commandReader, e
 // set. It returns the number of rows affected if known, otherwise -1.
 func (cmd *command) ExecuteUpdate(ctx context.Context) (int64, error) {
 	if cmd.req.Command == "" {
-		return -1, adbc.Error{
-			Code: adbc.StatusInvalidState,
-			Msg:  "ExecuteUpdate called before SetSqlQuery",
-		}
+		return -1, NewAdbcError(
+			"ExecuteUpdate called before SetSqlQuery",
+			adbc.StatusInvalidState,
+		)
 	}
 
 	// For CommandExecution API, we can use ExecuteCommand and check if it returns a result
 	ce := cmd.conn.CommandExecution()
 	executor, err := ce.Start(ctx, cmd.conn.client.Config.ClusterID, compute.LanguageSql)
 	if err != nil {
-		return -1, adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("[Databricks] failed to start command execution: %s", err),
-		}
+		return -1, NewAdbcError(
+			fmt.Sprintf("[Databricks] failed to start command execution: %s", err),
+			adbc.StatusUnknown,
+		)
 	}
 	res, err := executor.Execute(ctx, cmd.req.Command)
 	if err != nil {
-		return -1, adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("[Databricks] failed to execute command: %s", err),
-		}
+		return -1, NewAdbcError(
+			fmt.Sprintf("[Databricks] failed to execute command: %s", err),
+			adbc.StatusUnknown,
+		)
 	}
 
 	if res.ResultType == compute.ResultTypeError {
-		return -1, adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("[Databricks] command execution failed: %s", res.Error()),
-		}
+		return -1, NewAdbcError(
+			fmt.Sprintf("[Databricks] command execution failed: %s", res.Error()),
+			adbc.StatusUnknown,
+		)
 	}
 
 	// For updates, we don't have a row count in the CommandExecution API
@@ -266,45 +266,45 @@ func (cmd *command) Prepare(ctx context.Context) error {
 
 // SetSubstraitPlan sets a Substrait plan to be executed.
 func (cmd *command) SetSubstraitPlan(plan []byte) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "Substrait not yet implemented for Databricks driver",
-	}
+	return NewAdbcError(
+		"Substrait not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // Bind uses an arrow record batch to bind parameters to the query.
 func (cmd *command) Bind(ctx context.Context, values arrow.Record) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "Bind not yet implemented for Databricks driver",
-	}
+	return NewAdbcError(
+		"Bind not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // BindStream uses a record batch stream to bind parameters for this
 // query. This can be used for bulk inserts or prepared statements.
 func (cmd *command) BindStream(ctx context.Context, stream array.RecordReader) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "BindStream not yet implemented for Databricks driver",
-	}
+	return NewAdbcError(
+		"BindStream not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // GetParameterSchema returns an Arrow schema representation of
 // the expected parameters to be bound.
 func (cmd *command) GetParameterSchema() (*arrow.Schema, error) {
-	return nil, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "GetParameterSchema not yet implemented for Databricks driver",
-	}
+	return nil, NewAdbcError(
+		"GetParameterSchema not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // ExecutePartitions executes the current statement and gets the results
 // as a partitioned result set.
 func (cmd *command) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
-	return nil, adbc.Partitions{}, -1, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "ExecutePartitions not yet implemented for Databricks driver",
-	}
+	return nil, adbc.Partitions{}, -1, NewAdbcError(
+		"ExecutePartitions not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // Close releases any relevant resources associated with this statement
@@ -326,23 +326,23 @@ func (cmd *command) Close() error {
 	}
 	cancelResult, err := ce.Cancel(ctx, req)
 	if err != nil {
-		return adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("Failed to cancel command %s: %s", cmd.commandId, err),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("Failed to cancel command %s: %s", cmd.commandId, err),
+			adbc.StatusUnknown,
+		)
 	}
 	res, err := cancelResult.Get()
 	if err != nil {
-		return adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("Failed to cancel command %s: %s", cmd.commandId, err),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("Failed to cancel command %s: %s", cmd.commandId, err),
+			adbc.StatusUnknown,
+		)
 	}
 	if res.Status != compute.CommandStatusCancelled {
-		return adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("Failed to cancel command %s: %s", cmd.commandId, res.Status),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("Failed to cancel command %s: %s", cmd.commandId, res.Status),
+			adbc.StatusUnknown,
+		)
 	}
 	cmd.commandId = ""
 	return nil

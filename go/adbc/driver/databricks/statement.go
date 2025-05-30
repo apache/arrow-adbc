@@ -97,15 +97,15 @@ func (stmt *statement) resetStatement(sql string) error {
 func (stmt *statement) SetOption(key, val string) error {
 	switch key {
 	case OptionBoolTruncated:
-		return adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("[Databricks] `%s` property is read-only", key),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("[Databricks] `%s` property is read-only", key),
+			adbc.StatusInvalidArgument,
+		)
 	default:
-		return adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("[Databricks] Unknown statement string type option `%s`", key),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("[Databricks] Unknown statement string type option `%s`", key),
+			adbc.StatusInvalidArgument,
+		)
 	}
 }
 
@@ -131,10 +131,10 @@ func (stmt *statement) SetOptionInt(key string, value int64) error {
 	case OptionIntRowLimit:
 		stmt.req.RowLimit = value
 	default:
-		return adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("[Databricks] Unknown statement string type option `%s`", key),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("[Databricks] Unknown statement string type option `%s`", key),
+			adbc.StatusInvalidArgument,
+		)
 	}
 	return nil
 }
@@ -152,31 +152,31 @@ func (stmt *statement) GetOptionInt(key string) (int64, error) {
 }
 
 func (stmt *statement) SetOptionBytes(key string, value []byte) error {
-	return adbc.Error{
-		Msg:  fmt.Sprintf("[Databricks] Unknown statement bytes type option '%s'", key),
-		Code: adbc.StatusNotImplemented,
-	}
+	return NewAdbcError(
+		fmt.Sprintf("[Databricks] Unknown statement bytes type option '%s'", key),
+		adbc.StatusNotImplemented,
+	)
 }
 
 func (stmt *statement) GetOptionBytes(key string) ([]byte, error) {
-	return nil, adbc.Error{
-		Msg:  fmt.Sprintf("[Databricks] Unknown statement option '%s'", key),
-		Code: adbc.StatusNotFound,
-	}
+	return nil, NewAdbcError(
+		fmt.Sprintf("[Databricks] Unknown statement option '%s'", key),
+		adbc.StatusNotFound,
+	)
 }
 
 func (stmt *statement) SetOptionDouble(key string, value float64) error {
-	return adbc.Error{
-		Msg:  fmt.Sprintf("[Databricks] Unknown statement double type option '%s'", key),
-		Code: adbc.StatusNotImplemented,
-	}
+	return NewAdbcError(
+		fmt.Sprintf("[Databricks] Unknown statement double type option '%s'", key),
+		adbc.StatusNotImplemented,
+	)
 }
 
 func (stmt *statement) GetOptionDouble(key string) (float64, error) {
-	return 0, adbc.Error{
-		Msg:  fmt.Sprintf("[Databricks] Unknown statement option '%s'", key),
-		Code: adbc.StatusNotFound,
-	}
+	return 0, NewAdbcError(
+		fmt.Sprintf("[Databricks] Unknown statement option '%s'", key),
+		adbc.StatusNotFound,
+	)
 }
 
 // SetSqlQuery sets the query string to be executed.
@@ -198,10 +198,10 @@ func (stmt *statement) SetSqlQuery(query string) error {
 // consuming it fully is equivalent to calling AdbcStatementCancel.
 func (stmt *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
 	if stmt.req.Statement == "" {
-		return nil, -1, adbc.Error{
-			Code: adbc.StatusInvalidState,
-			Msg:  "ExecuteQuery called before SetSqlQuery",
-		}
+		return nil, -1, NewAdbcError(
+			"ExecuteQuery called before SetSqlQuery",
+			adbc.StatusInvalidState,
+		)
 	}
 	// TODO: perform more validations
 	reader, err := stmt.executeQueryInternal(ctx)
@@ -215,10 +215,10 @@ func (stmt *statement) executeQueryInternal(ctx context.Context) (*statementRead
 	se := stmt.conn.StatementExecution()
 	res, err := se.ExecuteStatement(ctx, *stmt.req)
 	if err != nil {
-		return nil, adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("[Databricks] failed to execute statement: %s", err),
-		}
+		return nil, NewAdbcError(
+			fmt.Sprintf("[Databricks] failed to execute statement: %s", err),
+			adbc.StatusUnknown,
+		)
 	}
 
 	// Statement execution state:
@@ -250,10 +250,10 @@ func (stmt *statement) executeQueryInternal(ctx context.Context) (*statementRead
 					StatementId: res.StatementId,
 				})
 				if err != nil {
-					adbcErr := adbc.Error{
-						Code: adbc.StatusUnknown,
-						Msg:  fmt.Sprintf("[Databricks] Failed to execute statement: %s", err),
-					}
+					adbcErr := NewAdbcError(
+						fmt.Sprintf("[Databricks] Failed to execute statement: %s", err),
+						adbc.StatusUnknown,
+					)
 					return nil, retries.Halt(adbcErr)
 				}
 				state := res.Status.State
@@ -281,10 +281,10 @@ func (stmt *statement) executeQueryInternal(ctx context.Context) (*statementRead
 }
 
 func unexpectedExecutionState(state sql.StatementState) error {
-	return adbc.Error{
-		Code: adbc.StatusInternal,
-		Msg:  fmt.Sprintf("[Databricks] Unexpected execution state: %s", state.String()),
-	}
+	return NewAdbcError(
+		fmt.Sprintf("[Databricks] Unexpected execution state: %s", state.String()),
+		adbc.StatusInternal,
+	)
 }
 
 func errorFromStmtStatus(s *sql.StatementStatus) adbc.Error {
@@ -296,10 +296,7 @@ func errorFromStmtStatus(s *sql.StatementStatus) adbc.Error {
 	if s.State == sql.StatementStateCanceled || s.State == sql.StatementStateClosed {
 		adbcCode = adbc.StatusCancelled
 	}
-	return adbc.Error{
-		Code: adbcCode,
-		Msg:  msg,
-	}
+	return NewAdbcError(msg, adbcCode)
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
@@ -316,10 +313,10 @@ func (stmt *statement) Prepare(context.Context) error {
 }
 
 func (stmt *statement) SetSubstraitPlan(plan []byte) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "Substrait not yet implemented for Databricks driver",
-	}
+	return NewAdbcError(
+		"Substrait not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // Bind uses an arrow record batch to bind parameters to the query.
@@ -329,10 +326,10 @@ func (stmt *statement) SetSubstraitPlan(plan []byte) error {
 // but it may not do this until the statement is closed or another
 // record is bound.
 func (stmt *statement) Bind(ctx context.Context, values arrow.Record) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "Bind not yet implemented for Databricks driver",
-	}
+	return NewAdbcError(
+		"Bind not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // BindStream uses a record batch stream to bind parameters for this
@@ -341,10 +338,10 @@ func (stmt *statement) Bind(ctx context.Context, values arrow.Record) error {
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
 func (stmt *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "BindStream not yet implemented for Databricks driver",
-	}
+	return NewAdbcError(
+		"BindStream not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // GetParameterSchema returns an Arrow schema representation of
@@ -365,10 +362,10 @@ func (stmt *statement) BindStream(ctx context.Context, stream array.RecordReader
 // This should return an error with StatusNotImplemented if the schema
 // cannot be determined.
 func (stmt *statement) GetParameterSchema() (*arrow.Schema, error) {
-	return nil, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "GetParameterSchema not yet implemented for Databricks driver",
-	}
+	return nil, NewAdbcError(
+		"GetParameterSchema not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // ExecutePartitions executes the current statement and gets the results
@@ -384,10 +381,10 @@ func (stmt *statement) GetParameterSchema() (*arrow.Schema, error) {
 // When OptionKeyIncremental is set, this should be called
 // repeatedly until receiving an empty Partitions.
 func (stmt *statement) ExecutePartitions(context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
-	return nil, adbc.Partitions{}, -1, adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "ExecutePartitions not yet implemented for Databricks driver",
-	}
+	return nil, adbc.Partitions{}, -1, NewAdbcError(
+		"ExecutePartitions not yet implemented for Databricks driver",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // Close releases any relevant resources associated with this statement
@@ -408,10 +405,10 @@ func (stmt *statement) Close() error {
 	}
 	err := se.CancelExecution(ctx, req)
 	if err != nil {
-		return adbc.Error{
-			Code: adbc.StatusUnknown,
-			Msg:  fmt.Sprintf("Failed to cancel statement %s: %s", stmt.statementId, err),
-		}
+		return NewAdbcError(
+			fmt.Sprintf("Failed to cancel statement %s: %s", stmt.statementId, err),
+			adbc.StatusUnknown,
+		)
 	}
 	stmt.statementId = ""
 	return nil

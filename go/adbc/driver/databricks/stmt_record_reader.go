@@ -284,15 +284,21 @@ func (r *statementReader) Err() error {
 		return nil
 	}
 	if errors.Is(r.err, context.Canceled) {
-		return adbc.Error{Msg: r.err.Error(), Code: adbc.StatusCancelled}
+		return NewAdbcError(
+			r.err.Error(),
+			adbc.StatusCancelled,
+		)
 	}
 	if errors.Is(r.err, context.DeadlineExceeded) {
-		return adbc.Error{Msg: r.err.Error(), Code: adbc.StatusTimeout}
+		return NewAdbcError(
+			r.err.Error(),
+			adbc.StatusTimeout,
+		)
 	}
-	return adbc.Error{
-		Msg:  r.err.Error(),
-		Code: adbc.StatusUnknown,
-	}
+	return NewAdbcError(
+		r.err.Error(),
+		adbc.StatusUnknown,
+	)
 }
 
 func (r *statementReader) Throughput() float64 {
