@@ -92,7 +92,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         {
             public LongRunningStatementTimeoutTestData()
             {
-                string longRunningQuery = "SELECT * FROM abc.b LIMIT 100";
+                string longRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(100000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
 
                 Add(new(5, longRunningQuery, typeof(TimeoutException)));
                 Add(new(null, longRunningQuery, typeof(TimeoutException)));
@@ -749,6 +749,87 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.True(expectedName.Equals(field.Name), $"Field name mismatch: expected {expectedName}, got {field.Name}");
             Assert.True(expectedType.Equals(field.DataType), $"Field type mismatch: expected {expectedType}, got {field.DataType}");
             Assert.True(expectedNullable == field.IsNullable, $"Field nullability mismatch: expected {expectedNullable}, got {field.IsNullable}");
+        }
+
+        [SkippableFact]
+        public async Task MetadataQuery_ShouldUseResponseNamespace()
+        {
+            // Test case: GetTables should use the response namespace. You can run this test with and without a catalog or schema.
+            using var connection = NewConnection();
+            using var statement = connection.CreateStatement();
+
+            // Set only schema name without catalog
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetTables";
+
+            var result = await statement.ExecuteQueryAsync();
+            Assert.NotNull(result.Stream);
+
+            // Verify we get results and they use the response namespace
+            int rowCount = 0;
+            var foundCatalogs = new HashSet<string>();
+            var foundSchemas = new HashSet<string>();
+
+            while (result.Stream != null)
+            {
+                using var batch = await result.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                    break;
+
+                rowCount += batch.Length;
+                var catalogArray = (StringArray)batch.Column(0);
+                var schemaArray = (StringArray)batch.Column(1);
+
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    foundCatalogs.Add(catalogArray.GetString(i) ?? string.Empty);
+                    foundSchemas.Add(schemaArray.GetString(i) ?? string.Empty);
+                }
+            }
+
+            // Should have results and they should match the schema we specified
+            Assert.True(rowCount > 0, "Should have results even without catalog specified");
+            Assert.True(foundSchemas.Count >= 1, "Should have at least one schema");
+            Assert.True(foundCatalogs.Count == 1, "Should have exactly one catalog");
+        }
+
+        // run this test with dbr < 10.4
+        [SkippableFact]
+        public async Task OlderDBRVersion_ShouldSetSchemaViaUseStatement()
+        {
+            // Test case: Older DBR version should still set schema via USE statement.
+            // skip if no schema is provided by user
+            Skip.If(string.IsNullOrEmpty(TestConfiguration.DbSchema), "No schema provided by user");
+            using var connection = NewConnection();
+            // Verify current schema matches what we expect
+            using var statement = connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetTables";
+
+            var result = await statement.ExecuteQueryAsync();
+            Assert.NotNull(result.Stream);
+
+            // Verify we get results and they use the response namespace
+            int rowCount = 0;
+            var foundSchemas = new HashSet<string>();
+
+            while (result.Stream != null)
+            {
+                using var batch = await result.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                    break;
+
+                rowCount += batch.Length;
+                var schemaArray = (StringArray)batch.Column(0);
+
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    foundSchemas.Add(schemaArray.GetString(i) ?? string.Empty);
+                }
+            }
+
+            Assert.True(rowCount > 0, "Should have results even without catalog specified");
+            Assert.True(foundSchemas.Count == 1, "Should have exactly one schema");
         }
     }
 }
