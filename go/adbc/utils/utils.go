@@ -22,8 +22,8 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -88,7 +88,7 @@ func StartSpan(ctx context.Context, spanName string, tracing adbc.OTelTracing, o
 	}
 
 	attrs := tracing.GetInitialSpanAttributes()
-	attrs = append(attrs, attribute.String(TraceAttributeDbOperationName, spanName))
+	attrs = append(attrs, semconv.DBOperationName(spanName))
 	opts = append(opts, trace.WithAttributes(attrs...))
 
 	return tracing.StartSpan(ctx, spanName, opts...)
@@ -98,7 +98,7 @@ func EndSpan(span trace.Span, err error, options ...trace.SpanEndOption) {
 	if err != nil {
 		span.RecordError(err)
 		if adbcError, ok := err.(adbc.Error); ok {
-			span.SetAttributes(attribute.String(TraceAttributeErrorType, adbcError.Code.String()))
+			span.SetAttributes(semconv.ErrorTypeKey.String(adbcError.Code.String()))
 		}
 		span.SetStatus(codes.Error, err.Error())
 	} else {
@@ -106,17 +106,3 @@ func EndSpan(span trace.Span, err error, options ...trace.SpanEndOption) {
 	}
 	span.End(options...)
 }
-
-const (
-	TraceAttributeDbDriverOptionGet    = "db.driver.option.get"
-	TraceAttributeDbSystemName         = "db.system.name"
-	TraceAttributeDbNamespace          = "db.namespace"
-	TraceAttributeDbCollectionName     = "db.collection.name"
-	TraceAttributeDbOperationBatchSize = "db.operation.batch.size"
-	TraceAttributeDbOperationName      = "db.operation.name"
-	TraceAttributeDbResponseStatusCode = "db.response.status_code"
-	TraceAttributeDbResponseRetRows    = "db.response.returned_rows"
-	TraceAttributeErrorType            = "error.type"
-	TraceAttributeServerPort           = "server.port"
-	TraceAttributeServerAddress        = "server.address"
-)

@@ -32,7 +32,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
-	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
 
 const (
@@ -478,7 +478,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 
 	ctx, span := utils.StartSpan(ctx, "ExecuteQuery", st)
 	defer func() {
-		span.SetAttributes(attribute.Int64(utils.TraceAttributeDbResponseRetRows, nRows))
+		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(nRows))
 		utils.EndSpan(span, err)
 	}()
 
@@ -544,7 +544,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err error) {
 	ctx, span := utils.StartSpan(ctx, "ExecuteUpdate", st)
 	defer func() {
-		span.SetAttributes(attribute.Int64(utils.TraceAttributeDbResponseRetRows, numRows))
+		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(numRows))
 		utils.EndSpan(span, err)
 	}()
 

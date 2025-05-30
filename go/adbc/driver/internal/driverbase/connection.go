@@ -33,6 +33,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
@@ -383,7 +384,7 @@ func (cnxn *ConnectionImplBase) GetInitialSpanAttributes() []attribute.KeyValue 
 			systemName = s
 		}
 	}
-	attrs = append(attrs, attribute.String(utils.TraceAttributeDbSystemName, systemName))
+	attrs = append(attrs, semconv.DBSystemNameKey.String(systemName))
 
 	return attrs
 }
