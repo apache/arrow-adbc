@@ -137,16 +137,18 @@ func getArrowTypeFromColumnInfo(col sql.ColumnInfo) (arrow.DataType, error) {
 		precision, scale := col.TypePrecision, col.TypeScale
 		if precision == 0 {
 			// Mostly used by the recursive case (array, map, etc)
-			// "DECIMAL(p,s)"
-			if matches := regexp.MustCompile(`DECIMAL\((\d+),(\d+)\)`).FindStringSubmatch(col.TypeText); matches != nil {
+			// "DECIMAL(p,s) and DECIMAL(p) with scale default at 0"
+			if matches := regexp.MustCompile(`DECIMAL\((\d+)(?:,?(\d+))?\)`).FindStringSubmatch(col.TypeText); matches != nil {
 				var err error
 				precision, err = strconv.Atoi(matches[1])
 				if err != nil {
 					return nil, fmt.Errorf("invalid decimal precision: %v", err)
 				}
-				scale, err = strconv.Atoi(matches[2])
-				if err != nil {
-					return nil, fmt.Errorf("invalid decimal scale: %v", err)
+				if len(matches) == 2 {
+					scale, err = strconv.Atoi(matches[2])
+					if err != nil {
+						return nil, fmt.Errorf("invalid decimal scale: %v", err)
+					}
 				}
 			}
 		}
