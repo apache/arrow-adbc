@@ -130,10 +130,10 @@ func (r *commandReader) setRecord() {
 			rows := results.Data.([]interface{})
 			r.rec, r.err = BuildFromRows(r.schema, rows)
 		default:
-			r.err = adbc.Error{
-				Code: adbc.StatusInvalidData,
-				Msg:  fmt.Sprintf("Unexpected command result type: %T", results.Data),
-			}
+			r.err = NewAdbcError(
+				fmt.Sprintf("Unexpected command result type: %T", results.Data),
+				adbc.StatusInvalidData,
+			)
 		}
 
 	} else if results.ResultType == compute.ResultTypeText {
@@ -143,17 +143,17 @@ func (r *commandReader) setRecord() {
 		rows := results.Data.([]interface{})
 		r.rec, r.err = BuildFromRows(schema, rows)
 	} else {
-		r.err = adbc.Error{
-			Code: adbc.StatusInvalidData,
-			Msg:  fmt.Sprintf("Unexpected command result type: %s", results.ResultType),
-		}
+		r.err = NewAdbcError(
+			fmt.Sprintf("Unexpected command result type: %s", results.ResultType),
+			adbc.StatusInvalidData,
+		)
 	}
 }
 
 // \post: if returns true, r.Record() != nil && r.err == nil
 // \post: if returns false, r.Record() == nil and r.err *MUST* be checked
 func (r *commandReader) Next() bool {
-	
+
 	if r.rec == nil {
 		r.setRecord()
 		if r.err == nil {

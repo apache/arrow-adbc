@@ -112,10 +112,10 @@ func (conn *connectionImpl) SetAutocommit(enabled bool) error {
 	if enabled {
 		return nil
 	}
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  "SetAutocommit to `false` is not yet implemented",
-	}
+	return NewAdbcError(
+		"SetAutocommit to `false` is not yet implemented",
+		adbc.StatusNotImplemented,
+	)
 }
 
 // }}}
