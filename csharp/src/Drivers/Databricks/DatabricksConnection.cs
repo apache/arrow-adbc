@@ -374,6 +374,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session)
         {
             await base.HandleOpenSessionResponse(session);
+            _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs;
             if (session != null)
             {
                 if (session.__isset.initialNamespace) {
