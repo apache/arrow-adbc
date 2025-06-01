@@ -69,8 +69,8 @@ if(ADBC_BUILD_TESTS)
     if(MSVC)
       add_custom_command(TARGET adbc-driver-flightsql-test
                          POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                  "$<TARGET_FILE:adbc_driver_flightsql_shared>"
+                         COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                                 "$<TARGET_FILE:adbc_driver_flightsql_shared>"
                                  "$<TARGET_FILE_DIR:adbc-driver-flightsql-test>")
     endif()
   endif()
