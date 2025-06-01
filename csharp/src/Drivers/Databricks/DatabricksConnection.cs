@@ -374,12 +374,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session)
         {
             await base.HandleOpenSessionResponse(session);
-            _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs;
             if (session != null)
             {
-                if (session.__isset.initialNamespace) {
+                _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
+                if (session.__isset.initialNamespace)
+                {
                     _defaultNamespace = session.InitialNamespace;
-                } else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName)) {
+                }
+                else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName))
+                {
                     // server version is too old. Explicitly set the schema using queries
                     await SetSchema(_defaultNamespace.SchemaName);
                 }

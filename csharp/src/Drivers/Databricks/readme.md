@@ -38,7 +38,7 @@ The Databricks ADBC driver supports the following authentication methods:
 
 Basic (username and password) authentication is not supported at this time.
 
-Optional default catalog and default schema can be set for the session with `adbc.connection.catalog` and `adbc.connection.db_schema` (catalog must be set if default schema is provided).
+Optional default catalog and default schema can be set for the session with `adbc.connection.catalog` and `adbc.connection.db_schema`. The default catalog and schema will be used for subsequent metadata calls unless user specified different catalog/schema to use.
 
 ## Data Types
 
