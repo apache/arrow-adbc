@@ -649,7 +649,7 @@ func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, e
 	var loader gosnowflake.ArrowStreamLoader
 	loader, err = st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
 	if err != nil {
-		err := errToAdbcErr(adbc.StatusInternal, err)
+		err = errToAdbcErr(adbc.StatusInternal, err)
 		return nil, err
 	}
 
