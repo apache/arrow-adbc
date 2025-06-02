@@ -75,15 +75,15 @@ endfunction()
 # Function to generate import library from DLL on Windows
 function(generate_import_library DLL_PATH LIB_PATH DEF_PATH)
   add_custom_command(OUTPUT "${DEF_PATH}"
-                      COMMAND ${GENDEF_BIN} - "${DLL_PATH}" > "${DEF_PATH}"
-                      DEPENDS "${DLL_PATH}"
-                      COMMENT "Generating .def file from ${DLL_PATH}")
-        
+                     COMMAND ${GENDEF_BIN} - "${DLL_PATH}" > "${DEF_PATH}"
+                     DEPENDS "${DLL_PATH}"
+                     COMMENT "Generating .def file from ${DLL_PATH}")
+
   add_custom_command(OUTPUT "${LIB_PATH}"
                      COMMAND ${DLLTOOL_BIN} -d "${DEF_PATH}" -l "${LIB_PATH}" -D
                              "${DLL_PATH}"
-                      DEPENDS "${DEF_PATH}"
-                      COMMENT "Generating import library ${LIB_PATH}")
+                     DEPENDS "${DEF_PATH}"
+                     COMMENT "Generating import library ${LIB_PATH}")
 endfunction()
 
 function(add_go_lib GO_MOD_DIR GO_LIBNAME)
@@ -231,12 +231,12 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
       endif()
 
       add_custom_target(${GO_LIBNAME}_target ALL DEPENDS "${LIBOUT_SHARED}"
-                                ${IMPORT_LIB_OUTPUTS})
-      
+                                                         ${IMPORT_LIB_OUTPUTS})
+
       add_library(${GO_LIBNAME}_shared SHARED IMPORTED GLOBAL)
       set_target_properties(${GO_LIBNAME}_shared PROPERTIES IMPORTED_LOCATION
                                                             "${LIBOUT_SHARED}")
-      
+
       # Set import library if it was generated
       if(IMPORT_LIB_OUTPUTS)
         set_target_properties(${GO_LIBNAME}_shared PROPERTIES IMPORTED_IMPLIB

@@ -56,7 +56,7 @@ AdbcStatusCode DoIngestSampleTable(struct AdbcConnection* connection,
       {{"int64s", NANOARROW_TYPE_INT64}, {"strings", NANOARROW_TYPE_STRING}})));
   CHECK_OK((static_cast<AdbcStatusCode>(MakeBatch<int64_t, std::string>(
       &schema.value, &array.value, &na_error, {42, -42, std::nullopt},
-                                            {"foo", std::nullopt, ""}))));
+      {"foo", std::nullopt, ""}))));
 
   Handle<struct AdbcStatement> statement;
   CHECK_OK(AdbcStatementNew(connection, &statement.value, error));

@@ -480,7 +480,7 @@ class SqliteReaderTest : public ::testing::Test {
             adbc_validation::StreamReader* reader) {
     ASSERT_EQ(SQLITE_OK,
               sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.size()), &stmt,
-                                            /*pzTail=*/nullptr));
+                                 /*pzTail=*/nullptr));
     struct AdbcSqliteBinder* binder =
         this->binder.schema.release ? &this->binder : nullptr;
     ASSERT_THAT(InternalAdbcSqliteExportReader(db, stmt, binder, infer_rows,
