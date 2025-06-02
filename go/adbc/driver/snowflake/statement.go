@@ -552,7 +552,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 
 	if st.targetTable != "" {
 		numRows, err = st.executeIngest(ctx)
-		return -1, err
+		return numRows, err
 	}
 
 	if st.query == "" {
@@ -561,7 +561,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
 		}
-		return -1, err
+		return numRows, err
 	}
 
 	if st.streamBind != nil || st.bound != nil {
@@ -609,6 +609,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 	numRows, err = r.RowsAffected()
 	if err != nil {
 		numRows = -1
+		err = nil
 	}
 
 	return numRows, err
