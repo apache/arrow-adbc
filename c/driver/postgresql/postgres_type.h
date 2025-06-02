@@ -607,10 +607,10 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kInterval), out, error);
     case NANOARROW_TYPE_TIMESTAMP:
-      if (strcmp("", schema_view.timezone) == 0) {
-        return resolver.Find(resolver.GetOID(PostgresTypeId::kTimestamptz), out, error);
-      } else {
+      if (std::string_view(schema_view.timezone).empty()) {
         return resolver.Find(resolver.GetOID(PostgresTypeId::kTimestamp), out, error);
+      } else {
+        return resolver.Find(resolver.GetOID(PostgresTypeId::kTimestamptz), out, error);
       }
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:
