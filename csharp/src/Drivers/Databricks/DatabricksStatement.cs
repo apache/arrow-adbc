@@ -459,6 +459,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             return await base.GetCrossReferenceAsync(cancellationToken);
         }
+        protected override async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
+        {
+            if (ShouldReturnEmptyPkFkResult())
+                return EmptyCrossReferenceResult();
+
+            return await base.GetCrossReferenceAsForeignTableAsync(cancellationToken);
+        }
 
         private QueryResult EmptyCrossReferenceResult()
         {
