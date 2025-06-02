@@ -46,8 +46,8 @@
 ///    mkdir build
 ///    cd build
 ///    cmake ../docs/source/cpp/recipe
-///    cmake --build . --target quickstart
-///    ./quickstart
+///    cmake --build . --target recipe-quickstart
+///    ./recipe-quickstart
 ///
 /// .. _CMake: https://cmake.org/
 
