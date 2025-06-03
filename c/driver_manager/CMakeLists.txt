@@ -16,13 +16,6 @@
 # under the License.
 
 include(FetchContent)
-FetchContent_Declare(
-  tomlplusplus
-  GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
-  GIT_TAG v3.4.0
-)
-FetchContent_MakeAvailable(tomlplusplus)
-
 add_arrow_lib(adbc_driver_manager
               SOURCES
               adbc_driver_manager.cc
@@ -35,7 +28,6 @@ add_arrow_lib(adbc_driver_manager
               SHARED_LINK_LIBS
               ${CMAKE_DL_LIBS}
               STATIC_LINK_LIBS
-              tomlplusplus::tomlplusplus
               ${CMAKE_DL_LIBS}
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS})
@@ -48,8 +40,7 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_include_directories(${LIB_TARGET} SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${REPOSITORY_ROOT}/c/vendor
-                                     ${REPOSITORY_ROOT}/c/driver
-                                     ${tomlplusplus_SOURCE_DIR}/include)
+                                     ${REPOSITORY_ROOT}/c/driver)
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
 endforeach()
 
