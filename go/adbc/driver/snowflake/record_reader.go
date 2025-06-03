@@ -75,14 +75,14 @@ func getRecTransformer(sc *arrow.Schema, tr []colTransformer) recordTransformer 
 	}
 }
 
-func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, recordTransformer) {
+func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool, useMaxMicrosecondTimestampPrecision bool) (*arrow.Schema, recordTransformer) {
 	loc, types := ld.Location(), ld.RowTypes()
 
 	fields := make([]arrow.Field, len(sc.Fields()))
 	transformers := make([]func(context.Context, arrow.Array) (arrow.Array, error), len(sc.Fields()))
 	for i, f := range sc.Fields() {
 		srcMeta := types[i]
-
+		originalArrowUnit := arrow.TimeUnit(srcMeta.Scale / 3)
 		switch strings.ToUpper(srcMeta.Type) {
 		case "FIXED":
 			switch f.Type.ID() {
@@ -151,16 +151,16 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 		case "TIME":
 			var dt arrow.DataType
 			if srcMeta.Scale < 6 {
-				dt = &arrow.Time32Type{Unit: arrow.TimeUnit(srcMeta.Scale / 3)}
+				dt = &arrow.Time32Type{Unit: getArrowTimeUnit(srcMeta.Scale, useMaxMicrosecondTimestampPrecision)}
 			} else {
-				dt = &arrow.Time64Type{Unit: arrow.TimeUnit(srcMeta.Scale / 3)}
+				dt = &arrow.Time64Type{Unit: getArrowTimeUnit(srcMeta.Scale, useMaxMicrosecondTimestampPrecision)}
 			}
 			f.Type = dt
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 				return compute.CastArray(ctx, a, compute.SafeCastOptions(dt))
 			}
 		case "TIMESTAMP_NTZ":
-			dt := &arrow.TimestampType{Unit: arrow.TimeUnit(srcMeta.Scale / 3)}
+			dt := &arrow.TimestampType{Unit: getArrowTimeUnit(srcMeta.Scale, useMaxMicrosecondTimestampPrecision)}
 			f.Type = dt
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 
@@ -181,7 +181,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 						continue
 					}
 
-					v, err := arrow.TimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit())
+					v, err := getArrowTimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit(), originalArrowUnit, useMaxMicrosecondTimestampPrecision)
 					if err != nil {
 						return nil, err
 					}
@@ -190,7 +190,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 				return tb.NewArray(), nil
 			}
 		case "TIMESTAMP_LTZ":
-			dt := &arrow.TimestampType{Unit: arrow.TimeUnit(srcMeta.Scale) / 3, TimeZone: loc.String()}
+			dt := &arrow.TimestampType{Unit: getArrowTimeUnit(srcMeta.Scale, useMaxMicrosecondTimestampPrecision), TimeZone: loc.String()}
 			f.Type = dt
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 				pool := compute.GetAllocator(ctx)
@@ -207,7 +207,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 							continue
 						}
 
-						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit())
+						v, err := getArrowTimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit(), originalArrowUnit, useMaxMicrosecondTimestampPrecision)
 						if err != nil {
 							return nil, err
 						}
@@ -228,7 +228,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 		case "TIMESTAMP_TZ":
 			// we convert each value to UTC since we have timezone information
 			// with the data that lets us do so.
-			dt := &arrow.TimestampType{TimeZone: "UTC", Unit: arrow.TimeUnit(srcMeta.Scale / 3)}
+			dt := &arrow.TimestampType{TimeZone: "UTC", Unit: getArrowTimeUnit(srcMeta.Scale, useMaxMicrosecondTimestampPrecision)}
 			f.Type = dt
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 				pool := compute.GetAllocator(ctx)
@@ -246,7 +246,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 						}
 
 						loc := gosnowflake.Location(int(tzoffset[i]) - 1440)
-						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], 0).In(loc), dt.Unit)
+						v, err := getArrowTimestampFromTime(time.Unix(epoch[i], 0).In(loc), dt.Unit, originalArrowUnit, useMaxMicrosecondTimestampPrecision)
 						if err != nil {
 							return nil, err
 						}
@@ -263,7 +263,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 						}
 
 						loc := gosnowflake.Location(int(tzoffset[i]) - 1440)
-						v, err := arrow.TimestampFromTime(time.Unix(epoch[i], int64(fraction[i])).In(loc), dt.Unit)
+						v, err := getArrowTimestampFromTime(time.Unix(epoch[i], int64(fraction[i])).In(loc), dt.Unit, originalArrowUnit, useMaxMicrosecondTimestampPrecision)
 						if err != nil {
 							return nil, err
 						}
@@ -282,6 +282,21 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 	meta := sc.Metadata()
 	out := arrow.NewSchema(fields, &meta)
 	return out, getRecTransformer(out, transformers)
+}
+
+func getArrowTimeUnit(scale int64, useMaxMicrosecondTimestampPrecision bool) arrow.TimeUnit {
+	if scale == 9 && useMaxMicrosecondTimestampPrecision {
+		return arrow.Microsecond
+	} else {
+		return arrow.TimeUnit(scale / 3)
+	}
+}
+
+func getArrowTimestampFromTime(val time.Time, unit arrow.TimeUnit, originalArrowUnit arrow.TimeUnit, useMaxMicrosecondTimestampPrecision bool) (arrow.Timestamp, error) {
+	if useMaxMicrosecondTimestampPrecision && originalArrowUnit == arrow.Nanosecond {
+		return arrow.TimestampFromTime(time.UnixMicro(val.UnixMicro()), arrow.Microsecond)
+	}
+	return arrow.TimestampFromTime(val, unit)
 }
 
 func integerToDecimal128(ctx context.Context, a arrow.Array, dt *arrow.Decimal128Type) (arrow.Array, error) {
@@ -305,7 +320,7 @@ func integerToDecimal128(ctx context.Context, a arrow.Array, dt *arrow.Decimal12
 	return result, err
 }
 
-func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, error) {
+func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool, useMaxMicrosecondTimestampPrecision bool) (*arrow.Schema, error) {
 	var loc *time.Location
 
 	metadata := ld.RowTypes()
@@ -335,12 +350,20 @@ func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, 
 		case "time":
 			fields[i].Type = arrow.FixedWidthTypes.Time64ns
 		case "timestamp_ntz", "timestamp_tz":
-			fields[i].Type = arrow.FixedWidthTypes.Timestamp_ns
+			if useMaxMicrosecondTimestampPrecision {
+				fields[i].Type = arrow.FixedWidthTypes.Timestamp_us
+			} else {
+				fields[i].Type = arrow.FixedWidthTypes.Timestamp_ns
+			}
 		case "timestamp_ltz":
 			if loc == nil {
 				loc = ld.Location()
 			}
-			fields[i].Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+			if useMaxMicrosecondTimestampPrecision {
+				fields[i].Type = &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: loc.String()}
+			} else {
+				fields[i].Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+			}
 		case "binary":
 			fields[i].Type = arrow.BinaryTypes.Binary
 		case "boolean":
@@ -367,7 +390,7 @@ func extractTimestamp(src *string) (sec, nsec int64, err error) {
 	return
 }
 
-func jsonDataToArrow(_ context.Context, bldr *array.RecordBuilder, rawData [][]*string) (arrow.Record, error) {
+func jsonDataToArrow(_ context.Context, bldr *array.RecordBuilder, rawData [][]*string, useMaxMicrosecondTimestampPrecision bool) (arrow.Record, error) {
 	fieldBuilders := bldr.Fields()
 	for _, rec := range rawData {
 		for i, col := range rec {
@@ -423,7 +446,16 @@ func jsonDataToArrow(_ context.Context, bldr *array.RecordBuilder, rawData [][]*
 
 					loc := gosnowflake.Location(int(offset) - 1440)
 					tt := time.Unix(sec, nsec).In(loc)
-					ts, err := arrow.TimestampFromTime(tt, arrow.Nanosecond)
+
+					var unit arrow.TimeUnit
+					originalArrowUnit := arrow.Nanosecond
+					if useMaxMicrosecondTimestampPrecision {
+						unit = arrow.Microsecond
+					} else {
+						unit = arrow.Nanosecond
+					}
+
+					ts, err := getArrowTimestampFromTime(tt, unit, originalArrowUnit, useMaxMicrosecondTimestampPrecision)
 					if err != nil {
 						return nil, err
 					}
@@ -471,7 +503,7 @@ type reader struct {
 	cancelFn context.CancelFunc
 }
 
-func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake.ArrowStreamLoader, bufferSize, prefetchConcurrency int, useHighPrecision bool) (array.RecordReader, error) {
+func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake.ArrowStreamLoader, bufferSize, prefetchConcurrency int, useHighPrecision bool, useMaxMicrosecondTimestampPrecision bool) (array.RecordReader, error) {
 	batches, err := ld.GetBatches()
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusInternal, err)
@@ -483,7 +515,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	if len(rawData) > 0 {
 		// construct an Arrow schema based on reading the JSON metadata description of the
 		// result type schema
-		schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision)
+		schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision, useMaxMicrosecondTimestampPrecision)
 		if err != nil {
 			return nil, adbc.Error{
 				Msg:  err.Error(),
@@ -498,7 +530,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		bldr := array.NewRecordBuilder(alloc, schema)
 		defer bldr.Release()
 
-		rec, err := jsonDataToArrow(ctx, bldr, rawData)
+		rec, err := jsonDataToArrow(ctx, bldr, rawData, useMaxMicrosecondTimestampPrecision)
 		if err != nil {
 			return nil, err
 		}
@@ -564,7 +596,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 
 			// now that we have our [][]*string of JSON data, we can pass it to get converted
 			// to an Arrow record batch and appended to our slice of batches
-			rec, err := jsonDataToArrow(ctx, bldr, rawData)
+			rec, err := jsonDataToArrow(ctx, bldr, rawData, useMaxMicrosecondTimestampPrecision)
 			if err != nil {
 				return nil, err
 			}
@@ -597,11 +629,11 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	}
 
 	if len(batches) == 0 {
-		schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision)
+		schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision, useMaxMicrosecondTimestampPrecision)
 		if err != nil {
 			return nil, err
 		}
-		rdr.schema, _ = getTransformer(schema, ld, useHighPrecision)
+		rdr.schema, _ = getTransformer(schema, ld, useHighPrecision, useMaxMicrosecondTimestampPrecision)
 		return rdr, nil
 	}
 
@@ -619,7 +651,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	}
 
 	var recTransform recordTransformer
-	rdr.schema, recTransform = getTransformer(rr.Schema(), ld, useHighPrecision)
+	rdr.schema, recTransform = getTransformer(rr.Schema(), ld, useHighPrecision, useMaxMicrosecondTimestampPrecision)
 
 	group.Go(func() (err error) {
 		defer rr.Release()

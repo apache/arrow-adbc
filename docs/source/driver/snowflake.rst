@@ -469,6 +469,10 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     non-zero scaled columns will be returned as ``Float64`` typed Arrow columns.
     The default is ``true``.
 
+``adbc.snowflake.sql.client_option.use_max_micoseconds_precision``
+	When ``true``, nanoseconds will be converted to microseconds
+	to avoid the overflow of the timestamp type.
+    The default is ``false``.
 
 Metadata
 --------

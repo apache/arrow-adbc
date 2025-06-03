@@ -37,6 +37,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
@@ -1699,9 +1700,53 @@ func (suite *SnowflakeTests) TestBooleanType() {
 
 func (suite *SnowflakeTests) TestTimestampPrecision() {
 
-	opts := suite.Quirks.DatabaseOptions()
-	opts[driver.OptionTimestampPrecision] = driver.OptionValueMicrosecondPrecision
+	// with max microseconds precision
+	rec := suite.getTimestamps(true, false)
 
+	v1, _ := arrow.TimestampFromTime(time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC), arrow.Microsecond)
+	v2, _ := arrow.TimestampFromTime(time.Date(2025, 6, 2, 10, 37, 56, 123456789, time.UTC), arrow.Microsecond)
+	v3, _ := arrow.TimestampFromTime(time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC), arrow.Microsecond)
+
+	// Expected values
+	expectedMicroseconds := []arrow.Timestamp{
+		v1,
+		v2,
+		v3,
+	}
+
+	suite.validateTimestamps(rec, expectedMicroseconds)
+
+	// with the default nanoseconds precision
+	rec = suite.getTimestamps(false, false)
+
+	expectedOverflowValues := []arrow.Timestamp{
+		//overflows to August 30, 1754 at 22:43:41.128654 UTC.
+		arrow.Timestamp(time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC).UnixNano()),
+		arrow.Timestamp(time.Date(2025, 6, 2, 10, 37, 56, 123456789, time.UTC).UnixNano()),
+		//overflows to March 30, 1816 at 05:56:08.066278 UTC.
+		arrow.Timestamp(time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC).UnixNano()),
+	}
+
+	suite.validateTimestamps(rec, expectedOverflowValues)
+
+	// just by setting the statement option
+	rec = suite.getTimestamps(false, true)
+	suite.validateTimestamps(rec, expectedMicroseconds)
+
+	// set the database option to microseconds but then disable the statement option
+	rec = suite.getTimestamps(true, false)
+	suite.validateTimestamps(rec, expectedOverflowValues)
+}
+
+func (suite *SnowflakeTests) getTimestamps(setDatabaseOption bool, setStatementOption bool) arrow.Record {
+	query := "select TO_TIMESTAMP('0001-01-01 00:00:00.000000000') as Jan01_0001, TO_TIMESTAMP('2025-06-02 10:37:56.123456789') as June02_2025, TO_TIMESTAMP('9999-12-31 23:59:59.999999999') As December31_9999"
+
+	// with max microseconds precision
+	opts := suite.Quirks.DatabaseOptions()
+	if setDatabaseOption {
+		opts[driver.OptionUseMaxMicrosecondsTimestampPrecision] = adbc.OptionValueEnabled
+	}
+	opts = suite.Quirks.DatabaseOptions()
 	db, err := suite.driver.NewDatabase(opts)
 	suite.NoError(err)
 	defer validation.CheckedClose(suite.T(), db)
@@ -1709,25 +1754,26 @@ func (suite *SnowflakeTests) TestTimestampPrecision() {
 	suite.NoError(err)
 	defer validation.CheckedClose(suite.T(), cnxn)
 	stmt, _ := cnxn.NewStatement()
-
-	suite.Require().NoError(stmt.SetSqlQuery("select TO_TIMESTAMP('9999-12-31 23:59:59.999999999') As December31_9999, TO_TIMESTAMP('0001-01-01 00:00:00.000000000') as Jan01_0001"))
-	//suite.Require().NoError(stmt.SetSqlQuery("select * from DEMO_DB.PUBLIC.DATES"))
-
+	if setDatabaseOption {
+		suite.NoError(stmt.SetOption(driver.OptionUseMaxMicrosecondsTimestampPrecision, adbc.OptionValueEnabled))
+	}
+	suite.Require().NoError(stmt.SetSqlQuery(query))
 	rdr, _, err := stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 	defer rdr.Release()
 
 	suite.True(rdr.Next())
 	rec := rdr.Record()
-	for _, f := range rec.Schema().Fields() {
-		st, ok := f.Metadata.GetValue("SNOWFLAKE_TYPE")
-		if !ok {
-			continue
-		}
-		if st == "timestamp_ltz" {
-			suite.Require().IsType(&arrow.TimestampType{}, f.Type)
-			suite.Equal("America/New_York", f.Type.(*arrow.TimestampType).TimeZone)
-		}
+
+	return rec
+}
+
+func (suite *SnowflakeTests) validateTimestamps(rec arrow.Record, expected []arrow.Timestamp) {
+	for i := 0; i < int(rec.NumCols()); i++ {
+		col := rec.Column(i).(*array.Timestamp)
+		suite.EqualValues(1, col.Len())
+		actual := col.Value(0)
+		suite.Equal(expected[i], actual, "Mismatch in column %d", i)
 	}
 }
 

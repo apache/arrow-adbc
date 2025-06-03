@@ -51,12 +51,12 @@ const (
 
 type statement struct {
 	driverbase.StatementImplBase
-	cnxn                *connectionImpl
-	alloc               memory.Allocator
-	queueSize           int
-	prefetchConcurrency int
-	useHighPrecision    bool
-	timestampPrecision  string
+	cnxn                                *connectionImpl
+	alloc                               memory.Allocator
+	queueSize                           int
+	prefetchConcurrency                 int
+	useHighPrecision                    bool
+	useMaxMicrosecondTimestampPrecision bool
 
 	query         string
 	targetTable   string
@@ -76,20 +76,6 @@ func (st *statement) Base() *driverbase.StatementImplBase {
 func (st *statement) setQueryContext(ctx context.Context) context.Context {
 	if st.queryTag != "" {
 		ctx = gosnowflake.WithQueryTag(ctx, st.queryTag)
-	}
-	return ctx
-}
-
-func (st *statement) setTimestampPrecisionContext(ctx context.Context) context.Context {
-	switch st.timestampPrecision {
-	case OptionValueMicrosecondPrecision:
-		ctx = gosnowflake.WithArrowBatchesTimestampOption(ctx, gosnowflake.UseMicrosecondTimestamp)
-	case OptionValueMillisecondPrecision:
-		ctx = gosnowflake.WithArrowBatchesTimestampOption(ctx, gosnowflake.UseMillisecondTimestamp)
-	case OptionValueSecondPrecision:
-		ctx = gosnowflake.WithArrowBatchesTimestampOption(ctx, gosnowflake.UseSecondTimestamp)
-	default:
-		ctx = gosnowflake.WithArrowBatchesTimestampOption(ctx, gosnowflake.UseNanosecondTimestamp)
 	}
 	return ctx
 }
@@ -233,6 +219,18 @@ func (st *statement) SetOption(key string, val string) error {
 			st.useHighPrecision = true
 		case adbc.OptionValueDisabled:
 			st.useHighPrecision = false
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Snowflake] invalid statement option %s=%s", key, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case OptionUseMaxMicrosecondsTimestampPrecision:
+		switch val {
+		case adbc.OptionValueEnabled:
+			st.useMaxMicrosecondTimestampPrecision = true
+		case adbc.OptionValueDisabled:
+			st.useMaxMicrosecondTimestampPrecision = false
 		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("[Snowflake] invalid statement option %s=%s", key, val),
@@ -492,7 +490,6 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 	var span trace.Span
 	ctx, span = st.StartSpan(ctx, "ExecuteQuery")
 	ctx = st.setQueryContext(ctx)
-	ctx = st.setTimestampPrecisionContext(ctx)
 
 	defer func() {
 		if !internal.SetErrorOnSpan(span, err) {
@@ -525,7 +522,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 				if err != nil {
 					return nil, errToAdbcErr(adbc.StatusInternal, err)
 				}
-				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.useMaxMicrosecondTimestampPrecision)
 			},
 			currentBatch: st.bound,
 			stream:       st.streamBind,
@@ -549,7 +546,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 		return
 	}
 
-	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.useMaxMicrosecondTimestampPrecision)
 	nRows = loader.TotalRows()
 	return
 }
@@ -636,7 +633,6 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 // ExecuteSchema gets the schema of the result set of a query without executing it.
 func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 	ctx = st.setQueryContext(ctx)
-	ctx = st.setTimestampPrecisionContext(ctx)
 
 	if st.targetTable != "" {
 		return nil, adbc.Error{
@@ -664,7 +660,7 @@ func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 		return nil, errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
+	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision, st.useMaxMicrosecondTimestampPrecision)
 }
 
 // Prepare turns this statement into a prepared statement to be executed

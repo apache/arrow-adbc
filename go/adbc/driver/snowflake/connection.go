@@ -73,9 +73,9 @@ type connectionImpl struct {
 	db   *databaseImpl
 	ctor driver.Connector
 
-	activeTransaction bool
-	useHighPrecision  bool
-	timstampPrecision string
+	activeTransaction                   bool
+	useHighPrecision                    bool
+	useMaxMicrosecondTimestampPrecision bool
 }
 
 func escapeSingleQuoteForLike(arg string) string {
@@ -484,9 +484,17 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 	case "DATETIME":
 		fallthrough
 	case "TIMESTAMP", "TIMESTAMP_NTZ":
-		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
+		if c.useMaxMicrosecondTimestampPrecision {
+			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond}
+		} else {
+			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
+		}
 	case "TIMESTAMP_LTZ":
-		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+		if c.useMaxMicrosecondTimestampPrecision {
+			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: loc.String()}
+		} else {
+			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+		}
 	case "TIMESTAMP_TZ":
 		field.Type = arrow.FixedWidthTypes.Timestamp_ns
 	case "GEOGRAPHY":
@@ -714,14 +722,14 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	defaultIngestOptions := DefaultIngestOptions()
 	stmtBase := driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper)
 	stmt := &statement{
-		StatementImplBase:   stmtBase,
-		alloc:               c.db.Alloc,
-		cnxn:                c,
-		queueSize:           defaultStatementQueueSize,
-		prefetchConcurrency: defaultPrefetchConcurrency,
-		useHighPrecision:    c.useHighPrecision,
-		timestampPrecision:  c.timstampPrecision,
-		ingestOptions:       defaultIngestOptions,
+		StatementImplBase:                   stmtBase,
+		alloc:                               c.db.Alloc,
+		cnxn:                                c,
+		queueSize:                           defaultStatementQueueSize,
+		prefetchConcurrency:                 defaultPrefetchConcurrency,
+		useHighPrecision:                    c.useHighPrecision,
+		useMaxMicrosecondTimestampPrecision: c.useMaxMicrosecondTimestampPrecision,
+		ingestOptions:                       defaultIngestOptions,
 	}
 	return driverbase.NewStatement(stmt), nil
 }

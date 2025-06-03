@@ -73,10 +73,9 @@ const (
 	// with a scale of 0 will be returned as Int64 columns, and a non-zero
 	// scale will return a Float64 column.
 	OptionUseHighPrecision = "adbc.snowflake.sql.client_option.use_high_precision"
-	// What the timestamp precision should be used for the Snowflake connection.
-	// Can be `ns` (nanoseconds), `us` (microseconds), `ms` (milliseconds), or `s` (seconds).
-	// If not specified, the default is `ns` (nanoseconds).
-	OptionTimestampPrecision = "adbc.snowflake.sql.client_option.timestamp_precision"
+	// When true, OptionUseMaxMicrosecondsTimestampPrecision will convert nanoseconds to microseconds
+	// to avoid the overflow of the timestamp type.
+	OptionUseMaxMicrosecondsTimestampPrecision = "adbc.snowflake.sql.client_option.use_max_micoseconds_precision"
 
 	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
 	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"
@@ -121,11 +120,6 @@ const (
 	OptionValueAuthJwt = "auth_jwt"
 	// use a username and password with mfa
 	OptionValueAuthUserPassMFA = "auth_mfa"
-
-	OptionValueMicrosecondPrecision = "us"
-	OptionValueMillisecondPrecision = "ms"
-	OptionValueNanosecondPrecision  = "ns"
-	OptionValueSecondPrecision      = "s"
 )
 
 var (

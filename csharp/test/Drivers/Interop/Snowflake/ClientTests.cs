@@ -23,6 +23,7 @@ using System.Data.SqlTypes;
 using System.IO;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Tests.Xunit;
+using Apache.Arrow.Types;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
@@ -243,6 +244,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
+        [SkippableFact, Order(6)]
+        public void VerifyTimePrecision()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            testConfiguration.UseMaxMicrosecondTimestampPrecision = true;
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+                sampleDataBuilder.Samples.Add(
+                   new SampleData()
+                   {
+                       Query = "SELECT " +
+                                   "TO_TIMESTAMP('9999-12-31 00:00:00') December31_9999, " +
+                                   "TO_TIMESTAMP('2001-09-11 13:46:00') As September11_2001, " +
+                                   "TO_TIMESTAMP('33-04-03 15:00:00') as April3_0033",
+                       ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                        {
+                            new ColumnNetTypeArrowTypeValue("DECEMBER31_9999", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(9999, 12, 31, 0, 0, 0), TimeSpan.Zero)),
+                            new ColumnNetTypeArrowTypeValue("SEPTEMBER11_2001", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2001, 9, 11, 13, 46, 0), TimeSpan.Zero)),
+                            new ColumnNetTypeArrowTypeValue("APRIL3_0033", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(0033, 4, 3, 15, 0, 0), TimeSpan.Zero)),
+                        }
+                   });
+
+                Tests.ClientTests.VerifyTypesAndValues(adbcConnection, sampleDataBuilder);
+            }
+        }
+
         [SkippableFact]
         public void VerifySchemaTables()
         {
@@ -297,6 +326,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             builder[SnowflakeParameters.HOST] = testConfiguration.Host;
             builder[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
+            builder[SnowflakeParameters.USE_MAX_MICROSECONDS_PRECISION] = testConfiguration.UseMaxMicrosecondTimestampPrecision.ToString().ToLower();
+
             if (authType == SnowflakeAuthentication.AuthJwt)
             {
                 string privateKey = testConfiguration.Authentication.SnowflakeJwt!.PrivateKey;

@@ -41,6 +41,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public const string PKCS8_VALUE = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_value";
         public const string PKCS8_PASS = "adbc.snowflake.sql.client_option.jwt_private_key_pkcs8_password";
         public const string USE_HIGH_PRECISION = "adbc.snowflake.sql.client_option.use_high_precision";
+        public const string USE_MAX_MICROSECONDS_PRECISION = "adbc.snowflake.sql.client_option.use_max_micoseconds_precision";
     }
 
     internal class SnowflakeTestingUtils

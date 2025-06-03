@@ -52,9 +52,9 @@ type databaseImpl struct {
 	driverbase.DatabaseImplBase
 	cfg *gosnowflake.Config
 
-	useHighPrecision   bool
-	timestampPrecision string
-	defaultAppName     string
+	useHighPrecision                    bool
+	useMaxMicrosecondTimestampPrecision bool
+	defaultAppName                      string
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -133,8 +133,11 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil
-	case OptionTimestampPrecision:
-		return d.timestampPrecision, nil
+	case OptionUseMaxMicrosecondsTimestampPrecision:
+		if d.useMaxMicrosecondTimestampPrecision {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
 	default:
 		val, ok := d.cfg.Params[key]
 		if ok {
@@ -458,13 +461,15 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-	case OptionTimestampPrecision:
+	case OptionUseMaxMicrosecondsTimestampPrecision:
 		switch v {
-		case OptionValueMicrosecondPrecision, OptionValueNanosecondPrecision, OptionValueMillisecondPrecision, OptionValueSecondPrecision:
-			d.timestampPrecision = v
+		case adbc.OptionValueEnabled:
+			d.useMaxMicrosecondTimestampPrecision = true
+		case adbc.OptionValueDisabled:
+			d.useMaxMicrosecondTimestampPrecision = false
 		default:
 			return adbc.Error{
-				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionTimestampPrecision, v),
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionUseMaxMicrosecondsTimestampPrecision, v),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -491,9 +496,9 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		// default enable high precision
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead
-		useHighPrecision:   d.useHighPrecision,
-		timstampPrecision:  d.timestampPrecision,
-		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		useHighPrecision:                    d.useHighPrecision,
+		useMaxMicrosecondTimestampPrecision: d.useMaxMicrosecondTimestampPrecision,
+		ConnectionImplBase:                  driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
 
 	return driverbase.NewConnectionBuilder(conn).
