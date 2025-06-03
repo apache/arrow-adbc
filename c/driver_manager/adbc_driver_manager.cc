@@ -16,8 +16,8 @@
 // under the License.
 
 #if defined(_WIN32)
-#pragma comment(lib,"advapi32.lib")  // for registry stuff
-#include <windows.h>  // Must come first
+#pragma comment(lib, "advapi32.lib")  // for registry stuff
+#include <windows.h>                  // Must come first
 
 #include <libloaderapi.h>
 #include <string.h>  // strncasecmp
