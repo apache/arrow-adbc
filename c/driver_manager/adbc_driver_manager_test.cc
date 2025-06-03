@@ -18,6 +18,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,6 +29,7 @@
 #include "validation/adbc_validation_util.h"
 
 std::string AdbcDriverManagerDefaultEntrypoint(const std::string& filename);
+std::vector<std::filesystem::path> AdbcParsePath(const std::string_view& path);
 
 // Tests of the SQLite example driver, except using the driver manager
 
@@ -335,4 +337,31 @@ TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
     EXPECT_EQ("AdbcProprietaryEngineInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
   }
 }
+
+TEST(AdbcDriverManagerInternal, AdbcParsePath) {
+  // Test parsing a path of directories
+#ifdef __WIN32
+  static const char* const delimiter = ";";
+#else
+  static const char* const delimiter = ":";
+#endif
+
+  std::vector<std::string> paths = {
+      "/usr/lib/adbc/drivers", "/usr/local/lib/adbc/drivers",
+      "/opt/adbc/drivers",     "/home/user/.config/adbc/drivers",
+      "/home/\":foo:\"/bar",
+  };
+
+  std::ostringstream joined;
+  std::copy(paths.begin(), paths.end(),
+            std::ostream_iterator<std::string>(joined, delimiter));
+
+  auto output = AdbcParsePath(joined.str());
+  EXPECT_EQ(output.size(), paths.size());
+
+  for (size_t i = 0; i < paths.size(); ++i) {
+    EXPECT_EQ(output[i].string(), paths[i]);
+  }
+}
+
 }  // namespace adbc
