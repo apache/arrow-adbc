@@ -36,23 +36,6 @@ namespace Apache.Arrow.Adbc.Tests
 
             Assert.Equal(theFuture, tsFutureArray.ValueAt(0));
             Assert.Equal(theFuture, tsFutureArray.Data.DataType.GetValueConverter().Invoke(tsFutureArray, 0));
-
-//            int totalMs = Convert.ToInt32(t.TotalMilliseconds);
-//            Time32Array.Builder msbuilder = new Time32Array.Builder(Types.TimeUnit.Millisecond);
-//            msbuilder.Append(totalMs);
-//            Time32Array t32ms = msbuilder.Build();
-
-//            Assert.Equal(totalMs, t32ms.GetValue(0));
-//            Assert.Equal(totalMs, t32ms.GetMilliSeconds(0));
-
-//#if NET6_0_OR_GREATER
-//            TimeOnly timeOnlyMs = new TimeOnly(t.Ticks);
-//            Assert.Equal(timeOnlyMs, t32ms.ValueAt(0));
-//            Assert.Equal(timeOnlyMs, t32ms.Data.DataType.GetValueConverter().Invoke(t32ms, 0));
-//#else
-//            Assert.Equal(t, t32ms.ValueAt(0));
-//            Assert.Equal(t, t32ms.Data.DataType.GetValueConverter().Invoke(t32ms, 0));
-//#endif
         }
 
         [Fact]
