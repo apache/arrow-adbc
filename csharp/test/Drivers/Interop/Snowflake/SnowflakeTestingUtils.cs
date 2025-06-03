@@ -207,7 +207,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         internal static void AssertContainsAll(string[]? expectedTexts, string value)
         {
             if (expectedTexts == null) { return; }
-            ;
+
             foreach (string text in expectedTexts)
             {
                 Assert.Contains(text, value);

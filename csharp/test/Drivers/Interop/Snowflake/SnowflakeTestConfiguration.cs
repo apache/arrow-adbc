@@ -84,7 +84,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         [JsonPropertyName("useMaxMicrosecondTimestampPrecision")]
         public bool UseMaxMicrosecondTimestampPrecision { get; set; } = false;
 
-
         /// <summary>
         /// The snowflake Authentication
         /// </summary>
