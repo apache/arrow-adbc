@@ -20,7 +20,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
     /// Special marker class that indicates the end of results in the download queue.
@@ -55,10 +55,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch
         public bool IsCompleted => true;
 
         /// <inheritdoc />
+        public int RefreshAttempts => 0;
+
+        /// <inheritdoc />
         public void SetCompleted(Stream dataStream, long size) => throw new NotSupportedException("EndOfResultsGuard cannot be completed.");
 
         /// <inheritdoc />
         public void SetFailed(Exception exception) => throw new NotSupportedException("EndOfResultsGuard cannot fail.");
+
+        /// <inheritdoc />
+        public void UpdateWithRefreshedLink(TSparkArrowResultLink refreshedLink) => throw new NotSupportedException("EndOfResultsGuard cannot be updated with a refreshed link.");
+
+        /// <inheritdoc />
+        public bool IsExpiredOrExpiringSoon(int expirationBufferSeconds = 60) => false;
 
         /// <inheritdoc />
         public void Dispose()

@@ -436,7 +436,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         // NOTE: this is a thirty minute test. As of writing, databricks commands have 20 minutes of idle time (and checked every 5 mintues)
         [SkippableTheory]
-        [InlineData(false, "CloudFetch disabled")] // TODO: test cloudfetch enabled
+        [InlineData(false, "CloudFetch disabled")]
+        [InlineData(true, "CloudFetch enabled")]
         public async Task StatusPollerKeepsQueryAlive(bool useCloudFetch, string configName)
         {
             OutputHelper?.WriteLine($"Testing status poller with long delay between reads ({configName})");
@@ -450,7 +451,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             using var statement = connection.CreateStatement();
 
             // Execute a query that should return data - using a larger dataset to ensure multiple batches
-            statement.SqlQuery = "SELECT id, CAST(id AS STRING) as id_string, id * 2 as id_doubled FROM RANGE(3000000)";
+            statement.SqlQuery = "SELECT id, CAST(id AS STRING) as id_string, id * 2 as id_doubled FROM RANGE(30000000)";
             QueryResult result = statement.ExecuteQuery();
 
             Assert.NotNull(result.Stream);
@@ -475,7 +476,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             }
 
             // Verify we got all rows
-            Assert.Equal(3000000, totalRows);
+            Assert.Equal(30000000, totalRows);
             Assert.True(batchCount > 1, "Should have read multiple batches");
             OutputHelper?.WriteLine($"Successfully read {totalRows} rows in {batchCount} batches after 30 minute delay with {configName}");
         }
@@ -651,6 +652,104 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.True(expectedName.Equals(field.Name), $"Field {index} name mismatch");
             Assert.True(expectedType.Equals(field.DataType), $"Field {index} type mismatch");
             Assert.True(expectedNullable == field.IsNullable, $"Field {index} nullability mismatch");
+        }
+
+        [Theory]
+        [InlineData(false, "main", true)]
+        [InlineData(true, null, true)]
+        [InlineData(true, "", true)]
+        [InlineData(true, "SPARK", true)]
+        [InlineData(true, "hive_metastore", true)]
+        [InlineData(true, "main", false)]
+        public void ShouldReturnEmptyPkFkResult_WorksAsExpected(bool enablePKFK, string? catalogName, bool expected)
+        {
+            // Arrange: create test configuration and connection
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            var connectionParams = new Dictionary<string, string>
+            {
+                [DatabricksParameters.EnablePKFK] = enablePKFK.ToString().ToLowerInvariant()
+            };
+            using var connection = NewConnection(testConfig, connectionParams);
+            var statement = connection.CreateStatement();
+
+            // Set CatalogName using SetOption
+            if(catalogName != null)
+            {
+                statement.SetOption(ApacheParameters.CatalogName, catalogName);
+            }
+
+            // Act
+            var result = ((DatabricksStatement)statement).ShouldReturnEmptyPkFkResult();
+
+            // Assert
+            Assert.Equal(expected, result);
+        }
+
+        [SkippableFact]
+        public async Task PKFK_EmptyResult_SchemaMatches_RealMetadataResponse()
+        {
+            // Arrange: create test configuration and connection
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            var connectionParams = new Dictionary<string, string>
+            {
+                [DatabricksParameters.EnablePKFK] = "true"
+            };
+            using var connection = NewConnection(testConfig, connectionParams);
+            var statement = connection.CreateStatement();
+
+            // Get real PK metadata schema
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SetOption(ApacheParameters.CatalogName, "powerbi");
+            statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
+            statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+            statement.SqlQuery = "GetPrimaryKeys";
+            var realPkResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(realPkResult.Stream);
+            var realPkSchema = realPkResult.Stream.Schema;
+
+            // Get empty PK result schema (using SPARK catalog which should return empty)
+            statement.SetOption(ApacheParameters.CatalogName, "SPARK");
+            var emptyPkResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(emptyPkResult.Stream);
+            var emptyPkSchema = emptyPkResult.Stream.Schema;
+
+            // Verify PK schemas match
+            Assert.Equal(realPkSchema.FieldsList.Count, emptyPkSchema.FieldsList.Count);
+            for (int i = 0; i < realPkSchema.FieldsList.Count; i++)
+            {
+                var realField = realPkSchema.FieldsList[i];
+                var emptyField = emptyPkSchema.FieldsList[i];
+                AssertField(emptyField, realField.Name, realField.DataType, realField.IsNullable);
+            }
+
+            // Get real FK metadata schema
+            statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
+            statement.SqlQuery = "GetCrossReference";
+            var realFkResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(realFkResult.Stream);
+            var realFkSchema = realFkResult.Stream.Schema;
+
+            // Get empty FK result schema
+            statement.SetOption(ApacheParameters.CatalogName, "SPARK");
+            var emptyFkResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(emptyFkResult.Stream);
+            var emptyFkSchema = emptyFkResult.Stream.Schema;
+
+            // Verify FK schemas match
+            Assert.Equal(realFkSchema.FieldsList.Count, emptyFkSchema.FieldsList.Count);
+            for (int i = 0; i < realFkSchema.FieldsList.Count; i++)
+            {
+                var realField = realFkSchema.FieldsList[i];
+                var emptyField = emptyFkSchema.FieldsList[i];
+                AssertField(emptyField, realField.Name, realField.DataType, realField.IsNullable);
+            }
+        }
+
+        private void AssertField(Field field, string expectedName, IArrowType expectedType, bool expectedNullable)
+        {
+            Assert.True(expectedName.Equals(field.Name), $"Field name mismatch: expected {expectedName}, got {field.Name}");
+            Assert.True(expectedType.Equals(field.DataType), $"Field type mismatch: expected {expectedType}, got {field.DataType}");
+            Assert.True(expectedNullable == field.IsNullable, $"Field nullability mismatch: expected {expectedNullable}, got {field.IsNullable}");
         }
     }
 }

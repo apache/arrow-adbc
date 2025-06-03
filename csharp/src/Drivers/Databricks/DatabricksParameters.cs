@@ -63,6 +63,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const string CloudFetchTimeoutMinutes = "adbc.databricks.cloudfetch.timeout_minutes";
 
         /// <summary>
+        /// Buffer time in seconds before URL expiration to trigger refresh.
+        /// Default value is 60 seconds if not specified.
+        /// </summary>
+        public const string CloudFetchUrlExpirationBufferSeconds = "adbc.databricks.cloudfetch.url_expiration_buffer_seconds";
+
+        /// <summary>
+        /// Maximum number of URL refresh attempts for CloudFetch downloads.
+        /// Default value is 3 if not specified.
+        /// </summary>
+        public const string CloudFetchMaxUrlRefreshAttempts = "adbc.databricks.cloudfetch.max_url_refresh_attempts";
+
+        /// <summary>
         /// Whether to enable the use of direct results when executing queries.
         /// Default value is true if not specified.
         /// </summary>
@@ -155,6 +167,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string EnableMultipleCatalogSupport = "adbc.databricks.enable_multiple_catalog_support";
+
+        /// <summary>
+        /// Whether to enable primary key foreign key metadata call.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string EnablePKFK = "adbc.databricks.enable_pk_fk";
     }
 
     /// <summary>
