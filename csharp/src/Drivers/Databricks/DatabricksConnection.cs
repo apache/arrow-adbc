@@ -370,7 +370,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return req;
         }
 
-
         protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session)
         {
             await base.HandleOpenSessionResponse(session);
@@ -392,9 +391,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         // Since Databricks Namespace was introduced in newer versions, we fallback to USE SCHEMA to set default schema
         // in case the server version is too low.
-        private async Task SetSchema(string schemaName) {
+        private async Task SetSchema(string schemaName)
+        {
             using var statement = new DatabricksStatement(this);
-            statement.SqlQuery = $"USE {schemaName}";
+            statement.SqlQuery = $"USE `{schemaName}`";
             await statement.ExecuteUpdateAsync();
         }
 
