@@ -340,7 +340,7 @@ struct ManagedLibrary {
       // if the extension is .toml, attempt to load the manifest
       // erroring if we fail
 #ifdef _WIN32
-      if (strncasecmp(driver_path.extension().c_str(), ".toml", 5) == 0) {
+      if (strncasecmp(driver_path.extension().string().c_str(), ".toml", 5) == 0) {
 #else
       if (driver_path.extension() == ".toml") {
 #endif
@@ -353,7 +353,7 @@ struct ManagedLibrary {
 
       // if the extension is not .toml, then just try to load the provided
       // path as if it was an absolute path to a driver library
-      return Load(driver_path.c_str(), error);
+      return Load(driver_path.string().c_str(), error);
     }
 
     if (driver_path.is_absolute()) {
@@ -380,7 +380,7 @@ struct ManagedLibrary {
 
 #if defined(_WIN32)
       static const std::string kPlatformLibrarySuffix = ".dll";
-      if (strncasecmp(driver_path.extension().c_str(), kPlatformLibrarySuffix.c_str(),
+      if (strncasecmp(driver_path.extension().string().c_str(), kPlatformLibrarySuffix.c_str(),
                       kPlatformLibrarySuffix.size()) == 0) {
 #else
 #if defined(__APPLE__)
