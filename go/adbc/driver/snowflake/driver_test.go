@@ -1700,26 +1700,22 @@ func (suite *SnowflakeTests) TestBooleanType() {
 
 func (suite *SnowflakeTests) TestTimestampPrecision() {
 
-	// with max microseconds precision
-	rec := suite.getTimestamps(true, false)
+	query_ntz := "select TO_TIMESTAMP_NTZ('0001-01-01 00:00:00.000000000') as Jan01_0001, TO_TIMESTAMP_NTZ('2025-06-02 10:37:56.123456789') as June02_2025, TO_TIMESTAMP_NTZ('9999-12-31 23:59:59.999999999') As December31_9999"
+	query_ltz := "select TO_TIMESTAMP_LTZ('0001-01-01 00:00:00.000000000') as Jan01_0001, TO_TIMESTAMP_LTZ('2025-06-02 10:37:56.123456789') as June02_2025, TO_TIMESTAMP_LTZ('9999-12-31 23:59:59.999999999') As December31_9999"
+	query_tz := "select TO_TIMESTAMP_TZ('0001-01-01 00:00:00.000000000') as Jan01_0001, TO_TIMESTAMP_TZ('2025-06-02 10:37:56.123456789') as June02_2025, TO_TIMESTAMP_TZ('9999-12-31 23:59:59.999999999') As December31_9999"
 
 	v1, _ := arrow.TimestampFromTime(time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC), arrow.Microsecond)
 	v2, _ := arrow.TimestampFromTime(time.Date(2025, 6, 2, 10, 37, 56, 123456789, time.UTC), arrow.Microsecond)
 	v3, _ := arrow.TimestampFromTime(time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC), arrow.Microsecond)
 
 	// Expected values
-	expectedMicroseconds := []arrow.Timestamp{
+	expectedMicrosecondsResults := []arrow.Timestamp{
 		v1,
 		v2,
 		v3,
 	}
 
-	suite.validateTimestamps(rec, expectedMicroseconds)
-
-	// with the default nanoseconds precision
-	rec = suite.getTimestamps(false, false)
-
-	expectedOverflowValues := []arrow.Timestamp{
+	expectedNanosecondResults := []arrow.Timestamp{
 		//overflows to August 30, 1754 at 22:43:41.128654 UTC.
 		arrow.Timestamp(time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC).UnixNano()),
 		arrow.Timestamp(time.Date(2025, 6, 2, 10, 37, 56, 123456789, time.UTC).UnixNano()),
@@ -1727,19 +1723,31 @@ func (suite *SnowflakeTests) TestTimestampPrecision() {
 		arrow.Timestamp(time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC).UnixNano()),
 	}
 
-	suite.validateTimestamps(rec, expectedOverflowValues)
-
-	// just by setting the statement option
-	rec = suite.getTimestamps(false, true)
-	suite.validateTimestamps(rec, expectedMicroseconds)
-
-	// set the database option to microseconds but then disable the statement option
-	rec = suite.getTimestamps(true, false)
-	suite.validateTimestamps(rec, expectedOverflowValues)
+	suite.queryTimestamps(query_ntz, expectedMicrosecondsResults, expectedNanosecondResults)
+	suite.queryTimestamps(query_ltz, expectedMicrosecondsResults, expectedNanosecondResults)
+	suite.queryTimestamps(query_tz, expectedMicrosecondsResults, expectedNanosecondResults)
 }
 
-func (suite *SnowflakeTests) getTimestamps(setDatabaseOption bool, setStatementOption bool) arrow.Record {
-	query := "select TO_TIMESTAMP('0001-01-01 00:00:00.000000000') as Jan01_0001, TO_TIMESTAMP('2025-06-02 10:37:56.123456789') as June02_2025, TO_TIMESTAMP('9999-12-31 23:59:59.999999999') As December31_9999"
+func (suite *SnowflakeTests) queryTimestamps(query string, expectedMicrosecondResults []arrow.Timestamp, expectedNanosecondResults []arrow.Timestamp) {
+
+	// with max microseconds precision
+	rec := suite.getTimestamps(query, true, false)
+	suite.validateTimestamps(query, rec, expectedMicrosecondResults)
+
+	// with the default nanoseconds precision
+	rec = suite.getTimestamps(query, false, false)
+	suite.validateTimestamps(query, rec, expectedNanosecondResults)
+
+	// just by setting the statement option
+	rec = suite.getTimestamps(query, false, true)
+	suite.validateTimestamps(query, rec, expectedMicrosecondResults)
+
+	// set the database option to microseconds but then disable the statement option
+	rec = suite.getTimestamps(query, true, false)
+	suite.validateTimestamps(query, rec, expectedNanosecondResults)
+}
+
+func (suite *SnowflakeTests) getTimestamps(query string, setDatabaseOption bool, setStatementOption bool) arrow.Record {
 
 	// with max microseconds precision
 	opts := suite.Quirks.DatabaseOptions()
@@ -1768,12 +1776,12 @@ func (suite *SnowflakeTests) getTimestamps(setDatabaseOption bool, setStatementO
 	return rec
 }
 
-func (suite *SnowflakeTests) validateTimestamps(rec arrow.Record, expected []arrow.Timestamp) {
+func (suite *SnowflakeTests) validateTimestamps(query string, rec arrow.Record, expected []arrow.Timestamp) {
 	for i := 0; i < int(rec.NumCols()); i++ {
 		col := rec.Column(i).(*array.Timestamp)
 		suite.EqualValues(1, col.Len())
 		actual := col.Value(0)
-		suite.Equal(expected[i], actual, "Mismatch in column %d", i)
+		suite.Equal(expected[i], actual, "Mismatch in column %d for the query %d", i, query)
 	}
 }
 
