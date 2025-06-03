@@ -22,7 +22,6 @@ enable_language(C CXX)
 
 set(BUILD_SUPPORT_DIR "${REPOSITORY_ROOT}/ci/build_support")
 
-include(AdbcVersion)
 include(CheckLinkerFlag)
 include(DefineOptions)
 include(GNUInstallDirs) # Populates CMAKE_INSTALL_INCLUDEDIR
