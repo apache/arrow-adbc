@@ -19,8 +19,13 @@
 #include <windows.h>  // Must come first
 
 #include <libloaderapi.h>
-#include <strings.h> // strncasecmp
+#include <strings.h>  // strncasecmp
 #include <strsafe.h>
+
+#ifdef _MSC_VER
+#define strncasecmp _strnicmp
+#endif  // _MSC_VER
+
 #else
 #include <dlfcn.h>
 #endif  // defined(_WIN32)
