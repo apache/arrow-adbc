@@ -19,8 +19,8 @@
 #include <windows.h>  // Must come first
 
 #include <libloaderapi.h>
-#include <strsafe.h>
 #include <strings.h> // strncasecmp
+#include <strsafe.h>
 #else
 #include <dlfcn.h>
 #endif  // defined(_WIN32)
