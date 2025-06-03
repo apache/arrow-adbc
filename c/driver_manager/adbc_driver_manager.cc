@@ -19,7 +19,7 @@
 #include <windows.h>  // Must come first
 
 #include <libloaderapi.h>
-#include <strings.h>  // strncasecmp
+#include <string.h>  // strncasecmp
 #include <strsafe.h>
 
 #ifdef _MSC_VER
@@ -380,7 +380,8 @@ struct ManagedLibrary {
 
 #if defined(_WIN32)
       static const std::string kPlatformLibrarySuffix = ".dll";
-      if (strncasecmp(driver_path.extension().string().c_str(), kPlatformLibrarySuffix.c_str(),
+      if (strncasecmp(driver_path.extension().string().c_str(),
+                      kPlatformLibrarySuffix.c_str(),
                       kPlatformLibrarySuffix.size()) == 0) {
 #else
 #if defined(__APPLE__)
