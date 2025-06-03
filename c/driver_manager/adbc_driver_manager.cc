@@ -20,6 +20,7 @@
 
 #include <libloaderapi.h>
 #include <strsafe.h>
+#include <strings.h> // strncasecmp
 #else
 #include <dlfcn.h>
 #endif  // defined(_WIN32)
@@ -384,7 +385,7 @@ struct ManagedLibrary {
 #endif
       if (driver_path.extension() == kPlatformLibrarySuffix) {
 #endif
-        return Load(driver_path.c_str(), error);
+        return Load(driver_path.native().c_str(), error);
       }
 
       SetError(error, "Driver name has unrecognized extension: " +
@@ -413,7 +414,7 @@ struct ManagedLibrary {
       }
 
       full_path.replace_extension("");  // remove the .toml extension
-      auto status = Load(full_path.c_str(), nullptr);
+      auto status = Load(full_path.native().c_str(), nullptr);
       if (status == ADBC_STATUS_OK) {
         return status;
       }
