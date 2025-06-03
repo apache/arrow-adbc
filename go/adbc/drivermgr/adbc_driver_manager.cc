@@ -19,7 +19,13 @@
 #include <windows.h>  // Must come first
 
 #include <libloaderapi.h>
+#include <string.h>  // strncasecmp
 #include <strsafe.h>
+
+#ifdef _MSC_VER
+#define strncasecmp _strnicmp
+#endif  // _MSC_VER
+
 #else
 #include <dlfcn.h>
 #endif  // defined(_WIN32)
@@ -334,7 +340,7 @@ struct ManagedLibrary {
       // if the extension is .toml, attempt to load the manifest
       // erroring if we fail
 #ifdef _WIN32
-      if (strncasecmp(driver_path.extension().c_str(), ".toml", 5) == 0) {
+      if (strncasecmp(driver_path.extension().string().c_str(), ".toml", 5) == 0) {
 #else
       if (driver_path.extension() == ".toml") {
 #endif
@@ -347,7 +353,7 @@ struct ManagedLibrary {
 
       // if the extension is not .toml, then just try to load the provided
       // path as if it was an absolute path to a driver library
-      return Load(driver_path.c_str(), error);
+      return Load(driver_path.string().c_str(), error);
     }
 
     if (driver_path.is_absolute()) {
@@ -374,7 +380,8 @@ struct ManagedLibrary {
 
 #if defined(_WIN32)
       static const std::string kPlatformLibrarySuffix = ".dll";
-      if (strncasecmp(driver_path.extension().c_str(), kPlatformLibrarySuffix.c_str(),
+      if (strncasecmp(driver_path.extension().string().c_str(),
+                      kPlatformLibrarySuffix.c_str(),
                       kPlatformLibrarySuffix.size()) == 0) {
 #else
 #if defined(__APPLE__)
@@ -384,7 +391,7 @@ struct ManagedLibrary {
 #endif
       if (driver_path.extension() == kPlatformLibrarySuffix) {
 #endif
-        return Load(driver_path.c_str(), error);
+        return Load(driver_path.string().c_str(), error);
       }
 
       SetError(error, "Driver name has unrecognized extension: " +
@@ -413,7 +420,7 @@ struct ManagedLibrary {
       }
 
       full_path.replace_extension("");  // remove the .toml extension
-      auto status = Load(full_path.c_str(), nullptr);
+      auto status = Load(full_path.string().c_str(), nullptr);
       if (status == ADBC_STATUS_OK) {
         return status;
       }
