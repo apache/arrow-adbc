@@ -75,7 +75,7 @@ const (
 	OptionUseHighPrecision = "adbc.snowflake.sql.client_option.use_high_precision"
 	// When true, OptionUseMaxMicrosecondsTimestampPrecision will convert nanoseconds to microseconds
 	// to avoid the overflow of the timestamp type.
-	OptionUseMaxMicrosecondsTimestampPrecision = "adbc.snowflake.sql.client_option.use_max_micoseconds_precision"
+	OptionUseMaxMicrosecondsTimestampPrecision = "adbc.snowflake.sql.client_option.use_max_microseconds_precision"
 
 	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
 	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"

@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
-using System.IO;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Types;
