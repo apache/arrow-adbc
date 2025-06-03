@@ -386,9 +386,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     // server version is too old. Explicitly set the schema using queries
                     await SetSchema(_defaultNamespace.SchemaName);
                 }
+                // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
             }
         }
 
+        // Since Databricks Namespace was introduced in newer versions, we fallback to USE SCHEMA to set default schema
+        // in case the server version is too low.
         private async Task SetSchema(string schemaName) {
             using var statement = new DatabricksStatement(this);
             statement.SqlQuery = $"USE {schemaName}";
