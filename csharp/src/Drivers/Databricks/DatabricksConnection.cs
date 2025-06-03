@@ -394,7 +394,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private async Task SetSchema(string schemaName)
         {
             using var statement = new DatabricksStatement(this);
-            statement.SqlQuery = $"USE `{schemaName}`";
+            statement.SqlQuery = $"USE {schemaName}";
             await statement.ExecuteUpdateAsync();
         }
 
