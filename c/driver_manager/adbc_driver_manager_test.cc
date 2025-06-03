@@ -18,7 +18,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <filesystem>
+#include <algorithm>
+#include <filesystem>  // NOLINT [build/c++17]
 #include <memory>
 #include <string>
 #include <vector>

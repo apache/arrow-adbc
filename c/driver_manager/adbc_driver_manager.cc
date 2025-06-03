@@ -33,13 +33,13 @@
 #include <cctype>
 #include <cerrno>
 #include <cstring>
-#include <filesystem>
+#include <filesystem>  // NOLINT [build/c++17]
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-using namespace std::string_literals;
+using namespace std::string_literals;  // NOLINT [build/namespaces]
 
 ADBC_EXPORT
 std::vector<std::filesystem::path> AdbcParsePath(const std::string_view& path);
