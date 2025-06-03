@@ -168,17 +168,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             Properties.TryGetValue(AdbcOptions.Connection.CurrentCatalog, out defaultCatalog);
             Properties.TryGetValue(AdbcOptions.Connection.CurrentDbSchema, out defaultSchema);
 
-            if (!string.IsNullOrWhiteSpace(defaultCatalog))
+            if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
             {
                 _defaultNamespace = new TNamespace
                 {
                     CatalogName = defaultCatalog,
                     SchemaName = defaultSchema
                 };
-            }
-            else if (!string.IsNullOrEmpty(defaultSchema))
-            {
-                throw new ArgumentException($"Parameter '{AdbcOptions.Connection.CurrentCatalog}' is not set but '{AdbcOptions.Connection.CurrentDbSchema}' is set. Please provide a value for '{AdbcOptions.Connection.CurrentCatalog}'.");
             }
         }
 
@@ -372,6 +368,34 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
             return req;
+        }
+
+        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session)
+        {
+            await base.HandleOpenSessionResponse(session);
+            if (session != null)
+            {
+                _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
+                if (session.__isset.initialNamespace)
+                {
+                    _defaultNamespace = session.InitialNamespace;
+                }
+                else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName))
+                {
+                    // server version is too old. Explicitly set the schema using queries
+                    await SetSchema(_defaultNamespace.SchemaName);
+                }
+                // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
+            }
+        }
+
+        // Since Databricks Namespace was introduced in newer versions, we fallback to USE SCHEMA to set default schema
+        // in case the server version is too low.
+        private async Task SetSchema(string schemaName)
+        {
+            using var statement = new DatabricksStatement(this);
+            statement.SqlQuery = $"USE {schemaName}";
+            await statement.ExecuteUpdateAsync();
         }
 
         /// <summary>

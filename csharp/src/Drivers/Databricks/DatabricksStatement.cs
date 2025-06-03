@@ -41,6 +41,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
         {
+            // set the catalog name for legacy compatibility
+            // TODO: use catalog and schema fields in hiveserver2 connection instad of DefaultNamespace so we don't need to cast
+            var defaultNamespace = ((DatabricksConnection)Connection).DefaultNamespace;
+            if (defaultNamespace != null)
+            {
+                if (CatalogName == null)
+                {
+                    CatalogName = defaultNamespace.CatalogName;
+                }
+                if (SchemaName == null)
+                {
+                    SchemaName = defaultNamespace.SchemaName;
+                }
+            }
             // Inherit CloudFetch settings from connection
             useCloudFetch = connection.UseCloudFetch;
             canDecompressLz4 = connection.CanDecompressLz4;
