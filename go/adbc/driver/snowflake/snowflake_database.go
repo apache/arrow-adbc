@@ -209,6 +209,10 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 	case OptionRegion:
 		d.cfg.Region = v
 	case OptionAccount:
+		// Snowflake accepts both '_' and '-' in account identifiers, but only '-' works in hostnames.
+		// This inconsistency is Snowflake's choice, even though it conflicts with TLS/SSL grammar:
+		// https://docs.snowflake.com/en/user-guide/admin-account-identifier
+		// https://datatracker.ietf.org/doc/html/rfc1035#section-2.3.1
 		d.cfg.Account = strings.ReplaceAll(v, "_", "-")
 	case OptionProtocol:
 		d.cfg.Protocol = v
