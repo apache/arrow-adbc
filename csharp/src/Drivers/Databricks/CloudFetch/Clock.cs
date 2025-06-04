@@ -15,34 +15,26 @@
  * limitations under the License.
  */
 
-using Apache.Hive.Service.Rpc.Thrift;
+using System;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
     /// <summary>
-    /// Interface for accessing HiveServer2Statement properties needed by CloudFetchResultFetcher.
+    /// Abstraction for time operations to enable testing with controlled time.
     /// </summary>
-    internal interface IHiveServer2Statement
+    internal interface IClock
     {
         /// <summary>
-        /// Gets the operation handle.
+        /// Gets the current UTC time.
         /// </summary>
-        TOperationHandle? OperationHandle { get; }
+        DateTime UtcNow { get; }
+    }
 
-        /// <summary>
-        /// Gets the client.
-        /// </summary>
-        TCLIService.IAsync Client { get; }
-
-        /// <summary>
-        /// Gets the direct results.
-        /// </summary>
-        TSparkDirectResults? DirectResults { get; }
-
-        /// <summary>
-        /// Checks if direct results are available.
-        /// </summary>
-        /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        bool HasDirectResults { get; }
+    /// <summary>
+    /// Default implementation that uses system time.
+    /// </summary>
+    internal class SystemClock : IClock
+    {
+        public DateTime UtcNow => DateTime.UtcNow;
     }
 }

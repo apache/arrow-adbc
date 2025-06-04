@@ -318,15 +318,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     TOpenSessionReq request = CreateSessionRequest();
 
                     TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
-
-                    // Explicitly check the session status
-                    if (session == null)
-                    {
-                        throw new HiveServer2Exception("Unable to open session. Unknown error.");
-                    }
-                    ApacheUtility.HandleThriftResponse(session.Status, GetResponseHandlers(activity));
-
-                    SessionHandle = session.SessionHandle;
+                    await HandleOpenSessionResponse(session, activity);
                 }
                 catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
                 {
@@ -338,6 +330,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
                 }
             });
+        }
+
+        protected virtual Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
+        {
+            // Explicitly check the session status
+            if (session == null)
+            {
+                throw new HiveServer2Exception("Unable to open session. Unknown error.");
+            }
+            ApacheUtility.HandleThriftResponse(session.Status, GetResponseHandlers(activity));
+
+            SessionHandle = session.SessionHandle;
+            return Task.CompletedTask;
         }
 
         protected virtual TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)

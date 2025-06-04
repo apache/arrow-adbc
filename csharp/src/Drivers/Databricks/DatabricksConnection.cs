@@ -41,6 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
+        private bool _enablePKFK = true;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
@@ -72,6 +73,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private void ValidateProperties()
         {
+            if (Properties.TryGetValue(DatabricksParameters.EnablePKFK, out string? enablePKFKStr))
+            {
+                if (bool.TryParse(enablePKFKStr, out bool enablePKFKValue))
+                {
+                    _enablePKFK = enablePKFKValue;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnablePKFK}' value '{enablePKFKStr}' could not be parsed. Valid values are 'true', 'false'.");
+                }
+            }
+
             if (Properties.TryGetValue(DatabricksParameters.EnableMultipleCatalogSupport, out string? enableMultipleCatalogSupportStr))
             {
                 if (bool.TryParse(enableMultipleCatalogSupportStr, out bool enableMultipleCatalogSupportValue))
@@ -156,17 +169,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             Properties.TryGetValue(AdbcOptions.Connection.CurrentCatalog, out defaultCatalog);
             Properties.TryGetValue(AdbcOptions.Connection.CurrentDbSchema, out defaultSchema);
 
-            if (!string.IsNullOrWhiteSpace(defaultCatalog))
+            if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
             {
                 _defaultNamespace = new TNamespace
                 {
                     CatalogName = defaultCatalog!,
                     SchemaName = defaultSchema!,
                 };
-            }
-            else if (!string.IsNullOrEmpty(defaultSchema))
-            {
-                throw new ArgumentException($"Parameter '{AdbcOptions.Connection.CurrentCatalog}' is not set but '{AdbcOptions.Connection.CurrentDbSchema}' is set. Please provide a value for '{AdbcOptions.Connection.CurrentCatalog}'.");
             }
         }
 
@@ -199,6 +208,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the default namespace to use for SQL queries.
         /// </summary>
         internal TNamespace? DefaultNamespace => _defaultNamespace;
+
+        /// <summary>
+        /// Gets whether multiple catalog is supported
+        /// </summary>
+        internal bool EnableMultipleCatalogSupport => _enableMultipleCatalogSupport;
+
+        /// <summary>
+        /// Gets whether PK/FK metadata call is enabled
+        /// </summary>
+        public bool EnablePKFK => _enablePKFK;
 
         /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
@@ -350,6 +369,34 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
             return req;
+        }
+
+        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
+        {
+            await base.HandleOpenSessionResponse(session, activity);
+            if (session != null)
+            {
+                _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
+                if (session.__isset.initialNamespace)
+                {
+                    _defaultNamespace = session.InitialNamespace;
+                }
+                else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName))
+                {
+                    // server version is too old. Explicitly set the schema using queries
+                    await SetSchema(_defaultNamespace.SchemaName);
+                }
+                // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
+            }
+        }
+
+        // Since Databricks Namespace was introduced in newer versions, we fallback to USE SCHEMA to set default schema
+        // in case the server version is too low.
+        private async Task SetSchema(string schemaName)
+        {
+            using var statement = new DatabricksStatement(this);
+            statement.SqlQuery = $"USE {schemaName}";
+            await statement.ExecuteUpdateAsync();
         }
 
         /// <summary>
