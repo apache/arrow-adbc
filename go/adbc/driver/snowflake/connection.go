@@ -170,7 +170,7 @@ func isWildcardStr(ident string) bool {
 }
 
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (reader array.RecordReader, err error) {
-	ctx, span := internal.StartSpan(ctx, "GetObjects", c)
+	ctx, span := internal.StartSpan(ctx, "connectionImpl.GetObjects", c)
 	defer internal.EndSpan(span, err)
 
 	var (
@@ -620,7 +620,7 @@ func (c *connectionImpl) getStringQuery(query string) (value string, err error) 
 }
 
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (sc *arrow.Schema, err error) {
-	ctx, span := internal.StartSpan(ctx, "GetTableSchema", c)
+	ctx, span := internal.StartSpan(ctx, "connectionImpl.GetTableSchema", c)
 	defer internal.EndSpan(span, err)
 
 	tblParts := make([]string, 0, 3)
@@ -727,9 +727,13 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 }
 
 // Close closes this connection and releases any associated resources.
-func (c *connectionImpl) Close() error {
+func (c *connectionImpl) Close() (err error) {
+	_, span := internal.StartSpan(context.Background(), "connectionImpl.Close", c)
+	defer internal.EndSpan(span, err)
+
 	if c.cn == nil {
-		return adbc.Error{Code: adbc.StatusInvalidState}
+		err = adbc.Error{Code: adbc.StatusInvalidState}
+		return err
 	}
 
 	defer func() {

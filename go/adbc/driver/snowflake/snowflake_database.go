@@ -469,7 +469,7 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (adbcConnection adbc.Connection, err error) {
-	ctx, span := internal.StartSpan(ctx, "Open", d)
+	ctx, span := internal.StartSpan(ctx, "databaseImpl.Open", d)
 	defer internal.EndSpan(span, err)
 
 	connector := gosnowflake.NewConnector(drv, *d.cfg)
@@ -500,6 +500,8 @@ func (d *databaseImpl) Open(ctx context.Context) (adbcConnection adbc.Connection
 		WithTableTypeLister(conn).
 		WithDriverInfoPreparer(conn).
 		Connection()
+
+	driverbase.SetOTelDriverInfoAttributes(d.DriverInfo, span)
 	return adbcConnection, err
 }
 

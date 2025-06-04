@@ -83,7 +83,7 @@ func (st *statement) setQueryContext(ctx context.Context) context.Context {
 //
 // A statement instance should not be used after Close is called.
 func (st *statement) Close() (err error) {
-	_, span := internal.StartSpan(context.Background(), "Close", st)
+	_, span := internal.StartSpan(context.Background(), "statement.Close", st)
 	defer internal.EndSpan(span, err)
 
 	if st.cnxn == nil {
@@ -478,7 +478,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 	nRows = -1
 
 	var span trace.Span
-	ctx, span = internal.StartSpan(ctx, "ExecuteQuery", st)
+	ctx, span = internal.StartSpan(ctx, "statement.ExecuteQuery", st)
 	defer func() {
 		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(nRows))
 		internal.EndSpan(span, err)
@@ -544,7 +544,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err error) {
-	ctx, span := internal.StartSpan(ctx, "ExecuteUpdate", st)
+	ctx, span := internal.StartSpan(ctx, "statement.ExecuteUpdate", st)
 	defer func() {
 		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(numRows))
 		internal.EndSpan(span, err)
@@ -619,7 +619,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
 func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
-	ctx, span := internal.StartSpan(ctx, "ExecuteSchema", st)
+	ctx, span := internal.StartSpan(ctx, "statement.ExecuteSchema", st)
 	defer internal.EndSpan(span, err)
 
 	ctx = st.setQueryContext(ctx)

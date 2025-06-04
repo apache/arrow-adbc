@@ -152,7 +152,7 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 }
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
-	_, span := internal.StartSpan(ctx, "GetInfo", base)
+	_, span := internal.StartSpan(ctx, "ConnectionImplBase.GetInfo", base)
 	defer internal.EndSpan(span, err)
 
 	if len(infoCodes) == 0 {
@@ -188,7 +188,6 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 			} else {
 				strInfoBldr.AppendNull()
 			}
-			span.SetAttributes(attribute.String(code.String(), v))
 		case int64:
 			infoValueBldr.Append(adbc.InfoValueInt64Type)
 			if ok {
@@ -196,7 +195,6 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 			} else {
 				intInfoBldr.AppendNull()
 			}
-			span.SetAttributes(attribute.Int64(code.String(), v))
 		case bool:
 			infoValueBldr.Append(adbc.InfoValueBooleanType)
 			if ok {
@@ -204,7 +202,6 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 			} else {
 				boolInfoBldr.AppendNull()
 			}
-			span.SetAttributes(attribute.Bool(code.String(), v))
 		default:
 			err = fmt.Errorf("no defined type code for info_value of type %T", v)
 			return nil, err
