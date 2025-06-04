@@ -179,9 +179,7 @@ class RegistryKey {
   RegistryKey(HKEY root, const std::string_view subkey) noexcept
       : root_(root), key_(nullptr), is_open_(false) {
     auto result = RegOpenKeyExA(root_, subkey.data(), 0, KEY_READ, &key_);
-    if (result == ERROR_SUCCESS) {
-      is_open_ = true;
-    }
+    is_open_ = (result == ERROR_SUCCESS);
   }
 
   ~RegistryKey() {
