@@ -27,7 +27,11 @@ import (
 func TestSetOptionInternal_NormalizesAccount(t *testing.T) {
 	db := &databaseImpl{cfg: &gosnowflake.Config{}}
 
-	err := db.SetOptionInternal(OptionAccount, "my_account_name", nil)
-	require.NoError(t, err)
+	err_a := db.SetOptionInternal(OptionAccount, "my_account_name", nil)
+	require.NoError(t, err_a)
+	require.Equal(t, "my-account-name", db.cfg.Account)
+
+	err_b := db.SetOptionInternal(OptionAccount, "my-account_name", nil)
+	require.NoError(t, err_b)
 	require.Equal(t, "my-account-name", db.cfg.Account)
 }
