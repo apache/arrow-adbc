@@ -28,7 +28,7 @@ require (
 	github.com/databricks/databricks-sdk-go v0.62.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
-	github.com/snowflakedb/gosnowflake v1.14.0
+	github.com/snowflakedb/gosnowflake v1.14.1
 	github.com/stretchr/testify v1.10.0
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
@@ -41,7 +41,7 @@ require (
 	modernc.org/sqlite v1.37.0
 )
 
-replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.14.1-0.20250527140352-9b93f4918cc1
+replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.14.1
 
 require (
 	cloud.google.com/go v0.118.3 // indirect
