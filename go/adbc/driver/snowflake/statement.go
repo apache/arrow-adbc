@@ -33,6 +33,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -476,7 +477,8 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReader, nRows int64, err error) {
 	nRows = -1
 
-	ctx, span := internal.StartSpan(ctx, "ExecuteQuery", st)
+	var span trace.Span
+	ctx, span = internal.StartSpan(ctx, "ExecuteQuery", st)
 	defer func() {
 		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(nRows))
 		internal.EndSpan(span, err)

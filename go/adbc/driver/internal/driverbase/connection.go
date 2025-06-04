@@ -377,9 +377,13 @@ func (cnxn *ConnectionImplBase) StartSpan(
 }
 
 func (cnxn *ConnectionImplBase) GetInitialSpanAttributes() []attribute.KeyValue {
+	return getInitialSpanAttributes(cnxn.DriverInfo)
+}
+
+func getInitialSpanAttributes(driverInfo *DriverInfo) []attribute.KeyValue {
 	var attrs []attribute.KeyValue
-	var systemName = cnxn.DriverInfo.GetName()
-	if value, ok := cnxn.DriverInfo.GetInfoForInfoCode(adbc.InfoVendorName); ok {
+	var systemName = driverInfo.GetName()
+	if value, ok := driverInfo.GetInfoForInfoCode(adbc.InfoVendorName); ok {
 		if s, ok := value.(string); ok {
 			systemName = s
 		}
