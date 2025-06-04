@@ -209,7 +209,7 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 	case OptionRegion:
 		d.cfg.Region = v
 	case OptionAccount:
-		d.cfg.Account = v
+		d.cfg.Account = strings.ReplaceAll(v, "_", "-")
 	case OptionProtocol:
 		d.cfg.Protocol = v
 	case OptionHost:
