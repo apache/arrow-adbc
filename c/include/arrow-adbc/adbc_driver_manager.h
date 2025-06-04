@@ -23,6 +23,7 @@
 #pragma once
 
 #include <arrow-adbc/adbc.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,15 +32,16 @@ extern "C" {
 #ifndef ADBC_DRIVER_MANAGER_H
 #define ADBC_DRIVER_MANAGER_H
 
-enum LoadOptions {
-  kAdbcSearchEnvironment = 1,
-  kAdbcSearchUser = 1 << 1,
-  kAdbcSearchSystem = 1 << 2,
-  kAdbcAllowRelativePaths = 1 << 3,
+typedef uint16_t AdbcLoadOption;
 
-  kAdbcDefaultLoadOptions = kAdbcSearchEnvironment | kAdbcSearchUser | kAdbcSearchSystem |
-                            kAdbcAllowRelativePaths,
-};
+#define ADBC_LOAD_OPTION_SEARCH_ENV 1
+#define ADBC_LOAD_OPTION_SEARCH_USER 2
+#define ADBC_LOAD_OPTION_SEARCH_SYSTEM 4
+#define ADBC_LOAD_OPTION_ALLOW_RELATIVE_PATHS 8
+
+#define ADBC_LOAD_OPTION_DEFAULT                                \
+  (ADBC_LOAD_OPTION_SEARCH_ENV | ADBC_LOAD_OPTION_SEARCH_USER | \
+   ADBC_LOAD_OPTION_SEARCH_SYSTEM | ADBC_LOAD_OPTION_ALLOW_RELATIVE_PATHS)
 
 /// \brief Common entry point for drivers via the driver manager.
 ///
@@ -98,13 +100,13 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 ///   call for AdbcDriverInitFunc on Linux).  If not provided, search for an
 ///   entrypoint based on the driver name.
 /// \param[in] version The ADBC revision to attempt to initialize.
-/// \param[in] load_options bit mask of LoadOptions to control the directories searched
+/// \param[in] load_options bit mask of AdbcLoadOption to control the directories searched
 /// \param[out] raw_driver The table of function pointers to initialize
 /// \param[out] error An optional location to return an error message
 /// @return
 ADBC_EXPORT
 AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoint,
-                                  const int version, const uint16_t load_options,
+                                  const int version, const AdbcLoadOption load_options,
                                   void* driver, struct AdbcError* error);
 
 /// \brief Common entry point for drivers via the driver manager.

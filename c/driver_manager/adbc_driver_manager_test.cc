@@ -29,8 +29,8 @@
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
-std::string AdbcDriverManagerDefaultEntrypoint(const std::string& filename);
-std::vector<std::filesystem::path> AdbcParsePath(const std::string_view& path);
+std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& filename);
+std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view& path);
 
 // Tests of the SQLite example driver, except using the driver manager
 
@@ -302,7 +302,7 @@ class SqliteStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
-TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
+TEST(AdbcDriverManagerInternal, InternalAdbcDriverManagerDefaultEntrypoint) {
   for (const auto& driver : {
            "adbc_driver_sqlite",
            "adbc_driver_sqlite.dll",
@@ -315,7 +315,8 @@ TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
            "C:\\System32\\adbc_driver_sqlite.dll",
        }) {
     SCOPED_TRACE(driver);
-    EXPECT_EQ("AdbcDriverSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+    EXPECT_EQ("AdbcDriverSqliteInit",
+              ::InternalAdbcDriverManagerDefaultEntrypoint(driver));
   }
 
   for (const auto& driver : {
@@ -325,7 +326,7 @@ TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
            "C:\\System32\\sqlite.dll",
        }) {
     SCOPED_TRACE(driver);
-    EXPECT_EQ("AdbcSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+    EXPECT_EQ("AdbcSqliteInit", ::InternalAdbcDriverManagerDefaultEntrypoint(driver));
   }
 
   for (const auto& driver : {
@@ -335,11 +336,12 @@ TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
            "C:\\System32\\proprietary_engine.dll",
        }) {
     SCOPED_TRACE(driver);
-    EXPECT_EQ("AdbcProprietaryEngineInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+    EXPECT_EQ("AdbcProprietaryEngineInit",
+              ::InternalAdbcDriverManagerDefaultEntrypoint(driver));
   }
 }
 
-TEST(AdbcDriverManagerInternal, AdbcParsePath) {
+TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
   // Test parsing a path of directories
 #ifdef __WIN32
   static const char* const delimiter = ";";
@@ -357,7 +359,7 @@ TEST(AdbcDriverManagerInternal, AdbcParsePath) {
   std::copy(paths.begin(), paths.end(),
             std::ostream_iterator<std::string>(joined, delimiter));
 
-  auto output = AdbcParsePath(joined.str());
+  auto output = InternalAdbcParsePath(joined.str());
   EXPECT_EQ(output.size(), paths.size());
 
   for (size_t i = 0; i < paths.size(); ++i) {

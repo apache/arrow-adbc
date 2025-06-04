@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-include(FetchContent)
 add_arrow_lib(adbc_driver_manager
               SOURCES
               adbc_driver_manager.cc
