@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
 import typing
 
 import polars
@@ -28,11 +29,13 @@ pytestmark = pytest.mark.pyarrowless
 
 @pytest.fixture(scope="module", autouse=True)
 def no_pyarrow() -> None:
+    no_skip = os.environ.get("ADBC_NO_SKIP_TESTS", "").lower() in {"1", "true", "yes"}
     try:
         import pyarrow  # noqa:F401
     except ImportError:
         return
     else:
+        assert not no_skip, "pyarrow is installed, but ADBC_NO_SKIP_TESTS is set"
         pytest.skip("Skipping because pyarrow is installed")
 
 
@@ -68,6 +71,19 @@ def test_ingest(sqlite: dbapi.Connection, data: typing.Any) -> None:
         )
 
 
+def test_get_objects(sqlite: dbapi.Connection) -> None:
+    with sqlite.cursor() as cursor:
+        cursor.execute("DROP TABLE IF EXISTS test_table")
+        cursor.execute("CREATE TABLE test_table (theresult INT)")
+
+    result = sqlite.adbc_get_objects()
+    tables = [
+        table["table_name"]
+        for table in result["catalog_db_schemas"][0][0]["db_schema_tables"]
+    ]
+    assert "test_table" in tables
+
+
 def test_query(sqlite: dbapi.Connection) -> None:
     with sqlite.cursor() as cursor:
         cursor.execute("SELECT 1 AS theresult")
@@ -94,9 +110,53 @@ def test_query(sqlite: dbapi.Connection) -> None:
         )
 
 
+def test_query_executemany(sqlite: dbapi.Connection) -> None:
+    with sqlite.cursor() as cursor:
+        cursor.execute("DROP TABLE IF EXISTS test_table")
+        cursor.execute("CREATE TABLE test_table (theresult INT)")
+        cursor.executemany("INSERT INTO test_table VALUES (1)", None)
+        cursor.execute("SELECT * FROM test_table")
+        df = cursor.fetch_polars()
+        polars.testing.assert_frame_equal(
+            df,
+            polars.DataFrame(
+                {
+                    "theresult": [1],
+                }
+            ),
+        )
+
+
 @pytest.mark.parametrize(
     "parameters",
     [
+        [[1, "a"], [2, "b"], [4, "c"], [8, "d"]],
+        polars.DataFrame({"theresult": [1, 2, 4, 8], "strs": ["a", "b", "c", "d"]}),
+    ],
+)
+def test_query_executemany_parameters(sqlite: dbapi.Connection, parameters) -> None:
+    with sqlite.cursor() as cursor:
+        cursor.execute("DROP TABLE IF EXISTS test_table")
+        cursor.execute("CREATE TABLE test_table (theresult INT, strs STRING)")
+        cursor.executemany("INSERT INTO test_table VALUES (?, ?)", parameters)
+        cursor.execute("SELECT * FROM test_table ORDER BY theresult")
+        df = cursor.fetch_polars()
+        polars.testing.assert_frame_equal(
+            df,
+            polars.DataFrame(
+                {
+                    "theresult": [1, 2, 4, 8],
+                    "strs": ["a", "b", "c", "d"],
+                }
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        pytest.param([1], id="pylist"),
+        pytest.param((1,), id="pytuple"),
         pytest.param(polars.DataFrame({"$0": [1]}), id="polars.DataFrame"),
         pytest.param(polars.Series([{"$0": 1}]), id="polars.Series"),
         pytest.param(
@@ -154,3 +214,17 @@ def test_query_double_capsule(sqlite: dbapi.Connection) -> None:
 
         # Import the result to free memory
         polars.from_arrow(capsule)
+
+
+@pytest.mark.xfail(raises=dbapi.NotSupportedError)
+def test_get_table_schema(sqlite: dbapi.Connection) -> None:
+    with sqlite.cursor() as cursor:
+        cursor.execute("CREATE TABLE test_table_schema (a INT, b STRING)")
+
+    schema = sqlite.adbc_get_table_schema("test_table_schema")
+    assert schema == polars.Schema(
+        [
+            ("a", polars.Int32),
+            ("b", polars.String),
+        ]
+    )
