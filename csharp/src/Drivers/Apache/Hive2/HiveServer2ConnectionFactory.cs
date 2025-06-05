@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {

@@ -22,7 +22,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using Apache.Arrow.Adbc.Tracing;
-using Moq;
+using Apache.Arrow.Adbc.Tracing.FileExporter;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
 using Xunit;
@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 .AddTestMemoryExporter(stream)
                 .Build();
 
-            var testClass = new TraceInheritor(activitySourceName);
+            var testClass = new TraceProducer(activitySourceName);
             testClass.MethodWithNoInstrumentation();
             Assert.Equal(0, stream.Length);
 
@@ -66,8 +66,8 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 lineCount++;
                 SerializableActivity? activity = JsonSerializer.Deserialize<SerializableActivity>(text);
                 Assert.NotNull(activity);
-                Assert.Contains(nameof(TraceInheritor.MethodWithActivity), activity.OperationName);
-                Assert.DoesNotContain(nameof(TraceInheritor.MethodWithNoInstrumentation), activity.OperationName);
+                Assert.Contains(nameof(TraceProducer.MethodWithActivity), activity.OperationName);
+                Assert.DoesNotContain(nameof(TraceProducer.MethodWithNoInstrumentation), activity.OperationName);
                 text = reader.ReadLine();
             }
             Assert.Equal(1, lineCount);
@@ -83,7 +83,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 .AddTestMemoryExporter(stream)
                 .Build();
 
-            var testClass = new TraceInheritor(activitySourceName);
+            var testClass = new TraceProducer(activitySourceName);
             testClass.MethodWithNoInstrumentation();
             Assert.Equal(0, stream.Length);
 
@@ -103,8 +103,8 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             while (text != null)
             {
                 lineCount++;
-                Assert.Contains(nameof(TraceInheritor.MethodWithEvent), text);
-                Assert.DoesNotContain(nameof(TraceInheritor.MethodWithNoInstrumentation), text);
+                Assert.Contains(nameof(TraceProducer.MethodWithEvent), text);
+                Assert.DoesNotContain(nameof(TraceProducer.MethodWithNoInstrumentation), text);
                 Assert.Contains(eventName, text);
                 text = reader.ReadLine();
             }
@@ -121,7 +121,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 .AddTestMemoryExporter(stream)
                 .Build();
 
-            var testClass = new TraceInheritor(activitySourceName);
+            var testClass = new TraceProducer(activitySourceName);
             string activityName = NewName();
             string eventName = NewName();
             const string rootId = "3236da27af79882bd317c4d1c3776982";
@@ -164,9 +164,9 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 .AddTestMemoryExporter(stream)
                 .Build();
 
-            var testClass = new TraceInheritor(activitySourceName);
+            var testClass = new TraceProducer(activitySourceName);
             const int recurseCount = 5;
-            testClass.MethodWithActivityRecursive(nameof(TraceInheritor.MethodWithActivityRecursive), recurseCount);
+            testClass.MethodWithActivityRecursive(nameof(TraceProducer.MethodWithActivityRecursive), recurseCount);
 
             stream.Seek(0, SeekOrigin.Begin);
             StreamReader reader = new(stream);
@@ -177,10 +177,10 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             {
                 if (string.IsNullOrWhiteSpace(text)) continue;
                 lineCount++;
-                Assert.Contains(nameof(TraceInheritor.MethodWithActivityRecursive), text);
-                Assert.DoesNotContain(nameof(TraceInheritor.MethodWithNoInstrumentation), text);
+                Assert.Contains(nameof(TraceProducer.MethodWithActivityRecursive), text);
+                Assert.DoesNotContain(nameof(TraceProducer.MethodWithNoInstrumentation), text);
                 SerializableActivity? activity = JsonSerializer.Deserialize<SerializableActivity>(text);
-                Assert.Contains(nameof(TraceInheritor.MethodWithActivityRecursive), activity?.OperationName);
+                Assert.Contains(nameof(TraceProducer.MethodWithActivityRecursive), activity?.OperationName);
                 Assert.NotNull(activity);
                 text = reader.ReadLine();
             }
@@ -198,7 +198,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 .AddTestMemoryExporter(stream)
                 .Build();
 
-            var testClass = new TraceInheritor(activitySourceName);
+            var testClass = new TraceProducer(activitySourceName);
             testClass.MethodWithNoInstrumentation();
             Assert.Equal(0, stream.Length);
 
@@ -209,13 +209,11 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             const string traceParent = "00-3236da27af79882bd317c4d1c3776982-a3cc9bd52ccd58e6-01";
 
-            testClass.SetTraceParent(traceParent);
             const int withParentCountExpected = 10;
             for (int i = 0; i < withParentCountExpected; i++)
             {
-                testClass.MethodWithActivity(eventNameWithParent);
+                testClass.MethodWithActivity(eventNameWithParent, traceParent);
             }
-            testClass.SetTraceParent(null);
 
             testClass.MethodWithActivity(eventNameWithoutParent);
             Assert.True(stream.Length > 0);
@@ -268,9 +266,15 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             GC.SuppressFinalize(this);
         }
 
-        private class TraceInheritor : ActivityTrace
+        private class TraceProducer : IDisposable
         {
-            internal TraceInheritor(string? activitySourceName = default) : base(activitySourceName) { }
+            private readonly ActivityTrace _trace;
+            private bool _isDisposed;
+
+            internal TraceProducer(string? activitySourceName = default, string? traceParent = default)
+            {
+                _trace = new ActivityTrace(activitySourceName, traceParent: traceParent);
+            }
 
             internal void MethodWithNoInstrumentation()
             {
@@ -279,17 +283,17 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             internal void MethodWithActivity()
             {
-                TraceActivity(_ => { });
+                _trace.TraceActivity(_ => { });
             }
 
-            internal void MethodWithActivity(string activityName)
+            internal void MethodWithActivity(string activityName, string? traceParent = default)
             {
-                TraceActivity(activity => { }, activityName: activityName);
+                _trace.TraceActivity(activity => { }, activityName: activityName, traceParent: traceParent);
             }
 
             internal void MethodWithActivityRecursive(string activityName, int recurseCount)
             {
-                TraceActivity(_ =>
+                _trace.TraceActivity(_ =>
                 {
                     recurseCount--;
                     if (recurseCount > 0)
@@ -301,7 +305,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             internal void MethodWithEvent(string eventName)
             {
-                TraceActivity((activity) => activity?.AddEvent(eventName));
+                _trace.TraceActivity((activity) => activity?.AddEvent(eventName));
             }
 
             internal void MethodWithAllProperties(
@@ -310,7 +314,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 IReadOnlyList<KeyValuePair<string, object?>> tags,
                 string traceParent)
             {
-                TraceActivity(activity =>
+                _trace.TraceActivity(activity =>
                 {
                     foreach (KeyValuePair<string, object?> tag in tags)
                     {
@@ -322,9 +326,20 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 }, activityName: activityName, traceParent: traceParent);
             }
 
-            internal void SetTraceParent(string? traceParent)
+            protected virtual void Dispose(bool disposing)
             {
-                TraceParent = traceParent;
+                if (!_isDisposed && disposing)
+                {
+                    _trace.Dispose();
+                    _isDisposed = true;
+                }
+            }
+
+            public void Dispose()
+            {
+                // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+                Dispose(disposing: true);
+                GC.SuppressFinalize(this);
             }
         }
 

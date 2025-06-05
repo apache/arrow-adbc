@@ -21,7 +21,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Serialization;
 
-namespace Apache.Arrow.Adbc.Tracing
+namespace Apache.Arrow.Adbc.Tracing.FileExporter
 {
     /// <summary>
     /// Simplified version of <see cref="Activity"/> that excludes some properties, etc.
@@ -50,10 +50,10 @@ namespace Apache.Arrow.Adbc.Tracing
             ActivityTraceFlags activityTraceFlags,
             ActivitySpanId parentSpanId,
             ActivityIdFormat idFormat,
-            IReadOnlyList<KeyValuePair<string, object?>> tagObjects,
+            IReadOnlyDictionary<string, object?> tagObjects,
             IReadOnlyList<SerializableActivityEvent> events,
             IReadOnlyList<SerializableActivityLink> links,
-            IReadOnlyList<KeyValuePair<string, string?>> baggage)
+            IReadOnlyDictionary<string, string?> baggage)
         {
             Status = statusDescription ?? status.ToString();
             HasRemoteParent = hasRemoteParent;
@@ -97,10 +97,10 @@ namespace Apache.Arrow.Adbc.Tracing
             activity.ActivityTraceFlags,
             activity.ParentSpanId,
             activity.IdFormat,
-            activity.TagObjects.ToArray(),
+            activity.TagObjects.ToDictionary(kv => kv.Key, kv => kv.Value),
             activity.Events.Select(e => (SerializableActivityEvent)e).ToArray(),
             activity.Links.Select(l => (SerializableActivityLink)l).ToArray(),
-            activity.Baggage.ToArray())
+            activity.Baggage.ToDictionary(kv => kv.Key, kv => kv.Value))
         { }
 
         public string? Status { get; set; }
@@ -122,10 +122,10 @@ namespace Apache.Arrow.Adbc.Tracing
         public string? ParentSpanId { get; set; }
         public string? IdFormat { get; set; }
 
-        public IReadOnlyList<KeyValuePair<string, object?>> TagObjects { get; set; } = [];
+        public IReadOnlyDictionary<string, object?> TagObjects { get; set; } = new Dictionary<string, object?>();
         public IReadOnlyList<SerializableActivityEvent> Events { get; set; } = [];
         public IReadOnlyList<SerializableActivityLink> Links { get; set; } = [];
-        public IReadOnlyList<KeyValuePair<string, string?>> Baggage { get; set; } = [];
+        public IReadOnlyDictionary<string, string?> Baggage { get; set; } = new Dictionary<string, string?>();
     }
 
     internal class SerializableActivityEvent
@@ -142,7 +142,7 @@ namespace Apache.Arrow.Adbc.Tracing
 
         public IReadOnlyList<KeyValuePair<string, object?>> Tags { get; set; } = [];
 
-        public static implicit operator SerializableActivityEvent(System.Diagnostics.ActivityEvent source)
+        public static implicit operator SerializableActivityEvent(ActivityEvent source)
         {
             return new SerializableActivityEvent()
             {
@@ -159,7 +159,7 @@ namespace Apache.Arrow.Adbc.Tracing
 
         public IReadOnlyList<KeyValuePair<string, object?>>? Tags { get; set; } = [];
 
-        public static implicit operator SerializableActivityLink(System.Diagnostics.ActivityLink source)
+        public static implicit operator SerializableActivityLink(ActivityLink source)
         {
             return new SerializableActivityLink()
             {
@@ -177,7 +177,7 @@ namespace Apache.Arrow.Adbc.Tracing
         public ActivityTraceFlags? TraceFlags { get; set; }
         public bool IsRemote { get; set; }
 
-        public static implicit operator SerializableActivityContext(System.Diagnostics.ActivityContext source)
+        public static implicit operator SerializableActivityContext(ActivityContext source)
         {
             return new SerializableActivityContext()
             {

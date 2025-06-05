@@ -58,9 +58,9 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <returns><see langword="this" /> for convenient chaining.</returns>
         /// <param name="key">The tag key name as a function</param>
         /// <param name="value">The tag value mapped to the input key as a function</param>
-        public static Activity? AddTag(this Activity? activity, Func<string> key, Func<object?> value)
+        public static Activity? AddTag(this Activity? activity, string key, Func<object?> value, bool delayedEvaluation = false)
         {
-            return activity?.AddTag(key(), value());
+            return activity?.AddTag(key, value());
         }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="guidFormat">The format indicator for 16-byte GUID arrays.</param>
         public static Activity? AddTag(this Activity? activity, string key, byte[]? value, string? guidFormat)
         {
-            if ( value == null)
+            if (value == null)
             {
                 return activity?.AddTag(key, value);
             }
@@ -82,25 +82,21 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 return activity?.AddTag(key, new Guid(value).ToString(guidFormat));
             }
-#if NET5_0_OR_GREATER
-            return activity?.AddTag(key, Convert.ToHexString(value));
-#else
             return activity?.AddTag(key, ToHexString(value));
-#endif
         }
 
+#if NET5_0_OR_GREATER
+        private static string ToHexString(byte[] value) => Convert.ToHexString(value);
+#else
         private static string ToHexString(byte[] value)
         {
-#if NET5_0_OR_GREATER
-            return Convert.ToHexString(value);
-#else
             StringBuilder hex = new(value.Length * 2);
             foreach (byte b in value)
             {
                 hex.AppendFormat("{0:x2}", b);
             }
             return hex.ToString();
-#endif
         }
+#endif
     }
 }

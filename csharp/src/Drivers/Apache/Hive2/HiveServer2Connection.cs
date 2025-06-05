@@ -306,7 +306,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            await TraceActivity(async activity =>
+            await this.TraceActivity(async activity =>
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
                 try
@@ -373,7 +373,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
-            return TraceActivity(activity =>
+            return this.TraceActivity(_ =>
             {
                 if (SessionHandle == null)
                 {
@@ -566,7 +566,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetTableTypes()
         {
-            return TraceActivity(activity =>
+            return this.TraceActivity(activity =>
             {
                 TGetTableTypesReq req = new()
                 {
@@ -633,7 +633,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
-            return TraceActivity(activity =>
+            return this.TraceActivity(activity =>
             {
                 TGetInfoReq req = new()
                 {
@@ -662,32 +662,34 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected override void Dispose(bool disposing)
         {
-            TraceActivity(activity =>
+            if (!_isDisposed && disposing)
             {
-                if (!_isDisposed)
+                DisposeClient();
+                _isDisposed = true;
+            }
+            base.Dispose(disposing);
+        }
+
+        private void DisposeClient()
+        {
+            this.TraceActivity(activity =>
+            {
+                if (_client != null && SessionHandle != null)
                 {
-                    if (disposing)
+                    CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+
+                    TCloseSessionReq r6 = new(SessionHandle);
+                    var resp = _client.CloseSession(r6, cancellationToken).Result;
+                    ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+
+                    _transport?.Close();
+                    if (_client is IDisposable disposableClient)
                     {
-                        if (_client != null && SessionHandle != null)
-                        {
-                            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-
-                            TCloseSessionReq r6 = new(SessionHandle);
-                            var resp = _client.CloseSession(r6, cancellationToken).Result;
-                            ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
-
-                            _transport?.Close();
-                            if (_client is IDisposable disposableClient)
-                            {
-                                disposableClient.Dispose();
-                            }
-                            _transport = null;
-                            _client = null;
-                        }
+                        disposableClient.Dispose();
                     }
-                    _isDisposed = true;
+                    _transport = null;
+                    _client = null;
                 }
-                base.Dispose(disposing);
             });
         }
 
@@ -803,17 +805,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected abstract bool IsColumnSizeValidForDecimal { get; }
 
-        public override void SetOption(string key, string value)
+        public override void SetOption(string key, string? value)
         {
+            // These option can be set even if already connected.
             switch (key.ToLowerInvariant())
             {
                 case AdbcOptions.Telemetry.TraceParent:
-                    TraceParent = string.IsNullOrEmpty(value) ? null : value;
+                    SetTraceParent(string.IsNullOrWhiteSpace(value) ? null : value);
                     return;
             }
+
             if (SessionHandle != null)
             {
                 throw new AdbcException($"Option '{key}' cannot be set once the connection is open.", AdbcStatusCode.InvalidState);
+            }
+
+            // These option can only be set before connection is open.
+            switch (key.ToLowerInvariant())
+            {
+                default:
+                    throw AdbcException.NotImplemented($"Option '{key}' is not implemented");
             }
         }
 
@@ -920,7 +931,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task<TGetCatalogsResp> GetCatalogsAsync(CancellationToken cancellationToken)
         {
-            return await TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -945,7 +956,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? schemaName,
             CancellationToken cancellationToken)
         {
-            return await TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -980,7 +991,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             List<string>? tableTypes,
             CancellationToken cancellationToken)
         {
-            return await TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1023,7 +1034,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? columnName,
             CancellationToken cancellationToken)
         {
-            return await TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1065,7 +1076,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? tableName,
             CancellationToken cancellationToken = default)
         {
-            return await TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1106,7 +1117,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? foreignTableName,
             CancellationToken cancellationToken = default)
         {
-            return await TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1237,7 +1248,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
-            return TraceActivity(activity =>
+            return this.TraceActivity(activity =>
             {
                 if (SessionHandle == null)
                 {
@@ -1373,7 +1384,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
-            return TraceActivity(activity =>
+            return this.TraceActivity(activity =>
             {
                 const int strValTypeID = 0;
                 const int boolValTypeId = 1;
@@ -1426,7 +1437,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 foreach (AdbcInfoCode code in codes)
                 {
-                    Func<string> tagKey = () => TagOptions.Operation.Parameter(code.ToString().ToLowerInvariant());
+                    string tagKey = TagOptions.Operation.Parameter(code.ToString().ToLowerInvariant());
                     Func<object?> tagValue = () => null;
                     switch (code)
                     {
@@ -1489,7 +1500,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             nullCount++;
                             break;
                     }
-                    activity?.AddTag(tagKey, tagValue);
+                    activity?.AddTag(tagKey, tagValue, true);
                 }
 
                 StructType entryType = new StructType(

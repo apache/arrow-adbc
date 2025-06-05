@@ -23,7 +23,6 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
@@ -90,7 +89,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await TraceActivity(async activity =>
+            return await this.TraceActivity(async activity =>
             {
                 // All records have been exhausted
                 if (_hasNoMoreData)

@@ -17,52 +17,49 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing.FileExporter;
+using OpenTelemetry;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
     public abstract class TracingConnection : AdbcConnection, IActivityTracer
     {
-        private TracerProvider? _tracerProvider;
+        private const string SourceNameDefault = "apache.arrow.adbc";
+        private readonly ActivityTrace _trace;
+        private readonly TracerProvider? _tracerProvider;
         private bool _isDisposed;
-        internal readonly ActivityTrace _trace;
 
         protected TracingConnection(IReadOnlyDictionary<string, string> properties)
         {
-            _tracerProvider = ActivityTrace.InitTracerProvider(out string activitySourceName, out _, TracingAssembly);
             properties.TryGetValue(AdbcOptions.Telemetry.TraceParent, out string? traceParent);
-            _trace = new ActivityTrace(activitySourceName, traceParent);
+            properties.TryGetValue(AdbcOptions.Telemetry.Exporter, out string? tracesExporter);
+            _tracerProvider = InitTracerProvider(
+                GetType().Assembly,
+                tracesExporter,
+                out string activitySourceName,
+                out _);
+            _trace = new ActivityTrace(this.GetAssemblyName(), this.GetAssemblyVersion(), traceParent);
         }
 
-        public abstract Assembly TracingAssembly { get; }
+        string? IActivityTracer.TraceParent => _trace.TraceParent;
 
-        protected string? TraceParent
+        ActivityTrace IActivityTracer.Trace => _trace;
+
+        protected void SetTraceParent(string? traceParent)
         {
-            get
-            {
-                return _trace.TraceParent;
-            }
-            set
-            {
-                _trace.TraceParent = value;
-            }
+            _trace.TraceParent = traceParent;
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_isDisposed)
+            if (!_isDisposed && disposing)
             {
-                if (disposing)
+                if (_tracerProvider != null)
                 {
-                    if (_tracerProvider != null)
-                    {
-                        _tracerProvider.Dispose();
-                        _tracerProvider = null;
-                    }
+                    _tracerProvider.Dispose();
                 }
                 _isDisposed = true;
             }
@@ -76,24 +73,51 @@ namespace Apache.Arrow.Adbc.Tracing
             GC.SuppressFinalize(this);
         }
 
-        public void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
+        private static TracerProvider? InitTracerProvider(Assembly executingAssembly, string? tracesExporter, out string activitySourceName, out string activitySourceVersion)
         {
-            _trace.TraceActivity(call, activityName, traceParent ?? TraceParent);
-        }
+            AssemblyName assemblyName = executingAssembly.GetName();
+            string sourceName = (assemblyName.Name ?? SourceNameDefault).ToLowerInvariant();
+            string sourceVersion = (assemblyName.Version?.ToString() ?? ActivityTrace.ProductVersionDefault).ToLowerInvariant();
+            activitySourceName = sourceName;
+            activitySourceVersion = sourceVersion;
 
-        public T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
-        {
-            return _trace.TraceActivity(call, activityName, traceParent ?? TraceParent);
-        }
-
-        public Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
-        {
-            return _trace.TraceActivityAsync(call, activityName, traceParent ?? TraceParent);
-        }
-
-        public Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
-        {
-            return _trace.TraceActivityAsync(call, activityName, traceParent ?? TraceParent);
+            tracesExporter ??= Environment.GetEnvironmentVariable(AdbcOptions.Telemetry.Environment.Exporter);
+            tracesExporter = tracesExporter?.ToLowerInvariant();
+            return tracesExporter switch
+            {
+                null or "" or AdbcOptions.Telemetry.TraceExporters.None =>
+                    null, // Do not create a listener/exporter
+                AdbcOptions.Telemetry.TraceExporters.Otlp =>
+                    Sdk.CreateTracerProviderBuilder()
+                        .AddSource(sourceName)
+                        .ConfigureResource(resource =>
+                            resource.AddService(
+                                serviceName: sourceName,
+                                serviceVersion: sourceVersion))
+                        .AddOtlpExporter()
+                        .Build(),
+                AdbcOptions.Telemetry.TraceExporters.Console =>
+                    Sdk.CreateTracerProviderBuilder()
+                        .AddSource(sourceName)
+                        .ConfigureResource(resource =>
+                            resource.AddService(
+                                serviceName: sourceName,
+                                serviceVersion: sourceVersion))
+                        .AddConsoleExporter()
+                        .Build(),
+                AdbcOptions.Telemetry.TraceExporters.AdbcFile =>
+                    Sdk.CreateTracerProviderBuilder()
+                        .AddSource(sourceName)
+                        .ConfigureResource(resource =>
+                            resource.AddService(
+                                serviceName: sourceName,
+                                serviceVersion: sourceVersion))
+                        .AddAdbcFileExporter(sourceName)
+                        .Build(),
+                _ => throw new AdbcException(
+                        $"Unsupported {AdbcOptions.Telemetry.Environment.Exporter} option: '{tracesExporter}'",
+                        AdbcStatusCode.InvalidArgument),
+            };
         }
     }
 }

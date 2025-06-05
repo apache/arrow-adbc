@@ -18,26 +18,18 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tracing.FileExporter;
-using OpenTelemetry;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
     /// <summary>
-    /// Provides a base implementation for a tracing source. If drivers want to enable tracing,
-    /// they need to add a trace listener (e.g., <see cref="FileExporter"/>).
+    /// Provides the implementation for a tracing source. If drivers want to enable tracing,
+    /// they need to add a trace listener (e.g., <see cref="FileExporter.FileExporter"/>).
     /// </summary>
-    public class ActivityTrace
+    public sealed class ActivityTrace
     {
-        private const string ProductVersionDefault = "1.0.0";
-        private static readonly string s_assemblyVersion = GetProductVersion();
-        private const string SourceNameDefault = "apache.arrow.adbc";
-        private const string OTelTracesExporterEnvironment = "OTEL_TRACES_EXPORTER";
+        internal const string ProductVersionDefault = "1.0.0";
         private bool _isDisposed;
 
         /// <summary>
@@ -45,7 +37,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// activity source name, otherwise the current assembly name is used as the activity source name.
         /// </summary>
         /// <param name="activitySourceName"></param>
-        public ActivityTrace(string? activitySourceName = default, string? traceParent = default)
+        public ActivityTrace(string? activitySourceName = default, string? activitySourceVersion = default, string? traceParent = default)
         {
             activitySourceName ??= GetType().Assembly.GetName().Name!;
             if (string.IsNullOrWhiteSpace(activitySourceName))
@@ -53,9 +45,9 @@ namespace Apache.Arrow.Adbc.Tracing
                 throw new ArgumentNullException(nameof(activitySourceName));
             }
 
-            // This is required to be disposed
-            ActivitySource = new(activitySourceName, s_assemblyVersion);
             TraceParent = traceParent;
+            // This is required to be disposed
+            ActivitySource = new(activitySourceName, activitySourceVersion);
         }
 
         /// <summary>
@@ -264,84 +256,24 @@ namespace Apache.Arrow.Adbc.Tracing
             WriteTraceException(exception, activity);
 
         /// <summary>
-        /// Gets the product version from the file version of the current assembly.
-        /// </summary>
-        /// <returns></returns>
-        private static string GetProductVersion()
-        {
-            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
-            return fileVersionInfo.ProductVersion ?? ProductVersionDefault;
-        }
-
-        /// <summary>
         /// Disposes managed and unmanaged objects. If overridden, ensure to call this base method.
         /// </summary>
         /// <param name="disposing">An indicator of whether this method is being called from the <c>Dispose</c> method.</param>
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
-            if (!_isDisposed)
+            if (!_isDisposed && disposing)
             {
-                if (disposing)
-                {
-                    ActivitySource.Dispose();
-                }
+                ActivitySource.Dispose();
                 _isDisposed = true;
             }
         }
 
         /// <inheritdoc />
-        public virtual void Dispose()
+        public void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
-        }
-
-        internal static TracerProvider? InitTracerProvider(out string activitySourceName, out string activitySourceVersion, Assembly? executingAssembly = default)
-        {
-            executingAssembly ??= Assembly.GetExecutingAssembly();
-            AssemblyName assemblyName = executingAssembly.GetName();
-            string sourceName = (assemblyName.Name ?? SourceNameDefault).ToLowerInvariant();
-            string sourceVersion = (assemblyName.Version?.ToString() ?? ProductVersionDefault).ToLowerInvariant();
-            activitySourceName = sourceName;
-            activitySourceVersion = sourceVersion;
-
-            string? tracesExporter = Environment.GetEnvironmentVariable(OTelTracesExporterEnvironment)?.ToLowerInvariant();
-            return tracesExporter switch
-            {
-                null or "" or AdbcOptions.Telemetry.Traces.Exporter.None =>
-                    null, // Do not create a listener/exporter
-                AdbcOptions.Telemetry.Traces.Exporter.Otlp =>
-                    Sdk.CreateTracerProviderBuilder()
-                        .AddSource(sourceName)
-                        .ConfigureResource(resource =>
-                            resource.AddService(
-                                serviceName: sourceName,
-                                serviceVersion: sourceVersion))
-                        .AddOtlpExporter()
-                        .Build(),
-                AdbcOptions.Telemetry.Traces.Exporter.Console =>
-                    Sdk.CreateTracerProviderBuilder()
-                        .AddSource(sourceName)
-                        .ConfigureResource(resource =>
-                            resource.AddService(
-                                serviceName: sourceName,
-                                serviceVersion: sourceVersion))
-                        .AddConsoleExporter()
-                        .Build(),
-                AdbcOptions.Telemetry.Traces.Exporter.AdbcFile =>
-                    Sdk.CreateTracerProviderBuilder()
-                        .AddSource(sourceName)
-                        .ConfigureResource(resource =>
-                            resource.AddService(
-                                serviceName: sourceName,
-                                serviceVersion: sourceVersion))
-                        .AddAdbcFileExporter(sourceName)
-                        .Build(),
-                _ => throw new AdbcException(
-                        $"Unsupported {OTelTracesExporterEnvironment} option: '{tracesExporter}'",
-                        AdbcStatusCode.InvalidArgument),
-            };
         }
 
         private static void WriteTraceException(Exception exception, Activity? activity)

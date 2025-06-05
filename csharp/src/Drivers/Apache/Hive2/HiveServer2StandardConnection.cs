@@ -15,14 +15,13 @@
 * limitations under the License.
 */
 
-using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
 using Thrift.Transport.Client;
@@ -173,7 +172,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Standard;
-
-        public override Assembly TracingAssembly => GetType().Assembly;
     }
 }

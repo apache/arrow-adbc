@@ -21,6 +21,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -83,7 +84,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// <returns>The next record batch, or null if there are no more batches.</returns>
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async _ =>
             {
                 ThrowIfDisposed();
 

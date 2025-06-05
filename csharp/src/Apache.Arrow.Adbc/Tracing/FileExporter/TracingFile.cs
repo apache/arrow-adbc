@@ -217,11 +217,8 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposedValue)
+            if (!_disposedValue && disposing)
             {
-                if (disposing)
-                {
-                }
                 _disposedValue = true;
             }
         }

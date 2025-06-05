@@ -16,9 +16,6 @@
 */
 
 using System;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -28,66 +25,8 @@ namespace Apache.Arrow.Adbc.Tracing
     /// </summary>
     public interface IActivityTracer : IDisposable
     {
-        /// <summary>
-        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
-        /// </summary>
-        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
-        /// <param name="methodName">The name of the method for the activity.</param>
-        /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
-        /// <remarks>
-        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
-        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
-        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/>. If an exception is thrown by the delegate, the Activity
-        /// status is set to <see cref="ActivityStatusCode.Error"/> and an Activity <see cref="ActivityEvent"/> is added to the actitity
-        /// and finally the exception is rethrown.
-        /// </remarks>
-        public void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = default, string? traceParent = default);
+        ActivityTrace Trace { get; }
 
-        /// <summary>
-        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
-        /// </summary>
-        /// <typeparam name="T">The return type for the delegate.</typeparam>
-        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
-        /// <param name="methodName">The name of the method for the activity.</param>
-        /// <returns>The result of the call to the delegate.</returns>
-        /// <remarks>
-        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
-        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
-        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
-        /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
-        /// </remarks>
-        public T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? activityName = default, string? traceParent = default);
-
-        /// <summary>
-        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
-        /// </summary>
-        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
-        /// <param name="methodName">The name of the method for the activity.</param>
-        /// <returns></returns>
-        /// <remarks>
-        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
-        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
-        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
-        /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
-        /// </remarks>
-        public Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default);
-
-        /// <summary>
-        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
-        /// </summary>
-        /// <typeparam name="T">The return type for the delegate.</typeparam>
-        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
-        /// <param name="methodName">The name of the method for the activity.</param>
-        /// <returns>The result of the call to the delegate.</returns>
-        /// <remarks>
-        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
-        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
-        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
-        /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
-        /// </remarks>
-        public Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default);
+        string? TraceParent { get; }
     }
 }

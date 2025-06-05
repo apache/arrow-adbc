@@ -16,10 +16,10 @@
  */
 
 using System;
-using OpenTelemetry;
-using OpenTelemetry.Trace;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 
 namespace Apache.Arrow.Adbc.Tracing.FileExporter
 {
@@ -84,7 +84,7 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
 
             FileExporterOptions options = new();
             configure?.Invoke(options);
-            if (FileExporter.TryCreate(out FileExporter? fileExporter, options))
+            if (FileExporter.TryCreate(options, out FileExporter? fileExporter))
             {
                 // Only add a new processor if there isn't already one listening for the source/location.
                 return builder.AddProcessor(_ => new SimpleActivityExportProcessor(fileExporter!));
@@ -124,9 +124,9 @@ namespace Apache.Arrow.Adbc.Tracing.FileExporter
             maxTraceFileSizeKb ??= FileExporter.MaxFileSizeKbDefault;
             maxTraceFiles ??= FileExporter.MaxTraceFilesDefault;
             traceLocation ??= FileExporter.TracingLocationDefault;
-            FileExporter.ValidParameters(fileBaseName, traceLocation, maxTraceFileSizeKb.Value, maxTraceFiles.Value);
+            FileExporter.ValidateParameters(fileBaseName, traceLocation, maxTraceFileSizeKb.Value, maxTraceFiles.Value);
 
-            if (FileExporter.TryCreate(out FileExporter? fileExporter, fileBaseName, traceLocation, maxTraceFileSizeKb.Value, maxTraceFiles.Value))
+            if (FileExporter.TryCreate(fileBaseName, traceLocation, maxTraceFileSizeKb.Value, maxTraceFiles.Value, out FileExporter? fileExporter))
             {
                 // Only add a new processor if there isn't already one listening for the source/location.
                 return builder.AddProcessor(_ => new SimpleActivityExportProcessor(fileExporter!));

@@ -18,12 +18,10 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -198,7 +196,5 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override ImpalaServerType ServerType => ImpalaServerType.Standard;
 
         protected override int ColumnMapIndexOffset => 0;
-
-        public override Assembly TracingAssembly => GetType().Assembly;
     }
 }

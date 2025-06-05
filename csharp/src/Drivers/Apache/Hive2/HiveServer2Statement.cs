@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
         {
-            return await TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async _ =>
             {
                 if (IsMetadataCommand)
                 {
@@ -157,7 +157,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
         {
-            return await TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 long? affectedRows = null;
                 try
@@ -211,7 +211,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
-            return await TraceActivityAsync(async _ =>
+            return await this.TraceActivityAsync(async _ =>
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 try
@@ -277,9 +277,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case ApacheParameters.ForeignTableName:
                     this.ForeignTableName = value;
                     break;
-                case AdbcOptions.Telemetry.TraceParent:
-                    this.TraceParent = value;
-                    break;
                 default:
                     throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
             }
@@ -287,7 +284,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
-            await TraceActivityAsync(async activity =>
+            await this.TraceActivityAsync(async activity =>
             {
                 if (Connection.SessionHandle == null)
                 {
@@ -357,7 +354,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override void Dispose()
         {
-            TraceActivity(activity =>
+            this.TraceActivity(activity =>
             {
                 if (OperationHandle != null)
                 {
@@ -678,7 +675,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             // 1. Get all three results at once
             var columnsResult = await GetColumnsAsync(cancellationToken);
-            if (columnsResult.Stream == null) {
+            if (columnsResult.Stream == null)
+            {
                 // TODO: Add log or throw
                 return columnsResult;
             }
@@ -699,7 +697,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             using (var stream = columnsResult.Stream)
             {
                 colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
-                if (colNameIndex < 0) {
+                if (colNameIndex < 0)
+                {
                     // TODO: Add log or throw
                     return columnsResult; // Can't match without column names
                 }

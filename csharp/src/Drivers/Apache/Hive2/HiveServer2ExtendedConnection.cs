@@ -15,13 +15,12 @@
 * limitations under the License.
 */
 
-using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Ipc;
-using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Ipc;
+using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
