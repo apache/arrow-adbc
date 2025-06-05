@@ -174,12 +174,20 @@ using char_type = wchar_t;
 
 std::string utf8_encode(const std::wstring& wstr) {
   if (wstr.empty()) return std::string();
-  int size_needed =
-      WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+  size_t size_needed =
+      WideCharToMultiByte(CP_UTF8, 0, &wstr[0], wstr.size(), NULL, 0, NULL, NULL);
   std::string str_to(size_needed, 0);
-  WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &str_to[0], size_needed,
-                      NULL, NULL);
+  WideCharToMultiByte(CP_UTF8, 0, &wstr[0], wstr.size(), &str_to[0], size_needed, NULL,
+                      NULL);
   return str_to;
+}
+
+std::wstring utf8_decode(const std::string& str) {
+  if (str.empty()) return std::wstring();
+  size_t size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], str.size(), NULL, 0);
+  std::wstring wstr_to(size_needed, 0);
+  MultiByteToWideChar(CP_UTF8, 0, &str[0], str.size(), &wstr_to[0], size_needed);
+  return wstr_to;
 }
 
 #else
@@ -241,7 +249,7 @@ class RegistryKey {
 
 AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name,
                                       DriverInfo& info, struct AdbcError* error) {
-  static const LPCSTR kAdbcDriverRegistry = "SOFTWARE\\ADBC\\Drivers";
+  static const LPCWSTR kAdbcDriverRegistry = "SOFTWARE\\ADBC\\Drivers";
   RegistryKey drivers_key(root, kAdbcDriverRegistry);
   if (!drivers_key.is_open()) {
     return ADBC_STATUS_NOT_FOUND;
@@ -252,14 +260,14 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
     return ADBC_STATUS_NOT_FOUND;
   }
 
-  info.driver_name = utf8_encode(dkey.GetString("name", L""));
-  info.entrypoint = utf8_encode(dkey.GetString("entrypoint", L""));
-  info.version = utf8_encode(dkey.GetString("version", L""));
-  info.source = utf8_encode(dkey.GetString("source", L""));
-  info.lib_path = std::filesystem::path(dkey.GetString("driver", L""));
+  info.driver_name = utf8_encode(dkey.GetString(L"name", L""));
+  info.entrypoint = utf8_encode(dkey.GetString(L"entrypoint", L""));
+  info.version = utf8_encode(dkey.GetString(L"version", L""));
+  info.source = utf8_encode(dkey.GetString(L"source", L""));
+  info.lib_path = std::filesystem::path(dkey.GetString(L"driver", L""));
   if (info.lib_path.empty()) {
     SetError(error, "[DriverManager] Driver path not found in registry for \""s +
-                        driver_name + "\"");
+                        utf8_encode(driver_name) + "\"");
     return ADBC_STATUS_NOT_FOUND;
   }
   return ADBC_STATUS_OK;
@@ -323,17 +331,16 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
   return paths;
 }
 
-#ifdef _WIN32
-bool HasExtension(const std::filesystem::path& path, const std::wstring& ext) {
-  auto path_ext = path.extension().native();
-  return path_ext.size() == ext.size() &&
-         _wcsnicmp(path_ext.c_str(), ext.c_str(), ext.size()) == 0;
-}
-#else
 bool HasExtension(const std::filesystem::path& path, const std::string& ext) {
+#ifdef _WIN32
+  auto wext = utf8_decode(ext);
+  auto path_ext = path.extension().native();
+  return path_ext.size() == wext.size() &&
+         _wcsnicmp(path_ext.c_str(), wext.c_str(), wext.size()) == 0;
+#else
   return path.extension() == ext;
-}
 #endif
+}
 
 /// A driver DLL.
 struct ManagedLibrary {
