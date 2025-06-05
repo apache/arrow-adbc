@@ -30,7 +30,7 @@
 #include "validation/adbc_validation_util.h"
 
 std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& filename);
-std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view& path);
+std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
 
 // Tests of the SQLite example driver, except using the driver manager
 

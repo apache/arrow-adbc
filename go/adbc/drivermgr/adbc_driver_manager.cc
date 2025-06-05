@@ -23,6 +23,8 @@
 #include <string.h>  // _wcsnicmp
 #include <strsafe.h>
 
+#include <codecvt>
+#include <locale>
 #else
 #include <dlfcn.h>
 #endif  // defined(_WIN32)
@@ -128,8 +130,17 @@ struct OwnedError {
 std::filesystem::path UserConfigDir() {
   std::filesystem::path config_dir;
 #if defined(_WIN32)
-  auto dir = std::getenv("AppData");
-  if (dir) {
+  size_t required_size;
+  _wgetenv_s(&required_size, NULL, 0, "AppData");
+  if (required_size == 0) {
+    return config_dir;
+  }
+
+  std::wstring app_data_value;
+  app_data_value.resize(required_size);
+  _wgetenv_s(&required_size, app_data_value.data(), required_size, "AppData");
+  std::filesystem::path dir(app_data_value);
+  if (!dir.empty()) {
     config_dir = std::filesystem::path(dir);
     config_dir /= "ADBC/drivers";
   }
@@ -158,11 +169,20 @@ std::filesystem::path UserConfigDir() {
   return config_dir;
 }
 
+#ifdef _WIN32
+using char_type = wchar_t;
+
+std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+
+#else
+using char_type = char;
+#endif
+
 // Driver state
 struct DriverInfo {
   std::string manifest_file;
   std::string driver_name;
-  std::string lib_path;
+  std::filesystem::path lib_path;
   std::string entrypoint;
 
   std::string version;
@@ -172,9 +192,9 @@ struct DriverInfo {
 #ifdef _WIN32
 class RegistryKey {
  public:
-  RegistryKey(HKEY root, const std::string_view subkey) noexcept
+  RegistryKey(HKEY root, const std::wstring_view subkey) noexcept
       : root_(root), key_(nullptr), is_open_(false) {
-    auto result = RegOpenKeyExA(root_, subkey.data(), 0, KEY_READ, &key_);
+    auto result = RegOpenKeyExW(root_, subkey.data(), 0, KEY_READ, &key_);
     is_open_ = (result == ERROR_SUCCESS);
   }
 
@@ -189,17 +209,17 @@ class RegistryKey {
   HKEY key() const { return key_; }
   bool is_open() const { return is_open_; }
 
-  std::string GetString(const std::string& name, const std::string& default_value = "") {
+  std::wstring GetString(const std::wstring& name, std::wstring default_value) {
     if (!is_open_) return default_value;
 
     DWORD type = REG_SZ;
     DWORD size = 0;
-    auto result = RegQueryValueExA(key_, name.c_str(), nullptr, &type, nullptr, &size);
+    auto result = RegQueryValueExW(key_, name.c_str(), nullptr, &type, nullptr, &size);
     if (result != ERROR_SUCCESS) return default_value;
     if (type != REG_SZ) return default_value;
 
-    std::string value(size, '\0');
-    result = RegQueryValueExA(key_, name.c_str(), nullptr, &type,
+    std::wstring value(size, '\0');
+    result = RegQueryValueExW(key_, name.c_str(), nullptr, &type,
                               reinterpret_cast<LPBYTE>(value.data()), &size);
     if (result != ERROR_SUCCESS) return default_value;
     return value;
@@ -211,7 +231,7 @@ class RegistryKey {
   bool is_open_;
 };
 
-AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::string& driver_name,
+AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name,
                                       DriverInfo& info, struct AdbcError* error) {
   static const LPCSTR kAdbcDriverRegistry = "SOFTWARE\\ADBC\\Drivers";
   RegistryKey drivers_key(root, kAdbcDriverRegistry);
@@ -224,14 +244,14 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::string& driver_name,
     return ADBC_STATUS_NOT_FOUND;
   }
 
-  info.driver_name = dkey.GetString("name");
-  info.entrypoint = dkey.GetString("entrypoint");
-  info.version = dkey.GetString("version");
-  info.source = dkey.GetString("source");
-  info.lib_path = dkey.GetString("driver");
+  info.driver_name = converter.from_bytes(dkey.GetString("name", L""));
+  info.entrypoint = converter.from_bytes(dkey.GetString("entrypoint", L""));
+  info.version = converter.from_bytes(dkey.GetString("version", L""));
+  info.source = converter.from_bytes(dkey.GetString("source", L""));
+  info.lib_path = std::filesystem::path(dkey.GetString("driver", L""));
   if (info.lib_path.empty()) {
-    SetError(error,
-             "[DriverManager] Driver path not found in registry for "s + driver_name);
+    SetError(error, "[DriverManager] Driver path not found in registry for \""s +
+                        driver_name + "\"");
     return ADBC_STATUS_NOT_FOUND;
   }
   return ADBC_STATUS_OK;
@@ -264,9 +284,9 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   return ADBC_STATUS_OK;
 }
 
-std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadOption levels) {
+std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
   std::vector<std::filesystem::path> paths;
-  if (levels & ADBC_LOAD_OPTION_SEARCH_ENV) {
+  if (levels & ADBC_LOAD_FLAG_SEARCH_ENV) {
     // Check the ADBC_CONFIG_PATH environment variable
     const char* env_path = std::getenv("ADBC_CONFIG_PATH");
     if (env_path) {
@@ -274,7 +294,7 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadOption levels) {
     }
   }
 
-  if (levels & ADBC_LOAD_OPTION_SEARCH_USER) {
+  if (levels & ADBC_LOAD_FLAG_SEARCH_USER) {
     // Check the user configuration directory
     std::filesystem::path user_config_dir = UserConfigDir();
     if (!user_config_dir.empty() && std::filesystem::exists(user_config_dir)) {
@@ -282,7 +302,7 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadOption levels) {
     }
   }
 
-  if (levels & ADBC_LOAD_OPTION_SEARCH_SYSTEM) {
+  if (levels & ADBC_LOAD_FLAG_SEARCH_SYSTEM) {
 #ifndef _WIN32
     // system level for windows is to search the registry keys
     const std::filesystem::path system_config_dir("/etc/adbc");
@@ -330,7 +350,7 @@ struct ManagedLibrary {
   }
 
   AdbcStatusCode GetDriverInfo(const std::string_view driver_name,
-                               const AdbcLoadOption load_options, DriverInfo& info,
+                               const AdbcLoadFlags load_options, DriverInfo& info,
                                struct AdbcError* error) {
     if (driver_name.empty()) {
       SetError(error, "[DriverManager] Driver name is empty");
@@ -338,8 +358,7 @@ struct ManagedLibrary {
     }
 
     std::filesystem::path driver_path(driver_name);
-    const bool allow_relative_paths =
-        load_options & ADBC_LOAD_OPTION_ALLOW_RELATIVE_PATHS;
+    const bool allow_relative_paths = load_options & ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
     if (driver_path.has_extension()) {
       if (driver_path.is_relative() && !allow_relative_paths) {
         SetError(
@@ -361,7 +380,7 @@ struct ManagedLibrary {
 
       // if the extension is not .toml, then just try to load the provided
       // path as if it was an absolute path to a driver library
-      return Load(driver_path.string().c_str(), error);
+      return Load(driver_path.c_str(), error);
     }
 
     if (driver_path.is_absolute()) {
@@ -381,7 +400,7 @@ struct ManagedLibrary {
 
     if (driver_path.has_extension()) {
       if (driver_path.is_relative() &&
-          (load_options & ADBC_LOAD_OPTION_ALLOW_RELATIVE_PATHS) == 0) {
+          (load_options & ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS) == 0) {
         SetError(
             error,
             "[DriverManager] Driver path is relative and relative paths are not allowed");
@@ -396,7 +415,7 @@ struct ManagedLibrary {
       static const std::string kPlatformLibrarySuffix = ".so";
 #endif
       if (HasExtension(driver_path, kPlatformLibrarySuffix)) {
-        return Load(driver_path.string().c_str(), error);
+        return Load(driver_path.c_str(), error);
       }
 
       SetError(error, "[DriverManager] Driver name has unrecognized extension: " +
@@ -425,7 +444,7 @@ struct ManagedLibrary {
       }
 
       full_path.replace_extension("");  // remove the .toml extension
-      auto status = Load(full_path.string().c_str(), nullptr);
+      auto status = Load(full_path.c_str(), nullptr);
       if (status == ADBC_STATUS_OK) {
         return status;
       }
@@ -435,7 +454,7 @@ struct ManagedLibrary {
   }
 
   AdbcStatusCode FindDriver(const std::filesystem::path& driver_path,
-                            const AdbcLoadOption load_options, DriverInfo& info,
+                            const AdbcLoadFlags load_options, DriverInfo& info,
                             struct AdbcError* error) {
     if (driver_path.empty()) {
       SetError(error, "[DriverManager] Driver path is empty");
@@ -445,38 +464,38 @@ struct ManagedLibrary {
 #ifdef _WIN32
     // windows is slightly more complex since we also need to check registry keys
     // so we can't just grab the search paths only.
-    if (load_options & ADBC_LOAD_OPTION_SEARCH_ENV) {
-      auto search_paths = GetSearchPaths(ADBC_LOAD_OPTION_SEARCH_ENV);
+    if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
+      auto search_paths = GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_ENV);
       auto status = SearchPaths(driver_path, search_paths, info, error);
       if (status == ADBC_STATUS_OK) {
         return status;
       }
     }
 
-    if (load_options & ADBC_LOAD_OPTION_SEARCH_USER) {
+    if (load_options & ADBC_LOAD_FLAG_SEARCH_USER) {
       // Check the user registry for the driver
       auto status =
-          LoadDriverFromRegistry(HKEY_CURRENT_USER, driver_path.string(), info, error);
+          LoadDriverFromRegistry(HKEY_CURRENT_USER, driver_path.native(), info, error);
       if (status == ADBC_STATUS_OK) {
         return Load(info.lib_path.c_str(), error);
       }
 
-      status = SearchPaths(driver_path, GetSearchPaths(ADBC_LOAD_OPTION_SEARCH_USER),
-                           info, error);
+      status = SearchPaths(driver_path, GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_USER), info,
+                           error);
       if (status == ADBC_STATUS_OK) {
         return status;
       }
     }
 
-    if (load_options & ADBC_LOAD_OPTION_SEARCH_SYSTEM) {
+    if (load_options & ADBC_LOAD_FLAG_SEARCH_SYSTEM) {
       // Check the system registry for the driver
       auto status =
-          LoadDriverFromRegistry(HKEY_LOCAL_MACHINE, driver_path.string(), info, error);
+          LoadDriverFromRegistry(HKEY_LOCAL_MACHINE, driver_path.native(), info, error);
       if (status == ADBC_STATUS_OK) {
         return Load(info.lib_path.c_str(), error);
       }
 
-      status = SearchPaths(driver_path, GetSearchPaths(ADBC_LOAD_OPTION_SEARCH_SYSTEM),
+      status = SearchPaths(driver_path, GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_SYSTEM),
                            info, error);
       if (status == ADBC_STATUS_OK) {
         return status;
@@ -497,22 +516,22 @@ struct ManagedLibrary {
 #endif
   }
 
-  AdbcStatusCode Load(const char* library, struct AdbcError* error) {
+  AdbcStatusCode Load(const char_type* library, struct AdbcError* error) {
     std::string error_message;
 #if defined(_WIN32)
-    HMODULE handle = LoadLibraryExA(library, NULL, 0);
+    HMODULE handle = LoadLibraryExW(library, NULL, 0);
     if (!handle) {
       error_message += library;
-      error_message += ": LoadLibraryExA() failed: ";
+      error_message += ": LoadLibraryExW() failed: ";
       GetWinError(&error_message);
 
-      std::string full_driver_name = library;
-      full_driver_name += ".dll";
-      handle = LoadLibraryExA(full_driver_name.c_str(), NULL, 0);
+      std::wstring full_driver_name = library;
+      full_driver_name += L".dll";
+      handle = LoadLibraryExW(full_driver_name.c_str(), NULL, 0);
       if (!handle) {
         error_message += '\n';
         error_message += full_driver_name;
-        error_message += ": LoadLibraryExA() failed: ";
+        error_message += ": LoadLibraryExW() failed: ";
         GetWinError(&error_message);
       }
     }
@@ -2048,7 +2067,7 @@ const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
 }
 
 AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoint,
-                                  const int version, const AdbcLoadOption load_options,
+                                  const int version, const AdbcLoadFlags load_options,
                                   void* raw_driver, struct AdbcError* error) {
   AdbcDriverInitFunc init_func = nullptr;
   std::string error_message;
@@ -2116,7 +2135,7 @@ AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoin
 
 AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
                               int version, void* raw_driver, struct AdbcError* error) {
-  return AdbcFindLoadDriver(driver_name, entrypoint, version, ADBC_LOAD_OPTION_DEFAULT,
+  return AdbcFindLoadDriver(driver_name, entrypoint, version, ADBC_LOAD_FLAG_DEFAULT,
                             raw_driver, error);
 }
 
