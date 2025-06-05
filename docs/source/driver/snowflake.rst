@@ -469,11 +469,14 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     non-zero scaled columns will be returned as ``Float64`` typed Arrow columns.
     The default is ``true``.
 
-``adbc.snowflake.sql.client_option.use_max_microseconds_precision``
-    When ``true``, nanoseconds will be converted to microseconds
-    to avoid the overflow of the Timestamp type. Only applies to
-    ``timestamp_ltz``, ``timestamp_ntz``, and ``timestamp_tz`` types.
-    The default is ``false``.
+``adbc.snowflake.sql.client_option.max_timestamp_precision``
+    Controls the behavior of Timestamp values with Nanosecond precision. Native Go behavior
+    is these values will overflow to an unpredictable value when the year is before year 1677 or after 2262.
+    This option can control the behavior of the `timestamp_ltz`, `timestamp_ntz`, and `timestamp_tz` types.
+    Valid values are
+    - ``nanoseconds``: Use default behavior for nanoseconds.
+    - ``nanoseconds_error_on_overflow``: Throws an error when the value will overflow to enforce integrity of the data.
+    - ``microseconds``: Limits the max Timestamp precision to microseconds, which is safe for all values.
 
 Metadata
 --------

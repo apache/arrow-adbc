@@ -1731,26 +1731,25 @@ func (suite *SnowflakeTests) TestTimestampPrecision() {
 func (suite *SnowflakeTests) queryTimestamps(query string, expectedMicrosecondResults []arrow.Timestamp, expectedNanosecondResults []arrow.Timestamp) {
 
 	// with max microseconds precision
-	rec := suite.getTimestamps(query, true, false)
+	rec := suite.getTimestamps(query, driver.OptionValueMicroseconds)
 	suite.validateTimestamps(query, rec, expectedMicrosecondResults)
 
 	// with the default nanoseconds precision
-	rec = suite.getTimestamps(query, false, false)
+	rec = suite.getTimestamps(query, driver.OptionValueNanoseconds)
 	suite.validateTimestamps(query, rec, expectedNanosecondResults)
 
 	// set the strict option to error on overflow
-	rec = suite.getTimestamps(query, false, true)
-	suite.validateTimestamps(query, rec, nil)
+	rec = suite.getTimestamps(query, driver.OptionValueNanosecondsNoOverflow)
+	suite.validateTimestamps(query, rec, nil) // dont expect any results
 }
 
-func (suite *SnowflakeTests) getTimestamps(query string, setDatabaseOption bool, setStatementOption bool) arrow.Record {
+func (suite *SnowflakeTests) getTimestamps(query string, timestampPrecision string) arrow.Record {
 
 	// with max microseconds precision
 	opts := suite.Quirks.DatabaseOptions()
-	if setDatabaseOption {
-		opts[driver.OptionUseMaxMicrosecondsTimestampPrecision] = adbc.OptionValueEnabled
+	if timestampPrecision != "" {
+		opts[driver.OptionMaxTimestampPrecision] = timestampPrecision
 	}
-	opts = suite.Quirks.DatabaseOptions()
 	db, err := suite.driver.NewDatabase(opts)
 	suite.NoError(err)
 	defer validation.CheckedClose(suite.T(), db)
@@ -1758,16 +1757,13 @@ func (suite *SnowflakeTests) getTimestamps(query string, setDatabaseOption bool,
 	suite.NoError(err)
 	defer validation.CheckedClose(suite.T(), cnxn)
 	stmt, _ := cnxn.NewStatement()
-	if setStatementOption {
-		suite.NoError(stmt.SetOption(driver.OptionStatementErrorOnTimestampOverflow, adbc.OptionValueEnabled))
-	}
 	suite.Require().NoError(stmt.SetSqlQuery(query))
 	rdr, _, err := stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
 
 	defer rdr.Release()
 
-	if setStatementOption {
+	if timestampPrecision == driver.OptionValueNanosecondsNoOverflow {
 		suite.False(rdr.Next())
 		return nil
 	}

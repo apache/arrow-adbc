@@ -244,10 +244,46 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         }
 
         [SkippableFact, Order(6)]
-        public void VerifyTimePrecision()
+        public void VerifyTimestampPrecision()
+        {
+            string query = "SELECT " +
+                              "TO_TIMESTAMP('9999-12-31 00:00:00') December31_9999, " +
+                              "TO_TIMESTAMP('2001-09-11 13:46:00') As September11_2001, " +
+                              "TO_TIMESTAMP('33-04-03 15:00:00') as April3_0033";
+
+            List<ColumnNetTypeArrowTypeValue> expectedMicrosecondValues = new List<ColumnNetTypeArrowTypeValue>()
+            {
+                new ColumnNetTypeArrowTypeValue("DECEMBER31_9999", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(9999, 12, 31, 0, 0, 0), TimeSpan.Zero)),
+                new ColumnNetTypeArrowTypeValue("SEPTEMBER11_2001", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2001, 9, 11, 13, 46, 0), TimeSpan.Zero)),
+                new ColumnNetTypeArrowTypeValue("APRIL3_0033", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(0033, 4, 3, 15, 0, 0), TimeSpan.Zero)),
+            };
+
+            // if using a microseconds as the max precision, everything returns correctly
+            ValidateTimestampPrecision(SnowflakeConstants.OptionValueMicroseconds, query, expectedMicrosecondValues);
+
+            List<ColumnNetTypeArrowTypeValue> expectedNanoseconddValues = new List<ColumnNetTypeArrowTypeValue>()
+            {
+                // 572833941680662774 ticks = 3/29/1816 5:56:08 AM +00:00 and not what we asked for :/
+                new ColumnNetTypeArrowTypeValue("DECEMBER31_9999", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(572833941680662774, TimeSpan.Zero)),
+
+                // within normal range, so the values return as expected
+                new ColumnNetTypeArrowTypeValue("SEPTEMBER11_2001", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2001, 9, 11, 13, 46, 0), TimeSpan.Zero)),
+
+                // 563580782211286549 ticks = 12/1/1786 1:43:41 PM +00:00 and not what we asked for :/
+                new ColumnNetTypeArrowTypeValue("APRIL3_0033", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(563580782211286549, TimeSpan.Zero)),
+            };
+
+            // if you use the default (nanoseconds) precision, the values are incorrect
+            ValidateTimestampPrecision(SnowflakeConstants.OptionValueNanoseconds, query, expectedNanoseconddValues);
+
+            // if `error on overflow` is enforced, then an error is thrown
+            Assert.Throws<Exception>(() => ValidateTimestampPrecision(SnowflakeConstants.OptionValueNanosecondsNoOverflow, query, expectedNanoseconddValues));
+        }
+
+        private void ValidateTimestampPrecision(string precision, string query, List<ColumnNetTypeArrowTypeValue> expectedValues)
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
-            testConfiguration.UseMaxMicrosecondTimestampPrecision = true;
+            testConfiguration.MaxTimestampPrecision = precision;
 
             using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
             {
@@ -255,16 +291,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 sampleDataBuilder.Samples.Add(
                    new SampleData()
                    {
-                       Query = "SELECT " +
-                                   "TO_TIMESTAMP('9999-12-31 00:00:00') December31_9999, " +
-                                   "TO_TIMESTAMP('2001-09-11 13:46:00') As September11_2001, " +
-                                   "TO_TIMESTAMP('33-04-03 15:00:00') as April3_0033",
-                       ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
-                        {
-                            new ColumnNetTypeArrowTypeValue("DECEMBER31_9999", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(9999, 12, 31, 0, 0, 0), TimeSpan.Zero)),
-                            new ColumnNetTypeArrowTypeValue("SEPTEMBER11_2001", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2001, 9, 11, 13, 46, 0), TimeSpan.Zero)),
-                            new ColumnNetTypeArrowTypeValue("APRIL3_0033", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(0033, 4, 3, 15, 0, 0), TimeSpan.Zero)),
-                        }
+                       Query = query,
+                       ExpectedValues = expectedValues
                    });
 
                 Tests.ClientTests.VerifyTypesAndValues(adbcConnection, sampleDataBuilder);
@@ -325,7 +353,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             builder[SnowflakeParameters.HOST] = testConfiguration.Host;
             builder[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
-            builder[SnowflakeParameters.USE_MAX_MICROSECONDS_PRECISION] = testConfiguration.UseMaxMicrosecondTimestampPrecision.ToString().ToLower();
+            builder[SnowflakeParameters.MAX_TIMESTAMP_PRECISION] = testConfiguration.MaxTimestampPrecision;
 
             if (authType == SnowflakeAuthentication.AuthJwt)
             {

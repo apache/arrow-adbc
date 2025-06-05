@@ -73,9 +73,16 @@ const (
 	// with a scale of 0 will be returned as Int64 columns, and a non-zero
 	// scale will return a Float64 column.
 	OptionUseHighPrecision = "adbc.snowflake.sql.client_option.use_high_precision"
-	// When true, OptionUseMaxMicrosecondsTimestampPrecision will convert nanoseconds to microseconds
-	// to avoid the overflow of the timestamp type.
-	OptionUseMaxMicrosecondsTimestampPrecision = "adbc.snowflake.sql.client_option.use_max_microseconds_precision"
+	// OptionMaxTimestampPrecision controls the behavior of Timestamp values with
+	// Nanosecond precision. Native Go behavior is these values will overflow to an
+	// unpredictable value when the year is before year 1677 or after 2262. This option
+	// can control the behavior of the `timestamp_ltz`, `timestamp_ntz`, and `timestamp_tz` types.
+	//
+	// Valid values are
+	// `nanoseconds`: Use default behavior for nanoseconds.
+	// `nanoseconds_error_on_overflow`: Throws an error when the value will overflow to enforce integrity of the data.
+	// `microseconds`: Limits the max Timestamp precision to microseconds, which is safe for all values.
+	OptionMaxTimestampPrecision = "adbc.snowflake.sql.client_option.max_timestamp_precision"
 
 	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
 	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"
@@ -120,6 +127,13 @@ const (
 	OptionValueAuthJwt = "auth_jwt"
 	// use a username and password with mfa
 	OptionValueAuthUserPassMFA = "auth_mfa"
+
+	// Use default behavior for nanoseconds.
+	OptionValueNanoseconds = "nanoseconds"
+	// throws an error when the value will overflow to enforce integrity of the data.
+	OptionValueNanosecondsNoOverflow = "nanoseconds_error_on_overflow"
+	// use a max of microseconds precision for timestamps
+	OptionValueMicroseconds = "microseconds"
 )
 
 var (
@@ -258,9 +272,10 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(
 	defaultAppName := "[ADBC][Go-" + driverVersion + "]"
 
 	db := &databaseImpl{
-		DatabaseImplBase: dbBase,
-		useHighPrecision: true,
-		defaultAppName:   defaultAppName,
+		DatabaseImplBase:   dbBase,
+		useHighPrecision:   true,
+		defaultAppName:     defaultAppName,
+		timestampPrecision: Nanoseconds,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err

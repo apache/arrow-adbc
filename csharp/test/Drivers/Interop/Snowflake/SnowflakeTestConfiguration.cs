@@ -79,10 +79,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public bool UseHighPrecision { get; set; } = true;
 
         /// <summary>
-        /// The Snowflake setting to have a max timestamp precision of only microseconds
+        /// The Snowflake setting indicate the maximum timestamp precision.
         /// </summary>
-        [JsonPropertyName("useMaxMicrosecondTimestampPrecision")]
-        public bool UseMaxMicrosecondTimestampPrecision { get; set; } = false;
+        [JsonPropertyName("maxTimestampPrecision")]
+        public string MaxTimestampPrecision { get; set; } = "nanoseconds";
 
         /// <summary>
         /// The snowflake Authentication

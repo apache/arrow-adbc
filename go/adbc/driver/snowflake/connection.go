@@ -73,9 +73,9 @@ type connectionImpl struct {
 	db   *databaseImpl
 	ctor driver.Connector
 
-	activeTransaction                   bool
-	useHighPrecision                    bool
-	useMaxMicrosecondTimestampPrecision bool
+	activeTransaction  bool
+	useHighPrecision   bool
+	timestampPrecision MaxTimestampPrecision
 }
 
 func escapeSingleQuoteForLike(arg string) string {
@@ -484,19 +484,19 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 	case "DATETIME":
 		fallthrough
 	case "TIMESTAMP", "TIMESTAMP_NTZ":
-		if c.useMaxMicrosecondTimestampPrecision {
+		if c.timestampPrecision == Microseconds {
 			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond}
 		} else {
 			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
 		}
 	case "TIMESTAMP_LTZ":
-		if c.useMaxMicrosecondTimestampPrecision {
+		if c.timestampPrecision == Microseconds {
 			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: loc.String()}
 		} else {
 			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
 		}
 	case "TIMESTAMP_TZ":
-		if c.useMaxMicrosecondTimestampPrecision {
+		if c.timestampPrecision == Microseconds {
 			field.Type = arrow.FixedWidthTypes.Timestamp_us
 		} else {
 			field.Type = arrow.FixedWidthTypes.Timestamp_ns
@@ -515,7 +515,7 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 	return field
 }
 
-func descToField(name, typ, isnull, primary string, comment sql.NullString, useMaxMicrosecondTimestampPrecision bool) (field arrow.Field, err error) {
+func descToField(name, typ, isnull, primary string, comment sql.NullString, timestampPrecision MaxTimestampPrecision) (field arrow.Field, err error) {
 	field.Name = strings.ToLower(name)
 	if isnull == "Y" {
 		field.Nullable = true
@@ -586,19 +586,19 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString, useM
 	case "DATETIME":
 		fallthrough
 	case "TIMESTAMP", "TIMESTAMP_NTZ":
-		if useMaxMicrosecondTimestampPrecision {
+		if timestampPrecision == Microseconds {
 			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond}
 		} else {
 			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
 		}
 	case "TIMESTAMP_LTZ":
-		if useMaxMicrosecondTimestampPrecision {
+		if timestampPrecision == Microseconds {
 			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: loc.String()}
 		} else {
 			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
 		}
 	case "TIMESTAMP_TZ":
-		if useMaxMicrosecondTimestampPrecision {
+		if timestampPrecision == Microseconds {
 			field.Type = arrow.FixedWidthTypes.Timestamp_us
 		} else {
 			field.Type = arrow.FixedWidthTypes.Timestamp_ns
@@ -694,7 +694,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 			return nil, errToAdbcErr(adbc.StatusIO, err)
 		}
 
-		f, err := descToField(name, typ, isnull, primary, comment, c.useMaxMicrosecondTimestampPrecision)
+		f, err := descToField(name, typ, isnull, primary, comment, c.timestampPrecision)
 		if err != nil {
 			return nil, err
 		}
@@ -738,15 +738,14 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	defaultIngestOptions := DefaultIngestOptions()
 	stmtBase := driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper)
 	stmt := &statement{
-		StatementImplBase:                   stmtBase,
-		alloc:                               c.db.Alloc,
-		cnxn:                                c,
-		queueSize:                           defaultStatementQueueSize,
-		prefetchConcurrency:                 defaultPrefetchConcurrency,
-		useHighPrecision:                    c.useHighPrecision,
-		useMaxMicrosecondTimestampPrecision: c.useMaxMicrosecondTimestampPrecision,
-		errorOnTimestampOverflow:            false,
-		ingestOptions:                       defaultIngestOptions,
+		StatementImplBase:   stmtBase,
+		alloc:               c.db.Alloc,
+		cnxn:                c,
+		queueSize:           defaultStatementQueueSize,
+		prefetchConcurrency: defaultPrefetchConcurrency,
+		useHighPrecision:    c.useHighPrecision,
+		timestampPrecision:  c.timestampPrecision,
+		ingestOptions:       defaultIngestOptions,
 	}
 	return driverbase.NewStatement(stmt), nil
 }

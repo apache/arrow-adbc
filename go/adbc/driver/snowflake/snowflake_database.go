@@ -48,13 +48,34 @@ var (
 	}
 )
 
+type MaxTimestampPrecision uint8
+
+const (
+	// default precision
+	Nanoseconds MaxTimestampPrecision = iota
+
+	// use nanoseconds, but error if there is an overflow
+	NanosecondsNoOverflow
+
+	// use microseconds
+	Microseconds
+)
+
+var (
+	maxTimestampPrecisionMap = map[string]MaxTimestampPrecision{
+		OptionValueNanoseconds:           Nanoseconds,
+		OptionValueNanosecondsNoOverflow: NanosecondsNoOverflow,
+		OptionValueMicroseconds:          Microseconds,
+	}
+)
+
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 	cfg *gosnowflake.Config
 
-	useHighPrecision                    bool
-	useMaxMicrosecondTimestampPrecision bool
-	defaultAppName                      string
+	useHighPrecision   bool
+	timestampPrecision MaxTimestampPrecision
+	defaultAppName     string
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -133,11 +154,15 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil
-	case OptionUseMaxMicrosecondsTimestampPrecision:
-		if d.useMaxMicrosecondTimestampPrecision {
-			return adbc.OptionValueEnabled, nil
+	case OptionMaxTimestampPrecision:
+		switch d.timestampPrecision {
+		case Microseconds:
+			return OptionValueMicroseconds, nil
+		case NanosecondsNoOverflow:
+			return OptionValueNanosecondsNoOverflow, nil
+		default:
+			return OptionValueNanoseconds, nil
 		}
-		return adbc.OptionValueDisabled, nil
 	default:
 		val, ok := d.cfg.Params[key]
 		if ok {
@@ -461,15 +486,13 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-	case OptionUseMaxMicrosecondsTimestampPrecision:
+	case OptionMaxTimestampPrecision:
 		switch v {
-		case adbc.OptionValueEnabled:
-			d.useMaxMicrosecondTimestampPrecision = true
-		case adbc.OptionValueDisabled:
-			d.useMaxMicrosecondTimestampPrecision = false
+		case OptionValueNanoseconds, OptionValueNanosecondsNoOverflow, OptionValueMicroseconds:
+			d.timestampPrecision = maxTimestampPrecisionMap[v]
 		default:
 			return adbc.Error{
-				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionUseMaxMicrosecondsTimestampPrecision, v),
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionMaxTimestampPrecision, v),
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -496,9 +519,9 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		// default enable high precision
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead
-		useHighPrecision:                    d.useHighPrecision,
-		useMaxMicrosecondTimestampPrecision: d.useMaxMicrosecondTimestampPrecision,
-		ConnectionImplBase:                  driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		useHighPrecision:   d.useHighPrecision,
+		timestampPrecision: d.timestampPrecision,
+		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
 
 	return driverbase.NewConnectionBuilder(conn).
