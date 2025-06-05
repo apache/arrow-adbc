@@ -254,6 +254,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case ApacheParameters.ForeignTableName:
                     this.ForeignTableName = value;
                     break;
+                case ApacheParameters.EscapeUnderscore:
+                    if (ApacheUtility.BooleanIsValid(key, value, out bool escapeUnderscore))
+                    {
+                        this.EscapeUnderscore = escapeUnderscore;
+                    }
+                    break;
                 default:
                     throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
             }
@@ -311,6 +317,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal string? ForeignCatalogName { get; set; }
         protected internal string? ForeignSchemaName { get; set; }
         protected internal string? ForeignTableName { get; set; }
+        protected internal bool EscapeUnderscore { get; set; } = false;
         protected internal TSparkDirectResults? _directResults { get; set; }
 
         public HiveServer2Connection Connection { get; private set; }
@@ -327,6 +334,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private void UpdateBatchSizeIfValid(string key, string value) => BatchSize = !string.IsNullOrEmpty(value) && long.TryParse(value, out long batchSize) && batchSize > 0
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
+
+        private string? EscapeUnderscoreInName(string? name)
+        {
+            if (!EscapeUnderscore || name == null)
+                return name;
+            return name.Replace("_", "\\_");
+        }
 
         public override void Dispose()
         {
@@ -382,9 +396,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 null,
                 null,
                 null,
-                CatalogName,
-                SchemaName,
-                TableName,
+                EscapeUnderscoreInName(CatalogName),
+                EscapeUnderscoreInName(SchemaName),
+                EscapeUnderscoreInName(TableName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
@@ -394,12 +408,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
         {
             TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
-                CatalogName,
-                SchemaName,
-                TableName,
-                ForeignCatalogName,
-                ForeignSchemaName,
-                ForeignTableName,
+                EscapeUnderscoreInName(CatalogName),
+                EscapeUnderscoreInName(SchemaName),
+                EscapeUnderscoreInName(TableName),
+                EscapeUnderscoreInName(ForeignCatalogName),
+                EscapeUnderscoreInName(ForeignSchemaName),
+                EscapeUnderscoreInName(ForeignTableName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
@@ -409,9 +423,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
             TGetPrimaryKeysResp resp = await Connection.GetPrimaryKeysAsync(
-                CatalogName,
-                SchemaName,
-                TableName,
+                EscapeUnderscoreInName(CatalogName),
+                EscapeUnderscoreInName(SchemaName),
+                EscapeUnderscoreInName(TableName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
@@ -429,8 +443,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
         {
             TGetSchemasResp resp = await Connection.GetSchemasAsync(
-                CatalogName,
-                SchemaName,
+                EscapeUnderscoreInName(CatalogName),
+                EscapeUnderscoreInName(SchemaName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
@@ -441,9 +455,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
             TGetTablesResp resp = await Connection.GetTablesAsync(
-                CatalogName,
-                SchemaName,
-                TableName,
+                EscapeUnderscoreInName(CatalogName),
+                EscapeUnderscoreInName(SchemaName),
+                EscapeUnderscoreInName(TableName),
                 tableTypesList,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
@@ -454,10 +468,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
         {
             TGetColumnsResp resp = await Connection.GetColumnsAsync(
-                CatalogName,
-                SchemaName,
-                TableName,
-                ColumnName,
+                EscapeUnderscoreInName(CatalogName),
+                EscapeUnderscoreInName(SchemaName),
+                EscapeUnderscoreInName(TableName),
+                EscapeUnderscoreInName(ColumnName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
