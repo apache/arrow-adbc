@@ -745,6 +745,7 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 		prefetchConcurrency:                 defaultPrefetchConcurrency,
 		useHighPrecision:                    c.useHighPrecision,
 		useMaxMicrosecondTimestampPrecision: c.useMaxMicrosecondTimestampPrecision,
+		errorOnTimestampOverflow:            false,
 		ingestOptions:                       defaultIngestOptions,
 	}
 	return driverbase.NewStatement(stmt), nil

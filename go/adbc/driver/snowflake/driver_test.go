@@ -1738,13 +1738,9 @@ func (suite *SnowflakeTests) queryTimestamps(query string, expectedMicrosecondRe
 	rec = suite.getTimestamps(query, false, false)
 	suite.validateTimestamps(query, rec, expectedNanosecondResults)
 
-	// just by setting the statement option
+	// set the strict option to error on overflow
 	rec = suite.getTimestamps(query, false, true)
-	suite.validateTimestamps(query, rec, expectedMicrosecondResults)
-
-	// set the database option to microseconds but then disable the statement option
-	rec = suite.getTimestamps(query, true, false)
-	suite.validateTimestamps(query, rec, expectedNanosecondResults)
+	suite.validateTimestamps(query, rec, nil)
 }
 
 func (suite *SnowflakeTests) getTimestamps(query string, setDatabaseOption bool, setStatementOption bool) arrow.Record {
@@ -1762,13 +1758,19 @@ func (suite *SnowflakeTests) getTimestamps(query string, setDatabaseOption bool,
 	suite.NoError(err)
 	defer validation.CheckedClose(suite.T(), cnxn)
 	stmt, _ := cnxn.NewStatement()
-	if setDatabaseOption {
-		suite.NoError(stmt.SetOption(driver.OptionUseMaxMicrosecondsTimestampPrecision, adbc.OptionValueEnabled))
+	if setStatementOption {
+		suite.NoError(stmt.SetOption(driver.OptionStatementErrorOnTimestampOverflow, adbc.OptionValueEnabled))
 	}
 	suite.Require().NoError(stmt.SetSqlQuery(query))
 	rdr, _, err := stmt.ExecuteQuery(suite.ctx)
 	suite.Require().NoError(err)
+
 	defer rdr.Release()
+
+	if setStatementOption {
+		suite.False(rdr.Next())
+		return nil
+	}
 
 	suite.True(rdr.Next())
 	rec := rdr.Record()
@@ -1777,11 +1779,13 @@ func (suite *SnowflakeTests) getTimestamps(query string, setDatabaseOption bool,
 }
 
 func (suite *SnowflakeTests) validateTimestamps(query string, rec arrow.Record, expected []arrow.Timestamp) {
-	for i := 0; i < int(rec.NumCols()); i++ {
-		col := rec.Column(i).(*array.Timestamp)
-		suite.EqualValues(1, col.Len())
-		actual := col.Value(0)
-		suite.Equal(expected[i], actual, "Mismatch in column %d for the query %d", i, query)
+	if expected != nil {
+		for i := 0; i < int(rec.NumCols()); i++ {
+			col := rec.Column(i).(*array.Timestamp)
+			suite.EqualValues(1, col.Len())
+			actual := col.Value(0)
+			suite.Equal(expected[i], actual, "Mismatch in column %d for the query %d", i, query)
+		}
 	}
 }
 

@@ -38,15 +38,16 @@ import (
 )
 
 const (
-	OptionStatementQueryTag                = "adbc.snowflake.statement.query_tag"
-	OptionStatementQueueSize               = "adbc.rpc.result_queue_size"
-	OptionStatementPrefetchConcurrency     = "adbc.snowflake.rpc.prefetch_concurrency"
-	OptionStatementIngestWriterConcurrency = "adbc.snowflake.statement.ingest_writer_concurrency"
-	OptionStatementIngestUploadConcurrency = "adbc.snowflake.statement.ingest_upload_concurrency"
-	OptionStatementIngestCopyConcurrency   = "adbc.snowflake.statement.ingest_copy_concurrency"
-	OptionStatementIngestTargetFileSize    = "adbc.snowflake.statement.ingest_target_file_size"
-	OptionStatementIngestCompressionCodec  = "adbc.snowflake.statement.ingest_compression_codec" // TODO(GH-1473): Implement option
-	OptionStatementIngestCompressionLevel  = "adbc.snowflake.statement.ingest_compression_level" // TODO(GH-1473): Implement option
+	OptionStatementQueryTag                 = "adbc.snowflake.statement.query_tag"
+	OptionStatementQueueSize                = "adbc.rpc.result_queue_size"
+	OptionStatementPrefetchConcurrency      = "adbc.snowflake.rpc.prefetch_concurrency"
+	OptionStatementIngestWriterConcurrency  = "adbc.snowflake.statement.ingest_writer_concurrency"
+	OptionStatementIngestUploadConcurrency  = "adbc.snowflake.statement.ingest_upload_concurrency"
+	OptionStatementIngestCopyConcurrency    = "adbc.snowflake.statement.ingest_copy_concurrency"
+	OptionStatementIngestTargetFileSize     = "adbc.snowflake.statement.ingest_target_file_size"
+	OptionStatementIngestCompressionCodec   = "adbc.snowflake.statement.ingest_compression_codec" // TODO(GH-1473): Implement option
+	OptionStatementIngestCompressionLevel   = "adbc.snowflake.statement.ingest_compression_level" // TODO(GH-1473): Implement option
+	OptionStatementErrorOnTimestampOverflow = "adbc.snowflake.statement.error_on_timestamp_overflow"
 )
 
 type statement struct {
@@ -58,11 +59,12 @@ type statement struct {
 	useHighPrecision                    bool
 	useMaxMicrosecondTimestampPrecision bool
 
-	query         string
-	targetTable   string
-	ingestMode    string
-	ingestOptions *ingestOptions
-	queryTag      string
+	errorOnTimestampOverflow bool
+	query                    string
+	targetTable              string
+	ingestMode               string
+	ingestOptions            *ingestOptions
+	queryTag                 string
 
 	bound      arrow.Record
 	streamBind array.RecordReader
@@ -106,6 +108,11 @@ func (st *statement) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStatementQueryTag:
 		return st.queryTag, nil
+	case OptionStatementErrorOnTimestampOverflow:
+		if st.errorOnTimestampOverflow {
+			return adbc.OptionValueEnabled, nil
+		}
+		return adbc.OptionValueDisabled, nil
 	default:
 		return st.Base().GetOption(key)
 	}
@@ -225,12 +232,12 @@ func (st *statement) SetOption(key string, val string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-	case OptionUseMaxMicrosecondsTimestampPrecision:
+	case OptionStatementErrorOnTimestampOverflow:
 		switch val {
 		case adbc.OptionValueEnabled:
-			st.useMaxMicrosecondTimestampPrecision = true
+			st.errorOnTimestampOverflow = true
 		case adbc.OptionValueDisabled:
-			st.useMaxMicrosecondTimestampPrecision = false
+			st.errorOnTimestampOverflow = false
 		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("[Snowflake] invalid statement option %s=%s", key, val),
@@ -522,7 +529,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 				if err != nil {
 					return nil, errToAdbcErr(adbc.StatusInternal, err)
 				}
-				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.useMaxMicrosecondTimestampPrecision)
+				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.useMaxMicrosecondTimestampPrecision, st.errorOnTimestampOverflow)
 			},
 			currentBatch: st.bound,
 			stream:       st.streamBind,
@@ -546,7 +553,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 		return
 	}
 
-	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.useMaxMicrosecondTimestampPrecision)
+	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.useMaxMicrosecondTimestampPrecision, st.errorOnTimestampOverflow)
 	nRows = loader.TotalRows()
 	return
 }
@@ -660,7 +667,7 @@ func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 		return nil, errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision, st.useMaxMicrosecondTimestampPrecision)
+	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision, st.useHighPrecision)
 }
 
 // Prepare turns this statement into a prepared statement to be executed

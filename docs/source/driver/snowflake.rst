@@ -471,7 +471,8 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
 
 ``adbc.snowflake.sql.client_option.use_max_microseconds_precision``
     When ``true``, nanoseconds will be converted to microseconds
-    to avoid the overflow of the Timestamp type. Does not affect the Time32 or Time64 types.
+    to avoid the overflow of the Timestamp type. Only applies to
+    ``timestamp_ltz``, ``timestamp_ntz``, and ``timestamp_tz`` types.
     The default is ``false``.
 
 Metadata
