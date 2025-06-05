@@ -215,7 +215,7 @@ struct BindStream {
 
       int64_t param_length = param_buffer->size_bytes - last_offset - sizeof(int32_t);
       if (param_length > (std::numeric_limits<int>::max)()) {
-        return Status::Internal("Paramter ", col, "serialized to >2GB of binary");
+        return Status::Internal("Parameter ", col, "serialized to >2GB of binary");
       }
 
       param_lengths[col] = static_cast<int>(param_length);

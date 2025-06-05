@@ -21,7 +21,7 @@
 
 namespace adbcpq {
 
-// New cases can be genereated using:
+// New cases can be generated using:
 // psql --host 127.0.0.1 --port 5432 --username postgres -c "COPY (SELECT ...) TO STDOUT
 // WITH (FORMAT binary);" > test.copy Rscript -e "dput(brio::read_file_raw('test.copy'))"
 

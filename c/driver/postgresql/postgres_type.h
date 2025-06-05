@@ -211,7 +211,7 @@ class PostgresType {
   // initialize and set the appropriate number of children). Returns NANOARROW_OK
   // on success and perhaps ENOMEM if memory cannot be allocated. Types that
   // do not have a corresponding Arrow type are returned as Binary with field
-  // metadata ADBC:posgresql:typname. These types can be represented as their
+  // metadata ADBC:postgresql:typname. These types can be represented as their
   // binary COPY representation in the output.
   ArrowErrorCode SetSchema(ArrowSchema* schema,
                            const std::string& vendor_name = "PostgreSQL") const {
