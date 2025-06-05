@@ -174,19 +174,21 @@ using char_type = wchar_t;
 
 std::string utf8_encode(const std::wstring& wstr) {
   if (wstr.empty()) return std::string();
-  size_t size_needed =
-      WideCharToMultiByte(CP_UTF8, 0, &wstr[0], wstr.size(), NULL, 0, NULL, NULL);
+  int size_needed = WideCharToMultiByte(
+      CP_UTF8, 0, &wstr[0], static_cast<int>(wstr.size()), NULL, 0, NULL, NULL);
   std::string str_to(size_needed, 0);
-  WideCharToMultiByte(CP_UTF8, 0, &wstr[0], wstr.size(), &str_to[0], size_needed, NULL,
-                      NULL);
+  WideCharToMultiByte(CP_UTF8, 0, &wstr[0], static_cast<int>(wstr.size()), &str_to[0],
+                      size_needed, NULL, NULL);
   return str_to;
 }
 
 std::wstring utf8_decode(const std::string& str) {
   if (str.empty()) return std::wstring();
-  size_t size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], str.size(), NULL, 0);
+  int size_needed =
+      MultiByteToWideChar(CP_UTF8, 0, &str[0], static_cast<int>(str.size()), NULL, 0);
   std::wstring wstr_to(size_needed, 0);
-  MultiByteToWideChar(CP_UTF8, 0, &str[0], str.size(), &wstr_to[0], size_needed);
+  MultiByteToWideChar(CP_UTF8, 0, &str[0], static_cast<int>(str.size()), &wstr_to[0],
+                      size_needed);
   return wstr_to;
 }
 
@@ -249,7 +251,7 @@ class RegistryKey {
 
 AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name,
                                       DriverInfo& info, struct AdbcError* error) {
-  static const LPCWSTR kAdbcDriverRegistry = "SOFTWARE\\ADBC\\Drivers";
+  static const LPCWSTR kAdbcDriverRegistry = L"SOFTWARE\\ADBC\\Drivers";
   RegistryKey drivers_key(root, kAdbcDriverRegistry);
   if (!drivers_key.is_open()) {
     return ADBC_STATUS_NOT_FOUND;
@@ -266,7 +268,7 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
   info.source = utf8_encode(dkey.GetString(L"source", L""));
   info.lib_path = std::filesystem::path(dkey.GetString(L"driver", L""));
   if (info.lib_path.empty()) {
-    SetError(error, "[DriverManager] Driver path not found in registry for \""s +
+    SetError(error, "Driver path not found in registry for \""s +
                         utf8_encode(driver_name) + "\"");
     return ADBC_STATUS_NOT_FOUND;
   }
@@ -280,7 +282,7 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   try {
     config = toml::parse_file(driver_manifest.native());
   } catch (const toml::parse_error& err) {
-    SetError(error, "[DriverManager]"s + err.what());
+    SetError(error, err.what());
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
@@ -291,8 +293,8 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   info.source = config["source"].value_or(""s);
   auto lib = config.at_path("Driver.shared").value<std::string>();
   if (!lib) {
-    SetError(error, "[DriverManager] Driver path not found in manifest '"s +
-                        driver_manifest.string() + "'");
+    SetError(error,
+             "Driver path not found in manifest '"s + driver_manifest.string() + "'");
     return ADBC_STATUS_NOT_FOUND;
   }
   info.lib_path = lib.value();
@@ -368,7 +370,7 @@ struct ManagedLibrary {
                                const AdbcLoadFlags load_options, DriverInfo& info,
                                struct AdbcError* error) {
     if (driver_name.empty()) {
-      SetError(error, "[DriverManager] Driver name is empty");
+      SetError(error, "Driver name is empty");
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
@@ -376,9 +378,7 @@ struct ManagedLibrary {
     const bool allow_relative_paths = load_options & ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
     if (driver_path.has_extension()) {
       if (driver_path.is_relative() && !allow_relative_paths) {
-        SetError(
-            error,
-            "[DriverManager] Driver path is relative and relative paths are not allowed");
+        SetError(error, "Driver path is relative and relative paths are not allowed");
         return ADBC_STATUS_INVALID_ARGUMENT;
       }
 
@@ -409,21 +409,20 @@ struct ManagedLibrary {
         }
       }
 
+      driver_path.replace_extension("");
       // otherwise just try to load the provided path as if it was an absolute path
-      return Load(driver_name.data(), error);
+      return Load(driver_path.c_str(), error);
     }
 
     if (driver_path.has_extension()) {
       if (driver_path.is_relative() &&
           (load_options & ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS) == 0) {
-        SetError(
-            error,
-            "[DriverManager] Driver path is relative and relative paths are not allowed");
+        SetError(error, "Driver path is relative and relative paths are not allowed");
         return ADBC_STATUS_INVALID_ARGUMENT;
       }
 
 #if defined(_WIN32)
-      static const std::wstring kPlatformLibrarySuffix = ".dll";
+      static const std::string kPlatformLibrarySuffix = ".dll";
 #elif defined(__APPLE__)
       static const std::string kPlatformLibrarySuffix = ".dylib";
 #else
@@ -433,7 +432,7 @@ struct ManagedLibrary {
         return Load(driver_path.c_str(), error);
       }
 
-      SetError(error, "[DriverManager] Driver name has unrecognized extension: " +
+      SetError(error, "Driver name has unrecognized extension: " +
                           driver_path.extension().string());
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
@@ -472,7 +471,7 @@ struct ManagedLibrary {
                             const AdbcLoadFlags load_options, DriverInfo& info,
                             struct AdbcError* error) {
     if (driver_path.empty()) {
-      SetError(error, "[DriverManager] Driver path is empty");
+      SetError(error, "Driver path is empty");
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
@@ -517,15 +516,16 @@ struct ManagedLibrary {
       }
     }
 
-    SetError(error, "[DriverManager] Driver not found: " + driver_path.string());
+    SetError(error, "Driver not found: " + driver_path.string());
     return ADBC_STATUS_NOT_FOUND;
 #else
     // Otherwise, search the configured paths
     auto search_paths = GetSearchPaths(load_options);
     auto status = SearchPaths(driver_path, search_paths, info, error);
     if (status == ADBC_STATUS_NOT_FOUND) {
-      // If we reach here, we didn't find the driver
-      SetError(error, "[DriverManager] Driver not found: " + driver_path.string());
+      // If we reach here, we didn't find the driver in any of the paths
+      // so let's just attempt to load it as default behavior
+      return Load(driver_path.c_str(), error);
     }
     return status;
 #endif
@@ -536,7 +536,7 @@ struct ManagedLibrary {
 #if defined(_WIN32)
     HMODULE handle = LoadLibraryExW(library, NULL, 0);
     if (!handle) {
-      error_message += library;
+      error_message += utf8_encode(library);
       error_message += ": LoadLibraryExW() failed: ";
       GetWinError(&error_message);
 
@@ -545,7 +545,7 @@ struct ManagedLibrary {
       handle = LoadLibraryExW(full_driver_name.c_str(), NULL, 0);
       if (!handle) {
         error_message += '\n';
-        error_message += full_driver_name;
+        error_message += utf8_encode(full_driver_name);
         error_message += ": LoadLibraryExW() failed: ";
         GetWinError(&error_message);
       }
@@ -2122,7 +2122,7 @@ AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoin
   if (!info.entrypoint.empty()) {
     status = library.Lookup(info.entrypoint.c_str(), &load_handle, error);
   } else {
-    auto name = InternalAdbcDriverManagerDefaultEntrypoint(info.lib_path);
+    auto name = InternalAdbcDriverManagerDefaultEntrypoint(info.lib_path.string());
     status = library.Lookup(name.c_str(), &load_handle, error);
     if (status != ADBC_STATUS_OK) {
       status = library.Lookup(kDefaultEntrypoint, &load_handle, error);
