@@ -133,10 +133,10 @@ Typedefs</h2></td></tr>
 </div><table class="memberdecls">
 <tr><td colspan="2"><h3>Public Attributes</h3></td></tr>
 <tr class="memitem:ac656669256f51f14443716467a8f343a" id="r_ac656669256f51f14443716467a8f343a"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac656669256f51f14443716467a8f343a">private_data</a></td></tr>
-<tr class="memdesc:ac656669256f51f14443716467a8f343a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opaque driver-defined state. This field is NULL if the driver is unintialized/freed (but it need not have a value even if the driver is initialized).  <br /></td></tr>
+<tr class="memdesc:ac656669256f51f14443716467a8f343a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opaque driver-defined state. This field is NULL if the driver is uninitialized/freed (but it need not have a value even if the driver is initialized).  <br /></td></tr>
 <tr class="separator:ac656669256f51f14443716467a8f343a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a926692fb7438e00aba6ba19b520c3ea5" id="r_a926692fb7438e00aba6ba19b520c3ea5"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a926692fb7438e00aba6ba19b520c3ea5">private_manager</a></td></tr>
-<tr class="memdesc:a926692fb7438e00aba6ba19b520c3ea5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opaque driver manager-defined state. This field is NULL if the driver is unintialized/freed (but it need not have a value even if the driver is initialized).  <br /></td></tr>
+<tr class="memdesc:a926692fb7438e00aba6ba19b520c3ea5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opaque driver manager-defined state. This field is NULL if the driver is uninitialized/freed (but it need not have a value even if the driver is initialized).  <br /></td></tr>
 <tr class="separator:a926692fb7438e00aba6ba19b520c3ea5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2b16d855667a25225402fedaa67989a0" id="r_a2b16d855667a25225402fedaa67989a0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754">AdbcStatusCode</a>(*&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2b16d855667a25225402fedaa67989a0">release</a> )(struct <a class="el" href="#structAdbcDriver">AdbcDriver</a> *driver, struct <a class="el" href="group__adbc-error-handling.html#structAdbcError">AdbcError</a> *error)</td></tr>
 <tr class="memdesc:a2b16d855667a25225402fedaa67989a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Release the driver and perform any cleanup.  <br /></td></tr>
@@ -320,7 +320,7 @@ const struct <a class="el" href="group__adbc-error-handling.html#structAdbcError
       </table>
 </div><div class="memdoc">
 
-<p>Opaque driver-defined state. This field is NULL if the driver is unintialized/freed (but it need not have a value even if the driver is initialized). </p>
+<p>Opaque driver-defined state. This field is NULL if the driver is uninitialized/freed (but it need not have a value even if the driver is initialized). </p>
 
 </div>
 </div>
@@ -336,7 +336,7 @@ const struct <a class="el" href="group__adbc-error-handling.html#structAdbcError
       </table>
 </div><div class="memdoc">
 
-<p>Opaque driver manager-defined state. This field is NULL if the driver is unintialized/freed (but it need not have a value even if the driver is initialized). </p>
+<p>Opaque driver manager-defined state. This field is NULL if the driver is uninitialized/freed (but it need not have a value even if the driver is initialized). </p>
 
 </div>
 </div>
