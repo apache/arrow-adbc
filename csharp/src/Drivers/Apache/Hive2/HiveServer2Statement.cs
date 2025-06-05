@@ -45,6 +45,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             GetCrossReferenceCommandName + "," +
             GetColumnsExtendedCommandName;
 
+        // Add constants for PK and FK field names and prefixes
+        private static readonly string[] PrimaryKeyFields = new[] { "COLUMN_NAME" };
+        private static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" };
+        private const string PrimaryKeyPrefix = "PK_";
+        private const string ForeignKeyPrefix = "FK_";
+
         internal HiveServer2Statement(HiveServer2Connection connection)
         {
             Connection = connection;
@@ -367,6 +373,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {SupportedMetadataCommands}"),
             };
         }
+        // This method is for internal use only and is not available for external use.
+        // It retrieves cross-reference data where the current table is treated as a foreign table.
+        // This is used in GetColumnsExtendedAsync to fetch foreign key relationships.
+        protected virtual async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
+        {
+            TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
+                null,
+                null,
+                null,
+                CatalogName,
+                SchemaName,
+                TableName,
+                cancellationToken);
+            OperationHandle = resp.OperationHandle;
+
+            return await GetQueryResult(resp.DirectResults, cancellationToken);
+        }
 
         protected virtual async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
         {
@@ -623,21 +646,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             // 1. Get all three results at once
             var columnsResult = await GetColumnsAsync(cancellationToken);
-            if (columnsResult.Stream == null) return columnsResult;
+            if (columnsResult.Stream == null) {
+                // TODO: Add log or throw
+                return columnsResult;
+            }
 
             var pkResult = await GetPrimaryKeysAsync(cancellationToken);
 
             // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
-            var resp = await Connection.GetCrossReferenceAsync(
-                null,
-                null,
-                null,
-                CatalogName,
-                SchemaName,
-                TableName,
-                cancellationToken);
-
-            var fkResult = await GetQueryResult(resp.DirectResults, cancellationToken);
+            var fkResult = await GetCrossReferenceAsForeignTableAsync(cancellationToken);
 
             // 2. Read all batches into memory
             List<RecordBatch> columnsBatches;
@@ -650,14 +667,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             using (var stream = columnsResult.Stream)
             {
                 colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
-                if (colNameIndex < 0) return columnsResult; // Can't match without column names
+                if (colNameIndex < 0) {
+                    // TODO: Add log or throw
+                    return columnsResult; // Can't match without column names
+                }
 
                 var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
                 columnsBatches = batchResult.Batches;
                 columnsSchema = batchResult.Schema;
                 totalRows = batchResult.TotalRows;
 
-                if (columnsBatches.Count == 0) return columnsResult;
+                if (columnsBatches.Count == 0)
+                {
+                    // Return empty result with complete schema
+                    return CreateEmptyExtendedColumnsResult(columnsSchema);
+                }
 
                 // Create column names array from all batches using ArrayDataConcatenator.Concatenate
                 List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch =>
@@ -689,17 +713,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ArrayData? concatenatedData = ArrayDataConcatenator.Concatenate(arrayDataList);
                 IArrowArray array = ArrowArrayFactory.BuildArray(concatenatedData);
                 combinedData.Add(array);
-
             }
 
             // 5. Process PK and FK data using helper methods with selected fields
-            await ProcessRelationshipDataSafe(pkResult, "PK_", "COLUMN_NAME",
-                new[] { "COLUMN_NAME" }, // Selected PK fields
+            await ProcessRelationshipDataSafe(pkResult, PrimaryKeyPrefix, "COLUMN_NAME",
+                PrimaryKeyFields, // Selected PK fields
                 columnNames, totalRows,
                 allFields, combinedData, cancellationToken);
 
-            await ProcessRelationshipDataSafe(fkResult, "FK_", "FKCOLUMN_NAME",
-                new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" }, // Selected FK fields
+            await ProcessRelationshipDataSafe(fkResult, ForeignKeyPrefix, "FKCOLUMN_NAME",
+                ForeignKeyFields, // Selected FK fields
                 columnNames, totalRows,
                 allFields, combinedData, cancellationToken);
 
@@ -707,6 +730,35 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
 
             return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
+        }
+
+        // Helper method to create an empty result with the complete extended columns schema
+        private QueryResult CreateEmptyExtendedColumnsResult(Schema baseSchema)
+        {
+            // Create the complete schema with all fields
+            var allFields = new List<Field>(baseSchema.FieldsList);
+            // Add PK fields
+            foreach (var field in PrimaryKeyFields)
+            {
+                allFields.Add(new Field(PrimaryKeyPrefix + field, StringType.Default, true));
+            }
+            // Add FK fields
+            foreach (var field in ForeignKeyFields)
+            {
+                allFields.Add(new Field(ForeignKeyPrefix + field, StringType.Default, true));
+            }
+
+            var combinedSchema = new Schema(allFields, baseSchema.Metadata);
+
+            // Create empty arrays for all fields
+            var combinedData = new List<IArrowArray>();
+            foreach (var field in allFields)
+            {
+                var builder = new StringArray.Builder();
+                combinedData.Add(builder.Build());
+            }
+
+            return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
 
         /**

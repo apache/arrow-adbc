@@ -20,7 +20,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Drivers.Apache.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -41,6 +41,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
         {
+            // set the catalog name for legacy compatibility
+            // TODO: use catalog and schema fields in hiveserver2 connection instad of DefaultNamespace so we don't need to cast
+            var defaultNamespace = ((DatabricksConnection)Connection).DefaultNamespace;
+            if (defaultNamespace != null)
+            {
+                if (CatalogName == null)
+                {
+                    CatalogName = defaultNamespace.CatalogName;
+                }
+                if (SchemaName == null)
+                {
+                    SchemaName = defaultNamespace.SchemaName;
+                }
+            }
             // Inherit CloudFetch settings from connection
             useCloudFetch = connection.UseCloudFetch;
             canDecompressLz4 = connection.CanDecompressLz4;
@@ -458,6 +472,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 return EmptyCrossReferenceResult();
 
             return await base.GetCrossReferenceAsync(cancellationToken);
+        }
+        protected override async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
+        {
+            if (ShouldReturnEmptyPkFkResult())
+                return EmptyCrossReferenceResult();
+
+            return await base.GetCrossReferenceAsForeignTableAsync(cancellationToken);
         }
 
         private QueryResult EmptyCrossReferenceResult()
