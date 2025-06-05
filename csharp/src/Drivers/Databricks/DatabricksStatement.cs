@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             var defaultNamespace = ((DatabricksConnection)Connection).DefaultNamespace;
             if (defaultNamespace != null)
             {
-                if (CatalogName == null)
+                if (CatalogName == null && connection.EnableMultipleCatalogSupport)
                 {
                     CatalogName = defaultNamespace.CatalogName;
                 }
