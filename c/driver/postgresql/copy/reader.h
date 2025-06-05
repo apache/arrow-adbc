@@ -861,6 +861,19 @@ static inline ArrowErrorCode MakeCopyFieldReader(
           *out = std::move(array_reader);
           return NANOARROW_OK;
         }
+        case PostgresTypeId::kInt2vector: {
+          PostgresType int2type(PostgresTypeId::kInt2);
+          auto array_reader = std::make_unique<PostgresCopyArrayFieldReader>();
+          array_reader->Init(int2type.Array(0, "int2vector"));
+
+          std::unique_ptr<PostgresCopyFieldReader> child_reader;
+          NANOARROW_RETURN_NOT_OK(
+              MakeCopyFieldReader(int2type, schema->children[0], &child_reader, error));
+          array_reader->InitChild(std::move(child_reader));
+
+          *out = std::move(array_reader);
+          return NANOARROW_OK;
+        }
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
       }

@@ -466,13 +466,11 @@ TEST(PostgresTypeTest, PostgresTypeResolveInt2vector) {
   PostgresType type;
 
   const auto int2vector_oid = resolver.GetOID(PostgresTypeId::kInt2vector);
-  const auto int2_oid = resolver.GetOID(PostgresTypeId::kInt2);
   EXPECT_EQ(resolver.Find(int2vector_oid, &type, nullptr), NANOARROW_OK);
   EXPECT_EQ(type.oid(), int2vector_oid);
   EXPECT_EQ(type.typname(), "int2vector");
-  EXPECT_EQ(type.type_id(), PostgresTypeId::kArray);
-  EXPECT_EQ(type.child(0).oid(), int2_oid);
-  EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::kInt2);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::kInt2vector);
+  EXPECT_EQ(0, type.n_children());
 }
 
 }  // namespace adbcpq

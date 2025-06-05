@@ -312,7 +312,10 @@ class PostgresType {
 
       case PostgresTypeId::kInt2vector:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
-        NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0], vendor_name));
+        // Postgres conceives of this as a single type, so no child is
+        // given. We need to allocate it ourselves.
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT16));
         break;
 
       case PostgresTypeId::kUserDefined:
@@ -474,15 +477,6 @@ class PostgresTypeResolver {
       case PostgresTypeId::kArray: {
         PostgresType child;
         NANOARROW_RETURN_NOT_OK(Find(item.child_oid, &child, error));
-        mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
-        reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
-        array_mapping_.insert({child.oid(), item.oid});
-        break;
-      }
-
-      case PostgresTypeId::kInt2vector: {
-        PostgresType child;
-        NANOARROW_RETURN_NOT_OK(Find(GetOID(PostgresTypeId::kInt2), &child, error));
         mapping_.insert({item.oid, child.Array(item.oid, item.typname)});
         reverse_mapping_.insert({static_cast<int32_t>(base.type_id()), item.oid});
         array_mapping_.insert({child.oid(), item.oid});

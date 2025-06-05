@@ -802,9 +802,7 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadInt2vector) {
   data.data.as_uint8 = kTestPgCopyInt2vector;
   data.size_bytes = sizeof(kTestPgCopyInt2vector);
 
-  // We don't actually use int2vector for the reader; we treat it as
-  // equivalent to int2 ARRAY.
-  auto col_type = PostgresType(PostgresTypeId::kInt2).Array();
+  auto col_type = PostgresType(PostgresTypeId::kInt2vector);
   PostgresType input_type(PostgresTypeId::kRecord);
   input_type.AppendChild("empty", col_type);
   input_type.AppendChild("len1", col_type);
