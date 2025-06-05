@@ -346,54 +346,62 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.Equal(TestConfiguration.DbSchema, defaultNamespace.SchemaName);
         }
 
-        [SkippableFact]
-        public async Task SetDefaultCatalogAndSchemaOptionsTest()
+        // Test that the catalog and schema are set correctly in the dbr session and the statement
+        // note - this test assumes not legacy dbr and hive_metastore is the default catalog
+        // also assumes there is a main catalog and hive_metastore.information_schema schema
+        [SkippableTheory]
+        [InlineData(null, null, "true", "hive_metastore", "default")]
+        [InlineData("main", null, "true", "main", "default")]
+        [InlineData(null, "information_schema", "true", "hive_metastore", "information_schema")]
+        [InlineData("main", "information_schema", "true", "main", "information_schema")]
+        [InlineData("SPARK", null, "true", "hive_metastore", "default")]
+        [InlineData("SPARK", "information_schema", "true", "hive_metastore", "information_schema")]
+        [InlineData(null, null, "false", null, "default")]
+        [InlineData("main", null, "false", null, "default")]
+        [InlineData(null, "information_schema", "false", null, "information_schema")]
+        [InlineData("main", "information_schema", "false", null, "information_schema")]
+        [InlineData("SPARK", null, "false", null, "default")]
+        [InlineData("SPARK", "information_schema", "false", null, "information_schema")]
+        public async Task SetDefaultCatalogAndSchemaOptionsTest(string? inputCatalog, string? inputSchema, string enableMultipleCatalogSupport, string? expectedCatalogInStatement, string? expectedRuntimeSchema)
         {
-            string? defaultCatalog = null;
-            string? defaultSchema = null;
-            if (!string.IsNullOrEmpty(TestConfiguration.Catalog))
-            {
-                defaultCatalog = TestConfiguration.Catalog;
-            }
-            else
-            {
-                Skip.If(true, "No catalog specified in environment variable DATABRICKS_CATALOG or test configuration");
-            }
+            // Arrange
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            testConfig.EnableMultipleCatalogSupport = enableMultipleCatalogSupport;
 
-            if (!string.IsNullOrEmpty(TestConfiguration.DbSchema))
-            {
-                defaultSchema = TestConfiguration.DbSchema;
-            }
+            if (inputCatalog is not null) testConfig.Catalog = inputCatalog;
+            if (inputSchema is not null) testConfig.DbSchema = inputSchema;
 
-            AdbcConnection connection = NewConnection();
-            AdbcStatement statement = connection.CreateStatement();
+            var connection = NewConnection(testConfig);
+            var statement = connection.CreateStatement();
+            statement.SqlQuery = "SELECT current_catalog(), current_schema()";
 
-            // Verify the settings were applied by querying the current catalog and schema
-            statement.SqlQuery = "SELECT current_catalog()" + (defaultSchema != null ? ", current_schema()" : "");
+            // Act
             var result = await statement.ExecuteQueryAsync();
+            Assert.NotNull(result);
             Assert.NotNull(result.Stream);
-
             var batch = await result.Stream.ReadNextRecordBatchAsync();
+
             Assert.NotNull(batch);
             Assert.Equal(1, batch.Length);
-            Assert.Equal(defaultSchema != null ? 2 : 1, batch.ColumnCount);
+            Assert.Equal(2, batch.ColumnCount);
 
-            // Get the values from the result
-            var catalogArray = (StringArray)batch.Column(0);
+            var catalogFromRuntime = ((StringArray)batch.Column(0)).GetString(0);
+            var schemaFromRuntime = ((StringArray)batch.Column(1)).GetString(0);
 
-            string actualCatalog = catalogArray.GetString(0) ?? string.Empty;
+            // Assert runtime results
+            // if !enableMultipleCatalogSupport, then the runtime catalog should be hive_metastore
+            var expectedRuntimeCatalog = enableMultipleCatalogSupport == "true" ? expectedCatalogInStatement : "hive_metastore";
+            Assert.Equal(expectedRuntimeCatalog, catalogFromRuntime);
+            Assert.Equal(expectedRuntimeSchema, schemaFromRuntime);
 
-            // Verify the values match what we set
-            Assert.Equal(defaultCatalog, actualCatalog);
+            // Assert statement object values
+            var dbStatement = (DatabricksStatement)statement;
+            Assert.Equal(expectedCatalogInStatement, dbStatement.CatalogName);
+            Assert.Null(dbStatement.SchemaName); // Always null, to be consistent with odbc
 
-            if (defaultSchema != null)
-            {
-                var schemaArray = (StringArray)batch.Column(1);
-                string actualSchema = schemaArray.GetString(0) ?? string.Empty;
-                Assert.Equal(defaultSchema, actualSchema);
-            }
-
-            OutputHelper?.WriteLine($"Successfully set and verified default catalog: {defaultCatalog} and schema: {defaultSchema}");
+            OutputHelper?.WriteLine(
+                $"Test passed for inputCatalog={inputCatalog}, inputSchema={inputSchema}, enableMultipleCatalogSupport={enableMultipleCatalogSupport}. " +
+                $"Runtime catalog={catalogFromRuntime}, schema={schemaFromRuntime}, Statement catalog={dbStatement.CatalogName}");
         }
     }
 }

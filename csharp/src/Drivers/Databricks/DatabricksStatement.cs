@@ -46,13 +46,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             var defaultNamespace = ((DatabricksConnection)Connection).DefaultNamespace;
             if (defaultNamespace != null)
             {
+                // TODO: we should not blindly overwrite, for crossReferenceAsync handling (though, still works)
                 if (CatalogName == null && connection.EnableMultipleCatalogSupport)
                 {
                     CatalogName = defaultNamespace.CatalogName;
-                }
-                if (SchemaName == null)
-                {
-                    SchemaName = defaultNamespace.SchemaName;
                 }
             }
             // Inherit CloudFetch settings from connection
@@ -190,10 +187,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         private void HandleSparkCatalog()
         {
-            if (CatalogName != null && CatalogName.Equals("SPARK", StringComparison.OrdinalIgnoreCase))
-            {
-                CatalogName = null;
-            }
+            CatalogName = DatabricksConnection.HandleSparkCatalog(CatalogName);
         }
 
         /// <summary>

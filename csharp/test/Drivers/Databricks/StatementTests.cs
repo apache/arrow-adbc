@@ -819,7 +819,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         // run this test with dbr < 10.4
         [SkippableFact]
-        public async Task ShouldSetSuccessfullySchema()
+        public async Task OlderDBRVersion_ShouldSetSchemaViaUseStatement()
         {
             // Test case: Older DBR version should still set schema via USE statement.
             // skip if no schema is provided by user
