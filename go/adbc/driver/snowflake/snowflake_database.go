@@ -60,7 +60,7 @@ type databaseImpl struct {
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
-	switch strings.ToLower(key) {
+	switch key {
 	case adbc.OptionKeyUsername:
 		return d.cfg.User, nil
 	case adbc.OptionKeyPassword:
@@ -189,7 +189,7 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[string]string) error {
 	var err error
 	var ok bool
-	switch strings.ToLower(k) {
+	switch k {
 	case adbc.OptionKeyUsername:
 		d.cfg.User = v
 	case adbc.OptionKeyPassword:
