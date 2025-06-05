@@ -25,7 +25,7 @@ else
 	SUFFIX=dylib
 endif
 
-GIT_VERSION=$(shell git describe --tags $(shell git rev-list --tags --max-count=1))
+GIT_VERSION=$(shell git tag -l --points-at $(shell git rev-list --tags --max-count=1) --sort=-v:refname | head -n 1)
 VERSION=$(subst go/adbc/,,$(GIT_VERSION))
 
 DRIVERS := \
