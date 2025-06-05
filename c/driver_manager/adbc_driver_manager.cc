@@ -131,14 +131,14 @@ std::filesystem::path UserConfigDir() {
   std::filesystem::path config_dir;
 #if defined(_WIN32)
   size_t required_size;
-  _wgetenv_s(&required_size, NULL, 0, "AppData");
+  _wgetenv_s(&required_size, NULL, 0, L"AppData");
   if (required_size == 0) {
     return config_dir;
   }
 
   std::wstring app_data_value;
   app_data_value.resize(required_size);
-  _wgetenv_s(&required_size, app_data_value.data(), required_size, "AppData");
+  _wgetenv_s(&required_size, app_data_value.data(), required_size, L"AppData");
   std::filesystem::path dir(app_data_value);
   if (!dir.empty()) {
     config_dir = std::filesystem::path(dir);
@@ -172,7 +172,15 @@ std::filesystem::path UserConfigDir() {
 #ifdef _WIN32
 using char_type = wchar_t;
 
-std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+std::string utf8_encode(const std::wstring& wstr) {
+  if (wstr.empty()) return std::string();
+  int size_needed =
+      WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+  std::string str_to(size_needed, 0);
+  WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &str_to[0], size_needed,
+                      NULL, NULL);
+  return str_to;
+}
 
 #else
 using char_type = char;
@@ -244,10 +252,10 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
     return ADBC_STATUS_NOT_FOUND;
   }
 
-  info.driver_name = converter.from_bytes(dkey.GetString("name", L""));
-  info.entrypoint = converter.from_bytes(dkey.GetString("entrypoint", L""));
-  info.version = converter.from_bytes(dkey.GetString("version", L""));
-  info.source = converter.from_bytes(dkey.GetString("source", L""));
+  info.driver_name = utf8_encode(dkey.GetString("name", L""));
+  info.entrypoint = utf8_encode(dkey.GetString("entrypoint", L""));
+  info.version = utf8_encode(dkey.GetString("version", L""));
+  info.source = utf8_encode(dkey.GetString("source", L""));
   info.lib_path = std::filesystem::path(dkey.GetString("driver", L""));
   if (info.lib_path.empty()) {
     SetError(error, "[DriverManager] Driver path not found in registry for \""s +
