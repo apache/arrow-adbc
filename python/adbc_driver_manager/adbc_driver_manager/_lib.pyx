@@ -420,6 +420,22 @@ cdef class ArrowArrayStreamHandle:
         """The address of the ArrowArrayStream."""
         return <uintptr_t> &self.stream
 
+    @property
+    def is_valid(self) -> bool:
+        """Check validility (object has non-NULL release pointer)."""
+        return self.stream.release != NULL
+
+    def release(self):
+        """Release this stream without having to import it.
+
+        No-op if already released (if ``not self.is_valid``).
+
+        Postcondition: ``not self.is_valid``.
+        """
+        if self.stream.release != NULL:
+            self.stream.release(&self.stream)
+            self.stream.release = NULL
+
     def __arrow_c_stream__(self, requested_schema=None) -> object:
         """Consume this object to get a PyCapsule."""
         if requested_schema is not None:
