@@ -104,13 +104,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     int columnCount = GetColumnCount(response.Results);
                     int rowCount = GetRowCount(response.Results, columnCount);
+                    activity?.AddEvent(TagOptions.Messaging.Batch.Response, [new(TagOptions.Db.Response.ReturnedRows, rowCount)]);
+
                     if ((_enableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                     {
                         // This is the last batch
                         _hasNoMoreData = true;
                     }
 
-                    activity?.AddTag(TagOptions.Db.Response.ReturnedRows, rowCount);
                     // Build the current batch, if any data exists
                     return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
                 }

@@ -25,8 +25,14 @@ namespace Apache.Arrow.Adbc.Tracing
     /// </summary>
     public interface IActivityTracer : IDisposable
     {
+        /// <summary>
+        /// Gets the <see cref="ActivityTrace"/>
+        /// </summary>
         ActivityTrace Trace { get; }
 
+        /// <summary>
+        /// Gets the value of the trace parent.
+        /// </summary>
         string? TraceParent { get; }
     }
 }

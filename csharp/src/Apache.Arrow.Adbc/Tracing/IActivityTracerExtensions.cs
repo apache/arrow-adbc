@@ -107,6 +107,11 @@ namespace Apache.Arrow.Adbc.Tracing
             return FileVersionInfo.GetVersionInfo(tracer.GetType().Assembly.Location).ProductVersion ?? string.Empty;
         }
 
+        /// <summary>
+        /// Gets the (simple) assembly name for the current (virtual) object.
+        /// </summary>
+        /// <param name="tracer"></param>
+        /// <returns></returns>
         public static string GetAssemblyName(this IActivityTracer tracer)
         {
             return tracer.GetType().Assembly.GetName().Name!;

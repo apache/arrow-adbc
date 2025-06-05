@@ -60,5 +60,13 @@ namespace Apache.Arrow.Adbc.Tracing
                 public const string StatusCode = "db.response.status_code";
             }
         }
+
+        public static class Messaging
+        {
+            public static class Batch
+            {
+                public const string Response = "messaging.batch.response";
+            }
+        }
     }
 }

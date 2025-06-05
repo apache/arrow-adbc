@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
                         if (next != null)
                         {
-                            activity?.AddTag(TagOptions.Db.Response.ReturnedRows, next.Length);
+                            activity?.AddEvent(TagOptions.Messaging.Batch.Response, [new(TagOptions.Db.Response.ReturnedRows, next.Length)]);
                             return next;
                         }
                         this.reader = null;
