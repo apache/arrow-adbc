@@ -864,7 +864,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(
         case PostgresTypeId::kRecord: {
           if (pg_type.n_children() != schema->n_children) {
             ArrowErrorSet(error,
-                          "Can't convert Postgres record type with %ld chlidren to Arrow "
+                          "Can't convert Postgres record type with %ld children to Arrow "
                           "struct type with %ld children",
                           static_cast<long>(pg_type.n_children()),  // NOLINT(runtime/int)
                           static_cast<long>(schema->n_children));   // NOLINT(runtime/int)

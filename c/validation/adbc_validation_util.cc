@@ -320,7 +320,7 @@ std::string GetDriverVendorVersion(struct AdbcConnection* connection) {
   reader.GetSchema();
   if (error.release) {
     error.release(&error);
-    throw std::runtime_error("error occured calling AdbcConnectionGetInfo!");
+    throw std::runtime_error("error occurred calling AdbcConnectionGetInfo!");
   }
 
   reader.Next();
