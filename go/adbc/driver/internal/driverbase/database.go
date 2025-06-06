@@ -19,6 +19,7 @@ package driverbase
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"strings"
@@ -407,7 +408,7 @@ func newAdbcFileExporter(driverName string) (*stdouttrace.Exporter, error) {
 
 func newTracerProvider(exporters ...sdktrace.SpanExporter) (*sdktrace.TracerProvider, error) {
 	// Ensure default SDK resource and the required service name are set.
-	mergedResource, err := resource.Merge(
+	tracerResource, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
@@ -415,16 +416,20 @@ func newTracerProvider(exporters ...sdktrace.SpanExporter) (*sdktrace.TracerProv
 		),
 	)
 	if err != nil {
-		// If unable to merge with the default resource (conflicting ShhemaURL),
-		// use just our resource
-		mergedResource = resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName(driverNamespace),
-		)
+		if errors.Is(err, resource.ErrSchemaURLConflict) {
+			// If unable to merge with the default resource (conflicting ShhemaURL),
+			// use just our resource
+			tracerResource = resource.NewWithAttributes(
+				semconv.SchemaURL,
+				semconv.ServiceName(driverNamespace),
+			)
+		} else {
+			return nil, err
+		}
 	}
 
 	opts := []sdktrace.TracerProviderOption{
-		sdktrace.WithResource(mergedResource),
+		sdktrace.WithResource(tracerResource),
 	}
 	for _, exporter := range exporters {
 		opts = append(opts, sdktrace.WithBatcher(exporter))

@@ -47,27 +47,27 @@ var infoValueTypeCodeForInfoCode = map[adbc.InfoCode]adbc.InfoValueTypeCode{
 
 const (
 	// namespace prefix
-	otelInfoSemConv = "apache.arrow.adbc.info."
+	otelInfoSemConv attribute.Key = "apache.arrow.adbc.info."
 
 	// The database vendor/product name (e.g. the server name) (type: utf8)
-	otelSemConvInfoVendorName = otelInfoSemConv + "vendor.name"
+	otelSemConvInfoVendorName attribute.Key = otelInfoSemConv + "vendor.name"
 	// The database vendor/product version (type: utf8)
-	otelSemConvInfoVendorVersion = otelInfoSemConv + "vendor.version"
+	otelSemConvInfoVendorVersion attribute.Key = otelInfoSemConv + "vendor.version"
 	// The database vendor/product Arrow library version (type: utf8)
-	otelSemConvInfoVendorArrowVersion = otelInfoSemConv + "vendor.arrow.version"
+	otelSemConvInfoVendorArrowVersion attribute.Key = otelInfoSemConv + "vendor.arrow.version"
 	// Indicates whether SQL queries are supported (type: bool).
-	otelSemConvInfoVendorSql = otelInfoSemConv + "vendor.sql"
+	otelSemConvInfoVendorSql attribute.Key = otelInfoSemConv + "vendor.sql"
 	// The driver name (type: utf8)
-	otelSemConvInfoDriverName = otelInfoSemConv + "driver.name"
+	otelSemConvInfoDriverName attribute.Key = otelInfoSemConv + "driver.name"
 	// The driver version (type: utf8)
-	otelSemConvInfoDriverVersion = otelInfoSemConv + "driver.version"
+	otelSemConvInfoDriverVersion attribute.Key = otelInfoSemConv + "driver.version"
 	// The driver Arrow library version (type: utf8)
-	otelSemConvInfoDriverArrowVersion = otelInfoSemConv + "driver.arrow.version"
+	otelSemConvInfoDriverArrowVersion attribute.Key = otelInfoSemConv + "driver.arrow.version"
 	// The driver ADBC API version (type: int64)
-	otelSemConvInfoDriverAdbcVersion = otelInfoSemConv + "driver.adbc.version"
+	otelSemConvInfoDriverAdbcVersion attribute.Key = otelInfoSemConv + "driver.adbc.version"
 )
 
-var infoOTelAttrForInfoCode = map[adbc.InfoCode]string{
+var otelAttrForInfoCode = map[adbc.InfoCode]attribute.Key{
 	adbc.InfoVendorName:         otelSemConvInfoVendorName,
 	adbc.InfoVendorVersion:      otelSemConvInfoVendorVersion,
 	adbc.InfoVendorArrowVersion: otelSemConvInfoVendorArrowVersion,
@@ -161,18 +161,18 @@ func SetOTelDriverInfoAttributes(driverInfo *DriverInfo, span trace.Span) {
 	attrs := []attribute.KeyValue{}
 	codes := driverInfo.InfoSupportedCodes()
 	for _, code := range codes {
-		if attrName, ok := infoOTelAttrForInfoCode[code]; ok {
+		if attr, ok := otelAttrForInfoCode[code]; ok {
 			if attrVal, ok := driverInfo.GetInfoForInfoCode(code); ok {
 				if attrVal == nil {
 					continue
 				}
 				switch v := attrVal.(type) {
 				case string:
-					attrs = append(attrs, attribute.String(attrName, v))
+					attrs = append(attrs, attr.String(v))
 				case bool:
-					attrs = append(attrs, attribute.Bool(attrName, v))
+					attrs = append(attrs, attr.Bool(v))
 				case int64:
-					attrs = append(attrs, attribute.Int64(attrName, v))
+					attrs = append(attrs, attr.Int64(v))
 				}
 			}
 		}
