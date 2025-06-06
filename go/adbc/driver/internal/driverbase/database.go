@@ -19,6 +19,7 @@ package driverbase
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"strings"
@@ -28,12 +29,13 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -105,6 +107,7 @@ type DatabaseImplBase struct {
 	Tracer      trace.Tracer
 
 	tracerShutdownFunc func(context.Context) error
+	traceParent        string
 }
 
 // NewDatabaseImplBase instantiates DatabaseImplBase.
@@ -182,6 +185,27 @@ func (base *DatabaseImplBase) SetOptions(options map[string]string) error {
 		}
 	}
 	return nil
+}
+
+func (d *DatabaseImplBase) GetInitialSpanAttributes() []attribute.KeyValue {
+	return getInitialSpanAttributes(d.DriverInfo)
+}
+
+func (d *DatabaseImplBase) GetTraceParent() (traceParent string) {
+	return d.traceParent
+}
+
+func (d *DatabaseImplBase) SetTraceParent(traceParent string) {
+	d.traceParent = traceParent
+}
+
+func (d *DatabaseImplBase) StartSpan(
+	ctx context.Context,
+	spanName string,
+	opts ...trace.SpanStartOption,
+) (context.Context, trace.Span) {
+	ctx, _ = maybeAddTraceParent(ctx, d, nil)
+	return d.Tracer.Start(ctx, spanName, opts...)
 }
 
 // database is the implementation of adbc.Database.
@@ -384,7 +408,7 @@ func newAdbcFileExporter(driverName string) (*stdouttrace.Exporter, error) {
 
 func newTracerProvider(exporters ...sdktrace.SpanExporter) (*sdktrace.TracerProvider, error) {
 	// Ensure default SDK resource and the required service name are set.
-	mergedResource, err := resource.Merge(
+	tracerResource, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
@@ -392,11 +416,20 @@ func newTracerProvider(exporters ...sdktrace.SpanExporter) (*sdktrace.TracerProv
 		),
 	)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, resource.ErrSchemaURLConflict) {
+			// If unable to merge with the default resource (conflicting ShhemaURL),
+			// use just our resource
+			tracerResource = resource.NewWithAttributes(
+				semconv.SchemaURL,
+				semconv.ServiceName(driverNamespace),
+			)
+		} else {
+			return nil, err
+		}
 	}
 
 	opts := []sdktrace.TracerProviderOption{
-		sdktrace.WithResource(mergedResource),
+		sdktrace.WithResource(tracerResource),
 	}
 	for _, exporter := range exporters {
 		opts = append(opts, sdktrace.WithBatcher(exporter))
