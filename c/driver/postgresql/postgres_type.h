@@ -310,6 +310,14 @@ class PostgresType {
         NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0], vendor_name));
         break;
 
+      case PostgresTypeId::kInt2vector:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
+        // Postgres conceives of this as a single type, so no child is
+        // given. We need to allocate it ourselves.
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT16));
+        break;
+
       case PostgresTypeId::kUserDefined:
       default:
         // For user-defined types or types we don't explicitly know how to deal with, we
