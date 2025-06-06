@@ -100,6 +100,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             }
         }
 
+        protected override void CreateNewTableName(out string tableName, out string fullTableName)
+        {
+            string catalogName = TestConfiguration.Metadata.Catalog;
+            string schemaName = TestConfiguration.Metadata.Schema;
+            tableName = Guid.NewGuid().ToString("N") + "`!@#$%^&*()_+-=";
+            string catalogFormatted = string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".";
+            fullTableName = $"{catalogFormatted}{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
+        }
+
         [SkippableFact]
         public async Task CanGetPrimaryKeysDatabricks()
         {
