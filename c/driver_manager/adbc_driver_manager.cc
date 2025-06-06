@@ -312,13 +312,13 @@ const std::string& current_arch() {
 #if defined(__linux__) && defined(__GNUC__)
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-#include <features.h>
+#include <features.h>  // NOLINT [build/include]
 #ifndef __USE_GNU
 #define __MUSL__
 #endif
 #undef _GNU_SOURCE
 #else
-#include <features.h>
+#include <features.h>  // NOLINT [build/include]
 #ifndef __USE_GNU
 #define __MUSL__
 #endif
