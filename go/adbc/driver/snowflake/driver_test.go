@@ -1743,12 +1743,12 @@ func (suite *SnowflakeTests) queryTimestamps(query string, expectedMicrosecondRe
 	suite.validateTimestamps(query, rec, nil) // dont expect any results
 }
 
-func (suite *SnowflakeTests) getTimestamps(query string, timestampPrecision string) arrow.Record {
+func (suite *SnowflakeTests) getTimestamps(query string, maxTimestampPrecision string) arrow.Record {
 
 	// with max microseconds precision
 	opts := suite.Quirks.DatabaseOptions()
-	if timestampPrecision != "" {
-		opts[driver.OptionMaxTimestampPrecision] = timestampPrecision
+	if maxTimestampPrecision != "" {
+		opts[driver.OptionMaxTimestampPrecision] = maxTimestampPrecision
 	}
 	db, err := suite.driver.NewDatabase(opts)
 	suite.NoError(err)
@@ -1763,7 +1763,7 @@ func (suite *SnowflakeTests) getTimestamps(query string, timestampPrecision stri
 
 	defer rdr.Release()
 
-	if timestampPrecision == driver.OptionValueNanosecondsNoOverflow {
+	if maxTimestampPrecision == driver.OptionValueNanosecondsNoOverflow {
 		suite.False(rdr.Next())
 		return nil
 	}

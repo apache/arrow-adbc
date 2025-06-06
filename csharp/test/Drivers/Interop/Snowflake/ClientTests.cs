@@ -258,7 +258,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                 new ColumnNetTypeArrowTypeValue("APRIL3_0033", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(0033, 4, 3, 15, 0, 0), TimeSpan.Zero)),
             };
 
-            // if using a microseconds as the max precision, everything returns correctly
+            // if using microseconds as the max precision, everything returns correctly
             ValidateTimestampPrecision(SnowflakeConstants.OptionValueMicroseconds, query, expectedMicrosecondValues);
 
             List<ColumnNetTypeArrowTypeValue> expectedNanoseconddValues = new List<ColumnNetTypeArrowTypeValue>()

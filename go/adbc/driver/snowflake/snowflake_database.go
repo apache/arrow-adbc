@@ -73,9 +73,9 @@ type databaseImpl struct {
 	driverbase.DatabaseImplBase
 	cfg *gosnowflake.Config
 
-	useHighPrecision   bool
-	timestampPrecision MaxTimestampPrecision
-	defaultAppName     string
+	useHighPrecision      bool
+	maxTimestampPrecision MaxTimestampPrecision
+	defaultAppName        string
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -155,7 +155,7 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		}
 		return adbc.OptionValueDisabled, nil
 	case OptionMaxTimestampPrecision:
-		switch d.timestampPrecision {
+		switch d.maxTimestampPrecision {
 		case Microseconds:
 			return OptionValueMicroseconds, nil
 		case NanosecondsNoOverflow:
@@ -489,7 +489,7 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 	case OptionMaxTimestampPrecision:
 		switch v {
 		case OptionValueNanoseconds, OptionValueNanosecondsNoOverflow, OptionValueMicroseconds:
-			d.timestampPrecision = maxTimestampPrecisionMap[v]
+			d.maxTimestampPrecision = maxTimestampPrecisionMap[v]
 		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionMaxTimestampPrecision, v),
@@ -519,9 +519,9 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		// default enable high precision
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead
-		useHighPrecision:   d.useHighPrecision,
-		timestampPrecision: d.timestampPrecision,
-		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		useHighPrecision:      d.useHighPrecision,
+		maxTimestampPrecision: d.maxTimestampPrecision,
+		ConnectionImplBase:    driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
 
 	return driverbase.NewConnectionBuilder(conn).

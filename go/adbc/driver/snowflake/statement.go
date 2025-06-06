@@ -51,12 +51,12 @@ const (
 
 type statement struct {
 	driverbase.StatementImplBase
-	cnxn                *connectionImpl
-	alloc               memory.Allocator
-	queueSize           int
-	prefetchConcurrency int
-	useHighPrecision    bool
-	timestampPrecision  MaxTimestampPrecision
+	cnxn                  *connectionImpl
+	alloc                 memory.Allocator
+	queueSize             int
+	prefetchConcurrency   int
+	useHighPrecision      bool
+	maxTimestampPrecision MaxTimestampPrecision
 
 	query         string
 	targetTable   string
@@ -510,7 +510,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 				if err != nil {
 					return nil, errToAdbcErr(adbc.StatusInternal, err)
 				}
-				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.timestampPrecision)
+				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
 			},
 			currentBatch: st.bound,
 			stream:       st.streamBind,
@@ -534,7 +534,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 		return
 	}
 
-	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.timestampPrecision)
+	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
 	nRows = loader.TotalRows()
 	return
 }
@@ -648,7 +648,7 @@ func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 		return nil, errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision, st.timestampPrecision)
+	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision, st.maxTimestampPrecision)
 }
 
 // Prepare turns this statement into a prepared statement to be executed
