@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
         private const bool DefaultRetryOnUnavailable = true;
-        private const int DefaultTemporarilyUnavailableRetryTimeout = 500;
+        private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
 
         // Default namespace
         private TNamespace? _defaultNamespace;

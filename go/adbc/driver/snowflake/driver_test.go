@@ -2072,7 +2072,7 @@ func (suite *SnowflakeTests) TestMetadataOnlyQuery() {
 		recv += rdr.Record().NumRows()
 	}
 
-	// verify that we got the exepected number of rows if we sum up
+	// verify that we got the expected number of rows if we sum up
 	// all the rows from each record in the stream.
 	suite.Equal(n, recv)
 }
@@ -2090,7 +2090,7 @@ func (suite *SnowflakeTests) TestEmptyResultSet() {
 		recv += rdr.Record().NumRows()
 	}
 
-	// verify that we got the exepected number of rows if we sum up
+	// verify that we got the expected number of rows if we sum up
 	// all the rows from each record in the stream.
 	suite.Equal(n, recv)
 	suite.Equal(recv, int64(0))

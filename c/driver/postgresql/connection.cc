@@ -181,8 +181,8 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
         some_constraints_(conn, ConstraintsQuery()) {}
 
   // Allow Redshift to execute this query without constraints
-  // TODO(paleolimbot): Investigate to see if we can simplify the constraits query so that
-  // it works on both!
+  // TODO(paleolimbot): Investigate to see if we can simplify the constraints query so
+  // that it works on both!
   void SetEnableConstraints(bool enable_constraints) {
     enable_constraints_ = enable_constraints;
   }
