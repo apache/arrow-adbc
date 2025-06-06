@@ -85,7 +85,7 @@ type ingestOptions struct {
 	// Number of Parquet files to upload in parallel.
 	//
 	// Greater concurrency can smooth out TCP congestion and help make use of
-	// available network bandwith, but will increase memory utilization.
+	// available network bandwidth, but will increase memory utilization.
 	// Default is 8. If set to 0, default value is used. Cannot be negative.
 	uploadConcurrency uint
 	// Maximum number of COPY operations to run concurrently.
@@ -488,7 +488,7 @@ func uploadAllStreams(
 		select {
 		case <-ctx.Done():
 			// The context is canceled on error, so we wait for graceful shutdown of in-progress uploads.
-			// The gosnowflake.snowflakeFileTransferAgent does not currently propogate context, so we
+			// The gosnowflake.snowflakeFileTransferAgent does not currently propagate context, so we
 			// have to wait for uploads to finish for proper shutdown. (https://github.com/snowflakedb/gosnowflake/issues/1028)
 			return g.Wait()
 		default:
@@ -558,7 +558,7 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 		// keep track of each file uploaded to the stage, until it has been copied into the table successfully
 		filesToCopy.Add(filename)
 
-		// readyFn is a no-op if the shutdown signal has already been recieved
+		// readyFn is a no-op if the shutdown signal has already been received
 		select {
 		case _, ok := <-stopCh:
 			if !ok {

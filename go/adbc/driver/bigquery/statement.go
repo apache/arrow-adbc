@@ -569,7 +569,7 @@ func arrowValueToQueryParameterValue(field arrow.Field, value arrow.Array, i int
 		// Encoded as RFC 3339 partial-time format string: 23:20:50.52
 		//
 		// cannot use the default format, which will cause errors like
-		//   googleapi: Error 400: Unparseable query parameter `` in type `TYPE_TIME`,
+		//   googleapi: Error 400: Unparsable query parameter `` in type `TYPE_TIME`,
 		//   Invalid time string "00:00:00.000000001" value: '00:00:00.000000001', invalid
 		encoded := value.(*array.Time64).Value(i).FormattedString(arrow.Microsecond)
 		parameter.Value = &bigquery.QueryParameterValue{

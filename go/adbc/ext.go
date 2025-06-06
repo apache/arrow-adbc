@@ -65,7 +65,7 @@ type OTelTracing interface {
 	// Gets the trace parent from an external trace span. A blank value, indicates no parent relationship.
 	GetTraceParent() string
 	// Starts a new [span] and returns a [trace.Span] which can be used to
-	// [set the status], [add attributes], [add events], etc. Implementors should enhance
+	// [set the status], [add attributes], [add events], etc. Implementers should enhance
 	// the [context.Context] with the provided trace parent value, if it exists
 	//
 	// [span]: https://opentelemetry.io/docs/concepts/signals/traces/#span-context
