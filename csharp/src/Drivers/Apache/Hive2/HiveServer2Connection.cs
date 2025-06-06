@@ -1437,7 +1437,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 foreach (AdbcInfoCode code in codes)
                 {
-                    string tagKey = TagOptions.Operation.Parameter(code.ToString().ToLowerInvariant());
+                    string tagKey = SemConv.Db.Operation.Parameter(code.ToString().ToLowerInvariant());
                     Func<object?> tagValue = () => null;
                     switch (code)
                     {
@@ -1611,15 +1611,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     new()
                     {
                         StatusCode = TStatusCode.SUCCESS_STATUS,
-                        Handler = (status) => activity?.AddTag(TagOptions.Db.Response.StatusCode, status.StatusCode)
+                        Handler = (status) => activity?.AddTag(SemConv.Db.Response.StatusCode, status.StatusCode)
                     },
                     new()
                     {
                         StatusCode = TStatusCode.SUCCESS_WITH_INFO_STATUS,
                         Handler = (status) =>
                         {
-                            activity?.AddTag(TagOptions.Db.Response.StatusCode, status.StatusCode);
-                            activity?.AddTag("db.response.info_messages", string.Join(Environment.NewLine, status.InfoMessages));
+                            activity?.AddTag(SemConv.Db.Response.StatusCode, status.StatusCode);
+                            activity?.AddTag(SemConv.Db.Response.InfoMessages, string.Join(Environment.NewLine, status.InfoMessages));
                         }
                     },
                 ])

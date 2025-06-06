@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     int columnCount = GetColumnCount(response.Results);
                     int rowCount = GetRowCount(response.Results, columnCount);
-                    activity?.AddEvent(TagOptions.Messaging.Batch.Response, [new(TagOptions.Db.Response.ReturnedRows, rowCount)]);
+                    activity?.AddEvent(SemConv.Messaging.Batch.Response, [new(SemConv.Db.Response.ReturnedRows, rowCount)]);
 
                     if ((_enableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                     {

@@ -215,31 +215,6 @@ namespace Apache.Arrow.Adbc
             /// EXPERIMENTAL. Sets the trace parent on OpenTelemetry traces
             /// </summary>
             public const string TraceParent = "adbc.telemetry.trace_parent";
-
-            /// <summary>
-            /// EXPERIMENTAL. Sets the exporter type for OpenTelemetry traces. If the
-            /// environment variable <see cref="Environment.Exporter"/> is defined, this option
-            /// takes precedence. Valid values can be chosen from <see cref="TraceExporters"/>.
-            /// </summary>
-            public const string Exporter = "adbc.telemetry.exporter";
-
-            public static class Environment
-            {
-                /// <summary>
-                /// EXPERIMENTAL. Sets the exporter type for OpenTelemetry traces via this environment variable.
-                /// If the option <see cref="Telemetry.Exporter"/> is passed, it takes precsedence
-                /// over this environment variable. Valid values can be chosen from <see cref="TraceExporters"/>.
-                /// </summary>
-                public const string Exporter = "OTEL_TRACES_EXPORTER";
-            }
-
-            public static class TraceExporters
-            {
-                public const string None = "none";
-                public const string Otlp = "otlp";
-                public const string Console = "console";
-                public const string AdbcFile = "adbcfile";
-            }
         }
 
         public static string GetEnabled(bool value) => value ? Enabled : Disabled;

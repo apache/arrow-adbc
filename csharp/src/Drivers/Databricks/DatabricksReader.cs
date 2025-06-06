@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
                         if (next != null)
                         {
-                            activity?.AddEvent(TagOptions.Messaging.Batch.Response, [new(TagOptions.Db.Response.ReturnedRows, next.Length)]);
+                            activity?.AddEvent(SemConv.Messaging.Batch.Response, [new(SemConv.Db.Response.ReturnedRows, next.Length)]);
                             return next;
                         }
                         this.reader = null;
@@ -88,7 +88,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     this.batches = response.Results.ArrowBatches;
                     for (int i = 0; i < this.batches.Count; i++)
                     {
-                        activity?.AddTag(TagOptions.Db.Response.ReturnedRows, this.batches[i].RowCount);
+                        activity?.AddTag(SemConv.Db.Response.ReturnedRows, this.batches[i].RowCount);
                     }
 
                     this.hasNoMoreRows = !response.HasMoreRows;

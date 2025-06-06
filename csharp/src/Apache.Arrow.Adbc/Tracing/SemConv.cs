@@ -17,47 +17,51 @@
 
 namespace Apache.Arrow.Adbc.Tracing
 {
-    public static class TagOptions
+    public static class SemConv
     {
         public const string Namespace = "db.namespace";
 
-        public static class Client
-        {
-            public static class Connection
-            {
-                public const string State = "db.client.connection.state";
-            }
-        }
-
-        public static class Collection
-        {
-            public const string Name = "db.collection.name";
-        }
-
-        public static class Operation
-        {
-            public static string Parameter(string name)
-            {
-                return $"db.operation.parameter.{name}";
-            }
-        }
-
-        public static class Query
-        {
-            public static string Parameter(string name)
-            {
-                return "db.query.parameter" + name;
-            }
-            public const string Summary = "db.query.summary";
-            public const string Text = "db.query.text";
-        }
-
         public static class Db
         {
+            public static class Client
+            {
+                public static class Connection
+                {
+                    public const string State = "db.client.connection.state";
+                    public const string SessionId = "db.client.connection.session_id";
+                }
+            }
+
+            public static class Collection
+            {
+                public const string Name = "db.collection.name";
+            }
+
+            public static class Operation
+            {
+                public static string Parameter(string name)
+                {
+                    return $"db.operation.parameter.{name}";
+                }
+                public const string OperationId = "db.operation.operation_id";
+            }
+
+            public static class Query
+            {
+                public static string Parameter(string name)
+                {
+                    return "db.query.parameter" + name;
+                }
+                public const string Summary = "db.query.summary";
+                public const string Text = "db.query.text";
+            }
+
             public static class Response
             {
                 public const string ReturnedRows = "db.response.returned_rows";
                 public const string StatusCode = "db.response.status_code";
+                public const string InfoMessages = "db.response.info_messages";
+                public const string OperationId = "db.response.operation_id";
             }
         }
 

@@ -204,7 +204,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 finally
                 {
-                    activity?.AddTag(TagOptions.Db.Response.ReturnedRows, affectedRows ?? -1);
+                    activity?.AddTag(SemConv.Db.Response.ReturnedRows, affectedRows ?? -1);
                 }
             });
         }
@@ -291,12 +291,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new InvalidOperationException("Invalid session");
                 }
 
-                activity?.AddTag("db.client.connection.session_id", Connection.SessionHandle.SessionId.Guid, "N");
+                activity?.AddTag(SemConv.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
                 SetStatementProperties(executeRequest);
                 TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
                 ApacheUtility.HandleThriftResponse(executeResponse.Status, HiveServer2Connection.GetResponseHandlers(activity));
-                activity?.AddTag("db.response.operation_id", executeResponse.OperationHandle.OperationId.Guid, "N");
+                activity?.AddTag(SemConv.Db.Response.OperationId, executeResponse.OperationHandle.OperationId.Guid, "N");
 
                 OperationHandle = executeResponse.OperationHandle;
 
@@ -359,7 +359,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 if (OperationHandle != null)
                 {
                     CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                    activity?.AddTag("db.operation.operation_id", OperationHandle.OperationId.Guid, "N");
+                    activity?.AddTag(SemConv.Db.Operation.OperationId, OperationHandle.OperationId.Guid, "N");
                     TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
                     TCloseOperationResp resp = Connection.Client.CloseOperation(request, cancellationToken).Result;
                     ApacheUtility.HandleThriftResponse(resp.Status, HiveServer2Connection.GetResponseHandlers(activity));

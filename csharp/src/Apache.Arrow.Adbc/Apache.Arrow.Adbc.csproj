@@ -20,7 +20,4 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Tracing\FileExporter\" />
-  </ItemGroup>
 </Project>
