@@ -421,10 +421,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (!enablePKFK)
                 return true;
 
-            // Handle special catalog cases
-            if (string.IsNullOrEmpty(CatalogName) ||
+            var catalogInvalid = string.IsNullOrEmpty(CatalogName) ||
                 string.Equals(CatalogName, "SPARK", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(CatalogName, "hive_metastore", StringComparison.OrdinalIgnoreCase))
+                string.Equals(CatalogName, "hive_metastore", StringComparison.OrdinalIgnoreCase);
+
+            var foreignCatalogInvalid = string.IsNullOrEmpty(ForeignCatalogName) ||
+                string.Equals(ForeignCatalogName, "SPARK", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(ForeignCatalogName, "hive_metastore", StringComparison.OrdinalIgnoreCase);
+
+            // Handle special catalog cases
+            // Only when both catalog and foreignCatalog is Invalid, we return empty results
+            if (catalogInvalid && foreignCatalogInvalid)
             {
                 return true;
             }
@@ -473,6 +480,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             return await base.GetCrossReferenceAsync(cancellationToken);
         }
+
         protected override async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
         {
             if (ShouldReturnEmptyPkFkResult())

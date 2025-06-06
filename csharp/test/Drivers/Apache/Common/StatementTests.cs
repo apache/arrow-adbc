@@ -497,7 +497,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 Assert.Equal(StringType.Default, queryResult.Stream.Schema.FieldsList[5].DataType); // FK_SCHEMA_NAME
                 Assert.Equal(StringType.Default, queryResult.Stream.Schema.FieldsList[6].DataType); // FK_TABLE_NAME
                 Assert.Equal(StringType.Default, queryResult.Stream.Schema.FieldsList[7].DataType); // FK_COLUMN_NAME
-                Assert.Equal(Int32Type.Default, queryResult.Stream.Schema.FieldsList[8].DataType); // FK_INDEX
+                // Databricks return Int16(SmallInt)
+                Assert.True(queryResult.Stream.Schema.FieldsList[8].DataType is Int32Type or Int16Type, "FK_INDEX should be either Int32 or Int16"); // FK_INDEX
                 Assert.Equal(expectedBatchLength, batch.Length);
                 actualBatchLength += batch.Length;
                 for (int i = 0; i < batch.Length; i++)
