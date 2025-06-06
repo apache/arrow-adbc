@@ -309,7 +309,7 @@ const std::string& current_arch() {
 // but apparently it doesn't define __USE_GNU inside of features.h
 // while gcc DOES define that.
 // see https://stackoverflow.com/questions/58177815/how-to-actually-detect-musl-libc
-#ifdef __GNUC__
+#if defined(__linux__) && defined(__GNUC__)
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #include <features.h>
