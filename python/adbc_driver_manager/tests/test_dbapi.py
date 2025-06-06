@@ -431,3 +431,48 @@ def test_close_warning(sqlite):
     ):
         conn = dbapi.connect(driver="adbc_driver_sqlite")
         del conn
+
+
+def _execute_schema(cursor):
+    try:
+        cursor.adbc_execute_schema("select 1")
+    except dbapi.NotSupportedError:
+        pass
+
+
+@pytest.mark.sqlite
+@pytest.mark.parametrize(
+    "op",
+    [
+        pytest.param(lambda cursor: cursor.execute("SELECT 1"), id="execute"),
+        pytest.param(
+            lambda cursor: cursor.executemany("SELECT ?", [[1]]), id="executemany"
+        ),
+        pytest.param(
+            lambda cursor: cursor.adbc_ingest(
+                "test_release",
+                pyarrow.table([[1]], names=["ints"]),
+                mode="create_append",
+            ),
+            id="ingest",
+        ),
+        pytest.param(_execute_schema, id="execute_schema"),
+        pytest.param(lambda cursor: cursor.adbc_prepare("select 1"), id="prepare"),
+        pytest.param(
+            lambda cursor: cursor.executescript("select 1"), id="executescript"
+        ),
+    ],
+)
+def test_release(sqlite, op) -> None:
+    # Regression test. Ensure that subsequent operations free results of
+    # earlier operations.
+    with sqlite.cursor() as cur:
+        cur.execute("select 1")
+        # Do _not_ fetch the data so it is never imported.
+        assert cur._results._handle.is_valid
+        handle = cur._results._handle
+
+        op(cur)
+        if handle:
+            # The original handle (if it exists) should have been released
+            assert not handle.is_valid

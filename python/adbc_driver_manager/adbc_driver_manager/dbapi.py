@@ -621,6 +621,11 @@ class Cursor(_Closeable):
         if adbc_stmt_kwargs:
             self._stmt.set_options(**adbc_stmt_kwargs)
 
+    def _clear(self):
+        if self._results is not None:
+            self._results.close()
+            self._results = None
+
     @property
     def arraysize(self) -> int:
         """The number of rows to fetch at a time with fetchmany()."""
@@ -669,9 +674,7 @@ class Cursor(_Closeable):
         if self._closed:
             return
 
-        if self._results is not None:
-            self._results.close()
-            self._results = None
+        self._clear()
         self._stmt.close()
         self._closed = True
 
@@ -725,6 +728,7 @@ class Cursor(_Closeable):
             table, or record batch reader (to provide multiple
             parameters, which will each be bound in turn).
         """
+        self._clear()
         self._prepare_execute(operation, parameters)
 
         handle, self._rowcount = _blocking_call(
@@ -749,7 +753,7 @@ class Cursor(_Closeable):
             None, then the query will be executed once, else it will
             be executed once per row.
         """
-        self._results = None
+        self._clear()
         if operation != self._last_query:
             self._last_query = operation
             self._stmt.set_sql_query(operation)
@@ -906,6 +910,7 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
 
         """
+        self._clear()
         if mode == "append":
             c_mode = _lib.INGEST_OPTION_MODE_APPEND
         elif mode == "create":
@@ -995,6 +1000,7 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         _requires_pyarrow()
+        self._clear()
         self._prepare_execute(operation, parameters)
         partitions, schema_handle, self._rowcount = _blocking_call(
             self._stmt.execute_partitions, (), {}, self._stmt.cancel
@@ -1019,6 +1025,7 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         _requires_pyarrow()
+        self._clear()
         self._prepare_execute(operation, parameters)
         schema = _blocking_call(self._stmt.execute_schema, (), {}, self._stmt.cancel)
         return pyarrow.Schema._import_from_c(schema.address)
@@ -1042,6 +1049,7 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         _requires_pyarrow()
+        self._clear()
         self._prepare_execute(operation)
 
         try:
@@ -1061,6 +1069,7 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         _requires_pyarrow()
+        self._clear()
         self._results = None
         handle = _blocking_call(
             self._conn._conn.read_partition, (partition,), {}, self._stmt.cancel
@@ -1089,6 +1098,7 @@ class Cursor(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
+        self._clear()
         if not self._conn._autocommit:
             self._conn.commit()
 
@@ -1218,10 +1228,13 @@ class _RowIterator(_Closeable):
         self.rownumber = 0
 
     def close(self) -> None:
-        if self._reader is not None and hasattr(self._reader, "close"):
-            # Only in recent PyArrow
+        if self._reader is not None:
             self._reader.close()
-        self._reader = None
+            self._reader = None
+        elif self._handle is not None:
+            # We have an unimported stream, don't leak it
+            handle, self._handle = self._handle, None
+            handle.release()
 
     @property
     def reader(self) -> "_reader.AdbcRecordBatchReader":
