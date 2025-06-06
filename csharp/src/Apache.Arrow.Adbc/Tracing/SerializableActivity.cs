@@ -21,7 +21,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Serialization;
 
-namespace Apache.Arrow.Adbc.Tracing.FileExporter
+namespace Apache.Arrow.Adbc.Tracing
 {
     /// <summary>
     /// Simplified version of <see cref="Activity"/> that excludes some properties, etc.

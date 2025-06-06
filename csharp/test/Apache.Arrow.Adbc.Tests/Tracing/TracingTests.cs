@@ -22,7 +22,6 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Adbc.Tracing.FileExporter;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
 using Xunit;
