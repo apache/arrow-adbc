@@ -405,27 +405,37 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
 
+        /// <summary>
+        /// Gets the cross reference (foreign key) information for the specified tables.
+        /// Note: Unlike other metadata queries, this method does not escape underscores in names
+        /// since the backend treats these as exact match queries rather than pattern matches.
+        /// </summary>
         protected virtual async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
         {
             TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
-                EscapeUnderscoreInName(TableName),
-                EscapeUnderscoreInName(ForeignCatalogName),
-                EscapeUnderscoreInName(ForeignSchemaName),
-                EscapeUnderscoreInName(ForeignTableName),
+                CatalogName,
+                SchemaName,
+                TableName,
+                ForeignCatalogName,
+                ForeignSchemaName,
+                ForeignTableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
 
+        /// <summary>
+        /// Gets the primary key information for the specified table.
+        /// Note: Unlike other metadata queries, this method does not escape underscores in names
+        /// since the backend treats these as exact match queries rather than pattern matches.
+        /// </summary>
         protected virtual async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
             TGetPrimaryKeysResp resp = await Connection.GetPrimaryKeysAsync(
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
-                EscapeUnderscoreInName(TableName),
+                CatalogName,
+                SchemaName,
+                TableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
