@@ -155,7 +155,7 @@ std::filesystem::path UserConfigDir() {
   if (!dir) {
     dir = std::getenv("HOME");
     if (dir) {
-      config_dir = std::filesystem::path(dir);
+      config_dir = std::filesystem::path(dir) /= ".config";
     }
   } else {
     config_dir = std::filesystem::path(dir);
@@ -212,20 +212,20 @@ class RegistryKey {
  public:
   RegistryKey(HKEY root, const std::wstring_view subkey) noexcept
       : root_(root), key_(nullptr), is_open_(false) {
-    auto result = RegOpenKeyExW(root_, subkey.data(), 0, KEY_READ, &key_);
-    is_open_ = (result == ERROR_SUCCESS);
+    status_ = RegOpenKeyExW(root_, subkey.data(), 0, KEY_READ, &key_);
   }
 
   ~RegistryKey() {
     if (is_open_ && key_ != nullptr) {
       RegCloseKey(key_);
       key_ = nullptr;
-      is_open_ = false;
+      status_ = ERROR_REGISTRY_IO_FAILED;
     }
   }
 
   HKEY key() const { return key_; }
-  bool is_open() const { return is_open_; }
+  bool is_open() const { return status_ == ERROR_SUCCESS; }
+  LSTATUS status() const { return status_; }
 
   std::wstring GetString(const std::wstring& name, std::wstring default_value) {
     if (!is_open_) return default_value;
@@ -246,7 +246,7 @@ class RegistryKey {
  private:
   HKEY root_;
   HKEY key_;
-  bool is_open_;
+  LSTATUS status_;
 };
 
 AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name,
@@ -276,6 +276,67 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
 }
 #endif
 
+const std::string& current_arch() {
+#if defined(_WIN32)
+  static const std::string platform = "windows";
+#elif defined(__APPLE__)
+  static const std::string platform = "osx";
+#elif defined(__linux__)
+  static const std::string platform = "linux";
+#else
+  static const std::string platform = "unknown";
+#endif
+
+#if defined(__x86_64__) || defined(__amd64__) || defined(_M_X64) || defined(_M_AMD64)
+  static const std::string arch = "amd64";
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  static const std::string arch = "arm64";
+#elif defined(__i386__) || defined(_M_IX86) || defined(_M_X86)
+  static const std::string arch = "x86";
+#elif defined(__arm__) || defined(_M_ARM)
+  static const std::string arch = "arm";
+#elif defined(__riscv) || defined(_M_RISCV)
+  static const std::string arch = "riscv";
+#elif defined(__powerpc__) || defined(__ppc__) || defined(_M_PPC)
+  static const std::string arch = "powerpc";
+#elif defined(__s390x__) || defined(_M_S390)
+  static const std::string arch = "s390x";
+#else
+  static const std::string arch = "unknown";
+#endif
+
+// musl doesn't actually define any preprocessor macro for itself
+// but apparently it doesn't define __USE_GNU inside of features.h
+// while gcc DOES define that.
+// see https://stackoverflow.com/questions/58177815/how-to-actually-detect-musl-libc
+#ifdef __GNUC__
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#include <features.h>
+#ifndef __USE_GNU
+#define __MUSL__
+#endif
+#undef _GNU_SOURCE
+#else
+#include <features.h>
+#ifndef __USE_GNU
+#define __MUSL__
+#endif
+#endif
+#endif
+
+#if defined(__MINGW32__) || defined(__MINGW64__)
+  static const std::string target = "_mingw";
+#elif defined(__MUSL__)
+  static const std::string target = "_musl"
+#else
+  static const std::string target = "";
+#endif
+
+  static const std::string result = platform + "_" + arch + target;
+  return result;
+}
+
 AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
                                   DriverInfo& info, struct AdbcError* error) {
   toml::table config;
@@ -291,13 +352,19 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   info.entrypoint = config["entrypoint"].value_or(""s);
   info.version = config["version"].value_or(""s);
   info.source = config["source"].value_or(""s);
-  auto lib = config.at_path("Driver.shared").value<std::string>();
-  if (!lib) {
-    SetError(error,
-             "Driver path not found in manifest '"s + driver_manifest.string() + "'");
+
+  auto driver = config.at_path("Driver.shared");
+  if (toml::table* platforms = driver.as_table()) {
+    info.lib_path = platforms->at_path(current_arch()).value_or(""s);
+  } else if (auto* path = driver.as_string()) {
+    info.lib_path = path->get();
+  }
+
+  if (info.lib_path.empty()) {
+    SetError(error, "Driver path not found in manifest '"s + driver_manifest.string() +
+                        "' for current architecture '" + current_arch() + "'");
     return ADBC_STATUS_NOT_FOUND;
   }
-  info.lib_path = lib.value();
 
   return ADBC_STATUS_OK;
 }
