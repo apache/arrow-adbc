@@ -211,12 +211,12 @@ struct DriverInfo {
 class RegistryKey {
  public:
   RegistryKey(HKEY root, const std::wstring_view subkey) noexcept
-      : root_(root), key_(nullptr), is_open_(false) {
+      : root_(root), key_(nullptr) {
     status_ = RegOpenKeyExW(root_, subkey.data(), 0, KEY_READ, &key_);
   }
 
   ~RegistryKey() {
-    if (is_open_ && key_ != nullptr) {
+    if (is_open() && key_ != nullptr) {
       RegCloseKey(key_);
       key_ = nullptr;
       status_ = ERROR_REGISTRY_IO_FAILED;
@@ -228,7 +228,7 @@ class RegistryKey {
   LSTATUS status() const { return status_; }
 
   std::wstring GetString(const std::wstring& name, std::wstring default_value) {
-    if (!is_open_) return default_value;
+    if (!is_open()) return default_value;
 
     DWORD type = REG_SZ;
     DWORD size = 0;
