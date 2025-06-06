@@ -585,8 +585,8 @@ struct ManagedLibrary {
       }
     }
 
-    SetError(error, "Driver not found: " + driver_path.string());
-    return ADBC_STATUS_NOT_FOUND;
+    info.lib_path = driver_path;
+    return Load(driver_path.c_str(), error);
 #else
     // Otherwise, search the configured paths
     auto search_paths = GetSearchPaths(load_options);
