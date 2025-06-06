@@ -477,6 +477,7 @@ struct ManagedLibrary {
       }
 
       driver_path.replace_extension("");
+      info.lib_path = driver_path;
       // otherwise just try to load the provided path as if it was an absolute path
       return Load(driver_path.c_str(), error);
     }
@@ -496,6 +497,7 @@ struct ManagedLibrary {
       static const std::string kPlatformLibrarySuffix = ".so";
 #endif
       if (HasExtension(driver_path, kPlatformLibrarySuffix)) {
+        info.lib_path = driver_path;
         return Load(driver_path.c_str(), error);
       }
 
@@ -592,6 +594,7 @@ struct ManagedLibrary {
     if (status == ADBC_STATUS_NOT_FOUND) {
       // If we reach here, we didn't find the driver in any of the paths
       // so let's just attempt to load it as default behavior
+      info.lib_path = driver_path;
       return Load(driver_path.c_str(), error);
     }
     return status;
