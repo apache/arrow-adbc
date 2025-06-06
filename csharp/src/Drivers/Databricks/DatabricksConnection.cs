@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
-        private const bool DefaultRetryOnUnavailable= true;
+        private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
 
         // Default namespace
@@ -172,8 +172,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _defaultNamespace = new TNamespace
                 {
-                    CatalogName = defaultCatalog,
-                    SchemaName = defaultSchema
+                    CatalogName = defaultCatalog!,
+                    SchemaName = defaultSchema!,
                 };
             }
         }
@@ -370,9 +370,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return req;
         }
 
-        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session)
+        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
         {
-            await base.HandleOpenSessionResponse(session);
+            await base.HandleOpenSessionResponse(session, activity);
             if (session != null)
             {
                 _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
@@ -470,7 +470,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override void ValidateOptions()
         {
-             base.ValidateOptions();
+            base.ValidateOptions();
 
             if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetry, out string? tempUnavailableRetryStr))
             {
@@ -484,7 +484,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
 
-            if(Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
+            if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
             {
                 if (!int.TryParse(tempUnavailableRetryTimeoutStr, out int tempUnavailableRetryTimeoutValue) ||
                     tempUnavailableRetryTimeoutValue < 0)
