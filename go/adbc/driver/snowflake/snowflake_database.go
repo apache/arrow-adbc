@@ -48,13 +48,34 @@ var (
 	}
 )
 
+type MaxTimestampPrecision uint8
+
+const (
+	// default precision
+	Nanoseconds MaxTimestampPrecision = iota
+
+	// use nanoseconds, but error if there is an overflow
+	NanosecondsNoOverflow
+
+	// use microseconds
+	Microseconds
+)
+
+var (
+	maxTimestampPrecisionMap = map[string]MaxTimestampPrecision{
+		OptionValueNanoseconds:           Nanoseconds,
+		OptionValueNanosecondsNoOverflow: NanosecondsNoOverflow,
+		OptionValueMicroseconds:          Microseconds,
+	}
+)
+
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 	cfg *gosnowflake.Config
 
-	useHighPrecision bool
-
-	defaultAppName string
+	useHighPrecision      bool
+	maxTimestampPrecision MaxTimestampPrecision
+	defaultAppName        string
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -133,6 +154,15 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil
+	case OptionMaxTimestampPrecision:
+		switch d.maxTimestampPrecision {
+		case Microseconds:
+			return OptionValueMicroseconds, nil
+		case NanosecondsNoOverflow:
+			return OptionValueNanosecondsNoOverflow, nil
+		default:
+			return OptionValueNanoseconds, nil
+		}
 	default:
 		val, ok := d.cfg.Params[key]
 		if ok {
@@ -456,6 +486,16 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
+	case OptionMaxTimestampPrecision:
+		switch v {
+		case OptionValueNanoseconds, OptionValueNanosecondsNoOverflow, OptionValueMicroseconds:
+			d.maxTimestampPrecision = maxTimestampPrecisionMap[v]
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionMaxTimestampPrecision, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
 	default:
 		d.cfg.Params[k] = &v
 	}
@@ -479,8 +519,9 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		// default enable high precision
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead
-		useHighPrecision:   d.useHighPrecision,
-		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		useHighPrecision:      d.useHighPrecision,
+		maxTimestampPrecision: d.maxTimestampPrecision,
+		ConnectionImplBase:    driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
 
 	return driverbase.NewConnectionBuilder(conn).
