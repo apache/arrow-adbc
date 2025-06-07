@@ -785,6 +785,14 @@ with a scale of 0 will be returned as <code class="docutils literal notranslate"
 non-zero scaled columns will be returned as <code class="docutils literal notranslate"><span class="pre">Float64</span></code> typed Arrow columns.
 The default is <code class="docutils literal notranslate"><span class="pre">true</span></code>.</p>
 </dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.max_timestamp_precision</span></code></dt><dd><p>Controls the behavior of Timestamp values with Nanosecond precision. Native Go behavior
+is these values will overflow to an unpredictable value when the year is before year 1677 or after 2262.
+This option can control the behavior of the <cite>timestamp_ltz</cite>, <cite>timestamp_ntz</cite>, and <cite>timestamp_tz</cite> types.
+Valid values are
+- <code class="docutils literal notranslate"><span class="pre">nanoseconds</span></code>: Use default behavior for nanoseconds.
+- <code class="docutils literal notranslate"><span class="pre">nanoseconds_error_on_overflow</span></code>: Throws an error when the value will overflow to enforce integrity of the data.
+- <code class="docutils literal notranslate"><span class="pre">microseconds</span></code>: Limits the max Timestamp precision to microseconds, which is safe for all values.</p>
+</dd>
 </dl>
 </section>
 <section id="metadata">
