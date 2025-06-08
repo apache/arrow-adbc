@@ -291,6 +291,31 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
+        /// <summary>
+        /// Helper method can be used to execute the SQL statement (e.g. `SHOW TABLES`) that returns the metadata in the QureyResult.
+        ///
+        /// It does not change the state (<see cref="_directResults"/>) of this class 
+        /// </summary>
+        protected async Task<QueryResult> ExecuteMetadataQueryAsync(string query, CancellationToken cancellationToken = default)
+        {
+            if (Connection.SessionHandle == null)
+            {
+                throw new InvalidOperationException("Invalid session");
+            }
+
+            TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, query);
+            SetStatementProperties(executeRequest);
+            TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
+            if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            {
+                throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
+                    .SetSqlState(executeResponse.Status.SqlState)
+                    .SetNativeError(executeResponse.Status.ErrorCode);
+            }
+
+            return await GetQueryResult(executeResponse.DirectResults, cancellationToken);
+        }
+
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
 
         protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
@@ -642,7 +667,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return (batches, schema, totalRows);
         }
 
-        private async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
         {
             // 1. Get all three results at once
             var columnsResult = await GetColumnsAsync(cancellationToken);
@@ -733,7 +758,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         // Helper method to create an empty result with the complete extended columns schema
-        private QueryResult CreateEmptyExtendedColumnsResult(Schema baseSchema)
+        protected QueryResult CreateEmptyExtendedColumnsResult(Schema baseSchema)
         {
             // Create the complete schema with all fields
             var allFields = new List<Field>(baseSchema.FieldsList);
