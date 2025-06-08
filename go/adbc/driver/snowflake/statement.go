@@ -50,11 +50,12 @@ const (
 
 type statement struct {
 	driverbase.StatementImplBase
-	cnxn                *connectionImpl
-	alloc               memory.Allocator
-	queueSize           int
-	prefetchConcurrency int
-	useHighPrecision    bool
+	cnxn                  *connectionImpl
+	alloc                 memory.Allocator
+	queueSize             int
+	prefetchConcurrency   int
+	useHighPrecision      bool
+	maxTimestampPrecision MaxTimestampPrecision
 
 	query         string
 	targetTable   string
@@ -470,7 +471,7 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 }
 
 // ExecuteQuery executes the current query or prepared statement
-// and returnes a RecordReader for the results along with the number
+// and returns a RecordReader for the results along with the number
 // of rows affected if known, otherwise it will be -1.
 //
 // This invalidates any prior result sets on this statement.
@@ -511,7 +512,8 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 					err = errToAdbcErr(adbc.StatusInternal, err)
 					return nil, err
 				}
-				reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+
+				reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
 				return reader, err
 			},
 			currentBatch: st.bound,
@@ -536,7 +538,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 		return
 	}
 
-	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
 	nRows = loader.TotalRows()
 	return
 }
@@ -655,7 +657,7 @@ func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, e
 		return nil, err
 	}
 
-	schema, err = rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
+	schema, err = rowTypesToArrowSchema(ctx, loader, st.useHighPrecision, st.maxTimestampPrecision)
 	return schema, err
 }
 

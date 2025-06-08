@@ -274,6 +274,36 @@ def test_stmt_ingest_multi(postgres: dbapi.Connection) -> None:
         assert cur.fetch_arrow_table() == table
 
 
+def test_stmt_ingest_timestamptz(postgres: dbapi.Connection) -> None:
+    # Regression test for https://github.com/apache/arrow-adbc/issues/2901
+    table = pyarrow.table(
+        [
+            [1],
+            [datetime.datetime(2023, 1, 2, 3, 4, 5, tzinfo=datetime.timezone.utc)],
+        ],
+        names=["ints", "tstz"],
+    )
+
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_ingest")
+        # Make sure we aren't in UTC time zone
+        cur.execute("SET TIME ZONE 'Asia/Tokyo'")
+        postgres.commit()
+
+        cur.execute("SELECT current_setting('TIMEZONE')")
+        assert cur.fetchone() == ("Asia/Tokyo",)
+
+        cur.adbc_ingest(
+            "test_ingest",
+            table,
+            mode="create",
+        )
+        postgres.commit()
+
+        cur.execute("SELECT * FROM test_ingest ORDER BY ints")
+        assert cur.fetch_arrow_table() == table
+
+
 def test_ddl(postgres: dbapi.Connection):
     with postgres.cursor() as cur:
         cur.execute("DROP TABLE IF EXISTS test_ddl")

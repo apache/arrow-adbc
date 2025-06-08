@@ -394,7 +394,7 @@ func getInitialSpanAttributes(driverInfo *DriverInfo) []attribute.KeyValue {
 func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	helper := cnxn.dbObjectsEnumerator
 
-	// If the dbObjectsEnumerator has not been set, then the driver implementor has elected to provide their own GetObjects implementation
+	// If the dbObjectsEnumerator has not been set, then the driver implementer has elected to provide their own GetObjects implementation
 	if helper == nil {
 		return cnxn.ConnectionImpl.GetObjects(ctx, depth, catalog, dbSchema, tableName, columnName, tableType)
 	}

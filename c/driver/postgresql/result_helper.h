@@ -110,7 +110,7 @@ class PqResultRow {
 };
 
 // Helper to manager the lifecycle of a PQResult. The query argument
-// will be evaluated as part of the constructor, with the desctructor handling cleanup
+// will be evaluated as part of the constructor, with the destructor handling cleanup
 // Caller must call Prepare then Execute, checking both for an OK AdbcStatusCode
 // prior to iterating
 class PqResultHelper {

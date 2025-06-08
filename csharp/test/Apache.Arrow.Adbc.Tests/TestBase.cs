@@ -658,7 +658,7 @@ namespace Apache.Arrow.Adbc.Tests
             return name.Substring(1);
         }
 
-        protected void CreateNewTableName(out string tableName, out string fullTableName)
+        protected virtual void CreateNewTableName(out string tableName, out string fullTableName)
         {
             string catalogName = TestConfiguration.Metadata.Catalog;
             string schemaName = TestConfiguration.Metadata.Schema;

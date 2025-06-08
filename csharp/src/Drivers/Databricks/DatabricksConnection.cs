@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
         private const bool DefaultRetryOnUnavailable= true;
-        private const int DefaultTemporarilyUnavailableRetryTimeout = 500;
+        private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
 
         // Default namespace
         private TNamespace? _defaultNamespace;
@@ -165,8 +165,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Parse default namespace
             string? defaultCatalog = null;
             string? defaultSchema = null;
-            Properties.TryGetValue(AdbcOptions.Connection.CurrentCatalog, out defaultCatalog);
+            // only if enableMultipleCatalogSupport is true, do we supply catalog from connection properties
+            if (_enableMultipleCatalogSupport)
+            {
+                Properties.TryGetValue(AdbcOptions.Connection.CurrentCatalog, out defaultCatalog);
+            }
             Properties.TryGetValue(AdbcOptions.Connection.CurrentDbSchema, out defaultSchema);
+
+            // This maintains backward compatibility with older workspaces, where the Hive metastore was accessed via the spark catalog name.
+            // In newer DBR versions with Unity Catalog, the default catalog is typically hive_metastore.
+            // Passing null here allows the runtime to fall back to the workspace-defined default catalog for the session.
+            defaultCatalog = HandleSparkCatalog(defaultCatalog);
 
             if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
             {
@@ -470,7 +479,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override void ValidateOptions()
         {
-             base.ValidateOptions();
+            base.ValidateOptions();
 
             if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetry, out string? tempUnavailableRetryStr))
             {
@@ -573,6 +582,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // For other auth flows, use default OAuth validation
                 base.ValidateOAuthParameters();
             }
+        }
+
+        internal static string? HandleSparkCatalog(string? CatalogName)
+        {
+            if (CatalogName != null && CatalogName.Equals("SPARK", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+            return CatalogName;
         }
     }
 }

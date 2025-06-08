@@ -100,6 +100,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             }
         }
 
+        protected override void CreateNewTableName(out string tableName, out string fullTableName)
+        {
+            string catalogName = TestConfiguration.Metadata.Catalog;
+            string schemaName = TestConfiguration.Metadata.Schema;
+            tableName = Guid.NewGuid().ToString("N") + "`!@#$%^&*()_+-=";
+            string catalogFormatted = string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".";
+            fullTableName = $"{catalogFormatted}{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
+        }
+
         [SkippableFact]
         public async Task CanGetPrimaryKeysDatabricks()
         {
@@ -109,6 +118,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         [SkippableFact]
         public async Task CanGetCrossReferenceFromParentTableDatabricks()
         {
+            // TODO: Get cross reference from Parent is not currently supported in Databricks
+            Skip.If(true, "GetCrossReference is not supported in Databricks");
             await base.CanGetCrossReferenceFromParentTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
         }
 
@@ -343,6 +354,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
             statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
             statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+            statement.SetOption(ApacheParameters.EscapeUnderscore, "true");
             statement.SqlQuery = "GetColumnsExtended";
 
             QueryResult queryResult = await statement.ExecuteQueryAsync();
@@ -432,6 +444,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             CreateNewTableName(out tableNameParent, out fullTableNameParent);
             sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameParent} (INDEX INT, NAME STRING, PRIMARY KEY (INDEX, NAME))";
             primaryKeys = ["index", "name"];
+        }
+
+
+        protected override void PrepareCreateTableWithForeignKeys(string fullTableNameParent, out string sqlUpdate, out string tableNameChild, out string fullTableNameChild, out IReadOnlyList<string> foreignKeys)
+        {
+            CreateNewTableName(out tableNameChild, out fullTableNameChild);
+            sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameChild} \n"
+                + "  (INDEX INT, USERINDEX INT, USERNAME STRING, ADDRESS STRING, \n"
+                + "  PRIMARY KEY (INDEX), \n"
+                + $"  FOREIGN KEY (USERINDEX, USERNAME) REFERENCES {fullTableNameParent} (INDEX, NAME))";
+            foreignKeys = ["userindex", "username"];
         }
 
         // NOTE: this is a thirty minute test. As of writing, databricks commands have 20 minutes of idle time (and checked every 5 mintues)
@@ -832,5 +855,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.True(rowCount > 0, "Should have results even without catalog specified");
             Assert.True(foundSchemas.Count == 1, "Should have exactly one schema");
         }
+
     }
 }
