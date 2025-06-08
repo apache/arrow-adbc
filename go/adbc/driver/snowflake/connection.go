@@ -38,8 +38,6 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -173,14 +171,8 @@ func isWildcardStr(ident string) bool {
 }
 
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (reader array.RecordReader, err error) {
-	var span trace.Span
-	ctx, span = c.StartSpan(ctx, "GetObjects")
-	defer func() {
-		if !internal.SetErrorOnSpan(span, err) {
-			span.SetStatus(codes.Ok, "")
-		}
-		span.End()
-	}()
+	ctx, span := internal.StartSpan(ctx, "connectionImpl.GetObjects", c)
+	defer internal.EndSpan(span, err)
 
 	var (
 		pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
@@ -332,7 +324,8 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	var rows driver.Rows
 	rows, err = conn.QueryContext(ctx, query, nvargs)
 	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
+		err = errToAdbcErr(adbc.StatusIO, err)
+		return nil, err
 	}
 	defer func() {
 		err = errors.Join(err, rows.Close())
@@ -345,7 +338,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		defer close(catalogCh)
 		dest := make([]driver.Value, len(rows.Columns()))
 		for {
-			if err := rows.Next(dest); err != nil {
+			if err = rows.Next(dest); err != nil {
 				if errors.Is(err, io.EOF) {
 					return
 				}
@@ -354,7 +347,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			}
 
 			var getObjectsCatalog driverbase.GetObjectsInfo
-			if err := getObjectsCatalog.Scan(dest[0]); err != nil {
+			if err = getObjectsCatalog.Scan(dest[0]); err != nil {
 				errCh <- errToAdbcErr(adbc.StatusInvalidData, err)
 				return
 			}
@@ -378,7 +371,8 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		}
 	}()
 
-	return driverbase.BuildGetObjectsRecordReader(c.Alloc, catalogCh, errCh)
+	reader, err = driverbase.BuildGetObjectsRecordReader(c.Alloc, catalogCh, errCh)
+	return reader, err
 }
 
 // PrepareDriverInfo implements driverbase.DriverInfoPreparer.
@@ -651,6 +645,9 @@ func (c *connectionImpl) getStringQuery(query string) (value string, err error) 
 }
 
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (sc *arrow.Schema, err error) {
+	ctx, span := internal.StartSpan(ctx, "connectionImpl.GetTableSchema", c)
+	defer internal.EndSpan(span, err)
+
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
 		tblParts = append(tblParts, quoteTblName(*catalog))
@@ -661,9 +658,11 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	tblParts = append(tblParts, quoteTblName(tableName))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
-	rows, err := c.cn.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable, nil)
+	var rows driver.Rows
+	rows, err = c.cn.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable, nil)
 	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
+		err = errToAdbcErr(adbc.StatusIO, err)
+		return nil, err
 	}
 	defer func() {
 		err = errors.Join(err, rows.Close())
@@ -679,22 +678,25 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	// name, type, kind, isnull, primary, unique, def, check, expr, comment, policyName, privDomain
 	dest := make([]driver.Value, len(rows.Columns()))
 	for {
-		if err := rows.Next(dest); err != nil {
+		if err = rows.Next(dest); err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return nil, errToAdbcErr(adbc.StatusIO, err)
+			err = errToAdbcErr(adbc.StatusIO, err)
+			return nil, err
 		}
 
 		name = dest[0].(string)
 		typ = dest[1].(string)
 		isnull = dest[3].(string)
 		primary = dest[5].(string)
-		if err := comment.Scan(dest[9]); err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
+		if err = comment.Scan(dest[9]); err != nil {
+			err = errToAdbcErr(adbc.StatusIO, err)
+			return nil, err
 		}
 
-		f, err := descToField(name, typ, isnull, primary, comment, c.maxTimestampPrecision)
+		var f arrow.Field
+		f, err = descToField(name, typ, isnull, primary, comment, c.maxTimestampPrecision)
 		if err != nil {
 			return nil, err
 		}
@@ -702,7 +704,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	}
 
 	sc = arrow.NewSchema(fields, nil)
-	return sc, nil
+	return sc, err
 }
 
 // Commit commits any pending transactions on this connection, it should
@@ -751,9 +753,13 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 }
 
 // Close closes this connection and releases any associated resources.
-func (c *connectionImpl) Close() error {
+func (c *connectionImpl) Close() (err error) {
+	_, span := internal.StartSpan(context.Background(), "connectionImpl.Close", c)
+	defer internal.EndSpan(span, err)
+
 	if c.cn == nil {
-		return adbc.Error{Code: adbc.StatusInvalidState}
+		err = adbc.Error{Code: adbc.StatusInvalidState}
+		return err
 	}
 
 	defer func() {

@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
+	"database/sql/driver"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -31,6 +32,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/youmark/pkcs8"
@@ -163,6 +165,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		default:
 			return OptionValueNanoseconds, nil
 		}
+	case adbc.OptionKeyTelemetryTraceParent:
+		return d.GetTraceParent(), nil
 	default:
 		val, ok := d.cfg.Params[key]
 		if ok {
@@ -496,21 +500,28 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
+	case adbc.OptionKeyTelemetryTraceParent:
+		d.SetTraceParent(v)
 	default:
 		d.cfg.Params[k] = &v
 	}
 	return nil
 }
 
-func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+func (d *databaseImpl) Open(ctx context.Context) (adbcConnection adbc.Connection, err error) {
+	ctx, span := internal.StartSpan(ctx, "databaseImpl.Open", d)
+	defer internal.EndSpan(span, err)
+
 	connector := gosnowflake.NewConnector(drv, *d.cfg)
 
 	ctx = gosnowflake.WithArrowAllocator(
 		gosnowflake.WithArrowBatches(ctx), d.Alloc)
 
-	cn, err := connector.Connect(ctx)
+	var cn driver.Conn
+	cn, err = connector.Connect(ctx)
 	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
+		err = errToAdbcErr(adbc.StatusIO, err)
+		return nil, err
 	}
 
 	conn := &connectionImpl{
@@ -524,12 +535,15 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		ConnectionImplBase:    driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
 
-	return driverbase.NewConnectionBuilder(conn).
+	adbcConnection = driverbase.NewConnectionBuilder(conn).
 		WithAutocommitSetter(conn).
 		WithCurrentNamespacer(conn).
 		WithTableTypeLister(conn).
 		WithDriverInfoPreparer(conn).
-		Connection(), nil
+		Connection()
+
+	driverbase.SetOTelDriverInfoAttributes(d.DriverInfo, span)
+	return adbcConnection, err
 }
 
 func (d *databaseImpl) Close() error {
