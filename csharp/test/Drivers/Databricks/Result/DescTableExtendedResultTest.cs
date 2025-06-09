@@ -16,12 +16,10 @@
 */
 
 using Apache.Arrow.Adbc.Drivers.Databricks.Result;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 
 using Xunit;
-using static Apache.Arrow.Adbc.Drivers.Databricks.Result.DescTableExtendedResult;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
 {

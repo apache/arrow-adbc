@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
@@ -31,6 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
     /// </summary>
     internal class DescTableExtendedResult
     {
+      
         [JsonPropertyName("table_name")]
         public string TableName { get; set; } = String.Empty;
 
