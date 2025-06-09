@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         /// <summary>
-        /// Validates if driver can send and receive specific no timezone Timstamp values correctly
+        /// Validates if driver can send and receive specific no timezone Timestamp values correctly
         /// </summary>
         [SkippableTheory]
         [MemberData(nameof(TimestampBasicData), "TIMESTAMP_NTZ")]

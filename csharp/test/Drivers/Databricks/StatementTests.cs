@@ -457,7 +457,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             foreignKeys = ["userindex", "username"];
         }
 
-        // NOTE: this is a thirty minute test. As of writing, databricks commands have 20 minutes of idle time (and checked every 5 mintues)
+        // NOTE: this is a thirty minute test. As of writing, databricks commands have 20 minutes of idle time (and checked every 5 minutes)
         [SkippableTheory]
         [InlineData(false, "CloudFetch disabled")]
         [InlineData(true, "CloudFetch enabled")]

@@ -211,7 +211,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 int timeout = 99;
                 using AdbcCommand cmd = adbcConnection.CreateCommand();
 
-                // setting the timout before the property value
+                // setting the timeout before the property value
                 Assert.Throws<InvalidOperationException>(() =>
                 {
                     cmd.CommandTimeout = 1;

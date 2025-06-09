@@ -353,7 +353,7 @@ namespace Apache.Arrow.Adbc
         /// <summary>
         /// Gets the names of the statistics returned by this driver.
         /// </summary>
-        /// <returns>The names of the statistcs.</returns>
+        /// <returns>The names of the statistics.</returns>
         public virtual IArrowArrayStream GetStatisticsNames()
         {
             throw AdbcException.NotImplemented("Connection does not support statistics");

@@ -174,7 +174,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An error occured while reading the resouce: {resourceName}");
+                Console.WriteLine($"An error occurred while reading the resource: {resourceName}");
                 Console.WriteLine(ex.Message);
                 throw;
             }
