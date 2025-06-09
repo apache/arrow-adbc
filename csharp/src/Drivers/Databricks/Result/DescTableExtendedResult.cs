@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
             public string? Comment { get; set; }
 
             [JsonPropertyName("nullable")]
-            public bool? Nullable { get; set; }
+            public bool Nullable { get; set; } = true;
         }
 
         public class ForeignKeyInfo

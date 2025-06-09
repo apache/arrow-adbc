@@ -27,6 +27,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Drivers.Databricks.Result;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
+using static Apache.Arrow.Adbc.Drivers.Databricks.Result.DescTableExtendedResult;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -536,6 +537,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return CreateExtendedColumnsResult(columnMetadataSchema,result);
         }
 
+
         /// <summary>
         /// Creates the schema for the column metadata result set.
         /// This schema is used for the GetColumns metadata query.
@@ -620,8 +622,137 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
             var combinedSchema = new Schema(allFields, columnMetadataSchema.Metadata);
-            var combinedData = new List<IArrowArray>();
+            
+            var tableCatBuilder = new StringArray.Builder();
+            var tableSchemaBuilder = new StringArray.Builder();
+            var tableNameBuilder = new StringArray.Builder();
+            var columnNameBuilder = new StringArray.Builder();
+            var dataTypeBuilder = new Int32Array.Builder();
+            var typeNameBuilder = new StringArray.Builder();
+            var columnSizeBuilder = new Int32Array.Builder();
+            var bufferLengthBuilder = new Int8Array.Builder();
+            var decimalDigitsBuilder = new Int32Array.Builder();
+            var numPrecRadixBuilder = new Int32Array.Builder();
+            var nullableBuilder = new Int32Array.Builder();
+            var remarksBuilder = new StringArray.Builder();
+            var columnDefBuilder = new StringArray.Builder();
+            var sqlDataTypeBuilder = new Int32Array.Builder();
+            var sqlDatetimeSubBuilder = new Int32Array.Builder();
+            var charOctetLengthBuilder = new Int32Array.Builder();
+            var ordinalPositionBuilder = new Int32Array.Builder();
+            var isNullableBuilder = new StringArray.Builder();
+            var scopeCatalogBuilder = new StringArray.Builder();
+            var scopeSchemaBuilder = new StringArray.Builder();
+            var scopeTableBuilder = new StringArray.Builder();
+            var sourceDataTypeBuilder = new Int16Array.Builder();
+            var isAutoIncrementBuilder = new StringArray.Builder();
+            var baseTypeNameBuilder = new StringArray.Builder();
 
+            var pkColumnBuilder = new StringArray.Builder();
+            var fkColumnLocalBuilder = new StringArray.Builder();
+            var fkColumnRefCatalogBuilder = new StringArray.Builder();
+            var fkColumnRefSchemaBuilder = new StringArray.Builder();
+            var fkColumnRefTableBuilder = new StringArray.Builder();
+            var fkColumnRefColumnBuilder = new StringArray.Builder();
+
+            var pkColumns = new HashSet<string>(descResult.PrimaryKeys);
+            var fkColumns = new Dictionary<String, (int,ForeignKeyInfo)>();
+            foreach (var fkInfo in  descResult.ForeignKeys)
+            {
+                for (var i = 0; i < fkInfo.LocalColumns.Count; i++)
+                {
+                    // The order of local key should match the order of ref key, so we need to store the index
+                    fkColumns.Add(fkInfo.LocalColumns[i],(i,fkInfo));
+                }
+            }
+
+            var position = 0;
+            foreach (var column in descResult.Columns)
+            {
+                var typeName = column.Type.Name.ToUpper();
+                var colName = column.Name;
+
+                tableCatBuilder.Append(descResult.CatalogName);
+                tableSchemaBuilder.Append(descResult.SchemaName);
+           
+
+                columnNameBuilder.Append(typeName);
+                columnSizeBuilder.Append(0);  //TODO 
+                bufferLengthBuilder.Append(0);
+                decimalDigitsBuilder.Append(column.Type.Precision != null ? column.Type.Precision : 0);
+                numPrecRadixBuilder.Append(10);
+                nullableBuilder.Append(column.Nullable ? 1 : 0);
+                remarksBuilder.Append(column.Comment);
+                columnDefBuilder.AppendNull();
+                sqlDataTypeBuilder.Append(0);
+                sqlDatetimeSubBuilder.Append(0);
+                charOctetLengthBuilder.Append(0);
+                ordinalPositionBuilder.Append(position++);
+                isNullableBuilder.Append(column.Nullable ? "YES" : "NO");
+
+                scopeCatalogBuilder.AppendNull();
+                scopeSchemaBuilder.AppendNull();
+                scopeTableBuilder.AppendNull();
+                sourceDataTypeBuilder.Append(0);
+
+                isAutoIncrementBuilder.Append(0);
+                baseTypeNameBuilder.Append(typeName);
+
+                pkColumnBuilder.Append(pkColumns.Contains(colName) ? colName : null);
+
+                if (fkColumns.ContainsKey(colName))
+                {
+                    var (idx,fkInfo) = fkColumns[colName];
+                    fkColumnLocalBuilder.Append(colName);
+                    fkColumnRefCatalogBuilder.Append(fkInfo.RefCatalog);
+                    fkColumnRefSchemaBuilder.Append(fkInfo.RefSchema);
+                    fkColumnRefTableBuilder.Append(fkInfo.RefTable);
+                    fkColumnRefColumnBuilder.Append(fkInfo.RefColumns[idx]);
+                }
+                else
+                {
+                    fkColumnLocalBuilder.AppendNull();
+                    fkColumnRefCatalogBuilder.AppendNull();
+                    fkColumnRefSchemaBuilder.AppendNull();
+                    fkColumnRefTableBuilder.AppendNull();
+                    fkColumnRefColumnBuilder.AppendNull();
+                }
+            }
+
+            var combinedData = new List<IArrowArray>()
+            {
+                tableCatBuilder.Build(),
+                tableSchemaBuilder.Build(),
+                tableNameBuilder.Build(),
+                columnNameBuilder.Build(),
+                dataTypeBuilder.Build(),
+                typeNameBuilder.Build(),
+                columnSizeBuilder.Build(),
+                bufferLengthBuilder.Build(),
+                decimalDigitsBuilder.Build(),
+                numPrecRadixBuilder.Build(),
+                nullableBuilder.Build(),
+                remarksBuilder.Build(),
+                columnDefBuilder.Build(),
+                sqlDataTypeBuilder.Build(),
+                sqlDatetimeSubBuilder.Build(),
+                charOctetLengthBuilder.Build(),
+                ordinalPositionBuilder.Build(),
+                isNullableBuilder.Build(),
+                scopeCatalogBuilder.Build(),
+                scopeSchemaBuilder.Build(),
+                scopeTableBuilder.Build(),
+                sourceDataTypeBuilder.Build(),
+                isAutoIncrementBuilder.Build(),
+                baseTypeNameBuilder.Build(),
+                pkColumnBuilder.Build(),
+                fkColumnLocalBuilder.Build(),
+                fkColumnRefCatalogBuilder.Build(),
+                fkColumnRefSchemaBuilder.Build(),
+                fkColumnRefTableBuilder.Build(),
+                fkColumnRefColumnBuilder.Build()
+            };
+    
             return new QueryResult(descResult.Columns.Count, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
     }

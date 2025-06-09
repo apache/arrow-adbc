@@ -37,6 +37,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
                     {
                         ""name"": ""big_number"",
                         ""type"": {""name"": ""bigint""},
+                        ""comment"": ""test comment"",
                         ""nullable"": false
                     },
                     {
@@ -142,6 +143,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             var column = result.Columns.Find(c => c.Name == "big_number");
             Assert.NotNull(column);
             Assert.Equal("bigint", column.Type.Name);
+            Assert.Equal("test comment", column.Comment);
             Assert.False(column!.Nullable);
 
             column = result.Columns.Find(c => c.Name == "decimal_number");
