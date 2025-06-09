@@ -1219,13 +1219,39 @@ the type of the corresponding field will be NA (NullType).</p>
 <dd class="field-odd"><dl class="simple">
 <dt><a class="reference internal" href="#adbc_driver_manager.ArrowArrayHandle.address" title="adbc_driver_manager.ArrowArrayHandle.address"><code class="xref py py-obj docutils literal notranslate"><span class="pre">address</span></code></a></dt><dd><p>The address of the ArrowArray.</p>
 </dd>
+<dt><a class="reference internal" href="#adbc_driver_manager.ArrowArrayHandle.is_valid" title="adbc_driver_manager.ArrowArrayHandle.is_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_valid</span></code></a></dt><dd><p>Check validility (object has non-NULL release pointer).</p>
+</dd>
 </dl>
 </dd>
 </dl>
+<p class="rubric">Methods</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.ArrowArrayHandle.release" title="adbc_driver_manager.ArrowArrayHandle.release"><code class="xref py py-obj docutils literal notranslate"><span class="pre">release</span></code></a>()</p></td>
+<td><p>Release this array without having to import it.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="adbc_driver_manager.ArrowArrayHandle.address">
 <span class="sig-name descname"><span class="pre">address</span></span><a class="headerlink" href="#adbc_driver_manager.ArrowArrayHandle.address" title="Link to this definition">¶</a></dt>
 <dd><p>The address of the ArrowArray.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.ArrowArrayHandle.is_valid">
+<span class="sig-name descname"><span class="pre">is_valid</span></span><a class="headerlink" href="#adbc_driver_manager.ArrowArrayHandle.is_valid" title="Link to this definition">¶</a></dt>
+<dd><p>Check validility (object has non-NULL release pointer).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.ArrowArrayHandle.release">
+<span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.ArrowArrayHandle.release" title="Link to this definition">¶</a></dt>
+<dd><p>Release this array without having to import it.</p>
+<p>No-op if already released (if <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">self.is_valid</span></code>).</p>
+<p>Postcondition: <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">self.is_valid</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1241,13 +1267,39 @@ the type of the corresponding field will be NA (NullType).</p>
 <dd class="field-odd"><dl class="simple">
 <dt><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle.address" title="adbc_driver_manager.ArrowArrayStreamHandle.address"><code class="xref py py-obj docutils literal notranslate"><span class="pre">address</span></code></a></dt><dd><p>The address of the ArrowArrayStream.</p>
 </dd>
+<dt><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle.is_valid" title="adbc_driver_manager.ArrowArrayStreamHandle.is_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_valid</span></code></a></dt><dd><p>Check validility (object has non-NULL release pointer).</p>
+</dd>
 </dl>
 </dd>
 </dl>
+<p class="rubric">Methods</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle.release" title="adbc_driver_manager.ArrowArrayStreamHandle.release"><code class="xref py py-obj docutils literal notranslate"><span class="pre">release</span></code></a>()</p></td>
+<td><p>Release this stream without having to import it.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="adbc_driver_manager.ArrowArrayStreamHandle.address">
 <span class="sig-name descname"><span class="pre">address</span></span><a class="headerlink" href="#adbc_driver_manager.ArrowArrayStreamHandle.address" title="Link to this definition">¶</a></dt>
 <dd><p>The address of the ArrowArrayStream.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.ArrowArrayStreamHandle.is_valid">
+<span class="sig-name descname"><span class="pre">is_valid</span></span><a class="headerlink" href="#adbc_driver_manager.ArrowArrayStreamHandle.is_valid" title="Link to this definition">¶</a></dt>
+<dd><p>Check validility (object has non-NULL release pointer).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.ArrowArrayStreamHandle.release">
+<span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.ArrowArrayStreamHandle.release" title="Link to this definition">¶</a></dt>
+<dd><p>Release this stream without having to import it.</p>
+<p>No-op if already released (if <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">self.is_valid</span></code>).</p>
+<p>Postcondition: <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">self.is_valid</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1263,13 +1315,39 @@ the type of the corresponding field will be NA (NullType).</p>
 <dd class="field-odd"><dl class="simple">
 <dt><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle.address" title="adbc_driver_manager.ArrowSchemaHandle.address"><code class="xref py py-obj docutils literal notranslate"><span class="pre">address</span></code></a></dt><dd><p>The address of the ArrowSchema.</p>
 </dd>
+<dt><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle.is_valid" title="adbc_driver_manager.ArrowSchemaHandle.is_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_valid</span></code></a></dt><dd><p>Check validility (object has non-NULL release pointer).</p>
+</dd>
 </dl>
 </dd>
 </dl>
+<p class="rubric">Methods</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle.release" title="adbc_driver_manager.ArrowSchemaHandle.release"><code class="xref py py-obj docutils literal notranslate"><span class="pre">release</span></code></a>()</p></td>
+<td><p>Release this schema without having to import it.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="adbc_driver_manager.ArrowSchemaHandle.address">
 <span class="sig-name descname"><span class="pre">address</span></span><a class="headerlink" href="#adbc_driver_manager.ArrowSchemaHandle.address" title="Link to this definition">¶</a></dt>
 <dd><p>The address of the ArrowSchema.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.ArrowSchemaHandle.is_valid">
+<span class="sig-name descname"><span class="pre">is_valid</span></span><a class="headerlink" href="#adbc_driver_manager.ArrowSchemaHandle.is_valid" title="Link to this definition">¶</a></dt>
+<dd><p>Check validility (object has non-NULL release pointer).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.ArrowSchemaHandle.release">
+<span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_manager.ArrowSchemaHandle.release" title="Link to this definition">¶</a></dt>
+<dd><p>Release this schema without having to import it.</p>
+<p>No-op if already released (if <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">self.is_valid</span></code>).</p>
+<p>Postcondition: <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">self.is_valid</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2332,14 +2410,20 @@ United States and other countries.
 </li>
 <li><a class="reference internal" href="#adbc_driver_manager.ArrowArrayHandle"><code class="docutils literal notranslate"><span class="pre">ArrowArrayHandle</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.ArrowArrayHandle.address"><code class="docutils literal notranslate"><span class="pre">ArrowArrayHandle.address</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.ArrowArrayHandle.is_valid"><code class="docutils literal notranslate"><span class="pre">ArrowArrayHandle.is_valid</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.ArrowArrayHandle.release"><code class="docutils literal notranslate"><span class="pre">ArrowArrayHandle.release()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStreamHandle</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle.address"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStreamHandle.address</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle.is_valid"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStreamHandle.is_valid</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle.release"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStreamHandle.release()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaHandle</span></code></a><ul>
 <li><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle.address"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaHandle.address</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle.is_valid"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaHandle.is_valid</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.ArrowSchemaHandle.release"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaHandle.release()</span></code></a></li>
 </ul>
 </li>
 </ul>
