@@ -1236,7 +1236,7 @@ static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
 #define NANOARROW_DLL __declspec(dllimport)
 #endif  // defined(NANOARROW_EXPORT_DLL)
 #elif !defined(NANOARROW_DLL)
-#if __GNUC__ >= 4
+#if defined(__GNUC__) && __GNUC__ >= 4
 #define NANOARROW_DLL __attribute__((visibility("default")))
 #else
 #define NANOARROW_DLL
