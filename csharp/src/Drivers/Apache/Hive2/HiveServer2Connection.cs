@@ -321,7 +321,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
                 // Handle other exceptions if necessary
-                throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
             }
         }
 
@@ -593,7 +593,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
             }
         }
 
@@ -642,7 +642,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
             }
         }
 
@@ -694,7 +694,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
             }
         }
 
@@ -1308,7 +1308,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
             }
         }
 

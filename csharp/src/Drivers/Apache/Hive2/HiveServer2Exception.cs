@@ -39,25 +39,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
         }
 
-        public HiveServer2Exception(string message, Exception innerException) : base(message, TranslateException(innerException))
+        public HiveServer2Exception(string message, Exception innerException) : base(message, innerException)
         {
         }
 
-        public HiveServer2Exception(string message, AdbcStatusCode statusCode, Exception innerException) : base(message, statusCode, TranslateException(innerException))
+        public HiveServer2Exception(string message, AdbcStatusCode statusCode, Exception innerException) : base(message, statusCode, innerException)
         {
-        }
-
-        private static Exception TranslateException(Exception exception)
-        {
-            if (exception is AggregateException aEx)
-            {
-                AggregateException flattenedEx = aEx.Flatten();
-                IEnumerable<string> messages = flattenedEx.InnerExceptions.Select((ex, index) => $"({index + 1}) {ex.Message}");
-                string fullMessage = $"{flattenedEx.Message}: {string.Join(", ", messages)}";
-                return new Exception(fullMessage);
-            }
-
-            return exception;
         }
 
         public override string? SqlState
