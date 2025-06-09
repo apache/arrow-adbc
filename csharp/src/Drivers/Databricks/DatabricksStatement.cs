@@ -42,7 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             : base(connection)
         {
             // set the catalog name for legacy compatibility
-            // TODO: use catalog and schema fields in hiveserver2 connection instad of DefaultNamespace so we don't need to cast
+            // TODO: use catalog and schema fields in hiveserver2 connection instead of DefaultNamespace so we don't need to cast
             var defaultNamespace = ((DatabricksConnection)Connection).DefaultNamespace;
             if (defaultNamespace != null)
             {

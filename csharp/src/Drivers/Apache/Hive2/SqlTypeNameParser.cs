@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <summary>
         /// Tries to parse the input string for a valid SQL type definition.
         /// </summary>
-        /// <param name="input">The SQL type defintion string to parse.</param>
+        /// <param name="input">The SQL type definition string to parse.</param>
         /// <param name="result">If successful, the result; otherwise <c>null</c>.</param>
         /// <returns>True if it can successfully parse the type definition input string; otherwise false.</returns>
         bool TryParse(string input, out SqlTypeNameParserResult? result);
@@ -137,7 +137,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <summary>
         /// Tries to parse the input string for a valid SQL type definition.
         /// </summary>
-        /// <param name="input">The SQL type defintion string to parse.</param>
+        /// <param name="input">The SQL type definition string to parse.</param>
         /// <param name="result">If successful, the result; otherwise <c>null</c>.</param>
         /// <returns>True if it can successfully parse the type definition input string; otherwise false.</returns>
         bool ISqlTypeNameParser.TryParse(string input, out SqlTypeNameParserResult? result)
@@ -150,7 +150,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <summary>
         /// Tries to parse the input string for a valid SQL type definition.
         /// </summary>
-        /// <param name="input">The SQL type defintion string to parse.</param>
+        /// <param name="input">The SQL type definition string to parse.</param>
         /// <param name="result">If successful, the result; otherwise <c>null</c>.</param>
         /// <returns>True if it can successfully parse the type definition input string; otherwise false.</returns>
         internal bool TryParse(string input, out T? result)
@@ -487,7 +487,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // NOT NULL: When specified the struct guarantees that the value of this field is never NULL.
         // COMMENT str: An optional string literal describing the field.
         private static readonly Regex s_expression = new(
-            @"^\s*(?<typeName>STRUCT)(?<structClause>\s*\<(.+)\>)\s*$", // STUCT
+            @"^\s*(?<typeName>STRUCT)(?<structClause>\s*\<(.+)\>)\s*$", // STRUCT
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         protected override Regex Expression => s_expression;

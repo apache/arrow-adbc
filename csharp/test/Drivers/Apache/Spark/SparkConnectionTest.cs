@@ -45,8 +45,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             AdbcDriver driver = NewDriver;
             AdbcDatabase database = driver.Open(test.Parameters);
-            Exception exeption = Assert.Throws(test.ExceptionType, () => database.Connect(test.Parameters));
-            OutputHelper?.WriteLine(exeption.Message);
+            Exception exception = Assert.Throws(test.ExceptionType, () => database.Connect(test.Parameters));
+            OutputHelper?.WriteLine(exception.Message);
         }
 
         /// <summary>
