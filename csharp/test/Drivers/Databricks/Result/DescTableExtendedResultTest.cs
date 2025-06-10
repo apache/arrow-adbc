@@ -156,6 +156,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             Assert.Equal("bigint", column.Type.Name);
             Assert.Equal("test comment", column.Comment);
             Assert.False(column!.Nullable);
+            Assert.Equal("BIGINT", column.Type.FullTypeName);
 
             column = result.Columns.Find(c => c.Name == "decimal_number");
             Assert.NotNull(column);
@@ -163,16 +164,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             Assert.False(column.Nullable);
             Assert.Equal(10, column.Type.Precision);
             Assert.Equal(2, column.Type.Scale);
+            Assert.Equal("DECIMAL(10,2)", column.Type.FullTypeName);
 
             column = result.Columns.Find(c => c.Name == "string_col");
             Assert.NotNull(column);
             Assert.Equal("string", column.Type.Name);
+            Assert.Equal("STRING", column.Type.FullTypeName);
 
             column = result.Columns.Find(c => c.Name == "array_col");
             Assert.NotNull(column);
             Assert.Equal("array", column.Type.Name);
             Assert.NotNull(column.Type.ElementType);
             Assert.Equal("string", column.Type.ElementType.Name);
+            Assert.Equal("ARRAY<STRING>", column.Type.FullTypeName);
 
             column = result.Columns.Find(c => c.Name == "map_col");
             Assert.NotNull(column);
@@ -181,18 +185,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             Assert.NotNull(column.Type.ValueType);
             Assert.Equal("string", column.Type.KeyType.Name);
             Assert.Equal("int", column.Type.ValueType.Name);
+            Assert.Equal("MAP<STRING,INT>", column.Type.FullTypeName);
 
             column = result.Columns.Find(c => c.Name == "interval_col");
             Assert.NotNull(column);
             Assert.Equal("interval", column.Type.Name);
             Assert.Equal("year", column.Type.StartUnit);
             Assert.Equal("month", column.Type.EndUnit);
+            Assert.Equal("INTERVAL YEAR TO MONTH", column.Type.FullTypeName);
 
             column = result.Columns.Find(c => c.Name == "struct_col");
             Assert.NotNull(column);
             Assert.Equal("struct", column.Type.Name);
             Assert.NotNull(column.Type.Fields);
             Assert.Equal(3, column.Type.Fields.Count);
+            Assert.Equal("STRUCT<name: STRING, age: INT, scores: ARRAY<DOUBLE>>", column.Type.FullTypeName);
 
             var field = column.Type.Fields.Find(c => c.Name == "name");
             Assert.NotNull(field);

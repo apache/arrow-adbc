@@ -28,7 +28,6 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Result;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using static Apache.Arrow.Adbc.Drivers.Databricks.Result.DescTableExtendedResult;
-using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Hive2.HiveServer2Connection.ColumnTypeId;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -682,11 +681,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             var position = 0;
             foreach (var column in descResult.Columns)
             {
-                var typeName = column.Type.Name.ToUpper();
+                var baseTypeName = column.Type.Name.ToUpper();
+                var fullTypeName = column.Type.FullTypeName;
                 var colName = column.Name;
-                SqlTypeNameParser<SqlTypeNameParserResult>.TryParse(typeName, out var type);
 
-                // Convert typeName to ColumnTypeId
                 int dataType = (int)column.DataType;
 
                 tableCatBuilder.Append(descResult.CatalogName);
@@ -695,7 +693,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 columnNameBuilder.Append(colName);
                 dataTypeBuilder.Append(dataType);
-                typeNameBuilder.Append(typeName);
+                typeNameBuilder.Append(fullTypeName);
                 columnSizeBuilder.Append(column.ColumnSize);
                 bufferLengthBuilder.Append(0);
                 decimalDigitsBuilder.Append(column.Type.Precision != null ? column.Type.Precision : 0);
@@ -715,7 +713,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 sourceDataTypeBuilder.Append(0);
 
                 isAutoIncrementBuilder.Append(0);
-                baseTypeNameBuilder.Append(typeName);
+                baseTypeNameBuilder.Append(baseTypeName);
 
                 pkColumnBuilder.Append(pkColumns.Contains(colName) ? colName : null);
 

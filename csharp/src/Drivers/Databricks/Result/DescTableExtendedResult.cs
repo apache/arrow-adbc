@@ -86,8 +86,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
             {
                 get
                 {
-                    // Supported type name: 
-
                     string normalizedTypeName = Type.Name.Trim().ToUpper();
 
                     return normalizedTypeName switch
@@ -197,6 +195,44 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
 
             [JsonPropertyName("end_unit")]
             public string? EndUnit { get; set; }
+
+            /// <summary>
+            /// Get the full type name e.g. DECIMAL(10,2), map<string,int>
+            /// </summary>
+            [JsonIgnore]
+            public string FullTypeName
+            {
+                get
+                {
+                    string normalizedTypeName = Name.Trim().ToUpper();
+
+                    return normalizedTypeName switch
+                    {
+                        "DECIMAL" or "NUMERIC" => Precision != null ? $"{normalizedTypeName}({Precision},{Scale ?? 0})" : normalizedTypeName,
+                        "ARRAY" => ElementType != null ? $"ARRAY<{ElementType.FullTypeName}>" : "ARRAY<>",
+                        "MAP" => (KeyType != null && ValueType != null) ? $"MAP<{KeyType!.FullTypeName},{ValueType!.FullTypeName}>":"Map<>",
+                        "STRUCT" => BuildStructTypeName(),
+                        "INTERVAL" => (StartUnit != null && EndUnit != null) ? $"INTERVAL {StartUnit.ToUpper()} TO {EndUnit.ToUpper()}": "INTERVAL",
+                        _ => normalizedTypeName
+                    };
+                }
+            }
+
+            private string BuildStructTypeName()
+            {
+                if (Fields == null || Fields.Count == 0)
+                {
+                    return "STRUCT<>";
+                }
+
+                var fieldTypes = new List<string>();
+                foreach (var field in Fields)
+                {
+                    fieldTypes.Add($"{field.Name}: {field.Type.FullTypeName}");
+                }
+
+                return $"STRUCT<{string.Join(", ", fieldTypes)}>";
+            }
         }
 
 
