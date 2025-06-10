@@ -28,6 +28,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Result;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using static Apache.Arrow.Adbc.Drivers.Databricks.Result.DescTableExtendedResult;
+using ColumnTypeId = Apache.Arrow.Adbc.Drivers.Apache.Hive2.HiveServer2Connection.ColumnTypeId;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -616,6 +617,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             ];
         }
 
+
         private QueryResult CreateExtendedColumnsResult(Schema columnMetadataSchema, DescTableExtendedResult descResult)
         {
             var allFields = new List<Field>(columnMetadataSchema.FieldsList);
@@ -682,13 +684,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 var typeName = column.Type.Name.ToUpper();
                 var colName = column.Name;
+                SqlTypeNameParser<SqlTypeNameParserResult>.TryParse(typeName, out var type);
+
+                // Convert typeName to ColumnTypeId
+                int dataType = (int)column.DataType;
 
                 tableCatBuilder.Append(descResult.CatalogName);
                 tableSchemaBuilder.Append(descResult.SchemaName);
                 tableNameBuilder.Append(descResult.TableName);
 
                 columnNameBuilder.Append(colName);
-                dataTypeBuilder.Append(0);
+                dataTypeBuilder.Append(dataType);
                 typeNameBuilder.Append(typeName);
                 columnSizeBuilder.Append(0);  //TODO 
                 bufferLengthBuilder.Append(0);
@@ -697,7 +703,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 nullableBuilder.Append(column.Nullable ? 1 : 0);
                 remarksBuilder.Append(column.Comment);
                 columnDefBuilder.AppendNull();
-                sqlDataTypeBuilder.Append(0);
+                sqlDataTypeBuilder.Append(dataType);
                 sqlDatetimeSubBuilder.Append(0);
                 charOctetLengthBuilder.Append(0);
                 ordinalPositionBuilder.Append(position++);

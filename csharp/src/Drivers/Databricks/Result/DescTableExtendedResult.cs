@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using static Apache.Arrow.Adbc.Drivers.Apache.Hive2.HiveServer2Connection;
 
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
@@ -72,6 +73,46 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
 
             [JsonPropertyName("nullable")]
             public bool Nullable { get; set; } = true;
+
+            [JsonIgnore]
+            public ColumnTypeId DataType
+            {
+                get
+                {
+                    // Supported type name: https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-datatypes
+
+                    string normalizedTypeName = Type.Name.Trim().ToUpper();
+
+                    return normalizedTypeName switch
+                    {
+                        "BOOLEAN" => ColumnTypeId.BOOLEAN,
+                        "TINYINT" or "BYTE" => ColumnTypeId.TINYINT,
+                        "SMALLINT" or "SHORT" => ColumnTypeId.SMALLINT,
+                        "INT" or "INTEGER" => ColumnTypeId.INTEGER,
+                        "BIGINT" or "LONG" => ColumnTypeId.BIGINT,
+                        "FLOAT" or "REAL" => ColumnTypeId.FLOAT,
+                        "DOUBLE" => ColumnTypeId.DOUBLE,
+                        "DECIMAL" or "NUMERIC" => ColumnTypeId.DECIMAL,
+
+                        "CHAR" => ColumnTypeId.CHAR, 
+                        "STRING" or "VARCHAR" => ColumnTypeId.VARCHAR,
+                        "BINARY" => ColumnTypeId.BINARY,
+                        
+                        "TIMESTAMP" => ColumnTypeId.TIMESTAMP,
+                        "TIMESTAMP_LTZ" => ColumnTypeId.TIMESTAMP_WITH_TIMEZONE,
+                        "TIMESTAMP_NTZ" => ColumnTypeId.TIMESTAMP,
+                        "DATE" => ColumnTypeId.DATE,
+
+                        "ARRAY" => ColumnTypeId.ARRAY,
+                        "MAP" => ColumnTypeId.JAVA_OBJECT,
+                        "STRUCT" => ColumnTypeId.STRUCT,
+                        "INTERVAL" => ColumnTypeId.OTHER, // Intervals don't have a direct JDBC mapping
+                        "VOID" => ColumnTypeId.NULL,
+                        "VARIANT" => ColumnTypeId.OTHER,
+                        _ => ColumnTypeId.OTHER // Default fallback for unknown types
+                    };
+                }
+            }
         }
 
         public class ForeignKeyInfo
@@ -105,6 +146,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
 
             [JsonPropertyName("fields")]
             public List<ColumnInfo>? Fields { get; set; }
+
+            [JsonPropertyName("start_unit")]
+            public string? StartUnit { get; set; }
+
+            [JsonPropertyName("end_unit")]
+            public string? EndUnit { get; set; }
         }
 
 

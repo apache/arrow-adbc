@@ -19,6 +19,8 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Result;
 using System.Linq;
 using System.Text.Json;
 
+using static Apache.Arrow.Adbc.Drivers.Apache.Hive2.HiveServer2Connection;
+
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
@@ -85,6 +87,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
                         ""nullable"": true
                     },
                     {
+                        ""name"": ""interval_col"",
+                        ""type"": {
+                            ""name"": ""interval"",
+                            ""start_unit"": ""year"",
+                            ""end_unit"": ""month""
+                        },
+                        ""nullable"": true
+                    },
+                    {
                         ""name"": ""struct_col"",
                         ""type"": {
                             ""name"": ""struct"",
@@ -138,7 +149,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             Assert.Empty(result.PrimaryKeys);
             Assert.Empty(result.ForeignKeys);
 
-            Assert.Equal(6, result.Columns.Count);
+            Assert.Equal(7, result.Columns.Count);
 
             var column = result.Columns.Find(c => c.Name == "big_number");
             Assert.NotNull(column);
@@ -170,6 +181,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             Assert.NotNull(column.Type.ValueType);
             Assert.Equal("string", column.Type.KeyType.Name);
             Assert.Equal("int", column.Type.ValueType.Name);
+
+            column = result.Columns.Find(c => c.Name == "interval_col");
+            Assert.NotNull(column);
+            Assert.Equal("interval", column.Type.Name);
+            Assert.Equal("year", column.Type.StartUnit);
+            Assert.Equal("month", column.Type.EndUnit);
 
             column = result.Columns.Find(c => c.Name == "struct_col");
             Assert.NotNull(column);
@@ -269,6 +286,60 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
                 Assert.Equal(nameParts[1], foreignKeynfo.RefSchema);
                 Assert.Equal(nameParts[2], foreignKeynfo.RefTable);
             }
+        }
+
+        [SkippableTheory]
+        [InlineData("BOOLEAN", ColumnTypeId.BOOLEAN)]
+        [InlineData("TINYINT", ColumnTypeId.TINYINT)]
+        [InlineData("BYTE", ColumnTypeId.TINYINT)]
+        [InlineData("SMALLINT", ColumnTypeId.SMALLINT)]
+        [InlineData("SHORT", ColumnTypeId.SMALLINT)]
+        [InlineData("INT", ColumnTypeId.INTEGER)]
+        [InlineData("INTEGER", ColumnTypeId.INTEGER)]
+        [InlineData("BIGINT", ColumnTypeId.BIGINT)]
+        [InlineData("LONG", ColumnTypeId.BIGINT)]
+        [InlineData("FLOAT", ColumnTypeId.FLOAT)]
+        [InlineData("REAL", ColumnTypeId.FLOAT)]
+        [InlineData("DOUBLE", ColumnTypeId.DOUBLE)]
+        [InlineData("DECIMAL", ColumnTypeId.DECIMAL)]
+        [InlineData("CHAR", ColumnTypeId.CHAR)]
+        [InlineData("VARCHAR", ColumnTypeId.VARCHAR)]
+        [InlineData("STRING", ColumnTypeId.VARCHAR)]
+        [InlineData("BINARY", ColumnTypeId.BINARY)]
+        [InlineData("DATE", ColumnTypeId.DATE)]
+        [InlineData("TIMESTAMP", ColumnTypeId.TIMESTAMP)]
+        [InlineData("TIMESTAMP_LTZ", ColumnTypeId.TIMESTAMP_WITH_TIMEZONE)]
+        [InlineData("TIMESTAMP_NTZ", ColumnTypeId.TIMESTAMP)]
+        [InlineData("ARRAY", ColumnTypeId.ARRAY)]
+        [InlineData("MAP", ColumnTypeId.JAVA_OBJECT)]
+        [InlineData("STRUCT", ColumnTypeId.STRUCT)]
+        [InlineData("INTERVAL", ColumnTypeId.OTHER)]
+        [InlineData("VOID", ColumnTypeId.NULL)]
+        [InlineData("VARIANT", ColumnTypeId.OTHER)]
+        internal void TestDataTypeMapping(string baseType, ColumnTypeId dataType)
+        {
+            var json = @"
+            {
+                ""table_name"": ""test_table"",
+                ""catalog_name"": ""test_catalog"",
+                ""schema_name"": ""test_schema"",
+                ""columns"": [
+                    {
+                        ""name"": ""col"",
+                        ""type"": {
+                            ""name"": ""<col_type>""
+                        },
+                        ""nullable"": false
+                    }
+                ],
+                ""type"": ""MANAGED"",
+                ""table_properties"": {
+                    ""delta.minReaderVersion"": ""3""
+                }
+            }".Replace("<col_type>", baseType);
+
+            var result = JsonSerializer.Deserialize<DescTableExtendedResult>(json);
+            Assert.Equal(dataType, result!.Columns[0].DataType);
         }
     }
 }
