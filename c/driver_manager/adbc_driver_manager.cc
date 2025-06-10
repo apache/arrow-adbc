@@ -281,6 +281,8 @@ const std::string& current_arch() {
   static const std::string platform = "windows";
 #elif defined(__APPLE__)
   static const std::string platform = "osx";
+#elif defined(__FreeBSD__)
+  static const std::string platform = "freebsd";
 #elif defined(__linux__)
   static const std::string platform = "linux";
 #else
@@ -289,7 +291,7 @@ const std::string& current_arch() {
 
 #if defined(__x86_64__) || defined(__amd64__) || defined(_M_X64) || defined(_M_AMD64)
   static const std::string arch = "amd64";
-#elif defined(__aarch64__) || defined(_M_ARM64)
+#elif defined(__aarch64__) || defined(_M_ARM64) || defined(__ARM_ARCH_ISA_A64)
   static const std::string arch = "arm64";
 #elif defined(__i386__) || defined(_M_IX86) || defined(_M_X86)
   static const std::string arch = "x86";
@@ -309,16 +311,17 @@ const std::string& current_arch() {
 // but apparently it doesn't define __USE_GNU inside of features.h
 // while gcc DOES define that.
 // see https://stackoverflow.com/questions/58177815/how-to-actually-detect-musl-libc
-#if defined(__linux__) && defined(__GNUC__)
-#ifndef _GNU_SOURCE
+#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
+#else
+#if !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
-#include <features.h>  // NOLINT [build/include]
+#include <features.h>
 #ifndef __USE_GNU
 #define __MUSL__
 #endif
-#undef _GNU_SOURCE
+#undef _GNU_SOURCE /* don't contaminate other includes unnecessarily */
 #else
-#include <features.h>  // NOLINT [build/include]
+#include <features.h>
 #ifndef __USE_GNU
 #define __MUSL__
 #endif
