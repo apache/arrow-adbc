@@ -304,6 +304,24 @@ TEST(PostgresTypeTest, PostgresTypeFromSchema) {
   schema.reset();
 
   ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeDateTime(schema.get(), NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_MICRO, ""),
+            NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::kTimestamp);
+  schema.reset();
+
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeDateTime(schema.get(), NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_MICRO, "America/Phoenix"),
+            NANOARROW_OK);
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::kTimestamptz);
+  schema.reset();
+
+  ArrowSchemaInit(schema.get());
   ASSERT_EQ(ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_BOOL), NANOARROW_OK);
   EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
@@ -439,6 +457,20 @@ TEST(PostgresTypeTest, PostgresTypeResolveRecord) {
   EXPECT_EQ(type.child(0).type_id(), PostgresTypeId::kInt4);
   EXPECT_EQ(type.child(1).field_name(), "text_col");
   EXPECT_EQ(type.child(1).type_id(), PostgresTypeId::kText);
+}
+
+TEST(PostgresTypeTest, PostgresTypeResolveInt2vector) {
+  MockTypeResolver resolver;
+  ASSERT_EQ(resolver.Init(), NANOARROW_OK);
+
+  PostgresType type;
+
+  const auto int2vector_oid = resolver.GetOID(PostgresTypeId::kInt2vector);
+  EXPECT_EQ(resolver.Find(int2vector_oid, &type, nullptr), NANOARROW_OK);
+  EXPECT_EQ(type.oid(), int2vector_oid);
+  EXPECT_EQ(type.typname(), "int2vector");
+  EXPECT_EQ(type.type_id(), PostgresTypeId::kInt2vector);
+  EXPECT_EQ(0, type.n_children());
 }
 
 }  // namespace adbcpq

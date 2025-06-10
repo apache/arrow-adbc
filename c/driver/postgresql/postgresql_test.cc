@@ -1786,6 +1786,45 @@ TEST_F(PostgresStatementTest, SetUseCopyFalse) {
   ASSERT_EQ(reader.array->release, nullptr);
 }
 
+TEST_F(PostgresStatementTest, SqlQueryInt2vector) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  const char* query = R"(SELECT CAST('-1 42 0' AS int2vector) AS thevector;)";
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error), IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+
+  reader.GetSchema();
+  ASSERT_EQ(reader.schema->n_children, 1);
+  ASSERT_STREQ(reader.schema->children[0]->format, "+l");
+  ASSERT_STREQ(reader.schema->children[0]->name, "thevector");
+  ASSERT_EQ(reader.schema->children[0]->n_children, 1);
+  ASSERT_STREQ(reader.schema->children[0]->children[0]->format, "s");
+
+  ASSERT_THAT(reader.MaybeNext(), adbc_validation::IsOkErrno());
+  ASSERT_EQ(reader.array->length, 1);
+  ASSERT_EQ(reader.array->n_children, 1);
+  ASSERT_EQ(reader.array->children[0]->null_count, 0);
+  const auto* offsets =
+      reinterpret_cast<const int32_t*>(reader.array->children[0]->buffers[1]);
+  ASSERT_EQ(offsets[0], 0);
+  ASSERT_EQ(offsets[1], 3);
+
+  ASSERT_EQ(reader.array->children[0]->children[0]->null_count, 0);
+  ASSERT_EQ(reader.array->children[0]->children[0]->length, 3);
+  const auto* data = reinterpret_cast<const int16_t*>(
+      reader.array->children[0]->children[0]->buffers[1]);
+  ASSERT_EQ(data[0], -1);
+  ASSERT_EQ(data[1], 42);
+  ASSERT_EQ(data[2], 0);
+
+  ASSERT_THAT(reader.MaybeNext(), adbc_validation::IsOkErrno());
+  ASSERT_EQ(reader.array->release, nullptr);
+}
+
 TEST_F(PostgresStatementTest, UnknownOid) {
   // Regression test for https://github.com/apache/arrow-adbc/issues/2448
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));

@@ -312,21 +312,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TOpenSessionReq request = CreateSessionRequest();
 
                 TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
-
-                // Explicitly check the session status
-                if (session == null)
-                {
-                    throw new HiveServer2Exception("Unable to open session. Unknown error.");
-                }
-                else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-                {
-                    throw new HiveServer2Exception(session.Status.ErrorMessage)
-                        .SetNativeError(session.Status.ErrorCode)
-                        .SetSqlState(session.Status.SqlState);
-                }
-
-                SessionHandle = session.SessionHandle;
-                ServerProtocolVersion = session.ServerProtocolVersion;
+                await HandleOpenSessionResponse(session);
             }
             catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
             {
@@ -337,6 +323,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 // Handle other exceptions if necessary
                 throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ex.Message}'", ex);
             }
+        }
+
+        protected virtual Task HandleOpenSessionResponse(TOpenSessionResp? session)
+        {
+            // Explicitly check the session status
+            if (session == null)
+            {
+                throw new HiveServer2Exception("Unable to open session. Unknown error.");
+            }
+            else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                throw new HiveServer2Exception(session.Status.ErrorMessage)
+                    .SetNativeError(session.Status.ErrorCode)
+                    .SetSqlState(session.Status.SqlState);
+            }
+
+            SessionHandle = session.SessionHandle;
+            ServerProtocolVersion = session.ServerProtocolVersion;
+            return Task.CompletedTask;
         }
 
         protected virtual TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)

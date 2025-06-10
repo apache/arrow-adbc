@@ -100,6 +100,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             }
         }
 
+        protected override void CreateNewTableName(out string tableName, out string fullTableName)
+        {
+            string catalogName = TestConfiguration.Metadata.Catalog;
+            string schemaName = TestConfiguration.Metadata.Schema;
+            tableName = Guid.NewGuid().ToString("N") + "`!@#$%^&*()_+-=";
+            string catalogFormatted = string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".";
+            fullTableName = $"{catalogFormatted}{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
+        }
+
         [SkippableFact]
         public async Task CanGetPrimaryKeysDatabricks()
         {
@@ -109,6 +118,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         [SkippableFact]
         public async Task CanGetCrossReferenceFromParentTableDatabricks()
         {
+            // TODO: Get cross reference from Parent is not currently supported in Databricks
+            Skip.If(true, "GetCrossReference is not supported in Databricks");
             await base.CanGetCrossReferenceFromParentTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
         }
 
@@ -343,6 +354,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
             statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
             statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+            statement.SetOption(ApacheParameters.EscapeUnderscore, "true");
             statement.SqlQuery = "GetColumnsExtended";
 
             QueryResult queryResult = await statement.ExecuteQueryAsync();
@@ -434,7 +446,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             primaryKeys = ["index", "name"];
         }
 
-        // NOTE: this is a thirty minute test. As of writing, databricks commands have 20 minutes of idle time (and checked every 5 mintues)
+
+        protected override void PrepareCreateTableWithForeignKeys(string fullTableNameParent, out string sqlUpdate, out string tableNameChild, out string fullTableNameChild, out IReadOnlyList<string> foreignKeys)
+        {
+            CreateNewTableName(out tableNameChild, out fullTableNameChild);
+            sqlUpdate = $"CREATE TABLE IF NOT EXISTS {fullTableNameChild} \n"
+                + "  (INDEX INT, USERINDEX INT, USERNAME STRING, ADDRESS STRING, \n"
+                + "  PRIMARY KEY (INDEX), \n"
+                + $"  FOREIGN KEY (USERINDEX, USERNAME) REFERENCES {fullTableNameParent} (INDEX, NAME))";
+            foreignKeys = ["userindex", "username"];
+        }
+
+        // NOTE: this is a thirty minute test. As of writing, databricks commands have 20 minutes of idle time (and checked every 5 minutes)
         [SkippableTheory]
         [InlineData(false, "CloudFetch disabled")]
         [InlineData(true, "CloudFetch enabled")]
@@ -751,5 +774,87 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.True(expectedType.Equals(field.DataType), $"Field type mismatch: expected {expectedType}, got {field.DataType}");
             Assert.True(expectedNullable == field.IsNullable, $"Field nullability mismatch: expected {expectedNullable}, got {field.IsNullable}");
         }
+
+        [SkippableFact]
+        public async Task MetadataQuery_ShouldUseResponseNamespace()
+        {
+            // Test case: GetTables should use the response namespace. You can run this test with and without a catalog or schema.
+            using var connection = NewConnection();
+            using var statement = connection.CreateStatement();
+
+            // Set only schema name without catalog
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetTables";
+
+            var result = await statement.ExecuteQueryAsync();
+            Assert.NotNull(result.Stream);
+
+            // Verify we get results and they use the response namespace
+            int rowCount = 0;
+            var foundCatalogs = new HashSet<string>();
+            var foundSchemas = new HashSet<string>();
+
+            while (result.Stream != null)
+            {
+                using var batch = await result.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                    break;
+
+                rowCount += batch.Length;
+                var catalogArray = (StringArray)batch.Column(0);
+                var schemaArray = (StringArray)batch.Column(1);
+
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    foundCatalogs.Add(catalogArray.GetString(i) ?? string.Empty);
+                    foundSchemas.Add(schemaArray.GetString(i) ?? string.Empty);
+                }
+            }
+
+            // Should have results and they should match the schema we specified
+            Assert.True(rowCount > 0, "Should have results even without catalog specified");
+            Assert.True(foundSchemas.Count >= 1, "Should have at least one schema");
+            Assert.True(foundCatalogs.Count == 1, "Should have exactly one catalog");
+        }
+
+        // run this test with dbr < 10.4
+        [SkippableFact]
+        public async Task OlderDBRVersion_ShouldSetSchemaViaUseStatement()
+        {
+            // Test case: Older DBR version should still set schema via USE statement.
+            // skip if no schema is provided by user
+            Skip.If(string.IsNullOrEmpty(TestConfiguration.DbSchema), "No schema provided by user");
+            using var connection = NewConnection();
+            // Verify current schema matches what we expect
+            using var statement = connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetTables";
+
+            var result = await statement.ExecuteQueryAsync();
+            Assert.NotNull(result.Stream);
+
+            // Verify we get results and they use the response namespace
+            int rowCount = 0;
+            var foundSchemas = new HashSet<string>();
+
+            while (result.Stream != null)
+            {
+                using var batch = await result.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                    break;
+
+                rowCount += batch.Length;
+                var schemaArray = (StringArray)batch.Column(0);
+
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    foundSchemas.Add(schemaArray.GetString(i) ?? string.Empty);
+                }
+            }
+
+            Assert.True(rowCount > 0, "Should have results even without catalog specified");
+            Assert.True(foundSchemas.Count == 1, "Should have exactly one schema");
+        }
+
     }
 }
