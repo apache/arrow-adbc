@@ -41,7 +41,7 @@ require (
 	golang.org/x/sync v0.15.0
 	golang.org/x/tools v0.34.0
 	google.golang.org/api v0.235.0
-	google.golang.org/grpc v1.72.2
+	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 	modernc.org/sqlite v1.38.0
 )
