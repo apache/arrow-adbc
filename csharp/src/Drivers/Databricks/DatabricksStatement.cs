@@ -497,8 +497,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
         {
             string? fullTableName = BuildTableName();
-            
-            if (!CanSupportDescTableExtended() || fullTableName == null)
+            var canUseDescTableExtended = ((DatabricksConnection)Connection).CanUseDescTableExtended;
+
+            if (!canUseDescTableExtended || fullTableName == null)
             {
                 // When fullTableName is null, we cannot use metadata SQL query to get the info,
                 // so fallback to base class implementation
@@ -540,11 +541,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return CreateExtendedColumnsResult(columnMetadataSchema,result);
         }
 
-        private bool CanSupportDescTableExtended()
-        {
-            return true; //TODO
-
-        }
 
         /// <summary>
         /// Creates the schema for the column metadata result set.

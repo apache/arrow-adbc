@@ -56,6 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
         private const bool DefaultRetryOnUnavailable= true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 500;
+        private bool _useDescTableExtended = true;
 
         // Default namespace
         private TNamespace? _defaultNamespace;
@@ -145,6 +146,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.UseDescTableExtended, out string? useDescTableExtendedStr))
+            {
+                if (bool.TryParse(useDescTableExtendedStr, out bool useDescTableExtended))
+                {
+                    _useDescTableExtended = useDescTableExtended;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.UseDescTableExtended}' value '{useDescTableExtendedStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
             if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr))
             {
                 if (!long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
@@ -218,6 +231,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal bool EnableMultipleCatalogSupport => _enableMultipleCatalogSupport;
 
         /// <summary>
+        /// Check if current connection can use `DESC TABLE EXTENDED` query
+        /// </summary>
+        internal bool CanUseDescTableExtended => _useDescTableExtended && ServerProtocolVersion != null && ServerProtocolVersion >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7;
+
+
+        /// <summary>
         /// Gets whether PK/FK metadata call is enabled
         /// </summary>
         public bool EnablePKFK => _enablePKFK;
@@ -226,6 +245,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
         /// </summary>
         protected bool TemporarilyUnavailableRetry { get; private set; } = DefaultRetryOnUnavailable;
+
 
         /// <summary>
         /// Gets the maximum total time in seconds to retry 503 responses before failing.
