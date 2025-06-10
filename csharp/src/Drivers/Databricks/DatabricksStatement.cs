@@ -712,7 +712,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 scopeTableBuilder.AppendNull();
                 sourceDataTypeBuilder.Append(0);
 
-                isAutoIncrementBuilder.Append(0);
+                isAutoIncrementBuilder.Append("NO");
                 baseTypeNameBuilder.Append(baseTypeName);
 
                 pkColumnBuilder.Append(pkColumns.Contains(colName) ? colName : null);
