@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net.Http.Headers;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using static Apache.Arrow.Adbc.Drivers.Apache.Hive2.HiveServer2Connection;
@@ -113,6 +114,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                     };
                 }
             }
+
+            [JsonIgnore]
+            public bool IsNumber
+            {
+                get
+                {
+                    return DataType switch
+                    {
+                        ColumnTypeId.TINYINT or ColumnTypeId.SMALLINT or ColumnTypeId.INTEGER or
+                        ColumnTypeId.BIGINT or ColumnTypeId.FLOAT or ColumnTypeId.DOUBLE or
+                        ColumnTypeId.DECIMAL or ColumnTypeId.NUMERIC => true,
+                        _ => false
+                    };
+                }
+            }
         }
 
         public class ForeignKeyInfo
@@ -126,6 +142,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
 
         internal class ColumnType
         {
+            // Here the name is the base type e.g. it is DECIMAL if column type is defined as decimal(10,2)
             [JsonPropertyName("name")]
             public string Name { get; set; } = String.Empty;
 

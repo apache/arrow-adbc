@@ -289,34 +289,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
         }
 
         [SkippableTheory]
-        [InlineData("BOOLEAN", ColumnTypeId.BOOLEAN)]
-        [InlineData("TINYINT", ColumnTypeId.TINYINT)]
-        [InlineData("BYTE", ColumnTypeId.TINYINT)]
-        [InlineData("SMALLINT", ColumnTypeId.SMALLINT)]
-        [InlineData("SHORT", ColumnTypeId.SMALLINT)]
-        [InlineData("INT", ColumnTypeId.INTEGER)]
-        [InlineData("INTEGER", ColumnTypeId.INTEGER)]
-        [InlineData("BIGINT", ColumnTypeId.BIGINT)]
-        [InlineData("LONG", ColumnTypeId.BIGINT)]
-        [InlineData("FLOAT", ColumnTypeId.FLOAT)]
-        [InlineData("REAL", ColumnTypeId.FLOAT)]
-        [InlineData("DOUBLE", ColumnTypeId.DOUBLE)]
-        [InlineData("DECIMAL", ColumnTypeId.DECIMAL)]
-        [InlineData("CHAR", ColumnTypeId.CHAR)]
-        [InlineData("VARCHAR", ColumnTypeId.VARCHAR)]
-        [InlineData("STRING", ColumnTypeId.VARCHAR)]
-        [InlineData("BINARY", ColumnTypeId.BINARY)]
-        [InlineData("DATE", ColumnTypeId.DATE)]
-        [InlineData("TIMESTAMP", ColumnTypeId.TIMESTAMP)]
-        [InlineData("TIMESTAMP_LTZ", ColumnTypeId.TIMESTAMP_WITH_TIMEZONE)]
-        [InlineData("TIMESTAMP_NTZ", ColumnTypeId.TIMESTAMP)]
-        [InlineData("ARRAY", ColumnTypeId.ARRAY)]
-        [InlineData("MAP", ColumnTypeId.JAVA_OBJECT)]
-        [InlineData("STRUCT", ColumnTypeId.STRUCT)]
-        [InlineData("INTERVAL", ColumnTypeId.OTHER)]
-        [InlineData("VOID", ColumnTypeId.NULL)]
-        [InlineData("VARIANT", ColumnTypeId.OTHER)]
-        internal void TestDataTypeMapping(string baseType, ColumnTypeId dataType)
+        [InlineData("BOOLEAN", ColumnTypeId.BOOLEAN, false)]
+        [InlineData("TINYINT", ColumnTypeId.TINYINT, true)]
+        [InlineData("BYTE", ColumnTypeId.TINYINT, true)]
+        [InlineData("SMALLINT", ColumnTypeId.SMALLINT, true)]
+        [InlineData("SHORT", ColumnTypeId.SMALLINT, true)]
+        [InlineData("INT", ColumnTypeId.INTEGER, true)]
+        [InlineData("INTEGER", ColumnTypeId.INTEGER, true)]
+        [InlineData("BIGINT", ColumnTypeId.BIGINT, true)]
+        [InlineData("LONG", ColumnTypeId.BIGINT, true)]
+        [InlineData("FLOAT", ColumnTypeId.FLOAT, true)]
+        [InlineData("REAL", ColumnTypeId.FLOAT, true)]
+        [InlineData("DOUBLE", ColumnTypeId.DOUBLE, true)]
+        [InlineData("DECIMAL", ColumnTypeId.DECIMAL, true)]
+        [InlineData("CHAR", ColumnTypeId.CHAR, false)]
+        [InlineData("VARCHAR", ColumnTypeId.VARCHAR, false)]
+        [InlineData("STRING", ColumnTypeId.VARCHAR, false)]
+        [InlineData("BINARY", ColumnTypeId.BINARY,false )]
+        [InlineData("DATE", ColumnTypeId.DATE, false)]
+        [InlineData("TIMESTAMP", ColumnTypeId.TIMESTAMP, false)]
+        [InlineData("TIMESTAMP_LTZ", ColumnTypeId.TIMESTAMP_WITH_TIMEZONE, false)]
+        [InlineData("TIMESTAMP_NTZ", ColumnTypeId.TIMESTAMP, false)]
+        [InlineData("ARRAY", ColumnTypeId.ARRAY, false)]
+        [InlineData("MAP", ColumnTypeId.JAVA_OBJECT, false)]
+        [InlineData("STRUCT", ColumnTypeId.STRUCT, false)]
+        [InlineData("INTERVAL", ColumnTypeId.OTHER, false)]
+        [InlineData("VOID", ColumnTypeId.NULL, false)]
+        [InlineData("VARIANT", ColumnTypeId.OTHER, false)]
+        internal void TestDataTypeMapping(string baseType, ColumnTypeId dataType, bool isNumber)
         {
             var json = @"
             {
@@ -339,7 +339,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             }".Replace("<col_type>", baseType);
 
             var result = JsonSerializer.Deserialize<DescTableExtendedResult>(json);
-            Assert.Equal(dataType, result!.Columns[0].DataType);
+            var column = result!.Columns[0];
+
+            Assert.Equal(dataType, column.DataType);
+            Assert.Equal(isNumber, column.IsNumber);
         }
     }
 }
