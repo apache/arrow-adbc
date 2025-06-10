@@ -289,34 +289,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
         }
 
         [SkippableTheory]
-        [InlineData("BOOLEAN", ColumnTypeId.BOOLEAN, false)]
-        [InlineData("TINYINT", ColumnTypeId.TINYINT, true)]
-        [InlineData("BYTE", ColumnTypeId.TINYINT, true)]
-        [InlineData("SMALLINT", ColumnTypeId.SMALLINT, true)]
-        [InlineData("SHORT", ColumnTypeId.SMALLINT, true)]
-        [InlineData("INT", ColumnTypeId.INTEGER, true)]
-        [InlineData("INTEGER", ColumnTypeId.INTEGER, true)]
-        [InlineData("BIGINT", ColumnTypeId.BIGINT, true)]
-        [InlineData("LONG", ColumnTypeId.BIGINT, true)]
-        [InlineData("FLOAT", ColumnTypeId.FLOAT, true)]
-        [InlineData("REAL", ColumnTypeId.FLOAT, true)]
-        [InlineData("DOUBLE", ColumnTypeId.DOUBLE, true)]
-        [InlineData("DECIMAL", ColumnTypeId.DECIMAL, true)]
-        [InlineData("CHAR", ColumnTypeId.CHAR, false)]
-        [InlineData("VARCHAR", ColumnTypeId.VARCHAR, false)]
-        [InlineData("STRING", ColumnTypeId.VARCHAR, false)]
-        [InlineData("BINARY", ColumnTypeId.BINARY,false )]
-        [InlineData("DATE", ColumnTypeId.DATE, false)]
-        [InlineData("TIMESTAMP", ColumnTypeId.TIMESTAMP, false)]
-        [InlineData("TIMESTAMP_LTZ", ColumnTypeId.TIMESTAMP_WITH_TIMEZONE, false)]
-        [InlineData("TIMESTAMP_NTZ", ColumnTypeId.TIMESTAMP, false)]
-        [InlineData("ARRAY", ColumnTypeId.ARRAY, false)]
-        [InlineData("MAP", ColumnTypeId.JAVA_OBJECT, false)]
-        [InlineData("STRUCT", ColumnTypeId.STRUCT, false)]
-        [InlineData("INTERVAL", ColumnTypeId.OTHER, false)]
-        [InlineData("VOID", ColumnTypeId.NULL, false)]
-        [InlineData("VARIANT", ColumnTypeId.OTHER, false)]
-        internal void TestDataTypeMapping(string baseType, ColumnTypeId dataType, bool isNumber)
+        [InlineData("BOOLEAN", ColumnTypeId.BOOLEAN, false, 1)]
+        [InlineData("TINYINT", ColumnTypeId.TINYINT, true, 1)]
+        [InlineData("BYTE", ColumnTypeId.TINYINT, true, 1)]
+        [InlineData("SMALLINT", ColumnTypeId.SMALLINT, true, 2)]
+        [InlineData("SHORT", ColumnTypeId.SMALLINT, true, 2)]
+        [InlineData("INT", ColumnTypeId.INTEGER, true, 4)]
+        [InlineData("INTEGER", ColumnTypeId.INTEGER, true, 4)]
+        [InlineData("BIGINT", ColumnTypeId.BIGINT, true, 8)]
+        [InlineData("LONG", ColumnTypeId.BIGINT, true, 8)]
+        [InlineData("FLOAT", ColumnTypeId.FLOAT, true, 4)]
+        [InlineData("REAL", ColumnTypeId.FLOAT, true, 4)]
+        [InlineData("DOUBLE", ColumnTypeId.DOUBLE, true, 8)]
+        [InlineData("DECIMAL", ColumnTypeId.DECIMAL, true, 8)]
+        [InlineData("CHAR", ColumnTypeId.CHAR, false, null)]
+        [InlineData("VARCHAR", ColumnTypeId.VARCHAR, false, null)]
+        [InlineData("STRING", ColumnTypeId.VARCHAR, false, null)]
+        [InlineData("BINARY", ColumnTypeId.BINARY,false, null )]
+        [InlineData("DATE", ColumnTypeId.DATE, false, 4)]
+        [InlineData("TIMESTAMP", ColumnTypeId.TIMESTAMP, false, 8)]
+        [InlineData("TIMESTAMP_LTZ", ColumnTypeId.TIMESTAMP_WITH_TIMEZONE, false, 8)]
+        [InlineData("TIMESTAMP_NTZ", ColumnTypeId.TIMESTAMP, false, 8)]
+        [InlineData("ARRAY", ColumnTypeId.ARRAY, false, null)]
+        [InlineData("MAP", ColumnTypeId.JAVA_OBJECT, false, null)]
+        [InlineData("STRUCT", ColumnTypeId.STRUCT, false, null)]
+        [InlineData("INTERVAL", ColumnTypeId.OTHER, false, null)]
+        [InlineData("VOID", ColumnTypeId.NULL, false, null)]
+        [InlineData("VARIANT", ColumnTypeId.OTHER, false, null)]
+        internal void TestCalculatedTypeProperties(string baseType, ColumnTypeId dataType, bool isNumber, int? columnSize)
         {
             var json = @"
             {
@@ -343,6 +343,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
 
             Assert.Equal(dataType, column.DataType);
             Assert.Equal(isNumber, column.IsNumber);
+            Assert.Equal(columnSize, column.ColumnSize);
         }
     }
 }

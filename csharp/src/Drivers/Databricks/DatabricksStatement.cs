@@ -696,7 +696,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 columnNameBuilder.Append(colName);
                 dataTypeBuilder.Append(dataType);
                 typeNameBuilder.Append(typeName);
-                columnSizeBuilder.Append(0);  //TODO 
+                columnSizeBuilder.Append(column.ColumnSize);
                 bufferLengthBuilder.Append(0);
                 decimalDigitsBuilder.Append(column.Type.Precision != null ? column.Type.Precision : 0);
                 numPrecRadixBuilder.Append(column.IsNumber ? 10: null);

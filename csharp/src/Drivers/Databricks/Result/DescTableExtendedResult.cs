@@ -75,12 +75,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
             [JsonPropertyName("nullable")]
             public bool Nullable { get; set; } = true;
 
+            /// <summary>
+            /// Get the data type based on the type `Type.Name`
+            ///
+            /// See the list of type names from https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-datatypes
+            /// 
+            /// </summary>
             [JsonIgnore]
             public ColumnTypeId DataType
             {
                 get
                 {
-                    // Supported type name: https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-datatypes
+                    // Supported type name: 
 
                     string normalizedTypeName = Type.Name.Trim().ToUpper();
 
@@ -126,6 +132,28 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         ColumnTypeId.BIGINT or ColumnTypeId.FLOAT or ColumnTypeId.DOUBLE or
                         ColumnTypeId.DECIMAL or ColumnTypeId.NUMERIC => true,
                         _ => false
+                    };
+                }
+            }
+
+            /// <summary>
+            /// Get column size
+            ///
+            /// Currently the query `DESC TABLE EXTNEDED AS JSON` does not return the column size,
+            /// we can calculate it based on the data type and some type specific properties
+            /// </summary>
+            [JsonIgnore]
+            public int? ColumnSize
+            {
+                get
+                {
+                    return DataType switch
+                    {
+                        ColumnTypeId.TINYINT or ColumnTypeId.BOOLEAN => 1,
+                        ColumnTypeId.SMALLINT => 2,
+                        ColumnTypeId.INTEGER or ColumnTypeId.FLOAT or ColumnTypeId.DATE => 4,
+                        ColumnTypeId.BIGINT or ColumnTypeId.DECIMAL or ColumnTypeId.DOUBLE or ColumnTypeId.TIMESTAMP or ColumnTypeId.TIMESTAMP_WITH_TIMEZONE => 8,
+                        _ => null
                     };
                 }
             }
