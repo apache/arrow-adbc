@@ -79,7 +79,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
         /// </para>
         /// <para>
         /// If the exporterOption or the value of the environment variable are not null and not empty, then
-        /// if a matching factory delegate is found, it is called to activate the exporter. If no exception is thrown, 
+        /// if a matching factory delegate is found, it is called to activate the exporter. If no exception is thrown,
         /// the result of the factory method returns the result which may be null. If a matching function is found, the expoertName is set.
         /// If the factory delegate throws an exception it is not caught.
         /// </para>
