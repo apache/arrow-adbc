@@ -42,17 +42,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             : base(connection)
         {
             // set the catalog name for legacy compatibility
-            // TODO: use catalog and schema fields in hiveserver2 connection instad of DefaultNamespace so we don't need to cast
+            // TODO: use catalog and schema fields in hiveserver2 connection instead of DefaultNamespace so we don't need to cast
             var defaultNamespace = ((DatabricksConnection)Connection).DefaultNamespace;
             if (defaultNamespace != null)
             {
-                if (CatalogName == null)
+                // TODO: we should not blindly overwrite, for crossReferenceAsync handling (though, still works)
+                if (CatalogName == null && connection.EnableMultipleCatalogSupport)
                 {
                     CatalogName = defaultNamespace.CatalogName;
-                }
-                if (SchemaName == null)
-                {
-                    SchemaName = defaultNamespace.SchemaName;
                 }
             }
             // Inherit CloudFetch settings from connection
@@ -190,10 +187,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         private void HandleSparkCatalog()
         {
-            if (CatalogName != null && CatalogName.Equals("SPARK", StringComparison.OrdinalIgnoreCase))
-            {
-                CatalogName = null;
-            }
+            CatalogName = DatabricksConnection.HandleSparkCatalog(CatalogName);
         }
 
         /// <summary>
@@ -421,10 +415,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (!enablePKFK)
                 return true;
 
-            // Handle special catalog cases
-            if (string.IsNullOrEmpty(CatalogName) ||
+            var catalogInvalid = string.IsNullOrEmpty(CatalogName) ||
                 string.Equals(CatalogName, "SPARK", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(CatalogName, "hive_metastore", StringComparison.OrdinalIgnoreCase))
+                string.Equals(CatalogName, "hive_metastore", StringComparison.OrdinalIgnoreCase);
+
+            var foreignCatalogInvalid = string.IsNullOrEmpty(ForeignCatalogName) ||
+                string.Equals(ForeignCatalogName, "SPARK", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(ForeignCatalogName, "hive_metastore", StringComparison.OrdinalIgnoreCase);
+
+            // Handle special catalog cases
+            // Only when both catalog and foreignCatalog is Invalid, we return empty results
+            if (catalogInvalid && foreignCatalogInvalid)
             {
                 return true;
             }
@@ -473,6 +474,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             return await base.GetCrossReferenceAsync(cancellationToken);
         }
+
         protected override async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
         {
             if (ShouldReturnEmptyPkFkResult())

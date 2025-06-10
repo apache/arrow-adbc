@@ -58,7 +58,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             : base(output, testEnvFactory) { }
 
         /// <summary>
-        /// Validates if driver can send and receive specific Timstamp values correctly
+        /// Validates if driver can send and receive specific Timestamp values correctly
         /// </summary>
         public virtual async Task TestTimestampData(DateTimeOffset value, string columnType)
         {
@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         protected abstract string GetFormattedTimestampValue(string value);
 
         /// <summary>
-        /// Validates if driver can send and receive specific no timezone Timstamp values correctly
+        /// Validates if driver can send and receive specific no timezone Timestamp values correctly
         /// </summary>
         [SkippableTheory]
         [MemberData(nameof(TimestampBasicData), "DATE")]
