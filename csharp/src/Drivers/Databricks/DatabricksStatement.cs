@@ -205,7 +205,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (!string.IsNullOrEmpty(SchemaName))
             {
                 // Only include CatalogName when SchemaName is defined
-                if (!string.IsNullOrEmpty(CatalogName) && CatalogName!.Equals("SPARK", StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrEmpty(CatalogName) && !CatalogName!.Equals("SPARK", StringComparison.OrdinalIgnoreCase))
                 {
                     parts.Add($"`{CatalogName.Replace("`", "``")}`");
                 }
@@ -497,16 +497,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
         {
             string? fullTableName = BuildTableName();
-            if (fullTableName == null)
+            
+            if (!CanSupportDescTableExtended() || fullTableName == null)
             {
                 // When fullTableName is null, we cannot use metadata SQL query to get the info,
                 // so fallback to base class implementation
                 return await base.GetColumnsExtendedAsync(cancellationToken);
             }
-
+            
             string query = $"DESC TABLE EXTENDED {fullTableName} AS JSON";
-            var descResult = await ExecuteMetadataQueryAsync(query, cancellationToken);
-
+            var descStmt = Connection.CreateStatement();
+            descStmt.SqlQuery = query;
+            var descResult = await descStmt.ExecuteQueryAsync();
+            
             var columnMetadataSchema = CreateColumnMetadataSchema();
 
             if (descResult.Stream == null)
@@ -537,6 +540,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return CreateExtendedColumnsResult(columnMetadataSchema,result);
         }
 
+        private bool CanSupportDescTableExtended()
+        {
+            return true; //TODO
+
+        }
 
         /// <summary>
         /// Creates the schema for the column metadata result set.
@@ -615,7 +623,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 allFields.Add(new Field(PrimaryKeyPrefix + field, StringType.Default, true));
             }
-            // Add FK fields
+
             foreach (var field in ForeignKeyFields)
             {
                 allFields.Add(new Field(ForeignKeyPrefix + field, StringType.Default, true));
@@ -648,7 +656,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             var isAutoIncrementBuilder = new StringArray.Builder();
             var baseTypeNameBuilder = new StringArray.Builder();
 
+            // PK_COLUMN_NAME: Metadata column for primary key
             var pkColumnBuilder = new StringArray.Builder();
+
+            // Metadata columns for foreign key info
             var fkColumnLocalBuilder = new StringArray.Builder();
             var fkColumnRefCatalogBuilder = new StringArray.Builder();
             var fkColumnRefSchemaBuilder = new StringArray.Builder();
@@ -657,7 +668,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             var pkColumns = new HashSet<string>(descResult.PrimaryKeys);
             var fkColumns = new Dictionary<String, (int,ForeignKeyInfo)>();
-            foreach (var fkInfo in  descResult.ForeignKeys)
+            foreach (var fkInfo in descResult.ForeignKeys)
             {
                 for (var i = 0; i < fkInfo.LocalColumns.Count; i++)
                 {
@@ -674,9 +685,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 tableCatBuilder.Append(descResult.CatalogName);
                 tableSchemaBuilder.Append(descResult.SchemaName);
-           
+                tableNameBuilder.Append(descResult.TableName);
 
-                columnNameBuilder.Append(typeName);
+                columnNameBuilder.Append(colName);
+                dataTypeBuilder.Append(0);
+                typeNameBuilder.Append(typeName);
                 columnSizeBuilder.Append(0);  //TODO 
                 bufferLengthBuilder.Append(0);
                 decimalDigitsBuilder.Append(column.Type.Precision != null ? column.Type.Precision : 0);
@@ -745,7 +758,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 sourceDataTypeBuilder.Build(),
                 isAutoIncrementBuilder.Build(),
                 baseTypeNameBuilder.Build(),
+
+                // Metadata column for primary key
                 pkColumnBuilder.Build(),
+
+                // Metadata columns for foreign key info
                 fkColumnLocalBuilder.Build(),
                 fkColumnRefCatalogBuilder.Build(),
                 fkColumnRefSchemaBuilder.Build(),
