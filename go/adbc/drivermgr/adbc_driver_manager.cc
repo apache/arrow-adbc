@@ -315,13 +315,13 @@ const std::string& current_arch() {
 #else
 #if !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
-#include <features.h>
+#include <features.h>  // NOLINT [build/include]
 #ifndef __USE_GNU
 #define __MUSL__
 #endif
 #undef _GNU_SOURCE /* don't contaminate other includes unnecessarily */
 #else
-#include <features.h>
+#include <features.h>  // NOLINT [build/include]
 #ifndef __USE_GNU
 #define __MUSL__
 #endif
