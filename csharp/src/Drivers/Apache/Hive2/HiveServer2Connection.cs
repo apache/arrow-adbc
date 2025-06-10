@@ -340,6 +340,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             SessionHandle = session.SessionHandle;
+            ServerProtocolVersion = session.ServerProtocolVersion;
             return Task.CompletedTask;
         }
 
@@ -349,6 +350,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         internal TSessionHandle? SessionHandle { get; private set; }
+
+        internal TProtocolVersion? ServerProtocolVersion { get; private set; }
 
         protected internal DataTypeConversion DataTypeConversion { get; set; } = DataTypeConversion.None;
 
