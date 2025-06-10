@@ -321,10 +321,10 @@ func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 
 func generateTraceparent() string {
 	traceID := make([]byte, 16)
-	rand.Read(traceID)
+	_, _ = rand.Read(traceID)
 
 	spanID := make([]byte, 8)
-	rand.Read(spanID)
+	_, _ = rand.Read(spanID)
 
 	return fmt.Sprintf("00-%s-%s-01", hex.EncodeToString(traceID), hex.EncodeToString(spanID))
 }
