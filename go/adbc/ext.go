@@ -21,6 +21,7 @@ import (
 	"context"
 	"log/slog"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -65,7 +66,7 @@ type OTelTracing interface {
 	// Gets the trace parent from an external trace span. A blank value, indicates no parent relationship.
 	GetTraceParent() string
 	// Starts a new [span] and returns a [trace.Span] which can be used to
-	// [set the status], [add attributes], [add events], etc. Implementors should enhance
+	// [set the status], [add attributes], [add events], etc. Implementers should enhance
 	// the [context.Context] with the provided trace parent value, if it exists
 	//
 	// [span]: https://opentelemetry.io/docs/concepts/signals/traces/#span-context
@@ -73,4 +74,7 @@ type OTelTracing interface {
 	// [set the status]: https://opentelemetry.io/docs/languages/go/instrumentation/#set-span-status
 	// [add attributes]: https://opentelemetry.io/docs/languages/go/instrumentation/#span-attributes
 	StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span)
+
+	// Gets the initial span attributes for any newly started span.
+	GetInitialSpanAttributes() []attribute.KeyValue
 }

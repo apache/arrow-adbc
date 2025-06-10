@@ -65,7 +65,7 @@ Timeouts have a hierarchy to their behavior. As specified above, the `adbc.hive.
 
 The `adbc.apache.statement.query_timeout_s` is analogous to a CommandTimeout for any subsequent calls to the server for requests, including metadata calls and executing queries.
 
-The `adbc.apache.statement.polltime_ms` specifies the time between polls to the service, up to the limit specifed by `adbc.apache.statement.query_timeout_s`.
+The `adbc.apache.statement.polltime_ms` specifies the time between polls to the service, up to the limit specified by `adbc.apache.statement.query_timeout_s`.
 
 ## Impala Data Types
 
@@ -103,6 +103,6 @@ The following table depicts how the Hive ADBC driver converts a Hive type to an 
 
 Support for Impala HTTP is the most mature.
 
-### Impala over TCP Socket (standar)
+### Impala over TCP Socket (standard)
 
 Support for Impala over TCP socket is also supported.

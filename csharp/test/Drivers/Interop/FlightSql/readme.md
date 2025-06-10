@@ -33,7 +33,7 @@ A growing number of data sources support Arrow Flight SQL. This library has test
 - [DuckDB](https://github.com/voltrondata/SQLFlite)
 - [SQLite](https://github.com/voltrondata/SQLFlite)
 
-It is recommended you test your data source with the Flight SQL Go driver to ensure compatibilty, since each data source can implement the Flight protocol slightly differently.
+It is recommended you test your data source with the Flight SQL Go driver to ensure compatibility, since each data source can implement the Flight protocol slightly differently.
 
 A sample configuration file is provided in the Resources directory. The configuration file is a JSON file that contains the following fields:
 
@@ -59,7 +59,7 @@ A sample configuration file is provided in the Resources directory. The configur
 - **authorization**: Used to set the `adbc.flight.sql.authorization_header` property
 - **authority**: Used to set the `adbc.flight.sql.client_option.authority` property
 - **query**: Select query run against the data source,
-- **expectedResults**: Number of resutls expected from the query
+- **expectedResults**: Number of results expected from the query
 
 The configuration file supports targeting multiple data sources
 simultaneously. To use multiple data sources, you can configure them like:

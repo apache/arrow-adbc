@@ -37,14 +37,14 @@ namespace Apache.Arrow.Adbc.C
 
         /// <summary>
         /// Opaque driver-defined state.
-        /// This field is NULL if the driver is unintialized/freed (but
+        /// This field is NULL if the driver is uninitialized/freed (but
         /// it need not have a value even if the driver is initialized).
         /// </summary>
         public void* private_data;
 
         /// <summary>
         /// Opaque driver manager-defined state.
-        /// This field is NULL if the driver is unintialized/freed (but
+        /// This field is NULL if the driver is uninitialized/freed (but
         /// it need not have a value even if the driver is initialized).
         /// </summary>
         public void* private_manager;

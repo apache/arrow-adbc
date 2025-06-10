@@ -141,13 +141,19 @@ class AdbcStatusCode(enum.IntEnum):
     UNKNOWN = ...
 
 class ArrowArrayHandle:
-    address: Any
+    address: int
+    is_valid: bool
+    def release(self) -> None: ...
 
 class ArrowArrayStreamHandle:
-    address: Any
+    address: int
+    is_valid: bool
+    def release(self) -> None: ...
 
 class ArrowSchemaHandle:
-    address: Any
+    address: int
+    is_valid: bool
+    def release(self) -> None: ...
 
 class DataError(DatabaseError): ...
 class DatabaseError(Error): ...

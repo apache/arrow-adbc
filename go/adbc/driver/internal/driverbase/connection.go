@@ -27,10 +27,13 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
@@ -148,7 +151,9 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "Rollback")
 }
 
-func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
+func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
+	_, span := internal.StartSpan(ctx, "ConnectionImplBase.GetInfo", base)
+	defer internal.EndSpan(span, err)
 
 	if len(infoCodes) == 0 {
 		infoCodes = base.DriverInfo.InfoSupportedCodes()
@@ -198,13 +203,16 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 				boolInfoBldr.AppendNull()
 			}
 		default:
-			return nil, fmt.Errorf("no defined type code for info_value of type %T", v)
+			err = fmt.Errorf("no defined type code for info_value of type %T", v)
+			return nil, err
 		}
 	}
 
 	final := bldr.NewRecord()
 	defer final.Release()
-	return array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
+
+	reader, err = array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
+	return reader, err
 }
 
 func (base *ConnectionImplBase) Close() error {
@@ -365,11 +373,28 @@ func (cnxn *ConnectionImplBase) StartSpan(
 	return cnxn.Tracer.Start(ctx, spanName, opts...)
 }
 
+func (cnxn *ConnectionImplBase) GetInitialSpanAttributes() []attribute.KeyValue {
+	return getInitialSpanAttributes(cnxn.DriverInfo)
+}
+
+func getInitialSpanAttributes(driverInfo *DriverInfo) []attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	var systemName = driverInfo.GetName()
+	if value, ok := driverInfo.GetInfoForInfoCode(adbc.InfoVendorName); ok {
+		if s, ok := value.(string); ok {
+			systemName = s
+		}
+	}
+	attrs = append(attrs, semconv.DBSystemNameKey.String(systemName))
+
+	return attrs
+}
+
 // GetObjects implements Connection.
 func (cnxn *connection) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	helper := cnxn.dbObjectsEnumerator
 
-	// If the dbObjectsEnumerator has not been set, then the driver implementor has elected to provide their own GetObjects implementation
+	// If the dbObjectsEnumerator has not been set, then the driver implementer has elected to provide their own GetObjects implementation
 	if helper == nil {
 		return cnxn.ConnectionImpl.GetObjects(ctx, depth, catalog, dbSchema, tableName, columnName, tableType)
 	}
