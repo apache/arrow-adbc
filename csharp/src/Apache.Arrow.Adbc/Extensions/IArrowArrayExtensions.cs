@@ -103,6 +103,8 @@ namespace Apache.Arrow.Adbc.Extensions
                     return ((Int64Array)arrowArray).GetValue(index);
                 case ArrowTypeId.String:
                     return ((StringArray)arrowArray).GetString(index);
+                case ArrowTypeId.LargeString:
+                    return ((LargeStringArray)arrowArray).GetString(index);
 #if NET6_0_OR_GREATER
                 case ArrowTypeId.Time32:
                     return ((Time32Array)arrowArray).GetTime(index);
@@ -235,6 +237,8 @@ namespace Apache.Arrow.Adbc.Extensions
                     return (array, index) => array.Data.DataType.TypeId == ArrowTypeId.Decimal256 ?
                         ((Decimal256Array)array).GetString(index) :
                         ((StringArray)array).GetString(index);
+                case ArrowTypeId.LargeString:
+                    return (array, index) =>((LargeStringArray)array).GetString(index);
 #if NET6_0_OR_GREATER
                 case ArrowTypeId.Time32:
                     return (array, index) => ((Time32Array)array).GetTime(index);
