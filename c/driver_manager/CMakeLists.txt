@@ -15,6 +15,21 @@
 # specific language governing permissions and limitations
 # under the License.
 
+set(ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS ${CMAKE_DL_LIBS})
+set(ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS ${CMAKE_DL_LIBS})
+# std::filesystem with old g++/clang++ require libstdc++fs/libc++fs.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9")
+    list(APPEND ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS stdc++fs)
+    list(APPEND ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS stdc++fs)
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8")
+    list(APPEND ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS c++fs)
+    list(APPEND ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS c++fs)
+  endif()
+endif()
+
 add_arrow_lib(adbc_driver_manager
               SOURCES
               adbc_driver_manager.cc
@@ -25,9 +40,9 @@ add_arrow_lib(adbc_driver_manager
               PKG_CONFIG_NAME
               adbc-driver-manager
               SHARED_LINK_LIBS
-              ${CMAKE_DL_LIBS}
+              ${ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS}
               STATIC_LINK_LIBS
-              ${CMAKE_DL_LIBS}
+              ${ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS}
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS})
 
