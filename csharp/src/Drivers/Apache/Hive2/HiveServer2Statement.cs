@@ -79,7 +79,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
             }
         }
 
@@ -98,7 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
             }
         }
 
@@ -151,7 +151,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
             }
         }
 
@@ -226,7 +226,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 catch (Exception ex) when (ex is not HiveServer2Exception)
                 {
-                    throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+                    throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
             });
         }
@@ -370,7 +370,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             this.TraceActivity(activity =>
             {
-                if (OperationHandle != null)
+                if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
                 {
                     CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                     activity?.AddTag(SemConv.Db.Operation.OperationId, OperationHandle.OperationId.Guid, "N");

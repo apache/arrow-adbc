@@ -153,6 +153,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             return false;
         }
 
+        internal static string FormatExceptionMessage(Exception exception)
+        {
+            if (exception is AggregateException aEx)
+            {
+                AggregateException flattenedEx = aEx.Flatten();
+                IEnumerable<string> messages = flattenedEx.InnerExceptions.Select((ex, index) => $"({index + 1}) {ex.Message}");
+                string fullMessage = $"{flattenedEx.Message}: {string.Join(", ", messages)}";
+                return fullMessage;
+            }
+
+            return exception.Message;
+        }
+
         internal struct ThriftResponseHandler
         {
             public TStatusCode StatusCode;
