@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -197,7 +196,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Helper method that returns the fully qualified table name enclosed by backtick.
         /// The returned value can be used as table name in the SQL statement
-        /// 
+        ///
         /// If only SchemaName is defined, it will return `SchemaName`.`TableName`
         /// If both CatalogName and SchemaName are defined, it will return `CatalogName`.`SchenaName`.`TableName`
         /// </summary>
@@ -220,7 +219,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 parts.Add($"`{SchemaName!.Replace("`", "``")}`");
             }
 
-            // Escape if TableName contains backtick  
+            // Escape if TableName contains backtick
             parts.Add($"`{TableName!.Replace("`", "``")}`");
 
             return string.Join(".", parts);
@@ -521,12 +520,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // so fallback to base class implementation
                 return await base.GetColumnsExtendedAsync(cancellationToken);
             }
-            
+
             string query = $"DESC TABLE EXTENDED {fullTableName} AS JSON";
             var descStmt = Connection.CreateStatement();
             descStmt.SqlQuery = query;
             var descResult = await descStmt.ExecuteQueryAsync();
-            
+
             var columnMetadataSchema = CreateColumnMetadataSchema();
 
             if (descResult.Stream == null)
@@ -553,7 +552,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 throw new FormatException($"Invalid json result of {query}.Result={resultJson}");
             }
-
             return CreateExtendedColumnsResult(columnMetadataSchema,result);
         }
 
@@ -643,7 +641,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
             var combinedSchema = new Schema(allFields, columnMetadataSchema.Metadata);
-            
+
             var tableCatBuilder = new StringArray.Builder();
             var tableSchemaBuilder = new StringArray.Builder();
             var tableNameBuilder = new StringArray.Builder();
@@ -785,7 +783,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 fkColumnRefTableBuilder.Build(),
                 fkColumnRefColumnBuilder.Build()
             };
-    
+
             return new QueryResult(descResult.Columns.Count, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
     }

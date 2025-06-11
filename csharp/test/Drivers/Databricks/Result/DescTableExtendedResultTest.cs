@@ -271,7 +271,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
 
             var result = JsonSerializer.Deserialize<DescTableExtendedResult>(json);
             var expectedPrimaryKeys = primaryKeys.ToList();
-           
+
             Assert.NotNull(result);
             Assert.Equal("test_table", result.TableName);
 

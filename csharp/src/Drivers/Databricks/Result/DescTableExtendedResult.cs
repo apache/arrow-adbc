@@ -27,12 +27,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
 {
     /// <summary>
     /// The response of SQL `DESC EXTENDED TABLE <table_name> AS JSON`
-    /// 
+    ///
     /// See https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-aux-describe-table#json-formatted-output
     /// </summary>
     internal class DescTableExtendedResult
     {
-      
+
         [JsonPropertyName("table_name")]
         public string TableName { get; set; } = String.Empty;
 
@@ -52,8 +52,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
         public Dictionary<string, string> TableProperties { get; set; } = new Dictionary<string, string>();
 
         /// <summary>
-        /// Table constraints in a string format, e.g.:
-        /// 
+        /// Table constraints in a string format, e.g.
+        ///
         /// "[ (pk_constraint, PRIMARY KEY (`col1`, `col2`)),
         ///    (fk_constraint, FOREIGN KEY (`col3`) REFERENCES `catalog`.`schema`.`table` (`refcol1`, `refcol2`))
         ///  ]"
@@ -79,7 +79,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
             /// Get the data type based on the type `Type.Name`
             ///
             /// See the list of type names from https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-datatypes
-            /// 
             /// </summary>
             [JsonIgnore]
             public ColumnTypeId DataType
@@ -99,10 +98,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         "DOUBLE" => ColumnTypeId.DOUBLE,
                         "DECIMAL" or "NUMERIC" => ColumnTypeId.DECIMAL,
 
-                        "CHAR" => ColumnTypeId.CHAR, 
+                        "CHAR" => ColumnTypeId.CHAR,
                         "STRING" or "VARCHAR" => ColumnTypeId.VARCHAR,
                         "BINARY" => ColumnTypeId.BINARY,
-                        
+
                         "TIMESTAMP" => ColumnTypeId.TIMESTAMP,
                         "TIMESTAMP_LTZ" => ColumnTypeId.TIMESTAMP_WITH_TIMEZONE,
                         "TIMESTAMP_NTZ" => ColumnTypeId.TIMESTAMP,
@@ -275,14 +274,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
             // "[ (pk_constraint, PRIMARY KEY (`col1`, `col2`)), (fk_constraint, FOREIGN KEY (`col3`) REFERENCES `catalog`.`schema`.`table` (`refcol1`, `refcol2`)) ]"
 
             var constraintString = TableConstraints.Trim();
-    
+
             if (!constraintString.StartsWith("[") || !constraintString.EndsWith("]"))
             {
                 throw new FormatException($"Invalid table constraints format. {TableConstraints}");
             }
 
             // Remove the outer brackets
-            var innerContent = constraintString.Substring(1, constraintString.Length-2).Trim(); 
+            var innerContent = constraintString.Substring(1, constraintString.Length-2).Trim();
 
             // Parse individual constraints manually to handle backtick-quoted identifiers with special characters
             var constraints = ParseConstraintList(innerContent);
@@ -348,38 +347,38 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
         {
             var constraints = new List<ParsedConstraint>();
             var i = 0;
-            
+
             while (i < input.Length)
             {
                 // Skip whitespace
                 while (i < input.Length && char.IsWhiteSpace(input[i])) i++;
-                
+
                 // Should be at opening parenthesis of constraint
                 if (i >= input.Length || input[i] != '(') break;
-                
+
                 i++; // Skip opening parenthesis
-                
+
                 // Parse constraint name (everything until first comma)
                 var nameStart = i;
                 while (i < input.Length && input[i] != ',') i++;
-                
+
                 if (i >= input.Length) break;
-                
+
                 var constraintName = input.Substring(nameStart, i - nameStart).Trim();
                 i++; // Skip comma
-                
+
                 // Skip whitespace after comma
                 while (i < input.Length && char.IsWhiteSpace(input[i])) i++;
-                
+
                 // Parse constraint definition (everything until matching closing parenthesis)
                 var definitionStart = i;
                 var parenDepth = 0;
                 var inBackticks = false;
-                
+
                 while (i < input.Length)
                 {
                     var c = input[i];
-                    
+
                     if (c == '`')
                     {
                         // Check for escaped backtick (double backtick)
@@ -411,25 +410,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                             parenDepth--;
                         }
                     }
-                    
+
                     i++;
                 }
-                
+
                 if (i >= input.Length) break;
-                
+
                 var constraintDef = input.Substring(definitionStart, i - definitionStart).Trim();
                 i++; // Skip closing parenthesis
-                
+
                 constraints.Add(new ParsedConstraint
                 {
                     Name = constraintName,
                     Definition = constraintDef
                 });
-                
+
                 // Skip whitespace and optional comma
                 while (i < input.Length && (char.IsWhiteSpace(input[i]) || input[i] == ',')) i++;
             }
-            
+
             return constraints;
         }
 
@@ -442,7 +441,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
         {
             var identifiers = new List<string>();
             var i = 0;
-            
+
             while (i < input.Length)
             {
                 // Find the start of a backtick-quoted identifier
@@ -450,7 +449,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                 {
                     var start = i + 1; // Start after opening backtick
                     i++; // Skip opening backtick
-                    
+
                     // Find the closing backtick, handling escaped backticks
                     while (i < input.Length)
                     {
@@ -473,7 +472,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                             i++;
                         }
                     }
-                    
+
                     if (i < input.Length && input[i] == '`')
                     {
                         // Extract the identifier content and handle escaped backticks
@@ -488,7 +487,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                     i++;
                 }
             }
-            
+
             return identifiers;
         }
     }

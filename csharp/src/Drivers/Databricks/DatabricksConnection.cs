@@ -251,7 +251,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         protected bool TemporarilyUnavailableRetry { get; private set; } = DefaultRetryOnUnavailable;
 
-
         /// <summary>
         /// Gets the maximum total time in seconds to retry 503 responses before failing.
         /// </summary>
