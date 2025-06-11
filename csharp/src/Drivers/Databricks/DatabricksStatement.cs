@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -514,9 +515,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             string? fullTableName = BuildTableName();
             var canUseDescTableExtended = ((DatabricksConnection)Connection).CanUseDescTableExtended;
 
-            if (!canUseDescTableExtended || fullTableName == null)
+            if (!canUseDescTableExtended || string.IsNullOrEmpty(fullTableName))
             {
-                // When fullTableName is null, we cannot use metadata SQL query to get the info,
+                // When fullTableName is empty, we cannot use metadata SQL query to get the info,
                 // so fallback to base class implementation
                 return await base.GetColumnsExtendedAsync(cancellationToken);
             }
@@ -524,7 +525,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             string query = $"DESC TABLE EXTENDED {fullTableName} AS JSON";
             var descStmt = Connection.CreateStatement();
             descStmt.SqlQuery = query;
-            var descResult = await descStmt.ExecuteQueryAsync();
+            QueryResult descResult;
+
+            try
+            {
+                descResult = await descStmt.ExecuteQueryAsync();
+            }
+            catch (HiveServer2Exception ex) when (ex.Message.Contains("Error running query"))
+            {
+                // Fallback to base implementation
+                Debug.WriteLine($"[ERROR] Failed to run {query}. Fallback to base::GetColumnsExtendedAsync.Error message:{ex.Message}");
+                return await base.GetColumnsExtendedAsync(cancellationToken);
+            }
 
             var columnMetadataSchema = CreateColumnMetadataSchema();
 
