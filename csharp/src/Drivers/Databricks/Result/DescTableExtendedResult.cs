@@ -150,6 +150,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         ColumnTypeId.SMALLINT => 2,
                         ColumnTypeId.INTEGER or ColumnTypeId.FLOAT or ColumnTypeId.DATE => 4,
                         ColumnTypeId.BIGINT or ColumnTypeId.DECIMAL or ColumnTypeId.DOUBLE or ColumnTypeId.TIMESTAMP or ColumnTypeId.TIMESTAMP_WITH_TIMEZONE => 8,
+                        ColumnTypeId.CHAR => Type.Length,
+                        ColumnTypeId.VARCHAR => Type.Name.Trim().ToUpper() == "STRING" ? null: Type.Length,
                         _ => null
                     };
                 }
@@ -171,29 +173,59 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
             [JsonPropertyName("name")]
             public string Name { get; set; } = String.Empty;
 
+            /// <summary>
+            /// Precision for DECIMAL type, only for DECIMAL and NUMERIC types
+            /// </summary>
             [JsonPropertyName("precision")]
             public int? Precision { get; set; }
 
+            /// <summary>
+            /// Scale for DECIMAL type, only for DECIMAL and NUMERIC types
+            /// </summary>
             [JsonPropertyName("scale")]
             public int? Scale { get; set; }
 
+            /// <summary>
+            /// Element type for ARRAY type, only for ARRAY type
+            /// </summary>
             [JsonPropertyName("element_type")]
             public ColumnType? ElementType { get; set; }
 
+            /// <summary>
+            /// Key and value types for MAP type, only for MAP type
+            /// </summary>
             [JsonPropertyName("key_type")]
             public ColumnType? KeyType { get; set; }
 
+            /// <summary>
+            /// Value type for MAP type, only for MAP type
+            /// </summary>
             [JsonPropertyName("value_type")]
             public ColumnType? ValueType { get; set; }
 
+            /// <summary>
+            /// Fields for STRUCT type, only for STRUCT type
+            /// </summary>
             [JsonPropertyName("fields")]
             public List<ColumnInfo>? Fields { get; set; }
 
+            /// <summary>
+            /// Interval start and end units, only for INTERVAL type
+            /// </summary>
             [JsonPropertyName("start_unit")]
             public string? StartUnit { get; set; }
 
+            /// <summary>
+            /// Interval start and end units, only for INTERVAL type
+            /// </summary>
             [JsonPropertyName("end_unit")]
             public string? EndUnit { get; set; }
+
+            /// <summary>
+            /// Length of characters, only for character types (CHAR, VARCHAR)
+            /// </summary>
+            [JsonPropertyName("length")]
+            public int? Length {get; set; }
 
             /// <summary>
             /// Get the full type name e.g. DECIMAL(10,2), map<string,int>
@@ -207,6 +239,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
 
                     return normalizedTypeName switch
                     {
+                        "CHAR" or "VARCHAR" => $"{normalizedTypeName}({Length ?? 1})",
                         "DECIMAL" or "NUMERIC" => Precision != null ? $"{normalizedTypeName}({Precision},{Scale ?? 0})" : normalizedTypeName,
                         "ARRAY" => ElementType != null ? $"ARRAY<{ElementType.FullTypeName}>" : "ARRAY<>",
                         "MAP" => (KeyType != null && ValueType != null) ? $"MAP<{KeyType!.FullTypeName},{ValueType!.FullTypeName}>":"Map<>",

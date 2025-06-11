@@ -52,10 +52,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
                         ""nullable"": false
                     },
                     {
-                        ""name"": ""string_col"",
+                    ""name"": ""string_col"",
                         ""type"": {
                             ""name"": ""string"",
                             ""collation"": ""UTF8_BINARY""
+                        },
+                        ""nullable"": false
+                    },
+                    {
+                        ""name"": ""varchar_col"",
+                        ""type"": {
+                            ""name"": ""varchar"",
+                            ""length"": 20
+                        },
+                        ""nullable"": false
+                    },
+                    {
+                        ""name"": ""char_col"",
+                        ""type"": {
+                            ""name"": ""char"",
+                            ""length"": 20
                         },
                         ""nullable"": false
                     },
@@ -149,7 +165,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             Assert.Empty(result.PrimaryKeys);
             Assert.Empty(result.ForeignKeys);
 
-            Assert.Equal(7, result.Columns.Count);
+            Assert.Equal(9, result.Columns.Count);
 
             var column = result.Columns.Find(c => c.Name == "big_number");
             Assert.NotNull(column);
@@ -170,6 +186,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             Assert.NotNull(column);
             Assert.Equal("string", column.Type.Name);
             Assert.Equal("STRING", column.Type.FullTypeName);
+
+            column = result.Columns.Find(c => c.Name == "varchar_col");
+            Assert.NotNull(column);
+            Assert.Equal("varchar", column.Type.Name);
+            Assert.Equal(20, column.Type.Length);
+            Assert.Equal("VARCHAR(20)", column.Type.FullTypeName);
+
+            column = result.Columns.Find(c => c.Name == "char_col");
+            Assert.NotNull(column);
+            Assert.Equal("char", column.Type.Name);
+            Assert.Equal(20, column.Type.Length);
+            Assert.Equal("CHAR(20)", column.Type.FullTypeName);
 
             column = result.Columns.Find(c => c.Name == "array_col");
             Assert.NotNull(column);
@@ -309,8 +337,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
         [InlineData("REAL", ColumnTypeId.FLOAT, true, 4)]
         [InlineData("DOUBLE", ColumnTypeId.DOUBLE, true, 8)]
         [InlineData("DECIMAL", ColumnTypeId.DECIMAL, true, 8)]
-        [InlineData("CHAR", ColumnTypeId.CHAR, false, null)]
-        [InlineData("VARCHAR", ColumnTypeId.VARCHAR, false, null)]
+        [InlineData("CHAR", ColumnTypeId.CHAR, false, 20)]
+        [InlineData("VARCHAR", ColumnTypeId.VARCHAR, false, 20)]
         [InlineData("STRING", ColumnTypeId.VARCHAR, false, null)]
         [InlineData("BINARY", ColumnTypeId.BINARY,false, null )]
         [InlineData("DATE", ColumnTypeId.DATE, false, 4)]
@@ -334,7 +362,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
                     {
                         ""name"": ""col"",
                         ""type"": {
-                            ""name"": ""<col_type>""
+                            ""name"": ""<col_type>"",
+                            ""length"": 20
                         },
                         ""nullable"": false
                     }
