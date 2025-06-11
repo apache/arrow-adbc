@@ -343,13 +343,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
         [InlineData("BINARY", ColumnTypeId.BINARY,false, null )]
         [InlineData("DATE", ColumnTypeId.DATE, false, 4)]
         [InlineData("TIMESTAMP", ColumnTypeId.TIMESTAMP, false, 8)]
-        [InlineData("TIMESTAMP_LTZ", ColumnTypeId.TIMESTAMP_WITH_TIMEZONE, false, 8)]
+        [InlineData("TIMESTAMP_LTZ", ColumnTypeId.TIMESTAMP, false, 8)]
         [InlineData("TIMESTAMP_NTZ", ColumnTypeId.TIMESTAMP, false, 8)]
         [InlineData("ARRAY", ColumnTypeId.ARRAY, false, null)]
         [InlineData("MAP", ColumnTypeId.JAVA_OBJECT, false, null)]
         [InlineData("STRUCT", ColumnTypeId.STRUCT, false, null)]
         [InlineData("INTERVAL", ColumnTypeId.OTHER, false, null)]
-        [InlineData("VOID", ColumnTypeId.NULL, false, null)]
+        [InlineData("VOID", ColumnTypeId.NULL, false, 1)]
         [InlineData("VARIANT", ColumnTypeId.OTHER, false, null)]
         internal void TestCalculatedTypeProperties(string baseType, ColumnTypeId dataType, bool isNumber, int? columnSize)
         {

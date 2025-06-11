@@ -523,7 +523,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
             string query = $"DESC TABLE EXTENDED {fullTableName} AS JSON";
-            var descStmt = Connection.CreateStatement();
+            using var descStmt = Connection.CreateStatement();
             descStmt.SqlQuery = query;
             QueryResult descResult;
 
@@ -704,6 +704,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             foreach (var column in descResult.Columns)
             {
                 var baseTypeName = column.Type.Name.ToUpper();
+                // Special case for TIMESTAMP_LTZ and INT
+                if (baseTypeName == "TIMESTAMP_LTZ" || baseTypeName == "TIMESTAMP_NTZ")
+                {
+                    baseTypeName = "TIMESTAMP";
+                }
+                else if (baseTypeName == "INT")
+                {
+                    baseTypeName = "INTEGER";
+                }
+
                 var fullTypeName = column.Type.FullTypeName;
                 var colName = column.Name;
 
@@ -717,22 +727,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 dataTypeBuilder.Append(dataType);
                 typeNameBuilder.Append(fullTypeName);
                 columnSizeBuilder.Append(column.ColumnSize);
-                bufferLengthBuilder.Append(0);
-                decimalDigitsBuilder.Append(column.Type.Precision != null ? column.Type.Precision : 0);
+                bufferLengthBuilder.AppendNull();
+                decimalDigitsBuilder.Append(column.DecimalDigits);
                 numPrecRadixBuilder.Append(column.IsNumber ? 10: null);
                 nullableBuilder.Append(column.Nullable ? 1 : 0);
-                remarksBuilder.Append(column.Comment);
+                remarksBuilder.Append(column.Comment ?? "");
                 columnDefBuilder.AppendNull();
-                sqlDataTypeBuilder.Append(dataType);
-                sqlDatetimeSubBuilder.Append(0);
-                charOctetLengthBuilder.Append(0);
+                sqlDataTypeBuilder.AppendNull();
+                sqlDatetimeSubBuilder.AppendNull();
+                charOctetLengthBuilder.AppendNull();
                 ordinalPositionBuilder.Append(position++);
                 isNullableBuilder.Append(column.Nullable ? "YES" : "NO");
 
                 scopeCatalogBuilder.AppendNull();
                 scopeSchemaBuilder.AppendNull();
                 scopeTableBuilder.AppendNull();
-                sourceDataTypeBuilder.Append(0);
+                sourceDataTypeBuilder.AppendNull();
 
                 isAutoIncrementBuilder.Append("NO");
                 baseTypeNameBuilder.Append(baseTypeName);

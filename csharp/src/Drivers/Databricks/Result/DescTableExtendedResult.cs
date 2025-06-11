@@ -103,7 +103,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         "BINARY" => ColumnTypeId.BINARY,
 
                         "TIMESTAMP" => ColumnTypeId.TIMESTAMP,
-                        "TIMESTAMP_LTZ" => ColumnTypeId.TIMESTAMP_WITH_TIMEZONE,
+                        "TIMESTAMP_LTZ" => ColumnTypeId.TIMESTAMP,
                         "TIMESTAMP_NTZ" => ColumnTypeId.TIMESTAMP,
                         "DATE" => ColumnTypeId.DATE,
 
@@ -133,6 +133,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                 }
             }
 
+            [JsonIgnore]
+            public int DecimalDigits
+            {
+                get
+                {
+                    return DataType switch
+                    {
+                        ColumnTypeId.DECIMAL or ColumnTypeId.NUMERIC => Type.Scale ?? 0,
+                        ColumnTypeId.DOUBLE => 15,
+                        ColumnTypeId.FLOAT or ColumnTypeId.REAL => 7,
+                        ColumnTypeId.TIMESTAMP => 6,
+                        _ => 0
+                    };
+                }
+            }
+
             /// <summary>
             /// Get column size
             ///
@@ -152,6 +168,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         ColumnTypeId.BIGINT or ColumnTypeId.DECIMAL or ColumnTypeId.DOUBLE or ColumnTypeId.TIMESTAMP or ColumnTypeId.TIMESTAMP_WITH_TIMEZONE => 8,
                         ColumnTypeId.CHAR => Type.Length,
                         ColumnTypeId.VARCHAR => Type.Name.Trim().ToUpper() == "STRING" ? null: Type.Length,
+                        ColumnTypeId.NULL => 1,
                         _ => null
                     };
                 }
@@ -245,6 +262,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         "MAP" => (KeyType != null && ValueType != null) ? $"MAP<{KeyType!.FullTypeName},{ValueType!.FullTypeName}>":"Map<>",
                         "STRUCT" => BuildStructTypeName(),
                         "INTERVAL" => (StartUnit != null && EndUnit != null) ? $"INTERVAL {StartUnit.ToUpper()} TO {EndUnit.ToUpper()}": "INTERVAL",
+                        "TIMESTAMP_LTZ" => "TIMESTAMP",
                         _ => normalizedTypeName
                     };
                 }
