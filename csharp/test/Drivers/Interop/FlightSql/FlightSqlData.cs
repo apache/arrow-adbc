@@ -251,6 +251,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                 }
             );
 
+            Dictionary<string, object?> struct_record = new Dictionary<string, object?>();
+            struct_record["c0"] = 0;
+            struct_record["c1"] = "Test Value";
+
+            sampleDataBuilder.Samples.Add(
+                // Lists and Structs
+                new SampleData()
+                {
+                    StructBehavior = "Strict",
+                    Query = "SELECT " +
+                            "ARRAY[n_regionkey, n_nationkey] AS \"List\", " +
+                            "struct(n_regionkey, 'Test Value') AS Struct "+
+                            "FROM nation WHERE n_regionkey = 0 AND n_nationkey = 5",
+                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                    {
+                        new ColumnNetTypeArrowTypeValue("List", typeof(Int32Array), typeof(ListType), new Int32Array.Builder().AppendRange(new[] { 0, 5}).Build()),
+                        new ColumnNetTypeArrowTypeValue("Struct", typeof(Dictionary<string, object?>), typeof(StructType), struct_record),
+                    }
+                }
+            );
+
             return sampleDataBuilder;
         }
     }

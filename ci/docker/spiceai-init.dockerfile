@@ -38,6 +38,8 @@ datasets:
     params:
       file_format: parquet
       client_timeout: 60s
+    acceleration:
+      enabled: true
 EOF
 
 EXPOSE 8090
