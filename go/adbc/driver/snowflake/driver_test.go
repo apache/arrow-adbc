@@ -26,6 +26,7 @@ import (
 	"database/sql"
 	sqldriver "database/sql/driver"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -318,6 +319,16 @@ func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 	fn(q)
 }
 
+func generateTraceparent() string {
+	traceID := make([]byte, 16)
+	_, _ = rand.Read(traceID)
+
+	spanID := make([]byte, 8)
+	_, _ = rand.Read(spanID)
+
+	return fmt.Sprintf("00-%s-%s-01", hex.EncodeToString(traceID), hex.EncodeToString(spanID))
+}
+
 func TestValidation(t *testing.T) {
 	withQuirks(t, func(q *SnowflakeQuirks) {
 		suite.Run(t, &validation.DatabaseTests{Quirks: q})
@@ -385,12 +396,27 @@ func (suite *SnowflakeTests) TestNewDatabaseWithOptions() {
 
 	t.Run("WithTransporter", func(t *testing.T) {
 		transport := &customTransport{base: gosnowflake.SnowflakeTransport}
-		db, err := drv.NewDatabaseWithOptions(suite.Quirks.DatabaseOptions(),
+		dbOptions := suite.Quirks.DatabaseOptions()
+		// Add trace parent to the options.
+		dbOptions[adbc.OptionKeyTelemetryTraceParent] = generateTraceparent()
+		db, err := drv.NewDatabaseWithOptions(dbOptions,
 			driver.WithTransporter(transport))
 		suite.NoError(err)
 		suite.NotNil(db)
 		cnxn, err := db.Open(suite.ctx)
 		suite.NoError(err)
+
+		// Confirm database trace parent is non-empty and propagated to the connection trace parent
+		dbImpl, ok := db.(driverbase.DatabaseImpl)
+		suite.True(ok, "expecting db to implement interface 'driverbase.DatabaseImpl'")
+		dTp := dbImpl.Base().GetTraceParent()
+		cnxnImpl, ok := cnxn.(driverbase.ConnectionImpl)
+		suite.True(ok, "expecting cnxn to implement interface 'driverbase.ConnectionImpl'")
+		cTp := cnxnImpl.Base().GetTraceParent()
+		suite.NotEmpty(t, dTp)
+		suite.NotEmpty(t, cTp)
+		suite.Equal(dTp, cTp, "expecting database and connection trace parent to be equal")
+
 		suite.NoError(db.Close())
 		suite.NoError(cnxn.Close())
 		suite.True(transport.called)
