@@ -351,12 +351,12 @@ jobs:
       - name: Build ADBC Driver
         working-directory: go/adbc/pkg
         run: |
-          make
+          make libadbc_driver_flightsql.so
           ls -l
 
       - name: Start Test Servers
         run: |
-          docker compose up --detach spiceai-test
+          docker compose up --wait --detach spiceai-test
 
       - name: Test Driver against Spice.ai OSS
         env:
