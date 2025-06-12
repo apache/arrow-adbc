@@ -1605,7 +1605,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             if (ErrorHandlers.TryGetValue(status.StatusCode, out Action<TStatus, Activity?>? handler))
             {
-                handler.Invoke(status, activity);
+                handler(status, activity);
             }
         }
 

@@ -78,7 +78,7 @@ namespace Apache.Arrow.Adbc.Tracing
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
             {
-                call.Invoke(activity);
+                call(activity);
                 if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (Exception ex)
@@ -107,7 +107,7 @@ namespace Apache.Arrow.Adbc.Tracing
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
             {
-                T? result = call.Invoke(activity);
+                T? result = call(activity);
                 if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
                 return result;
             }
@@ -136,7 +136,7 @@ namespace Apache.Arrow.Adbc.Tracing
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
             {
-                await call.Invoke(activity);
+                await call(activity);
                 if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (Exception ex)
@@ -165,7 +165,7 @@ namespace Apache.Arrow.Adbc.Tracing
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
             try
             {
-                T? result = await call.Invoke(activity);
+                T? result = await call(activity);
                 if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
                 return result;
             }
@@ -195,7 +195,7 @@ namespace Apache.Arrow.Adbc.Tracing
             using Activity? activity = StartActivityInternal(activityName, activitySource, traceParent);
             try
             {
-                await call.Invoke(activity);
+                await call(activity);
                 if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (Exception ex)
@@ -225,7 +225,7 @@ namespace Apache.Arrow.Adbc.Tracing
             using Activity? activity = StartActivityInternal(activityName, activitySource, traceParent);
             try
             {
-                T? result = await call.Invoke(activity);
+                T? result = await call(activity);
                 if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
                 return result;
             }
