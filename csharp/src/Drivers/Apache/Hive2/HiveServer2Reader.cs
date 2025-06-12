@@ -100,7 +100,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     // Await the fetch response
                     TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
-                    ApacheUtility.HandleThriftResponse(response.Status, HiveServer2Connection.GetResponseHandlers(activity));
+                    HiveServer2Connection.HandleThriftResponse(response.Status, activity);
 
                     int columnCount = GetColumnCount(response.Results);
                     int rowCount = GetRowCount(response.Results, columnCount);

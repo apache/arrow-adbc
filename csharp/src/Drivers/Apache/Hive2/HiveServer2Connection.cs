@@ -339,7 +339,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 throw new HiveServer2Exception("Unable to open session. Unknown error.");
             }
-            ApacheUtility.HandleThriftResponse(session.Status, GetResponseHandlers(activity));
+            HandleThriftResponse(session.Status, activity);
 
             SessionHandle = session.SessionHandle;
             ServerProtocolVersion = session.ServerProtocolVersion;
@@ -585,7 +585,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 try
                 {
                     TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
-                    ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+                    HandleThriftResponse(resp.Status, activity);
 
                     TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
                     StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
@@ -648,7 +648,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 try
                 {
                     TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
-                    ApacheUtility.HandleThriftResponse(getInfoResp.Status, GetResponseHandlers(activity));
+                    HandleThriftResponse(getInfoResp.Status, activity);
 
                     return getInfoResp.InfoValue.StringValue;
                 }
@@ -683,7 +683,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     TCloseSessionReq r6 = new(SessionHandle);
                     var resp = _client.CloseSession(r6, cancellationToken).Result;
-                    ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+                    HandleThriftResponse(resp.Status, activity);
 
                     _transport?.Close();
                     if (_client is IDisposable disposableClient)
@@ -948,7 +948,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetCatalogsResp resp = await Client.GetCatalogs(req, cancellationToken);
-                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+                HandleThriftResponse(resp.Status, activity);
 
                 return resp;
             });
@@ -981,7 +981,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetSchemasResp resp = await Client.GetSchemas(req, cancellationToken);
-                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+                HandleThriftResponse(resp.Status, activity);
 
                 return resp;
             });
@@ -1024,7 +1024,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetTablesResp resp = await Client.GetTables(req, cancellationToken);
-                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+                HandleThriftResponse(resp.Status, activity);
 
                 return resp;
             });
@@ -1067,7 +1067,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetColumnsResp resp = await Client.GetColumns(req, cancellationToken);
-                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+                HandleThriftResponse(resp.Status, activity);
 
                 return resp;
             });
@@ -1105,7 +1105,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetPrimaryKeysResp resp = await Client.GetPrimaryKeys(req, cancellationToken);
-                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+                HandleThriftResponse(resp.Status, activity);
 
                 return resp;
             });
@@ -1158,7 +1158,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 TGetCrossReferenceResp resp = await Client.GetCrossReference(req, cancellationToken);
-                ApacheUtility.HandleThriftResponse(resp.Status, GetResponseHandlers(activity));
+                HandleThriftResponse(resp.Status, activity);
                 return resp;
             });
         }
@@ -1271,7 +1271,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 try
                 {
                     var columnsResponse = Client.GetColumns(getColumnsReq, cancellationToken).Result;
-                    ApacheUtility.HandleThriftResponse(columnsResponse.Status, GetResponseHandlers(activity));
+                    HandleThriftResponse(columnsResponse.Status, activity);
 
                     TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
                     List<TColumn> columns = rowSet.Columns;
@@ -1503,7 +1503,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             nullCount++;
                             break;
                     }
-                    activity?.AddTag(tagKey, tagValue, true);
+                    ActivityExtensions.AddTag(activity, tagKey, tagValue);
                 }
 
                 StructType entryType = new StructType(
@@ -1601,33 +1601,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        private static readonly IReadOnlyCollection<ApacheUtility.ThriftResponseHandler> s_errorHandlers =
-        [
-            new() { StatusCode = TStatusCode.ERROR_STATUS, Handler = (status) => ThrowErrorResponse(status)},
-            new() { StatusCode = TStatusCode.INVALID_HANDLE_STATUS, Handler = (status) => ThrowErrorResponse(status)},
-            new() { StatusCode = TStatusCode.STILL_EXECUTING_STATUS, Handler = (status) => ThrowErrorResponse(status, AdbcStatusCode.InvalidState) },
-        ];
+        internal static void HandleThriftResponse(TStatus status, Activity? activity)
+        {
+            if (ErrorHandlers.TryGetValue(status.StatusCode, out Action<TStatus, Activity?>? handler))
+            {
+                handler.Invoke(status, activity);
+            }
+        }
 
-        internal static IReadOnlyCollection<ApacheUtility.ThriftResponseHandler> GetResponseHandlers(Activity? activity) =>
-            s_errorHandlers.Concat(
-                [
-                    new()
-                    {
-                        StatusCode = TStatusCode.SUCCESS_STATUS,
-                        Handler = (status) => activity?.AddTag(SemConv.Db.Response.StatusCode, status.StatusCode)
-                    },
-                    new()
-                    {
-                        StatusCode = TStatusCode.SUCCESS_WITH_INFO_STATUS,
-                        Handler = (status) =>
-                        {
-                            activity?.AddTag(SemConv.Db.Response.StatusCode, status.StatusCode);
-                            activity?.AddTag(SemConv.Db.Response.InfoMessages, string.Join(Environment.NewLine, status.InfoMessages));
-                        }
-                    },
-                ])
-            .ToList()
-            .AsReadOnly();
+        private static IReadOnlyDictionary<TStatusCode, Action<TStatus, Activity?>> ErrorHandlers => new Dictionary<TStatusCode, Action<TStatus, Activity?>>()
+        {
+            [TStatusCode.ERROR_STATUS] = (status, _) => ThrowErrorResponse(status),
+            [TStatusCode.INVALID_HANDLE_STATUS] = (status, _) => ThrowErrorResponse(status),
+            [TStatusCode.STILL_EXECUTING_STATUS] = (status, _) => ThrowErrorResponse(status, AdbcStatusCode.InvalidState),
+            [TStatusCode.SUCCESS_STATUS] = (status, activity) => activity?.AddTag(SemConv.Db.Response.StatusCode, status.StatusCode),
+            [TStatusCode.SUCCESS_WITH_INFO_STATUS] = (status, activity) =>
+            {
+                activity?.AddTag(SemConv.Db.Response.StatusCode, status.StatusCode);
+                activity?.AddTag(SemConv.Db.Response.InfoMessages, string.Join(Environment.NewLine, status.InfoMessages));
+            },
+        };
 
         private static void ThrowErrorResponse(TStatus status, AdbcStatusCode adbcStatusCode = AdbcStatusCode.InternalError) =>
             throw new HiveServer2Exception(status.ErrorMessage, adbcStatusCode)

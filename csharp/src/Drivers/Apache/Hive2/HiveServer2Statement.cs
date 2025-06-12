@@ -301,7 +301,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
                 SetStatementProperties(executeRequest);
                 TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
-                ApacheUtility.HandleThriftResponse(executeResponse.Status, HiveServer2Connection.GetResponseHandlers(activity));
+                HiveServer2Connection.HandleThriftResponse(executeResponse.Status, activity);
                 activity?.AddTag(SemConv.Db.Response.OperationId, executeResponse.OperationHandle.OperationId.Guid, "N");
 
                 OperationHandle = executeResponse.OperationHandle;
@@ -376,7 +376,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     activity?.AddTag(SemConv.Db.Operation.OperationId, OperationHandle.OperationId.Guid, "N");
                     TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
                     TCloseOperationResp resp = Connection.Client.CloseOperation(request, cancellationToken).Result;
-                    ApacheUtility.HandleThriftResponse(resp.Status, HiveServer2Connection.GetResponseHandlers(activity));
+                    HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
                     OperationHandle = null;
                 }
 

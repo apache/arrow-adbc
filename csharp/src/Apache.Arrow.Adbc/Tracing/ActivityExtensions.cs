@@ -58,7 +58,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <returns><see langword="this" /> for convenient chaining.</returns>
         /// <param name="key">The tag key name as a function</param>
         /// <param name="value">The tag value mapped to the input key as a function</param>
-        public static Activity? AddTag(this Activity? activity, string key, Func<object?> value, bool delayedEvaluation = false)
+        public static Activity? AddTag(this Activity? activity, string key, Func<object?> value)
         {
             return activity?.AddTag(key, value());
         }
