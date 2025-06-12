@@ -336,7 +336,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
         [InlineData("FLOAT", ColumnTypeId.FLOAT, true, 4)]
         [InlineData("REAL", ColumnTypeId.FLOAT, true, 4)]
         [InlineData("DOUBLE", ColumnTypeId.DOUBLE, true, 8)]
-        [InlineData("DECIMAL", ColumnTypeId.DECIMAL, true, 8)]
+        [InlineData("DECIMAL", ColumnTypeId.DECIMAL, true, 11)]
         [InlineData("CHAR", ColumnTypeId.CHAR, false, 20)]
         [InlineData("VARCHAR", ColumnTypeId.VARCHAR, false, 20)]
         [InlineData("STRING", ColumnTypeId.VARCHAR, false, null)]
@@ -363,7 +363,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
                         ""name"": ""col"",
                         ""type"": {
                             ""name"": ""<col_type>"",
-                            ""length"": 20
+                            ""length"": 20,
+                            ""precision"": 11
                         },
                         ""nullable"": false
                     }

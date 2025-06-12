@@ -165,9 +165,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         ColumnTypeId.TINYINT or ColumnTypeId.BOOLEAN => 1,
                         ColumnTypeId.SMALLINT => 2,
                         ColumnTypeId.INTEGER or ColumnTypeId.FLOAT or ColumnTypeId.DATE => 4,
-                        ColumnTypeId.BIGINT or ColumnTypeId.DECIMAL or ColumnTypeId.DOUBLE or ColumnTypeId.TIMESTAMP or ColumnTypeId.TIMESTAMP_WITH_TIMEZONE => 8,
+                        ColumnTypeId.BIGINT or ColumnTypeId.DOUBLE or ColumnTypeId.TIMESTAMP or ColumnTypeId.TIMESTAMP_WITH_TIMEZONE => 8,
                         ColumnTypeId.CHAR => Type.Length,
                         ColumnTypeId.VARCHAR => Type.Name.Trim().ToUpper() == "STRING" ? null: Type.Length,
+                        ColumnTypeId.DECIMAL => Type.Precision ?? 0,
                         ColumnTypeId.NULL => 1,
                         _ => null
                     };
