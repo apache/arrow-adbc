@@ -178,6 +178,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
 
         public class ForeignKeyInfo
         {
+            public string KeyName { get; set; } = string.Empty;
             public List<string> LocalColumns { get; set; } = new List<string>();
             public List<string> RefColumns { get; set; } = new List<string>();
             public string RefCatalog { get; set; } = string.Empty;
@@ -370,6 +371,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
 
                         _foreignKeys.Add(new ForeignKeyInfo
                         {
+                            KeyName = constraintName,
                             LocalColumns = localColumns,
                             RefColumns = refColumns,
                             RefCatalog = refCatalog,

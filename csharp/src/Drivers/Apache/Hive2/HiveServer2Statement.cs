@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         // Add constants for PK and FK field names and prefixes
         protected static readonly string[] PrimaryKeyFields = new[] { "COLUMN_NAME" };
-        protected static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" };
+        protected static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME", "FK_NAME", "KEQ_SEQ" };
         protected const string PrimaryKeyPrefix = "PK_";
         protected const string ForeignKeyPrefix = "FK_";
 
@@ -769,8 +769,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // Add FK fields
             foreach (var field in ForeignKeyFields)
             {
-                allFields.Add(new Field(ForeignKeyPrefix + field, StringType.Default, true));
+                IArrowType fieldType = field != "KEQ_SEQ" ? StringType.Default : Int16Type.Default;
+                allFields.Add(new Field(ForeignKeyPrefix + field, fieldType, true));
             }
+
 
             var combinedSchema = new Schema(allFields, baseSchema.Metadata);
 

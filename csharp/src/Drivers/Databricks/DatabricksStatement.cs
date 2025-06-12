@@ -649,7 +649,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             foreach (var field in ForeignKeyFields)
             {
-                allFields.Add(new Field(ForeignKeyPrefix + field, StringType.Default, true));
+                IArrowType fieldType = field != "KEQ_SEQ" ? StringType.Default : Int16Type.Default;
+                allFields.Add(new Field(ForeignKeyPrefix + field, fieldType, true));
             }
 
             var combinedSchema = new Schema(allFields, columnMetadataSchema.Metadata);
@@ -688,6 +689,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             var fkColumnRefSchemaBuilder = new StringArray.Builder();
             var fkColumnRefTableBuilder = new StringArray.Builder();
             var fkColumnRefColumnBuilder = new StringArray.Builder();
+            var fkColumnKeyNameBuilder = new StringArray.Builder();
+            var fkColumnKeySeqBuilder = new Int16Array.Builder();
 
             var pkColumns = new HashSet<string>(descResult.PrimaryKeys);
             var fkColumns = new Dictionary<String, (int,ForeignKeyInfo)>();
@@ -757,6 +760,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     fkColumnRefSchemaBuilder.Append(fkInfo.RefSchema);
                     fkColumnRefTableBuilder.Append(fkInfo.RefTable);
                     fkColumnRefColumnBuilder.Append(fkInfo.RefColumns[idx]);
+                    fkColumnKeyNameBuilder.Append(fkInfo.KeyName);
+                    fkColumnKeySeqBuilder.Append((short)idx);
                 }
                 else
                 {
@@ -765,6 +770,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     fkColumnRefSchemaBuilder.AppendNull();
                     fkColumnRefTableBuilder.AppendNull();
                     fkColumnRefColumnBuilder.AppendNull();
+                    fkColumnKeyNameBuilder.AppendNull();
+                    fkColumnKeySeqBuilder.AppendNull();
                 }
             }
 
@@ -803,7 +810,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 fkColumnRefCatalogBuilder.Build(),
                 fkColumnRefSchemaBuilder.Build(),
                 fkColumnRefTableBuilder.Build(),
-                fkColumnRefColumnBuilder.Build()
+                fkColumnRefColumnBuilder.Build(),
+                fkColumnKeyNameBuilder.Build(),
+                fkColumnKeySeqBuilder.Build()
             };
 
             return new QueryResult(descResult.Columns.Count, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));

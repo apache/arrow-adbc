@@ -245,14 +245,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
 
         [SkippableTheory]
         [InlineData(
-            "[(pk_id,PRIMARY KEY (`col1`,`col2`)),(fk_constraint, FOREIGN KEY (`col3`,`col4`) REFERENCES `ref_catalog`.`ref_schema`.`ref_table` (`refcol1`, `refcol2`))]",
+            "[(pk_id,PRIMARY KEY (`col1`,`col2`)),(fk_to_parent, FOREIGN KEY (`col3`,`col4`) REFERENCES `ref_catalog`.`ref_schema`.`ref_table` (`refcol1`, `refcol2`))]",
             new string[] { "col1", "col2" },
+            "fk_to_parent",
             "ref_catalog.ref_schema.ref_table",
             new string[] { "col3", "col4" },
             new string[] { "refcol1", "refcol2" })]
         [InlineData(
-            "[(pk_id,PRIMARY KEY (`col1`,`col2`)),(fk_constraint, FOREIGN KEY (`col``3`,`col4`) REFERENCES `ref_catalog`.`ref_schema`.`ref_table` (`refcol``1`, `refcol2`))]",
+            "[(pk_id,PRIMARY KEY (`col1`,`col2`)),(fk_to_parent, FOREIGN KEY (`col``3`,`col4`) REFERENCES `ref_catalog`.`ref_schema`.`ref_table` (`refcol``1`, `refcol2`))]",
             new string[] { "col1", "col2" },
+            "fk_to_parent",
             "ref_catalog.ref_schema.ref_table",
             new string[] { "col`3", "col4" },
             new string[] { "refcol`1", "refcol2" })]
@@ -260,11 +262,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             "[(pk_id,PRIMARY KEY (`col1`,`col2`))]",
             new string[] { "col1", "col2" },
             "",
+            "",
             new string[0],
             new string[0])]
         [InlineData(
             "[(pk_id,PRIMARY KEY (`col``1`,`col2`))]",
             new string[] { "col`1", "col2" },
+            "",
             "",
             new string[0],
             new string[0])]
@@ -272,9 +276,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             "[(pk_id,PRIMARY KEY (`col,1(`,`col)2`))]",
             new string[] { "col,1(", "col)2" },
             "",
+            "",
             new string[0],
             new string[0])]
-        public void TestTableWithConstraints(string constaints, string[] primaryKeys, string refTableName, string[] foreignKeys, string[] foreignRefKeys)
+        public void TestTableWithConstraints(string constaints, string[] primaryKeys, string fkName, string refTableName, string[] foreignKeys, string[] foreignRefKeys)
         {
             var json = @"
             {
@@ -314,6 +319,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             {
                 var nameParts = refTableName.Split('.');
                 var foreignKeynfo = result.ForeignKeys[0];
+                Assert.Equal(fkName, foreignKeynfo.KeyName);
                 Assert.Equal(foreignKeys.ToList(), foreignKeynfo.LocalColumns);
                 Assert.Equal(foreignRefKeys.ToList(), foreignKeynfo.RefColumns);
                 Assert.Equal(nameParts[0], foreignKeynfo.RefCatalog);
