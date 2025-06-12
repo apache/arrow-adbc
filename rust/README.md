@@ -34,6 +34,7 @@ It currently provides:
 
 To run the integration tests you must:
 
+1. Install a recent version of [protobuf](https://github.com/protocolbuffers/protobuf) and have its `bin` (`protoc`) in path.
 1. Install [SQLite](https://www.sqlite.org/) and have its dynamic library in path.
 1. Build the official ADBC SQLite driver by following the [documentation](../CONTRIBUTING.md).
 1. Place the resulting object file into your dynamic loader path or set
