@@ -170,7 +170,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         ColumnTypeId.VARCHAR => Type.Name.Trim().ToUpper() == "STRING" ? int.MaxValue: Type.Length,
                         ColumnTypeId.DECIMAL => Type.Precision ?? 0,
                         ColumnTypeId.NULL => 1,
-                        _ => null
+                        _ => 0
                     };
                 }
             }
