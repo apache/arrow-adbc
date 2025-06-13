@@ -244,7 +244,7 @@
         "COLUMN_NAME": "c_string",
         "DATA_TYPE": 12,
         "TYPE_NAME": "STRING",
-        "COLUMN_SIZE": null,
+        "COLUMN_SIZE": 2147483647,
         "BUFFER_LENGTH": null,
         "DECIMAL_DIGITS": 0,
         "NUM_PREC_RADIX": null,

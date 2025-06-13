@@ -167,7 +167,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         ColumnTypeId.INTEGER or ColumnTypeId.FLOAT or ColumnTypeId.DATE => 4,
                         ColumnTypeId.BIGINT or ColumnTypeId.DOUBLE or ColumnTypeId.TIMESTAMP or ColumnTypeId.TIMESTAMP_WITH_TIMEZONE => 8,
                         ColumnTypeId.CHAR => Type.Length,
-                        ColumnTypeId.VARCHAR => Type.Name.Trim().ToUpper() == "STRING" ? null: Type.Length,
+                        ColumnTypeId.VARCHAR => Type.Name.Trim().ToUpper() == "STRING" ? int.MaxValue: Type.Length,
                         ColumnTypeId.DECIMAL => Type.Precision ?? 0,
                         ColumnTypeId.NULL => 1,
                         _ => null
