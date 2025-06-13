@@ -170,9 +170,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         ColumnTypeId.VARCHAR => Type.Name.Trim().ToUpper() == "STRING" ? int.MaxValue: Type.Length,
                         ColumnTypeId.DECIMAL => Type.Precision ?? 0,
                         ColumnTypeId.NULL => 1,
-                        _ => 0
+                        _ => Type.Name.Trim().ToUpper() == "INTERVAL" ? getIntervalSize() : 0
                     };
                 }
+            }
+
+            private int getIntervalSize()
+            {
+                if (String.IsNullOrEmpty(Type.StartUnit))
+                {
+                    return 0;
+                }
+
+                // Check whether interval is yearMonthIntervalQualifier or dayTimeIntervalQualifier
+                // yearMonthIntervalQualifier size is 4, dayTimeIntervalQualifier size is 8
+                // see https://docs.databricks.com/aws/en/sql/language-manual/data-types/interval-type
+                return Type.StartUnit!.ToUpper() switch
+                {
+                    "YEAR" or "MONTH" => 4,
+                    "DAY" or "HOUR" or "MINUTE" or "SECOND" => 8,
+                    _ => 4
+                };
             }
         }
 

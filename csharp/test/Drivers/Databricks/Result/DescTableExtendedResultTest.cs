@@ -354,10 +354,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
         [InlineData("ARRAY", ColumnTypeId.ARRAY, false, 0)]
         [InlineData("MAP", ColumnTypeId.JAVA_OBJECT, false, 0)]
         [InlineData("STRUCT", ColumnTypeId.STRUCT, false, 0)]
-        [InlineData("INTERVAL", ColumnTypeId.OTHER, false, 0)]
+        [InlineData("INTERVAL", ColumnTypeId.OTHER, false, 4, "YEAR")]
+        [InlineData("INTERVAL", ColumnTypeId.OTHER, false, 8, "DAY")]
         [InlineData("VOID", ColumnTypeId.NULL, false, 1)]
         [InlineData("VARIANT", ColumnTypeId.OTHER, false, 0)]
-        internal void TestCalculatedTypeProperties(string baseType, ColumnTypeId dataType, bool isNumber, int? columnSize)
+        internal void TestCalculatedTypeProperties(string baseType, ColumnTypeId dataType, bool isNumber, int? columnSize, string? startUnit=null)
         {
             var json = @"
             {
@@ -370,7 +371,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
                         ""type"": {
                             ""name"": ""<col_type>"",
                             ""length"": 20,
-                            ""precision"": 11
+                            ""precision"": 11,
+                            ""start_unit"": <start_unit>
                         },
                         ""nullable"": false
                     }
@@ -379,7 +381,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
                 ""table_properties"": {
                     ""delta.minReaderVersion"": ""3""
                 }
-            }".Replace("<col_type>", baseType);
+            }".Replace("<col_type>", baseType)
+              .Replace("<start_unit>", startUnit != null ? $"\"{startUnit}\"" : "null");
 
             var result = JsonSerializer.Deserialize<DescTableExtendedResult>(json);
             var column = result!.Columns[0];
