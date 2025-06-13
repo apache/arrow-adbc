@@ -261,7 +261,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         "CHAR" or "VARCHAR" => $"{normalizedTypeName}({Length ?? 1})",
                         "DECIMAL" or "NUMERIC" => Precision != null ? $"{normalizedTypeName}({Precision},{Scale ?? 0})" : normalizedTypeName,
                         "ARRAY" => ElementType != null ? $"ARRAY<{ElementType.FullTypeName}>" : "ARRAY<>",
-                        "MAP" => (KeyType != null && ValueType != null) ? $"MAP<{KeyType!.FullTypeName},{ValueType!.FullTypeName}>":"Map<>",
+                        "MAP" => (KeyType != null && ValueType != null) ? $"MAP<{KeyType!.FullTypeName}, {ValueType!.FullTypeName}>":"Map<>",
                         "STRUCT" => BuildStructTypeName(),
                         "INTERVAL" => (StartUnit != null && EndUnit != null) ? $"INTERVAL {StartUnit.ToUpper()} TO {EndUnit.ToUpper()}": "INTERVAL",
                         "TIMESTAMP_LTZ" => "TIMESTAMP",

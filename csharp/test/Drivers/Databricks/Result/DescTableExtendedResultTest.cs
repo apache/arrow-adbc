@@ -213,7 +213,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             Assert.NotNull(column.Type.ValueType);
             Assert.Equal("string", column.Type.KeyType.Name);
             Assert.Equal("int", column.Type.ValueType.Name);
-            Assert.Equal("MAP<STRING,INT>", column.Type.FullTypeName);
+            Assert.Equal("MAP<STRING, INT>", column.Type.FullTypeName);
 
             column = result.Columns.Find(c => c.Name == "interval_col");
             Assert.NotNull(column);
