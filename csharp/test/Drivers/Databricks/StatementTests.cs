@@ -416,7 +416,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             var resultString = File.ReadAllText(resultLocation)
                 .Replace("{CATALOG_NAME}", catalog)
                 .Replace("{SCHEMA_NAME}", schema)
-                .Replace("{TABLE_NAME}", tableName);
+                .Replace("{TABLE_NAME}", tableName)
+                .Replace("{REF_TABLE_NAME}", refTableName);
             var expectedResult = JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(resultString);
 
             // For debug
@@ -469,7 +470,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             foreignKeys = ["userindex", "username"];
         }
 
-        private async Task PrepareTableAsync(string fullTableName,string sqlResourceLocation, string? refTableName = null)
+        private async Task PrepareTableAsync(string fullTableName, string sqlResourceLocation, string? refTableName = null)
         {
             var sql = File.ReadAllText(sqlResourceLocation);
             using var dropStmt = Connection.CreateStatement();
@@ -492,7 +493,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         internal static List<Dictionary<string, object?>> LoadFromResultFile(string resultResourceLocation, string tableName)
         {
             var rows = new List<Dictionary<string, object?>>();
-            var resultString = File.ReadAllText(resultResourceLocation).Replace("{TABLE_NAME}",tableName);
+            var resultString = File.ReadAllText(resultResourceLocation).Replace("{TABLE_NAME}", tableName);
             var result = JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(resultString);
             if (result == null)
             {
@@ -820,7 +821,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             var statement = connection.CreateStatement();
 
             // Set CatalogName using SetOption
-            if(catalogName != null)
+            if (catalogName != null)
             {
                 statement.SetOption(ApacheParameters.CatalogName, catalogName);
             }

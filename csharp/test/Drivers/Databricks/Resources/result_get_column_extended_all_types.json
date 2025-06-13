@@ -128,11 +128,11 @@
         "BASE_TYPE_NAME": "BIGINT",
         "PK_COLUMN_NAME": null,
         "FK_PKCOLUMN_NAME": "c_bigint",
-        "FK_PKTABLE_CAT": "powerapp",
-        "FK_PKTABLE_SCHEM": "default",
-        "FK_PKTABLE_NAME": "fk_test_ref_table",
+        "FK_PKTABLE_CAT": "{CATALOG_NAME}",
+        "FK_PKTABLE_SCHEM": "{SCHEMA_NAME}",
+        "FK_PKTABLE_NAME": "{REF_TABLE_NAME}",
         "FK_FKCOLUMN_NAME": "r_bigint",
-        "FK_FK_NAME": "{TABLE_NAME}_fk_test_ref_table_fk",
+        "FK_FK_NAME": "{TABLE_NAME}_{REF_TABLE_NAME}_fk",
         "FK_KEQ_SEQ": 0
     },
     {
@@ -332,11 +332,11 @@
         "BASE_TYPE_NAME": "BOOLEAN",
         "PK_COLUMN_NAME": null,
         "FK_PKCOLUMN_NAME": "c_boolean",
-        "FK_PKTABLE_CAT": "powerapp",
-        "FK_PKTABLE_SCHEM": "default",
-        "FK_PKTABLE_NAME": "fk_test_ref_table",
+        "FK_PKTABLE_CAT": "{CATALOG_NAME}",
+        "FK_PKTABLE_SCHEM": "{SCHEMA_NAME}",
+        "FK_PKTABLE_NAME": "{REF_TABLE_NAME}",
         "FK_FKCOLUMN_NAME": "r_boolean",
-        "FK_FK_NAME": "{TABLE_NAME}_fk_test_ref_table_fk",
+        "FK_FK_NAME": "{TABLE_NAME}_{REF_TABLE_NAME}_fk",
         "FK_KEQ_SEQ": 1
     },
     {
