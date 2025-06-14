@@ -270,7 +270,7 @@ namespace Apache.Arrow.Adbc.Tests
                         byte[]? expectedBytes = ctv.ExpectedValue as byte[];
                         Assert.True(expectedBytes != null && actualBytes.SequenceEqual(expectedBytes), Utils.FormatMessage($"byte[] values do not match expected values for {ctv.Name} for query [{query}]", environmentName));
                     }
-                    else if (ctv.IsCalcuatedResult)
+                    else if (ctv.IsCalculatedResult)
                     {
                         Assert.True(ctv.IsValid(value), Utils.FormatMessage($"Actual value [{value}] for {ctv.Name} does not return true for the IsValid function for query [{query}]", environmentName));
                     }

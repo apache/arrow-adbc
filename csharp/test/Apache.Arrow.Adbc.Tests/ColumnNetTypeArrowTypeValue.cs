@@ -68,7 +68,7 @@ namespace Apache.Arrow.Adbc.Tests
 
         public object? ExpectedValue { get; set; }
 
-        public bool IsCalcuatedResult => _isValid != null;
+        public bool IsCalculatedResult => _isValid != null;
 
         public bool IsValid(object? value)
         {
