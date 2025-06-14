@@ -310,42 +310,42 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                         for (int i = 0; i < doubleArray.Length; i++)
                         {
                             Assert.Equal(Convert.ToDouble(value), doubleArray.GetValue(i));
-                        };
+                        }
                         break;
                     case ArrowTypeId.Int32:
                         var int32Array = (Int32Array)valueArray;
                         for (int i = 0; i < int32Array.Length; i++)
                         {
                             Assert.Equal(value, int32Array.GetValue(i));
-                        };
+                        }
                         break;
                     case ArrowTypeId.Int64:
                         var int64Array = (Int64Array)valueArray;
                         for (int i = 0; i < int64Array.Length; i++)
                         {
                             Assert.Equal(value, int64Array.GetValue(i));
-                        };
+                        }
                         break;
                     case ArrowTypeId.String:
                         var stringArray = (StringArray)valueArray;
                         for (int i = 0; i < stringArray.Length; i++)
                         {
                             Assert.Equal(value, stringArray.GetString(i));
-                        };
+                        }
                         break;
                     case ArrowTypeId.Boolean:
                         var booleanArray = (BooleanArray)valueArray;
                         for (int i = 0; i < booleanArray.Length; i++)
                         {
                             Assert.Equal(value, booleanArray.GetValue(i));
-                        };
+                        }
                         break;
                     case ArrowTypeId.Date64:
                         var date64Array = (Date64Array)valueArray;
                         for (int i = 0; i < date64Array.Length; i++)
                         {
                             Assert.Equal(value, date64Array.GetValue(i));
-                        };
+                        }
                         break;
                     case ArrowTypeId.Decimal128:
                         var decimal128Array = (Decimal128Array)valueArray;
@@ -353,21 +353,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                         {
 
                             Assert.Equal(value == null ? null : Convert.ToDecimal(value), decimal128Array.GetValue(i));
-                        };
+                        }
                         break;
                     case ArrowTypeId.Decimal256:
                         var decimal256Array = (Decimal256Array)valueArray;
                         for (int i = 0; i < decimal256Array.Length; i++)
                         {
                             Assert.Equal(value, decimal256Array.GetValue(i));
-                        };
+                        }
                         break;
                     case ArrowTypeId.Timestamp:
                         var timestampArray = (TimestampArray)valueArray;
                         for (int i = 0; i < timestampArray.Length; i++)
                         {
                             Assert.Equal(value == null ? null : new DateTimeOffset(Convert.ToDateTime(value).ToUniversalTime()), timestampArray.GetTimestamp(i));
-                        };
+                        }
                         break;
                     case ArrowTypeId.Time64:
                         var time64Array = (Time64Array)valueArray;
@@ -378,16 +378,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
 #else
                             Assert.Equal(Convert.ToInt64(value), time64Array.GetMicroSeconds(i));
 #endif
-                        };
+                        }
                         break;
                     case ArrowTypeId.Date32:
                         var date32Array = (Date32Array)valueArray;
                         for (int i = 0; i < date32Array.Length; i++)
                         {
                             Assert.Equal(Convert.ToDateTime(value), date32Array.GetDateTimeOffset(i));
-                        };
+                        }
                         break;
-
                     default:
                         throw new ArgumentException(string.Format("Unexpected ArrowTypeId: {0}({1})", field.DataType.TypeId.ToString(), field.DataType.TypeId));
 

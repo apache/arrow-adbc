@@ -24,12 +24,40 @@ namespace Apache.Arrow.Adbc.Tests
     /// </summary>
     public class ColumnNetTypeArrowTypeValue
     {
+        private Func<object?, bool>? _isValid;
+
+        /// <summary>
+        /// Instantiates <see cref="ColumnNetTypeArrowTypeValue"/>.
+        /// </summary>
+        /// <param name="name">The column name</param>
+        /// <param name="expectedNetType">The expected .NET type</param>
+        /// <param name="expectedArrowArrayType">The expected Arrow type</param>
+        /// <param name="expectedValue">The expected value</param>
         public ColumnNetTypeArrowTypeValue(string name, Type expectedNetType, Type expectedArrowArrayType, object? expectedValue)
         {
             this.Name = name;
             this.ExpectedNetType = expectedNetType;
             this.ExpectedArrowArrayType = expectedArrowArrayType;
             this.ExpectedValue = expectedValue;
+        }
+
+        /// <summary>
+        /// Instantiates <see cref="ColumnNetTypeArrowTypeValue"/>.
+        /// </summary>
+        /// <param name="name">The column name</param>
+        /// <param name="expectedNetType">The expected .NET type</param>
+        /// <param name="expectedArrowArrayType">The expected Arrow type</param>
+        /// <param name="expectedValue">The expected value</param>
+        /// <param name="isValid">A function that can be run to compare values</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public ColumnNetTypeArrowTypeValue(string name, Type expectedNetType, Type expectedArrowArrayType, bool expectedValue, Func<object?, bool> isValid)
+        {
+            this.Name = name;
+            this.ExpectedNetType = expectedNetType;
+            this.ExpectedArrowArrayType = expectedArrowArrayType;
+            this.ExpectedValue = expectedValue;
+
+            _isValid = isValid ?? throw new ArgumentNullException(nameof(isValid));
         }
 
         public string Name { get; set; }
@@ -39,5 +67,12 @@ namespace Apache.Arrow.Adbc.Tests
         public Type ExpectedArrowArrayType { get; set; }
 
         public object? ExpectedValue { get; set; }
+
+        public bool IsCalculatedResult => _isValid != null;
+
+        public bool IsValid(object? value)
+        {
+            return _isValid == null ? false : Convert.ToBoolean(this.ExpectedValue) == _isValid(value);
+        }
     }
 }

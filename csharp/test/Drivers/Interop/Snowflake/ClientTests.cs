@@ -280,6 +280,69 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             Assert.Throws<Exception>(() => ValidateTimestampPrecision(SnowflakeConstants.OptionValueNanosecondsNoOverflow, query, expectedNanoseconddValues));
         }
 
+        [SkippableFact, Order(6)]
+        public void VerifyTimestampPrecisionJson()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            testConfiguration.MaxTimestampPrecision = "microseconds";
+
+            string tempTable = "pk_" + Guid.NewGuid().ToString().Replace("-", "");
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+                sampleDataBuilder.Samples.Add(
+                    new SampleData()
+                    {
+                        // create the table
+                        PreQueryCommands = new List<string> {
+                            @$"CREATE OR REPLACE TABLE {testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{tempTable}(
+                             id INT PRIMARY KEY,
+                             name STRING
+                            );"
+                        },
+                        // run the SHOW PRIMARY KEYS command, which returns data as json
+                        Query = $"SHOW PRIMARY KEYS IN TABLE {testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{tempTable}",
+                        ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                        {
+                            new ColumnNetTypeArrowTypeValue("created_on", typeof(DateTimeOffset), typeof(TimestampType), true,
+                                v =>
+                                {
+                                    if (v is DateTimeOffset createdOn)
+                                    {
+                                        // the key will have just been created, so just compare that the two times
+                                        // are only a few minutes apart
+                                        DateTimeOffset now = DateTimeOffset.UtcNow;
+                                        TimeSpan difference = now - createdOn;
+                                        return difference.Duration() < TimeSpan.FromMinutes(2);
+                                    }
+                                    else
+                                    {
+                                        return false;
+                                     }
+                                }),
+                            new ColumnNetTypeArrowTypeValue("database_name", typeof(string), typeof(StringType), testConfiguration.Metadata.Catalog),
+                            new ColumnNetTypeArrowTypeValue("schema_name", typeof(string), typeof(StringType), testConfiguration.Metadata.Schema),
+                            new ColumnNetTypeArrowTypeValue("table_name", typeof(string), typeof(StringType), tempTable.ToUpper()),
+                            new ColumnNetTypeArrowTypeValue("column_name", typeof(string), typeof(StringType), "ID"),
+                            new ColumnNetTypeArrowTypeValue("key_sequence", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(1m)),
+
+                            // we dont control these, but also don't care about the value
+                            new ColumnNetTypeArrowTypeValue("constraint_name", typeof(string), typeof(StringType), true, v => { return true; }),
+                            new ColumnNetTypeArrowTypeValue("rely", typeof(string), typeof(StringType), true, v => { return true; }),
+                            new ColumnNetTypeArrowTypeValue("comment", typeof(string), typeof(StringType), null)
+                        },
+                        // drop the table
+                        PostQueryCommands = new List<string>() {
+                            $"DROP TABLE {testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{tempTable}"
+                        }
+                    });
+
+                Tests.ClientTests.VerifyTypesAndValues(adbcConnection, sampleDataBuilder);
+            }
+        }
+
+
         private void ValidateTimestampPrecision(string precision, string query, List<ColumnNetTypeArrowTypeValue> expectedValues)
         {
             SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
