@@ -18,6 +18,13 @@
 -->
 
 # BigQuery
+
+![Vendor: Google BigQuery](https://img.shields.io/badge/vendor-Google%20BigQuery-blue?style=flat-square)
+![Implementation: C#](https://img.shields.io/badge/language-C%23-violet?style=flat-square)
+![Status: Beta](https://img.shields.io/badge/status-beta-yellow?style=flat-square)
+
+[![NuGet: Apache.Arrow.Adbc.Drivers.BigQuery](https://img.shields.io/nuget/v/Apache.Arrow.Adbc.Drivers.BigQuery)](https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery)
+
 The BigQuery ADBC driver wraps a [BigQueryClient](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.BigQueryClient) object for working with [Google BigQuery](https://cloud.google.com/bigquery/) data.
 
 # Supported Features
