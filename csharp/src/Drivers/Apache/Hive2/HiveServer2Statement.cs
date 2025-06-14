@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         // Add constants for PK and FK field names and prefixes
         private static readonly string[] PrimaryKeyFields = new[] { "COLUMN_NAME" };
-        private static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" };
+        private static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME", "FK_NAME", "KEQ_SEQ" };
         private const string PrimaryKeyPrefix = "PK_";
         private const string ForeignKeyPrefix = "FK_";
 
@@ -390,15 +390,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // This method is for internal use only and is not available for external use.
         // It retrieves cross-reference data where the current table is treated as a foreign table.
         // This is used in GetColumnsExtendedAsync to fetch foreign key relationships.
+        /// Note: Unlike other metadata queries, this method does not escape underscores in names
+        /// since the backend treats these as exact match queries rather than pattern matches.
         protected virtual async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
         {
             TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
                 null,
                 null,
                 null,
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
-                EscapeUnderscoreInName(TableName),
+                CatalogName,
+                SchemaName,
+                TableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
@@ -801,9 +803,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             // STEP 1: Add relationship fields to the output schema
             // Each field name is prefixed (e.g., "PK_" for primary keys, "FK_" for foreign keys)
-            foreach (var fieldName in includeFields)
+            if (result.Stream != null)
             {
-                allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
+                var schema = result.Stream.Schema;
+                foreach (var fieldName in includeFields)
+                {
+                    int fieldIndex = schema.GetFieldIndex(fieldName);
+                    IArrowType arrowType = StringType.Default; // fallback
+                    if (fieldIndex >= 0)
+                    {
+                        arrowType = schema.GetFieldByIndex(fieldIndex).DataType;
+                    }
+                    allFields.Add(new Field(prefix + fieldName, arrowType, true));
+                }
+            }
+            else
+            {
+                // fallback: if no stream, add as string
+                foreach (var fieldName in includeFields)
+                {
+                    allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
+                }
             }
 
             // STEP 2: Create a dictionary to map column names to their relationship values
@@ -812,7 +832,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // {"COLUMN_NAME": {"id": "id"}}
             // For foreign keys - only columns that are FKs are stored:
             // {"FKCOLUMN_NAME": {"DOLocationId": "LocationId"}}
-            var relationData = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            var relationData = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
 
             // STEP 3: Extract relationship data from the query result
             if (result.Stream != null)
@@ -845,6 +865,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                                 if (keyCol.IsNull(i)) continue;
 
                                 string keyValue = keyCol.GetString(i);
+
                                 if (string.IsNullOrEmpty(keyValue)) continue;
 
                                 // STEP 3.4: For each included field, extract its value and store in our map
@@ -853,12 +874,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                                     // Ensure we have an entry for this field
                                     if (!relationData.TryGetValue(pair.Key, out var fieldData))
                                     {
-                                        fieldData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                        fieldData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
                                         relationData[pair.Key] = fieldData;
                                     }
-                                    StringArray fieldArray = (StringArray)batch.Column(pair.Value);
                                     // Store the relationship value: columnName -> value
-                                    relationData[pair.Key][keyValue] = fieldArray.GetString(i);
+                                    IArrowArray fieldArray = batch.Column(pair.Value);
+                                    if (fieldArray is Int32Array int32ArrayField)
+                                    {
+                                        var val = int32ArrayField.GetValue(i);
+                                        relationData[pair.Key][keyValue] = val.GetValueOrDefault();
+                                    }
+                                    else
+                                    {
+                                        // Default: treat as string array
+                                        var stringArrayFallback = (StringArray)fieldArray;
+                                        relationData[pair.Key][keyValue] = stringArrayFallback.GetString(i);
+                                    }
+
                                 }
                             }
                         }
@@ -867,34 +899,62 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             // STEP 4: Build Arrow arrays for each relationship field
-            // These arrays align with the main column results, so each row contains
-            // the appropriate relationship value for its column
             foreach (var fieldName in includeFields)
             {
-                // Create a string array builder
-                var builder = new StringArray.Builder();
                 var fieldData = relationData.ContainsKey(fieldName) ? relationData[fieldName] : null;
-
-                // Process each column name in the main result
-                for (int i = 0; i < colNames.Length; i++)
+                IArrowType arrowType = StringType.Default;
+                if (result.Stream != null)
                 {
-                    string? colName = colNames.GetString(i);
-                    string? value = null;
-
-                    // Look up relationship value for this column
-                    if (!string.IsNullOrEmpty(colName) &&
-                        fieldData != null &&
-                        fieldData.TryGetValue(colName!, out var fieldValue))
-                    {
-                        value = fieldValue;
-                    }
-
-                    // Add to the array (empty string if no relationship exists)
-                    builder.Append(value);
+                    int fieldIndex = result.Stream.Schema.GetFieldIndex(fieldName);
+                    if (fieldIndex >= 0)
+                        arrowType = result.Stream.Schema.GetFieldByIndex(fieldIndex).DataType;
                 }
 
-                // Add the completed array to our output data
-                combinedData.Add(builder.Build());
+                if (arrowType.TypeId == ArrowTypeId.Int32)
+                {
+                    var builder = new Int32Array.Builder();
+                    for (int i = 0; i < colNames.Length; i++)
+                    {
+                        string? colName = colNames.GetString(i);
+                        if (!string.IsNullOrEmpty(colName) && fieldData != null && fieldData.TryGetValue(colName!, out var fieldValue))
+                        {
+                            if (fieldValue is int intVal)
+                            {
+                                builder.Append(intVal);
+                            }
+                            else if (fieldValue is string strVal && int.TryParse(strVal, out int parsed))
+                            {
+                                builder.Append(parsed);
+                            }
+                            else
+                            {
+                                builder.AppendNull();
+                            }
+                        }
+                        else
+                        {
+                            builder.AppendNull();
+                        }
+                    }
+                    combinedData.Add(builder.Build());
+                }
+                else
+                {
+                    var builder = new StringArray.Builder();
+                    for (int i = 0; i < colNames.Length; i++)
+                    {
+                        string? colName = colNames.GetString(i);
+                        string? value = null;
+                        if (!string.IsNullOrEmpty(colName) &&
+                            fieldData != null &&
+                            fieldData.TryGetValue(colName!, out var fieldValue))
+                        {
+                            value = (string?)fieldValue;
+                        }
+                        builder.Append(value);
+                    }
+                    combinedData.Add(builder.Build());
+                }
             }
         }
     }
