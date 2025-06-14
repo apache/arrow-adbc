@@ -37,6 +37,7 @@ files_to_copy = [
     FileToCopy("c/driver_manager/adbc_driver_manager.cc", ""),
     FileToCopy("c/include/arrow-adbc/adbc_driver_manager.h", "arrow-adbc"),
     FileToCopy("c/vendor/backward/backward.hpp", ""),
+    FileToCopy("c/vendor/toml++/toml.hpp", "toml++"),
 ]
 
 for file_to_copy in files_to_copy:
