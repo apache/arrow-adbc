@@ -50,6 +50,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                     return GetDuckDbSampleData();
                 case FlightSqlTestEnvironmentType.SQLite:
                     return GetSQLiteSampleData();
+                case FlightSqlTestEnvironmentType.SpiceAI:
+                    return GetSpiceAISampleData();
                 default:
                     throw new InvalidOperationException("Unknown environment type.");
             }
@@ -198,6 +200,74 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                           new ColumnNetTypeArrowTypeValue("BLOB_COLUMN", typeof(byte[]), typeof(BinaryType),  Encoding.UTF8.GetBytes("Blob")),
                           new ColumnNetTypeArrowTypeValue("REAL_COLUMN", typeof(double), typeof(DoubleType), 3.14159d),
                           new ColumnNetTypeArrowTypeValue("NULL_COLUMN", typeof(UnionType), typeof(UnionType), null),
+                    }
+                }
+            );
+
+            return sampleDataBuilder;
+        }
+
+        private static SampleDataBuilder GetSpiceAISampleData()
+        {
+            SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+
+            sampleDataBuilder.Samples.Add(
+
+                // Primitive types
+                new SampleData()
+                {
+                    Query = "SELECT " +
+                            "TRUE AS \"Boolean\", " +
+                            "32767::SMALLINT AS \"SmallInt\", " +
+                            "2147483647::INTEGER AS \"Integer\", " +
+                            "9223372036854775807::BIGINT AS \"BigInt\", " +
+                            "3.14::REAL AS \"Real\", " +
+                            "3.141592653589793::DOUBLE PRECISION AS \"Double\", " +
+                            "'12345.67'::NUMERIC(10,2) AS \"Decimal\", " +
+                            "'Hello, Arrow!'::TEXT AS \"Varchar\", " +
+                            "'2024-09-10'::DATE AS \"Date\", " +
+                            "'12:34:56'::TIME AS \"Time\", " +
+                            "'2024-09-10 12:34:56'::TIMESTAMP AS \"Timestamp\", " +
+                            "INTERVAL '1 year' AS \"Interval\"",
+                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                    {
+                        new ColumnNetTypeArrowTypeValue("Boolean", typeof(bool), typeof(BooleanType), true),
+                        new ColumnNetTypeArrowTypeValue("SmallInt", typeof(short), typeof(Int16Type), (short)32767),
+                        new ColumnNetTypeArrowTypeValue("Integer", typeof(int), typeof(Int32Type), 2147483647),
+                        new ColumnNetTypeArrowTypeValue("BigInt", typeof(long), typeof(Int64Type), 9223372036854775807L),
+                        new ColumnNetTypeArrowTypeValue("Real", typeof(float), typeof(FloatType), 3.14f),
+                        new ColumnNetTypeArrowTypeValue("Double", typeof(double), typeof(DoubleType), 3.141592653589793d),
+                        new ColumnNetTypeArrowTypeValue("Decimal", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(12345.67m)),
+                        new ColumnNetTypeArrowTypeValue("Varchar", typeof(string), typeof(StringType), "Hello, Arrow!"),
+                        new ColumnNetTypeArrowTypeValue("Date", typeof(DateTime), typeof(Date32Type), new DateTime(2024, 9, 10)),
+#if NET6_0_OR_GREATER
+                        new ColumnNetTypeArrowTypeValue("Time", typeof(TimeOnly), typeof(Time64Type), new TimeOnly(12, 34, 56)),
+#else
+                        new ColumnNetTypeArrowTypeValue("Time", typeof(TimeSpan), typeof(Time64Type), new TimeSpan(12, 34, 56)),
+#endif
+                        new ColumnNetTypeArrowTypeValue("Timestamp", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2024, 9, 10, 12, 34, 56), TimeSpan.Zero)),
+                        new ColumnNetTypeArrowTypeValue("Interval", typeof(MonthDayNanosecondInterval), typeof(IntervalType), new MonthDayNanosecondInterval(12, 0, 0)),
+                    }
+                }
+            );
+
+            Dictionary<string, object?> struct_record = new Dictionary<string, object?>();
+            struct_record["c0"] = 0;
+            struct_record["c1"] = "Test Value";
+
+            sampleDataBuilder.Samples.Add(
+                // Lists and Structs
+                new SampleData()
+                {
+                    StructBehavior = "Strict",
+                    Query = "SELECT " +
+                            "ARRAY[n_regionkey, n_nationkey] AS \"List\", " +
+                            "struct(n_regionkey, 'Test Value') AS Struct "+
+                            "FROM nation WHERE n_regionkey = 0 AND n_nationkey = 5",
+                    ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                    {
+                        new ColumnNetTypeArrowTypeValue("List", typeof(Int32Array), typeof(ListType), new Int32Array.Builder().AppendRange(new[] { 0, 5}).Build()),
+                        new ColumnNetTypeArrowTypeValue("Struct", typeof(Dictionary<string, object?>), typeof(StructType), struct_record),
                     }
                 }
             );
