@@ -15,13 +15,13 @@
 * limitations under the License.
 */
 
-using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
 using Thrift.Transport.Client;
