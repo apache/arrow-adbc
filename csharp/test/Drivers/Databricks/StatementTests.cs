@@ -354,7 +354,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
             statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
             statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
-            statement.SetOption(ApacheParameters.EscapeUnderscore, "true");
+            statement.SetOption(ApacheParameters.EscapePatternWildcards, "true");
             statement.SqlQuery = "GetColumnsExtended";
 
             QueryResult queryResult = await statement.ExecuteQueryAsync();
