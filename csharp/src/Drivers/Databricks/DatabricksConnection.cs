@@ -179,11 +179,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
             {
-                _defaultNamespace = new TNamespace
-                {
-                    CatalogName = defaultCatalog,
-                    SchemaName = defaultSchema
-                };
+                var ns = new TNamespace();
+                if (!string.IsNullOrWhiteSpace(defaultSchema))
+                    ns.CatalogName = defaultCatalog!;
+                if (!string.IsNullOrWhiteSpace(defaultSchema))
+                    ns.SchemaName = defaultSchema;
+                _defaultNamespace = ns;
             }
         }
 
