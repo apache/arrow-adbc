@@ -1757,29 +1757,8 @@ func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
 	suite.True(rdr.Next())
 	rec := rdr.Record()
 
-	result := validateRecord(
-		rec,
-		suite.Quirks.catalogName,
-		suite.Quirks.schemaName,
-		tempTable,
-	)
+	suite.True(rec.NumRows() == 1)
 
-	suite.True(result, "Expected primary key record not found")
-
-	query = fmt.Sprintf("DROP TABLE %s.%s.%s", suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
-	stmt, _ = cnxn.NewStatement()
-	suite.Require().NoError(stmt.SetSqlQuery(query))
-	_, err = stmt.ExecuteUpdate(suite.ctx)
-	defer rdr.Release()
-	suite.Require().NoError(err)
-}
-
-func validateRecord(
-	rec arrow.Record,
-	catalogName string,
-	schemaName string,
-	tableName string,
-) bool {
 	// Get column indexes
 	getColIdx := func(name string) int {
 		for i := 0; i < int(rec.NumCols()); i++ {
@@ -1799,41 +1778,44 @@ func validateRecord(
 	createdIdx := getColIdx("created_on")
 
 	if dbIdx == -1 || schemaIdx == -1 || tableIdx == -1 || colIdx == -1 || seqIdx == -1 || createdIdx == -1 {
-		fmt.Println("Missing expected columns")
-		return false
+		panic("Missing expected columns")
 	}
 
-	numRows := int(rec.NumRows())
-	for i := 0; i < numRows; i++ {
-		dbName := rec.Column(dbIdx).(*array.String).Value(i)
-		schema := rec.Column(schemaIdx).(*array.String).Value(i)
-		tbl := rec.Column(tableIdx).(*array.String).Value(i)
-		column := rec.Column(colIdx).(*array.String).Value(i)
-		keySeq := rec.Column(seqIdx).(*array.Int64).Value(i)
+	i := 0
+	dbName := rec.Column(dbIdx).(*array.String).Value(i)
+	schema := rec.Column(schemaIdx).(*array.String).Value(i)
+	tbl := rec.Column(tableIdx).(*array.String).Value(i)
+	column := rec.Column(colIdx).(*array.String).Value(i)
+	keySeq := rec.Column(seqIdx).(*array.Int64).Value(i)
 
-		// Created_on should be a timestamp array
-		createdCol := rec.Column(createdIdx).(*array.Timestamp)
-		created := time.Unix(0, int64(createdCol.Value(i))*int64(time.Microsecond)).UTC()
+	// Created_on should be a timestamp array
+	createdCol := rec.Column(createdIdx).(*array.Timestamp)
+	created := time.Unix(0, int64(createdCol.Value(i))*int64(time.Microsecond)).UTC()
 
-		// Perform checks
-		if strings.EqualFold(dbName, catalogName) &&
-			strings.EqualFold(schema, schemaName) &&
-			strings.EqualFold(tbl, tableName) &&
-			strings.EqualFold(column, "id") &&
-			keySeq == 1 {
+	// Perform checks
+	if strings.EqualFold(dbName, suite.Quirks.catalogName) &&
+		strings.EqualFold(schema, suite.Quirks.schemaName) &&
+		strings.EqualFold(tbl, tempTable) &&
+		strings.EqualFold(column, "id") &&
+		keySeq == 1 {
 
-			now := time.Now().UTC()
-			diff := now.Sub(created)
-			if diff < 0 {
-				diff = -diff
-			}
-			if diff <= 2*time.Minute {
-				return true
-			}
+		now := time.Now().UTC()
+		diff := now.Sub(created)
+		if diff < 0 {
+			diff = -diff
 		}
+		// since this was just created, make sure the times are within a short difference
+		suite.Assert().True(diff <= 2*time.Minute)
+	} else {
+		panic("Invalid values")
 	}
 
-	return false
+	query = fmt.Sprintf("DROP TABLE %s.%s.%s", suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
+	stmt, _ = cnxn.NewStatement()
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	_, err = stmt.ExecuteUpdate(suite.ctx)
+	defer rdr.Release()
+	suite.Require().NoError(err)
 }
 
 func (suite *SnowflakeTests) TestTimestampPrecision() {
