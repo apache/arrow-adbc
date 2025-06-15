@@ -24,7 +24,7 @@ endif
 adbc_driver_manager_lib = library(
     'adbc_driver_manager',
     'adbc_driver_manager.cc',
-    include_directories: [include_dir],
+    include_directories: [include_dir, vendor_dir],
     install: true,
     dependencies: [dl_dep],
 )
