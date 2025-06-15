@@ -371,8 +371,14 @@ public class JdbcStatement implements AdbcStatement {
   }
 
   @Override
-  public void close() throws Exception {
-    AutoCloseables.close(reader, resultSet, statement);
+  public void close() throws AdbcException {
+    try {
+      AutoCloseables.close(reader, resultSet, statement);
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw AdbcException.io(e);
+    }
   }
 
   private static final class BulkState {
