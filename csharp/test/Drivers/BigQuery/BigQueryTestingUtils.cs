@@ -175,6 +175,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.StatementType, testEnvironment.StatementType);
             }
 
+            if (!string.IsNullOrEmpty(testEnvironment.HttpProxy))
+            {
+                parameters.Add(BigQueryParameters.Proxy, testEnvironment.HttpProxy!);
+            }
+
             if (testEnvironment.StatementIndex.HasValue)
             {
                 parameters.Add(BigQueryParameters.StatementIndex, testEnvironment.StatementIndex.Value.ToString());
