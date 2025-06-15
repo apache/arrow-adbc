@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -25,6 +24,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
