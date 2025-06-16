@@ -32,6 +32,7 @@
 #include <toml++/toml.hpp>
 #include "arrow-adbc/adbc.h"
 #include "arrow-adbc/adbc_driver_manager.h"
+#include "current_arch.h"
 
 #include <algorithm>
 #include <array>
@@ -276,70 +277,6 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
 }
 #endif
 
-const std::string& current_arch() {
-#if defined(_WIN32)
-  static const std::string platform = "windows";
-#elif defined(__APPLE__)
-  static const std::string platform = "osx";
-#elif defined(__FreeBSD__)
-  static const std::string platform = "freebsd";
-#elif defined(__linux__)
-  static const std::string platform = "linux";
-#else
-  static const std::string platform = "unknown";
-#endif
-
-#if defined(__x86_64__) || defined(__amd64__) || defined(_M_X64) || defined(_M_AMD64)
-  static const std::string arch = "amd64";
-#elif defined(__aarch64__) || defined(_M_ARM64) || defined(__ARM_ARCH_ISA_A64)
-  static const std::string arch = "arm64";
-#elif defined(__i386__) || defined(_M_IX86) || defined(_M_X86)
-  static const std::string arch = "x86";
-#elif defined(__arm__) || defined(_M_ARM)
-  static const std::string arch = "arm";
-#elif defined(__riscv) || defined(_M_RISCV)
-  static const std::string arch = "riscv";
-#elif defined(__powerpc__) || defined(__ppc__) || defined(_M_PPC)
-  static const std::string arch = "powerpc";
-#elif defined(__s390x__) || defined(_M_S390)
-  static const std::string arch = "s390x";
-#else
-  static const std::string arch = "unknown";
-#endif
-
-// musl doesn't actually define any preprocessor macro for itself
-// but apparently it doesn't define __USE_GNU inside of features.h
-// while gcc DOES define that.
-// see https://stackoverflow.com/questions/58177815/how-to-actually-detect-musl-libc
-#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
-#else
-#if !defined(_GNU_SOURCE)
-#define _GNU_SOURCE
-#include <features.h>  // NOLINT [build/include]
-#ifndef __USE_GNU
-#define __MUSL__
-#endif
-#undef _GNU_SOURCE /* don't contaminate other includes unnecessarily */
-#else
-#include <features.h>  // NOLINT [build/include]
-#ifndef __USE_GNU
-#define __MUSL__
-#endif
-#endif
-#endif
-
-#if defined(__MINGW32__) || defined(__MINGW64__)
-  static const std::string target = "_mingw";
-#elif defined(__MUSL__)
-  static const std::string target = "_musl"
-#else
-  static const std::string target = "";
-#endif
-
-  static const std::string result = platform + "_" + arch + target;
-  return result;
-}
-
 AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
                                   DriverInfo& info, struct AdbcError* error) {
   toml::table config;
@@ -486,8 +423,7 @@ struct ManagedLibrary {
     }
 
     if (driver_path.has_extension()) {
-      if (driver_path.is_relative() &&
-          (load_options & ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS) == 0) {
+      if (driver_path.is_relative() && !allow_relative_paths) {
         SetError(error, "Driver path is relative and relative paths are not allowed");
         return ADBC_STATUS_INVALID_ARGUMENT;
       }
