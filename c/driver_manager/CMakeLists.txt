@@ -63,7 +63,7 @@ if(ADBC_BUILD_TESTS)
     set(TEST_LINK_LIBS adbc_driver_manager_shared)
   else()
     set(TEST_LINK_LIBS adbc_driver_manager_static)
-  endif()  
+  endif()
 
   add_test_case(driver_manager_test
                 PREFIX
@@ -79,8 +79,9 @@ if(ADBC_BUILD_TESTS)
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
 
   if(ADBC_DRIVER_SQLITE)
-    target_compile_definitions(adbc-driver-manager-test PRIVATE 
-      ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/libadbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}")  
+    target_compile_definitions(adbc-driver-manager-test
+                               PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/libadbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
+    )
   endif()
   target_include_directories(adbc-driver-manager-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
