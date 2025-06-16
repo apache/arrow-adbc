@@ -89,7 +89,7 @@ jobs:
       pkg: ${{ matrix.pkg }}
       rversion: ${{ matrix.rversion }}
 
-  # Checks on older verions of R on Windows. The Windows build system changed
+  # Checks on older versions of R on Windows. The Windows build system changed
   # several times so we need to check packages on every version. Go-based
   # drivers aren't supported before 4.2, so we don't check them here.
   # The test dependencies support the released version and the four previous
