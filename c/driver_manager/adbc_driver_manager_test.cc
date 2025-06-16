@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
