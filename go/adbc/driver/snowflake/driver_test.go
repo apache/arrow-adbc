@@ -1746,6 +1746,7 @@ func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
 	suite.Require().NoError(stmt.SetSqlQuery(query))
 	_, err = stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
+	suite.Require().NoError(stmt.Close())
 
 	query = fmt.Sprintf("SHOW PRIMARY KEYS IN TABLE %s.%s.%s", suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
 	stmt, _ = cnxn.NewStatement()
@@ -1757,7 +1758,7 @@ func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
 	suite.True(rdr.Next())
 	rec := rdr.Record()
 
-	suite.True(rec.NumRows() == 1)
+	suite.Equal(1, int(rec.NumRows()))
 
 	// Get column indexes
 	getColIdx := func(name string) int {
@@ -1766,7 +1767,7 @@ func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
 				return i
 			}
 		}
-		return -1
+		panic("Column not found: " + name)
 	}
 
 	// Expected column names
@@ -1776,10 +1777,6 @@ func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
 	colIdx := getColIdx("column_name")
 	seqIdx := getColIdx("key_sequence")
 	createdIdx := getColIdx("created_on")
-
-	if dbIdx == -1 || schemaIdx == -1 || tableIdx == -1 || colIdx == -1 || seqIdx == -1 || createdIdx == -1 {
-		panic("Missing expected columns")
-	}
 
 	i := 0
 	dbName := rec.Column(dbIdx).(*array.String).Value(i)
@@ -1809,13 +1806,14 @@ func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
 	} else {
 		panic("Invalid values")
 	}
+	suite.Require().NoError(stmt.Close())
 
 	query = fmt.Sprintf("DROP TABLE %s.%s.%s", suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
 	stmt, _ = cnxn.NewStatement()
 	suite.Require().NoError(stmt.SetSqlQuery(query))
 	_, err = stmt.ExecuteUpdate(suite.ctx)
-	defer rdr.Release()
 	suite.Require().NoError(err)
+	suite.Require().NoError(stmt.Close())
 }
 
 func (suite *SnowflakeTests) TestTimestampPrecision() {
