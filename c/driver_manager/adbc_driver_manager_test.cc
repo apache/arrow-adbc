@@ -410,7 +410,7 @@ class DriverManifest : public ::testing::Test {
          toml::table{
              {"shared",
               toml::table{
-                  {current_arch(), driver_path.string()},
+                  {adbc::CurrentArch(), driver_path.string()},
               }},
          }},
     };
@@ -441,7 +441,7 @@ class DriverManifest : public ::testing::Test {
   }
 
  protected:
-  void set_config_path(const char* path) {
+  void SetConfigPath(const char* path) {
 #ifdef _WIN32
     ASSERT_TRUE(SetEnvironmentVariable("ADBC_CONFIG_PATH", path));
 #else
@@ -449,7 +449,7 @@ class DriverManifest : public ::testing::Test {
 #endif
   }
 
-  void unset_config_path() { set_config_path(""); }
+  void UnsetConfigPath() { SetConfigPath(""); }
 
   struct AdbcDriver driver = {};
   struct AdbcError error = {};
@@ -468,14 +468,14 @@ TEST_F(DriverManifest, LoadDriverEnv) {
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
-  set_config_path(temp_dir.string().c_str());
+  SetConfigPath(temp_dir.string().c_str());
 
   ASSERT_THAT(AdbcLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, &driver, &error),
               IsOkStatus(&error));
 
   ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
 
-  unset_config_path();
+  UnsetConfigPath();
 }
 
 TEST_F(DriverManifest, DisallowEnvConfig) {
@@ -484,7 +484,7 @@ TEST_F(DriverManifest, DisallowEnvConfig) {
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
-  set_config_path(temp_dir.string().c_str());
+  SetConfigPath(temp_dir.string().c_str());
 
   auto load_options = ADBC_LOAD_FLAG_DEFAULT & ~ADBC_LOAD_FLAG_SEARCH_ENV;
   ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, load_options,
@@ -493,7 +493,7 @@ TEST_F(DriverManifest, DisallowEnvConfig) {
 
   ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
 
-  unset_config_path();
+  UnsetConfigPath();
 }
 
 TEST_F(DriverManifest, LoadAbsolutePath) {

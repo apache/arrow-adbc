@@ -19,7 +19,9 @@
 
 #include <string>
 
-const std::string& current_arch() {
+namespace adbc {
+
+const std::string& CurrentArch() {
 #if defined(_WIN32)
   static const std::string platform = "windows";
 #elif defined(__APPLE__)
@@ -82,3 +84,5 @@ const std::string& current_arch() {
   static const std::string result = platform + "_" + arch + target;
   return result;
 }
+
+}  // namespace adbc

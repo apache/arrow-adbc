@@ -295,14 +295,14 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 
   auto driver = config.at_path("Driver.shared");
   if (toml::table* platforms = driver.as_table()) {
-    info.lib_path = platforms->at_path(current_arch()).value_or(""s);
+    info.lib_path = platforms->at_path(adbc::CurrentArch()).value_or(""s);
   } else if (auto* path = driver.as_string()) {
     info.lib_path = path->get();
   }
 
   if (info.lib_path.empty()) {
     SetError(error, "Driver path not found in manifest '"s + driver_manifest.string() +
-                        "' for current architecture '" + current_arch() + "'");
+                        "' for current architecture '" + adbc::CurrentArch() + "'");
     return ADBC_STATUS_NOT_FOUND;
   }
 
@@ -1042,10 +1042,12 @@ std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view 
 
 #ifdef _WIN32
   constexpr char delimiter = ';';
-#else
-  constexpr char delimiter = ':';
-#endif  // _WIN32
 
+  // pulling the logic from Go's filepath.SplitList function
+  // where windows checks for quoted/escaped sections while splitting
+  // but unix doesn't.
+  // see
+  // https://cs.opensource.google/go/go/+/refs/tags/go1.24.3:src/path/filepath/path_windows.go
   bool in_quotes = false;
   size_t start = 0;
   for (size_t i = 0; i < path.size(); ++i) {
@@ -1057,7 +1059,19 @@ std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view 
     }
   }
   result.emplace_back(path.substr(start));
+#else
+  constexpr char delimiter = ':';
 
+  size_t start = 0;
+  size_t end = 0;
+  while ((end = path.find(delimiter, start)) != std::string::npos) {
+    result.emplace_back(path.substr(start, end - start));
+    start = end + 1;
+  }
+  result.emplace_back(path.substr(start));
+#endif  // _WIN32
+
+  // remove empty paths
   result.erase(std::remove_if(result.begin(), result.end(),
                               [](const auto& p) { return p.empty(); }),
                result.end());
