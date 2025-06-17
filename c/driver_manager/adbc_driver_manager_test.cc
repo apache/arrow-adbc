@@ -368,7 +368,9 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
   std::vector<std::string> paths = {
       "/usr/lib/adbc/drivers", "/usr/local/lib/adbc/drivers",
       "/opt/adbc/drivers",     "/home/user/.config/adbc/drivers",
+#ifdef __WIN32      
       "/home/\":foo:\"/bar",
+#endif      
   };
 
   std::ostringstream joined;
