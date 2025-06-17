@@ -78,6 +78,7 @@ docker_cache
 .*.swo
 CMakeUserPresets.json
 build/
+local/
 
 site/
 
