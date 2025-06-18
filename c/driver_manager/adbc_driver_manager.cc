@@ -173,7 +173,7 @@ std::filesystem::path UserConfigDir() {
 #ifdef _WIN32
 using char_type = wchar_t;
 
-std::string utf8_encode(const std::wstring& wstr) {
+std::string Utf8Encode(const std::wstring& wstr) {
   if (wstr.empty()) return std::string();
   int size_needed = WideCharToMultiByte(
       CP_UTF8, 0, &wstr[0], static_cast<int>(wstr.size()), NULL, 0, NULL, NULL);
@@ -183,7 +183,7 @@ std::string utf8_encode(const std::wstring& wstr) {
   return str_to;
 }
 
-std::wstring utf8_decode(const std::string& str) {
+std::wstring Utf8Decode(const std::string& str) {
   if (str.empty()) return std::wstring();
   int size_needed =
       MultiByteToWideChar(CP_UTF8, 0, &str[0], static_cast<int>(str.size()), NULL, 0);
@@ -263,14 +263,14 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
     return ADBC_STATUS_NOT_FOUND;
   }
 
-  info.driver_name = utf8_encode(dkey.GetString(L"name", L""));
-  info.entrypoint = utf8_encode(dkey.GetString(L"entrypoint", L""));
-  info.version = utf8_encode(dkey.GetString(L"version", L""));
-  info.source = utf8_encode(dkey.GetString(L"source", L""));
+  info.driver_name = Utf8Encode(dkey.GetString(L"name", L""));
+  info.entrypoint = Utf8Encode(dkey.GetString(L"entrypoint", L""));
+  info.version = Utf8Encode(dkey.GetString(L"version", L""));
+  info.source = Utf8Encode(dkey.GetString(L"source", L""));
   info.lib_path = std::filesystem::path(dkey.GetString(L"driver", L""));
   if (info.lib_path.empty()) {
     SetError(error, "Driver path not found in registry for \""s +
-                        utf8_encode(driver_name) + "\"");
+                        Utf8Encode(driver_name) + "\"");
     return ADBC_STATUS_NOT_FOUND;
   }
   return ADBC_STATUS_OK;
@@ -342,7 +342,7 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
 
 bool HasExtension(const std::filesystem::path& path, const std::string& ext) {
 #ifdef _WIN32
-  auto wext = utf8_decode(ext);
+  auto wext = Utf8Decode(ext);
   auto path_ext = path.extension().native();
   return path_ext.size() == wext.size() &&
          _wcsnicmp(path_ext.c_str(), wext.c_str(), wext.size()) == 0;
@@ -545,7 +545,7 @@ struct ManagedLibrary {
 #if defined(_WIN32)
     HMODULE handle = LoadLibraryExW(library, NULL, 0);
     if (!handle) {
-      error_message += utf8_encode(library);
+      error_message += Utf8Encode(library);
       error_message += ": LoadLibraryExW() failed: ";
       GetWinError(&error_message);
 
@@ -554,7 +554,7 @@ struct ManagedLibrary {
       handle = LoadLibraryExW(full_driver_name.c_str(), NULL, 0);
       if (!handle) {
         error_message += '\n';
-        error_message += utf8_encode(full_driver_name);
+        error_message += Utf8Encode(full_driver_name);
         error_message += ": LoadLibraryExW() failed: ";
         GetWinError(&error_message);
       }
