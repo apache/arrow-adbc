@@ -38,6 +38,7 @@
 
 std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& filename);
 std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
+std::filesystem::path InternalAdbcUserConfigDir();
 
 // Tests of the SQLite example driver, except using the driver manager
 
@@ -589,5 +590,79 @@ TEST_F(DriverManifest, ManifestWrongArch) {
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
 }
+
+// only build and run test that puts files in the users home directory if
+// it's been enabled via the build system setting this compile def
+#ifdef ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL
+TEST_F(DriverManifest, LoadUserLevelManifest) {
+  ASSERT_THAT(
+      AdbcLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, &driver, &error),
+      Not(IsOkStatus(&error)));
+
+  auto user_config_dir = InternalAdbcUserConfigDir();
+  bool created = false;
+  if (!std::filesystem::exists(user_config_dir)) {
+    ASSERT_TRUE(std::filesystem::create_directories(user_config_dir));
+    created = true;
+  }
+
+  std::ofstream test_manifest_file(user_config_dir / "adbc-test-sqlite.toml");
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  // fail to load if flag doesn't have ADBC_LOAD_FLAG_SEARCH_USER
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, 0,
+                                 &driver, &error),
+              Not(IsOkStatus(&error)));
+
+  // succeed with default load options
+  ASSERT_THAT(
+      AdbcLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, &driver, &error),
+      IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove(user_config_dir / "adbc-test-sqlite.toml"));
+  if (created) {
+    std::filesystem::remove_all(user_config_dir);
+  }
+}
+#endif
+
+// only build and run test that creates / adds a file to /etc/adbc if
+// it's been enabled via the build system setting this compile def
+#ifdef ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL
+TEST_F(DriverManifest, LoadSystemLevelManifest) {
+  ASSERT_THAT(
+      AdbcLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, &driver, &error),
+      Not(IsOkStatus(&error)));
+
+  auto system_config_dir = std::filesystem::path("/etc/adbc");
+  bool created = false;
+  if (!std::filesystem::exists(system_config_dir)) {
+    ASSERT_TRUE(std::filesystem::create_directories(system_config_dir));
+    created = true;
+  }
+
+  std::ofstream test_manifest_file(system_config_dir / "adbc-test-sqlite.toml");
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  // fail to load if flag doesn't have ADBC_LOAD_FLAG_SEARCH_SYSTEM
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, 0,
+                                 &driver, &error),
+              Not(IsOkStatus(&error)));
+
+  // succeed with default load options
+  ASSERT_THAT(
+      AdbcLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, &driver, &error),
+      IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove(system_config_dir / "adbc-test-sqlite.toml"));
+  if (created) {
+    std::filesystem::remove_all(system_config_dir);
+  }
+}
+#endif
 
 }  // namespace adbc

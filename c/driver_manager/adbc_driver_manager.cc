@@ -49,6 +49,8 @@ using namespace std::string_literals;  // NOLINT [build/namespaces]
 
 ADBC_EXPORT
 std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
+ADBC_EXPORT
+std::filesystem::path InternalAdbcUserConfigDir();
 
 namespace {
 
@@ -127,48 +129,6 @@ struct OwnedError {
     }
   }
 };
-
-std::filesystem::path UserConfigDir() {
-  std::filesystem::path config_dir;
-#if defined(_WIN32)
-  size_t required_size;
-  _wgetenv_s(&required_size, NULL, 0, L"AppData");
-  if (required_size == 0) {
-    return config_dir;
-  }
-
-  std::wstring app_data_value;
-  app_data_value.resize(required_size);
-  _wgetenv_s(&required_size, app_data_value.data(), required_size, L"AppData");
-  std::filesystem::path dir(app_data_value);
-  if (!dir.empty()) {
-    config_dir = std::filesystem::path(dir);
-    config_dir /= "ADBC/drivers";
-  }
-#elif defined(__APPLE__)
-  auto dir = std::getenv("HOME");
-  if (dir) {
-    config_dir = std::filesystem::path(dir);
-    config_dir /= "Library/Application Support/ADBC";
-  }
-#elif defined(__linux__)
-  auto dir = std::getenv("XDG_CONFIG_HOME");
-  if (!dir) {
-    dir = std::getenv("HOME");
-    if (dir) {
-      config_dir = std::filesystem::path(dir) /= ".config";
-    }
-  } else {
-    config_dir = std::filesystem::path(dir);
-  }
-
-  if (!config_dir.empty()) {
-    config_dir /= "adbc";
-  }
-#endif
-
-  return config_dir;
-}
 
 #ifdef _WIN32
 using char_type = wchar_t;
@@ -321,7 +281,7 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
 
   if (levels & ADBC_LOAD_FLAG_SEARCH_USER) {
     // Check the user configuration directory
-    std::filesystem::path user_config_dir = UserConfigDir();
+    std::filesystem::path user_config_dir = InternalAdbcUserConfigDir();
     if (!user_config_dir.empty() && std::filesystem::exists(user_config_dir)) {
       paths.push_back(user_config_dir);
     }
@@ -1033,6 +993,48 @@ static const char kDefaultEntrypoint[] = "AdbcDriverInit";
 }  // namespace
 
 // Other helpers (intentionally not in an anonymous namespace so they can be tested)
+ADBC_EXPORT
+std::filesystem::path InternalAdbcUserConfigDir() {
+  std::filesystem::path config_dir;
+#if defined(_WIN32)
+  size_t required_size;
+  _wgetenv_s(&required_size, NULL, 0, L"AppData");
+  if (required_size == 0) {
+    return config_dir;
+  }
+
+  std::wstring app_data_value;
+  app_data_value.resize(required_size);
+  _wgetenv_s(&required_size, app_data_value.data(), required_size, L"AppData");
+  std::filesystem::path dir(app_data_value);
+  if (!dir.empty()) {
+    config_dir = std::filesystem::path(dir);
+    config_dir /= "ADBC/drivers";
+  }
+#elif defined(__APPLE__)
+  auto dir = std::getenv("HOME");
+  if (dir) {
+    config_dir = std::filesystem::path(dir);
+    config_dir /= "Library/Application Support/ADBC";
+  }
+#elif defined(__linux__)
+  auto dir = std::getenv("XDG_CONFIG_HOME");
+  if (!dir) {
+    dir = std::getenv("HOME");
+    if (dir) {
+      config_dir = std::filesystem::path(dir) /= ".config";
+    }
+  } else {
+    config_dir = std::filesystem::path(dir);
+  }
+
+  if (!config_dir.empty()) {
+    config_dir /= "adbc";
+  }
+#endif
+
+  return config_dir;
+}
 
 std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path) {
   std::vector<std::filesystem::path> result;
