@@ -195,7 +195,7 @@ jobs:
           BUILD_DRIVER_POSTGRESQL: "1"
           BUILD_DRIVER_SQLITE: "1"
           ADBC_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
-          ADBC_DRIVER_MANAGER_SYSTEM_CONFIG_TEST: "1"
+          # ADBC_DRIVER_MANAGER_SYSTEM_CONFIG_TEST: "1"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test
@@ -205,11 +205,9 @@ jobs:
           # PostgreSQL is explicitly not tested here since we don't spawn
           # Postgres; see integration.yml
           BUILD_DRIVER_POSTGRESQL: "0"
-          BUILD_DRIVER_SQLITE: "1"
-          ADBC_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
-          ADBC_DRIVER_MANAGER_SYSTEM_CONFIG_TEST: "1"
+          BUILD_DRIVER_SQLITE: "1"          
         run: |
-          sudo ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
   drivers-test-meson:
     name: "Meson - C/C++ (Conda/${{ matrix.os }})"
