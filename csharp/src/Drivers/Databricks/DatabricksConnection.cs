@@ -164,7 +164,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             // Parse default namespace
             string? defaultCatalog = null;
-            string? defaultSchema = null;
+            string? defaultSchema = "default";
             // only if enableMultipleCatalogSupport is true, do we supply catalog from connection properties
             if (_enableMultipleCatalogSupport)
             {
@@ -177,15 +177,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Passing null here allows the runtime to fall back to the workspace-defined default catalog for the session.
             defaultCatalog = HandleSparkCatalog(defaultCatalog);
 
-            if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
+            _defaultNamespace = new TNamespace
             {
-                _defaultNamespace = new TNamespace
-                {
-                    CatalogName = defaultCatalog,
-                    SchemaName = defaultSchema
-                };
-            }
-        }
+                CatalogName = defaultCatalog,
+                SchemaName = defaultSchema
+            };
+    }
 
         /// <summary>
         /// Gets whether server side properties should be applied using queries.
@@ -389,7 +386,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     _defaultNamespace = session.InitialNamespace;
                 }
-                else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName))
+                else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName) && _defaultNamespace.SchemaName != "default")
                 {
                     // server version is too old. Explicitly set the schema using queries
                     await SetSchema(_defaultNamespace.SchemaName);
