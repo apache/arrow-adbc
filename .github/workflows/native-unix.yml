@@ -205,7 +205,7 @@ jobs:
           # PostgreSQL is explicitly not tested here since we don't spawn
           # Postgres; see integration.yml
           BUILD_DRIVER_POSTGRESQL: "0"
-          BUILD_DRIVER_SQLITE: "1"          
+          BUILD_DRIVER_SQLITE: "1"
         run: |
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
