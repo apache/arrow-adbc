@@ -209,7 +209,7 @@ jobs:
           ADBC_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
           ADBC_DRIVER_MANAGER_SYSTEM_CONFIG_TEST: "1"
         run: |
-          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          sudo ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
   drivers-test-meson:
     name: "Meson - C/C++ (Conda/${{ matrix.os }})"
