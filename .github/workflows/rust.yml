@@ -143,3 +143,14 @@ jobs:
           pushd rust
           cargo doc --workspace --all-features
           popd
+      - name: Verify MSRV (Minimum Supported Rust Version)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: rust
+        run: |
+          curl -L "https://github.com/foresterre/cargo-msrv/releases/download/v0.18.4/cargo-msrv-x86_64-unknown-linux-gnu-v0.18.4.tgz" |
+            tar xz --wildcards --strip-components=1 -C "$HOME/.local/bin" "*/cargo-msrv"
+          find . -mindepth 2 -name Cargo.toml | while read -r dir
+          do
+            echo "Checking package '$dir'"
+            cargo msrv verify --manifest-path "$dir" || exit 1
+          done
