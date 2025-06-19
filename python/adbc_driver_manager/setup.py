@@ -87,11 +87,13 @@ if sys.platform == "win32":
     extra_compile_args = ["/std:c++17", "/DADBC_EXPORTING", "/D_CRT_SECURE_NO_WARNINGS"]
     if build_type == "debug":
         extra_compile_args.extend(["/DEBUG:FULL"])
+    extra_link_args = ["shell32.lib uuid.lib advapi32.lib"]
 else:
     extra_compile_args = ["-std=c++17"]
     if build_type == "debug":
         # Useful to step through driver manager code in GDB
         extra_compile_args.extend(["-ggdb", "-Og"])
+    extra_link_args = []
 
 # ------------------------------------------------------------
 # Setup
@@ -110,6 +112,7 @@ setup(
         Extension(
             name="adbc_driver_manager._lib",
             extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args,
             include_dirs=[str(source_root.joinpath("adbc_driver_manager").resolve())],
             language="c++",
             sources=[
