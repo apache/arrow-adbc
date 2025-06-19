@@ -868,7 +868,7 @@ void ConstraintTest(const AdbcGetObjectsConstraint* constraint,
                     const std::vector<std::string>& columns) {
   std::string_view constraint_type(constraint->constraint_type.data,
                                    constraint->constraint_type.size_bytes);
-  int number_of_columns = columns.size();
+  int number_of_columns = static_cast<int>(columns.size());
   ASSERT_EQ(constraint_type, key_type);
   ASSERT_EQ(constraint->n_column_names, number_of_columns)
       << "expected constraint " << key_type
