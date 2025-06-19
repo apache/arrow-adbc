@@ -312,23 +312,23 @@ class Connection(_Closeable):
         self._conn = conn
         self._conn_kwargs = conn_kwargs
 
-        try:
-            self._conn.set_autocommit(False)
-        except _lib.NotSupportedError:
+        if autocommit:
+            self._autocommit = True
             self._commit_supported = False
-            if not autocommit:
+        else:
+            try:
+                self._conn.set_autocommit(False)
+            except _lib.NotSupportedError:
+                self._commit_supported = False
                 warnings.warn(
-                    "Cannot disable autocommit; conn will not be DB-API 2.0 compliant",
+                    "Cannot disable autocommit; "
+                    "conn will not be DB-API 2.0 compliant",
                     category=Warning,
                 )
-            self._autocommit = True
-        else:
-            self._autocommit = False
-            self._commit_supported = True
-
-        if autocommit and self._commit_supported:
-            self._conn.set_autocommit(True)
-            self._autocommit = True
+                self._autocommit = True
+            else:
+                self._autocommit = False
+                self._commit_supported = True
 
     def close(self) -> None:
         """
