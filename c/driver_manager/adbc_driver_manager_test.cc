@@ -566,7 +566,6 @@ TEST_F(DriverManifest, ManifestMissingDriver) {
 }
 
 TEST_F(DriverManifest, ManifestWrongArch) {
-  // Create a manifest without the "Driver" section
   auto filepath = temp_dir / "sqlite.toml";
   toml::table manifest_without_driver = simple_manifest;
   manifest_without_driver.erase("Driver");
