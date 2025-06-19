@@ -35,8 +35,8 @@ adbc_core.workspace = true
 arrow-array.workspace = true
 arrow-buffer.workspace = true
 arrow-schema.workspace = true
-datafusion = "47.0.0"
-datafusion-substrait = "47.0.0"
+datafusion = "48.0.0"
+datafusion-substrait = "48.0.0"
 tokio = { version = "1.45", features = ["rt-multi-thread"] }
 prost = "0.13.5"
 
