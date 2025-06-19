@@ -481,6 +481,33 @@ TEST_F(DriverManifest, LoadDriverEnv) {
   UnsetConfigPath();
 }
 
+TEST_F(DriverManifest, LoadNonAsciiPath) {
+  ASSERT_THAT(AdbcLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, &driver, &error),
+              Not(IsOkStatus(&error)));
+
+#ifdef _WIN32
+  std::filesystem::path non_ascii_dir = temp_dir / L"majestik møøse";
+#else
+  std::filesystem::path non_ascii_dir = temp_dir / "majestik møøse";
+#endif
+
+  ASSERT_TRUE(std::filesystem::create_directories(non_ascii_dir));
+
+  std::ofstream test_manifest_file(non_ascii_dir / "sqlite.toml");
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  SetConfigPath(non_ascii_dir.string().c_str());
+
+  ASSERT_THAT(AdbcLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, &driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove(non_ascii_dir / "sqlite.toml"));
+
+  UnsetConfigPath();
+}
+
 TEST_F(DriverManifest, DisallowEnvConfig) {
   std::ofstream test_manifest_file(temp_dir / "sqlite.toml");
   ASSERT_TRUE(test_manifest_file.is_open());
