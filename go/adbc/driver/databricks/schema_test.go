@@ -198,6 +198,7 @@ func TestGetArrowTypeFromColumnInfo(t *testing.T) {
 			col: sql.ColumnInfo{
 				TypeName:         sql.ColumnInfoTypeNameInterval,
 				TypeIntervalType: "YEAR TO MONTH",
+				TypeText:         "INTERVAL YEAR TO MONTH",
 			},
 			expected: arrow.FixedWidthTypes.MonthInterval,
 		},
@@ -239,6 +240,266 @@ func TestGetArrowTypeFromColumnInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := getArrowTypeFromColumnInfo(tt.col)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestGetArrowTypeFromStringType(t *testing.T) {
+	tests := []struct {
+		name     string
+		typeText string
+		expected arrow.DataType
+		wantErr  bool
+	}{
+		// DECIMAL types
+		{
+			name:     "decimal type with precision and scale",
+			typeText: "DECIMAL(5,2)",
+			expected: &arrow.Decimal128Type{Precision: 5, Scale: 2},
+		},
+		{
+			name:     "decimal type with precision only",
+			typeText: "DECIMAL(10)",
+			expected: &arrow.Decimal128Type{Precision: 10, Scale: 0},
+		},
+		{
+			name:     "dec type with precision and scale",
+			typeText: "DEC(8,3)",
+			expected: &arrow.Decimal128Type{Precision: 8, Scale: 3},
+		},
+		{
+			name:     "numeric type with precision and scale",
+			typeText: "NUMERIC(15,4)",
+			expected: &arrow.Decimal128Type{Precision: 15, Scale: 4},
+		},
+
+		// ARRAY types
+		{
+			name:     "array of int",
+			typeText: "ARRAY<INT>",
+			expected: arrow.ListOf(arrow.PrimitiveTypes.Int32),
+		},
+		{
+			name:     "array of string",
+			typeText: "ARRAY<STRING>",
+			expected: arrow.ListOf(arrow.BinaryTypes.String),
+		},
+		{
+			name:     "array of decimal",
+			typeText: "ARRAY<DECIMAL(10,2)>",
+			expected: arrow.ListOf(&arrow.Decimal128Type{Precision: 10, Scale: 2}),
+		},
+		{
+			name:     "nested array",
+			typeText: "ARRAY<ARRAY<INT>>",
+			expected: arrow.ListOf(arrow.ListOf(arrow.PrimitiveTypes.Int32)),
+		},
+
+		// MAP types
+		{
+			name:     "map of string to int",
+			typeText: "MAP<STRING,INT>",
+			expected: arrow.MapOf(arrow.BinaryTypes.String, arrow.PrimitiveTypes.Int32),
+		},
+		{
+			name:     "map of int to string",
+			typeText: "MAP<INT,STRING>",
+			expected: arrow.MapOf(arrow.PrimitiveTypes.Int32, arrow.BinaryTypes.String),
+		},
+		{
+			name:     "map with complex key and value",
+			typeText: "MAP<DECIMAL(5,2),ARRAY<STRING>>",
+			expected: arrow.MapOf(&arrow.Decimal128Type{Precision: 5, Scale: 2}, arrow.ListOf(arrow.BinaryTypes.String)),
+		},
+
+		// STRUCT types
+		{
+			name:     "struct with basic fields",
+			typeText: "STRUCT<id:INT,name:STRING,active:BOOLEAN>",
+			expected: arrow.StructOf(
+				arrow.Field{Name: "id", Type: arrow.PrimitiveTypes.Int32, Nullable: true},
+				arrow.Field{Name: "name", Type: arrow.BinaryTypes.String, Nullable: true},
+				arrow.Field{Name: "active", Type: arrow.FixedWidthTypes.Boolean, Nullable: true},
+			),
+		},
+		{
+			name:     "struct with not null field",
+			typeText: "STRUCT<id:INT NOT NULL,name:STRING>",
+			expected: arrow.StructOf(
+				arrow.Field{Name: "id", Type: arrow.PrimitiveTypes.Int32, Nullable: false},
+				arrow.Field{Name: "name", Type: arrow.BinaryTypes.String, Nullable: true},
+			),
+		},
+		{
+			name:     "struct with extra whitespace",
+			typeText: "STRUCT<id: INT  NOT  NULL,    name : STRING>",
+			expected: arrow.StructOf(
+				arrow.Field{Name: "id", Type: arrow.PrimitiveTypes.Int32, Nullable: false},
+				arrow.Field{Name: "name", Type: arrow.BinaryTypes.String, Nullable: true},
+			),
+		},
+		{
+			name:     "struct with nested types",
+			typeText: "STRUCT<data:ARRAY<INT>,metadata:MAP<STRING,STRING>>",
+			expected: arrow.StructOf(
+				arrow.Field{Name: "data", Type: arrow.ListOf(arrow.PrimitiveTypes.Int32), Nullable: true},
+				arrow.Field{Name: "metadata", Type: arrow.MapOf(arrow.BinaryTypes.String, arrow.BinaryTypes.String), Nullable: true},
+			),
+		},
+		{
+			name:     "struct with comments",
+			typeText: "STRUCT<data:ARRAY<INT> COMMENT \"blah blah blah\",metadata:MAP<STRING,STRING>>",
+			expected: arrow.StructOf(
+				arrow.Field{Name: "data", Type: arrow.ListOf(arrow.PrimitiveTypes.Int32), Nullable: true},
+				arrow.Field{Name: "metadata", Type: arrow.MapOf(arrow.BinaryTypes.String, arrow.BinaryTypes.String), Nullable: true},
+			),
+		},
+		{
+			name:     "struct with nested decimal",
+			typeText: "STRUCT<data:ARRAY<INT>,metadata:MAP<DECIMAL(10,2),STRING>>",
+			expected: arrow.StructOf(
+				arrow.Field{Name: "data", Type: arrow.ListOf(arrow.PrimitiveTypes.Int32), Nullable: true},
+				arrow.Field{Name: "metadata", Type: arrow.MapOf(&arrow.Decimal128Type{Precision: 10, Scale: 2}, arrow.BinaryTypes.String), Nullable: true},
+			),
+		},
+		{
+			name:     "struct with interval type",
+			typeText: "STRUCT<data:ARRAY<INT>,metadata:MAP<DECIMAL(10,2),INTERVAL MONTH>>",
+			expected: arrow.StructOf(
+				arrow.Field{Name: "data", Type: arrow.ListOf(arrow.PrimitiveTypes.Int32), Nullable: true},
+				arrow.Field{Name: "metadata", Type: arrow.MapOf(&arrow.Decimal128Type{Precision: 10, Scale: 2}, arrow.FixedWidthTypes.MonthInterval), Nullable: true},
+			),
+		},
+		{
+			name:     "struct with decimal and interval type",
+			typeText: "STRUCT<data:ARRAY<INT>,dece:DECIMAL(8,8),inter:INTERVAL MONTH>>",
+			expected: arrow.StructOf(
+				arrow.Field{Name: "data", Type: arrow.ListOf(arrow.PrimitiveTypes.Int32), Nullable: true},
+				arrow.Field{Name: "dece", Type: &arrow.Decimal128Type{Precision: 8, Scale: 8}, Nullable: true},
+				arrow.Field{Name: "inter", Type: arrow.FixedWidthTypes.MonthInterval, Nullable: true},
+			),
+		},
+		{
+			name:     "struct with nested struct",
+			typeText: "STRUCT<address:STRUCT<street:STRING,city:STRING>,age:INT>",
+			expected: arrow.StructOf(
+				arrow.Field{Name: "address", Type: arrow.StructOf(
+					arrow.Field{Name: "street", Type: arrow.BinaryTypes.String, Nullable: true},
+					arrow.Field{Name: "city", Type: arrow.BinaryTypes.String, Nullable: true},
+				), Nullable: true},
+				arrow.Field{Name: "age", Type: arrow.PrimitiveTypes.Int32, Nullable: true},
+			),
+		},
+
+		// INTERVAL types
+		{
+			name:     "year to month interval",
+			typeText: "INTERVAL YEAR TO MONTH",
+			expected: arrow.FixedWidthTypes.MonthInterval,
+		},
+		{
+			name:     "year interval",
+			typeText: "INTERVAL YEAR",
+			expected: arrow.FixedWidthTypes.MonthInterval,
+		},
+		{
+			name:     "month interval",
+			typeText: "INTERVAL MONTH",
+			expected: arrow.FixedWidthTypes.MonthInterval,
+		},
+		{
+			name:     "day to hour interval",
+			typeText: "INTERVAL DAY TO HOUR",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+		{
+			name:     "day to minute interval",
+			typeText: "INTERVAL DAY TO MINUTE",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+		{
+			name:     "day to second interval",
+			typeText: "INTERVAL DAY TO SECOND",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+		{
+			name:     "hour to minute interval",
+			typeText: "INTERVAL HOUR TO MINUTE",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+		{
+			name:     "hour to second interval",
+			typeText: "INTERVAL HOUR TO SECOND",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+		{
+			name:     "minute to second interval",
+			typeText: "INTERVAL MINUTE TO SECOND",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+		{
+			name:     "day interval",
+			typeText: "INTERVAL DAY",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+		{
+			name:     "hour interval",
+			typeText: "INTERVAL HOUR",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+		{
+			name:     "minute interval",
+			typeText: "INTERVAL MINUTE",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+		{
+			name:     "second interval",
+			typeText: "INTERVAL SECOND",
+			expected: arrow.FixedWidthTypes.Duration_s,
+		},
+
+		// Error cases
+		{
+			name:     "invalid decimal format",
+			typeText: "DECIMAL(abc,def)",
+			wantErr:  true,
+		},
+		{
+			name:     "invalid array format",
+			typeText: "ARRAY<",
+			wantErr:  true,
+		},
+		{
+			name:     "invalid map format",
+			typeText: "MAP<STRING>",
+			wantErr:  true,
+		},
+		{
+			name:     "invalid struct format",
+			typeText: "STRUCT<id:INT,name>",
+			wantErr:  true,
+		},
+		{
+			name:     "invalid interval format",
+			typeText: "INTERVAL INVALID",
+			wantErr:  true,
+		},
+		{
+			name:     "unrecognized type",
+			typeText: "UNKNOWN_TYPE",
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getArrowTypeFromStringType(tt.typeText)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return

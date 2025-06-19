@@ -117,8 +117,7 @@ func newRecordReader(
 	ctx, cancelFn := context.WithCancel(ctx)
 	arrowSchema, err := ResultSchemaToArrowSchema(manifest.Schema)
 	if err != nil {
-		cancelFn()
-		return nil, fmt.Errorf("unable to parse schema from manifest: %v", err)
+		log.Fatalf("unable to parse schema from manifest: %v", err)
 	}
 	r := &statementReader{
 		refCount: 1,
@@ -263,10 +262,9 @@ func (r *statementReader) Schema() *arrow.Schema {
 		for i := range fields {
 			field := r.schema.Field(i)
 			derivedField := r.derivedSchema.Field(i)
-			// todo(jasonlin45): introduce some sort of logging here when it's less noisy so we can surface these
-			// if field.Type.Fingerprint() != derivedField.Type.Fingerprint() {
-			// fmt.Printf("schema type mismatch at field %d (%s): expected %v, got %v", derivedField.Type, field.Type)
-			// }
+			if field.Type.Fingerprint() != derivedField.Type.Fingerprint() {
+				log.Printf("schema type mismatch at field %d (%s): expected %v, got %v", i, field.Name, derivedField.Type, field.Type)
+			}
 			field.Metadata = derivedField.Metadata
 			fields[i] = field
 		}
