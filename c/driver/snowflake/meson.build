@@ -53,6 +53,7 @@ pkg.generate(
     url: 'https://github.com/apache/arrow-adbc',
     libraries: [adbc_driver_snowflake_lib],
     filebase: 'adbc-driver-snowflake',
+    variables: ['Cflags.private=-DADBC_STATIC'],
 )
 
 adbc_driver_snowflake_dep = declare_dependency(

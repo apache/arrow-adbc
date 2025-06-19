@@ -23,3 +23,4 @@ Description: The ADBC Snowflake driver provides an ADBC driver for Snowflake.
 URL: https://github.com/apache/arrow-adbc
 Version: @ADBC_VERSION@
 Libs: -L${libdir} -ladbc_driver_snowflake
+Cflags.private: -DADBC_STATIC

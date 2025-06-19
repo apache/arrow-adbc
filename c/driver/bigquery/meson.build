@@ -53,6 +53,7 @@ pkg.generate(
     libraries: [adbc_driver_bigquery_lib],
     url: 'https://github.com/apache/arrow-adbc',
     filebase: 'adbc-driver-bigquery',
+    variables: ['Cflags.private=-DADBC_STATIC'],
 )
 
 adbc_driver_bigquery_dep = declare_dependency(

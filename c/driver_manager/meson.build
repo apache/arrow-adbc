@@ -27,6 +27,8 @@ adbc_driver_manager_lib = library(
     include_directories: [include_dir],
     install: true,
     dependencies: [dl_dep],
+    gnu_symbol_visibility: 'hidden',
+    cpp_static_args: adbc_cpp_static_args,
 )
 
 pkg.generate(
@@ -35,6 +37,7 @@ pkg.generate(
     url: 'https://github.com/apache/arrow-adbc',
     libraries: [adbc_driver_manager_lib],
     filebase: 'adbc-driver-manager',
+    variables: ['Cflags.private=-DADBC_STATIC'],
 )
 
 adbc_driver_manager_dep = declare_dependency(
