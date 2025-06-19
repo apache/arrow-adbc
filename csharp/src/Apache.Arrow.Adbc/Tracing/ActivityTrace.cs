@@ -38,7 +38,7 @@ namespace Apache.Arrow.Adbc.Tracing
         {
             activitySourceName ??= GetType().Assembly.GetName().Name!;
             // It's okay to have a null version.
-            activitySourceVersion ??= FileVersionInfo.GetVersionInfo(GetType().Assembly.Location).ProductVersion; 
+            activitySourceVersion ??= FileVersionInfo.GetVersionInfo(GetType().Assembly.Location).ProductVersion;
             if (string.IsNullOrWhiteSpace(activitySourceName))
             {
                 throw new ArgumentNullException(nameof(activitySourceName));
