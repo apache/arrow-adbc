@@ -41,7 +41,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         Dremio,
         DuckDB,
         SQLite,
-
         SpiceAI,
     }
 

@@ -159,7 +159,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         {
             foreach (FlightSqlTestEnvironment environment in _environments)
             {
-                environment.Query = "SELECT 1 WHERE false"; // The query simulates no results
+                environment.Query = "SELECT 1 WHERE 0=1"; // The query simulates no results
                 environment.ExpectedResultsCount = 0;
 
                 using (Adbc.Client.AdbcConnection adbcConnection = GetFlightSqlAdbcConnectionUsingConnectionString(environment, _testConfiguration))
