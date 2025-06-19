@@ -30,10 +30,18 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   endif()
 endif()
 
-# if(WIN32)
-#   list(APPEND ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS advapi32 uuid shell32)
-#   list(APPEND ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS advapi32 uuid shell32)
-# endif()
+if(WIN32)
+  list(APPEND
+       ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS
+       advapi32
+       uuid
+       shell32)
+  list(APPEND
+       ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS
+       advapi32
+       uuid
+       shell32)
+endif()
 
 add_arrow_lib(adbc_driver_manager
               SOURCES
