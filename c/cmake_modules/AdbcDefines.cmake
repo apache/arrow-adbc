@@ -89,10 +89,10 @@ if(MSVC)
   add_compile_options(/wd4868)
   add_compile_options(/wd4710)
   add_compile_options(/wd4711)
-  # Don't warn about enforcing left-to-right evaluation order for operator[]
-  add_compile_options(/wd4866)
   # Don't warn about padding added after members
   add_compile_options(/wd4820)
+  # Don't warn about enforcing left-to-right evaluation order for operator[]
+  add_compile_options(/wd4866)
   add_compile_options(/wd5027)
   add_compile_options(/wd5039)
   add_compile_options(/wd5045)
