@@ -38,7 +38,7 @@ arrow-schema.workspace = true
 datafusion = "47.0.0"
 datafusion-substrait = "47.0.0"
 tokio = { version = "1.45", features = ["rt-multi-thread"] }
-prost = "0.13.5"
+prost = "0.14.0"
 
 [dev-dependencies]
 arrow-select.workspace = true
