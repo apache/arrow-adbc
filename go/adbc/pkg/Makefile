@@ -25,6 +25,9 @@ else
 	SUFFIX=dylib
 endif
 
+GIT_VERSION=$(shell git tag -l --points-at $(shell git rev-list --tags --max-count=1) --sort=-v:refname | head -n 1)
+VERSION=$(subst go/adbc/,,$(GIT_VERSION))
+
 DRIVERS := \
 	libadbc_driver_bigquery.$(SUFFIX) \
 	libadbc_driver_flightsql.$(SUFFIX) \
@@ -35,7 +38,7 @@ DRIVERS := \
 all: $(DRIVERS)
 
 libadbc_driver_%.$(SUFFIX): %
-	$(GO_BUILD) -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w" ./$<
+	$(GO_BUILD) -buildvcs=true -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./$<
 	$(RM) $(basename $@).h
 
 regenerate:

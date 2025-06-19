@@ -40,6 +40,13 @@ $ mamba create -n adbc --file ci/conda_env_cpp.txt
 $ mamba activate adbc
 ```
 
+Also you can add dependencies to an existing environment as follows:
+
+```shell
+$ mamba activate adbc
+$ mamba install --file ci/conda_env_cpp.txt
+```
+
 (For other Conda distributions, you will likely need `create ... -c
 conda-forge --file ...`).
 
@@ -203,8 +210,8 @@ A list of dependencies for Conda (conda-forge) is included, and can be
 used as follows:
 
 ```shell
-$ conda create -n adbc -c conda-forge --file ci/conda_env_docs.txt
-$ conda activate adbc
+$ mamba create -n adbc --file ci/conda_env_docs.txt
+$ mamba activate adbc
 # Mermaid must be installed separately
 # While "global", it will end up in your Conda environment
 $ npm install -g @mermaid-js/mermaid-cli
@@ -261,8 +268,8 @@ A list of dependencies for Conda (conda-forge) is included, and can be
 used as follows:
 
 ```shell
-$ conda create -n adbc -c conda-forge --file ci/conda_env_glib.txt
-$ conda activate adbc
+$ mamba create -n adbc --file ci/conda_env_glib.txt
+$ mamba activate adbc
 ```
 
 
@@ -425,7 +432,7 @@ linters, formatters, and other analysis.  For example:
 # Install pre-commit
 $ pip install pre-commit
 # or alternatively
-$ conda install -c conda-forge --file ci/conda_env_dev.txt
+$ mamba install --file ci/conda_env_dev.txt
 # Set up hooks
 $ pre-commit install
 # Run manually

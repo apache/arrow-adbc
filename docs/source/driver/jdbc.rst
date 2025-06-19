@@ -31,7 +31,7 @@ Installation
    .. tab-item:: Java
       :sync: java
 
-      Add a dependency on ``org.apache.arrow.adbc:adbc-driver-flight-sql``.
+      Add a dependency on ``org.apache.arrow.adbc:adbc-driver-jdbc``.
 
       For Maven users:
 

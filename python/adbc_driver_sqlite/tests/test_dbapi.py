@@ -50,6 +50,7 @@ def test_autocommit(tmp_path: Path) -> None:
     # This now works if we enable autocommit
     with dbapi.connect(f"file:{db}", autocommit=True) as conn:
         assert conn._autocommit
+        assert not conn._commit_supported
         with conn.cursor() as cur:
             cur.execute("PRAGMA journal_mode = WAL")
 
