@@ -51,7 +51,7 @@ function Build-Subproject {
       -DCMAKE_BUILD_TYPE=Release `
       -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `
       -DCMAKE_VERBOSE_MAKEFILE=ON `
-      -DADBC_DRIVER_MGR_TEST_MANIFEST_USER_LEVEL="$($AdbcDriverManagerUserConfigTest)"
+      -DADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL="$($AdbcDriverManagerUserConfigTest)"
     if (-not $?) { exit 1 }
 
     cmake --build . --target install -j

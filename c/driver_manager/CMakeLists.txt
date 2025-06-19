@@ -83,11 +83,11 @@ if(ADBC_BUILD_TESTS)
                                PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/libadbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
     )
   endif()
-  if(ADBC_DRIVER_MGR_TEST_MANIFEST_USER_LEVEL)
+  if(ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL)
     target_compile_definitions(adbc-driver-manager-test
                                PRIVATE ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL=1)
   endif()
-  if(ADBC_DRIVER_MGR_TEST_MANIFEST_SYSTEM_LEVEL)
+  if(ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL)
     target_compile_definitions(adbc-driver-manager-test
                                PRIVATE ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL=1)
   endif()

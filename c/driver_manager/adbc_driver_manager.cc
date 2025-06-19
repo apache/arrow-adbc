@@ -19,7 +19,9 @@
 #pragma comment(lib, "advapi32.lib")  // for registry stuff
 #include <windows.h>                  // Must come first
 
+#include <KnownFolders.h>
 #include <libloaderapi.h>
+#include <shlobj_core.h>
 #include <string.h>  // _wcsnicmp
 #include <strsafe.h>
 
@@ -39,7 +41,7 @@
 #include <cctype>
 #include <cerrno>
 #include <cstring>
-#include <filesystem>  // NOLINT [build/c++17]
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -136,9 +138,9 @@ using char_type = wchar_t;
 std::string Utf8Encode(const std::wstring& wstr) {
   if (wstr.empty()) return std::string();
   int size_needed = WideCharToMultiByte(
-      CP_UTF8, 0, &wstr[0], static_cast<int>(wstr.size()), NULL, 0, NULL, NULL);
+      CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), NULL, 0, NULL, NULL);
   std::string str_to(size_needed, 0);
-  WideCharToMultiByte(CP_UTF8, 0, &wstr[0], static_cast<int>(wstr.size()), &str_to[0],
+  WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), str_to.data(),
                       size_needed, NULL, NULL);
   return str_to;
 }
@@ -146,9 +148,9 @@ std::string Utf8Encode(const std::wstring& wstr) {
 std::wstring Utf8Decode(const std::string& str) {
   if (str.empty()) return std::wstring();
   int size_needed =
-      MultiByteToWideChar(CP_UTF8, 0, &str[0], static_cast<int>(str.size()), NULL, 0);
+      MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), NULL, 0);
   std::wstring wstr_to(size_needed, 0);
-  MultiByteToWideChar(CP_UTF8, 0, &str[0], static_cast<int>(str.size()), &wstr_to[0],
+  MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), wstr_to.data(),
                       size_needed);
   return wstr_to;
 }
@@ -193,12 +195,12 @@ class RegistryKey {
 
     DWORD type = REG_SZ;
     DWORD size = 0;
-    auto result = RegQueryValueExW(key_, name.c_str(), nullptr, &type, nullptr, &size);
+    auto result = RegQueryValueExW(key_, name.data(), nullptr, &type, nullptr, &size);
     if (result != ERROR_SUCCESS) return default_value;
     if (type != REG_SZ) return default_value;
 
     std::wstring value(size, '\0');
-    result = RegQueryValueExW(key_, name.c_str(), nullptr, &type,
+    result = RegQueryValueExW(key_, name.data(), nullptr, &type,
                               reinterpret_cast<LPBYTE>(value.data()), &size);
     if (result != ERROR_SUCCESS) return default_value;
     return value;
@@ -305,7 +307,7 @@ bool HasExtension(const std::filesystem::path& path, const std::string& ext) {
   auto wext = Utf8Decode(ext);
   auto path_ext = path.extension().native();
   return path_ext.size() == wext.size() &&
-         _wcsnicmp(path_ext.c_str(), wext.c_str(), wext.size()) == 0;
+         _wcsnicmp(path_ext.data(), wext.data(), wext.size()) == 0;
 #else
   return path.extension() == ext;
 #endif
@@ -997,16 +999,15 @@ ADBC_EXPORT
 std::filesystem::path InternalAdbcUserConfigDir() {
   std::filesystem::path config_dir;
 #if defined(_WIN32)
-  size_t required_size;
-  _wgetenv_s(&required_size, NULL, 0, L"AppData");
-  if (required_size == 0) {
+  // SHGetFolderPath is just an alias to SHGetKnownFolderPath since Vista
+  // so let's just call the updated function.
+  PWSTR path = nullptr;
+  auto hres = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path);
+  if (!SUCCEEDED(hres)) {
     return config_dir;
   }
 
-  std::wstring app_data_value;
-  app_data_value.resize(required_size);
-  _wgetenv_s(&required_size, app_data_value.data(), required_size, L"AppData");
-  std::filesystem::path dir(app_data_value);
+  std::filesystem::path dir(std::wstring(path));
   if (!dir.empty()) {
     config_dir = std::filesystem::path(dir);
     config_dir /= "ADBC/drivers";
