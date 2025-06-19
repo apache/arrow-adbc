@@ -1007,7 +1007,8 @@ std::filesystem::path InternalAdbcUserConfigDir() {
     return config_dir;
   }
 
-  std::filesystem::path dir(std::wstring(path));
+  std::wstring wpath(path);
+  std::filesystem::path dir(std::move(wpath));
   if (!dir.empty()) {
     config_dir = std::filesystem::path(dir);
     config_dir /= "ADBC/drivers";
