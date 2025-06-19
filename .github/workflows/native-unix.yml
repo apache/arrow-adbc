@@ -195,7 +195,6 @@ jobs:
           BUILD_DRIVER_POSTGRESQL: "1"
           BUILD_DRIVER_SQLITE: "1"
           ADBC_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
-          # ADBC_DRIVER_MANAGER_SYSTEM_CONFIG_TEST: "1"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test
