@@ -40,6 +40,8 @@ version = release
 
 exclude_patterns = []
 extensions = [
+    # misc directives
+    "adbc_misc",
     # recipe directive
     "sphinx_recipe",
     # generic directives to enable intersphinx for java
