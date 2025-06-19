@@ -24,7 +24,6 @@ namespace Apache.Arrow.Adbc.Tracing
 {
     public abstract class TracingReader : IArrowArrayStream, IActivityTracer
     {
-        private bool _isDisposed;
         private readonly TracingStatement _statement;
 
         protected TracingReader(TracingStatement statement)
@@ -40,12 +39,12 @@ namespace Apache.Arrow.Adbc.Tracing
 
         string? IActivityTracer.TraceParent => ((IActivityTracer)_statement).TraceParent;
 
+        public abstract string AssemblyVersion { get; }
+
+        public abstract string AssemblyName { get; }
+
         protected virtual void Dispose(bool disposing)
         {
-            if (!_isDisposed && disposing)
-            {
-                _isDisposed = true;
-            }
         }
 
         public void Dispose()

@@ -21,6 +21,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal class ImpalaStatement : HiveServer2Statement
     {
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(ImpalaStatement));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(ImpalaStatement));
+
         internal ImpalaStatement(ImpalaConnection connection)
             : base(connection)
         {
@@ -33,5 +36,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
             // options specific to Impala go here
         }
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

@@ -27,11 +27,8 @@ namespace Apache.Arrow.Adbc.Tracing
     /// Provides the implementation for a tracing source. If drivers want to enable tracing,
     /// they need to add a trace listener (e.g., <see cref="FileExporter.FileExporter"/>).
     /// </summary>
-    public sealed class ActivityTrace
+    public sealed class ActivityTrace : IDisposable
     {
-        internal const string ProductVersionDefault = "1.0.0";
-        private bool _isDisposed;
-
         /// <summary>
         /// Constructs a new <see cref="ActivityTrace"/> object. If <paramref name="activitySourceName"/> is set, it provides the
         /// activity source name, otherwise the current assembly name is used as the activity source name.
@@ -40,6 +37,8 @@ namespace Apache.Arrow.Adbc.Tracing
         public ActivityTrace(string? activitySourceName = default, string? activitySourceVersion = default, string? traceParent = default)
         {
             activitySourceName ??= GetType().Assembly.GetName().Name!;
+            // It's okay to have a null version.
+            activitySourceVersion ??= FileVersionInfo.GetVersionInfo(GetType().Assembly.Location).ProductVersion; 
             if (string.IsNullOrWhiteSpace(activitySourceName))
             {
                 throw new ArgumentNullException(nameof(activitySourceName));
@@ -70,7 +69,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/>. If an exception is thrown by the delegate, the Activity
-        /// status is set to <see cref="ActivityStatusCode.Error"/> and an Activity <see cref="ActivityEvent"/> is added to the actitity
+        /// status is set to <see cref="ActivityStatusCode.Error"/> and an Activity <see cref="ActivityEvent"/> is added to the activity
         /// and finally the exception is rethrown.
         /// </remarks>
         public void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
@@ -100,7 +99,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
         public T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
@@ -129,7 +128,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
         public async Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
@@ -158,7 +157,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
         public async Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
@@ -188,7 +187,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
         public static async Task TraceActivityAsync(ActivitySource activitySource, Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
@@ -218,7 +217,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
-        /// and an Event <see cref="ActivityEvent"/> is added to the actitity and finally the exception is rethrown.
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
         public static async Task<T> TraceActivityAsync<T>(ActivitySource activitySource, Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
@@ -255,25 +254,10 @@ namespace Apache.Arrow.Adbc.Tracing
         private static void TraceException(Exception exception, Activity? activity) =>
             WriteTraceException(exception, activity);
 
-        /// <summary>
-        /// Disposes managed and unmanaged objects. If overridden, ensure to call this base method.
-        /// </summary>
-        /// <param name="disposing">An indicator of whether this method is being called from the <c>Dispose</c> method.</param>
-        private void Dispose(bool disposing)
-        {
-            if (!_isDisposed && disposing)
-            {
-                ActivitySource.Dispose();
-                _isDisposed = true;
-            }
-        }
-
         /// <inheritdoc />
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            ActivitySource.Dispose();
         }
 
         private static void WriteTraceException(Exception exception, Activity? activity)
@@ -284,11 +268,11 @@ namespace Apache.Arrow.Adbc.Tracing
 
         private static Activity? StartActivityInternal(string? activityName, ActivitySource activitySource, string? traceParent = default)
         {
-            string fullActivityName = GetActivityName(activityName);
+            string fullActivityName = GetActivityName(activityName, activitySource);
             return StartActivity(activitySource, fullActivityName, traceParent);
         }
 
-        private static string GetActivityName(string? activityName)
+        private static string GetActivityName(string? activityName, ActivitySource activitySource)
         {
             string tracingBaseName = string.Empty;
             if (!string.IsNullOrWhiteSpace(activityName))

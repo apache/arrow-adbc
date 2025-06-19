@@ -72,6 +72,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 { ArrowTypeId.Float, ConvertToFloat },
             };
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2Reader));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2Reader));
 
         public HiveServer2Reader(
             HiveServer2Statement statement,
@@ -86,6 +88,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         public override Schema Schema { get; }
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
@@ -104,7 +110,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     int columnCount = GetColumnCount(response.Results);
                     int rowCount = GetRowCount(response.Results, columnCount);
-                    activity?.AddEvent(SemConv.Messaging.Batch.Response, [new(SemConv.Db.Response.ReturnedRows, rowCount)]);
+                    activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, rowCount)]);
 
                     if ((_enableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                     {

@@ -49,6 +49,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // Add constants for PK and FK field names and prefixes
         private static readonly string[] PrimaryKeyFields = new[] { "COLUMN_NAME" };
         private static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" };
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2Statement));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2Statement));
         private const string PrimaryKeyPrefix = "PK_";
         private const string ForeignKeyPrefix = "FK_";
 
@@ -204,7 +206,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 finally
                 {
-                    activity?.AddTag(SemConv.Db.Response.ReturnedRows, affectedRows ?? -1);
+                    activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1);
                 }
             });
         }
@@ -297,12 +299,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new InvalidOperationException("Invalid session");
                 }
 
-                activity?.AddTag(SemConv.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
+                activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
                 SetStatementProperties(executeRequest);
                 TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
                 HiveServer2Connection.HandleThriftResponse(executeResponse.Status, activity);
-                activity?.AddTag(SemConv.Db.Response.OperationId, executeResponse.OperationHandle.OperationId.Guid, "N");
+                activity?.AddTag(SemanticConventions.Db.Response.OperationId, executeResponse.OperationHandle.OperationId.Guid, "N");
 
                 OperationHandle = executeResponse.OperationHandle;
 
@@ -351,6 +353,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // Keep the original Client property for internal use
         public TCLIService.IAsync Client => Connection.Client;
 
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
+
         private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0
             ? pollTimeMilliseconds
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than or equal to 0.");
@@ -373,7 +379,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
                 {
                     CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                    activity?.AddTag(SemConv.Db.Operation.OperationId, OperationHandle.OperationId.Guid, "N");
+                    activity?.AddTag(SemanticConventions.Db.Operation.OperationId, OperationHandle.OperationId.Guid, "N");
                     TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
                     TCloseOperationResp resp = Connection.Client.CloseOperation(request, cancellationToken).Result;
                     HiveServer2Connection.HandleThriftResponse(resp.Status, activity);

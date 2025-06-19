@@ -1440,7 +1440,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 foreach (AdbcInfoCode code in codes)
                 {
-                    string tagKey = SemConv.Db.Operation.Parameter(code.ToString().ToLowerInvariant());
+                    string tagKey = SemanticConventions.Db.Operation.Parameter(code.ToString().ToLowerInvariant());
                     Func<object?> tagValue = () => null;
                     switch (code)
                     {
@@ -1614,11 +1614,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             [TStatusCode.ERROR_STATUS] = (status, _) => ThrowErrorResponse(status),
             [TStatusCode.INVALID_HANDLE_STATUS] = (status, _) => ThrowErrorResponse(status),
             [TStatusCode.STILL_EXECUTING_STATUS] = (status, _) => ThrowErrorResponse(status, AdbcStatusCode.InvalidState),
-            [TStatusCode.SUCCESS_STATUS] = (status, activity) => activity?.AddTag(SemConv.Db.Response.StatusCode, status.StatusCode),
+            [TStatusCode.SUCCESS_STATUS] = (status, activity) => activity?.AddTag(SemanticConventions.Db.Response.StatusCode, status.StatusCode),
             [TStatusCode.SUCCESS_WITH_INFO_STATUS] = (status, activity) =>
             {
-                activity?.AddTag(SemConv.Db.Response.StatusCode, status.StatusCode);
-                activity?.AddTag(SemConv.Db.Response.InfoMessages, string.Join(Environment.NewLine, status.InfoMessages));
+                activity?.AddTag(SemanticConventions.Db.Response.StatusCode, status.StatusCode);
+                activity?.AddTag(SemanticConventions.Db.Response.InfoMessages, string.Join(Environment.NewLine, status.InfoMessages));
             },
         };
 

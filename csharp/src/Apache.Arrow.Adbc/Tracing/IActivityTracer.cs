@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Diagnostics;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
@@ -23,7 +24,7 @@ namespace Apache.Arrow.Adbc.Tracing
     /// Provides a base implementation for a tracing source. If drivers want to enable tracing,
     /// they need to add a trace listener (e.g., <see cref="FileExporter"/>).
     /// </summary>
-    public interface IActivityTracer : IDisposable
+    public interface IActivityTracer
     {
         /// <summary>
         /// Gets the <see cref="ActivityTrace"/>
@@ -34,5 +35,18 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Gets the value of the trace parent.
         /// </summary>
         string? TraceParent { get; }
+
+        /// <summary>
+        /// Gets the product version from the file version of the current assembly.
+        /// </summary>
+        /// <returns></returns>
+        string AssemblyVersion { get; }
+
+        /// <summary>
+        /// Gets the (simple) assembly name for the current (virtual) object.
+        /// </summary>
+        /// <returns></returns>
+        string AssemblyName { get; }
+
     }
 }

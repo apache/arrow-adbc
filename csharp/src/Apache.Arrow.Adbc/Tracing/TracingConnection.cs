@@ -22,19 +22,21 @@ namespace Apache.Arrow.Adbc.Tracing
 {
     public abstract class TracingConnection : AdbcConnection, IActivityTracer
     {
-        private const string SourceNameDefault = "apache.arrow.adbc";
         private readonly ActivityTrace _trace;
-        private bool _isDisposed;
 
         protected TracingConnection(IReadOnlyDictionary<string, string> properties)
         {
             properties.TryGetValue(AdbcOptions.Telemetry.TraceParent, out string? traceParent);
-            _trace = new ActivityTrace(this.GetAssemblyName(), this.GetAssemblyVersion(), traceParent);
+            _trace = new ActivityTrace(this.AssemblyName, this.AssemblyVersion, traceParent);
         }
 
         string? IActivityTracer.TraceParent => _trace.TraceParent;
 
         ActivityTrace IActivityTracer.Trace => _trace;
+
+        public abstract string AssemblyVersion { get; }
+
+        public abstract string AssemblyName { get; }
 
         protected void SetTraceParent(string? traceParent)
         {
@@ -43,9 +45,9 @@ namespace Apache.Arrow.Adbc.Tracing
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_isDisposed && disposing)
+            if (disposing)
             {
-                _isDisposed = true;
+                _trace.Dispose();
             }
         }
 

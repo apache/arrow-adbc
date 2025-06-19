@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+using System;
+
 namespace Apache.Arrow.Adbc.Tracing
 {
     public abstract class TracingStatement : AdbcStatement, IActivityTracer
@@ -29,5 +31,20 @@ namespace Apache.Arrow.Adbc.Tracing
         ActivityTrace IActivityTracer.Trace => _trace;
 
         string? IActivityTracer.TraceParent => _trace.TraceParent;
+
+        public abstract string AssemblyVersion { get; }
+
+        public abstract string AssemblyName { get; }
+
+        protected virtual void Dispose(bool disposing)
+        {
+        }
+
+        public override void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

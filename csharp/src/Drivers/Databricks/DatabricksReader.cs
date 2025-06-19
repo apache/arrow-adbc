@@ -28,6 +28,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal sealed class DatabricksReader : BaseDatabricksReader
     {
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksReader));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksReader));
+
         List<TSparkArrowBatch>? batches;
         int index;
         IArrowReader? reader;
@@ -47,6 +50,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
+
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             return await this.TraceActivity(async activity =>
@@ -60,7 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
                         if (next != null)
                         {
-                            activity?.AddEvent(SemConv.Messaging.Batch.Response, [new(SemConv.Db.Response.ReturnedRows, next.Length)]);
+                            activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, next.Length)]);
                             return next;
                         }
                         this.reader = null;
@@ -88,7 +95,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     this.batches = response.Results.ArrowBatches;
                     for (int i = 0; i < this.batches.Count; i++)
                     {
-                        activity?.AddTag(SemConv.Db.Response.ReturnedRows, this.batches[i].RowCount);
+                        activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, this.batches[i].RowCount);
                     }
 
                     this.hasNoMoreRows = !response.HasMoreRows;

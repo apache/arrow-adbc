@@ -17,7 +17,7 @@
 
 namespace Apache.Arrow.Adbc.Tracing
 {
-    public static class SemConv
+    public static class SemanticConventions
     {
         public const string Namespace = "db.namespace";
 
@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 public static string Parameter(string name)
                 {
-                    return "db.query.parameter" + name;
+                    return $"db.query.parameter.{name}";
                 }
                 public const string Summary = "db.query.summary";
                 public const string Text = "db.query.text";
