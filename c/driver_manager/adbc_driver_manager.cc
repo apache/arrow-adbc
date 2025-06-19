@@ -19,13 +19,15 @@
 #pragma comment(lib, "advapi32.lib")  // for registry stuff
 #include <windows.h>                  // Must come first
 
+#ifndef NTDDI_VERSION
+#define NTDDI_VERSION 0x0A00000C  // For SHGetKnownFolderPath in ShlObj_core.h in ShlObj.h
+#endif
+
 #include <KnownFolders.h>
 #include <ShlObj.h>
 #include <libloaderapi.h>
 #include <string.h>  // _wcsnicmp
 #include <strsafe.h>
-
-#include <codecvt>
 #include <locale>
 #else
 #include <dlfcn.h>
