@@ -131,8 +131,10 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
   endif()
 
   # Go gcflags for disabling optimizations and inlining if debug
-  separate_arguments(GO_BUILD_FLAGS NATIVE_COMMAND
-                     "${GO_BUILD_FLAGS} $<$<CONFIG:DEBUG>:-gcflags=\"-N -l\">")
+  separate_arguments(GO_BUILD_FLAGS
+                     NATIVE_COMMAND
+                     "${GO_BUILD_FLAGS} -buildvcs=true $<$<CONFIG:DEBUG>:-gcflags=\"-N -l\">"
+  )
 
   # if we're building debug mode then change the default CGO_CFLAGS and CGO_CXXFLAGS from "-g O2" to "-g3"
   set(GO_FLAGS "$<$<CONFIG:Debug>:-g3>")
@@ -170,7 +172,9 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
       separate_arguments(ARG_SHARED_LINK_FLAGS NATIVE_COMMAND "${ARG_SHARED_LINK_FLAGS}")
     endif()
 
-    set(GO_LDFLAGS "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-a;${EXTLDFLAGS}\"")
+    set(GO_LDFLAGS
+        "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-X;github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=v${ADBC_VERSION};-a;${EXTLDFLAGS}\""
+    )
 
     set(LIBOUT_SHARED "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME_SHARED}")
 
