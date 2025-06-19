@@ -20,8 +20,8 @@
 #include <windows.h>                  // Must come first
 
 #include <KnownFolders.h>
+#include <ShlObj.h>
 #include <libloaderapi.h>
-#include <shlobj_core.h>
 #include <string.h>  // _wcsnicmp
 #include <strsafe.h>
 
