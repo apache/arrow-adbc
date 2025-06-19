@@ -303,6 +303,7 @@ jobs:
           - almalinux-8
           - almalinux-9
           - debian-bookworm
+          - debian-bookworm-arm64
           - ubuntu-jammy
           - ubuntu-noble
     steps:

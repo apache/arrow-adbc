@@ -130,7 +130,7 @@ class ADBCPackageTask < PackageTask
   def apt_targets_default
     [
       "debian-bookworm",
-      # "debian-bookworm-arm64",
+      "debian-bookworm-arm64",
       "ubuntu-jammy",
       # "ubuntu-jammy-arm64",
       "ubuntu-noble",
