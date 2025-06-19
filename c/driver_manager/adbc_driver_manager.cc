@@ -17,6 +17,7 @@
 
 #if defined(_WIN32)
 #pragma comment(lib, "advapi32.lib")  // for registry stuff
+#pragma comment(lib, "shell32")       // for SHGetKnownFolderPath
 #include <windows.h>                  // Must come first
 
 #ifndef NTDDI_VERSION
