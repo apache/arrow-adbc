@@ -1,6 +1,7 @@
 *.json
 *.Rproj
 *.Rd
+.codespell-ignore
 c/subprojects/fmt.wrap
 c/subprojects/gtest.wrap
 c/subprojects/nanoarrow.wrap
