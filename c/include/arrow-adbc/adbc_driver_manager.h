@@ -86,7 +86,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 ///   library.
 /// - For each path to be searched, it will first look for <path>/<driver_name>.toml. If
 ///   that file exists, it will attempt to parse the manifest and load the driver
-///   specified within it. Erroring if this fails.
+///   specified within it, erroring if this fails.
 /// - If the manifest file does not exist, it will then look for
 /// <path>/<driver_name>.<extension>
 ///   where <extension> is one of the following: `.so`, `.dll`, `.dylib`. If it can load
