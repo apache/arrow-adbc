@@ -385,6 +385,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             await base.HandleOpenSessionResponse(session);
             if (session != null)
             {
+                var version = session.ServerProtocolVersion;
+                if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version)) {
+                    throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
+                }
+                _enablePKFK = FeatureVersionNegotiator.SupportsPKFK(version);
                 _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
                 if (session.__isset.initialNamespace)
                 {
@@ -392,10 +397,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName))
                 {
+                    // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
                     // server version is too old. Explicitly set the schema using queries
                     await SetSchema(_defaultNamespace.SchemaName);
                 }
-                // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
             }
         }
 
