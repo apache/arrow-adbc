@@ -274,23 +274,11 @@ namespace Apache.Arrow.Adbc.Tracing
 
         private static string GetActivityName(string? activityName, ActivitySource activitySource)
         {
-            string tracingBaseName = string.Empty;
-            if (!string.IsNullOrWhiteSpace(activityName))
-            {
-                StackTrace stackTrace = new();
-                StackFrame? frame = stackTrace.GetFrames().FirstOrDefault(f => f.GetMethod()?.Name == activityName);
-                tracingBaseName = frame?.GetMethod()?.DeclaringType?.FullName ?? string.Empty;
-                if (tracingBaseName != string.Empty)
-                {
-                    tracingBaseName += ".";
-                }
-            }
-            else
+            if (string.IsNullOrWhiteSpace(activityName))
             {
                 activityName = "[unknown-member]";
             }
-            string fullActivityName = tracingBaseName + activityName;
-            return fullActivityName;
+            return activityName!;
         }
 
         /// <summary>
