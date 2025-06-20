@@ -85,6 +85,9 @@ The following parameters can be used to configure the driver behavior. The param
 **adbc.bigquery.include_public_project_id**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Include the `bigquery-public-data` project ID with the list of project IDs.
 
+**adbc.bigquery.large_results_dataset**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the dataset ID to use for large results. The dataset needs to be in the same region as the data being queried. If no value is specified, the driver will attempt to use or create `_bqodbc_temp_tables`. A randomly generated table name will be used for the DestinationTable.
+
 **adbc.bigquery.large_results_destination_table**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [DestinationTable](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_DestinationTable) value of the QueryOptions if configured. Expects the format to be `{projectId}.{datasetId}.{tableId}` to set the corresponding values in the [TableReference](https://github.com/googleapis/google-api-dotnet-client/blob/6c415c73788b848711e47c6dd33c2f93c76faf97/Src/Generated/Google.Apis.Bigquery.v2/Google.Apis.Bigquery.v2.cs#L9348) class.
 
@@ -145,3 +148,15 @@ connection.UpdateToken = () => Task.Run(() =>
 ```
 
 In the sample above, when a new token is needed, the delegate is invoked and updates the `adbc.bigquery.access_token` parameter on the connection object.
+
+## Large Results
+
+If a result set will contain large results, the `adbc.bigquery.allow_large_results` parameter should be set to `"true"`. If this value is set, a destination must be specified.
+The caller can either explicitly specify the fully qualified name of the destination table using the `adbc.bigquery.large_results_destination_table` value, or they can specify
+a dataset using the `adbc.bigquery.large_results_dataset` parameter.
+
+Behavior:
+- If a destination table is explicitly set, the driver will use that value.
+- If only a dataset value is set, the driver will attempt to retrieve the dataset. If the dataset does not exist, the driver will attempt to
+  create it. A randomly generated name will be used for the table name.
+- If a destination table and a dataset are not specified, the driver will attempt to use or create the `_bqodbc_temp_tables` dataset, and a randomly generated table name will be used.

@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -24,9 +25,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
+using Google;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Bigquery.v2;
 using Google.Apis.Bigquery.v2.Data;
+using Google.Apis.Services;
 using Google.Cloud.BigQuery.Storage.V1;
 using Google.Cloud.BigQuery.V2;
 using TableFieldSchema = Google.Apis.Bigquery.v2.Data.TableFieldSchema;
@@ -362,48 +366,102 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             if (Options == null || Options.Count == 0)
                 return options;
 
+            string largeResultDatasetId = BigQueryConstants.DefaultLargeDatasetId;
+
             foreach (KeyValuePair<string, string> keyValuePair in Options)
             {
-                if (keyValuePair.Key == BigQueryParameters.AllowLargeResults)
+                switch (keyValuePair.Key)
                 {
-                    options.AllowLargeResults = true ? keyValuePair.Value.ToLower().Equals("true") : false;
-                }
-                if (keyValuePair.Key == BigQueryParameters.LargeResultsDestinationTable)
-                {
-                    string destinationTable = keyValuePair.Value;
+                    case BigQueryParameters.AllowLargeResults:
+                        options.AllowLargeResults = true ? keyValuePair.Value.ToLower().Equals("true") : false;
+                        break;
+                    case BigQueryParameters.LargeResultsDataset:
+                        largeResultDatasetId = keyValuePair.Value;
+                        break;
+                    case BigQueryParameters.LargeResultsDestinationTable:
+                        string destinationTable = keyValuePair.Value;
 
-                    if (!destinationTable.Contains("."))
-                        throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} is invalid");
+                        if (!destinationTable.Contains("."))
+                            throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} is invalid");
 
-                    string projectId = string.Empty;
-                    string datasetId = string.Empty;
-                    string tableId = string.Empty;
+                        string projectId = string.Empty;
+                        string datasetId = string.Empty;
+                        string tableId = string.Empty;
 
-                    string[] segments = destinationTable.Split('.');
+                        string[] segments = destinationTable.Split('.');
 
-                    if (segments.Length != 3)
-                        throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} cannot be parsed");
+                        if (segments.Length != 3)
+                            throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} cannot be parsed");
 
-                    projectId = segments[0];
-                    datasetId = segments[1];
-                    tableId = segments[2];
+                        projectId = segments[0];
+                        datasetId = segments[1];
+                        tableId = segments[2];
 
-                    if (string.IsNullOrEmpty(projectId.Trim()) || string.IsNullOrEmpty(datasetId.Trim()) || string.IsNullOrEmpty(tableId.Trim()))
-                        throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} contains invalid values");
+                        if (string.IsNullOrEmpty(projectId.Trim()) || string.IsNullOrEmpty(datasetId.Trim()) || string.IsNullOrEmpty(tableId.Trim()))
+                            throw new InvalidOperationException($"{BigQueryParameters.LargeResultsDestinationTable} contains invalid values");
 
-                    options.DestinationTable = new TableReference()
-                    {
-                        ProjectId = projectId,
-                        DatasetId = datasetId,
-                        TableId = tableId
-                    };
-                }
-                if (keyValuePair.Key == BigQueryParameters.UseLegacySQL)
-                {
-                    options.UseLegacySql = true ? keyValuePair.Value.ToLower().Equals("true") : false;
+                        options.DestinationTable = new TableReference()
+                        {
+                            ProjectId = projectId,
+                            DatasetId = datasetId,
+                            TableId = tableId
+                        };
+                        break;
+                    case BigQueryParameters.UseLegacySQL:
+                        options.UseLegacySql = true ? keyValuePair.Value.ToLower().Equals("true") : false;
+                        break;
                 }
             }
+
+            if (options.AllowLargeResults == true && options.DestinationTable == null)
+            {
+                options.DestinationTable = TryGetDefaultLargeDestinationTableReference(largeResultDatasetId);
+            }
+
             return options;
+        }
+
+        private TableReference TryGetDefaultLargeDestinationTableReference(string datasetId)
+        {
+            BigQueryDataset? dataset = null;
+
+            try
+            {
+                dataset = this.Client.GetDataset(datasetId);
+            }
+            catch (GoogleApiException gaEx)
+            {
+                if (gaEx.HttpStatusCode != System.Net.HttpStatusCode.NotFound)
+                {
+                    throw new AdbcException($"Failure trying to retrieve dataset {datasetId}", gaEx);
+                }
+            }
+
+            if (dataset == null)
+            {
+                try
+                {
+                    dataset = this.Client.CreateDataset(datasetId);
+                }
+                catch (Exception ex)
+                {
+                    throw new AdbcException($"Could not create dataset {datasetId}", ex);
+                }
+            }
+
+            if (dataset == null)
+            {
+                throw new AdbcException($"Could not find dataset {datasetId}", AdbcStatusCode.NotFound);
+            }
+            else
+            {
+                return  new TableReference()
+                {
+                    ProjectId = this.Client.ProjectId,
+                    DatasetId = datasetId,
+                    TableId = "lg_" + Guid.NewGuid().ToString().Replace("-", "")
+                };
+            }
         }
 
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);

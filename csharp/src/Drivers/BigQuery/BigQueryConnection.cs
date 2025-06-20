@@ -1163,6 +1163,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.AllowLargeResults,
                 BigQueryParameters.UseLegacySQL,
                 BigQueryParameters.LargeDecimalsAsString,
+                BigQueryParameters.LargeResultsDataset,
                 BigQueryParameters.LargeResultsDestinationTable,
                 BigQueryParameters.GetQueryResultsOptionsTimeout,
                 BigQueryParameters.MaxFetchConcurrency,

@@ -32,6 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string AuthenticationType = "adbc.bigquery.auth_type";
         public const string JsonCredential = "adbc.bigquery.auth_json_credential";
         public const string AllowLargeResults = "adbc.bigquery.allow_large_results";
+        public const string LargeResultsDataset = "adbc.bigquery.large_results_dataset";
         public const string LargeResultsDestinationTable = "adbc.bigquery.large_results_destination_table";
         public const string UseLegacySQL = "adbc.bigquery.use_legacy_sql";
         public const string LargeDecimalsAsString = "adbc.bigquery.large_decimals_as_string";
@@ -68,5 +69,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         // default value per https://pkg.go.dev/cloud.google.com/go/bigquery#section-readme
         public const string DetectProjectId = "*detect-project-id*";
+
+        // What ODBC uses
+        public const string DefaultLargeDatasetId = "_bqodbc_temp_tables";
     }
 }
