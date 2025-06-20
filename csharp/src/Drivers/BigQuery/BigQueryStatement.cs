@@ -415,13 +415,18 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (options.AllowLargeResults == true && options.DestinationTable == null)
             {
-                options.DestinationTable = TryGetDefaultLargeDestinationTableReference(largeResultDatasetId);
+                options.DestinationTable = TryGetLargeDestinationTableReference(largeResultDatasetId);
             }
 
             return options;
         }
 
-        private TableReference TryGetDefaultLargeDestinationTableReference(string datasetId)
+        /// <summary>
+        /// Attempts to retrieve or create the specified dataset.
+        /// </summary>
+        /// <param name="datasetId">The name of the dataset.</param>
+        /// <returns>A <see cref="TableReference"/> to a randomly generated table name in the specified dataset.</returns>
+        private TableReference TryGetLargeDestinationTableReference(string datasetId)
         {
             BigQueryDataset? dataset = null;
 
