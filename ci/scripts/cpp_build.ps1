@@ -30,7 +30,7 @@ $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq
 $BuildDriverSnowflake = ($BuildAll -and (-not ($env:BUILD_DRIVER_SNOWFLAKE -eq "0"))) -or ($env:BUILD_DRIVER_SNOWFLAKE -eq "1")
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 
-$AdbcDriverManagerUserConfigTest = ($env:BUILD_DRIVER_MANAGER_USER_CONFIG_TEST -eq "1")
+$BuildDriverManagerUserConfigTest = ($env:BUILD_DRIVER_MANAGER_USER_CONFIG_TEST -eq "1")
 
 function Build-Subproject {
     New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
@@ -51,7 +51,7 @@ function Build-Subproject {
       -DCMAKE_BUILD_TYPE=Release `
       -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `
       -DCMAKE_VERBOSE_MAKEFILE=ON `
-      -DADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL="$($AdbcDriverManagerUserConfigTest)"
+      -DADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL="$($BuildDriverManagerUserConfigTest)"
     if (-not $?) { exit 1 }
 
     cmake --build . --target install -j
