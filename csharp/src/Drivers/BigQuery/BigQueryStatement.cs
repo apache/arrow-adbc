@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -28,9 +27,7 @@ using Apache.Arrow.Types;
 using Google;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
-using Google.Apis.Bigquery.v2;
 using Google.Apis.Bigquery.v2.Data;
-using Google.Apis.Services;
 using Google.Cloud.BigQuery.Storage.V1;
 using Google.Cloud.BigQuery.V2;
 using TableFieldSchema = Google.Apis.Bigquery.v2.Data.TableFieldSchema;
@@ -446,7 +443,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 try
                 {
-                    dataset = this.Client.CreateDataset(datasetId);
+                    DatasetReference reference = this.Client.GetDatasetReference(datasetId);
+                    BigQueryDataset bigQueryDataset = new BigQueryDataset(this.Client, new Dataset()
+                    {
+                        DatasetReference = reference,
+                        DefaultTableExpirationMs = (long)TimeSpan.FromDays(1).TotalMilliseconds,
+                        Labels = new Dictionary<string,string>()
+                        {
+                            // lower case, no spaces or periods per https://cloud.google.com/bigquery/docs/labels-intro
+                            { "created_by", this.bigQueryConnection.DriverName.ToLower().Replace(" ","_") + "_v_" + this.bigQueryConnection.DriverVersion.Replace(".","_") }
+                        }
+                    });
+
+                    dataset = this.Client.CreateDataset(datasetId, bigQueryDataset.Resource);
                 }
                 catch (Exception ex)
                 {
@@ -460,7 +469,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
             else
             {
-                return  new TableReference()
+                return new TableReference()
                 {
                     ProjectId = this.Client.ProjectId,
                     DatasetId = datasetId,

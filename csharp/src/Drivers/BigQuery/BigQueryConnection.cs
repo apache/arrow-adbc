@@ -42,9 +42,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         readonly HttpClient httpClient;
         bool includePublicProjectIds = false;
         const string infoDriverName = "ADBC BigQuery Driver";
-        const string infoDriverVersion = "1.0.1";
+        readonly string? infoDriverVersion;
         const string infoVendorName = "BigQuery";
-        const string infoDriverArrowVersion = "19.0.0";
+        readonly string? infoDriverArrowVersion;
         const string publicProjectId = "bigquery-public-data";
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
@@ -82,12 +82,30 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 RetryDelayMs = delay;
             }
+
+            this.infoDriverArrowVersion = typeof(IArrowArray).Assembly.GetName().Version?.ToString();
+            this.infoDriverVersion = this.GetType().Assembly.GetName().Version?.ToString();
         }
 
         /// <summary>
         /// The function to call when updating the token.
         /// </summary>
         public Func<Task>? UpdateToken { get; set; }
+
+        internal string DriverVersion
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(this.infoDriverVersion))
+                {
+                    return "(unknown or development build)";
+                }
+
+                return this.infoDriverVersion!;
+            }
+        }
+
+        internal string DriverName => infoDriverName;
 
         internal BigQueryClient? Client { get; private set; }
 
