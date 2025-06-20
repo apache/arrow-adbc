@@ -254,10 +254,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case ApacheParameters.ForeignTableName:
                     this.ForeignTableName = value;
                     break;
-                case ApacheParameters.EscapeUnderscore:
-                    if (ApacheUtility.BooleanIsValid(key, value, out bool escapeUnderscore))
+                case ApacheParameters.EscapePatternWildcards:
+                    if (ApacheUtility.BooleanIsValid(key, value, out bool escapePatternWildcards))
                     {
-                        this.EscapeUnderscore = escapeUnderscore;
+                        this.EscapePatternWildcards = escapePatternWildcards;
                     }
                     break;
                 default:
@@ -317,7 +317,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal string? ForeignCatalogName { get; set; }
         protected internal string? ForeignSchemaName { get; set; }
         protected internal string? ForeignTableName { get; set; }
-        protected internal bool EscapeUnderscore { get; set; } = false;
+        protected internal bool EscapePatternWildcards { get; set; } = false;
         protected internal TSparkDirectResults? _directResults { get; set; }
 
         public HiveServer2Connection Connection { get; private set; }
@@ -335,11 +335,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
 
-        private string? EscapeUnderscoreInName(string? name)
+        private string? EscapePatternWildcardsInName(string? name)
         {
-            if (!EscapeUnderscore || name == null)
+            if (!EscapePatternWildcards || name == null)
                 return name;
-            return name.Replace("_", "\\_");
+            // Escape both _ and %
+            return name.Replace("_", "\\_").Replace("%", "\\%");
         }
 
         public override void Dispose()
@@ -455,8 +456,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
         {
             TGetSchemasResp resp = await Connection.GetSchemasAsync(
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
+                EscapePatternWildcardsInName(CatalogName),
+                EscapePatternWildcardsInName(SchemaName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
@@ -467,9 +468,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
             TGetTablesResp resp = await Connection.GetTablesAsync(
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
-                EscapeUnderscoreInName(TableName),
+                EscapePatternWildcardsInName(CatalogName),
+                EscapePatternWildcardsInName(SchemaName),
+                EscapePatternWildcardsInName(TableName),
                 tableTypesList,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
@@ -480,10 +481,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
         {
             TGetColumnsResp resp = await Connection.GetColumnsAsync(
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
-                EscapeUnderscoreInName(TableName),
-                EscapeUnderscoreInName(ColumnName),
+                EscapePatternWildcardsInName(CatalogName),
+                EscapePatternWildcardsInName(SchemaName),
+                EscapePatternWildcardsInName(TableName),
+                EscapePatternWildcardsInName(ColumnName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
