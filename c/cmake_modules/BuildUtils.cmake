@@ -199,7 +199,7 @@ function(ADD_ARROW_LIB LIB_NAME)
 
   if(BUILD_SHARED)
     add_library(${LIB_NAME}_shared SHARED ${LIB_DEPS})
-    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_11)
+    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_17)
     set_property(TARGET ${LIB_NAME}_shared PROPERTY CXX_STANDARD_REQUIRED ON)
     adbc_configure_target(${LIB_NAME}_shared)
     if(EXTRA_DEPS)

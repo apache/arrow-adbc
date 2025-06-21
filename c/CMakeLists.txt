@@ -18,14 +18,15 @@
 cmake_minimum_required(VERSION 3.18)
 get_filename_component(REPOSITORY_ROOT ".." ABSOLUTE)
 list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
+include(AdbcVersion)
 project(adbc
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include(AdbcDefines)
+include(BuildUtils)
 
 include(CTest)
 

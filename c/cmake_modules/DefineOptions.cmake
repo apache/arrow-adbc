@@ -139,6 +139,12 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
                        "shared"
                        "static")
 
+  define_option(ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL
+                "Build driver manager manifest user-level tests" OFF)
+
+  define_option(ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL
+                "Build driver manager manifest system-level tests" OFF)
+
   #----------------------------------------------------------------------
   set_option_category("Lint")
 

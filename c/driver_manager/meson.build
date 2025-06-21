@@ -17,16 +17,18 @@
 
 if host_machine.system() != 'windows'
     dl_dep = dependency('dl')
+    deps = [dl_dep]
 else
     dl_dep = declare_dependency()
+    deps = [dependency('uuid'), dependency('shell32'), dependency('advapi32')]
 endif
 
 adbc_driver_manager_lib = library(
     'adbc_driver_manager',
     'adbc_driver_manager.cc',
-    include_directories: [include_dir],
+    include_directories: [include_dir, vendor_dir],
     install: true,
-    dependencies: [dl_dep],
+    dependencies: deps,
 )
 
 pkg.generate(

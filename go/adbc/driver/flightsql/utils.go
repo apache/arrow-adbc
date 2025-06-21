@@ -19,7 +19,9 @@ package flightsql
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -141,7 +143,7 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 }
 
 func checkContext(maybeErr error, ctx context.Context) error {
-	if maybeErr != nil {
+	if maybeErr != nil && !errors.Is(maybeErr, io.EOF) {
 		return maybeErr
 	} else if ctx.Err() == context.Canceled {
 		return adbc.Error{Msg: ctx.Err().Error(), Code: adbc.StatusCancelled}

@@ -25,7 +25,7 @@ package main
 // won't be accessible to the driver manager
 
 // #cgo CFLAGS: -DADBC_EXPORTING
-// #cgo CXXFLAGS: -std=c++11 -DADBC_EXPORTING
+// #cgo CXXFLAGS: -std=c++17 -DADBC_EXPORTING
 // #include "../../drivermgr/arrow-adbc/adbc.h"
 // #include "utils.h"
 // #include <errno.h>

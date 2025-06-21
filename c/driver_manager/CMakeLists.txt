@@ -15,6 +15,34 @@
 # specific language governing permissions and limitations
 # under the License.
 
+set(ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS ${CMAKE_DL_LIBS})
+set(ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS ${CMAKE_DL_LIBS})
+# std::filesystem with old g++/clang++ require libstdc++fs/libc++fs.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9")
+    list(APPEND ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS stdc++fs)
+    list(APPEND ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS stdc++fs)
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8")
+    list(APPEND ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS c++fs)
+    list(APPEND ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS c++fs)
+  endif()
+endif()
+
+if(WIN32)
+  list(APPEND
+       ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS
+       advapi32
+       uuid
+       shell32)
+  list(APPEND
+       ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS
+       advapi32
+       uuid
+       shell32)
+endif()
+
 add_arrow_lib(adbc_driver_manager
               SOURCES
               adbc_driver_manager.cc
@@ -25,9 +53,9 @@ add_arrow_lib(adbc_driver_manager
               PKG_CONFIG_NAME
               adbc-driver-manager
               SHARED_LINK_LIBS
-              ${CMAKE_DL_LIBS}
+              ${ADBC_DRIVER_MANAGER_SHARED_LINK_LIBS}
               STATIC_LINK_LIBS
-              ${CMAKE_DL_LIBS}
+              ${ADBC_DRIVER_MANAGER_STATIC_LINK_LIBS}
               SHARED_LINK_FLAGS
               ${ADBC_LINK_FLAGS})
 
@@ -62,6 +90,20 @@ if(ADBC_BUILD_TESTS)
                 adbc_validation
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
+
+  if(ADBC_DRIVER_SQLITE)
+    target_compile_definitions(adbc-driver-manager-test
+                               PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/libadbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
+    )
+  endif()
+  if(ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL)
+    target_compile_definitions(adbc-driver-manager-test
+                               PRIVATE ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL=1)
+  endif()
+  if(ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL)
+    target_compile_definitions(adbc-driver-manager-test
+                               PRIVATE ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL=1)
+  endif()
   target_include_directories(adbc-driver-manager-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)

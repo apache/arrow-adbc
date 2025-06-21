@@ -907,7 +907,7 @@ jobs:
         shell: cmd
         run: |
           where python.exe
-          CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+          CALL "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
           pushd adbc
           set SETUPTOOLS_SCM_PRETEND_VERSION=%VERSION%
           .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build

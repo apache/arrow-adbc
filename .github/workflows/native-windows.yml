@@ -97,6 +97,7 @@ jobs:
           BUILD_DRIVER_BIGQUERY: "0"
           BUILD_DRIVER_FLIGHTSQL: "0"
           BUILD_DRIVER_SNOWFLAKE: "0"
+          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
@@ -149,6 +150,7 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
         run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Build Driver PostgreSQL
         env:
@@ -164,6 +166,7 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
         run: .\ci\scripts\cpp_test.ps1 $pwd\build
       - name: Test Driver SQLite
         env:
