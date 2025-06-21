@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -25,6 +24,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
@@ -35,6 +35,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     internal class HiveServer2HttpConnection : HiveServer2ExtendedConnection
     {
         private const string BasicAuthenticationScheme = "Basic";
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2HttpConnection));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2HttpConnection));
 
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
@@ -199,5 +201,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Http;
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

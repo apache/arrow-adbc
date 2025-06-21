@@ -209,6 +209,14 @@ namespace Apache.Arrow.Adbc
             public const string CreateAppend = "adbc.ingest.mode.create_append";
         }
 
+        public static class Telemetry
+        {
+            /// <summary>
+            /// EXPERIMENTAL. Sets the trace parent on OpenTelemetry traces
+            /// </summary>
+            public const string TraceParent = "adbc.telemetry.trace_parent";
+        }
+
         public static string GetEnabled(bool value) => value ? Enabled : Disabled;
         public static bool GetEnabled(string value)
         {

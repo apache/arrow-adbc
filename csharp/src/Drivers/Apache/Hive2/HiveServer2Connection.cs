@@ -26,6 +26,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -34,7 +35,7 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal abstract class HiveServer2Connection : AdbcConnection
+    internal abstract class HiveServer2Connection : TracingConnection
     {
         internal const bool InfoVendorSql = true;
         internal const long BatchSizeDefault = 50000;
@@ -44,6 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private TCLIService.IAsync? _client;
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
+        private bool _isDisposed;
 
         readonly AdbcInfoCode[] infoSupportedCodes = [
             AdbcInfoCode.DriverName,
@@ -269,8 +271,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         internal HiveServer2Connection(IReadOnlyDictionary<string, string> properties)
+            : base(properties)
         {
             Properties = properties;
+
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -302,42 +306,40 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
-            try
+            await this.TraceActivity(async activity =>
             {
-                TTransport transport = CreateTransport();
-                TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
-                _transport = protocol.Transport;
-                _client = CreateTCLIServiceClient(protocol);
-                TOpenSessionReq request = CreateSessionRequest();
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
+                try
+                {
+                    TTransport transport = CreateTransport();
+                    TProtocol protocol = await CreateProtocolAsync(transport, cancellationToken);
+                    _transport = protocol.Transport;
+                    _client = CreateTCLIServiceClient(protocol);
+                    TOpenSessionReq request = CreateSessionRequest();
 
-                TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
-                await HandleOpenSessionResponse(session);
-            }
-            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
-            {
-                throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                // Handle other exceptions if necessary
-                throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
-            }
+                    TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
+                    await HandleOpenSessionResponse(session, activity);
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    // Handle other exceptions if necessary
+                    throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+                }
+            });
         }
 
-        protected virtual Task HandleOpenSessionResponse(TOpenSessionResp? session)
+        protected virtual Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
         {
             // Explicitly check the session status
             if (session == null)
             {
                 throw new HiveServer2Exception("Unable to open session. Unknown error.");
             }
-            else if (session.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(session.Status.ErrorMessage)
-                    .SetNativeError(session.Status.ErrorCode)
-                    .SetSqlState(session.Status.SqlState);
-            }
+            HandleThriftResponse(session.Status, activity);
 
             SessionHandle = session.SessionHandle;
             ServerProtocolVersion = session.ServerProtocolVersion;
@@ -367,286 +369,248 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal abstract SchemaParser SchemaParser { get; }
 
-        internal abstract IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) where T : HiveServer2Statement;
+        internal abstract IArrowArrayStream NewReader<T>(
+            T statement,
+            Schema schema,
+            TGetResultSetMetadataResp? metadataResp = null) where T : HiveServer2Statement;
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
-            if (SessionHandle == null)
+            return this.TraceActivity(_ =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
-
-            Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                if (GetObjectsPatternsRequireLowerCase)
+                if (SessionHandle == null)
                 {
-                    catalogPattern = catalogPattern?.ToLower();
-                    dbSchemaPattern = dbSchemaPattern?.ToLower();
-                    tableNamePattern = tableNamePattern?.ToLower();
-                    columnNamePattern = columnNamePattern?.ToLower();
+                    throw new InvalidOperationException("Invalid session");
                 }
-                if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
+
+                Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogMap = new Dictionary<string, Dictionary<string, Dictionary<string, TableInfo>>>();
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                try
                 {
-                    TGetCatalogsReq getCatalogsReq = new TGetCatalogsReq(SessionHandle);
-                    if (AreResultsAvailableDirectly)
+                    if (GetObjectsPatternsRequireLowerCase)
                     {
-                        SetDirectResults(getCatalogsReq);
+                        catalogPattern = catalogPattern?.ToLower();
+                        dbSchemaPattern = dbSchemaPattern?.ToLower();
+                        tableNamePattern = tableNamePattern?.ToLower();
+                        columnNamePattern = columnNamePattern?.ToLower();
                     }
-
-                    TGetCatalogsResp getCatalogsResp = Client.GetCatalogs(getCatalogsReq, cancellationToken).Result;
-
-                    if (getCatalogsResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                    if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Catalogs)
                     {
-                        throw new Exception(getCatalogsResp.Status.ErrorMessage);
-                    }
-                    var catalogsMetadata = GetResultSetMetadataAsync(getCatalogsResp, cancellationToken).Result;
-                    IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
+                        TGetCatalogsResp getCatalogsResp = GetCatalogsAsync(cancellationToken).Result;
 
-                    string catalogRegexp = PatternToRegEx(catalogPattern);
-                    TRowSet rowSet = GetRowSetAsync(getCatalogsResp, cancellationToken).Result;
-                    IReadOnlyList<string> list = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
-                    for (int i = 0; i < list.Count; i++)
-                    {
-                        string col = list[i];
-                        string catalog = col;
+                        var catalogsMetadata = GetResultSetMetadataAsync(getCatalogsResp, cancellationToken).Result;
+                        IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(catalogsMetadata.Schema.Columns);
 
-                        if (Regex.IsMatch(catalog, catalogRegexp, RegexOptions.IgnoreCase))
+                        string catalogRegexp = PatternToRegEx(catalogPattern);
+                        TRowSet rowSet = GetRowSetAsync(getCatalogsResp, cancellationToken).Result;
+                        IReadOnlyList<string> list = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
+                        for (int i = 0; i < list.Count; i++)
                         {
-                            catalogMap.Add(catalog, new Dictionary<string, Dictionary<string, TableInfo>>());
+                            string col = list[i];
+                            string catalog = col;
+
+                            if (Regex.IsMatch(catalog, catalogRegexp, RegexOptions.IgnoreCase))
+                            {
+                                catalogMap.Add(catalog, new Dictionary<string, Dictionary<string, TableInfo>>());
+                            }
+                        }
+                        // Handle the case where server does not support 'catalog' in the namespace.
+                        if (list.Count == 0 && string.IsNullOrEmpty(catalogPattern))
+                        {
+                            catalogMap.Add(string.Empty, []);
                         }
                     }
-                    // Handle the case where server does not support 'catalog' in the namespace.
-                    if (list.Count == 0 && string.IsNullOrEmpty(catalogPattern))
-                    {
-                        catalogMap.Add(string.Empty, []);
-                    }
-                }
 
-                if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.DbSchemas)
-                {
-                    TGetSchemasReq getSchemasReq = new TGetSchemasReq(SessionHandle);
-                    getSchemasReq.CatalogName = catalogPattern;
-                    getSchemasReq.SchemaName = dbSchemaPattern;
-                    if (AreResultsAvailableDirectly)
+                    if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.DbSchemas)
                     {
-                        SetDirectResults(getSchemasReq);
-                    }
+                        TGetSchemasResp getSchemasResp = GetSchemasAsync(catalogPattern, dbSchemaPattern, cancellationToken).Result;
 
-                    TGetSchemasResp getSchemasResp = Client.GetSchemas(getSchemasReq, cancellationToken).Result;
-                    if (getSchemasResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                    {
-                        throw new Exception(getSchemasResp.Status.ErrorMessage);
+                        TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadataAsync(getSchemasResp, cancellationToken).Result;
+                        IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
+                        TRowSet rowSet = GetRowSetAsync(getSchemasResp, cancellationToken).Result;
+
+                        IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCatalog]].StringVal.Values;
+                        IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
+
+                        for (int i = 0; i < catalogList.Count; i++)
+                        {
+                            string catalog = catalogList[i];
+                            string schemaDb = schemaList[i];
+                            // It seems Spark sometimes returns empty string for catalog on some schema (temporary tables).
+                            catalogMap.GetValueOrDefault(catalog)?.Add(schemaDb, new Dictionary<string, TableInfo>());
+                        }
                     }
 
-                    TGetResultSetMetadataResp schemaMetadata = GetResultSetMetadataAsync(getSchemasResp, cancellationToken).Result;
-                    IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(schemaMetadata.Schema.Columns);
-                    TRowSet rowSet = GetRowSetAsync(getSchemasResp, cancellationToken).Result;
-
-                    IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCatalog]].StringVal.Values;
-                    IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
-
-                    for (int i = 0; i < catalogList.Count; i++)
+                    if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Tables)
                     {
-                        string catalog = catalogList[i];
-                        string schemaDb = schemaList[i];
-                        // It seems Spark sometimes returns empty string for catalog on some schema (temporary tables).
-                        catalogMap.GetValueOrDefault(catalog)?.Add(schemaDb, new Dictionary<string, TableInfo>());
-                    }
-                }
+                        TGetTablesResp getTablesResp = GetTablesAsync(
+                            catalogPattern,
+                            dbSchemaPattern,
+                            tableNamePattern,
+                            tableTypes?.ToList(),
+                            cancellationToken).Result;
 
-                if (depth == GetObjectsDepth.All || depth >= GetObjectsDepth.Tables)
-                {
-                    TGetTablesReq getTablesReq = new TGetTablesReq(SessionHandle);
-                    getTablesReq.CatalogName = catalogPattern;
-                    getTablesReq.SchemaName = dbSchemaPattern;
-                    getTablesReq.TableName = tableNamePattern;
-                    if (AreResultsAvailableDirectly)
-                    {
-                        SetDirectResults(getTablesReq);
-                    }
+                        TGetResultSetMetadataResp tableMetadata = GetResultSetMetadataAsync(getTablesResp, cancellationToken).Result;
+                        IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(tableMetadata.Schema.Columns);
+                        TRowSet rowSet = GetRowSetAsync(getTablesResp, cancellationToken).Result;
 
-                    TGetTablesResp getTablesResp = Client.GetTables(getTablesReq, cancellationToken).Result;
-                    if (getTablesResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                    {
-                        throw new Exception(getTablesResp.Status.ErrorMessage);
+                        IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
+                        IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
+                        IReadOnlyList<string> tableList = rowSet.Columns[columnMap[TableName]].StringVal.Values;
+                        IReadOnlyList<string> tableTypeList = rowSet.Columns[columnMap[TableType]].StringVal.Values;
+
+                        for (int i = 0; i < catalogList.Count; i++)
+                        {
+                            string catalog = catalogList[i];
+                            string schemaDb = schemaList[i];
+                            string tableName = tableList[i];
+                            string tableType = tableTypeList[i];
+                            TableInfo tableInfo = new(tableType);
+                            catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.Add(tableName, tableInfo);
+                        }
                     }
 
-                    TGetResultSetMetadataResp tableMetadata = GetResultSetMetadataAsync(getTablesResp, cancellationToken).Result;
-                    IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(tableMetadata.Schema.Columns);
-                    TRowSet rowSet = GetRowSetAsync(getTablesResp, cancellationToken).Result;
-
-                    IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[TableCat]].StringVal.Values;
-                    IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[TableSchem]].StringVal.Values;
-                    IReadOnlyList<string> tableList = rowSet.Columns[columnMap[TableName]].StringVal.Values;
-                    IReadOnlyList<string> tableTypeList = rowSet.Columns[columnMap[TableType]].StringVal.Values;
-
-                    for (int i = 0; i < catalogList.Count; i++)
+                    if (depth == GetObjectsDepth.All)
                     {
-                        string catalog = catalogList[i];
-                        string schemaDb = schemaList[i];
-                        string tableName = tableList[i];
-                        string tableType = tableTypeList[i];
-                        TableInfo tableInfo = new(tableType);
-                        catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.Add(tableName, tableInfo);
+                        TGetColumnsResp columnsResponse = GetColumnsAsync(
+                            catalogPattern,
+                            dbSchemaPattern,
+                            tableNamePattern,
+                            columnNamePattern,
+                            cancellationToken).Result;
+
+                        TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadataAsync(columnsResponse, cancellationToken).Result;
+                        IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
+                        TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
+
+                        ColumnsMetadataColumnNames columnNames = GetColumnsMetadataColumnNames();
+                        IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[columnNames.TableCatalog]].StringVal.Values;
+                        IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[columnNames.TableSchema]].StringVal.Values;
+                        IReadOnlyList<string> tableList = rowSet.Columns[columnMap[columnNames.TableName]].StringVal.Values;
+                        IReadOnlyList<string> columnNameList = rowSet.Columns[columnMap[columnNames.ColumnName]].StringVal.Values;
+                        ReadOnlySpan<int> columnTypeList = rowSet.Columns[columnMap[columnNames.DataType]].I32Val.Values.Values;
+                        IReadOnlyList<string> typeNameList = rowSet.Columns[columnMap[columnNames.TypeName]].StringVal.Values;
+                        ReadOnlySpan<int> nullableList = rowSet.Columns[columnMap[columnNames.Nullable]].I32Val.Values.Values;
+                        IReadOnlyList<string> columnDefaultList = rowSet.Columns[columnMap[columnNames.ColumnDef]].StringVal.Values;
+                        ReadOnlySpan<int> ordinalPosList = rowSet.Columns[columnMap[columnNames.OrdinalPosition]].I32Val.Values.Values;
+                        IReadOnlyList<string> isNullableList = rowSet.Columns[columnMap[columnNames.IsNullable]].StringVal.Values;
+                        IReadOnlyList<string> isAutoIncrementList = rowSet.Columns[columnMap[columnNames.IsAutoIncrement]].StringVal.Values;
+                        ReadOnlySpan<int> columnSizeList = rowSet.Columns[columnMap[columnNames.ColumnSize]].I32Val.Values.Values;
+                        ReadOnlySpan<int> decimalDigitsList = rowSet.Columns[columnMap[columnNames.DecimalDigits]].I32Val.Values.Values;
+
+                        for (int i = 0; i < catalogList.Count; i++)
+                        {
+                            // For systems that don't support 'catalog' in the namespace
+                            string catalog = catalogList[i] ?? string.Empty;
+                            string schemaDb = schemaList[i];
+                            string tableName = tableList[i];
+                            string columnName = columnNameList[i];
+                            short colType = (short)columnTypeList[i];
+                            string typeName = typeNameList[i];
+                            short nullable = (short)nullableList[i];
+                            string? isAutoIncrementString = isAutoIncrementList[i];
+                            bool isAutoIncrement = (!string.IsNullOrEmpty(isAutoIncrementString) && (isAutoIncrementString.Equals("YES", StringComparison.InvariantCultureIgnoreCase) || isAutoIncrementString.Equals("TRUE", StringComparison.InvariantCultureIgnoreCase)));
+                            string isNullable = isNullableList[i] ?? "YES";
+                            string columnDefault = columnDefaultList[i] ?? "";
+                            // Spark/Databricks reports ordinal index zero-indexed, instead of one-indexed
+                            int ordinalPos = ordinalPosList[i] + PositionRequiredOffset;
+                            int columnSize = columnSizeList[i];
+                            int decimalDigits = decimalDigitsList[i];
+                            TableInfo? tableInfo = catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.GetValueOrDefault(tableName);
+                            tableInfo?.ColumnName.Add(columnName);
+                            tableInfo?.ColType.Add(colType);
+                            tableInfo?.Nullable.Add(nullable);
+                            tableInfo?.IsAutoIncrement.Add(isAutoIncrement);
+                            tableInfo?.IsNullable.Add(isNullable);
+                            tableInfo?.ColumnDefault.Add(columnDefault);
+                            tableInfo?.OrdinalPosition.Add(ordinalPos);
+                            SetPrecisionScaleAndTypeName(colType, typeName, tableInfo, columnSize, decimalDigits);
+                        }
                     }
-                }
 
-                if (depth == GetObjectsDepth.All)
-                {
-                    TGetColumnsReq columnsReq = new TGetColumnsReq(SessionHandle);
-                    columnsReq.CatalogName = catalogPattern;
-                    columnsReq.SchemaName = dbSchemaPattern;
-                    columnsReq.TableName = tableNamePattern;
-                    if (AreResultsAvailableDirectly)
+                    StringArray.Builder catalogNameBuilder = new StringArray.Builder();
+                    List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
+
+                    foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogEntry in catalogMap)
                     {
-                        SetDirectResults(columnsReq);
+                        catalogNameBuilder.Append(catalogEntry.Key);
+
+                        if (depth == GetObjectsDepth.Catalogs)
+                        {
+                            catalogDbSchemasValues.Add(null);
+                        }
+                        else
+                        {
+                            catalogDbSchemasValues.Add(GetDbSchemas(
+                                        depth, catalogEntry.Value));
+                        }
                     }
 
-                    if (!string.IsNullOrEmpty(columnNamePattern))
-                        columnsReq.ColumnName = columnNamePattern;
-
-                    var columnsResponse = Client.GetColumns(columnsReq, cancellationToken).Result;
-                    if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
-                    {
-                        throw new Exception(columnsResponse.Status.ErrorMessage);
-                    }
-
-                    TGetResultSetMetadataResp columnsMetadata = GetResultSetMetadataAsync(columnsResponse, cancellationToken).Result;
-                    IReadOnlyDictionary<string, int> columnMap = GetColumnIndexMap(columnsMetadata.Schema.Columns);
-                    TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
-
-                    ColumnsMetadataColumnNames columnNames = GetColumnsMetadataColumnNames();
-                    IReadOnlyList<string> catalogList = rowSet.Columns[columnMap[columnNames.TableCatalog]].StringVal.Values;
-                    IReadOnlyList<string> schemaList = rowSet.Columns[columnMap[columnNames.TableSchema]].StringVal.Values;
-                    IReadOnlyList<string> tableList = rowSet.Columns[columnMap[columnNames.TableName]].StringVal.Values;
-                    IReadOnlyList<string> columnNameList = rowSet.Columns[columnMap[columnNames.ColumnName]].StringVal.Values;
-                    ReadOnlySpan<int> columnTypeList = rowSet.Columns[columnMap[columnNames.DataType]].I32Val.Values.Values;
-                    IReadOnlyList<string> typeNameList = rowSet.Columns[columnMap[columnNames.TypeName]].StringVal.Values;
-                    ReadOnlySpan<int> nullableList = rowSet.Columns[columnMap[columnNames.Nullable]].I32Val.Values.Values;
-                    IReadOnlyList<string> columnDefaultList = rowSet.Columns[columnMap[columnNames.ColumnDef]].StringVal.Values;
-                    ReadOnlySpan<int> ordinalPosList = rowSet.Columns[columnMap[columnNames.OrdinalPosition]].I32Val.Values.Values;
-                    IReadOnlyList<string> isNullableList = rowSet.Columns[columnMap[columnNames.IsNullable]].StringVal.Values;
-                    IReadOnlyList<string> isAutoIncrementList = rowSet.Columns[columnMap[columnNames.IsAutoIncrement]].StringVal.Values;
-                    ReadOnlySpan<int> columnSizeList = rowSet.Columns[columnMap[columnNames.ColumnSize]].I32Val.Values.Values;
-                    ReadOnlySpan<int> decimalDigitsList = rowSet.Columns[columnMap[columnNames.DecimalDigits]].I32Val.Values.Values;
-
-                    for (int i = 0; i < catalogList.Count; i++)
-                    {
-                        // For systems that don't support 'catalog' in the namespace
-                        string catalog = catalogList[i] ?? string.Empty;
-                        string schemaDb = schemaList[i];
-                        string tableName = tableList[i];
-                        string columnName = columnNameList[i];
-                        short colType = (short)columnTypeList[i];
-                        string typeName = typeNameList[i];
-                        short nullable = (short)nullableList[i];
-                        string? isAutoIncrementString = isAutoIncrementList[i];
-                        bool isAutoIncrement = (!string.IsNullOrEmpty(isAutoIncrementString) && (isAutoIncrementString.Equals("YES", StringComparison.InvariantCultureIgnoreCase) || isAutoIncrementString.Equals("TRUE", StringComparison.InvariantCultureIgnoreCase)));
-                        string isNullable = isNullableList[i] ?? "YES";
-                        string columnDefault = columnDefaultList[i] ?? "";
-                        // Spark/Databricks reports ordinal index zero-indexed, instead of one-indexed
-                        int ordinalPos = ordinalPosList[i] + PositionRequiredOffset;
-                        int columnSize = columnSizeList[i];
-                        int decimalDigits = decimalDigitsList[i];
-                        TableInfo? tableInfo = catalogMap.GetValueOrDefault(catalog)?.GetValueOrDefault(schemaDb)?.GetValueOrDefault(tableName);
-                        tableInfo?.ColumnName.Add(columnName);
-                        tableInfo?.ColType.Add(colType);
-                        tableInfo?.Nullable.Add(nullable);
-                        tableInfo?.IsAutoIncrement.Add(isAutoIncrement);
-                        tableInfo?.IsNullable.Add(isNullable);
-                        tableInfo?.ColumnDefault.Add(columnDefault);
-                        tableInfo?.OrdinalPosition.Add(ordinalPos);
-                        SetPrecisionScaleAndTypeName(colType, typeName, tableInfo, columnSize, decimalDigits);
-                    }
-                }
-
-                StringArray.Builder catalogNameBuilder = new StringArray.Builder();
-                List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
-
-                foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, TableInfo>>> catalogEntry in catalogMap)
-                {
-                    catalogNameBuilder.Append(catalogEntry.Key);
-
-                    if (depth == GetObjectsDepth.Catalogs)
-                    {
-                        catalogDbSchemasValues.Add(null);
-                    }
-                    else
-                    {
-                        catalogDbSchemasValues.Add(GetDbSchemas(
-                                    depth, catalogEntry.Value));
-                    }
-                }
-
-                Schema schema = StandardSchemas.GetObjectsSchema;
-                IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
-                    new List<IArrowArray>
-                    {
+                    Schema schema = StandardSchemas.GetObjectsSchema;
+                    IReadOnlyList<IArrowArray> dataArrays = schema.Validate(
+                        new List<IArrowArray>
+                        {
                     catalogNameBuilder.Build(),
                     catalogDbSchemasValues.BuildListArrayForType(new StructType(StandardSchemas.DbSchemaSchema)),
-                    });
+                        });
 
-                return new HiveInfoArrowStream(schema, dataArrays);
-            }
-            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
-            }
+                    return new HiveInfoArrowStream(schema, dataArrays);
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+                }
+            });
         }
 
         public override IArrowArrayStream GetTableTypes()
         {
-            TGetTableTypesReq req = new()
+            return this.TraceActivity(activity =>
             {
-                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
-            };
-
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(req);
-            }
-
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
-
-                if (resp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                TGetTableTypesReq req = new()
                 {
-                    throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                        .SetNativeError(resp.Status.ErrorCode)
-                        .SetSqlState(resp.Status.SqlState);
-                }
-
-                TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
-                StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
-
-                HashSet<string> distinctTableTypes = new HashSet<string>(tableTypes);
-
-                StringArray.Builder tableTypesBuilder = new StringArray.Builder();
-                tableTypesBuilder.AppendRange(distinctTableTypes);
-
-                IArrowArray[] dataArrays = new IArrowArray[]
-                {
-                tableTypesBuilder.Build()
+                    SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
                 };
 
-                return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
-            }
-            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
-            }
+                if (AreResultsAvailableDirectly)
+                {
+                    SetDirectResults(req);
+                }
+
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                try
+                {
+                    TGetTableTypesResp resp = Client.GetTableTypes(req, cancellationToken).Result;
+                    HandleThriftResponse(resp.Status, activity);
+
+                    TRowSet rowSet = GetRowSetAsync(resp, cancellationToken).Result;
+                    StringArray tableTypes = rowSet.Columns[0].StringVal.Values;
+
+                    HashSet<string> distinctTableTypes = new HashSet<string>(tableTypes);
+
+                    StringArray.Builder tableTypesBuilder = new StringArray.Builder();
+                    tableTypesBuilder.AppendRange(distinctTableTypes);
+
+                    IArrowArray[] dataArrays = new IArrowArray[]
+                    {
+                tableTypesBuilder.Build()
+                    };
+
+                    return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+                }
+            });
         }
 
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
@@ -672,50 +636,64 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
-            TGetInfoReq req = new()
+            return this.TraceActivity(activity =>
             {
-                SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
-                InfoType = infoType,
-            };
-
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
-                if (getInfoResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                TGetInfoReq req = new()
                 {
-                    throw new HiveServer2Exception(getInfoResp.Status.ErrorMessage)
-                        .SetNativeError(getInfoResp.Status.ErrorCode)
-                        .SetSqlState(getInfoResp.Status.SqlState);
-                }
+                    SessionHandle = SessionHandle ?? throw new InvalidOperationException("session not created"),
+                    InfoType = infoType,
+                };
 
-                return getInfoResp.InfoValue.StringValue;
-            }
-            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
-            }
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                try
+                {
+                    TGetInfoResp getInfoResp = Client.GetInfo(req, cancellationToken).Result;
+                    HandleThriftResponse(getInfoResp.Status, activity);
+
+                    return getInfoResp.InfoValue.StringValue;
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+                }
+            });
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            if (_client != null && SessionHandle != null)
+            if (!_isDisposed && disposing)
             {
-                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                TCloseSessionReq r6 = new(SessionHandle);
-                _client.CloseSession(r6, cancellationToken).Wait();
-                _transport?.Close();
-                if (_client is IDisposable disposableClient)
-                {
-                    disposableClient.Dispose();
-                }
-                _transport = null;
-                _client = null;
+                DisposeClient();
+                _isDisposed = true;
             }
+            base.Dispose(disposing);
+        }
+
+        private void DisposeClient()
+        {
+            this.TraceActivity(activity =>
+            {
+                if (_client != null && SessionHandle != null)
+                {
+                    CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+
+                    TCloseSessionReq r6 = new(SessionHandle);
+                    var resp = _client.CloseSession(r6, cancellationToken).Result;
+                    HandleThriftResponse(resp.Status, activity);
+
+                    _transport?.Close();
+                    if (_client is IDisposable disposableClient)
+                    {
+                        disposableClient.Dispose();
+                    }
+                    _transport = null;
+                    _client = null;
+                }
+            });
         }
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
@@ -830,6 +808,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected abstract bool IsColumnSizeValidForDecimal { get; }
 
+        public override void SetOption(string key, string? value)
+        {
+            // These option can be set even if already connected.
+            switch (key.ToLowerInvariant())
+            {
+                case AdbcOptions.Telemetry.TraceParent:
+                    SetTraceParent(string.IsNullOrWhiteSpace(value) ? null : value);
+                    return;
+            }
+
+            if (SessionHandle != null)
+            {
+                throw new AdbcException($"Option '{key}' cannot be set once the connection is open.", AdbcStatusCode.InvalidState);
+            }
+
+            // These option can only be set before connection is open.
+            switch (key.ToLowerInvariant())
+            {
+                default:
+                    throw AdbcException.NotImplemented($"Option '{key}' is not implemented");
+            }
+        }
+
         private static string PatternToRegEx(string? pattern)
         {
             if (pattern == null)
@@ -933,26 +934,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task<TGetCatalogsResp> GetCatalogsAsync(CancellationToken cancellationToken)
         {
-            if (SessionHandle == null)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
+                if (SessionHandle == null)
+                {
+                    throw new InvalidOperationException("Invalid session");
+                }
 
-            TGetCatalogsReq req = new TGetCatalogsReq(SessionHandle);
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(req);
-            }
+                TGetCatalogsReq req = new TGetCatalogsReq(SessionHandle);
+                if (AreResultsAvailableDirectly)
+                {
+                    SetDirectResults(req);
+                }
 
-            TGetCatalogsResp resp = await Client.GetCatalogs(req, cancellationToken);
-            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                    .SetNativeError(resp.Status.ErrorCode)
-                    .SetSqlState(resp.Status.SqlState);
-            }
+                TGetCatalogsResp resp = await Client.GetCatalogs(req, cancellationToken);
+                HandleThriftResponse(resp.Status, activity);
 
-            return resp;
+                return resp;
+            });
         }
 
         internal async Task<TGetSchemasResp> GetSchemasAsync(
@@ -960,34 +959,32 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? schemaName,
             CancellationToken cancellationToken)
         {
-            if (SessionHandle == null)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
+                if (SessionHandle == null)
+                {
+                    throw new InvalidOperationException("Invalid session");
+                }
 
-            TGetSchemasReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(req);
-            }
-            if (catalogName != null)
-            {
-                req.CatalogName = catalogName;
-            }
-            if (schemaName != null)
-            {
-                req.SchemaName = schemaName;
-            }
+                TGetSchemasReq req = new(SessionHandle);
+                if (AreResultsAvailableDirectly)
+                {
+                    SetDirectResults(req);
+                }
+                if (catalogName != null)
+                {
+                    req.CatalogName = catalogName;
+                }
+                if (schemaName != null)
+                {
+                    req.SchemaName = schemaName;
+                }
 
-            TGetSchemasResp resp = await Client.GetSchemas(req, cancellationToken);
-            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                    .SetNativeError(resp.Status.ErrorCode)
-                    .SetSqlState(resp.Status.SqlState);
-            }
+                TGetSchemasResp resp = await Client.GetSchemas(req, cancellationToken);
+                HandleThriftResponse(resp.Status, activity);
 
-            return resp;
+                return resp;
+            });
         }
 
         internal async Task<TGetTablesResp> GetTablesAsync(
@@ -997,42 +994,40 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             List<string>? tableTypes,
             CancellationToken cancellationToken)
         {
-            if (SessionHandle == null)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
+                if (SessionHandle == null)
+                {
+                    throw new InvalidOperationException("Invalid session");
+                }
 
-            TGetTablesReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(req);
-            }
-            if (catalogName != null)
-            {
-                req.CatalogName = catalogName;
-            }
-            if (schemaName != null)
-            {
-                req.SchemaName = schemaName;
-            }
-            if (tableName != null)
-            {
-                req.TableName = tableName;
-            }
-            if (tableTypes != null && tableTypes.Count > 0)
-            {
-                req.TableTypes = tableTypes;
-            }
+                TGetTablesReq req = new(SessionHandle);
+                if (AreResultsAvailableDirectly)
+                {
+                    SetDirectResults(req);
+                }
+                if (catalogName != null)
+                {
+                    req.CatalogName = catalogName;
+                }
+                if (schemaName != null)
+                {
+                    req.SchemaName = schemaName;
+                }
+                if (tableName != null)
+                {
+                    req.TableName = tableName;
+                }
+                if (tableTypes != null && tableTypes.Count > 0)
+                {
+                    req.TableTypes = tableTypes;
+                }
 
-            TGetTablesResp resp = await Client.GetTables(req, cancellationToken);
-            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                    .SetNativeError(resp.Status.ErrorCode)
-                    .SetSqlState(resp.Status.SqlState);
-            }
+                TGetTablesResp resp = await Client.GetTables(req, cancellationToken);
+                HandleThriftResponse(resp.Status, activity);
 
-            return resp;
+                return resp;
+            });
         }
 
         internal async Task<TGetColumnsResp> GetColumnsAsync(
@@ -1042,42 +1037,40 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? columnName,
             CancellationToken cancellationToken)
         {
-            if (SessionHandle == null)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
+                if (SessionHandle == null)
+                {
+                    throw new InvalidOperationException("Invalid session");
+                }
 
-            TGetColumnsReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(req);
-            }
-            if (catalogName != null)
-            {
-                req.CatalogName = catalogName;
-            }
-            if (schemaName != null)
-            {
-                req.SchemaName = schemaName;
-            }
-            if (tableName != null)
-            {
-                req.TableName = tableName;
-            }
-            if (columnName != null)
-            {
-                req.ColumnName = columnName;
-            }
+                TGetColumnsReq req = new(SessionHandle);
+                if (AreResultsAvailableDirectly)
+                {
+                    SetDirectResults(req);
+                }
+                if (catalogName != null)
+                {
+                    req.CatalogName = catalogName;
+                }
+                if (schemaName != null)
+                {
+                    req.SchemaName = schemaName;
+                }
+                if (tableName != null)
+                {
+                    req.TableName = tableName;
+                }
+                if (columnName != null)
+                {
+                    req.ColumnName = columnName;
+                }
 
-            TGetColumnsResp resp = await Client.GetColumns(req, cancellationToken);
-            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                    .SetNativeError(resp.Status.ErrorCode)
-                    .SetSqlState(resp.Status.SqlState);
-            }
+                TGetColumnsResp resp = await Client.GetColumns(req, cancellationToken);
+                HandleThriftResponse(resp.Status, activity);
 
-            return resp;
+                return resp;
+            });
         }
 
         internal async Task<TGetPrimaryKeysResp> GetPrimaryKeysAsync(
@@ -1086,38 +1079,36 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? tableName,
             CancellationToken cancellationToken = default)
         {
-            if (SessionHandle == null)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
+                if (SessionHandle == null)
+                {
+                    throw new InvalidOperationException("Invalid session");
+                }
 
-            TGetPrimaryKeysReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(req);
-            }
-            if (catalogName != null)
-            {
-                req.CatalogName = catalogName!;
-            }
-            if (schemaName != null)
-            {
-                req.SchemaName = schemaName!;
-            }
-            if (tableName != null)
-            {
-                req.TableName = tableName!;
-            }
+                TGetPrimaryKeysReq req = new(SessionHandle);
+                if (AreResultsAvailableDirectly)
+                {
+                    SetDirectResults(req);
+                }
+                if (catalogName != null)
+                {
+                    req.CatalogName = catalogName!;
+                }
+                if (schemaName != null)
+                {
+                    req.SchemaName = schemaName!;
+                }
+                if (tableName != null)
+                {
+                    req.TableName = tableName!;
+                }
 
-            TGetPrimaryKeysResp resp = await Client.GetPrimaryKeys(req, cancellationToken);
-            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                    .SetNativeError(resp.Status.ErrorCode)
-                    .SetSqlState(resp.Status.SqlState);
-            }
+                TGetPrimaryKeysResp resp = await Client.GetPrimaryKeys(req, cancellationToken);
+                HandleThriftResponse(resp.Status, activity);
 
-            return resp;
+                return resp;
+            });
         }
 
         internal async Task<TGetCrossReferenceResp> GetCrossReferenceAsync(
@@ -1129,49 +1120,47 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? foreignTableName,
             CancellationToken cancellationToken = default)
         {
-            if (SessionHandle == null)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
+                if (SessionHandle == null)
+                {
+                    throw new InvalidOperationException("Invalid session");
+                }
 
-            TGetCrossReferenceReq req = new(SessionHandle);
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(req);
-            }
-            if (catalogName != null)
-            {
-                req.ParentCatalogName = catalogName!;
-            }
-            if (schemaName != null)
-            {
-                req.ParentSchemaName = schemaName!;
-            }
-            if (tableName != null)
-            {
-                req.ParentTableName = tableName!;
-            }
-            if (foreignCatalogName != null)
-            {
-                req.ForeignCatalogName = foreignCatalogName!;
-            }
-            if (foreignSchemaName != null)
-            {
-                req.ForeignSchemaName = foreignSchemaName!;
-            }
-            if (foreignTableName != null)
-            {
-                req.ForeignTableName = foreignTableName!;
-            }
+                TGetCrossReferenceReq req = new(SessionHandle);
+                if (AreResultsAvailableDirectly)
+                {
+                    SetDirectResults(req);
+                }
+                if (catalogName != null)
+                {
+                    req.ParentCatalogName = catalogName!;
+                }
+                if (schemaName != null)
+                {
+                    req.ParentSchemaName = schemaName!;
+                }
+                if (tableName != null)
+                {
+                    req.ParentTableName = tableName!;
+                }
+                if (foreignCatalogName != null)
+                {
+                    req.ForeignCatalogName = foreignCatalogName!;
+                }
+                if (foreignSchemaName != null)
+                {
+                    req.ForeignSchemaName = foreignSchemaName!;
+                }
+                if (foreignTableName != null)
+                {
+                    req.ForeignTableName = foreignTableName!;
+                }
 
-            TGetCrossReferenceResp resp = await Client.GetCrossReference(req, cancellationToken);
-            if (resp.Status.StatusCode != TStatusCode.SUCCESS_STATUS)
-            {
-                throw new HiveServer2Exception(resp.Status.ErrorMessage)
-                    .SetNativeError(resp.Status.ErrorCode)
-                    .SetSqlState(resp.Status.SqlState);
-            }
-            return resp;
+                TGetCrossReferenceResp resp = await Client.GetCrossReference(req, cancellationToken);
+                HandleThriftResponse(resp.Status, activity);
+                return resp;
+            });
         }
 
         private static StructArray GetColumnSchema(TableInfo tableInfo)
@@ -1262,57 +1251,57 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
-            if (SessionHandle == null)
+            return this.TraceActivity(activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
-
-            TGetColumnsReq getColumnsReq = new TGetColumnsReq(SessionHandle);
-            getColumnsReq.CatalogName = catalog;
-            getColumnsReq.SchemaName = dbSchema;
-            getColumnsReq.TableName = tableName;
-            if (AreResultsAvailableDirectly)
-            {
-                SetDirectResults(getColumnsReq);
-            }
-
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
-            {
-                var columnsResponse = Client.GetColumns(getColumnsReq, cancellationToken).Result;
-                if (columnsResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                if (SessionHandle == null)
                 {
-                    throw new Exception(columnsResponse.Status.ErrorMessage);
+                    throw new InvalidOperationException("Invalid session");
                 }
 
-                TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
-                List<TColumn> columns = rowSet.Columns;
-                int rowCount = rowSet.Columns[3].StringVal.Values.Length;
-
-                Field[] fields = new Field[rowCount];
-                for (int i = 0; i < rowCount; i++)
+                TGetColumnsReq getColumnsReq = new TGetColumnsReq(SessionHandle);
+                getColumnsReq.CatalogName = catalog;
+                getColumnsReq.SchemaName = dbSchema;
+                getColumnsReq.TableName = tableName;
+                if (AreResultsAvailableDirectly)
                 {
-                    string columnName = columns[3].StringVal.Values.GetString(i);
-                    int? columnType = columns[4].I32Val.Values.GetValue(i);
-                    string typeName = columns[5].StringVal.Values.GetString(i);
-                    // Note: the following two columns do not seem to be set correctly for DECIMAL types.
-                    bool isColumnSizeValid = IsColumnSizeValidForDecimal;
-                    int? columnSize = columns[6].I32Val.Values.GetValue(i);
-                    int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
-                    bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
-                    IArrowType dataType = HiveServer2Connection.GetArrowType(columnType!.Value, typeName, isColumnSizeValid, columnSize, decimalDigits);
-                    fields[i] = new Field(columnName, dataType, nullable);
+                    SetDirectResults(getColumnsReq);
                 }
-                return new Schema(fields, null);
-            }
-            catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
-            {
-                throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
-            }
+
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                try
+                {
+                    var columnsResponse = Client.GetColumns(getColumnsReq, cancellationToken).Result;
+                    HandleThriftResponse(columnsResponse.Status, activity);
+
+                    TRowSet rowSet = GetRowSetAsync(columnsResponse, cancellationToken).Result;
+                    List<TColumn> columns = rowSet.Columns;
+                    int rowCount = rowSet.Columns[3].StringVal.Values.Length;
+
+                    Field[] fields = new Field[rowCount];
+                    for (int i = 0; i < rowCount; i++)
+                    {
+                        string columnName = columns[3].StringVal.Values.GetString(i);
+                        int? columnType = columns[4].I32Val.Values.GetValue(i);
+                        string typeName = columns[5].StringVal.Values.GetString(i);
+                        // Note: the following two columns do not seem to be set correctly for DECIMAL types.
+                        bool isColumnSizeValid = IsColumnSizeValidForDecimal;
+                        int? columnSize = columns[6].I32Val.Values.GetValue(i);
+                        int? decimalDigits = columns[8].I32Val.Values.GetValue(i);
+                        bool nullable = columns[10].I32Val.Values.GetValue(i) == 1;
+                        IArrowType dataType = HiveServer2Connection.GetArrowType(columnType!.Value, typeName, isColumnSizeValid, columnSize, decimalDigits);
+                        fields[i] = new Field(columnName, dataType, nullable);
+                    }
+                    return new Schema(fields, null);
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The metadata query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+                }
+            });
         }
 
         private static IArrowType GetArrowType(int columnTypeId, string typeName, bool isColumnSizeValid, int? columnSize, int? decimalDigits)
@@ -1398,12 +1387,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
-            const int strValTypeID = 0;
-            const int boolValTypeId = 1;
+            return this.TraceActivity(activity =>
+            {
+                const int strValTypeID = 0;
+                const int boolValTypeId = 1;
 
-            UnionType infoUnionType = new UnionType(
-                new Field[]
-                {
+                UnionType infoUnionType = new UnionType(
+                    new Field[]
+                    {
                     new Field("string_value", StringType.Default, true),
                     new Field("bool_value", BooleanType.Default, true),
                     new Field("int64_value", Int64Type.Default, true),
@@ -1428,114 +1419,123 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         ),
                         true
                     )
-                },
-                new int[] { 0, 1, 2, 3, 4, 5 },
-                UnionMode.Dense);
+                    },
+                    new int[] { 0, 1, 2, 3, 4, 5 },
+                    UnionMode.Dense);
 
-            if (codes.Count == 0)
-            {
-                codes = infoSupportedCodes;
-            }
-
-            UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
-            ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
-            ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
-            StringArray.Builder stringInfoBuilder = new StringArray.Builder();
-            BooleanArray.Builder booleanInfoBuilder = new BooleanArray.Builder();
-
-            int nullCount = 0;
-            int arrayLength = codes.Count;
-            int offset = 0;
-
-            foreach (AdbcInfoCode code in codes)
-            {
-                switch (code)
+                if (codes.Count == 0)
                 {
-                    case AdbcInfoCode.DriverName:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(InfoDriverName);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.DriverVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(ProductVersion);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.DriverArrowVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.Append(InfoDriverArrowVersion);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.VendorName:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        string vendorName = VendorName;
-                        stringInfoBuilder.Append(vendorName);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.VendorVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        string? vendorVersion = VendorVersion;
-                        stringInfoBuilder.Append(vendorVersion);
-                        booleanInfoBuilder.AppendNull();
-                        break;
-                    case AdbcInfoCode.VendorSql:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(boolValTypeId);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.AppendNull();
-                        booleanInfoBuilder.Append(InfoVendorSql);
-                        break;
-                    default:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(offset++);
-                        stringInfoBuilder.AppendNull();
-                        booleanInfoBuilder.AppendNull();
-                        nullCount++;
-                        break;
+                    codes = infoSupportedCodes;
                 }
-            }
 
-            StructType entryType = new StructType(
-                new Field[] {
+                UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
+                ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
+                ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
+                StringArray.Builder stringInfoBuilder = new StringArray.Builder();
+                BooleanArray.Builder booleanInfoBuilder = new BooleanArray.Builder();
+
+                int nullCount = 0;
+                int arrayLength = codes.Count;
+                int offset = 0;
+
+                foreach (AdbcInfoCode code in codes)
+                {
+                    string tagKey = SemanticConventions.Db.Operation.Parameter(code.ToString().ToLowerInvariant());
+                    Func<object?> tagValue = () => null;
+                    switch (code)
+                    {
+                        case AdbcInfoCode.DriverName:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.Append(InfoDriverName);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => InfoDriverName;
+                            break;
+                        case AdbcInfoCode.DriverVersion:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.Append(ProductVersion);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => ProductVersion;
+                            break;
+                        case AdbcInfoCode.DriverArrowVersion:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.Append(InfoDriverArrowVersion);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => InfoDriverArrowVersion;
+                            break;
+                        case AdbcInfoCode.VendorName:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            string vendorName = VendorName;
+                            stringInfoBuilder.Append(vendorName);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => vendorName;
+                            break;
+                        case AdbcInfoCode.VendorVersion:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            string? vendorVersion = VendorVersion;
+                            stringInfoBuilder.Append(vendorVersion);
+                            booleanInfoBuilder.AppendNull();
+                            tagValue = () => vendorVersion;
+                            break;
+                        case AdbcInfoCode.VendorSql:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(boolValTypeId);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.AppendNull();
+                            booleanInfoBuilder.Append(InfoVendorSql);
+                            tagValue = () => InfoVendorSql;
+                            break;
+                        default:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(offset++);
+                            stringInfoBuilder.AppendNull();
+                            booleanInfoBuilder.AppendNull();
+                            nullCount++;
+                            break;
+                    }
+                    ActivityExtensions.AddTag(activity, tagKey, tagValue);
+                }
+
+                StructType entryType = new StructType(
+                    new Field[] {
                     new Field("key", Int32Type.Default, false),
                     new Field("value", Int32Type.Default, true)});
 
-            StructArray entriesDataArray = new StructArray(entryType, 0,
-                new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
-                new ArrowBuffer.BitmapBuilder().Build());
+                StructArray entriesDataArray = new StructArray(entryType, 0,
+                    new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
+                    new ArrowBuffer.BitmapBuilder().Build());
 
-            IArrowArray[] childrenArrays = new IArrowArray[]
-            {
+                IArrowArray[] childrenArrays = new IArrowArray[]
+                {
                 stringInfoBuilder.Build(),
                 booleanInfoBuilder.Build(),
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
                 new List<IArrowArray?>(){ entriesDataArray }.BuildListArrayForType(entryType)
-            };
+                };
 
-            DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
+                DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
 
-            IArrowArray[] dataArrays = new IArrowArray[]
-            {
+                IArrowArray[] dataArrays = new IArrowArray[]
+                {
                 infoNameBuilder.Build(),
                 infoValue
-            };
-            StandardSchemas.GetInfoSchema.Validate(dataArrays);
+                };
+                StandardSchemas.GetInfoSchema.Validate(dataArrays);
 
-            return new HiveInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
-
+                return new HiveInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
+            });
         }
 
         internal struct TableInfo(string type)
@@ -1600,5 +1600,31 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                        (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested);
             }
         }
+
+        internal static void HandleThriftResponse(TStatus status, Activity? activity)
+        {
+            if (ErrorHandlers.TryGetValue(status.StatusCode, out Action<TStatus, Activity?>? handler))
+            {
+                handler(status, activity);
+            }
+        }
+
+        private static IReadOnlyDictionary<TStatusCode, Action<TStatus, Activity?>> ErrorHandlers => new Dictionary<TStatusCode, Action<TStatus, Activity?>>()
+        {
+            [TStatusCode.ERROR_STATUS] = (status, _) => ThrowErrorResponse(status),
+            [TStatusCode.INVALID_HANDLE_STATUS] = (status, _) => ThrowErrorResponse(status),
+            [TStatusCode.STILL_EXECUTING_STATUS] = (status, _) => ThrowErrorResponse(status, AdbcStatusCode.InvalidState),
+            [TStatusCode.SUCCESS_STATUS] = (status, activity) => activity?.AddTag(SemanticConventions.Db.Response.StatusCode, status.StatusCode),
+            [TStatusCode.SUCCESS_WITH_INFO_STATUS] = (status, activity) =>
+            {
+                activity?.AddTag(SemanticConventions.Db.Response.StatusCode, status.StatusCode);
+                activity?.AddTag(SemanticConventions.Db.Response.InfoMessages, string.Join(Environment.NewLine, status.InfoMessages));
+            },
+        };
+
+        private static void ThrowErrorResponse(TStatus status, AdbcStatusCode adbcStatusCode = AdbcStatusCode.InternalError) =>
+            throw new HiveServer2Exception(status.ErrorMessage, adbcStatusCode)
+                .SetSqlState(status.SqlState)
+                .SetNativeError(status.ErrorCode);
     }
 }

@@ -38,6 +38,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(SparkHttpConnection));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(SparkHttpConnection));
 
         protected readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
@@ -147,7 +149,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(
+            T statement,
+            Schema schema,
+            TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected virtual HttpMessageHandler CreateHttpHandler()
         {
@@ -265,6 +270,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override SparkServerType ServerType => SparkServerType.Http;
 
         protected override int ColumnMapIndexOffset => 1;
+
+        public override string AssemblyVersion => s_assemblyVersion;
+
+        public override string AssemblyName => s_assemblyName;
 
         private string GetUserAgent()
         {
