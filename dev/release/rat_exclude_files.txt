@@ -30,6 +30,7 @@ go/adbc/status_string.go
 go/adbc/infocode_string.go
 go/adbc/go.sum
 java/.mvn/jvm.config
+python/*/subprojects/arrow-adbc/*
 python/*/*/py.typed
 rat.txt
 r/*/DESCRIPTION

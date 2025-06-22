@@ -125,5 +125,5 @@ target/
 /ci/linux-packages/yum/tmp/
 
 # Meson subproject support
-/c/subprojects/*
-!/c/subprojects/*.wrap
+**/subprojects/*
+!**/subprojects/*.wrap
