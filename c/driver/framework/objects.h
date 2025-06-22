@@ -142,11 +142,11 @@ struct GetObjectsHelper {
 
 /// \brief A helper that implements GetObjects.
 /// The out/helper lifetime are caller-managed.
-Status BuildGetObjects(GetObjectsHelper* helper, GetObjectsDepth depth,
-                       std::optional<std::string_view> catalog_filter,
-                       std::optional<std::string_view> schema_filter,
-                       std::optional<std::string_view> table_filter,
-                       std::optional<std::string_view> column_filter,
-                       const std::vector<std::string_view>& table_types,
-                       ArrowArrayStream* out);
+ADBC_EXPORT Status BuildGetObjects(GetObjectsHelper* helper, GetObjectsDepth depth,
+                                   std::optional<std::string_view> catalog_filter,
+                                   std::optional<std::string_view> schema_filter,
+                                   std::optional<std::string_view> table_filter,
+                                   std::optional<std::string_view> column_filter,
+                                   const std::vector<std::string_view>& table_types,
+                                   ArrowArrayStream* out);
 }  // namespace adbc::driver

@@ -26,9 +26,11 @@ adbc_sqlite3_driver_lib = library(
     'adbc_driver_sqlite',
     sources: ['sqlite.cc', 'statement_reader.c'],
     include_directories: [include_dir, c_dir],
-    link_with: [adbc_common_lib, adbc_framework_lib],
-    dependencies: [nanoarrow_dep, fmt_dep, sqlite3_dep],
+    link_with: [adbc_common_lib],
+    dependencies: [adbc_framework_dep, nanoarrow_dep, fmt_dep, sqlite3_dep],
     c_args: ['-DSIZEOF_TIME_T=' + time_t_size.to_string()],
+    gnu_symbol_visibility: 'hidden',
+    cpp_static_args: adbc_cpp_static_args,
 )
 
 pkg.generate(
@@ -37,6 +39,7 @@ pkg.generate(
     url: 'https://github.com/apache/arrow-adbc',
     libraries: [adbc_sqlite3_driver_lib],
     filebase: 'adbc-driver-sqlite',
+    variables: ['Cflags.private=-DADBC_STATIC'],
 )
 
 adbc_driver_sqlite_dep = declare_dependency(

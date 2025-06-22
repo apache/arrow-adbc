@@ -41,7 +41,8 @@ void MakeEmptyStream(ArrowSchema* schema, ArrowArrayStream* out);
 /// array is zero, or exactly one batch if the length of the array is non-zero.
 /// This function takes ownership of schema and array; the caller is responsible for
 /// releasing out.
-void MakeArrayStream(ArrowSchema* schema, ArrowArray* array, ArrowArrayStream* out);
+ADBC_EXPORT void MakeArrayStream(ArrowSchema* schema, ArrowArray* array,
+                                 ArrowArrayStream* out);
 
 /// \brief Create an ArrowArrayStream representation of a vector of table types.
 /// \ingroup adbc-framework-catalog
@@ -49,8 +50,8 @@ void MakeArrayStream(ArrowSchema* schema, ArrowArray* array, ArrowArrayStream* o
 /// Create an ArrowArrayStream representation of an array of table types
 /// that can be used to implement AdbcConnectionGetTableTypes(). The caller is responsible
 /// for releasing out on success.
-Status MakeTableTypesStream(const std::vector<std::string>& table_types,
-                            ArrowArrayStream* out);
+ADBC_EXPORT Status MakeTableTypesStream(const std::vector<std::string>& table_types,
+                                        ArrowArrayStream* out);
 
 /// \brief Representation of a single item in an array to be returned
 /// from AdbcConnectionGetInfo().
@@ -68,6 +69,7 @@ struct InfoValue {
 /// \ingroup adbc-framework-catalog
 ///
 /// The caller is responsible for releasing out on success.
-Status MakeGetInfoStream(const std::vector<InfoValue>& infos, ArrowArrayStream* out);
+ADBC_EXPORT Status MakeGetInfoStream(const std::vector<InfoValue>& infos,
+                                     ArrowArrayStream* out);
 
 }  // namespace adbc::driver

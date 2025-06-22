@@ -16,6 +16,7 @@
 # under the License.
 
 add_library(adbc_driver_common STATIC utils.c)
+target_compile_definitions(adbc_driver_common PRIVATE ADBC_STATIC)
 adbc_configure_target(adbc_driver_common)
 set_target_properties(adbc_driver_common PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(adbc_driver_common PRIVATE "${REPOSITORY_ROOT}/c/include")

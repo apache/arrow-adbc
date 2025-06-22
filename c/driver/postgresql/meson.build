@@ -29,8 +29,10 @@ adbc_postgres_driver_lib = library(
         'statement.cc',
     ],
     include_directories: [include_dir, c_dir],
-    link_with: [adbc_common_lib, adbc_framework_lib],
-    dependencies: [nanoarrow_dep, fmt_dep, libpq_dep],
+    link_with: [adbc_common_lib],
+    dependencies: [adbc_framework_dep, nanoarrow_dep, fmt_dep, libpq_dep],
+    gnu_symbol_visibility: 'hidden',
+    cpp_static_args: adbc_cpp_static_args,
 )
 
 pkg.generate(
@@ -39,6 +41,7 @@ pkg.generate(
     url: 'https://github.com/apache/arrow-adbc',
     libraries: [adbc_postgres_driver_lib],
     filebase: 'adbc-driver-postgresql',
+    variables: ['Cflags.private=-DADBC_STATIC'],
 )
 
 adbc_driver_postgresql_dep = declare_dependency(

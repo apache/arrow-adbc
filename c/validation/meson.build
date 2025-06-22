@@ -27,6 +27,7 @@ if get_option('tests').enabled()
             adbc_driver_manager_lib,
         ],
         dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep],
+        cpp_args: adbc_cpp_static_args,
     )
 
     adbc_validation_dep = declare_dependency(
@@ -44,6 +45,7 @@ if get_option('tests').enabled()
             adbc_driver_manager_lib,
         ],
         dependencies: [nanoarrow_dep, gtest_main_dep, gmock_dep],
+        compile_args: adbc_cpp_static_args,
     )
 else
     adbc_validation_dep = disabler()

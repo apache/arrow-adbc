@@ -53,6 +53,7 @@ pkg.generate(
     url: 'https://github.com/apache/arrow-adbc',
     libraries: [adbc_driver_flightsql_lib],
     filebase: 'adbc-driver-flightsql',
+    variables: ['Cflags.private=-DADBC_STATIC'],
 )
 
 adbc_driver_flightsql_dep = declare_dependency(
