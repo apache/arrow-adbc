@@ -52,8 +52,7 @@
   <PropertyGroup>
     <Authors>The Apache Software Foundation</Authors>
     <PackageIcon>feather.png</PackageIcon>
-    <!-- We can't use PackageLicenseExpression; the license file also contains 3rd-party notices. -->
-    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://arrow.apache.org/</PackageProjectUrl>
     <PackageTags>apache arrow adbc</PackageTags>
     <RepositoryType>git</RepositoryType>
