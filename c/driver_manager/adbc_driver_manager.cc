@@ -16,6 +16,7 @@
 // under the License.
 
 #if defined(_WIN32)
+#define NOMINMAX
 #include <windows.h>  // Must come first
 
 #ifndef NTDDI_VERSION
@@ -2178,8 +2179,11 @@ AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoin
 
 AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
                               int version, void* raw_driver, struct AdbcError* error) {
-  return AdbcFindLoadDriver(driver_name, entrypoint, version, ADBC_LOAD_FLAG_DEFAULT,
-                            raw_driver, error);
+  // maintain old behavior of allowing relative paths (because dlopen allows it)
+  // but don't enable searching for manifests by default. It will need to be explicitly
+  // enabled by calling AdbcFindLoadDriver directly.
+  return AdbcFindLoadDriver(driver_name, entrypoint, version,
+                            ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS, raw_driver, error);
 }
 
 AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int version,
