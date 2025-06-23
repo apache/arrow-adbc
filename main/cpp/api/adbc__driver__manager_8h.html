@@ -90,19 +90,48 @@ $(function(){ initResizable(false); });
 <div id="doc-content">
 <div class="header">
   <div class="summary">
+<a href="#define-members">Macros</a> &#124;
+<a href="#typedef-members">Typedefs</a> &#124;
 <a href="#func-members">Functions</a>  </div>
   <div class="headertitle"><div class="title">adbc_driver_manager.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &lt;<a class="el" href="adbc_8h_source.html">arrow-adbc/adbc.h</a>&gt;</code><br />
+<code>#include &lt;stdint.h&gt;</code><br />
 </div>
 <p><a href="adbc__driver__manager_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
+Macros</h2></td></tr>
+<tr class="memitem:af7c295dbe97a76960e2187057fa9a10c" id="r_af7c295dbe97a76960e2187057fa9a10c"><td class="memItemLeft" align="right" valign="top"><a id="af7c295dbe97a76960e2187057fa9a10c" name="af7c295dbe97a76960e2187057fa9a10c"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>ADBC_LOAD_FLAG_SEARCH_ENV</b>&#160;&#160;&#160;1</td></tr>
+<tr class="separator:af7c295dbe97a76960e2187057fa9a10c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab2af3e195d718476a218b9ce82ed9898" id="r_ab2af3e195d718476a218b9ce82ed9898"><td class="memItemLeft" align="right" valign="top"><a id="ab2af3e195d718476a218b9ce82ed9898" name="ab2af3e195d718476a218b9ce82ed9898"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>ADBC_LOAD_FLAG_SEARCH_USER</b>&#160;&#160;&#160;2</td></tr>
+<tr class="separator:ab2af3e195d718476a218b9ce82ed9898"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa4fcbd5a0fec49eafc2ca41397b868af" id="r_aa4fcbd5a0fec49eafc2ca41397b868af"><td class="memItemLeft" align="right" valign="top"><a id="aa4fcbd5a0fec49eafc2ca41397b868af" name="aa4fcbd5a0fec49eafc2ca41397b868af"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>ADBC_LOAD_FLAG_SEARCH_SYSTEM</b>&#160;&#160;&#160;4</td></tr>
+<tr class="separator:aa4fcbd5a0fec49eafc2ca41397b868af"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab160ff0074d08d2a434ae1c89b7977aa" id="r_ab160ff0074d08d2a434ae1c89b7977aa"><td class="memItemLeft" align="right" valign="top"><a id="ab160ff0074d08d2a434ae1c89b7977aa" name="ab160ff0074d08d2a434ae1c89b7977aa"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS</b>&#160;&#160;&#160;8</td></tr>
+<tr class="separator:ab160ff0074d08d2a434ae1c89b7977aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad18a2d10206e3d54be7aedab3c229c0e" id="r_ad18a2d10206e3d54be7aedab3c229c0e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad18a2d10206e3d54be7aedab3c229c0e">ADBC_LOAD_FLAG_DEFAULT</a></td></tr>
+<tr class="separator:ad18a2d10206e3d54be7aedab3c229c0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:aa16189c0130657033e15736baf973d48" id="r_aa16189c0130657033e15736baf973d48"><td class="memItemLeft" align="right" valign="top"><a id="aa16189c0130657033e15736baf973d48" name="aa16189c0130657033e15736baf973d48"></a>
+typedef uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>AdbcLoadFlags</b></td></tr>
+<tr class="separator:aa16189c0130657033e15736baf973d48"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:ac9a4db661a21cca1bbb47a4bd47f9ad0" id="r_ac9a4db661a21cca1bbb47a4bd47f9ad0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754">AdbcStatusCode</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac9a4db661a21cca1bbb47a4bd47f9ad0">AdbcLoadDriver</a> (const char *driver_name, const char *entrypoint, int version, void *driver, struct <a class="el" href="group__adbc-error-handling.html#structAdbcError">AdbcError</a> *error)</td></tr>
 <tr class="memdesc:ac9a4db661a21cca1bbb47a4bd47f9ad0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Common entry point for drivers via the driver manager.  <br /></td></tr>
 <tr class="separator:ac9a4db661a21cca1bbb47a4bd47f9ad0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aac614a9303581eec3a0db0b6788f915b" id="r_aac614a9303581eec3a0db0b6788f915b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754">AdbcStatusCode</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aac614a9303581eec3a0db0b6788f915b">AdbcFindLoadDriver</a> (const char *driver_name, const char *entrypoint, const int version, const AdbcLoadFlags load_options, void *driver, struct <a class="el" href="group__adbc-error-handling.html#structAdbcError">AdbcError</a> *error)</td></tr>
+<tr class="memdesc:aac614a9303581eec3a0db0b6788f915b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Common entry point to search for and load a driver or manifest.  <br /></td></tr>
+<tr class="separator:aac614a9303581eec3a0db0b6788f915b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aba554fa202582afaa545ac666da60a40" id="r_aba554fa202582afaa545ac666da60a40"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754">AdbcStatusCode</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aba554fa202582afaa545ac666da60a40">AdbcLoadDriverFromInitFunc</a> (<a class="el" href="group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db">AdbcDriverInitFunc</a> init_func, int version, void *driver, struct <a class="el" href="group__adbc-error-handling.html#structAdbcError">AdbcError</a> *error)</td></tr>
 <tr class="memdesc:aba554fa202582afaa545ac666da60a40"><td class="mdescLeft">&#160;</td><td class="mdescRight">Common entry point for drivers via the driver manager.  <br /></td></tr>
 <tr class="separator:aba554fa202582afaa545ac666da60a40"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -116,7 +145,24 @@ Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>ADBC Driver Manager</p>
 <p>A helper library to dynamically load and use multiple ADBC drivers in the same process. </p>
-</div><h2 class="groupheader">Function Documentation</h2>
+</div><h2 class="groupheader">Macro Definition Documentation</h2>
+<a id="ad18a2d10206e3d54be7aedab3c229c0e" name="ad18a2d10206e3d54be7aedab3c229c0e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad18a2d10206e3d54be7aedab3c229c0e">&#9670;&#160;</a></span>ADBC_LOAD_FLAG_DEFAULT</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ADBC_LOAD_FLAG_DEFAULT</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Value:</b><div class="fragment"><div class="line">  (ADBC_LOAD_FLAG_SEARCH_ENV | ADBC_LOAD_FLAG_SEARCH_USER | \</div>
+<div class="line">   ADBC_LOAD_FLAG_SEARCH_SYSTEM | ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS)</div>
+</div><!-- fragment -->
+</div>
+</div>
+<h2 class="groupheader">Function Documentation</h2>
 <a id="ae09e277867757f5ca2bb8d997cf0164c" name="ae09e277867757f5ca2bb8d997cf0164c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ae09e277867757f5ca2bb8d997cf0164c">&#9670;&#160;</a></span>AdbcDriverManagerDatabaseSetInitFunc()</h2>
 
@@ -143,6 +189,72 @@ Functions</h2></td></tr>
 
 <p>Set the <a class="el" href="group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db" title="Common entry point for drivers via the driver manager (which uses dlopen(3)/LoadLibrary)....">AdbcDriverInitFunc</a> to use. </p>
 <p>This is an extension to the ADBC API. The driver manager shims the AdbcDatabase* functions to allow you to specify the driver/entrypoint dynamically. This function lets you set the entrypoint explicitly, for applications that can dynamically load drivers on their own. </p>
+
+</div>
+</div>
+<a id="aac614a9303581eec3a0db0b6788f915b" name="aac614a9303581eec3a0db0b6788f915b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aac614a9303581eec3a0db0b6788f915b">&#9670;&#160;</a></span>AdbcFindLoadDriver()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754">AdbcStatusCode</a> AdbcFindLoadDriver </td>
+          <td>(</td>
+          <td class="paramtype">const char *</td>          <td class="paramname"><span class="paramname"><em>driver_name</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *</td>          <td class="paramname"><span class="paramname"><em>entrypoint</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const int</td>          <td class="paramname"><span class="paramname"><em>version</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const AdbcLoadFlags</td>          <td class="paramname"><span class="paramname"><em>load_options</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *</td>          <td class="paramname"><span class="paramname"><em>driver</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">struct <a class="el" href="group__adbc-error-handling.html#structAdbcError">AdbcError</a> *</td>          <td class="paramname"><span class="paramname"><em>error</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Common entry point to search for and load a driver or manifest. </p>
+<p>The driver manager can fill in default implementations of some ADBC functions for drivers. Drivers must implement a minimum level of functionality for this to be possible, however, and some functions must be implemented by the driver.</p>
+<p>This function is different from AdbcLoadDriver in that it also accepts the name of a driver manifest file, and allows specifying options to control what directories it will search through. The behavior is as follows:</p>
+<p>If the passed in driver_name is an absolute path:</p><ul>
+<li>If the path has a <code>.toml</code> extension, it will attempt to parse the manifest and load the driver specified within it. Erroring if this fails.</li>
+<li>If the path has an extension other than <code>.toml</code>, it will attempt to load the path as a shared library. Erroring if this fails.</li>
+</ul>
+<p>If the passed in driver_name does not have an extension and is not an absolute path:</p><ul>
+<li>The load_options parameter will control whether the driver manager will search the ADBC_CONFIG_PATH environment variable, the user configuration directory, and/or the system level directory of /etc/adbc for either a manifest file or a shared library.</li>
+<li>For each path to be searched, it will first look for &lt;path&gt;/&lt;driver_name&gt;.toml. If that file exists, it will attempt to parse the manifest and load the driver specified within it, erroring if this fails.</li>
+<li>If the manifest file does not exist, it will then look for &lt;path&gt;/&lt;driver_name&gt;.&lt;extension&gt; where &lt;extension&gt; is one of the following: <code>.so</code>, <code>.dll</code>, <code>.dylib</code>. If it can load that shared library, then success is returned. Otherwise it moves to the next directory until the search is either successful, or all directories have been searched.</li>
+</ul>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">driver_name</td><td>An identifier for the driver (e.g. a path to a shared library on Linux or the basename of a manifest file). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">entrypoint</td><td>An identifier for the entrypoint (e.g. the symbol to call for <a class="el" href="group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db" title="Common entry point for drivers via the driver manager (which uses dlopen(3)/LoadLibrary)....">AdbcDriverInitFunc</a> on Linux). If not provided, search for an entrypoint based on the driver name. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">version</td><td>The ADBC revision to attempt to initialize. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">load_options</td><td>bit mask of AdbcLoadFlags to control the directories searched </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">raw_driver</td><td>The table of function pointers to initialize </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">error</td><td>An optional location to return an error message </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd></dd></dl>
 
 </div>
 </div>
