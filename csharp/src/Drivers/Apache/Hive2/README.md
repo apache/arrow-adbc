@@ -60,7 +60,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.proxy_options.proxy_auth` | Whether to enable proxy authentication. Only feature-complete in Spark driver. One of `True`, `False` | `False` |
 | `adbc.proxy_options.proxy_uid` | Username for proxy authentication. Only feature-complete in Spark driver. Required when proxy_auth is True | |
 | `adbc.proxy_options.proxy_pwd` | Password for proxy authentication. Only feature-complete in Spark driver. Required when proxy_auth is True | |
-| `adbc.telemetry.trace_parent` | The [trace parent](https://www.w3.org/TR/trace-context/#traceparent-header) identifier for an existing [trace context](https://www.w3.org/TR/trace-context/) \(span/activity\) in a tracing system. This option is most likely to be set using `Statement.SetOption` to set the trace parent for driver interaction with a specific `Statement`. However, it can also be set using `Driver.Open`, `Database.Connect` or `Connection.SetOption` to set the trace parent for all interactions with the driver on that specific `Connetion`. |  |
+| `adbc.telemetry.trace_parent` | The [trace parent](https://www.w3.org/TR/trace-context/#traceparent-header) identifier for an existing [trace context](https://www.w3.org/TR/trace-context/) \(span/activity\) in a tracing system. This option is most likely to be set using `Statement.SetOption` to set the trace parent for driver interaction with a specific `Statement`. However, it can also be set using `Driver.Open`, `Database.Connect` or `Connection.SetOption` to set the trace parent for all interactions with the driver on that specific `Connection`. |  |
 
 ## Timeout Configuration
 
@@ -134,9 +134,9 @@ If the environment variable is not set or empty, it behaves the same as for `non
 
 ### Configuring the OTLP Exporter
 
-When the `otlp` exporter is activiated, it uses the default settings.
+When the `otlp` exporter is activated, it uses the default settings.
 
-To override default settings, set the appropriate environement variables for *traces* as detailed in [OTLP Exporter Configuration](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/).
+To override default settings, set the appropriate environment variables for *traces* as detailed in [OTLP Exporter Configuration](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/).
 
 A typical use case scenario is to [install](https://opentelemetry.io/docs/collector/installation/) and [configure](https://opentelemetry.io/docs/collector/configuration/) an [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/).
 The Collector can be configure to receive trace messages from the driver and export them in various ways.
