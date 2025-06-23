@@ -308,8 +308,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {
-            // Get result format from metadata response if available
-            TSparkRowSetType resultFormat = TSparkRowSetType.ARROW_BASED_SET;
+            // Get LZ4 compression info from metadata response if available
             bool isLz4Compressed = false;
 
             DatabricksStatement? databricksStatement = statement as DatabricksStatement;
@@ -319,21 +318,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 throw new InvalidOperationException("Cannot obtain a reader for Databricks");
             }
 
-            if (metadataResp != null)
+            if (metadataResp != null && metadataResp.__isset.lz4Compressed)
             {
-                if (metadataResp.__isset.resultFormat)
-                {
-                    resultFormat = metadataResp.ResultFormat;
-                }
-
-                if (metadataResp.__isset.lz4Compressed)
-                {
-                    isLz4Compressed = metadataResp.Lz4Compressed;
-                }
+                isLz4Compressed = metadataResp.Lz4Compressed;
             }
 
-            // Choose the appropriate reader based on the result format
-            if (resultFormat == TSparkRowSetType.URL_BASED_SET)
+            // Inspect direct results to determine if result links are available (similar to JDBC driver)
+            bool hasResultLinks = HasResultLinks(databricksStatement.DirectResults);
+
+            // Choose the appropriate reader based on whether result links are available
+            if (hasResultLinks)
             {
                 HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
                 return new CloudFetchReader(databricksStatement, schema, isLz4Compressed, cloudFetchHttpClient);
@@ -342,6 +336,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 return new DatabricksReader(databricksStatement, schema, isLz4Compressed);
             }
+        }
+
+        /// <summary>
+        /// Checks if the direct results contain result links for CloudFetch.
+        /// We rely on this rather than ResultSetMetadata.ResultFormat, because for older runtime
+        /// there is a bug that returns the incorrect format (11.3, 10.4)
+        /// </summary>
+        /// <param name="directResults">The direct results to check.</param>
+        /// <returns>True if result links are available, false otherwise.</returns>
+        private static bool HasResultLinks(TSparkDirectResults? directResults)
+        {
+            return directResults?.__isset.resultSet == true &&
+                   directResults.ResultSet?.__isset.results == true &&
+                   directResults.ResultSet.Results?.__isset.resultLinks == true;
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
