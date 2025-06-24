@@ -5,7 +5,7 @@
     "query": "<query>",
     "expectedResults": 0,
     "metadata": {
-        "schema": "<schem>",
+        "schema": "<schema>",
         "table": "<anyTableName>",
         "expectedColumnCount": 0
     }

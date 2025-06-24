@@ -23,7 +23,7 @@ toolchain go1.24.1
 
 require (
 	cloud.google.com/go/bigquery v1.69.0
-	github.com/apache/arrow-go/v18 v18.3.0
+	github.com/apache/arrow-go/v18 v18.3.1
 	github.com/bluele/gcache v0.0.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
@@ -40,7 +40,7 @@ require (
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.15.0
 	golang.org/x/tools v0.34.0
-	google.golang.org/api v0.237.0
+	google.golang.org/api v0.238.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 	modernc.org/sqlite v1.38.0

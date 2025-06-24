@@ -34,6 +34,7 @@ const (
 
 type StatementImpl interface {
 	adbc.Statement
+	adbc.StatementExecuteSchema
 	adbc.GetSetOptions
 	adbc.OTelTracing
 	Base() *StatementImplBase

@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -27,7 +28,7 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Statement : AdbcStatement
+    internal class HiveServer2Statement : TracingStatement
     {
         private const string GetPrimaryKeysCommandName = "getprimarykeys";
         private const string GetCrossReferenceCommandName = "getcrossreference";
@@ -47,11 +48,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         // Add constants for PK and FK field names and prefixes
         private static readonly string[] PrimaryKeyFields = new[] { "COLUMN_NAME" };
-        private static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME" };
+        private static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME", "FK_NAME", "KEQ_SEQ" };
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2Statement));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2Statement));
         private const string PrimaryKeyPrefix = "PK_";
         private const string ForeignKeyPrefix = "FK_";
 
         internal HiveServer2Statement(HiveServer2Connection connection)
+            : base(connection)
         {
             Connection = connection;
             ValidateOptions(connection.Properties);
@@ -102,33 +106,36 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
         {
-            if (IsMetadataCommand)
+            return await this.TraceActivityAsync(async _ =>
             {
-                return await ExecuteMetadataCommandQuery(cancellationToken);
-            }
+                if (IsMetadataCommand)
+                {
+                    return await ExecuteMetadataCommandQuery(cancellationToken);
+                }
 
-            _directResults = null;
+                _directResults = null;
 
-            // this could either:
-            // take QueryTimeoutSeconds * 3
-            // OR
-            // take QueryTimeoutSeconds (but this could be restricting)
-            await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
+                // this could either:
+                // take QueryTimeoutSeconds * 3
+                // OR
+                // take QueryTimeoutSeconds (but this could be restricting)
+                await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
 
-            TGetResultSetMetadataResp metadata;
-            if (_directResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
-            {
-                // The initial response has result data so we don't need to poll
-                metadata = _directResults.ResultSetMetadata;
-            }
-            else
-            {
-                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
-            }
-            // Store metadata for use in readers
-            Schema schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
-            return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
+                TGetResultSetMetadataResp metadata;
+                if (_directResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
+                {
+                    // The initial response has result data so we don't need to poll
+                    metadata = _directResults.ResultSetMetadata;
+                }
+                else
+                {
+                    await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
+                    metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
+                }
+                // Store metadata for use in readers
+                Schema schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+                return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
+            });
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
@@ -150,62 +157,80 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        public async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
+        private async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
         {
-            const string NumberOfAffectedRowsColumnName = "num_affected_rows";
-            QueryResult queryResult = await ExecuteQueryAsyncInternal(cancellationToken);
-            if (queryResult.Stream == null)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new AdbcException("no data found");
-            }
-
-            using IArrowArrayStream stream = queryResult.Stream;
-
-            // Check if the affected rows columns are returned in the result.
-            Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
-            if (affectedRowsField != null && affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
-            {
-                throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
-            }
-
-            // The default is -1.
-            if (affectedRowsField == null) return new UpdateResult(-1);
-
-            long? affectedRows = null;
-            while (true)
-            {
-                using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync(cancellationToken);
-                if (nextBatch == null) { break; }
-                Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
-                // Note: should only have one item, but iterate for completeness
-                for (int i = 0; i < numOfModifiedArray.Length; i++)
+                long? affectedRows = null;
+                try
                 {
-                    // Note: handle the case where the affected rows are zero (0).
-                    affectedRows = (affectedRows ?? 0) + numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
-                }
-            }
+                    const string NumberOfAffectedRowsColumnName = "num_affected_rows";
+                    QueryResult queryResult = await ExecuteQueryAsyncInternal(cancellationToken);
+                    if (queryResult.Stream == null)
+                    {
+                        throw new AdbcException("no data found");
+                    }
 
-            // If no altered rows, i.e. DDC statements, then -1 is the default.
-            return new UpdateResult(affectedRows ?? -1);
+                    using IArrowArrayStream stream = queryResult.Stream;
+
+                    // Check if the affected rows columns are returned in the result.
+                    Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
+                    if (affectedRowsField != null && affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
+                    {
+                        throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
+                    }
+
+                    // The default is -1.
+                    if (affectedRowsField == null)
+                    {
+                        affectedRows = -1;
+                        return new UpdateResult(affectedRows.Value);
+                    }
+
+                    while (true)
+                    {
+                        using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync(cancellationToken);
+                        if (nextBatch == null) { break; }
+                        Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
+                        // Note: should only have one item, but iterate for completeness
+                        for (int i = 0; i < numOfModifiedArray.Length; i++)
+                        {
+                            // Note: handle the case where the affected rows are zero (0).
+                            affectedRows = (affectedRows ?? 0) + numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
+                        }
+                    }
+
+                    // If no altered rows, i.e. DDC statements, then -1 is the default.
+                    affectedRows ??= -1;
+                    return new UpdateResult(affectedRows.Value);
+                }
+                finally
+                {
+                    activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1);
+                }
+            });
         }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
+            return await this.TraceActivityAsync(async _ =>
             {
-                return await ExecuteUpdateAsyncInternal(cancellationToken);
-            }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
-            {
-                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
-            }
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                try
+                {
+                    return await ExecuteUpdateAsyncInternal(cancellationToken);
+                }
+                catch (Exception ex)
+                    when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                         (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+                {
+                    throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+                }
+            });
         }
 
         public override void SetOption(string key, string value)
@@ -254,10 +279,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case ApacheParameters.ForeignTableName:
                     this.ForeignTableName = value;
                     break;
-                case ApacheParameters.EscapeUnderscore:
-                    if (ApacheUtility.BooleanIsValid(key, value, out bool escapeUnderscore))
+                case ApacheParameters.EscapePatternWildcards:
+                    if (ApacheUtility.BooleanIsValid(key, value, out bool escapePatternWildcards))
                     {
-                        this.EscapeUnderscore = escapeUnderscore;
+                        this.EscapePatternWildcards = escapePatternWildcards;
                     }
                     break;
                 default:
@@ -267,34 +292,35 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
-            if (Connection.SessionHandle == null)
+            await this.TraceActivityAsync(async activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
-
-            TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
-            SetStatementProperties(executeRequest);
-            TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
-            if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
-            {
-                throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
-                    .SetSqlState(executeResponse.Status.SqlState)
-                    .SetNativeError(executeResponse.Status.ErrorCode);
-            }
-            OperationHandle = executeResponse.OperationHandle;
-
-            // Capture direct results if they're available
-            if (executeResponse.DirectResults != null)
-            {
-                _directResults = executeResponse.DirectResults;
-
-                if (!string.IsNullOrEmpty(_directResults.OperationStatus?.DisplayMessage))
+                if (Connection.SessionHandle == null)
                 {
-                    throw new HiveServer2Exception(_directResults.OperationStatus!.DisplayMessage)
-                        .SetSqlState(_directResults.OperationStatus.SqlState)
-                        .SetNativeError(_directResults.OperationStatus.ErrorCode);
+                    throw new InvalidOperationException("Invalid session");
                 }
-            }
+
+                activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
+                TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
+                SetStatementProperties(executeRequest);
+                TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
+                HiveServer2Connection.HandleThriftResponse(executeResponse.Status, activity);
+                activity?.AddTag(SemanticConventions.Db.Response.OperationId, executeResponse.OperationHandle.OperationId.Guid, "N");
+
+                OperationHandle = executeResponse.OperationHandle;
+
+                // Capture direct results if they're available
+                if (executeResponse.DirectResults != null)
+                {
+                    _directResults = executeResponse.DirectResults;
+
+                    if (!string.IsNullOrEmpty(_directResults.OperationStatus?.DisplayMessage))
+                    {
+                        throw new HiveServer2Exception(_directResults.OperationStatus!.DisplayMessage)
+                            .SetSqlState(_directResults.OperationStatus.SqlState)
+                            .SetNativeError(_directResults.OperationStatus.ErrorCode);
+                    }
+                }
+            });
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
@@ -317,7 +343,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal string? ForeignCatalogName { get; set; }
         protected internal string? ForeignSchemaName { get; set; }
         protected internal string? ForeignTableName { get; set; }
-        protected internal bool EscapeUnderscore { get; set; } = false;
+        protected internal bool EscapePatternWildcards { get; set; } = false;
         protected internal TSparkDirectResults? _directResults { get; set; }
 
         public HiveServer2Connection Connection { get; private set; }
@@ -327,6 +353,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // Keep the original Client property for internal use
         public TCLIService.IAsync Client => Connection.Client;
 
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
+
         private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0
             ? pollTimeMilliseconds
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than or equal to 0.");
@@ -335,24 +365,30 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
 
-        private string? EscapeUnderscoreInName(string? name)
+        private string? EscapePatternWildcardsInName(string? name)
         {
-            if (!EscapeUnderscore || name == null)
+            if (!EscapePatternWildcards || name == null)
                 return name;
-            return name.Replace("_", "\\_");
+            // Escape both _ and %
+            return name.Replace("_", "\\_").Replace("%", "\\%");
         }
 
         public override void Dispose()
         {
-            if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
+            this.TraceActivity(activity =>
             {
-                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
-                Connection.Client.CloseOperation(request, cancellationToken).Wait();
-                OperationHandle = null;
-            }
+                if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
+                {
+                    CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                    activity?.AddTag(SemanticConventions.Db.Operation.OperationId, OperationHandle.OperationId.Guid, "N");
+                    TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
+                    TCloseOperationResp resp = Connection.Client.CloseOperation(request, cancellationToken).Result;
+                    HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
+                    OperationHandle = null;
+                }
 
-            base.Dispose();
+                base.Dispose();
+            });
         }
 
         protected void ValidateOptions(IReadOnlyDictionary<string, string> properties)
@@ -390,15 +426,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // This method is for internal use only and is not available for external use.
         // It retrieves cross-reference data where the current table is treated as a foreign table.
         // This is used in GetColumnsExtendedAsync to fetch foreign key relationships.
+        /// Note: Unlike other metadata queries, this method does not escape underscores in names
+        /// since the backend treats these as exact match queries rather than pattern matches.
         protected virtual async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
         {
             TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
                 null,
                 null,
                 null,
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
-                EscapeUnderscoreInName(TableName),
+                CatalogName,
+                SchemaName,
+                TableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
@@ -453,8 +491,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
         {
             TGetSchemasResp resp = await Connection.GetSchemasAsync(
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
+                EscapePatternWildcardsInName(CatalogName),
+                EscapePatternWildcardsInName(SchemaName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
@@ -465,9 +503,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
             TGetTablesResp resp = await Connection.GetTablesAsync(
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
-                EscapeUnderscoreInName(TableName),
+                EscapePatternWildcardsInName(CatalogName),
+                EscapePatternWildcardsInName(SchemaName),
+                EscapePatternWildcardsInName(TableName),
                 tableTypesList,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
@@ -478,10 +516,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
         {
             TGetColumnsResp resp = await Connection.GetColumnsAsync(
-                EscapeUnderscoreInName(CatalogName),
-                EscapeUnderscoreInName(SchemaName),
-                EscapeUnderscoreInName(TableName),
-                EscapeUnderscoreInName(ColumnName),
+                EscapePatternWildcardsInName(CatalogName),
+                EscapePatternWildcardsInName(SchemaName),
+                EscapePatternWildcardsInName(TableName),
+                EscapePatternWildcardsInName(ColumnName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
@@ -670,7 +708,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             // 1. Get all three results at once
             var columnsResult = await GetColumnsAsync(cancellationToken);
-            if (columnsResult.Stream == null) {
+            if (columnsResult.Stream == null)
+            {
                 // TODO: Add log or throw
                 return columnsResult;
             }
@@ -691,7 +730,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             using (var stream = columnsResult.Stream)
             {
                 colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
-                if (colNameIndex < 0) {
+                if (colNameIndex < 0)
+                {
                     // TODO: Add log or throw
                     return columnsResult; // Can't match without column names
                 }
@@ -801,9 +841,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             // STEP 1: Add relationship fields to the output schema
             // Each field name is prefixed (e.g., "PK_" for primary keys, "FK_" for foreign keys)
-            foreach (var fieldName in includeFields)
+            if (result.Stream != null)
             {
-                allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
+                var schema = result.Stream.Schema;
+                foreach (var fieldName in includeFields)
+                {
+                    int fieldIndex = schema.GetFieldIndex(fieldName);
+                    IArrowType arrowType = StringType.Default; // fallback
+                    if (fieldIndex >= 0)
+                    {
+                        arrowType = schema.GetFieldByIndex(fieldIndex).DataType;
+                    }
+                    allFields.Add(new Field(prefix + fieldName, arrowType, true));
+                }
+            }
+            else
+            {
+                // fallback: if no stream, add as string
+                foreach (var fieldName in includeFields)
+                {
+                    allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
+                }
             }
 
             // STEP 2: Create a dictionary to map column names to their relationship values
@@ -812,7 +870,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // {"COLUMN_NAME": {"id": "id"}}
             // For foreign keys - only columns that are FKs are stored:
             // {"FKCOLUMN_NAME": {"DOLocationId": "LocationId"}}
-            var relationData = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            var relationData = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
 
             // STEP 3: Extract relationship data from the query result
             if (result.Stream != null)
@@ -845,6 +903,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                                 if (keyCol.IsNull(i)) continue;
 
                                 string keyValue = keyCol.GetString(i);
+
                                 if (string.IsNullOrEmpty(keyValue)) continue;
 
                                 // STEP 3.4: For each included field, extract its value and store in our map
@@ -853,12 +912,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                                     // Ensure we have an entry for this field
                                     if (!relationData.TryGetValue(pair.Key, out var fieldData))
                                     {
-                                        fieldData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                        fieldData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
                                         relationData[pair.Key] = fieldData;
                                     }
-                                    StringArray fieldArray = (StringArray)batch.Column(pair.Value);
                                     // Store the relationship value: columnName -> value
-                                    relationData[pair.Key][keyValue] = fieldArray.GetString(i);
+                                    IArrowArray fieldArray = batch.Column(pair.Value);
+                                    if (fieldArray is Int32Array int32ArrayField)
+                                    {
+                                        var val = int32ArrayField.GetValue(i);
+                                        relationData[pair.Key][keyValue] = val.GetValueOrDefault();
+                                    }
+                                    else
+                                    {
+                                        // Default: treat as string array
+                                        var stringArrayFallback = (StringArray)fieldArray;
+                                        relationData[pair.Key][keyValue] = stringArrayFallback.GetString(i);
+                                    }
+
                                 }
                             }
                         }
@@ -867,34 +937,62 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             // STEP 4: Build Arrow arrays for each relationship field
-            // These arrays align with the main column results, so each row contains
-            // the appropriate relationship value for its column
             foreach (var fieldName in includeFields)
             {
-                // Create a string array builder
-                var builder = new StringArray.Builder();
                 var fieldData = relationData.ContainsKey(fieldName) ? relationData[fieldName] : null;
-
-                // Process each column name in the main result
-                for (int i = 0; i < colNames.Length; i++)
+                IArrowType arrowType = StringType.Default;
+                if (result.Stream != null)
                 {
-                    string? colName = colNames.GetString(i);
-                    string? value = null;
-
-                    // Look up relationship value for this column
-                    if (!string.IsNullOrEmpty(colName) &&
-                        fieldData != null &&
-                        fieldData.TryGetValue(colName!, out var fieldValue))
-                    {
-                        value = fieldValue;
-                    }
-
-                    // Add to the array (empty string if no relationship exists)
-                    builder.Append(value);
+                    int fieldIndex = result.Stream.Schema.GetFieldIndex(fieldName);
+                    if (fieldIndex >= 0)
+                        arrowType = result.Stream.Schema.GetFieldByIndex(fieldIndex).DataType;
                 }
 
-                // Add the completed array to our output data
-                combinedData.Add(builder.Build());
+                if (arrowType.TypeId == ArrowTypeId.Int32)
+                {
+                    var builder = new Int32Array.Builder();
+                    for (int i = 0; i < colNames.Length; i++)
+                    {
+                        string? colName = colNames.GetString(i);
+                        if (!string.IsNullOrEmpty(colName) && fieldData != null && fieldData.TryGetValue(colName!, out var fieldValue))
+                        {
+                            if (fieldValue is int intVal)
+                            {
+                                builder.Append(intVal);
+                            }
+                            else if (fieldValue is string strVal && int.TryParse(strVal, out int parsed))
+                            {
+                                builder.Append(parsed);
+                            }
+                            else
+                            {
+                                builder.AppendNull();
+                            }
+                        }
+                        else
+                        {
+                            builder.AppendNull();
+                        }
+                    }
+                    combinedData.Add(builder.Build());
+                }
+                else
+                {
+                    var builder = new StringArray.Builder();
+                    for (int i = 0; i < colNames.Length; i++)
+                    {
+                        string? colName = colNames.GetString(i);
+                        string? value = null;
+                        if (!string.IsNullOrEmpty(colName) &&
+                            fieldData != null &&
+                            fieldData.TryGetValue(colName!, out var fieldValue))
+                        {
+                            value = (string?)fieldValue;
+                        }
+                        builder.Append(value);
+                    }
+                    combinedData.Add(builder.Build());
+                }
             }
         }
     }

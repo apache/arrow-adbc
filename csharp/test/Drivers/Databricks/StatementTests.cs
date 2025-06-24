@@ -354,7 +354,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
             statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
             statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
-            statement.SetOption(ApacheParameters.EscapeUnderscore, "true");
+            statement.SetOption(ApacheParameters.EscapePatternWildcards, "true");
             statement.SqlQuery = "GetColumnsExtended";
 
             QueryResult queryResult = await statement.ExecuteQueryAsync();
@@ -419,6 +419,53 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             // Verify we got rows matching the expected column count
             Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, rowCount);
             OutputHelper?.WriteLine($"Successfully retrieved {rowCount} columns with extended information");
+
+            // Define the expected schema as (name, type) pairs
+            var expectedSchema = new (string Name, string Type)[]
+            {
+                ("TABLE_CAT", "Apache.Arrow.Types.StringType"),
+                ("TABLE_SCHEM", "Apache.Arrow.Types.StringType"),
+                ("TABLE_NAME", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("DATA_TYPE", "Apache.Arrow.Types.Int32Type"),
+                ("TYPE_NAME", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_SIZE", "Apache.Arrow.Types.Int32Type"),
+                ("BUFFER_LENGTH", "Apache.Arrow.Types.Int8Type"),
+                ("DECIMAL_DIGITS", "Apache.Arrow.Types.Int32Type"),
+                ("NUM_PREC_RADIX", "Apache.Arrow.Types.Int32Type"),
+                ("NULLABLE", "Apache.Arrow.Types.Int32Type"),
+                ("REMARKS", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_DEF", "Apache.Arrow.Types.StringType"),
+                ("SQL_DATA_TYPE", "Apache.Arrow.Types.Int32Type"),
+                ("SQL_DATETIME_SUB", "Apache.Arrow.Types.Int32Type"),
+                ("CHAR_OCTET_LENGTH", "Apache.Arrow.Types.Int32Type"),
+                ("ORDINAL_POSITION", "Apache.Arrow.Types.Int32Type"),
+                ("IS_NULLABLE", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_CATALOG", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_SCHEMA", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_TABLE", "Apache.Arrow.Types.StringType"),
+                ("SOURCE_DATA_TYPE", "Apache.Arrow.Types.Int16Type"),
+                ("IS_AUTO_INCREMENT", "Apache.Arrow.Types.StringType"),
+                ("BASE_TYPE_NAME", "Apache.Arrow.Types.StringType"),
+                ("PK_COLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_PKCOLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_CAT", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_SCHEM", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_FKCOLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_FK_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_KEQ_SEQ", "Apache.Arrow.Types.Int32Type"),
+            };
+
+            // Assert each expected field exists in the actual schema with the correct type
+            foreach (var (expectedName, expectedType) in expectedSchema)
+            {
+                var actualField = queryResult.Stream?.Schema.FieldsList
+                    .FirstOrDefault(f => f.Name == expectedName);
+
+                Assert.NotNull(actualField); // Field must exist
+                Assert.Equal(expectedType, actualField.DataType.GetType().ToString());
+            }
         }
 
         // Helper method to get string representation of array values

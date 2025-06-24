@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
-        private const bool DefaultRetryOnUnavailable= true;
+        private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
 
         // Default namespace
@@ -179,11 +179,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
             {
-                _defaultNamespace = new TNamespace
-                {
-                    CatalogName = defaultCatalog,
-                    SchemaName = defaultSchema
-                };
+                var ns = new TNamespace();
+                if (!string.IsNullOrWhiteSpace(defaultSchema))
+                    ns.CatalogName = defaultCatalog!;
+                if (!string.IsNullOrWhiteSpace(defaultSchema))
+                    ns.SchemaName = defaultSchema;
+                _defaultNamespace = ns;
             }
         }
 
@@ -379,11 +380,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return req;
         }
 
-        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session)
+        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
         {
-            await base.HandleOpenSessionResponse(session);
+            await base.HandleOpenSessionResponse(session, activity);
             if (session != null)
             {
+                var version = session.ServerProtocolVersion;
+                if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version)) {
+                    throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
+                }
+                _enablePKFK = FeatureVersionNegotiator.SupportsPKFK(version);
                 _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
                 if (session.__isset.initialNamespace)
                 {
@@ -391,10 +397,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName))
                 {
+                    // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
                     // server version is too old. Explicitly set the schema using queries
                     await SetSchema(_defaultNamespace.SchemaName);
                 }
-                // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
             }
         }
 
@@ -493,7 +499,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
 
-            if(Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
+            if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
             {
                 if (!int.TryParse(tempUnavailableRetryTimeoutStr, out int tempUnavailableRetryTimeoutValue) ||
                     tempUnavailableRetryTimeoutValue < 0)

@@ -284,7 +284,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             QueryResult queryResult = await statement.ExecuteQueryAsync();
             Assert.NotNull(queryResult.Stream);
 
-            Assert.Equal(23, queryResult.Stream.Schema.FieldsList.Count);
+            // 23 original metadata columns and one added for "base type"
+            Assert.Equal(24, queryResult.Stream.Schema.FieldsList.Count);
             int actualBatchLength = 0;
 
             while (queryResult.Stream != null)

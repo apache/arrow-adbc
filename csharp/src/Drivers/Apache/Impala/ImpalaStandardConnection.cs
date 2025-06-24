@@ -32,6 +32,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal class ImpalaStandardConnection : ImpalaConnection
     {
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(ImpalaStandardConnection));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(ImpalaStandardConnection));
+
         public ImpalaStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
@@ -196,5 +199,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override ImpalaServerType ServerType => ImpalaServerType.Standard;
 
         protected override int ColumnMapIndexOffset => 0;
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }
