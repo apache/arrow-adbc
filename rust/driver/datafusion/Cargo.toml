@@ -32,16 +32,16 @@ categories.workspace = true
 
 [dependencies]
 adbc_core.workspace = true
-arrow-array.workspace = true
-arrow-buffer.workspace = true
-arrow-schema.workspace = true
+arrow-array = "55.0.0"
+arrow-buffer = "55.0.0"
+arrow-schema = "55.0.0"
 datafusion = "47.0.0"
 datafusion-substrait = "47.0.0"
 tokio = { version = "1.45", features = ["rt-multi-thread"] }
 prost = "0.13.5"
 
 [dev-dependencies]
-arrow-select.workspace = true
+arrow-select = "55.0.0"
 
 [lib]
 crate-type = ["lib", "cdylib"]

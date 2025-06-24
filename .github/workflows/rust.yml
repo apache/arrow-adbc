@@ -46,7 +46,15 @@ jobs:
       matrix:
         # TODO(alexandreyc): add `windows-latest`
         # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
-        os: [macos-13, macos-latest, ubuntu-latest]
+        os:
+          - macos-13
+          - macos-latest
+          - ubuntu-latest
+        minimal-versions:
+          - false
+        include:
+          - os: ubuntu-latest
+            minimal-versions: true
     name: "Rust ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     env:
@@ -57,6 +65,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Cargo update for minimal (arrow) version
+        if: ${{ matrix.minimal-versions }}
+        working-directory: rust
+        run: |
+          rustup toolchain install nightly
+          cargo +nightly generate-lockfile -Z direct-minimal-versions
       - name: Use stable Rust
         id: rust
         run: |
