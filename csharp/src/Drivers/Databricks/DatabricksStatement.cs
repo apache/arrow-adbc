@@ -16,14 +16,18 @@
 */
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Databricks.Result;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
+using static Apache.Arrow.Adbc.Drivers.Databricks.Result.DescTableExtendedResult;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -191,6 +195,38 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         }
 
         /// <summary>
+        /// Helper method that returns the fully qualified table name enclosed by backtick.
+        /// The returned value can be used as table name in the SQL statement
+        ///
+        /// If only SchemaName is defined, it will return `SchemaName`.`TableName`
+        /// If both CatalogName and SchemaName are defined, it will return `CatalogName`.`SchenaName`.`TableName`
+        /// </summary>
+        protected string? BuildTableName()
+        {
+            if (string.IsNullOrEmpty(TableName))
+            {
+                return TableName;
+            }
+
+            var parts = new List<string>();
+
+            if (!string.IsNullOrEmpty(SchemaName))
+            {
+                // Only include CatalogName when SchemaName is defined
+                if (!string.IsNullOrEmpty(CatalogName) && !CatalogName!.Equals("SPARK", StringComparison.OrdinalIgnoreCase))
+                {
+                    parts.Add($"`{CatalogName.Replace("`", "``")}`");
+                }
+                parts.Add($"`{SchemaName!.Replace("`", "``")}`");
+            }
+
+            // Escape if TableName contains backtick
+            parts.Add($"`{TableName!.Replace("`", "``")}`");
+
+            return string.Join(".", parts);
+        }
+
+        /// <summary>
         /// Overrides the GetCatalogsAsync method to handle EnableMultipleCatalogSupport flag.
         /// When EnableMultipleCatalogSupport is false, returns a single catalog "SPARK" without making an RPC call.
         /// When EnableMultipleCatalogSupport is true, delegates to the base class implementation to retrieve actual catalogs.
@@ -330,63 +366,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (!enableMultipleCatalogSupport && CatalogName != null)
             {
                 // Correct schema for GetColumns
-                var fields = new[]
-                {
-                    new Field("TABLE_CAT", StringType.Default, true),
-                    new Field("TABLE_SCHEM", StringType.Default, true),
-                    new Field("TABLE_NAME", StringType.Default, true),
-                    new Field("COLUMN_NAME", StringType.Default, true),
-                    new Field("DATA_TYPE", Int32Type.Default, true),
-                    new Field("TYPE_NAME", StringType.Default, true),
-                    new Field("COLUMN_SIZE", Int32Type.Default, true),
-                    new Field("BUFFER_LENGTH", Int8Type.Default, true),
-                    new Field("DECIMAL_DIGITS", Int32Type.Default, true),
-                    new Field("NUM_PREC_RADIX", Int32Type.Default, true),
-                    new Field("NULLABLE", Int32Type.Default, true),
-                    new Field("REMARKS", StringType.Default, true),
-                    new Field("COLUMN_DEF", StringType.Default, true),
-                    new Field("SQL_DATA_TYPE", Int32Type.Default, true),
-                    new Field("SQL_DATETIME_SUB", Int32Type.Default, true),
-                    new Field("CHAR_OCTET_LENGTH", Int32Type.Default, true),
-                    new Field("ORDINAL_POSITION", Int32Type.Default, true),
-                    new Field("IS_NULLABLE", StringType.Default, true),
-                    new Field("SCOPE_CATALOG", StringType.Default, true),
-                    new Field("SCOPE_SCHEMA", StringType.Default, true),
-                    new Field("SCOPE_TABLE", StringType.Default, true),
-                    new Field("SOURCE_DATA_TYPE", Int16Type.Default, true),
-                    new Field("IS_AUTO_INCREMENT", StringType.Default, true),
-                    new Field("BASE_TYPE_NAME", StringType.Default, true)
-                };
-                var schema = new Schema(fields, null);
+                var schema = CreateColumnMetadataSchema();
+
 
                 // Create empty arrays for all columns
-                var arrays = new IArrowArray[]
-                {
-                    new StringArray.Builder().Build(), // TABLE_CAT
-                    new StringArray.Builder().Build(), // TABLE_SCHEM
-                    new StringArray.Builder().Build(), // TABLE_NAME
-                    new StringArray.Builder().Build(), // COLUMN_NAME
-                    new Int32Array.Builder().Build(),  // DATA_TYPE
-                    new StringArray.Builder().Build(), // TYPE_NAME
-                    new Int32Array.Builder().Build(),  // COLUMN_SIZE
-                    new Int8Array.Builder().Build(),   // BUFFER_LENGTH
-                    new Int32Array.Builder().Build(),  // DECIMAL_DIGITS
-                    new Int32Array.Builder().Build(),  // NUM_PREC_RADIX
-                    new Int32Array.Builder().Build(),  // NULLABLE
-                    new StringArray.Builder().Build(), // REMARKS
-                    new StringArray.Builder().Build(), // COLUMN_DEF
-                    new Int32Array.Builder().Build(),  // SQL_DATA_TYPE
-                    new Int32Array.Builder().Build(),  // SQL_DATETIME_SUB
-                    new Int32Array.Builder().Build(),  // CHAR_OCTET_LENGTH
-                    new Int32Array.Builder().Build(),  // ORDINAL_POSITION
-                    new StringArray.Builder().Build(), // IS_NULLABLE
-                    new StringArray.Builder().Build(), // SCOPE_CATALOG
-                    new StringArray.Builder().Build(), // SCOPE_SCHEMA
-                    new StringArray.Builder().Build(), // SCOPE_TABLE
-                    new Int16Array.Builder().Build(),  // SOURCE_DATA_TYPE
-                    new StringArray.Builder().Build(), // IS_AUTO_INCREMENT
-                    new StringArray.Builder().Build()  // BASE_TYPE_NAME
-                };
+                var arrays = CreateColumnMetadataEmptyArray();
 
                 // Return empty result
                 return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
@@ -523,6 +507,312 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             };
 
             return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
+        }
+
+        protected override async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
+        {
+            string? fullTableName = BuildTableName();
+            var canUseDescTableExtended = ((DatabricksConnection)Connection).CanUseDescTableExtended;
+
+            if (!canUseDescTableExtended || string.IsNullOrEmpty(fullTableName))
+            {
+                // When fullTableName is empty, we cannot use metadata SQL query to get the info,
+                // so fallback to base class implementation
+                return await base.GetColumnsExtendedAsync(cancellationToken);
+            }
+
+            string query = $"DESC TABLE EXTENDED {fullTableName} AS JSON";
+            using var descStmt = Connection.CreateStatement();
+            descStmt.SqlQuery = query;
+            QueryResult descResult;
+
+            try
+            {
+                descResult = await descStmt.ExecuteQueryAsync();
+            }
+            catch (HiveServer2Exception ex) when (ex.Message.Contains("Error running query"))
+            {
+                // Fallback to base implementation
+                Debug.WriteLine($"[ERROR] Failed to run {query}. Fallback to base::GetColumnsExtendedAsync.Error message:{ex.Message}");
+                return await base.GetColumnsExtendedAsync(cancellationToken);
+            }
+
+            var columnMetadataSchema = CreateColumnMetadataSchema();
+
+            if (descResult.Stream == null)
+            {
+                return CreateEmptyExtendedColumnsResult(columnMetadataSchema);
+            }
+
+            // Read the json result
+            var resultJson = "";
+            using (var stream = descResult.Stream)
+            {
+                var batch = await stream.ReadNextRecordBatchAsync(cancellationToken);
+                if (batch == null || batch.Length == 0)
+                {
+                    return CreateEmptyExtendedColumnsResult(columnMetadataSchema);
+                }
+
+                resultJson = ((StringArray)batch.Column(0)).GetString(0);
+            }
+
+            // Parse the JSON result
+            var result = JsonSerializer.Deserialize<DescTableExtendedResult>(resultJson);
+            if (result == null)
+            {
+                throw new FormatException($"Invalid json result of {query}.Result={resultJson}");
+            }
+            return CreateExtendedColumnsResult(columnMetadataSchema,result);
+        }
+
+        /// <summary>
+        /// Creates the schema for the column metadata result set.
+        /// This schema is used for the GetColumns metadata query.
+        /// </summary>
+        private static Schema CreateColumnMetadataSchema()
+        {
+            var fields = new[]
+            {
+                new Field("TABLE_CAT", StringType.Default, true),
+                new Field("TABLE_SCHEM", StringType.Default, true),
+                new Field("TABLE_NAME", StringType.Default, true),
+                new Field("COLUMN_NAME", StringType.Default, true),
+                new Field("DATA_TYPE", Int32Type.Default, true),
+                new Field("TYPE_NAME", StringType.Default, true),
+                new Field("COLUMN_SIZE", Int32Type.Default, true),
+                new Field("BUFFER_LENGTH", Int8Type.Default, true),
+                new Field("DECIMAL_DIGITS", Int32Type.Default, true),
+                new Field("NUM_PREC_RADIX", Int32Type.Default, true),
+                new Field("NULLABLE", Int32Type.Default, true),
+                new Field("REMARKS", StringType.Default, true),
+                new Field("COLUMN_DEF", StringType.Default, true),
+                new Field("SQL_DATA_TYPE", Int32Type.Default, true),
+                new Field("SQL_DATETIME_SUB", Int32Type.Default, true),
+                new Field("CHAR_OCTET_LENGTH", Int32Type.Default, true),
+                new Field("ORDINAL_POSITION", Int32Type.Default, true),
+                new Field("IS_NULLABLE", StringType.Default, true),
+                new Field("SCOPE_CATALOG", StringType.Default, true),
+                new Field("SCOPE_SCHEMA", StringType.Default, true),
+                new Field("SCOPE_TABLE", StringType.Default, true),
+                new Field("SOURCE_DATA_TYPE", Int16Type.Default, true),
+                new Field("IS_AUTO_INCREMENT", StringType.Default, true),
+                new Field("BASE_TYPE_NAME", StringType.Default, true)
+            };
+            return new Schema(fields, null);
+        }
+
+        /// <summary>
+        /// Creates an empty array for each column in the column metadata schema.
+        /// </summary>
+        private static IArrowArray[] CreateColumnMetadataEmptyArray()
+        {
+            return
+            [
+                new StringArray.Builder().Build(), // TABLE_CAT
+                new StringArray.Builder().Build(), // TABLE_SCHEM
+                new StringArray.Builder().Build(), // TABLE_NAME
+                new StringArray.Builder().Build(), // COLUMN_NAME
+                new Int32Array.Builder().Build(),  // DATA_TYPE
+                new StringArray.Builder().Build(), // TYPE_NAME
+                new Int32Array.Builder().Build(),  // COLUMN_SIZE
+                new Int8Array.Builder().Build(),   // BUFFER_LENGTH
+                new Int32Array.Builder().Build(),  // DECIMAL_DIGITS
+                new Int32Array.Builder().Build(),  // NUM_PREC_RADIX
+                new Int32Array.Builder().Build(),  // NULLABLE
+                new StringArray.Builder().Build(), // REMARKS
+                new StringArray.Builder().Build(), // COLUMN_DEF
+                new Int32Array.Builder().Build(),  // SQL_DATA_TYPE
+                new Int32Array.Builder().Build(),  // SQL_DATETIME_SUB
+                new Int32Array.Builder().Build(),  // CHAR_OCTET_LENGTH
+                new Int32Array.Builder().Build(),  // ORDINAL_POSITION
+                new StringArray.Builder().Build(), // IS_NULLABLE
+                new StringArray.Builder().Build(), // SCOPE_CATALOG
+                new StringArray.Builder().Build(), // SCOPE_SCHEMA
+                new StringArray.Builder().Build(), // SCOPE_TABLE
+                new Int16Array.Builder().Build(),  // SOURCE_DATA_TYPE
+                new StringArray.Builder().Build(), // IS_AUTO_INCREMENT
+                new StringArray.Builder().Build()  // BASE_TYPE_NAME
+            ];
+        }
+
+        private QueryResult CreateExtendedColumnsResult(Schema columnMetadataSchema, DescTableExtendedResult descResult)
+        {
+            var allFields = new List<Field>(columnMetadataSchema.FieldsList);
+            foreach (var field in PrimaryKeyFields)
+            {
+                allFields.Add(new Field(PrimaryKeyPrefix + field, StringType.Default, true));
+            }
+
+            foreach (var field in ForeignKeyFields)
+            {
+                IArrowType fieldType = field != "KEQ_SEQ" ? StringType.Default : Int32Type.Default;
+                allFields.Add(new Field(ForeignKeyPrefix + field, fieldType, true));
+            }
+
+            var combinedSchema = new Schema(allFields, columnMetadataSchema.Metadata);
+
+            var tableCatBuilder = new StringArray.Builder();
+            var tableSchemaBuilder = new StringArray.Builder();
+            var tableNameBuilder = new StringArray.Builder();
+            var columnNameBuilder = new StringArray.Builder();
+            var dataTypeBuilder = new Int32Array.Builder();
+            var typeNameBuilder = new StringArray.Builder();
+            var columnSizeBuilder = new Int32Array.Builder();
+            var bufferLengthBuilder = new Int8Array.Builder();
+            var decimalDigitsBuilder = new Int32Array.Builder();
+            var numPrecRadixBuilder = new Int32Array.Builder();
+            var nullableBuilder = new Int32Array.Builder();
+            var remarksBuilder = new StringArray.Builder();
+            var columnDefBuilder = new StringArray.Builder();
+            var sqlDataTypeBuilder = new Int32Array.Builder();
+            var sqlDatetimeSubBuilder = new Int32Array.Builder();
+            var charOctetLengthBuilder = new Int32Array.Builder();
+            var ordinalPositionBuilder = new Int32Array.Builder();
+            var isNullableBuilder = new StringArray.Builder();
+            var scopeCatalogBuilder = new StringArray.Builder();
+            var scopeSchemaBuilder = new StringArray.Builder();
+            var scopeTableBuilder = new StringArray.Builder();
+            var sourceDataTypeBuilder = new Int16Array.Builder();
+            var isAutoIncrementBuilder = new StringArray.Builder();
+            var baseTypeNameBuilder = new StringArray.Builder();
+
+            // PK_COLUMN_NAME: Metadata column for primary key
+            var pkColumnBuilder = new StringArray.Builder();
+
+            // Metadata columns for foreign key info
+            var fkColumnLocalBuilder = new StringArray.Builder();
+            var fkColumnRefCatalogBuilder = new StringArray.Builder();
+            var fkColumnRefSchemaBuilder = new StringArray.Builder();
+            var fkColumnRefTableBuilder = new StringArray.Builder();
+            var fkColumnRefColumnBuilder = new StringArray.Builder();
+            var fkColumnKeyNameBuilder = new StringArray.Builder();
+            var fkColumnKeySeqBuilder = new Int32Array.Builder();
+
+            var pkColumns = new HashSet<string>(descResult.PrimaryKeys);
+            var fkColumns = new Dictionary<String, (int,ForeignKeyInfo)>();
+            foreach (var fkInfo in descResult.ForeignKeys)
+            {
+                for (var i = 0; i < fkInfo.LocalColumns.Count; i++)
+                {
+                    // The order of local key should match the order of ref key, so we need to store the index
+                    fkColumns.Add(fkInfo.LocalColumns[i],(i,fkInfo));
+                }
+            }
+
+            var position = 0;
+            foreach (var column in descResult.Columns)
+            {
+                var baseTypeName = column.Type.Name.ToUpper();
+                // Special case for TIMESTAMP_LTZ and INT
+                if (baseTypeName == "TIMESTAMP_LTZ" || baseTypeName == "TIMESTAMP_NTZ")
+                {
+                    baseTypeName = "TIMESTAMP";
+                }
+                else if (baseTypeName == "INT")
+                {
+                    baseTypeName = "INTEGER";
+                }
+
+                var fullTypeName = column.Type.FullTypeName;
+                var colName = column.Name;
+
+                int dataType = (int)column.DataType;
+
+                tableCatBuilder.Append(descResult.CatalogName);
+                tableSchemaBuilder.Append(descResult.SchemaName);
+                tableNameBuilder.Append(descResult.TableName);
+
+                columnNameBuilder.Append(colName);
+                dataTypeBuilder.Append(dataType);
+                typeNameBuilder.Append(fullTypeName);
+                columnSizeBuilder.Append(column.ColumnSize);
+                bufferLengthBuilder.AppendNull();
+                decimalDigitsBuilder.Append(column.DecimalDigits);
+                numPrecRadixBuilder.Append(column.IsNumber ? 10: null);
+                nullableBuilder.Append(column.Nullable ? 1 : 0);
+                remarksBuilder.Append(column.Comment ?? "");
+                columnDefBuilder.AppendNull();
+                sqlDataTypeBuilder.AppendNull();
+                sqlDatetimeSubBuilder.AppendNull();
+                charOctetLengthBuilder.AppendNull();
+                ordinalPositionBuilder.Append(position++);
+                isNullableBuilder.Append(column.Nullable ? "YES" : "NO");
+
+                scopeCatalogBuilder.AppendNull();
+                scopeSchemaBuilder.AppendNull();
+                scopeTableBuilder.AppendNull();
+                sourceDataTypeBuilder.AppendNull();
+
+                isAutoIncrementBuilder.Append("NO");
+                baseTypeNameBuilder.Append(baseTypeName);
+
+                pkColumnBuilder.Append(pkColumns.Contains(colName) ? colName : null);
+
+                if (fkColumns.ContainsKey(colName))
+                {
+                    var (idx,fkInfo) = fkColumns[colName];
+                    fkColumnRefColumnBuilder.Append(fkInfo.RefColumns[idx]);
+                    fkColumnRefCatalogBuilder.Append(fkInfo.RefCatalog);
+                    fkColumnRefSchemaBuilder.Append(fkInfo.RefSchema);
+                    fkColumnRefTableBuilder.Append(fkInfo.RefTable);
+                    fkColumnLocalBuilder.Append(colName);
+                    fkColumnKeyNameBuilder.Append(fkInfo.KeyName);
+                    fkColumnKeySeqBuilder.Append(1+idx); // FK_KEY_SEQ is 1-based index
+                }
+                else
+                {
+                    fkColumnRefColumnBuilder.AppendNull();
+                    fkColumnRefCatalogBuilder.AppendNull();
+                    fkColumnRefSchemaBuilder.AppendNull();
+                    fkColumnRefTableBuilder.AppendNull();
+                    fkColumnLocalBuilder.AppendNull();
+                    fkColumnKeyNameBuilder.AppendNull();
+                    fkColumnKeySeqBuilder.AppendNull();
+                }
+            }
+
+            var combinedData = new List<IArrowArray>()
+            {
+                tableCatBuilder.Build(),
+                tableSchemaBuilder.Build(),
+                tableNameBuilder.Build(),
+                columnNameBuilder.Build(),
+                dataTypeBuilder.Build(),
+                typeNameBuilder.Build(),
+                columnSizeBuilder.Build(),
+                bufferLengthBuilder.Build(),
+                decimalDigitsBuilder.Build(),
+                numPrecRadixBuilder.Build(),
+                nullableBuilder.Build(),
+                remarksBuilder.Build(),
+                columnDefBuilder.Build(),
+                sqlDataTypeBuilder.Build(),
+                sqlDatetimeSubBuilder.Build(),
+                charOctetLengthBuilder.Build(),
+                ordinalPositionBuilder.Build(),
+                isNullableBuilder.Build(),
+                scopeCatalogBuilder.Build(),
+                scopeSchemaBuilder.Build(),
+                scopeTableBuilder.Build(),
+                sourceDataTypeBuilder.Build(),
+                isAutoIncrementBuilder.Build(),
+                baseTypeNameBuilder.Build(),
+
+                // Metadata column for primary key
+                pkColumnBuilder.Build(),
+
+                // Metadata columns for foreign key info
+                fkColumnRefColumnBuilder.Build(),
+                fkColumnRefCatalogBuilder.Build(),
+                fkColumnRefSchemaBuilder.Build(),
+                fkColumnRefTableBuilder.Build(),
+                fkColumnLocalBuilder.Build(),
+                fkColumnKeyNameBuilder.Build(),
+                fkColumnKeySeqBuilder.Build()
+            };
+
+            return new QueryResult(descResult.Columns.Count, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
     }
 }

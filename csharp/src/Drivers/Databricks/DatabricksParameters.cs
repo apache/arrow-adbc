@@ -173,6 +173,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string EnablePKFK = "adbc.databricks.enable_pk_fk";
+
+        /// <summary>
+        /// Whether to use query DESC TABLE EXTENDED to get extended column metadata when the current DBR supports it
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string UseDescTableExtended = "adbc.databricks.use_desc_table_extended";
     }
 
     /// <summary>

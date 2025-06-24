@@ -56,6 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
         private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
+        private bool _useDescTableExtended = true;
 
         // Default namespace
         private TNamespace? _defaultNamespace;
@@ -145,6 +146,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.UseDescTableExtended, out string? useDescTableExtendedStr))
+            {
+                if (bool.TryParse(useDescTableExtendedStr, out bool useDescTableExtended))
+                {
+                    _useDescTableExtended = useDescTableExtended;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.UseDescTableExtended}' value '{useDescTableExtendedStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
             if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr))
             {
                 if (!long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
@@ -222,6 +235,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets whether multiple catalog is supported
         /// </summary>
         internal bool EnableMultipleCatalogSupport => _enableMultipleCatalogSupport;
+
+        /// <summary>
+        /// Check if current connection can use `DESC TABLE EXTENDED` query
+        /// </summary>
+        internal bool CanUseDescTableExtended => _useDescTableExtended && ServerProtocolVersion != null && ServerProtocolVersion >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7;
 
         /// <summary>
         /// Gets whether PK/FK metadata call is enabled
