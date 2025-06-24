@@ -230,7 +230,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private Field TranslateField(TableFieldSchema field)
         {
-            return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE");
+            List<KeyValuePair<string, string>> metadata = new List<KeyValuePair<string, string>>()
+            {
+                new KeyValuePair<string, string>("BIGQUERY_TYPE", field.Type),
+                new KeyValuePair<string, string>("BIGQUERY_MODE", field.Mode)
+            };
+
+            return new Field(field.Name, TranslateType(field), field.Mode == "NULLABLE", metadata);
         }
 
         private IArrowType TranslateType(TableFieldSchema field)
@@ -356,6 +362,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     if (firstProjectId != null)
                     {
                         options.ProjectId = firstProjectId;
+                        // need to reopen the Client with the projectId specified
+                        this.bigQueryConnection.Open(firstProjectId);
                     }
                 }
             }

@@ -118,24 +118,27 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// <summary>
         /// Initializes the internal BigQuery connection
         /// </summary>
+        /// <param name="projectId">A project ID that has been specified by the caller, not a user.</param>
         /// <exception cref="ArgumentException"></exception>
-        internal BigQueryClient Open()
+        internal BigQueryClient Open(string? projectId = null)
         {
-            string? projectId = null;
             string? billingProjectId = null;
             TimeSpan? clientTimeout = null;
 
-            // if the caller doesn't specify a projectId, use the default
-            if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
-                projectId = BigQueryConstants.DetectProjectId;
+            if (string.IsNullOrEmpty(projectId))
+            {
+                // if the caller doesn't specify a projectId, use the default
+                if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
+                    projectId = BigQueryConstants.DetectProjectId;
 
-            // in some situations, the publicProjectId gets passed and causes an error when we try to create a query job:
-            //     Google.GoogleApiException : The service bigquery has thrown an exception. HttpStatusCode is Forbidden.
-            //     Access Denied: Project bigquery-public-data: User does not have bigquery.jobs.create permission in
-            //     project bigquery-public-data.
-            // so if that is the case, treat it as if we need to detect the projectId
-            if (projectId.Equals(publicProjectId, StringComparison.OrdinalIgnoreCase))
-                projectId = BigQueryConstants.DetectProjectId;
+                // in some situations, the publicProjectId gets passed and causes an error when we try to create a query job:
+                //     Google.GoogleApiException : The service bigquery has thrown an exception. HttpStatusCode is Forbidden.
+                //     Access Denied: Project bigquery-public-data: User does not have bigquery.jobs.create permission in
+                //     project bigquery-public-data.
+                // so if that is the case, treat it as if we need to detect the projectId
+                if (projectId.Equals(publicProjectId, StringComparison.OrdinalIgnoreCase))
+                    projectId = BigQueryConstants.DetectProjectId;
+            }
 
             // the billing project can be null if it's not specified
             this.properties.TryGetValue(BigQueryParameters.BillingProjectId, out billingProjectId);
@@ -170,6 +173,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             Client = client;
             return client;
+        }
+
+        internal void UpdateClient(string projectId, string quotaProject)
+        {
+
         }
 
         internal void SetCredential()

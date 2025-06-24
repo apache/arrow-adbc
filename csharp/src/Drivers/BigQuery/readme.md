@@ -149,6 +149,9 @@ connection.UpdateToken = () => Task.Run(() =>
 
 In the sample above, when a new token is needed, the delegate is invoked and updates the `adbc.bigquery.access_token` parameter on the connection object.
 
+## Default Project ID
+If a `adbc.bigquery.project_id` is not specified, or if it equals `bigquery-public-data`, the driver will query for the first project ID that is associated with the credentials provided. This will be the project ID that is used to perform queries.
+
 ## Large Results
 
 If a result set will contain large results, the `adbc.bigquery.allow_large_results` parameter should be set to `"true"`. If this value is set, a destination must be specified.
@@ -158,5 +161,5 @@ a dataset using the `adbc.bigquery.large_results_dataset` parameter.
 Behavior:
 - If a destination table is explicitly set, the driver will use that value.
 - If only a dataset value is set, the driver will attempt to retrieve the dataset. If the dataset does not exist, the driver will attempt to
-  create it. A randomly generated name will be used for the table name.
-- If a destination table and a dataset are not specified, the driver will attempt to use or create the `_bqodbc_temp_tables` dataset, and a randomly generated table name will be used.
+  create it. The default table expiration will be set to 1 day and a `created_by` label will be included with the driver name and version that created the dataset. For example `created_by : adbc_bigquery_driver_v_0_19_0_0`. A randomly generated name will be used for the table name.
+- If a destination table and a dataset are not specified, the driver will attempt to use or create the `_bqodbc_temp_tables` dataset using the same defaults and label specified above. A randomly generated name will be used for the table name.
