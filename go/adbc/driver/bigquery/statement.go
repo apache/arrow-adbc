@@ -24,9 +24,7 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"time"
-	"unicode"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
