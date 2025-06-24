@@ -61,6 +61,7 @@ c/apidoc/objects.inv
 docs/example.gz
 docs/example1.dat
 docs/example3.dat
+docs/source/cpp/recipe_driver/driver_example.toml
 python/.eggs/
 python/doc/
 # Egg metadata

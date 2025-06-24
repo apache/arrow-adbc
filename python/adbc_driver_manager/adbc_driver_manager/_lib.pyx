@@ -536,10 +536,18 @@ cdef class AdbcDatabase(_AdbcHandle):
             status = AdbcDatabaseNew(&self.database, &c_error)
         check_error(status, &c_error)
 
+        # by default, allow searching for manifests and relative paths
+        status = AdbcDriverManagerDatabaseSetLoadFlags(
+            &self.database, CAdbcLoadFlagDefault, &c_error)
+        check_error(status, &c_error)
+
         for key, value in kwargs.items():
             if key == "init_func":
                 status = AdbcDriverManagerDatabaseSetInitFunc(
                     &self.database, <CAdbcDriverInitFunc> (<uintptr_t> value), &c_error)
+            elif key == "load_flags":
+                status = AdbcDriverManagerDatabaseSetLoadFlags(
+                    &self.database, <CAdbcLoadFlags> (value), &c_error)
             elif key is None:
                 raise ValueError("key cannot be None")
             elif value is None:
