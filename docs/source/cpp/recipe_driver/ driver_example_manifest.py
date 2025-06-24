@@ -34,12 +34,12 @@ from adbc_driver_manager import dbapi
 #: For the purposes of our tutorial, this will be in current directory.
 def connect(uri: str):
     # we can point to the manifest file directly
-    manifest_file = Path('.') / "driver_example.toml"
+    manifest_file = Path(".") / "driver_example.toml"
     if manifest_file.exists():
         return dbapi.connect(
             driver=str(manifest_file.resolve()), db_kwargs={"uri": uri}
         )
-    
+
     # alternatively, it can look for the manifest file in the user's config
     # directory ($HOME/.config/adbc/driver_example.toml) or the system's
     # config directory (/etc/adbc/driver_example.toml)

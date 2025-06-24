@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-
 if(WIN32)
   set(OS "windows")
 elseif(APPLE)
@@ -48,8 +47,7 @@ endif()
 
 include(CheckCSourceRuns)
 
-check_c_source_runs(
-  [=[
+check_c_source_runs([=[
 #include <stdlib.h>
 #if defined(__GLIBC__)
 #error "GLIBC detected"
@@ -59,8 +57,7 @@ int main(void) { return EXIT_SUCCESS; }
 #error "Neither GLIBC nor Musl detected"
 #endif
   ]=]
-  IS_MUSL
-)
+                    IS_MUSL)
 
 if(MINGW)
   set(EXTRA "_mingw")
