@@ -54,8 +54,8 @@ jobs:
           - false
         include:
           - os: ubuntu-latest
-            minimal-versions: true
-    name: "Rust ${{ matrix.os }}"
+            minimal-versions: true # Test adbc_core can be built with older arrow
+    name: Rust ${{ matrix.os }} ${{ matrix.minimal-versions && '(minimal versions for adbc_core)' || '' }}
     runs-on: ${{ matrix.os }}
     env:
       CARGO_INCREMENTAL: 0
@@ -134,13 +134,14 @@ jobs:
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy
+        if: ${{ ! matrix.minimal-versions }}
         working-directory: rust
         run: |
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
       - name: Test
         working-directory: rust
         run: |
-          cargo test --workspace --all-targets --all-features
+          cargo test --all-targets --all-features ${{ matrix.minimal-versions && '--package adbc_core' || '--workspace' }}
         # env:
         # ADBC_SNOWFLAKE_TESTS: 1
         # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
@@ -148,13 +149,13 @@ jobs:
       - name: Doctests
         working-directory: rust
         run: |
-          cargo test --workspace --doc --all-features
+          cargo test --doc --all-features ${{ matrix.minimal-versions && '--package adbc_core' || '--workspace' }}
       - name: Check docs
         working-directory: rust
         run: |
-          cargo doc --workspace --all-features
+          cargo doc --all-features ${{ matrix.minimal-versions && '--package adbc_core' || '--workspace' }}
       - name: Verify MSRV (Minimum Supported Rust Version)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
         working-directory: rust
         run: |
           # Install cargo-msrv
