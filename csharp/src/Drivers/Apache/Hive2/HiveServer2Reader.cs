@@ -118,7 +118,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
             }
         }
 

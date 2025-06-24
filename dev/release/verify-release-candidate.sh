@@ -947,7 +947,7 @@ test_jars() {
 # Automatically test if its activated by a dependent
 TEST_CPP=$((${TEST_CPP} + ${TEST_GO} + ${TEST_GLIB} + ${TEST_PYTHON} + ${TEST_RUST}))
 
-# Execute tests in a conda enviroment
+# Execute tests in a conda environment
 : ${USE_CONDA:=0}
 
 TEST_SUCCESS=no

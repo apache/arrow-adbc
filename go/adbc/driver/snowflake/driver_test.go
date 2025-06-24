@@ -26,6 +26,7 @@ import (
 	"database/sql"
 	sqldriver "database/sql/driver"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -318,6 +319,16 @@ func withQuirks(t *testing.T, fn func(*SnowflakeQuirks)) {
 	fn(q)
 }
 
+func generateTraceparent() string {
+	traceID := make([]byte, 16)
+	_, _ = rand.Read(traceID)
+
+	spanID := make([]byte, 8)
+	_, _ = rand.Read(spanID)
+
+	return fmt.Sprintf("00-%s-%s-01", hex.EncodeToString(traceID), hex.EncodeToString(spanID))
+}
+
 func TestValidation(t *testing.T) {
 	withQuirks(t, func(q *SnowflakeQuirks) {
 		suite.Run(t, &validation.DatabaseTests{Quirks: q})
@@ -385,12 +396,27 @@ func (suite *SnowflakeTests) TestNewDatabaseWithOptions() {
 
 	t.Run("WithTransporter", func(t *testing.T) {
 		transport := &customTransport{base: gosnowflake.SnowflakeTransport}
-		db, err := drv.NewDatabaseWithOptions(suite.Quirks.DatabaseOptions(),
+		dbOptions := suite.Quirks.DatabaseOptions()
+		// Add trace parent to the options.
+		dbOptions[adbc.OptionKeyTelemetryTraceParent] = generateTraceparent()
+		db, err := drv.NewDatabaseWithOptions(dbOptions,
 			driver.WithTransporter(transport))
 		suite.NoError(err)
 		suite.NotNil(db)
 		cnxn, err := db.Open(suite.ctx)
 		suite.NoError(err)
+
+		// Confirm database trace parent is non-empty and propagated to the connection trace parent
+		dbImpl, ok := db.(driverbase.DatabaseImpl)
+		suite.True(ok, "expecting db to implement interface 'driverbase.DatabaseImpl'")
+		dTp := dbImpl.Base().GetTraceParent()
+		cnxnImpl, ok := cnxn.(driverbase.ConnectionImpl)
+		suite.True(ok, "expecting cnxn to implement interface 'driverbase.ConnectionImpl'")
+		cTp := cnxnImpl.Base().GetTraceParent()
+		suite.NotEmpty(t, dTp)
+		suite.NotEmpty(t, cTp)
+		suite.Equal(dTp, cTp, "expecting database and connection trace parent to be equal")
+
 		suite.NoError(db.Close())
 		suite.NoError(cnxn.Close())
 		suite.True(transport.called)
@@ -1696,6 +1722,98 @@ func (suite *SnowflakeTests) TestBooleanType() {
 			suite.Require().IsType(&arrow.BooleanType{}, f.Type)
 		}
 	}
+}
+
+func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
+	opts := suite.Quirks.DatabaseOptions()
+	opts[driver.OptionMaxTimestampPrecision] = "microseconds"
+
+	db, err := suite.driver.NewDatabase(opts)
+	suite.NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+	cnxn, err := db.Open(suite.ctx)
+	suite.NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+	stmt, _ := cnxn.NewStatement()
+
+	id := uuid.New()
+	tempTable := "pk_" + strings.ReplaceAll(id.String(), "-", "")
+
+	query := fmt.Sprintf(`CREATE OR REPLACE TABLE %s.%s.%s (
+	id INT PRIMARY KEY,
+	name STRING);`, suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
+
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	_, err = stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NoError(stmt.Close())
+
+	query = fmt.Sprintf("SHOW PRIMARY KEYS IN TABLE %s.%s.%s", suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
+	stmt, _ = cnxn.NewStatement()
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	rdr, _, err := stmt.ExecuteQuery(suite.ctx)
+	defer rdr.Release()
+	suite.Require().NoError(err)
+
+	suite.True(rdr.Next())
+	rec := rdr.Record()
+
+	suite.Equal(1, int(rec.NumRows()))
+
+	// Get column indexes
+	getColIdx := func(name string) int {
+		for i := 0; i < int(rec.NumCols()); i++ {
+			if rec.ColumnName(i) == name {
+				return i
+			}
+		}
+		panic("Column not found: " + name)
+	}
+
+	// Expected column names
+	dbIdx := getColIdx("database_name")
+	schemaIdx := getColIdx("schema_name")
+	tableIdx := getColIdx("table_name")
+	colIdx := getColIdx("column_name")
+	seqIdx := getColIdx("key_sequence")
+	createdIdx := getColIdx("created_on")
+
+	i := 0
+	dbName := rec.Column(dbIdx).(*array.String).Value(i)
+	schema := rec.Column(schemaIdx).(*array.String).Value(i)
+	tbl := rec.Column(tableIdx).(*array.String).Value(i)
+	column := rec.Column(colIdx).(*array.String).Value(i)
+	keySeq := rec.Column(seqIdx).(*array.Int64).Value(i)
+
+	// Created_on should be a timestamp array
+	createdCol := rec.Column(createdIdx).(*array.Timestamp)
+	created := time.Unix(0, int64(createdCol.Value(i))*int64(time.Microsecond)).UTC()
+
+	// Perform checks
+	if strings.EqualFold(dbName, suite.Quirks.catalogName) &&
+		strings.EqualFold(schema, suite.Quirks.schemaName) &&
+		strings.EqualFold(tbl, tempTable) &&
+		strings.EqualFold(column, "id") &&
+		keySeq == 1 {
+
+		now := time.Now().UTC()
+		diff := now.Sub(created)
+		if diff < 0 {
+			diff = -diff
+		}
+		// since this was just created, make sure the times are within a short difference
+		suite.Assert().True(diff <= 2*time.Minute)
+	} else {
+		panic("Invalid values")
+	}
+	suite.Require().NoError(stmt.Close())
+
+	query = fmt.Sprintf("DROP TABLE %s.%s.%s", suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
+	stmt, _ = cnxn.NewStatement()
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	_, err = stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NoError(stmt.Close())
 }
 
 func (suite *SnowflakeTests) TestTimestampPrecision() {

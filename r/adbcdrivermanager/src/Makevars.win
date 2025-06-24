@@ -15,13 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-adbc_driver_manager/*.c
-adbc_driver_manager/*.cc
-adbc_driver_manager/*.cpp
-adbc_driver_manager/*.h
-adbc_driver_manager/*.hpp
-adbc_driver_manager/arrow-adbc/*.h
-adbc_driver_manager/toml++/*.hpp
-build/
-dist/
-repaired_wheels/
+CXX_STD = CXX17
+PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT=""
+PKG_LIBS=-lshell32 -ladvapi32 -luuid
+
+OBJECTS = driver_test.o \
+    error.o \
+    init.o \
+    options.o \
+    radbc.o \
+    utils.o \
+    c/driver_manager/adbc_driver_manager.o

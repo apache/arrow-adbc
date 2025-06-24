@@ -479,8 +479,16 @@ func jsonDataToArrow(_ context.Context, bldr *array.RecordBuilder, rawData [][]*
 					return nil, err
 				}
 
-				fb.Append(arrow.Timestamp(sec*1e9 + nsec))
-
+				if maxTimestampPrecision == Microseconds {
+					tt := time.Unix(sec, nsec)
+					ts, err := getArrowTimestampFromTime(tt, arrow.Microsecond, arrow.Nanosecond, maxTimestampPrecision)
+					if err != nil {
+						return nil, err
+					}
+					fb.Append(ts)
+				} else {
+					fb.Append(arrow.Timestamp(sec*1e9 + nsec))
+				}
 			case *array.BinaryBuilder:
 				b, err := hex.DecodeString(*col)
 				if err != nil {

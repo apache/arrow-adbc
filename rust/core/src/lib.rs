@@ -53,7 +53,7 @@
 //! # Driver Exporter
 //!
 //! The driver exporter allows exposing native Rust drivers as C drivers to be
-//! used by other langages via their own driver manager. Once you have an
+//! used by other languages via their own driver manager. Once you have an
 //! implementation of [Driver], provided that it also implements [Default], you
 //! can build it as an object file implementing the C API with the
 //! [export_driver] macro.

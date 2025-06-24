@@ -40,6 +40,13 @@ $ mamba create -n adbc --file ci/conda_env_cpp.txt
 $ mamba activate adbc
 ```
 
+Also you can add dependencies to an existing environment as follows:
+
+```shell
+$ mamba activate adbc
+$ mamba install --file ci/conda_env_cpp.txt
+```
+
 (For other Conda distributions, you will likely need `create ... -c
 conda-forge --file ...`).
 
@@ -203,8 +210,8 @@ A list of dependencies for Conda (conda-forge) is included, and can be
 used as follows:
 
 ```shell
-$ conda create -n adbc -c conda-forge --file ci/conda_env_docs.txt
-$ conda activate adbc
+$ mamba create -n adbc --file ci/conda_env_docs.txt
+$ mamba activate adbc
 # Mermaid must be installed separately
 # While "global", it will end up in your Conda environment
 $ npm install -g @mermaid-js/mermaid-cli
@@ -261,8 +268,8 @@ A list of dependencies for Conda (conda-forge) is included, and can be
 used as follows:
 
 ```shell
-$ conda create -n adbc -c conda-forge --file ci/conda_env_glib.txt
-$ conda activate adbc
+$ mamba create -n adbc --file ci/conda_env_glib.txt
+$ mamba activate adbc
 ```
 
 
@@ -425,22 +432,34 @@ linters, formatters, and other analysis.  For example:
 # Install pre-commit
 $ pip install pre-commit
 # or alternatively
-$ conda install -c conda-forge --file ci/conda_env_dev.txt
+$ mamba install --file ci/conda_env_dev.txt
 # Set up hooks
 $ pre-commit install
 # Run manually
 $ pre-commit run
-Check Xml............................................(no files to check)Skipped
-Check Yaml...........................................(no files to check)Skipped
-Fix End of Files.....................................(no files to check)Skipped
-Trim Trailing Whitespace.............................(no files to check)Skipped
-clang-format.........................................(no files to check)Skipped
-cmake-format.........................................(no files to check)Skipped
-cpplint..............................................(no files to check)Skipped
-Google Java Formatter................................(no files to check)Skipped
-black................................................(no files to check)Skipped
-flake8...............................................(no files to check)Skipped
-isort................................................(no files to check)Skipped
+check xml.................................................................(no files to check)Skipped
+check yaml................................................................(no files to check)Skipped
+fix end of files..........................................................(no files to check)Skipped
+Mixed line endings (LF)...................................................(no files to check)Skipped
+Mixed line endings (CRLF).................................................(no files to check)Skipped
+trim trailing whitespace..................................................(no files to check)Skipped
+clang-format..............................................................(no files to check)Skipped
+cmake-format..............................................................(no files to check)Skipped
+cpplint...................................................................(no files to check)Skipped
+golangci-lint.............................................................(no files to check)Skipped
+Go Formatter..............................................................(no files to check)Skipped
+Google (or Palantir) Java Formatter.......................................(no files to check)Skipped
+black.....................................................................(no files to check)Skipped
+flake8....................................................................(no files to check)Skipped
+isort.....................................................................(no files to check)Skipped
+cython-lint...............................................................(no files to check)Skipped
+Vala-Lint.................................................................(no files to check)Skipped
+meson.....................................................................(no files to check)Skipped
+Check for unapproved licenses.............................................(no files to check)Skipped
+Ensure CGO adbc.h is syncd................................................(no files to check)Skipped
+Ensure GitHub Actions and pre-commit hooks are pinned to a specific SHA...(no files to check)Skipped
+rustfmt...................................................................(no files to check)Skipped
+codespell.................................................................(no files to check)Skipped
 # Hooks automatically run on commit
 $ git commit
 ```

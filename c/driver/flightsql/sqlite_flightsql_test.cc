@@ -103,8 +103,7 @@ class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
     switch (info_code) {
       case ADBC_INFO_DRIVER_NAME:
         return "ADBC Flight SQL Driver - Go";
-      case ADBC_INFO_DRIVER_VERSION:
-        return "(unknown or development build)";
+      // Do not test ADBC_INFO_DRIVER_VERSION; it differs in different parts of CI
       case ADBC_INFO_DRIVER_ADBC_VERSION:
         return ADBC_VERSION_1_1_0;
       case ADBC_INFO_VENDOR_NAME:

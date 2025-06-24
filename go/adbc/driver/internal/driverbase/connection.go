@@ -136,6 +136,7 @@ func NewConnectionImplBase(database *DatabaseImplBase) ConnectionImplBase {
 		Tracer:      database.Tracer,
 		Autocommit:  true,
 		Closed:      false,
+		traceParent: database.traceParent,
 	}
 }
 

@@ -1,3 +1,4 @@
+#!/bin/bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,13 +16,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-adbc_driver_manager/*.c
-adbc_driver_manager/*.cc
-adbc_driver_manager/*.cpp
-adbc_driver_manager/*.h
-adbc_driver_manager/*.hpp
-adbc_driver_manager/arrow-adbc/*.h
-adbc_driver_manager/toml++/*.hpp
-build/
-dist/
-repaired_wheels/
+# Check for updates: https://marzer.github.io/tomlplusplus/index.html
+rm -rf toml++
+curl -L https://github.com/marzer/tomlplusplus/archive/refs/tags/v3.4.0.zip > tomlplusplus.zip
+unzip tomlplusplus.zip -d .
+rm tomlplusplus.zip
+mkdir toml++
+mv tomlplusplus-*/toml.hpp toml++/toml.hpp
+rm -rf tomlplusplus-*

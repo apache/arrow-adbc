@@ -17,3 +17,4 @@
 
 find src -name "*.o" -delete || true
 find src -name "*.so" -delete || true
+rm sqlite_test.log || true

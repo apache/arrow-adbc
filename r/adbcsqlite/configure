@@ -59,7 +59,6 @@ else
 
   if [ $? -ne 0 ]; then
     echo "Compile of sqlite3_load_extension() test failed"
-    cat sqlite_test.log
     PKG_CPPFLAGS="$PKG_CPPFLAGS -DADBC_SQLITE_WITH_NO_LOAD_EXTENSION"
   else
     echo "Success!"
@@ -71,7 +70,7 @@ if [ ! -z "$R_ADBC_SQLITE_ON_WINDOWS" ]; then
   PKG_CPPFLAGS="$PKG_CPPFLAGS -D__USE_MINGW_ANSI_STDIO"
 fi
 
-rm -f tools/test.o tools/test_extension.o sqlite_test sqlite_test.log || true
+rm -f tools/test.o tools/test_extension.o sqlite_test || true
 
 sed \
   -e "s|@cppflags@|$PKG_CPPFLAGS|" \
