@@ -752,21 +752,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (fkColumns.ContainsKey(colName))
                 {
                     var (idx,fkInfo) = fkColumns[colName];
-                    fkColumnLocalBuilder.Append(colName);
+                    fkColumnRefColumnBuilder.Append(fkInfo.RefColumns[idx]);
                     fkColumnRefCatalogBuilder.Append(fkInfo.RefCatalog);
                     fkColumnRefSchemaBuilder.Append(fkInfo.RefSchema);
                     fkColumnRefTableBuilder.Append(fkInfo.RefTable);
-                    fkColumnRefColumnBuilder.Append(fkInfo.RefColumns[idx]);
+                    fkColumnLocalBuilder.Append(colName);
                     fkColumnKeyNameBuilder.Append(fkInfo.KeyName);
-                    fkColumnKeySeqBuilder.Append(idx);
+                    fkColumnKeySeqBuilder.Append(1+idx); // FK_KEY_SEQ is 1-based index
                 }
                 else
                 {
-                    fkColumnLocalBuilder.AppendNull();
+                    fkColumnRefColumnBuilder.AppendNull();
                     fkColumnRefCatalogBuilder.AppendNull();
                     fkColumnRefSchemaBuilder.AppendNull();
                     fkColumnRefTableBuilder.AppendNull();
-                    fkColumnRefColumnBuilder.AppendNull();
+                    fkColumnLocalBuilder.AppendNull();
                     fkColumnKeyNameBuilder.AppendNull();
                     fkColumnKeySeqBuilder.AppendNull();
                 }
@@ -803,11 +803,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 pkColumnBuilder.Build(),
 
                 // Metadata columns for foreign key info
-                fkColumnLocalBuilder.Build(),
+                fkColumnRefColumnBuilder.Build(),
                 fkColumnRefCatalogBuilder.Build(),
                 fkColumnRefSchemaBuilder.Build(),
                 fkColumnRefTableBuilder.Build(),
-                fkColumnRefColumnBuilder.Build(),
+                fkColumnLocalBuilder.Build(),
                 fkColumnKeyNameBuilder.Build(),
                 fkColumnKeySeqBuilder.Build()
             };
