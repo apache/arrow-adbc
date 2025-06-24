@@ -268,11 +268,11 @@ namespace Apache.Arrow.Adbc.Tracing
 
         private static Activity? StartActivityInternal(string? activityName, ActivitySource activitySource, string? traceParent = default)
         {
-            string fullActivityName = GetActivityName(activityName, activitySource);
+            string fullActivityName = GetActivityName(activityName);
             return StartActivity(activitySource, fullActivityName, traceParent);
         }
 
-        private static string GetActivityName(string? activityName, ActivitySource activitySource)
+        private static string GetActivityName(string? activityName)
         {
             if (string.IsNullOrWhiteSpace(activityName))
             {

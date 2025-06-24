@@ -47,6 +47,5 @@ namespace Apache.Arrow.Adbc.Tracing
         /// </summary>
         /// <returns></returns>
         string AssemblyName { get; }
-
     }
 }
