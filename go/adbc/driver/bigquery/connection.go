@@ -66,6 +66,11 @@ type connectionImpl struct {
 	client *bigquery.Client
 }
 
+// Helper for configuration of a connection for use with a job
+func (c *connectionImpl) table(project, dataset, table string) *bigquery.Table {
+    return c.client.DatasetInProject(project, dataset).Table(table)
+}
+
 func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error) {
 	catalogPattern, err := internal.PatternToRegexp(catalogFilter)
 	if err != nil {

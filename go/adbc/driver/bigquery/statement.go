@@ -20,8 +20,13 @@ package bigquery
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -51,6 +56,10 @@ type statement struct {
 	streamBinding          array.RecordReader
 	resultRecordBufferSize int
 	prefetchConcurrency    int
+
+	// Ingest related fields
+	ingestPath          string
+	ingestFileDelimiter string
 }
 
 func (st *statement) GetOptionBytes(key string) ([]byte, error) {
@@ -132,6 +141,11 @@ func (st *statement) GetOption(key string) (string, error) {
 		return strconv.FormatBool(st.queryConfig.DryRun), nil
 	case OptionBoolQueryCreateSession:
 		return strconv.FormatBool(st.queryConfig.CreateSession), nil
+	case OptionStringIngestFileDelimiter:
+		return st.ingestFileDelimiter, nil
+	case OptionStringIngestPath:
+		return st.ingestPath, nil
+
 	default:
 		val, err := st.cnxn.GetOption(key)
 		if err == nil {
@@ -175,12 +189,11 @@ func (st *statement) SetOption(key string, v string) error {
 			}
 		}
 	case OptionStringQueryDestinationTable:
-		val, err := stringToTable(st.cnxn.catalog, st.cnxn.dbSchema, v)
-		if err == nil {
-			st.queryConfig.Dst = val
-		} else {
+		proj, ds, tbl, err := parseParts(st.cnxn.catalog, st.cnxn.dbSchema, v)
+		if err != nil {
 			return err
 		}
+		st.queryConfig.Dst = st.cnxn.table(proj, ds, tbl)
 	case OptionStringQueryDefaultProjectID:
 		st.queryConfig.DefaultProjectID = v
 	case OptionStringQueryDefaultDatasetID:
@@ -248,7 +261,10 @@ func (st *statement) SetOption(key string, v string) error {
 		} else {
 			return err
 		}
-
+	case OptionStringIngestPath:
+		st.ingestPath = v
+	case OptionStringIngestFileDelimiter:
+		st.ingestFileDelimiter = v
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -297,6 +313,10 @@ func (st *statement) SetSqlQuery(query string) error {
 //
 // This invalidates any prior result sets on this statement.
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	if st.ingestPath != "" {
+		return st.executeIngest(ctx)
+	}
+
 	if st.queryConfig.Q == "" {
 		return nil, -1, adbc.Error{
 			Msg:  "cannot execute without a query",
@@ -774,6 +794,96 @@ func (st *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc
 		Code: adbc.StatusNotImplemented,
 		Msg:  "ExecutePartitions not yet implemented for BigQuery driver",
 	}
+}
+
+// initIngest uploads a local CSV file to BigQuery.
+//
+// The function
+//   1. opens the file and reads *only* the header line plus the first data row;
+//   2. infers an Arrow schema from that sample (promoting obvious INT64 / FLOAT64 /
+//      BOOL / DATE / TIMESTAMP columns, leaving everything else STRING);
+//   3. converts the Arrow schema to a BigQuery Schema object;
+//   4. rewinds the file handle and executes a load job with the explicit schema.
+//
+// The caller (executeIngest) ignores the job's result set because an ingest
+// operation never returns rows.
+func (st *statement) initIngest(ctx context.Context) error {
+	if st.ingestPath == "" {
+		return adbc.Error{
+			Code: adbc.StatusInvalidState,
+			Msg:  "cannot execute ingest without a file path",
+		}
+	}
+
+	//---------------------------------------------------------------------------
+	// 1.  Open the file and read header + first data row
+	//---------------------------------------------------------------------------
+	file, err := os.Open(st.ingestPath)
+	if err != nil {
+		return fmt.Errorf("open %q: %w", st.ingestPath, err)
+	}
+	defer file.Close()
+
+	// rewind reader for the load job
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("rewind: %w", err)
+	}
+
+	//---------------------------------------------------------------------------
+	// 2.  Sanity-check destination identifiers
+	//---------------------------------------------------------------------------
+	if st.queryConfig.Dst == nil {
+		log.Fatal("queryConfig.Dst is nil — project_id, dataset_id, table_id likely not set")
+	}
+	if st.queryConfig.Dst.ProjectID == "" {
+		log.Fatal("ProjectID is empty on queryConfig.Dst")
+	}
+	//---------------------------------------------------------------------------
+	// 3.  Configure and run the load job with explicit schema
+	//---------------------------------------------------------------------------
+	loadSource := bigquery.NewReaderSource(file)
+	job := st.queryConfig.Dst.LoaderFrom(loadSource)
+	job.WriteDisposition = st.queryConfig.WriteDisposition
+
+	// Set file config
+	fileCfg := &job.Src.(*bigquery.ReaderSource).FileConfig
+	fileCfg.SourceFormat = bigquery.CSV // TODO: parameterize for other files
+	fileCfg.SkipLeadingRows = 1
+	fileCfg.FieldDelimiter = st.ingestFileDelimiter
+	fileCfg.AutoDetect = true
+	handle, err := job.Run(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start query job: %w", err)
+	}
+
+	status, err := handle.Wait(ctx)
+	if err != nil {
+		return fmt.Errorf("job wait failed: %w", err)
+	}
+	if status.Err() != nil {
+		return fmt.Errorf("job execution failed: %w", status.Err())
+	}
+
+	return nil
+}
+
+// executeIngest calls initIngest and returns an empty RecordReader so the
+// driver satisfies the ADBC interface even though load jobs have no result set.
+func (st *statement) executeIngest(ctx context.Context) (array.RecordReader, int64, error) {
+	err := st.initIngest(ctx)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	// For ingest operations, we return an empty record reader since there's no result set
+	emptySchema := arrow.NewSchema([]arrow.Field{}, nil)
+	emptyRecord := array.NewRecord(emptySchema, []arrow.Array{}, 0)
+	reader, err := array.NewRecordReader(emptySchema, []arrow.Record{emptyRecord})
+	if err != nil {
+		return nil, -1, err
+	}
+
+	return reader, 0, nil
 }
 
 var _ adbc.GetSetOptions = (*statement)(nil)

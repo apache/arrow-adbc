@@ -81,6 +81,9 @@ const (
 
 	DefaultAccessTokenEndpoint   = "https://accounts.google.com/o/oauth2/token"
 	DefaultAccessTokenServerName = "google.com"
+
+	OptionStringIngestFileDelimiter = "adbc.bigquery.ingest.csv_delimiter"
+	OptionStringIngestPath          = "adbc.bigquery.ingest.csv_filepath"
 )
 
 var (
@@ -127,29 +130,33 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	return driverbase.NewDatabase(db), nil
 }
 
-func stringToTable(defaultProjectID, defaultDatasetID, value string) (*bigquery.Table, error) {
+func parseParts(defaultProjectID, defaultDatasetID, value string) (string, string, string, error) {
 	parts := strings.Split(value, ".")
-	table := &bigquery.Table{
-		ProjectID: defaultProjectID,
-		DatasetID: defaultDatasetID,
-	}
 	switch len(parts) {
 	case 1:
-		table.TableID = parts[0]
+		return defaultProjectID, defaultDatasetID, parts[0], nil
 	case 2:
-		table.DatasetID = parts[0]
-		table.TableID = parts[1]
+		return defaultProjectID, parts[0], parts[1], nil
 	case 3:
-		table.ProjectID = parts[0]
-		table.DatasetID = parts[1]
-		table.TableID = parts[2]
+		return parts[0], parts[1], parts[2], nil
 	default:
-		return nil, adbc.Error{
+		return "", "", "", adbc.Error{
 			Code: adbc.StatusInvalidArgument,
-			Msg:  fmt.Sprintf("Invalid Table Reference format, expected `[[ProjectId.]DatasetId.]TableId`, got: `%s`", value),
+			Msg:  fmt.Sprintf("invalid table reference %q (want [[project.]dataset.]table)", value),
 		}
 	}
-	return table, nil
+}
+
+func stringToTable(defaultProjectID, defaultDatasetID, value string) (*bigquery.Table, error) {
+	projectID, datasetID, tableID, err := parseParts(defaultProjectID, defaultDatasetID, value)
+	if err != nil {
+		return nil, err
+	}
+	return &bigquery.Table{
+		ProjectID: projectID,
+		DatasetID: datasetID,
+		TableID:   tableID,
+	}, nil
 }
 
 func stringToTableCreateDisposition(value string) (bigquery.TableCreateDisposition, error) {

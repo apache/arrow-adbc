@@ -22,6 +22,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -1548,6 +1549,116 @@ func (suite *BigQueryTests) TestMetadataGetObjectsColumnsXdbc() {
 	suite.ElementsMatch(expectedXdbcIsGeneratedColumn, xdbcIsGeneratedColumn)
 	suite.ElementsMatch(expectedConstraints, constraints)
 
+}
+
+func (suite *BigQueryTests) TestStatementExecuteQueryIngest() {
+	ctx := context.Background()
+	conn := suite.cnxn
+	defer conn.Close()
+
+	// Create a temporary CSV file for testing
+	tmpFile, err := os.CreateTemp("", "test_ingest_*.csv")
+	suite.Require().NoError(err)
+	defer os.Remove(tmpFile.Name())
+
+	// Write test data
+	_, err = tmpFile.WriteString("id,name\n1,test1\n2,test2\n")
+	suite.Require().NoError(err)
+	tmpFile.Close()
+
+	// Test cases
+	tests := []struct {
+		name          string
+		setup         func(stmt adbc.Statement) error
+		expectedError string
+	}{
+		{
+			name: "basic ingest with default settings",
+			setup: func(stmt adbc.Statement) error {
+				err := stmt.SetOption(driver.OptionStringIngestPath, tmpFile.Name())
+				if err != nil {
+					return err
+				}
+				return stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreateAppend)
+			},
+		},
+		{
+			name: "ingest with custom delimiter",
+			setup: func(stmt adbc.Statement) error {
+				err := stmt.SetOption(driver.OptionStringIngestPath, tmpFile.Name())
+				if err != nil {
+					return err
+				}
+				err = stmt.SetOption(driver.OptionStringIngestFileDelimiter, ";")
+				if err != nil {
+					return err
+				}
+				return stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreateAppend)
+			},
+		},
+		{
+			name: "ingest with replace mode",
+			setup: func(stmt adbc.Statement) error {
+				err := stmt.SetOption(driver.OptionStringIngestPath, tmpFile.Name())
+				if err != nil {
+					return err
+				}
+				return stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeReplace)
+			},
+		},
+		{
+			name: "ingest without file path",
+			setup: func(stmt adbc.Statement) error {
+				return stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreateAppend)
+			},
+			expectedError: "cannot execute ingest without a file path",
+		},
+		{
+			name: "ingest with invalid mode",
+			setup: func(stmt adbc.Statement) error {
+				err := stmt.SetOption(driver.OptionStringIngestPath, tmpFile.Name())
+				if err != nil {
+					return err
+				}
+				return stmt.SetOption(adbc.OptionKeyIngestMode, "invalid_mode")
+			},
+			expectedError: "unsupported ingest mode",
+		},
+	}
+
+	for _, tt := range tests {
+		suite.Run(tt.name, func() {
+			stmt, err := conn.NewStatement()
+			suite.Require().NoError(err)
+			defer stmt.Close()
+
+			// Set destination table
+			err = stmt.SetOption(driver.OptionStringQueryDestinationTable, "test_ingest")
+			suite.Require().NoError(err)
+
+			// Run setup
+			err = tt.setup(stmt)
+			suite.Require().NoError(err)
+
+			// Execute query
+			reader, affected, err := stmt.ExecuteQuery(ctx)
+
+			if tt.expectedError != "" {
+				suite.Error(err)
+				suite.Contains(err.Error(), tt.expectedError)
+				return
+			}
+
+			suite.Require().NoError(err)
+			suite.Require().NotNil(reader)
+			suite.Equal(int64(0), affected) // Ingest operations return 0 affected rows
+
+			// Verify empty result set
+			suite.False(reader.Next())
+			suite.NoError(reader.Err())
+			reader.Release()
+		})
+	}
 }
 
 var _ validation.DriverQuirks = (*BigQueryQuirks)(nil)
