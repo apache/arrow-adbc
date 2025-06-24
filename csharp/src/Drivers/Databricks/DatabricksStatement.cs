@@ -649,7 +649,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             foreach (var field in ForeignKeyFields)
             {
-                IArrowType fieldType = field != "KEQ_SEQ" ? StringType.Default : Int16Type.Default;
+                IArrowType fieldType = field != "KEQ_SEQ" ? StringType.Default : Int32Type.Default;
                 allFields.Add(new Field(ForeignKeyPrefix + field, fieldType, true));
             }
 
@@ -690,7 +690,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             var fkColumnRefTableBuilder = new StringArray.Builder();
             var fkColumnRefColumnBuilder = new StringArray.Builder();
             var fkColumnKeyNameBuilder = new StringArray.Builder();
-            var fkColumnKeySeqBuilder = new Int16Array.Builder();
+            var fkColumnKeySeqBuilder = new Int32Array.Builder();
 
             var pkColumns = new HashSet<string>(descResult.PrimaryKeys);
             var fkColumns = new Dictionary<String, (int,ForeignKeyInfo)>();
@@ -761,7 +761,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     fkColumnRefTableBuilder.Append(fkInfo.RefTable);
                     fkColumnRefColumnBuilder.Append(fkInfo.RefColumns[idx]);
                     fkColumnKeyNameBuilder.Append(fkInfo.KeyName);
-                    fkColumnKeySeqBuilder.Append((short)idx);
+                    fkColumnKeySeqBuilder.Append(idx);
                 }
                 else
                 {

@@ -370,9 +370,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             // Set up statement for GetColumnsExtended
             var statement = connection.CreateStatement();
             statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
-            statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
-            statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
-            statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+            statement.SetOption(ApacheParameters.CatalogName, catalog);
+            statement.SetOption(ApacheParameters.SchemaName, schema);
+            statement.SetOption(ApacheParameters.TableName, tableName);
             statement.SetOption(ApacheParameters.EscapePatternWildcards, "true");
             statement.SqlQuery = "GetColumnsExtended";
 
@@ -405,33 +405,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.True(hasColumnName, "Schema should contain COLUMN_NAME field from GetColumns");
             Assert.True(hasPkKeySeq, "Schema should contain PK_KEY_SEQ field from GetPrimaryKeys");
             Assert.True(hasFkTableName, "Schema should contain FK_PKTABLE_NAME field from GetCrossReference");
-
-            // Read and verify data
-            var result = await ConvertQueryResultToList(queryResult);
-            var resultJson = JsonSerializer.Serialize(result);
-            var rowCount = result.Count;
-
-            // Load expected result
-            var rows = new List<Dictionary<string, object?>>();
-            var resultString = File.ReadAllText(resultLocation)
-                .Replace("{CATALOG_NAME}", catalog)
-                .Replace("{SCHEMA_NAME}", schema)
-                .Replace("{TABLE_NAME}", tableName)
-                .Replace("{REF_TABLE_NAME}", refTableName);
-            var expectedResult = JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(resultString);
-
-            // For debug
-            OutputHelper?.WriteLine(resultJson);
-
-            // Verify we got rows matching the expected column count
-            Assert.Equal(expectedResult!.Count, rowCount);
-
-            // Verify the result match expected result
-            // Assert.Equal cannot do the deep compare between 2 list with nested object, let us compare with json
-            var expectedResultJson = JsonSerializer.Serialize(expectedResult);
-            Assert.Equal(expectedResultJson, resultJson);
-
-            OutputHelper?.WriteLine($"Successfully retrieved {rowCount} columns with extended information");
 
             // Define the expected schema as (name, type) pairs
             var expectedSchema = new (string Name, string Type)[]
@@ -479,6 +452,33 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 Assert.NotNull(actualField); // Field must exist
                 Assert.Equal(expectedType, actualField.DataType.GetType().ToString());
             }
+
+            // Read and verify data
+            var result = await ConvertQueryResultToList(queryResult);
+            var resultJson = JsonSerializer.Serialize(result);
+            var rowCount = result.Count;
+
+            // Load expected result
+            var rows = new List<Dictionary<string, object?>>();
+            var resultString = File.ReadAllText(resultLocation)
+                .Replace("{CATALOG_NAME}", catalog)
+                .Replace("{SCHEMA_NAME}", schema)
+                .Replace("{TABLE_NAME}", tableName)
+                .Replace("{REF_TABLE_NAME}", refTableName);
+            var expectedResult = JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(resultString);
+
+            // For debug
+            OutputHelper?.WriteLine(resultJson);
+
+            // Verify we got rows matching the expected column count
+            Assert.Equal(expectedResult!.Count, rowCount);
+
+            // Verify the result match expected result
+            // Assert.Equal cannot do the deep compare between 2 list with nested object, let us compare with json
+            var expectedResultJson = JsonSerializer.Serialize(expectedResult);
+            Assert.Equal(expectedResultJson, resultJson);
+
+            OutputHelper?.WriteLine($"Successfully retrieved {rowCount} columns with extended information");
         }
 
         // Helper method to get string representation of array values

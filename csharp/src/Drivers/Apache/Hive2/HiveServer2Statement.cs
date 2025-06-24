@@ -46,10 +46,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             GetColumnsExtendedCommandName;
 
         // Add constants for PK and FK field names and prefixes
-        private static readonly string[] PrimaryKeyFields = new[] { "COLUMN_NAME" };
-        private static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME", "FK_NAME", "KEQ_SEQ" };
-        private const string PrimaryKeyPrefix = "PK_";
-        private const string ForeignKeyPrefix = "FK_";
+        protected static readonly string[] PrimaryKeyFields = new[] { "COLUMN_NAME" };
+        protected static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME", "FK_NAME", "KEQ_SEQ" };
+        protected const string PrimaryKeyPrefix = "PK_";
+        protected const string ForeignKeyPrefix = "FK_";
 
         internal HiveServer2Statement(HiveServer2Connection connection)
         {
@@ -772,10 +772,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // Add FK fields
             foreach (var field in ForeignKeyFields)
             {
-                IArrowType fieldType = field != "KEQ_SEQ" ? StringType.Default : Int16Type.Default;
+                IArrowType fieldType = field != "KEQ_SEQ" ? StringType.Default : Int32Type.Default;
                 allFields.Add(new Field(ForeignKeyPrefix + field, fieldType, true));
             }
-
 
             var combinedSchema = new Schema(allFields, baseSchema.Metadata);
 
