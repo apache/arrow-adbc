@@ -279,7 +279,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
             "",
             new string[0],
             new string[0])]
-        public void TestTableWithConstraints(string constaints, string[] primaryKeys, string fkName, string refTableName, string[] foreignKeys, string[] foreignRefKeys)
+        public void TestTableWithConstraints(string constraints, string[] primaryKeys, string fkName, string refTableName, string[] foreignKeys, string[] foreignRefKeys)
         {
             var json = @"
             {
@@ -299,8 +299,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
                 ""table_properties"": {
                     ""delta.minReaderVersion"": ""3""
                 },
-                ""table_constraints"": ""<constaints>""
-            }".Replace("<constaints>", constaints);
+                ""table_constraints"": ""<constraints>""
+            }".Replace("<constraints>", constraints);
 
             var result = JsonSerializer.Deserialize<DescTableExtendedResult>(json);
             var expectedPrimaryKeys = primaryKeys.ToList();
@@ -312,7 +312,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
 
             if (string.IsNullOrEmpty(refTableName))
             {
-                // No foreing key
+                // No foreign key
                 Assert.Empty(result.ForeignKeys);
 
             } else
