@@ -344,8 +344,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         [SkippableTheory]
-        [InlineData("all_column_types", "Resources/create_table_all_types.sql", "Resources/result_get_column_extended_all_types.json", true)]
-        public async Task CanGetColumnsExtended(string tableName, string createTableSqlLocation, string resultLocation, bool useDescTableExtended)
+        [InlineData("all_column_types", "Resources/create_table_all_types.sql", "Resources/result_get_column_extended_all_types.json", true, new[] { "PK_IS_NULLABLE:NO" })]
+        [InlineData("all_column_types", "Resources/create_table_all_types.sql", "Resources/result_get_column_extended_all_types.json", false, new[] { "PK_IS_NULLABLE:YES" })]
+        public async Task CanGetColumnsExtended(string tableName,string createTableSqlLocation, string resultLocation, bool useDescTableExtended, string[] ?extraPlaceholdsInResult = null)
         {
             var connectionParams = new Dictionary<string, string> { ["adbc.databricks.use_desc_table_extended"] = $"{useDescTableExtended}" };
 
@@ -465,6 +466,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 .Replace("{SCHEMA_NAME}", schema)
                 .Replace("{TABLE_NAME}", tableName)
                 .Replace("{REF_TABLE_NAME}", refTableName);
+
+            // Apply extra placeholder replacements if provided
+            if (extraPlaceholdsInResult != null)
+            {
+                foreach (var placeholderReplacement in extraPlaceholdsInResult)
+                {
+                    var parts = placeholderReplacement.Split(':');
+                    if (parts.Length == 2)
+                    {
+                        var placeholder = parts[0];
+                        var replacement = parts[1];
+                        resultString = resultString.Replace("{" + placeholder + "}", replacement);
+                    }
+                }
+            }
+
             var expectedResult = JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(resultString);
 
             // For debug
