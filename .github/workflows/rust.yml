@@ -120,29 +120,25 @@ jobs:
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy
+        working-directory: rust
         run: |
-          pushd rust
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
-          popd
       - name: Test
+        working-directory: rust
         run: |
-          pushd rust
           cargo test --workspace --all-targets --all-features
-          popd
         # env:
         # ADBC_SNOWFLAKE_TESTS: 1
         # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         # ADBC_SNOWFLAKE_SQL_DB: ADBC_TESTING
       - name: Doctests
+        working-directory: rust
         run: |
-          pushd rust
           cargo test --workspace --doc --all-features
-          popd
       - name: Check docs
+        working-directory: rust
         run: |
-          pushd rust
           cargo doc --workspace --all-features
-          popd
       - name: Verify MSRV (Minimum Supported Rust Version)
         if: matrix.os == 'ubuntu-latest'
         working-directory: rust

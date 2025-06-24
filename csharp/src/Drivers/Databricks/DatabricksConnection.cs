@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
-        private const bool DefaultRetryOnUnavailable= true;
+        private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
         private bool _useDescTableExtended = true;
 
@@ -398,9 +398,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return req;
         }
 
-        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session)
+        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
         {
-            await base.HandleOpenSessionResponse(session);
+            await base.HandleOpenSessionResponse(session, activity);
             if (session != null)
             {
                 var version = session.ServerProtocolVersion;
@@ -517,7 +517,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
 
-            if(Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
+            if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
             {
                 if (!int.TryParse(tempUnavailableRetryTimeoutStr, out int tempUnavailableRetryTimeoutValue) ||
                     tempUnavailableRetryTimeoutValue < 0)
