@@ -226,7 +226,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return string.Join(".", parts);
         }
 
-
         /// <summary>
         /// Overrides the GetCatalogsAsync method to handle EnableMultipleCatalogSupport flag.
         /// When EnableMultipleCatalogSupport is false, returns a single catalog "SPARK" without making an RPC call.
@@ -567,7 +566,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return CreateExtendedColumnsResult(columnMetadataSchema,result);
         }
 
-
         /// <summary>
         /// Creates the schema for the column metadata result set.
         /// This schema is used for the GetColumns metadata query.
@@ -637,7 +635,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 new StringArray.Builder().Build()  // BASE_TYPE_NAME
             ];
         }
-
 
         private QueryResult CreateExtendedColumnsResult(Schema columnMetadataSchema, DescTableExtendedResult descResult)
         {

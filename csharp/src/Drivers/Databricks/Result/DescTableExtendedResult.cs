@@ -22,7 +22,6 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using static Apache.Arrow.Adbc.Drivers.Apache.Hive2.HiveServer2Connection;
 
-
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
 {
     /// <summary>
@@ -32,7 +31,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
     /// </summary>
     internal class DescTableExtendedResult
     {
-
         [JsonPropertyName("table_name")]
         public string TableName { get; set; } = String.Empty;
 
@@ -170,12 +168,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
                         ColumnTypeId.VARCHAR => Type.Name.Trim().ToUpper() == "STRING" ? int.MaxValue: Type.Length,
                         ColumnTypeId.DECIMAL => Type.Precision ?? 0,
                         ColumnTypeId.NULL => 1,
-                        _ => Type.Name.Trim().ToUpper() == "INTERVAL" ? getIntervalSize() : 0
+                        _ => Type.Name.Trim().ToUpper() == "INTERVAL" ? GetIntervalSize() : 0
                     };
                 }
             }
 
-            private int getIntervalSize()
+            private int GetIntervalSize()
             {
                 if (String.IsNullOrEmpty(Type.StartUnit))
                 {
@@ -316,7 +314,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
         {
             get
             {
-                parseConstraints();
+                ParseConstraints();
                 return _primaryKeys;
             }
         }
@@ -326,25 +324,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Result
         {
             get
             {
-                parseConstraints();
+                ParseConstraints();
                 return _foreignKeys;
             }
         }
 
-        private void parseConstraints()
+        private void ParseConstraints()
         {
             if (_hasConstraintsParsed)
                 return;
 
             _hasConstraintsParsed = true;
 
-            if (TableConstraints == null || TableConstraints.Trim().Length == 0)
-                return;
-
             // Constraints string format example:
             // "[ (pk_constraint, PRIMARY KEY (`col1`, `col2`)), (fk_constraint, FOREIGN KEY (`col3`) REFERENCES `catalog`.`schema`.`table` (`refcol1`, `refcol2`)) ]"
 
-            var constraintString = TableConstraints.Trim();
+            var constraintString = TableConstraints?.Trim();
+            if (constraintString == null || constraintString.Length == 0)
+                return;
 
             if (!constraintString.StartsWith("[") || !constraintString.EndsWith("]"))
             {

@@ -241,7 +241,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         internal bool CanUseDescTableExtended => _useDescTableExtended && ServerProtocolVersion != null && ServerProtocolVersion >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7;
 
-
         /// <summary>
         /// Gets whether PK/FK metadata call is enabled
         /// </summary>
