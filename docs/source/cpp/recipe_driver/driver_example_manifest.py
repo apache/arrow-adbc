@@ -49,8 +49,6 @@ def connect(uri: str):
 #: Next, we can give our driver a go! The two pieces we implemented in the driver
 #: were the "bulk ingest" feature and "select all from", so let's see if it works!
 if __name__ == "__main__":
-    import os
-
     import pyarrow
 
     with connect(uri=Path(__file__).parent.as_uri()) as con:
@@ -63,4 +61,4 @@ if __name__ == "__main__":
             print(cur.fetchall())
             # Output: [(1,), (2,), (3,)]
 
-        os.unlink(Path(__file__).parent / "example.arrows")
+        (Path(__file__).parent / "example.arrows").unlink()

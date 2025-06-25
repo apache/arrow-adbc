@@ -45,22 +45,24 @@ else()
   message(FATAL_ERROR "Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
-include(CheckCSourceRuns)
+if(NOT APPLE)
+  include(CheckCSourceRuns)
 
-check_c_source_runs([=[
-#include <stdlib.h>
-#if defined(__GLIBC__)
-#error "GLIBC detected"
-#elif defined(__MUSL__)
-int main(void) { return EXIT_SUCCESS; }
-#else
-#error "Neither GLIBC nor Musl detected"
-#endif
-  ]=]
-                    IS_MUSL)
+  check_c_source_runs([=[
+    #include <stdlib.h>
+    #if defined(__GLIBC__)
+    #error "GLIBC detected"
+    #elif defined(__MUSL__)
+    int main(void) { return EXIT_SUCCESS; }
+    #else
+    #error "Neither GLIBC nor Musl detected"
+    #endif
+    ]=]
+                      IS_MUSL)
 
-if(MINGW)
-  set(EXTRA "_mingw")
-elseif(IS_MUSL)
-  set(EXTRA "_musl")
+  if(MINGW)
+    set(EXTRA "_mingw")
+  elseif(IS_MUSL)
+    set(EXTRA "_musl")
+  endif()
 endif()
