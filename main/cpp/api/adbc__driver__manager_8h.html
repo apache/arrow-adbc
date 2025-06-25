@@ -138,6 +138,9 @@ Functions</h2></td></tr>
 <tr class="memitem:ae09e277867757f5ca2bb8d997cf0164c" id="r_ae09e277867757f5ca2bb8d997cf0164c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754">AdbcStatusCode</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae09e277867757f5ca2bb8d997cf0164c">AdbcDriverManagerDatabaseSetInitFunc</a> (struct <a class="el" href="group__adbc-database.html#structAdbcDatabase">AdbcDatabase</a> *database, <a class="el" href="group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db">AdbcDriverInitFunc</a> init_func, struct <a class="el" href="group__adbc-error-handling.html#structAdbcError">AdbcError</a> *error)</td></tr>
 <tr class="memdesc:ae09e277867757f5ca2bb8d997cf0164c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the <a class="el" href="group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db" title="Common entry point for drivers via the driver manager (which uses dlopen(3)/LoadLibrary)....">AdbcDriverInitFunc</a> to use.  <br /></td></tr>
 <tr class="separator:ae09e277867757f5ca2bb8d997cf0164c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1efdaf7971a26a3c4073cc045a07970f" id="r_a1efdaf7971a26a3c4073cc045a07970f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754">AdbcStatusCode</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1efdaf7971a26a3c4073cc045a07970f">AdbcDriverManagerDatabaseSetLoadFlags</a> (struct <a class="el" href="group__adbc-database.html#structAdbcDatabase">AdbcDatabase</a> *database, AdbcLoadFlags flags, struct <a class="el" href="group__adbc-error-handling.html#structAdbcError">AdbcError</a> *error)</td></tr>
+<tr class="memdesc:a1efdaf7971a26a3c4073cc045a07970f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the load flags for the driver manager.  <br /></td></tr>
+<tr class="separator:a1efdaf7971a26a3c4073cc045a07970f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a466f295eadd40ec5887d2d57bc85c144" id="r_a466f295eadd40ec5887d2d57bc85c144"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a466f295eadd40ec5887d2d57bc85c144">AdbcStatusCodeMessage</a> (<a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754">AdbcStatusCode</a> code)</td></tr>
 <tr class="memdesc:a466f295eadd40ec5887d2d57bc85c144"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get a human-friendly description of a status code.  <br /></td></tr>
 <tr class="separator:a466f295eadd40ec5887d2d57bc85c144"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -189,6 +192,36 @@ Functions</h2></td></tr>
 
 <p>Set the <a class="el" href="group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db" title="Common entry point for drivers via the driver manager (which uses dlopen(3)/LoadLibrary)....">AdbcDriverInitFunc</a> to use. </p>
 <p>This is an extension to the ADBC API. The driver manager shims the AdbcDatabase* functions to allow you to specify the driver/entrypoint dynamically. This function lets you set the entrypoint explicitly, for applications that can dynamically load drivers on their own. </p>
+
+</div>
+</div>
+<a id="a1efdaf7971a26a3c4073cc045a07970f" name="a1efdaf7971a26a3c4073cc045a07970f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1efdaf7971a26a3c4073cc045a07970f">&#9670;&#160;</a></span>AdbcDriverManagerDatabaseSetLoadFlags()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754">AdbcStatusCode</a> AdbcDriverManagerDatabaseSetLoadFlags </td>
+          <td>(</td>
+          <td class="paramtype">struct <a class="el" href="group__adbc-database.html#structAdbcDatabase">AdbcDatabase</a> *</td>          <td class="paramname"><span class="paramname"><em>database</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">AdbcLoadFlags</td>          <td class="paramname"><span class="paramname"><em>flags</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">struct <a class="el" href="group__adbc-error-handling.html#structAdbcError">AdbcError</a> *</td>          <td class="paramname"><span class="paramname"><em>error</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Set the load flags for the driver manager. </p>
+<p>This is an extension to the ADBC API. The driver manager shims the AdbcDatabase* functions to allow you to specify the driver/entrypoint dynamically. This function lets you set the load flags explicitly, for applications that can dynamically load drivers on their own.</p>
+<p>If this function isn't called, the default load flags are just to allow relative paths, disallowing the lookups of manifests. </p>
 
 </div>
 </div>

@@ -45,3 +45,13 @@ package.
    data.frame(col = 1:3) |> write_adbc(con, "example.arrows")
    con |> read_adbc("SELECT * FROM example.arrows") |> as.data.frame()
    unlink("example.arrows")
+
+Driver Manifests
+================
+
+.. recipe:: recipe_driver/driver_example_manifest.py
+
+Driver manifests can provide an easier way to install and manage ADBC drivers,
+via TOML files that describe some metadata along with the path to the driver
+shared library. The driver manager can read these manifests to locate and load
+drivers dynamically.
