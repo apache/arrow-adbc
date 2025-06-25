@@ -137,6 +137,21 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* databas
                                                     AdbcDriverInitFunc init_func,
                                                     struct AdbcError* error);
 
+/// \brief Set the load flags for the driver manager.
+///
+/// This is an extension to the ADBC API. The driver manager shims
+/// the AdbcDatabase* functions to allow you to specify the
+/// driver/entrypoint dynamically. This function lets you set the
+/// load flags explicitly, for applications that can dynamically
+/// load drivers on their own.
+///
+/// If this function isn't called, the default load flags are just to
+/// allow relative paths, disallowing the lookups of manifests.
+ADBC_EXPORT
+AdbcStatusCode AdbcDriverManagerDatabaseSetLoadFlags(struct AdbcDatabase* database,
+                                                     AdbcLoadFlags flags,
+                                                     struct AdbcError* error);
+
 /// \brief Get a human-friendly description of a status code.
 ADBC_EXPORT
 const char* AdbcStatusCodeMessage(AdbcStatusCode code);

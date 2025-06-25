@@ -983,6 +983,7 @@ struct TempDatabase {
   std::string driver;
   std::string entrypoint;
   AdbcDriverInitFunc init_func = nullptr;
+  AdbcLoadFlags load_flags = ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
 };
 
 /// Temporary state while the database is being configured.
@@ -1341,6 +1342,19 @@ AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const 
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode AdbcDriverManagerDatabaseSetLoadFlags(struct AdbcDatabase* database,
+                                                     AdbcLoadFlags flags,
+                                                     struct AdbcError* error) {
+  if (database->private_driver) {
+    SetError(error, "Cannot SetLoadFlags after AdbcDatabaseInit");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+
+  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
+  args->load_flags = flags;
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* database,
                                                     AdbcDriverInitFunc init_func,
                                                     struct AdbcError* error) {
@@ -1376,11 +1390,12 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_1_1_0,
                                         database->private_driver, error);
   } else if (!args->entrypoint.empty()) {
-    status = AdbcLoadDriver(args->driver.c_str(), args->entrypoint.c_str(),
-                            ADBC_VERSION_1_1_0, database->private_driver, error);
+    status = AdbcFindLoadDriver(args->driver.c_str(), args->entrypoint.c_str(),
+                                ADBC_VERSION_1_1_0, args->load_flags,
+                                database->private_driver, error);
   } else {
-    status = AdbcLoadDriver(args->driver.c_str(), nullptr, ADBC_VERSION_1_1_0,
-                            database->private_driver, error);
+    status = AdbcFindLoadDriver(args->driver.c_str(), nullptr, ADBC_VERSION_1_1_0,
+                                args->load_flags, database->private_driver, error);
   }
 
   if (status != ADBC_STATUS_OK) {

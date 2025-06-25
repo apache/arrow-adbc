@@ -51,6 +51,14 @@ target_link_libraries(driver_example PRIVATE adbc_driver_framework
 
 install(TARGETS driver_example)
 
+include(./get_arch.cmake)
+cmake_path(SET DRIVER_PATH "${CMAKE_INSTALL_PREFIX}")
+cmake_path(APPEND DRIVER_PATH "${CMAKE_INSTALL_LIBDIR}"
+           "${CMAKE_SHARED_LIBRARY_PREFIX}driver_example${CMAKE_SHARED_LIBRARY_SUFFIX}")
+
+configure_file(driver_example.toml.in "${CMAKE_CURRENT_SOURCE_DIR}/driver_example.toml"
+               @ONLY)
+
 if(ADBC_DRIVER_EXAMPLE_BUILD_TESTS)
   fetchcontent_declare(googletest
                        URL https://github.com/google/googletest/archive/refs/tags/v1.15.1.tar.gz
