@@ -23,6 +23,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
+using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
@@ -46,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// <param name="statement">The Databricks statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        public CloudFetchReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, HttpClient httpClient)
+        public CloudFetchReader(DatabricksStatement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed, HttpClient httpClient)
             : base(statement, schema, isLz4Compressed)
         {
             // Check if prefetch is enabled
@@ -67,14 +68,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             // Initialize the download manager
             if (isPrefetchEnabled)
             {
-                downloadManager = new CloudFetchDownloadManager(statement, schema, isLz4Compressed, httpClient);
+                downloadManager = new CloudFetchDownloadManager(statement, schema, initialResults, isLz4Compressed, httpClient);
                 downloadManager.StartAsync().Wait();
             }
             else
             {
                 // For now, we only support the prefetch implementation
                 // This flag is reserved for future use if we need to support a non-prefetch mode
-                downloadManager = new CloudFetchDownloadManager(statement, schema, isLz4Compressed, httpClient);
+                downloadManager = new CloudFetchDownloadManager(statement, schema, initialResults, isLz4Compressed, httpClient);
                 downloadManager.StartAsync().Wait();
             }
         }
