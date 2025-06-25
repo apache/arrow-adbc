@@ -54,7 +54,7 @@ jobs:
           - false
         include:
           - os: ubuntu-latest
-            minimal-versions: true # Test adbc_core can be built with older arrow
+            minimal-versions: true # Test can be built with older arrow except adbc_datafusion
     name: Rust ${{ matrix.os }} ${{ matrix.minimal-versions && '(minimal versions for adbc_core)' || '' }}
     runs-on: ${{ matrix.os }}
     env:
@@ -141,7 +141,7 @@ jobs:
       - name: Test
         working-directory: rust
         run: |
-          cargo test --all-targets --all-features ${{ matrix.minimal-versions && '--package adbc_core' || '--workspace' }}
+          cargo test --all-targets --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
         # env:
         # ADBC_SNOWFLAKE_TESTS: 1
         # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
@@ -149,11 +149,11 @@ jobs:
       - name: Doctests
         working-directory: rust
         run: |
-          cargo test --doc --all-features ${{ matrix.minimal-versions && '--package adbc_core' || '--workspace' }}
+          cargo test --doc --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
       - name: Check docs
         working-directory: rust
         run: |
-          cargo doc --all-features ${{ matrix.minimal-versions && '--package adbc_core' || '--workspace' }}
+          cargo doc --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
       - name: Verify MSRV (Minimum Supported Rust Version)
         if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
         working-directory: rust
