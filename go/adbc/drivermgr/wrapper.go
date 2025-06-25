@@ -26,6 +26,7 @@ package drivermgr
 // #define ADBC_EXPORTING
 // #endif
 // #include "arrow-adbc/adbc.h"
+// #include "arrow-adbc/adbc_driver_manager.h"
 // #include <stdlib.h>
 // #include <string.h>
 //
@@ -46,6 +47,8 @@ package drivermgr
 //     memset(stream, 0, sizeof(struct ArrowArrayStream));
 //     return stream;
 // }
+//
+// const AdbcLoadFlags LoadFlagsDefault = ADBC_LOAD_FLAG_DEFAULT;
 //
 import "C"
 import (
@@ -106,6 +109,13 @@ func (d Driver) NewDatabaseWithContext(_ context.Context, opts map[string]string
 			db.db = nil
 			return nil, errOut
 		}
+	}
+
+	if code := adbc.Status(C.AdbcDriverManagerDatabaseSetLoadFlags(db.db, C.LoadFlagsDefault, &err)); code != adbc.StatusOK {
+		errOut := toAdbcError(code, &err)
+		C.AdbcDatabaseRelease(db.db, &err)
+		db.db = nil
+		return nil, errOut
 	}
 
 	if code := adbc.Status(C.AdbcDatabaseInit(db.db, &err)); code != adbc.StatusOK {
