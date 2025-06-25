@@ -1633,7 +1633,7 @@ func (suite *BigQueryTests) TestStatementExecuteQueryIngest() {
 			defer stmt.Close()
 
 			// Set destination table
-			err = stmt.SetOption(driver.OptionStringQueryDestinationTable, "test_ingest")
+			err = stmt.SetOption(driver.OptionStringQueryDestination, "project.dataset.table")
 			suite.Require().NoError(err)
 
 			// Run setup

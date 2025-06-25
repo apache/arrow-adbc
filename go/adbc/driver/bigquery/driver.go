@@ -57,7 +57,7 @@ const (
 	OptionValueQueryParameterModeNamed      = "adbc.bigquery.sql.query.parameter_mode_named"
 	OptionValueQueryParameterModePositional = "adbc.bigquery.sql.query.parameter_mode_positional"
 
-	OptionStringQueryDestinationTable  = "adbc.bigquery.sql.query.destination_table"
+	OptionStringQueryDestination       = "adbc.bigquery.sql.query.destination"
 	OptionStringQueryDefaultProjectID  = "adbc.bigquery.sql.query.default_project_id"
 	OptionStringQueryDefaultDatasetID  = "adbc.bigquery.sql.query.default_dataset_id"
 	OptionStringQueryCreateDisposition = "adbc.bigquery.sql.query.create_disposition"
