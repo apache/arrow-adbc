@@ -427,6 +427,131 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
         #endregion
 
+        #region Initial Results Tests
+
+        [Fact]
+        public async Task InitialResults_ProcessesInitialResultsCorrectly()
+        {
+            // Arrange
+            var initialResultLinks = new List<TSparkArrowResultLink>
+            {
+                CreateTestResultLink(0, 100, "http://test.com/initial1", 3600),
+                CreateTestResultLink(100, 100, "http://test.com/initial2", 3600)
+            };
+
+            var initialResults = CreateFetchResultsResponse(initialResultLinks, false);
+            var fetcherWithInitialResults = CreateResultFetcherWithInitialResults(initialResults);
+
+            // Act
+            await fetcherWithInitialResults.StartAsync(CancellationToken.None);
+
+            // Wait for the fetcher to process the initial results
+            await Task.Delay(200);
+
+            // Assert
+            // The download queue should contain our initial result links
+            Assert.True(_downloadQueue.Count >= initialResultLinks.Count,
+                $"Expected at least {initialResultLinks.Count} items in queue, but found {_downloadQueue.Count}");
+
+            // Take all items from the queue and verify they match our initial result links
+            var downloadResults = new List<IDownloadResult>();
+            while (_downloadQueue.TryTake(out var result))
+            {
+                // Skip the end of results guard
+                if (result == EndOfResultsGuard.Instance)
+                {
+                    continue;
+                }
+                downloadResults.Add(result);
+            }
+
+            Assert.Equal(initialResultLinks.Count, downloadResults.Count);
+
+            // Verify each download result has the correct link
+            for (int i = 0; i < initialResultLinks.Count; i++)
+            {
+                Assert.Equal(initialResultLinks[i].FileLink, downloadResults[i].Link.FileLink);
+                Assert.Equal(initialResultLinks[i].StartRowOffset, downloadResults[i].Link.StartRowOffset);
+                Assert.Equal(initialResultLinks[i].RowCount, downloadResults[i].Link.RowCount);
+            }
+
+            // Verify the fetcher completed
+            Assert.True(fetcherWithInitialResults.IsCompleted);
+            Assert.False(fetcherWithInitialResults.HasMoreResults);
+
+            // Cleanup
+            await fetcherWithInitialResults.StopAsync();
+        }
+
+        [Fact]
+        public async Task InitialResults_WithMoreRows_ContinuesFetching()
+        {
+            // Arrange
+            var initialResultLinks = new List<TSparkArrowResultLink>
+            {
+                CreateTestResultLink(0, 100, "http://test.com/initial1", 3600)
+            };
+
+            var additionalResultLinks = new List<TSparkArrowResultLink>
+            {
+                CreateTestResultLink(100, 100, "http://test.com/additional1", 3600)
+            };
+
+            // Initial results indicate more rows are available
+            var initialResults = CreateFetchResultsResponse(initialResultLinks, true);
+            var fetcherWithInitialResults = CreateResultFetcherWithInitialResults(initialResults);
+
+            // Setup mock for additional fetch
+            SetupMockClientFetchResults(additionalResultLinks, false);
+
+            // Act
+            await fetcherWithInitialResults.StartAsync(CancellationToken.None);
+
+            // Wait for the fetcher to process all results
+            await Task.Delay(300);
+
+            // Assert
+            // The download queue should contain both initial and additional result links
+            var expectedCount = initialResultLinks.Count + additionalResultLinks.Count;
+            Assert.True(_downloadQueue.Count >= expectedCount,
+                $"Expected at least {expectedCount} items in queue, but found {_downloadQueue.Count}");
+
+            // Take all items from the queue
+            var downloadResults = new List<IDownloadResult>();
+            while (_downloadQueue.TryTake(out var result))
+            {
+                // Skip the end of results guard
+                if (result == EndOfResultsGuard.Instance)
+                {
+                    continue;
+                }
+                downloadResults.Add(result);
+            }
+
+            Assert.Equal(expectedCount, downloadResults.Count);
+
+            // Verify the fetcher completed
+            Assert.True(fetcherWithInitialResults.IsCompleted);
+            Assert.False(fetcherWithInitialResults.HasMoreResults);
+
+            // Cleanup
+            await fetcherWithInitialResults.StopAsync();
+        }
+
+        private CloudFetchResultFetcherWithMockClock CreateResultFetcherWithInitialResults(TFetchResultsResp initialResults)
+        {
+            return new CloudFetchResultFetcherWithMockClock(
+                _mockStatement.Object,
+                initialResults,
+                _mockMemoryManager.Object,
+                _downloadQueue,
+                100, // batchSize
+                _mockClock,
+                60); // expirationBufferSeconds
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private TSparkArrowResultLink CreateTestResultLink(long startRowOffset, int rowCount, string fileLink, int expirySeconds)
@@ -515,7 +640,19 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             long batchSize,
             IClock clock,
             int expirationBufferSeconds = 60)
-            : base(statement, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
+            : base(statement, null, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
+        {
+        }
+
+        public CloudFetchResultFetcherWithMockClock(
+            IHiveServer2Statement statement,
+            TFetchResultsResp? initialResults,
+            ICloudFetchMemoryBufferManager memoryManager,
+            BlockingCollection<IDownloadResult> downloadQueue,
+            long batchSize,
+            IClock clock,
+            int expirationBufferSeconds = 60)
+            : base(statement, initialResults, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
         {
         }
     }

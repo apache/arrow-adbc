@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         int index;
         IArrowReader? reader;
 
-        public DatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
+        public DatabricksReader(DatabricksStatement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
         {
             // If we have direct results, initialize the batches from them
             if (statement.HasDirectResults)
@@ -43,6 +43,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     this.statement = null;
                     return;
                 }
+            }
+            else if (initialResults != null)
+            {
+                this.batches = initialResults.Results.ArrowBatches;
+                this.hasNoMoreRows = !initialResults.HasMoreRows;
             }
         }
 

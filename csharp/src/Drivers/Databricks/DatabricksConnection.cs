@@ -332,16 +332,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
-            // Choose the appropriate reader based on the result format
-            if (resultFormat == TSparkRowSetType.URL_BASED_SET)
-            {
-                HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
-                return new CloudFetchReader(databricksStatement, schema, isLz4Compressed, cloudFetchHttpClient);
-            }
-            else
-            {
-                return new DatabricksReader(databricksStatement, schema, isLz4Compressed);
-            }
+            return new DatabricksCompositeReader(databricksStatement, schema, isLz4Compressed, TlsOptions, _proxyConfigurator);
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
