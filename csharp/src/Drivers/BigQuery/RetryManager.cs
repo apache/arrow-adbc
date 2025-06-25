@@ -17,6 +17,7 @@
 */
 
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
@@ -29,6 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public static async Task<T> ExecuteWithRetriesAsync<T>(
             ITokenProtectedResource tokenProtectedResource,
             Func<Task<T>> action,
+            Activity? activity,
             int maxRetries = 5,
             int initialDelayMilliseconds = 200)
         {
@@ -49,6 +51,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
                 catch (Exception ex)
                 {
+                    activity?.AddTag("RetryAttempt", retryCount);
+                    activity?.AddException(ex);
+
                     retryCount++;
                     if (retryCount >= maxRetries)
                     {
@@ -56,6 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         {
                             if (tokenProtectedResource?.TokenRequiresUpdate(ex) == true)
                             {
+                                activity?.AddTag("UpdateToken.Status", "Expired");
                                 throw new AdbcException($"Cannot update access token after {maxRetries} tries", AdbcStatusCode.Unauthenticated, ex);
                             }
                         }
@@ -67,7 +73,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     {
                         if (tokenProtectedResource.TokenRequiresUpdate(ex) == true)
                         {
+                            activity?.AddTag("UpdateToken.Status", "Required");
                             await tokenProtectedResource.UpdateToken();
+                            activity?.AddTag("UpdateToken.Status", "Completed");
                         }
                     }
 

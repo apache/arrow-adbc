@@ -72,5 +72,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         // What ODBC uses
         public const string DefaultLargeDatasetId = "_bqodbc_temp_tables";
+
+        public const string PublicProjectId = "bigquery-public-data";
     }
 }
