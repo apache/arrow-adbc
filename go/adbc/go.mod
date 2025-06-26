@@ -25,7 +25,7 @@ require (
 	cloud.google.com/go/bigquery v1.67.0
 	github.com/apache/arrow-go/v18 v18.2.0
 	github.com/bluele/gcache v0.0.2
-	github.com/databricks/databricks-sdk-go v0.62.0
+	github.com/databricks/databricks-sdk-go v0.72.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/snowflakedb/gosnowflake v1.14.1
@@ -38,6 +38,7 @@ require (
 	google.golang.org/api v0.230.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
+	gopkg.in/ini.v1 v1.67.0
 	modernc.org/sqlite v1.37.0
 )
 
@@ -121,7 +122,6 @@ require (
 	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250414145226-207652e42e2e // indirect
-	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.62.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect

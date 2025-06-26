@@ -36,6 +36,7 @@ const (
 	OptionValueAuthTypeAzureCLI          = "azure-cli"
 	OptionValueAuthTypeAzureMSI          = "azure-msi"
 	OptionValueAuthTypeAzureClientSecret = "azure-client-secret"
+	OptionValueAuthTypeExternalBrowser   = "external-browser"
 
 	OptionStringCluster             = "adbc.databricks.cluster"
 	OptionStringWarehouse           = "adbc.databricks.warehouse"
@@ -58,7 +59,7 @@ const (
 	OptionStringUsername  = "username"
 	OptionStringPassword  = "password"
 
-	// The Databricks service principal’s client ID and secret.
+	// The Databricks service principal's client ID and secret.
 	OptionStringClientID     = "adbc.databricks.client_id"
 	OptionStringClientSecret = "adbc.databricks.client_secret"
 

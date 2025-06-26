@@ -98,8 +98,8 @@ github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42 h1:Om6kYQYDUk5wWbT0t0q
 github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42/go.mod h1:W+zGtBO5Y1IgJhy4+A9GOqVhqLpfZi+vwmdNXUehLA8=
 github.com/danieljoos/wincred v1.2.2 h1:774zMFJrqaeYCK2W57BgAem/MLi6mtSE47MB6BOJ0i0=
 github.com/danieljoos/wincred v1.2.2/go.mod h1:w7w4Utbrz8lqeMbDAK0lkNJUv5sAOkFi7nd/ogr0Uh8=
-github.com/databricks/databricks-sdk-go v0.62.0 h1:z4fpPXSHHmXESJVu2CqCxa0UMWkpDxGR5t9FZKOVkiA=
-github.com/databricks/databricks-sdk-go v0.62.0/go.mod h1:xBtjeP9nq+6MgTewZW1EcbRkD7aDY9gZvcRPcwPhZjw=
+github.com/databricks/databricks-sdk-go v0.72.0 h1:vNS4zlpvNYiXsy/7/lzV7cuu/yOcT/1xpfuJw3+W3TA=
+github.com/databricks/databricks-sdk-go v0.72.0/go.mod h1:xBtjeP9nq+6MgTewZW1EcbRkD7aDY9gZvcRPcwPhZjw=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

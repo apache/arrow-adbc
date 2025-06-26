@@ -37,16 +37,23 @@ type databaseImpl struct {
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+	// Set up external browser credentials strategy if external-browser auth type is used
+	if d.config.AuthType == OptionValueAuthTypeExternalBrowser {
+		d.config.Credentials = &ExternalBrowserCredentials{
+			Host:     d.config.Host,
+			ClientID: d.config.ClientID,
+		}
+	}
 	client, err := databricks.NewWorkspaceClient(d.config)
 	if err != nil {
 		if err == databricks.ErrNotWorkspaceClient {
 			return nil, NewAdbcError(
-				"[Databricks] " + err.Error(),
+				"[Databricks] "+err.Error(),
 				adbc.StatusInvalidArgument,
 			)
 		}
 		return nil, NewAdbcError(
-			"[Databricks] " + err.Error(),
+			"[Databricks] "+err.Error(),
 			adbc.StatusUnknown,
 		)
 	}
