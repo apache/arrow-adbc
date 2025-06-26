@@ -46,8 +46,16 @@ jobs:
       matrix:
         # TODO(alexandreyc): add `windows-latest`
         # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
-        os: [macos-13, macos-latest, ubuntu-latest]
-    name: "Rust ${{ matrix.os }}"
+        os:
+          - macos-13
+          - macos-latest
+          - ubuntu-latest
+        minimal-versions:
+          - false
+        include:
+          - os: ubuntu-latest
+            minimal-versions: true # Test can be built with older arrow except adbc_datafusion
+    name: Rust ${{ matrix.os }} ${{ matrix.minimal-versions && '(minimal versions for adbc_core)' || '' }}
     runs-on: ${{ matrix.os }}
     env:
       CARGO_INCREMENTAL: 0
@@ -57,6 +65,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Cargo update for minimal (arrow) version
+        if: ${{ matrix.minimal-versions }}
+        working-directory: rust
+        run: |
+          rustup toolchain install nightly
+          cargo +nightly generate-lockfile -Z direct-minimal-versions
       - name: Use stable Rust
         id: rust
         run: |
@@ -120,13 +134,14 @@ jobs:
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy
+        if: ${{ ! matrix.minimal-versions }}
         working-directory: rust
         run: |
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
       - name: Test
         working-directory: rust
         run: |
-          cargo test --workspace --all-targets --all-features
+          cargo test --all-targets --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
         # env:
         # ADBC_SNOWFLAKE_TESTS: 1
         # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
@@ -134,13 +149,13 @@ jobs:
       - name: Doctests
         working-directory: rust
         run: |
-          cargo test --workspace --doc --all-features
+          cargo test --doc --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
       - name: Check docs
         working-directory: rust
         run: |
-          cargo doc --workspace --all-features
+          cargo doc --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
       - name: Verify MSRV (Minimum Supported Rust Version)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
         working-directory: rust
         run: |
           # Install cargo-msrv
