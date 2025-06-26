@@ -188,6 +188,10 @@ The ADBC driver uses the BigQuery Client APIs to communicate with BigQuery. The 
 <br>
 <br>
 
+Some environments may also require:
+- [VPC Service Controls](https://cloud.google.com/vpc-service-controls/docs/troubleshooting)
+- [Service Usage Consumer](https://cloud.google.com/service-usage/docs/access-control#serviceusage.serviceUsageConsumer) permissions
+
 **Additional References**:
 - [BigQuery IAM roles and permissions | Google Cloud](https://cloud.google.com/bigquery/docs/access-control)
 - [Running jobs programmatically | BigQuery | Google Cloud](https://cloud.google.com/bigquery/docs/running-jobs)
