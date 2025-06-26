@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -118,7 +117,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return this.TraceActivity(activity =>
             {
-
                 string? billingProjectId = null;
                 TimeSpan? clientTimeout = null;
 
@@ -126,7 +124,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     // if the caller doesn't specify a projectId, use the default
                     if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
+                    {
                         projectId = BigQueryConstants.DetectProjectId;
+                    }
+                    else
+                    {
+                        activity?.AddTag(BigQueryParameters.ProjectId, projectId);
+                    }
 
                     // in some situations, the publicProjectId gets passed and causes an error when we try to create a query job:
                     //     Google.GoogleApiException : The service bigquery has thrown an exception. HttpStatusCode is Forbidden.
@@ -134,22 +138,32 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     //     project bigquery-public-data.
                     // so if that is the case, treat it as if we need to detect the projectId
                     if (projectId.Equals(BigQueryConstants.PublicProjectId, StringComparison.OrdinalIgnoreCase))
+                    {
                         projectId = BigQueryConstants.DetectProjectId;
+                        activity?.AddTag("ChangePublicProjectIdToDetectProjectId", projectId);
+                    }
                 }
 
                 // the billing project can be null if it's not specified
-                this.properties.TryGetValue(BigQueryParameters.BillingProjectId, out billingProjectId);
+                if (this.properties.TryGetValue(BigQueryParameters.BillingProjectId, out billingProjectId))
+                {
+                    activity?.AddTag(BigQueryParameters.BillingProjectId, billingProjectId);
+                }
 
                 if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectId, out string? result))
                 {
                     if (!string.IsNullOrEmpty(result))
+                    {
                         this.includePublicProjectIds = Convert.ToBoolean(result);
+                        activity?.AddTag(BigQueryParameters.IncludePublicProjectId, this.includePublicProjectIds);
+                    }
                 }
 
                 if (this.properties.TryGetValue(BigQueryParameters.ClientTimeout, out string? timeoutSeconds) &&
                     int.TryParse(timeoutSeconds, out int seconds))
                 {
                     clientTimeout = TimeSpan.FromSeconds(seconds);
+                    activity?.AddTag(BigQueryParameters.ClientTimeout, seconds);
                 }
 
                 SetCredential(activity);
@@ -173,11 +187,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             });
         }
 
-        internal void UpdateClient(string projectId, string quotaProject)
-        {
-
-        }
-
         internal void SetCredential(Activity? activity = default)
         {
             string? clientId = null;
@@ -191,9 +200,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (!this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
             {
-                ArgumentException aex = new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter is not present");
-                activity?.AddException(aex);
-                throw aex;
+                throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter is not present");
             }
 
             if (this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out string? newAuthenticationType))
@@ -206,6 +213,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     !authenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter can only be `{BigQueryConstants.UserAuthenticationType}`, `{BigQueryConstants.ServiceAccountAuthenticationType}` or `{BigQueryConstants.EntraIdAuthenticationType}`");
+                }
+                else
+                {
+                    activity?.AddTag(BigQueryParameters.AuthenticationType, authenticationType);
                 }
             }
 

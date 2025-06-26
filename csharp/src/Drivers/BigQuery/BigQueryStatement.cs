@@ -32,7 +32,6 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.Storage.V1;
 using Google.Cloud.BigQuery.V2;
-using static System.Net.Mime.MediaTypeNames;
 using TableFieldSchema = Google.Apis.Bigquery.v2.Data.TableFieldSchema;
 using TableSchema = Google.Apis.Bigquery.v2.Data.TableSchema;
 
@@ -491,7 +490,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     {
                         DatasetReference = reference,
                         DefaultTableExpirationMs = (long)TimeSpan.FromDays(1).TotalMilliseconds,
-                        Labels = new Dictionary<string,string>()
+                        Labels = new Dictionary<string, string>()
                         {
                             // lower case, no spaces or periods per https://cloud.google.com/bigquery/docs/labels-intro
                             { "created_by", this.bigQueryConnection.DriverName.ToLower().Replace(" ","_") + "_v_" + AssemblyVersion.Replace(".","_") }
