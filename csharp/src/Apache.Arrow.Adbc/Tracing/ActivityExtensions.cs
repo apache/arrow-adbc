@@ -69,6 +69,25 @@ namespace Apache.Arrow.Adbc.Tracing
         /// is useful to log but not needed for runtime control (for the latter, <see cref="Baggage"/>)
         /// </summary>
         /// <returns><see langword="this" /> for convenient chaining.</returns>
+        /// <param name="key">The tag key name as a function</param>
+        /// <param name="value">The tag value mapped to the input key</param>
+        /// /// <param name="condition">The condition to check before adding the tag</param>
+        public static Activity? AddConditionalTag(this Activity? activity, string key, string? value, Func<bool> condition)
+        {
+            if (condition())
+            {
+                return activity?.AddTag(key, value);
+            }
+
+            return activity;
+        }
+
+        /// <summary>
+        /// Update the Activity to have a tag with an additional 'key' and value 'value'.
+        /// This shows up in the <see cref="TagObjects"/> enumeration. It is meant for information that
+        /// is useful to log but not needed for runtime control (for the latter, <see cref="Baggage"/>)
+        /// </summary>
+        /// <returns><see langword="this" /> for convenient chaining.</returns>
         /// <param name="key">The tag key name</param>
         /// <param name="value">The tag value mapped to the input key as a function</param>
         /// <param name="guidFormat">The format indicator for 16-byte GUID arrays.</param>
