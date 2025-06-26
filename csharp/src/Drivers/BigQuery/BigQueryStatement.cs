@@ -93,7 +93,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 QueryOptions queryOptions = ValidateOptions(activity);
 
-                activity?.AddTag(SemanticConventions.Db.Query.Text, SqlQuery);
+                if (BigQueryUtils.TracingToFile())
+                {
+                    activity?.AddTag(SemanticConventions.Db.Query.Text, SqlQuery);
+                }
+
                 BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
 
                 JobReference jobReference = job.Reference;
@@ -231,7 +235,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
                 }
 
-                activity?.AddTag(SemanticConventions.Db.Query.Text, SqlQuery);
+                if (BigQueryUtils.TracingToFile())
+                {
+                    activity?.AddTag(SemanticConventions.Db.Query.Text, SqlQuery);
+                }
 
                 // Cannot set destination table in jobs with DDL statements, otherwise an error will be prompted
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(SqlQuery, null, null, getQueryResultsOptions);

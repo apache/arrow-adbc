@@ -466,7 +466,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             return this.TraceActivity(activity =>
             {
-                activity?.AddTag(SemanticConventions.Db.Query.Text, sql);
+                if (BigQueryUtils.TracingToFile())
+                {
+                    activity?.AddTag(SemanticConventions.Db.Query.Text, sql);
+                }
+
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
                 BigQueryResults? result = ExecuteWithRetriesAsync<BigQueryResults?>(func, activity).GetAwaiter().GetResult();
 

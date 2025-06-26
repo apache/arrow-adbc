@@ -38,5 +38,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         internal static string GetAssemblyName(Type type) => type.Assembly.GetName().Name!;
 
         internal static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
+
+        internal static bool TracingToFile() { return false; }
     }
 }
