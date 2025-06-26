@@ -47,7 +47,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             else if (initialResults != null)
             {
                 this.batches = initialResults.Results.ArrowBatches;
-                this.hasNoMoreRows = !initialResults.HasMoreRows;
+                if (!initialResults.HasMoreRows)
+                {
+                    this.statement = null;
+                    return;
+                }
             }
         }
 

@@ -25,7 +25,6 @@ using Apache.Arrow.Adbc;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -35,19 +34,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// A composite reader for Databricks that delegates to either CloudFetchReader or DatabricksReader
     /// based on CloudFetch configuration and result set characteristics.
     /// </summary>
-    public sealed class DatabricksCompositeReader : TracingReader
+    internal class DatabricksCompositeReader: BaseDatabricksReader
     {
-
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksCompositeReader));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksCompositeReader));
-
-        public override string AssemblyName => s_assemblyName;
-
-        public override string AssemblyVersion => s_assemblyVersion;
-
-        public override Schema Schema { get { return _schema; } }
-
-
         private BaseDatabricksReader? _activeReader;
         private readonly DatabricksStatement _statement;
         private readonly Schema _schema;
@@ -62,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
         /// <param name="httpClient">The HTTP client for CloudFetch operations.</param>
-        internal DatabricksCompositeReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator): base(statement)
+        internal DatabricksCompositeReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator): base(statement, schema, isLz4Compressed)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
@@ -113,5 +101,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             return await _activeReader.ReadNextRecordBatchAsync(cancellationToken);
         }
+
     }
 }
