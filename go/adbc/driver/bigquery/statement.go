@@ -18,7 +18,9 @@
 package bigquery
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -31,6 +33,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
+	"github.com/apache/arrow-go/v18/arrow/ipc"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 )
 
@@ -59,6 +62,7 @@ type statement struct {
 	// Ingest related fields
 	ingestPath          string
 	ingestFileDelimiter string
+	explicitSchema      []*bigquery.FieldSchema
 }
 
 func (st *statement) GetOptionBytes(key string) ([]byte, error) {
@@ -268,6 +272,10 @@ func (st *statement) SetOption(key string, v string) error {
 		st.ingestPath = v
 	case OptionStringIngestFileDelimiter:
 		st.ingestFileDelimiter = v
+	case OptionStringIngestSchema:
+		if err := st.loadExplicitSchema(v); err != nil {
+			return err
+		}
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -783,6 +791,184 @@ func (st *statement) GetParameterSchema() (*arrow.Schema, error) {
 	}
 }
 
+// Arrow Schema to Bigquery Schema conversion
+
+// Decode base-64 IPC payload to []*bigquery.FieldSchema
+func (st *statement) loadExplicitSchema(b64 string) error {
+	ipcBytes, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "ingest.schema must be base64-encoded IPC stream",
+		}
+	}
+	r, err := ipc.NewReader(bytes.NewReader(ipcBytes))
+	if err != nil {
+		return err
+	}
+	defer r.Release()
+
+	st.explicitSchema, err = arrowSchemaToBQ(r.Schema())
+	return err
+}
+
+func arrowSchemaToBQ(s *arrow.Schema) ([]*bigquery.FieldSchema, error) {
+	out := make([]*bigquery.FieldSchema, 0, len(s.Fields()))
+	for _, f := range s.Fields() {
+		bq, err := arrowFieldToBigQueryField(f)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, bq)
+	}
+	return out, nil
+}
+
+// BigQuery type          Arrow types accepted
+// -----------------------------------------------------
+// INT64                  Int8/16/32/64, UInt8/16/32/64
+// FLOAT64                Float16, Float32, Float64
+// NUMERIC / BIGNUMERIC   Decimal128 / Decimal256 (precision rules below)
+// BOOL                   Boolean
+// STRING                 Utf8, LargeUtf8, Dictionary<UTF8>
+// BYTES                  Binary, LargeBinary, FixedSizeBinary
+// DATE                   Date32, Date64
+// TIMESTAMP              Timestamp{*, *}
+//
+// REPEATED               List<elem> bigquery.Repeated
+// STRUCT                 Struct -> Mode follows field.Nullable, nested schema built recursively
+//
+// Unsupported Arrow types (Union, Map, FixedSizeList, Duration, Interval, …)
+// cause a formatted error so the caller can log or reject the load job.
+func arrowFieldToBigQueryField(f arrow.Field) (*bigquery.FieldSchema, error) {
+	bq := &bigquery.FieldSchema{
+		Name:     f.Name,
+		Required: !f.Nullable,
+	}
+
+	switch dt := f.Type.(type) {
+
+	//
+	// PRIMITIVE INTS
+	//
+	case *arrow.Int8Type, *arrow.Int16Type, *arrow.Int32Type, *arrow.Int64Type,
+		*arrow.Uint8Type, *arrow.Uint16Type, *arrow.Uint32Type, *arrow.Uint64Type:
+		bq.Type = bigquery.IntegerFieldType
+
+	//
+	// FLOATS
+	//
+	case *arrow.Float16Type, *arrow.Float32Type, *arrow.Float64Type:
+		bq.Type = bigquery.FloatFieldType
+
+	//
+	// BOOLEAN
+	//
+	case *arrow.BooleanType:
+		bq.Type = bigquery.BooleanFieldType
+
+	//
+	// UTF-8 STRING
+	//
+	case *arrow.BinaryType, *arrow.LargeBinaryType, *arrow.FixedSizeBinaryType:
+		bq.Type = bigquery.BytesFieldType
+
+	case *arrow.StringType, *arrow.LargeStringType:
+		bq.Type = bigquery.StringFieldType
+
+	case *arrow.DictionaryType: // treat dictionary-encoded strings as STRING
+		bq.Type = bigquery.StringFieldType
+
+	//
+	// DATE & TIMESTAMP
+	//
+	case *arrow.Date32Type, *arrow.Date64Type:
+		bq.Type = bigquery.DateFieldType
+
+	case *arrow.TimestampType:
+		bq.Type = bigquery.TimestampFieldType
+
+	//
+	// DECIMAL
+	// ---------------------------------------------------------------------
+	// BigQuery:
+	//   NUMERIC     precision <= 38, scale <= 9
+	//   BIGNUMERIC  precision <= 76, scale <= 38
+	case *arrow.Decimal128Type:
+		switch {
+		case dt.Precision <= 38 && dt.Scale <= 9:
+			bq.Type = bigquery.NumericFieldType
+		case dt.Precision <= 76 && dt.Scale <= 38:
+			bq.Type = bigquery.BigNumericFieldType
+		default:
+			bq.Type = bigquery.StringFieldType
+			if bq.Description == "" {
+				bq.Description = fmt.Sprintf(
+					"downgraded from DECIMAL128(%d,%d) to STRING: exceeds BigQuery NUMERIC/BIGNUMERIC limits",
+					dt.Precision,
+					dt.Scale,
+				)
+			}
+		}
+
+	case *arrow.Decimal256Type:
+		switch {
+		case dt.Precision <= 76 && dt.Scale <= 38:
+			bq.Type = bigquery.BigNumericFieldType
+		default:
+			bq.Type = bigquery.StringFieldType
+			if bq.Description == "" {
+				bq.Description = fmt.Sprintf(
+					"downgraded from DECIMAL256(%d,%d) to STRING: exceeds BigQuery BIGNUMERIC limits",
+					dt.Precision,
+					dt.Scale,
+				)
+			}
+		}
+
+	//
+	// LIST to REPEATED
+	//
+	case *arrow.ListType:
+		elemField := arrow.Field{
+			Name:     f.Name + "_element", // BigQuery ignores element-name, but must be non-empty
+			Type:     dt.Elem(),
+			Nullable: true,
+		}
+		nested, err := arrowFieldToBigQueryField(elemField)
+		if err != nil {
+			return nil, err
+		}
+		bq.Type = nested.Type
+		bq.Repeated = true
+		bq.Schema = nested.Schema
+
+	//
+	// STRUCT to RECORD
+	//
+	case *arrow.StructType:
+		bq.Type = bigquery.RecordFieldType
+		bq.Schema = make([]*bigquery.FieldSchema, 0, len(dt.Fields()))
+		for _, sub := range dt.Fields() {
+			nested, err := arrowFieldToBigQueryField(sub)
+			if err != nil {
+				return nil, err
+			}
+			bq.Schema = append(bq.Schema, nested)
+		}
+
+	default:
+		bq.Type = bigquery.StringFieldType
+		if bq.Description == "" {
+			bq.Description = fmt.Sprintf(
+				"coerced from unsupported Arrow type %s to STRING",
+				dt,
+			)
+		}
+	}
+	return bq, nil
+}
+
 // ExecutePartitions executes the current statement and gets the results
 // as a partitioned result set.
 //
@@ -853,7 +1039,14 @@ func (st *statement) initIngest(ctx context.Context) error {
 	fileCfg.SourceFormat = bigquery.CSV // TODO: parameterize for other files
 	fileCfg.SkipLeadingRows = 1
 	fileCfg.FieldDelimiter = st.ingestFileDelimiter
-	fileCfg.AutoDetect = true
+
+	if st.explicitSchema != nil {
+		fileCfg.Schema = st.explicitSchema
+		fileCfg.AutoDetect = false
+	} else {
+		fileCfg.AutoDetect = true
+	}
+
 	handle, err := job.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start query job: %w", err)
