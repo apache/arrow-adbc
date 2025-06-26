@@ -72,9 +72,9 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="key">The tag key name as a function</param>
         /// <param name="value">The tag value mapped to the input key</param>
         /// /// <param name="condition">The condition to check before adding the tag</param>
-        public static Activity? AddConditionalTag(this Activity? activity, string key, string? value, Func<bool> condition)
+        public static Activity? AddConditionalTag(this Activity? activity, string key, string? value, bool condition)
         {
-            if (condition())
+            if (condition)
             {
                 return activity?.AddTag(key, value);
             }

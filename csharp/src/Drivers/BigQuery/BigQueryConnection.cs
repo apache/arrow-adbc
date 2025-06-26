@@ -117,6 +117,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return this.TraceActivity(activity =>
             {
+                activity?.AddTag("Action", "Open");
+
                 string? billingProjectId = null;
                 TimeSpan? clientTimeout = null;
 
@@ -294,6 +296,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return this.TraceActivity(activity =>
             {
+                activity?.AddTag("Action", "GetInfo");
+
                 const int strValTypeID = 0;
 
                 UnionType infoUnionType = new UnionType(
@@ -426,6 +430,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return this.TraceActivity(activity =>
             {
+                activity?.AddTag("Action", "GetObjects");
+
                 IArrowArray[] dataArrays = GetCatalogs(depth, catalogPattern, dbSchemaPattern,
                     tableNamePattern, tableTypes, columnNamePattern, activity);
 
@@ -466,7 +472,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             return this.TraceActivity(activity =>
             {
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, () => BigQueryUtils.TracingToFile());
+                activity?.AddTag("Action", "ExecuteQuery");
+
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, BigQueryUtils.TracingToFile());
 
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
                 BigQueryResults? result = ExecuteWithRetriesAsync<BigQueryResults?>(func, activity).GetAwaiter().GetResult();

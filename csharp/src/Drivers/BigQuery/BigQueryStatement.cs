@@ -91,9 +91,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return await this.TraceActivity(async activity =>
             {
+                activity?.AddTag("Action", "ExecuteQueryInternalAsync");
+
                 QueryOptions queryOptions = ValidateOptions(activity);
 
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, () => BigQueryUtils.TracingToFile());
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.TracingToFile());
 
                 BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
 
@@ -223,6 +225,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return await this.TraceActivity(async activity =>
             {
+                activity?.AddTag("Action", "ExecuteUpdateInternalAsync");
+
                 GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
                 if (Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true &&
@@ -230,9 +234,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     seconds >= 0)
                 {
                     getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
+                    activity?.AddTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
                 }
 
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, () => BigQueryUtils.TracingToFile());
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.TracingToFile());
 
                 // Cannot set destination table in jobs with DDL statements, otherwise an error will be prompted
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(SqlQuery, null, null, getQueryResultsOptions);
@@ -554,8 +559,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
-                return await this.TraceActivityAsync(async _ =>
+                return await this.TraceActivityAsync(async activity =>
                 {
+                    activity?.AddTag("Action", "ReadNextRecordBatchAsync");
+
                     if (this.readers == null)
                     {
                         return null;
