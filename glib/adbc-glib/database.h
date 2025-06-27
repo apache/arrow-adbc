@@ -25,6 +25,35 @@
 
 G_BEGIN_DECLS
 
+/**
+ * GADBCLoadFlags:
+ * @GADBC_LOAD_SEARCH_ENV: Check the ADBC_CONFIG_PATH environment variable.
+ * @GADBC_LOAD_SEARCH_USER: Check the user configuration directory.
+ * @GADBC_LOAD_SEARCH_SYSTEM: Check the system configuration directory.
+ * @GADBC_LOAD_ALLOW_RELATIVE_PATHS: Allow relative driver paths.
+ *
+ * The flags are used by gadbc_database_set_load_flags().
+ *
+ * They are corresponding to `ADBC_LOAD_FLAG_*` values.
+ *
+ * Since: 1.7.0
+ */
+typedef enum {
+  GADBC_LOAD_SEARCH_ENV = 1 << 0,
+  GADBC_LOAD_SEARCH_USER = 1 << 1,
+  GADBC_LOAD_SEARCH_SYSTEM = 1 << 2,
+  GADBC_LOAD_ALLOW_RELATIVE_PATHS = 1 << 3,
+} GADBCLoadFlags;
+
+/**
+ * GADBC_LOAD_FLAGAS_DEFAULT:
+ *
+ * The default GADBCLoadFlags.
+ *
+ * Since: 1.7.0
+ */
+#define GADBC_LOAD_FLAGS_DEFAULT (GADBC_LOAD_SEARCH_ENV | GADBC_LOAD_SEARCH_USER | GADBC_LOAD_SEARCH_SYSTEM | GADBC_LOAD_ALLOW_RELATIVE_PATHS)
+
 #define GADBC_TYPE_DATABASE (gadbc_database_get_type())
 G_DECLARE_DERIVABLE_TYPE(GADBCDatabase, gadbc_database, GADBC, DATABASE, GObject)
 struct _GADBCDatabaseClass {
@@ -38,6 +67,9 @@ gboolean gadbc_database_release(GADBCDatabase* database, GError** error);
 GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_database_set_option(GADBCDatabase* database, const gchar* key,
                                    const gchar* value, GError** error);
+GADBC_AVAILABLE_IN_1_7
+gboolean gadbc_database_set_load_flags(GADBCDatabase* database, GADBCLoadFlags flags,
+                                       GError** error);
 GADBC_AVAILABLE_IN_0_1
 gboolean gadbc_database_init(GADBCDatabase* database, GError** error);
 
