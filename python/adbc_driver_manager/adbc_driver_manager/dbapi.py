@@ -62,6 +62,8 @@ from . import _dbapi_backend, _lib
 from ._lib import _blocking_call
 
 if typing.TYPE_CHECKING:
+    import pathlib
+
     import pandas
     import polars
     import pyarrow
@@ -182,9 +184,9 @@ else:
 
 def connect(
     *,
-    driver: str,
+    driver: "str | pathlib.Path",
     entrypoint: Optional[str] = None,
-    db_kwargs: Optional[Dict[str, str]] = None,
+    db_kwargs: Optional[Dict[str, "str | pathlib.Path"]] = None,
     conn_kwargs: Optional[Dict[str, str]] = None,
     autocommit=False,
 ) -> "Connection":
