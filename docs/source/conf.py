@@ -147,6 +147,7 @@ intersphinx_mapping = {
     "arrow": ("https://arrow.apache.org/docs/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "polars": ("https://docs.pola.rs/api/python/stable/", None),
+    "python": ("https://docs.python.org/3", None),
 }
 
 # Add env vars like ADBC_INTERSPHINX_MAPPING_adbc_java = url;path
