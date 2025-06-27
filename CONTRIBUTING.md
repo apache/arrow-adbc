@@ -368,6 +368,7 @@ individual READMEs for additional dependencies.  In general, that
 means all projects can be built as follows:
 
 ```shell
+$ mamba install --file ci/conda_env_python.txt
 $ cd python/adbc_driver_manager
 $ pip install -e .
 ```
