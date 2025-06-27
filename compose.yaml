@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-version: '3.9'
-
 services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
