@@ -360,7 +360,7 @@ TEST(AdbcDriverManagerInternal, InternalAdbcDriverManagerDefaultEntrypoint) {
 
 TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
   // Test parsing a path of directories
-#ifdef __WIN32
+#ifdef _WIN32
   static const char* const delimiter = ";";
 #else
   static const char* const delimiter = ":";
@@ -369,7 +369,7 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
   std::vector<std::string> paths = {
       "/usr/lib/adbc/drivers", "/usr/local/lib/adbc/drivers",
       "/opt/adbc/drivers",     "/home/user/.config/adbc/drivers",
-#ifdef __WIN32
+#ifdef _WIN32
       "/home/\":foo:\"/bar",
 #endif
   };
@@ -379,11 +379,7 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
             std::ostream_iterator<std::string>(joined, delimiter));
 
   auto output = InternalAdbcParsePath(joined.str());
-  EXPECT_EQ(output.size(), paths.size());
-
-  for (size_t i = 0; i < paths.size(); ++i) {
-    EXPECT_EQ(output[i].string(), paths[i]);
-  }
+  EXPECT_THAT(output, ::testing::ElementsAreArray(paths));
 }
 
 class DriverManifest : public ::testing::Test {
