@@ -193,7 +193,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
             {
                 var ns = new TNamespace();
-                if (!string.IsNullOrWhiteSpace(defaultSchema))
+                if (!string.IsNullOrWhiteSpace(defaultCatalog))
                     ns.CatalogName = defaultCatalog!;
                 if (!string.IsNullOrWhiteSpace(defaultSchema))
                     ns.SchemaName = defaultSchema;
