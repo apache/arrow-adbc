@@ -103,15 +103,15 @@ class VoidStatement : public adbc::driver::BaseStatement<VoidStatement> {
   std::unordered_map<std::string, Option> options_;
 };
 
-static AdbcStatusCode VoidDriverInitFunc(int version, void* raw_driver,
-                                         AdbcError* error) {
+extern "C" AdbcStatusCode AdbcTestVoidDriverInit(int version, void* raw_driver,
+                                                 AdbcError* error) {
   using VoidDriver = adbc::driver::Driver<VoidDatabase, VoidConnection, VoidStatement>;
   return VoidDriver::Init(version, raw_driver, error);
 }
 
 extern "C" SEXP RAdbcVoidDriverInitFunc(void) {
-  SEXP xptr =
-      PROTECT(R_MakeExternalPtrFn((DL_FUNC)VoidDriverInitFunc, R_NilValue, R_NilValue));
+  SEXP xptr = PROTECT(
+      R_MakeExternalPtrFn((DL_FUNC)AdbcTestVoidDriverInit, R_NilValue, R_NilValue));
   Rf_setAttrib(xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
   UNPROTECT(1);
   return xptr;
@@ -154,14 +154,14 @@ class MonkeyStatement : public adbc::driver::BaseStatement<MonkeyStatement> {
 
 using MonkeyDriver = adbc::driver::Driver<VoidDatabase, VoidConnection, MonkeyStatement>;
 
-static AdbcStatusCode MonkeyDriverInitFunc(int version, void* raw_driver,
-                                           AdbcError* error) {
+extern "C" AdbcStatusCode AdbcTestMonkeyDriverInit(int version, void* raw_driver,
+                                                   AdbcError* error) {
   return MonkeyDriver::Init(version, raw_driver, error);
 }
 
 extern "C" SEXP RAdbcMonkeyDriverInitFunc(void) {
-  SEXP xptr =
-      PROTECT(R_MakeExternalPtrFn((DL_FUNC)MonkeyDriverInitFunc, R_NilValue, R_NilValue));
+  SEXP xptr = PROTECT(
+      R_MakeExternalPtrFn((DL_FUNC)AdbcTestMonkeyDriverInit, R_NilValue, R_NilValue));
   Rf_setAttrib(xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
   UNPROTECT(1);
   return xptr;
@@ -330,13 +330,14 @@ class LogStatement : public adbc::driver::BaseStatement<LogStatement> {
 
 using LogDriver = adbc::driver::Driver<LogDatabase, LogConnection, LogStatement>;
 
-static AdbcStatusCode LogDriverInitFunc(int version, void* raw_driver, AdbcError* error) {
+extern "C" AdbcStatusCode AdbcTestLogDriverInit(int version, void* raw_driver,
+                                                AdbcError* error) {
   return LogDriver::Init(version, raw_driver, error);
 }
 
 extern "C" SEXP RAdbcLogDriverInitFunc(void) {
-  SEXP xptr =
-      PROTECT(R_MakeExternalPtrFn((DL_FUNC)LogDriverInitFunc, R_NilValue, R_NilValue));
+  SEXP xptr = PROTECT(
+      R_MakeExternalPtrFn((DL_FUNC)AdbcTestLogDriverInit, R_NilValue, R_NilValue));
   Rf_setAttrib(xptr, R_ClassSymbol, Rf_mkString("adbc_driver_init_func"));
   UNPROTECT(1);
   return xptr;
