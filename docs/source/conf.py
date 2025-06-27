@@ -70,18 +70,8 @@ def on_missing_reference(app, env, node, contnode):
     return None
 
 
-def on_warn_missing_reference(app, domain, node):
-    # for some reason, Sphinx can't find pathlib.Path when referenced via a
-    # method signature
-    if node.get("reftarget") == "pathlib.Path":
-        # silence the warning
-        return True
-    return None
-
-
 def setup(app):
     app.connect("missing-reference", on_missing_reference)
-    app.connect("warn-missing-reference", on_warn_missing_reference)
 
 
 # -- Options for autodoc ----------------------------------------------------
@@ -157,6 +147,7 @@ intersphinx_mapping = {
     "arrow": ("https://arrow.apache.org/docs/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "polars": ("https://docs.pola.rs/api/python/stable/", None),
+    "python": ("https://docs.python.org/3", None),
 }
 
 # Add env vars like ADBC_INTERSPHINX_MAPPING_adbc_java = url;path
