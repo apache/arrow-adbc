@@ -17,9 +17,9 @@
 
 require "arrow"
 
-require "adbc/version"
+require_relative "adbc/version"
 
-require "adbc/loader"
+require_relative "adbc/loader"
 
 module ADBC
   class Error < StandardError
