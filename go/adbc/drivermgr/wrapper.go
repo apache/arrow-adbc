@@ -49,10 +49,15 @@ package drivermgr
 // }
 //
 // const AdbcLoadFlags LoadFlagsDefault = ADBC_LOAD_FLAG_DEFAULT;
+// const AdbcLoadFlags LoadFlagsSearchEnv = ADBC_LOAD_FLAG_SEARCH_ENV;
+// const AdbcLoadFlags LoadFlagsSearchPath = ADBC_LOAD_FLAG_SEARCH_USER;
+// const AdbcLoadFlags LoadFlagsSearchSystem = ADBC_LOAD_FLAG_SEARCH_SYSTEM;
+// const AdbcLoadFlags LoadFlagsAllowRelativePaths = ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
 //
 import "C"
 import (
 	"context"
+	"strconv"
 	"sync"
 	"unsafe"
 
@@ -60,6 +65,18 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/cdata"
+)
+
+const (
+	LoadFlagsDefault            = C.LoadFlagsDefault
+	LoadFlagsSearchEnv          = C.LoadFlagsSearchEnv
+	LoadFlagsSearchPath         = C.LoadFlagsSearchPath
+	LoadFlagsSearchSystem       = C.LoadFlagsSearchSystem
+	LoadFlagsAllowRelativePaths = C.LoadFlagsAllowRelativePaths
+
+	// LoadFlagsOptionKey is the key to use for an option to set specific
+	// load flags for the database to decide where to look for driver manifests.
+	LoadFlagsOptionKey = "load_flags"
 )
 
 type option struct {
@@ -96,19 +113,19 @@ func (d Driver) NewDatabaseWithContext(_ context.Context, opts map[string]string
 		options: make(map[string]option),
 	}
 
+	defer func() {
+		if db.db == nil { // cleanup options if we failed to create the database
+			for _, o := range dbOptions {
+				C.free(unsafe.Pointer(o.key))
+				C.free(unsafe.Pointer(o.val))
+			}
+		}
+	}()
+
 	var err C.struct_AdbcError
 	db.db = (*C.struct_AdbcDatabase)(unsafe.Pointer(C.calloc(C.sizeof_struct_AdbcDatabase, C.size_t(1))))
 	if code := adbc.Status(C.AdbcDatabaseNew(db.db, &err)); code != adbc.StatusOK {
 		return nil, toAdbcError(code, &err)
-	}
-
-	for _, o := range dbOptions {
-		if code := adbc.Status(C.AdbcDatabaseSetOption(db.db, o.key, o.val, &err)); code != adbc.StatusOK {
-			errOut := toAdbcError(code, &err)
-			C.AdbcDatabaseRelease(db.db, &err)
-			db.db = nil
-			return nil, errOut
-		}
 	}
 
 	if code := adbc.Status(C.AdbcDriverManagerDatabaseSetLoadFlags(db.db, C.LoadFlagsDefault, &err)); code != adbc.StatusOK {
@@ -116,6 +133,35 @@ func (d Driver) NewDatabaseWithContext(_ context.Context, opts map[string]string
 		C.AdbcDatabaseRelease(db.db, &err)
 		db.db = nil
 		return nil, errOut
+	}
+
+	for k, o := range dbOptions {
+		switch k {
+		case LoadFlagsOptionKey:
+			f, errOut := strconv.Atoi(C.GoString(o.val))
+			if errOut != nil {
+				C.AdbcDatabaseRelease(db.db, &err)
+				db.db = nil
+				return nil, adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  "invalid load flags value: " + C.GoString(o.val),
+				}
+			}
+
+			if code := adbc.Status(C.AdbcDriverManagerDatabaseSetLoadFlags(db.db, C.AdbcLoadFlags(f), &err)); code != adbc.StatusOK {
+				errOut := toAdbcError(code, &err)
+				C.AdbcDatabaseRelease(db.db, &err)
+				db.db = nil
+				return nil, errOut
+			}
+		default:
+			if code := adbc.Status(C.AdbcDatabaseSetOption(db.db, o.key, o.val, &err)); code != adbc.StatusOK {
+				errOut := toAdbcError(code, &err)
+				C.AdbcDatabaseRelease(db.db, &err)
+				db.db = nil
+				return nil, errOut
+			}
+		}
 	}
 
 	if code := adbc.Status(C.AdbcDatabaseInit(db.db, &err)); code != adbc.StatusOK {
