@@ -162,7 +162,7 @@ extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr, SEXP ver
   return Rf_ScalarInteger(status);
 }
 
-extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
+extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr, SEXP load_flags_sexp) {
   SEXP database_xptr = PROTECT(adbc_allocate_xptr<AdbcDatabase>());
   R_RegisterCFinalizer(database_xptr, &finalize_database_xptr);
 
@@ -170,6 +170,10 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
 
   AdbcError error = ADBC_ERROR_INIT;
   int status = AdbcDatabaseNew(database, &error);
+  adbc_error_stop(status, &error);
+
+  int load_flags = adbc_as_int(load_flags_sexp);
+  status = AdbcDriverManagerDatabaseSetLoadFlags(database, load_flags, &error);
   adbc_error_stop(status, &error);
 
   if (driver_init_func_xptr != R_NilValue) {

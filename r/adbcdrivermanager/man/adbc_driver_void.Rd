@@ -30,10 +30,7 @@ object.}
 behaviour at the R level.}
 }
 \value{
-\itemize{
-\item \code{adbc_driver()}, \code{adbc_driver_void()}: An object of class 'adbc_driver'
-\item \code{adbc_driver_load_raw()}: An integer status code.
-}
+An object of class 'adbc_driver'
 }
 \description{
 Creates the R object representation of an ADBC driver, which consists of a

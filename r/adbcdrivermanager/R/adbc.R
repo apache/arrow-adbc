@@ -45,7 +45,12 @@ adbc_database_init.default <- function(driver, ...) {
 #' @rdname adbc_database_init
 #' @export
 adbc_database_init_default <- function(driver, options = NULL, subclass = character()) {
-  database <- .Call(RAdbcDatabaseNew, driver$driver_init_func)
+  database <- .Call(
+    RAdbcDatabaseNew,
+    driver$driver_init_func,
+    driver$load_flags
+  )
+
   if (!is.null(driver$name)) {
     adbc_database_set_options(
       database,

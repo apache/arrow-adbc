@@ -31,9 +31,7 @@
 #' @param subclass An optional subclass for finer-grained control of
 #'   behaviour at the R level.
 #'
-#' @return
-#' - `adbc_driver()`, `adbc_driver_void()`: An object of class 'adbc_driver'
-#' - `adbc_driver_load_raw()`: An integer status code.
+#' @return An object of class 'adbc_driver'
 #' @export
 #'
 #' @examples
@@ -66,6 +64,7 @@ adbc_driver <- function(x, entrypoint = NULL, ...,
 
   # Keep track of the version/mechanism used to successfully load a driver
   driver$version <- version
+  driver$load_flags <- load_flags
   if (inherits(x, "adbc_driver_init_func")) {
     driver$driver_init_func <- x
   } else {
@@ -94,6 +93,7 @@ adbc_driver <- function(x, entrypoint = NULL, ...,
 #' @param error An external pointer to an `AdbcError` or NULL
 #'
 #' @return An integer ADBC status code
+#' @export
 #'
 adbc_driver_load <- function(x, entrypoint, version, driver, error,
                              load_flags = adbc_load_flags()) {
