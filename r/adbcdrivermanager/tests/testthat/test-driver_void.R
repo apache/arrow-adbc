@@ -31,6 +31,7 @@ test_that("drivers are loaded using load_flags", {
   shared <- adbcdrivermanager_shared()
 
   withr::with_dir(dirname(shared), {
+    withr::local_environment(list(LD_LIBRARY_PATH = getwd()))
     expect_s3_class(
       adbc_driver("adbcdrivermanager.so", "AdbcTestVoidDriverInit"),
       "adbc_driver"
