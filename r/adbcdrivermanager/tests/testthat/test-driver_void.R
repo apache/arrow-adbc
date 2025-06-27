@@ -28,6 +28,10 @@ test_that("drivers can be loaded by name/entrypoint", {
 })
 
 test_that("drivers are loaded using load_flags", {
+  # Linux, at least in GitHub CI, doesn't allow loading by relative path
+  # with either flag configuration.
+  skip_on_os("linux")
+
   shared <- adbcdrivermanager_shared()
 
   withr::with_dir(dirname(shared), {
