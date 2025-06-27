@@ -48,12 +48,6 @@ package drivermgr
 //     return stream;
 // }
 //
-// const AdbcLoadFlags LoadFlagsDefault = ADBC_LOAD_FLAG_DEFAULT;
-// const AdbcLoadFlags LoadFlagsSearchEnv = ADBC_LOAD_FLAG_SEARCH_ENV;
-// const AdbcLoadFlags LoadFlagsSearchPath = ADBC_LOAD_FLAG_SEARCH_USER;
-// const AdbcLoadFlags LoadFlagsSearchSystem = ADBC_LOAD_FLAG_SEARCH_SYSTEM;
-// const AdbcLoadFlags LoadFlagsAllowRelativePaths = ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
-//
 import "C"
 import (
 	"context"
@@ -68,12 +62,12 @@ import (
 )
 
 const (
-	LoadFlagsDefault            = C.LoadFlagsDefault
-	LoadFlagsSearchEnv          = C.LoadFlagsSearchEnv
-	LoadFlagsSearchPath         = C.LoadFlagsSearchPath
-	LoadFlagsSearchSystem       = C.LoadFlagsSearchSystem
-	LoadFlagsAllowRelativePaths = C.LoadFlagsAllowRelativePaths
+	LoadFlagsSearchEnv = 1 << iota
+	LoadFlagsSearchPath
+	LoadFlagsSearchSystem
+	LoadFlagsAllowRelativePaths
 
+	LoadFlagsDefault = LoadFlagsSearchEnv | LoadFlagsSearchPath | LoadFlagsSearchSystem | LoadFlagsAllowRelativePaths
 	// LoadFlagsOptionKey is the key to use for an option to set specific
 	// load flags for the database to decide where to look for driver manifests.
 	LoadFlagsOptionKey = "load_flags"
@@ -128,7 +122,7 @@ func (d Driver) NewDatabaseWithContext(_ context.Context, opts map[string]string
 		return nil, toAdbcError(code, &err)
 	}
 
-	if code := adbc.Status(C.AdbcDriverManagerDatabaseSetLoadFlags(db.db, C.LoadFlagsDefault, &err)); code != adbc.StatusOK {
+	if code := adbc.Status(C.AdbcDriverManagerDatabaseSetLoadFlags(db.db, C.AdbcLoadFlags(LoadFlagsDefault), &err)); code != adbc.StatusOK {
 		errOut := toAdbcError(code, &err)
 		C.AdbcDatabaseRelease(db.db, &err)
 		db.db = nil
