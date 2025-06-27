@@ -23,6 +23,7 @@ import enum
 import functools
 import threading
 import os
+import pathlib
 import typing
 import sys
 import warnings
@@ -554,6 +555,8 @@ cdef class AdbcDatabase(_AdbcHandle):
                 raise ValueError(f"value for key '{key}' cannot be None")
             else:
                 key = _to_bytes(key, "key")
+                if isinstance(value, pathlib.Path):
+                    value = str(value)
                 value = _to_bytes(value, "value")
                 c_key = key
                 c_value = value
