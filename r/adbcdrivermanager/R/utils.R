@@ -208,3 +208,25 @@ assert_adbc <- function(x, what = adbc_classes) {
     call. = sys.call(-1)
   )
 }
+
+# Locate the shared library for tests that load drivers
+adbcdrivermanager_shared <- function() {
+  # The location of the shared library when installed
+  shared <- system.file(
+    "libs",
+    .Platform$r_arch,
+    paste0("adbcdrivermanager", .Platform$dynlib.ext),
+    package = "adbcdrivermanager"
+  )
+
+  if (!identical(shared, "")) {
+    return(shared)
+  }
+
+  # The location of the shared library in interactive development
+  system.file(
+    "src",
+    paste0("adbcdrivermanager", .Platform$dynlib.ext),
+    package = "adbcdrivermanager"
+  )
+}
