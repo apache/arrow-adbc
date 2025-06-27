@@ -88,6 +88,10 @@ else
     ]
 endif
 
+python = import('python')
+python3 = python.find_installation('python3')
+generate_version_header_py = meson.project_source_root() / 'tool' / 'generate-version-header.py'
+
 subdir('adbc-glib')
 arrow_glib = dependency('arrow-glib', required: generate_vapi)
 if arrow_glib.found()
