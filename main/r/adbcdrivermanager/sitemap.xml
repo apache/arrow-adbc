@@ -7,10 +7,12 @@
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_connection_init.html</loc></url>
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_connection_join.html</loc></url>
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_database_init.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_load.html</loc></url>
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_log.html</loc></url>
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_monkey.html</loc></url>
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_void.html</loc></url>
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_error_from_array_stream.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_load_flags.html</loc></url>
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_statement_init.html</loc></url>
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_statement_set_sql_query.html</loc></url>
 <url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_xptr_move.html</loc></url>
