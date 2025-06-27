@@ -183,7 +183,7 @@ else:
 
 def connect(
     *,
-    driver: str | pathlib.Path,
+    driver: Union[str, pathlib.Path],
     entrypoint: Optional[str] = None,
     db_kwargs: Optional[Dict[str, str | pathlib.Path]] = None,
     conn_kwargs: Optional[Dict[str, str]] = None,
