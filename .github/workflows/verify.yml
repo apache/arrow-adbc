@@ -110,6 +110,9 @@ jobs:
           # Rust uses a lot of disk space, free up some space
           # https://github.com/actions/runner-images/issues/2840
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          # Required for macOS
+          export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
+          echo "CXXFLAGS=${CXXFLAGS}"
           ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
       - name: Verify
         if: matrix.os == 'windows-latest'
