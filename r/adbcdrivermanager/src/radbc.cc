@@ -107,10 +107,12 @@ extern "C" SEXP RAdbcAllocateDriver(void) {
 }
 
 extern "C" SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp,
-                                SEXP version_sexp, SEXP driver_sexp, SEXP error_sexp) {
+                                SEXP version_sexp, SEXP load_flags_sexp, SEXP driver_sexp,
+                                SEXP error_sexp) {
   const char* driver_name = adbc_as_const_char(driver_name_sexp);
   const char* entrypoint = adbc_as_const_char(entrypoint_sexp, /*nullable*/ true);
   int version = adbc_as_int(version_sexp);
+  int load_flags = adbc_as_int(load_flags_sexp);
 
   if (TYPEOF(driver_sexp) != EXTPTRSXP) {
     Rf_error("driver must be an externalptr");
@@ -126,7 +128,8 @@ extern "C" SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp,
     Rf_error("error must be an externalptr");
   }
 
-  int status = AdbcLoadDriver(driver_name, entrypoint, version, driver, error);
+  int status =
+      AdbcFindLoadDriver(driver_name, entrypoint, version, load_flags, driver, error);
   return Rf_ScalarInteger(status);
 }
 
