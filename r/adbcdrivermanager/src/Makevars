@@ -16,7 +16,7 @@
 # under the License.
 
 CXX_STD = CXX17
-PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT=""
+PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT="" -D_LIBCPP_DISABLE_AVAILABILITY
 
 OBJECTS = driver_test.o \
     error.o \
