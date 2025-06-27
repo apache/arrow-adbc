@@ -31,23 +31,22 @@ test_that("drivers are loaded using load_flags", {
   shared <- adbcdrivermanager_shared()
 
   withr::with_dir(dirname(shared), {
-    withr::local_environment(list(LD_LIBRARY_PATH = getwd()))
     expect_s3_class(
-      adbc_driver("adbcdrivermanager.so", "AdbcTestVoidDriverInit"),
+      adbc_driver(basename(shared), "AdbcTestVoidDriverInit"),
       "adbc_driver"
     )
 
     # Check that load_flags are used when test-loading the driver
     expect_error(
       adbc_driver(
-        "adbcdrivermanager.so",
+        basename(shared),
         load_flags = adbc_load_flags(allow_relative_paths = FALSE)
       ),
       "Driver path is relative and relative paths are not allowed"
     )
 
     # Check that load_flags are passed to the database
-    drv <- adbc_driver("adbcdrivermanager.so", "AdbcTestVoidDriverInit")
+    drv <- adbc_driver(basename(shared), "AdbcTestVoidDriverInit")
     drv$load_flags <- adbc_load_flags(allow_relative_paths = FALSE)
     expect_error(
       adbc_database_init(drv),
