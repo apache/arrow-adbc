@@ -3570,11 +3570,7 @@ TOML_NAMESPACE_START
 	{
 		TOML_NODISCARD
 		TOML_ALWAYS_INLINE
-#if !defined(__clang__) && (defined(__GNUC__) && __GNUC__ < 6)
-		path operator"" _tpath(const char* str, size_t len)
-#else
 		path operator""_tpath(const char* str, size_t len)
-#endif
 		{
 			return path(std::string_view{ str, len });
 		}
@@ -9602,11 +9598,7 @@ TOML_NAMESPACE_START
 
 		TOML_NODISCARD
 		TOML_ALWAYS_INLINE
-#if !defined(__clang__) && (defined(__GNUC__) && __GNUC__ < 6)
-		parse_result operator"" _toml(const char* str, size_t len)
-#else
 		parse_result operator""_toml(const char* str, size_t len)
-#endif
 		{
 			return parse(std::string_view{ str, len });
 		}
@@ -9615,11 +9607,7 @@ TOML_NAMESPACE_START
 
 		TOML_NODISCARD
 		TOML_ALWAYS_INLINE
-#if !defined(__clang__) && (defined(__GNUC__) && __GNUC__ < 6)
-		parse_result operator"" _toml(const char8_t* str, size_t len)
-#else
 		parse_result operator""_toml(const char8_t* str, size_t len)
-#endif
 		{
 			return parse(std::u8string_view{ str, len });
 		}
