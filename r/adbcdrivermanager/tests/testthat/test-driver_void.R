@@ -21,7 +21,8 @@ test_that("void driver init function works", {
 })
 
 test_that("drivers can be loaded by name/entrypoint", {
-  driver <- adbc_driver(adbcdrivermanager_shared(), "AdbcTestVoidDriverInit")
+  shared <- adbcdrivermanager_shared()
+  driver <- adbc_driver(shared, "AdbcTestVoidDriverInit")
   expect_s3_class(driver, "adbc_driver")
   expect_identical(driver$name, shared)
 })
@@ -64,9 +65,9 @@ version = 'v1.1.0'
 
 [Driver]
 [Driver.shared]
-osx_arm64 = '%s'
+%s = '%s'
 
-  ", adbcdrivermanager_shared())
+  ", current_arch(), adbcdrivermanager_shared())
 
   td <- tempfile()
   toml_path <- file.path(td, "void.toml")

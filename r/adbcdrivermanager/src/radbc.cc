@@ -20,6 +20,7 @@
 #include <Rinternals.h>
 
 #include <cstring>
+#include <string>
 #include <utility>
 
 #include "arrow-adbc/adbc.h"
@@ -88,6 +89,15 @@ static void finalize_database_xptr(SEXP database_xptr) {
   }
 
   adbc_xptr_default_finalize<AdbcDatabase>(database_xptr);
+}
+
+namespace adbc {
+const std::string& CurrentArch();
+}
+
+extern "C" SEXP RAdbcCurrentArch(void) {
+  auto current_arch = adbc::CurrentArch();
+  return Rf_mkString(current_arch.c_str());
 }
 
 extern "C" SEXP RAdbcAllocateDriver(void) {

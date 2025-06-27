@@ -230,3 +230,7 @@ adbcdrivermanager_shared <- function() {
     package = "adbcdrivermanager"
   )
 }
+
+current_arch <- function() {
+  .Call(RAdbcCurrentArch)
+}
