@@ -441,6 +441,12 @@ AdbcStatusCode FlightSqlDriverInit(int version, void* driver, struct AdbcError* 
   return AdbcDriverFlightsqlInit(version, driver, error);
 }
 
+ADBC_EXPORT
+AdbcStatusCode FlightSQLDriverInit(int version, void* driver, struct AdbcError* error) {
+  // For backwards compatibility
+  return AdbcDriverFlightsqlInit(version, driver, error);
+}
+
 int FlightSQLArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
 int FlightSQLArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);
 
