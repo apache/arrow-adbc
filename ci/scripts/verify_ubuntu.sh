@@ -24,15 +24,21 @@
 
 set -euo pipefail
 
+: ${JDK:=21}
+: ${MAVEN:=3.9.10}
+
 main() {
     local -r source_dir="${1}"
 
     # Install all the dependencies we need for all the subprojects
+    echo "JDK=${JDK}"
+    echo "MAVEN=${MAVEN}"
 
     # When installing tzdata, don't block and wait for user input
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Etc/UTC
 
+    echo "::group::Install APT dependencies"
     apt update
     apt install -y \
         apt-transport-https \
@@ -62,9 +68,12 @@ main() {
         ruby-full \
         software-properties-common \
         wget
+    echo "::endgroup::"
 
-    # Install Java
-
+    echo "::group::Install Java"
+    echo "============================================================"
+    echo "Installing Java ${JDK}..."
+    echo "============================================================"
     wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | \
         gpg --dearmor | \
         tee /etc/apt/trusted.gpg.d/adoptium.gpg > /dev/null
@@ -72,21 +81,33 @@ main() {
     echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | \
         tee /etc/apt/sources.list.d/adoptium.list
 
-    # Install Arrow GLib
+    apt update
+    apt install -y temurin-${JDK}-jdk
+    echo "::endgroup::"
+
+    echo "::group::Install Arrow GLib"
+    echo "============================================================"
+    echo "Installing Arrow GLib..."
+    echo "============================================================"
     wget https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
     apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 
     apt update
     apt install -y \
         libarrow-dev \
-        libarrow-glib-dev \
-        temurin-21-jdk
+        libarrow-glib-dev
+    echo "::endgroup::"
 
     # Install Maven
-    wget https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz
+    echo "::group::Install Maven"
+    echo "============================================================"
+    echo "Installing Maven ${MAVEN}..."
+    echo "============================================================"
+    wget -O apache-maven.tar.gz https://dlcdn.apache.org/maven/maven-3/${MAVEN}/binaries/apache-maven-${MAVEN}-bin.tar.gz
     mkdir -p /opt/maven
-    tar -C /opt/maven -xzvf apache-maven-3.9.9-bin.tar.gz --strip-components=1
+    tar -C /opt/maven -xzvf apache-maven.tar.gz --strip-components=1
     export PATH=/opt/maven/bin:$PATH
+    echo "::endgroup::"
 
     # Check if protoc is too old (Ubuntu 22.04).  If so, install it from
     # upstream instead.
@@ -95,17 +116,24 @@ main() {
             sort --version-sort | \
             head -n1 | \
             grep -E '^3\.15.*$' >/dev/null ; then
+        echo "::group::Install protoc"
+        echo "============================================================"
+        echo "Installing protoc..."
+        echo "============================================================"
         echo "protoc is too old"
 
         wget -O protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v30.2/protoc-30.2-linux-x86_64.zip
         unzip -o protoc.zip -d /usr/local -x readme.txt
+        echo "::endgroup::"
     fi
 
     # We run under Docker and this is necessary since the source dir is
     # typically mounted as a volume
     git config --global --add safe.directory "${source_dir}"
 
+    echo "::group::Verify"
     "${source_dir}/dev/release/verify-release-candidate.sh"
+    echo "::endgroup::"
 }
 
 main "$@"

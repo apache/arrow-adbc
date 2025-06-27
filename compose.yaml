@@ -87,7 +87,7 @@ services:
   ################################### Java ###################################
 
   java-dist:
-    image: ${ARCH}/maven:${MAVEN}-jdk-${JDK}
+    image: ${ARCH}/maven:${MAVEN}-eclipse-temurin-${JDK}
     volumes:
       - .:/adbc:delegated
     command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"

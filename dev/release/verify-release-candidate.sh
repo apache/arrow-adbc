@@ -273,9 +273,12 @@ install_dotnet() {
   local dotnet_download_thank_you_url=https://dotnet.microsoft.com/download/thank-you/dotnet-sdk-${dotnet_version}-${dotnet_platform}-x64-binaries
   show_info "Getting .NET download URL from ${dotnet_download_thank_you_url}"
   local dotnet_download_url=$(curl -sL ${dotnet_download_thank_you_url} | \
-                                  grep 'directLink' | \
-                                  grep -E -o 'https://download[^"]+' | \
-                                  sed -n 2p)
+                                  grep 'recordManualDownload' | \
+                                  grep -E -o 'https://builds.dotnet[^"]+')
+  if [ -z "${dotnet_download_url}" ]; then
+    echo "Failed to get .NET download URL from ${dotnet_download_thank_you_url}"
+    exit 1
+  fi
   show_info "Downloading .NET from ${dotnet_download_url}"
   mkdir -p ${csharp_bin}
   curl -sL ${dotnet_download_url} | \
