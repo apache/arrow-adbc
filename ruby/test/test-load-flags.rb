@@ -15,30 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-class DatabaseTest < Test::Unit::TestCase
-  def test_init
-    database = ADBC::Database.new
-    database.set_option("driver", "adbc_driver_sqlite")
+class LoadFlagsTest < Test::Unit::TestCase
+  def test_default
+    default = ADBC::LoadFlags::DEFAULT
     assert do
-      database.init
+      default.search_env? and default.search_user?
     end
-  end
-
-  def test_release
-    database = ADBC::Database.new
-    assert do
-      database.release
-    end
-  end
-
-  def test_set_load_flags
-    database = ADBC::Database.new
-    database.load_flags = [
-      :search_env,
-      :search_user,
-      :search_system,
-      :allow_relative_paths,
-    ]
-    database.load_flags = ADBC::LOAD_FLAGS_DEFAULT
   end
 end
