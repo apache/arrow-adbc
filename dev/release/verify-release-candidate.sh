@@ -19,7 +19,7 @@
 #
 
 # Requirements
-# - Ruby >= 2.3
+# - Ruby >= 3.2
 # - Maven >= 3.3.9
 # - JDK >= 11
 # - gcc >= 4.8
