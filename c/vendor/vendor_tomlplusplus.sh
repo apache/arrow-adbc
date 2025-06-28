@@ -24,3 +24,5 @@ rm tomlplusplus.zip
 mkdir toml++
 mv tomlplusplus-*/toml.hpp toml++/toml.hpp
 rm -rf tomlplusplus-*
+
+echo "Please manually update toml.hpp to suppress warnings about operator\"\"."
