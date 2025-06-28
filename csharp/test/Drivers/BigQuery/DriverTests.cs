@@ -291,7 +291,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
 
                 AdbcStatement statement = adbcConnection.CreateStatement();
-                statement.SqlQuery = environment.Query;
+                statement.SqlQuery = "select * from mashuptest-154002.NWIND.AdbcAllTypes"; // environment.Query;
 
                 QueryResult queryResult = statement.ExecuteQuery();
 

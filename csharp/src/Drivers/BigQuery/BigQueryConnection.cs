@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -24,6 +25,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Google.Api.Gax;
@@ -36,16 +38,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     /// <summary>
     /// BigQuery-specific implementation of <see cref="AdbcConnection"/>
     /// </summary>
-    public class BigQueryConnection : AdbcConnection, ITokenProtectedResource
+    public class BigQueryConnection : TracingConnection, ITokenProtectedResource
     {
         readonly Dictionary<string, string> properties;
         readonly HttpClient httpClient;
         bool includePublicProjectIds = false;
         const string infoDriverName = "ADBC BigQuery Driver";
-        const string infoDriverVersion = "1.0.1";
         const string infoVendorName = "BigQuery";
-        const string infoDriverArrowVersion = "19.0.0";
-        const string publicProjectId = "bigquery-public-data";
+        readonly string? infoDriverArrowVersion;
+
+        private static readonly string s_assemblyName = BigQueryUtils.GetAssemblyName(typeof(BigQueryStatement));
+        private static readonly string s_assemblyVersion = BigQueryUtils.GetAssemblyVersion(typeof(BigQueryStatement));
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
@@ -54,7 +57,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             AdbcInfoCode.VendorName
         };
 
-        public BigQueryConnection(IReadOnlyDictionary<string, string> properties)
+        public BigQueryConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
             if (properties == null)
             {
@@ -82,12 +85,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 RetryDelayMs = delay;
             }
+
+            this.infoDriverArrowVersion = typeof(IArrowArray).Assembly.GetName().Version?.ToString();
         }
 
         /// <summary>
         /// The function to call when updating the token.
         /// </summary>
         public Func<Task>? UpdateToken { get; set; }
+
+        internal string DriverName => infoDriverName;
 
         internal BigQueryClient? Client { get; private set; }
 
@@ -97,64 +104,92 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         internal int RetryDelayMs { get; private set; } = 200;
 
+        public override string AssemblyVersion => s_assemblyVersion;
+
+        public override string AssemblyName => s_assemblyName;
+
         /// <summary>
         /// Initializes the internal BigQuery connection
         /// </summary>
+        /// <param name="projectId">A project ID that has been specified by the caller, not a user.</param>
         /// <exception cref="ArgumentException"></exception>
-        internal BigQueryClient Open()
+        internal BigQueryClient Open(string? projectId = null)
         {
-            string? projectId = null;
-            string? billingProjectId = null;
-            TimeSpan? clientTimeout = null;
-
-            // if the caller doesn't specify a projectId, use the default
-            if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
-                projectId = BigQueryConstants.DetectProjectId;
-
-            // in some situations, the publicProjectId gets passed and causes an error when we try to create a query job:
-            //     Google.GoogleApiException : The service bigquery has thrown an exception. HttpStatusCode is Forbidden.
-            //     Access Denied: Project bigquery-public-data: User does not have bigquery.jobs.create permission in
-            //     project bigquery-public-data.
-            // so if that is the case, treat it as if we need to detect the projectId
-            if (projectId.Equals(publicProjectId, StringComparison.OrdinalIgnoreCase))
-                projectId = BigQueryConstants.DetectProjectId;
-
-            // the billing project can be null if it's not specified
-            this.properties.TryGetValue(BigQueryParameters.BillingProjectId, out billingProjectId);
-
-            if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectId, out string? result))
+            return this.TraceActivity(activity =>
             {
-                if (!string.IsNullOrEmpty(result))
-                    this.includePublicProjectIds = Convert.ToBoolean(result);
-            }
+                activity?.AddTag("Action", "Open");
 
-            if (this.properties.TryGetValue(BigQueryParameters.ClientTimeout, out string? timeoutSeconds) &&
-                int.TryParse(timeoutSeconds, out int seconds))
-            {
-                clientTimeout = TimeSpan.FromSeconds(seconds);
-            }
+                string? billingProjectId = null;
+                TimeSpan? clientTimeout = null;
 
-            SetCredential();
+                if (string.IsNullOrEmpty(projectId))
+                {
+                    // if the caller doesn't specify a projectId, use the default
+                    if (!this.properties.TryGetValue(BigQueryParameters.ProjectId, out projectId))
+                    {
+                        projectId = BigQueryConstants.DetectProjectId;
+                    }
+                    else
+                    {
+                        activity?.AddTag(BigQueryParameters.ProjectId, projectId);
+                    }
 
-            BigQueryClientBuilder bigQueryClientBuilder = new BigQueryClientBuilder()
-            {
-                ProjectId = projectId,
-                QuotaProject = billingProjectId,
-                GoogleCredential = Credential
-            };
+                    // in some situations, the publicProjectId gets passed and causes an error when we try to create a query job:
+                    //     Google.GoogleApiException : The service bigquery has thrown an exception. HttpStatusCode is Forbidden.
+                    //     Access Denied: Project bigquery-public-data: User does not have bigquery.jobs.create permission in
+                    //     project bigquery-public-data.
+                    // so if that is the case, treat it as if we need to detect the projectId
+                    if (projectId.Equals(BigQueryConstants.PublicProjectId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        projectId = BigQueryConstants.DetectProjectId;
+                        activity?.AddTag("ChangePublicProjectIdToDetectProjectId", projectId);
+                    }
+                }
 
-            BigQueryClient client = bigQueryClientBuilder.Build();
+                // the billing project can be null if it's not specified
+                if (this.properties.TryGetValue(BigQueryParameters.BillingProjectId, out billingProjectId))
+                {
+                    activity?.AddTag(BigQueryParameters.BillingProjectId, billingProjectId);
+                }
 
-            if (clientTimeout.HasValue)
-            {
-                client.Service.HttpClient.Timeout = clientTimeout.Value;
-            }
+                if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectId, out string? result))
+                {
+                    if (!string.IsNullOrEmpty(result))
+                    {
+                        this.includePublicProjectIds = Convert.ToBoolean(result);
+                        activity?.AddTag(BigQueryParameters.IncludePublicProjectId, this.includePublicProjectIds);
+                    }
+                }
 
-            Client = client;
-            return client;
+                if (this.properties.TryGetValue(BigQueryParameters.ClientTimeout, out string? timeoutSeconds) &&
+                    int.TryParse(timeoutSeconds, out int seconds))
+                {
+                    clientTimeout = TimeSpan.FromSeconds(seconds);
+                    activity?.AddTag(BigQueryParameters.ClientTimeout, seconds);
+                }
+
+                SetCredential(activity);
+
+                BigQueryClientBuilder bigQueryClientBuilder = new BigQueryClientBuilder()
+                {
+                    ProjectId = projectId,
+                    QuotaProject = billingProjectId,
+                    GoogleCredential = Credential
+                };
+
+                BigQueryClient client = bigQueryClientBuilder.Build();
+
+                if (clientTimeout.HasValue)
+                {
+                    client.Service.HttpClient.Timeout = clientTimeout.Value;
+                }
+
+                Client = client;
+                return client;
+            });
         }
 
-        internal void SetCredential()
+        internal void SetCredential(Activity? activity = default)
         {
             string? clientId = null;
             string? clientSecret = null;
@@ -166,7 +201,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string tokenEndpoint = BigQueryConstants.TokenEndpoint;
 
             if (!this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out authenticationType))
+            {
                 throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter is not present");
+            }
 
             if (this.properties.TryGetValue(BigQueryParameters.AuthenticationType, out string? newAuthenticationType))
             {
@@ -178,6 +215,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     !authenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new ArgumentException($"The {BigQueryParameters.AuthenticationType} parameter can only be `{BigQueryConstants.UserAuthenticationType}`, `{BigQueryConstants.ServiceAccountAuthenticationType}` or `{BigQueryConstants.EntraIdAuthenticationType}`");
+                }
+                else
+                {
+                    activity?.AddTag(BigQueryParameters.AuthenticationType, authenticationType);
                 }
             }
 
@@ -253,11 +294,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
-            const int strValTypeID = 0;
+            return this.TraceActivity(activity =>
+            {
+                activity?.AddTag("Action", "GetInfo");
 
-            UnionType infoUnionType = new UnionType(
-                new Field[]
-                {
+                const int strValTypeID = 0;
+
+                UnionType infoUnionType = new UnionType(
+                    new Field[]
+                    {
                     new Field("string_value", StringType.Default, true),
                     new Field("bool_value", BooleanType.Default, true),
                     new Field("int64_value", Int64Type.Default, true),
@@ -282,89 +327,97 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         ),
                         true
                     )
-                },
-                new int[] { 0, 1, 2, 3, 4, 5 }.ToArray(),
-                UnionMode.Dense);
+                    },
+                    new int[] { 0, 1, 2, 3, 4, 5 }.ToArray(),
+                    UnionMode.Dense);
 
-            if (codes.Count == 0)
-            {
-                codes = infoSupportedCodes;
-            }
-
-            UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
-            ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
-            ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
-            StringArray.Builder stringInfoBuilder = new StringArray.Builder();
-            int nullCount = 0;
-            int arrayLength = codes.Count;
-
-            foreach (AdbcInfoCode code in codes)
-            {
-                switch (code)
+                if (codes.Count == 0)
                 {
-                    case AdbcInfoCode.DriverName:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoDriverName);
-                        break;
-                    case AdbcInfoCode.DriverVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoDriverVersion);
-                        break;
-                    case AdbcInfoCode.DriverArrowVersion:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoDriverArrowVersion);
-                        break;
-                    case AdbcInfoCode.VendorName:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.Append(infoVendorName);
-                        break;
-                    default:
-                        infoNameBuilder.Append((UInt32)code);
-                        typeBuilder.Append(strValTypeID);
-                        offsetBuilder.Append(stringInfoBuilder.Length);
-                        stringInfoBuilder.AppendNull();
-                        nullCount++;
-                        break;
+                    codes = infoSupportedCodes;
                 }
-            }
 
-            StructType entryType = new StructType(
-                new Field[] {
+                UInt32Array.Builder infoNameBuilder = new UInt32Array.Builder();
+                ArrowBuffer.Builder<byte> typeBuilder = new ArrowBuffer.Builder<byte>();
+                ArrowBuffer.Builder<int> offsetBuilder = new ArrowBuffer.Builder<int>();
+                StringArray.Builder stringInfoBuilder = new StringArray.Builder();
+                int nullCount = 0;
+                int arrayLength = codes.Count;
+
+                foreach (AdbcInfoCode code in codes)
+                {
+                    string tagKey = SemanticConventions.Db.Operation.Parameter(code.ToString().ToLowerInvariant());
+                    Func<object?> tagValue = () => null;
+                    switch (code)
+                    {
+                        case AdbcInfoCode.DriverName:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(stringInfoBuilder.Length);
+                            stringInfoBuilder.Append(infoDriverName);
+                            tagValue = () => infoDriverName;
+                            break;
+                        case AdbcInfoCode.DriverVersion:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(stringInfoBuilder.Length);
+                            stringInfoBuilder.Append(s_assemblyVersion);
+                            tagValue = () => s_assemblyVersion;
+                            break;
+                        case AdbcInfoCode.DriverArrowVersion:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(stringInfoBuilder.Length);
+                            stringInfoBuilder.Append(infoDriverArrowVersion);
+                            tagValue = () => infoDriverArrowVersion;
+                            break;
+                        case AdbcInfoCode.VendorName:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(stringInfoBuilder.Length);
+                            stringInfoBuilder.Append(infoVendorName);
+                            tagValue = () => infoVendorName;
+                            break;
+                        default:
+                            infoNameBuilder.Append((UInt32)code);
+                            typeBuilder.Append(strValTypeID);
+                            offsetBuilder.Append(stringInfoBuilder.Length);
+                            stringInfoBuilder.AppendNull();
+                            nullCount++;
+                            break;
+                    }
+                    ActivityExtensions.AddTag(activity, tagKey, tagValue);
+                }
+
+                StructType entryType = new StructType(
+                    new Field[] {
                     new Field("key", Int32Type.Default, false),
                     new Field("value", Int32Type.Default, true)});
 
-            StructArray entriesDataArray = new StructArray(entryType, 0,
-                new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
-                new ArrowBuffer.BitmapBuilder().Build());
+                StructArray entriesDataArray = new StructArray(entryType, 0,
+                    new[] { new Int32Array.Builder().Build(), new Int32Array.Builder().Build() },
+                    new ArrowBuffer.BitmapBuilder().Build());
 
-            IArrowArray[] childrenArrays = new IArrowArray[]
-            {
+                IArrowArray[] childrenArrays = new IArrowArray[]
+                {
                 stringInfoBuilder.Build(),
                 new BooleanArray.Builder().Build(),
                 new Int64Array.Builder().Build(),
                 new Int32Array.Builder().Build(),
                 new ListArray.Builder(StringType.Default).Build(),
                 new List<IArrowArray?>(){ entriesDataArray }.BuildListArrayForType(entryType)
-            };
+                };
 
-            DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
+                DenseUnionArray infoValue = new DenseUnionArray(infoUnionType, arrayLength, childrenArrays, typeBuilder.Build(), offsetBuilder.Build(), nullCount);
 
-            IArrowArray[] dataArrays = new IArrowArray[]
-            {
+                IArrowArray[] dataArrays = new IArrowArray[]
+                {
                 infoNameBuilder.Build(),
                 infoValue
-            };
-            StandardSchemas.GetInfoSchema.Validate(dataArrays);
+                };
+                StandardSchemas.GetInfoSchema.Validate(dataArrays);
 
-            return new BigQueryInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
+                return new BigQueryInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
+            });
         }
 
         public override IArrowArrayStream GetObjects(
@@ -375,10 +428,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             IReadOnlyList<string>? tableTypes,
             string? columnNamePattern)
         {
-            IArrowArray[] dataArrays = GetCatalogs(depth, catalogPattern, dbSchemaPattern,
-                tableNamePattern, tableTypes, columnNamePattern);
+            return this.TraceActivity(activity =>
+            {
+                activity?.AddTag("Action", "GetObjects");
 
-            return new BigQueryInfoArrowStream(StandardSchemas.GetObjectsSchema, dataArrays);
+                IArrowArray[] dataArrays = GetCatalogs(depth, catalogPattern, dbSchemaPattern,
+                    tableNamePattern, tableTypes, columnNamePattern, activity);
+
+                return new BigQueryInfoArrowStream(StandardSchemas.GetObjectsSchema, dataArrays);
+            });
         }
 
         /// <summary>
@@ -395,7 +453,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// </summary>
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
-        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, MaxRetryAttempts, RetryDelayMs);
+        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
 
         /// <summary>
         /// Executes the query using the BigQueryClient.
@@ -412,10 +470,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             if (Client == null) { Client = Open(); }
 
-            Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
-            BigQueryResults? result = ExecuteWithRetriesAsync<BigQueryResults?>(func).GetAwaiter().GetResult();
+            return this.TraceActivity(activity =>
+            {
+                activity?.AddTag("Action", "ExecuteQuery");
 
-            return result;
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, BigQueryUtils.TracingToFile());
+
+                Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
+                BigQueryResults? result = ExecuteWithRetriesAsync<BigQueryResults?>(func, activity).GetAwaiter().GetResult();
+
+                return result;
+            });
         }
 
         private IArrowArray[] GetCatalogs(
@@ -424,7 +489,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string? dbSchemaPattern,
             string? tableNamePattern,
             IReadOnlyList<string>? tableTypes,
-            string? columnNamePattern)
+            string? columnNamePattern,
+            Activity? activity)
         {
             StringArray.Builder catalogNameBuilder = new StringArray.Builder();
             List<IArrowArray?> catalogDbSchemasValues = new List<IArrowArray?>();
@@ -438,15 +504,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 return Client?.ListProjects();
             });
 
-            catalogs = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func).GetAwaiter().GetResult();
+            catalogs = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func, activity).GetAwaiter().GetResult();
 
             if (catalogs != null)
             {
                 projectIds = catalogs.Select(x => x.ProjectId).ToList();
             }
 
-            if (this.includePublicProjectIds && !projectIds.Contains(publicProjectId))
-                projectIds.Add(publicProjectId);
+            if (this.includePublicProjectIds && !projectIds.Contains(BigQueryConstants.PublicProjectId))
+                projectIds.Add(BigQueryConstants.PublicProjectId);
 
             projectIds.Sort();
 
@@ -464,7 +530,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     {
                         catalogDbSchemasValues.Add(GetDbSchemas(
                             depth, projectId, dbSchemaPattern,
-                            tableNamePattern, tableTypes, columnNamePattern));
+                            tableNamePattern, tableTypes, columnNamePattern, activity));
                     }
                 }
             }
@@ -486,7 +552,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string? dbSchemaPattern,
             string? tableNamePattern,
             IReadOnlyList<string>? tableTypes,
-            string? columnNamePattern)
+            string? columnNamePattern,
+            Activity? activity)
         {
             StringArray.Builder dbSchemaNameBuilder = new StringArray.Builder();
             List<IArrowArray?> dbSchemaTablesValues = new List<IArrowArray?>();
@@ -501,7 +568,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 return Client?.ListDatasets(catalog);
             });
 
-            PagedEnumerable<DatasetList, BigQueryDataset>? schemas = ExecuteWithRetriesAsync<PagedEnumerable<DatasetList, BigQueryDataset>?>(func).GetAwaiter().GetResult();
+            PagedEnumerable<DatasetList, BigQueryDataset>? schemas = ExecuteWithRetriesAsync<PagedEnumerable<DatasetList, BigQueryDataset>?>(func, activity).GetAwaiter().GetResult();
 
             if (schemas != null)
             {
@@ -521,7 +588,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         {
                             dbSchemaTablesValues.Add(GetTableSchemas(
                                 depth, catalog, schema.Reference.DatasetId,
-                                tableNamePattern, tableTypes, columnNamePattern));
+                                tableNamePattern, tableTypes, columnNamePattern, activity));
                         }
                     }
                 }
@@ -547,7 +614,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string dbSchema,
             string? tableNamePattern,
             IReadOnlyList<string>? tableTypes,
-            string? columnNamePattern)
+            string? columnNamePattern,
+            Activity? activity)
         {
             StringArray.Builder tableNameBuilder = new StringArray.Builder();
             StringArray.Builder tableTypeBuilder = new StringArray.Builder();
@@ -1163,6 +1231,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.AllowLargeResults,
                 BigQueryParameters.UseLegacySQL,
                 BigQueryParameters.LargeDecimalsAsString,
+                BigQueryParameters.LargeResultsDataset,
                 BigQueryParameters.LargeResultsDestinationTable,
                 BigQueryParameters.GetQueryResultsOptionsTimeout,
                 BigQueryParameters.MaxFetchConcurrency,
