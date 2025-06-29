@@ -22,6 +22,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 {
@@ -59,7 +60,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// <param name="statement">The HiveServer2 statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        public CloudFetchDownloadManager(DatabricksStatement statement, Schema schema, bool isLz4Compressed, HttpClient httpClient)
+        public CloudFetchDownloadManager(DatabricksStatement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed, HttpClient httpClient)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
@@ -193,6 +194,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             // Initialize the result fetcher with URL management capabilities
             _resultFetcher = new CloudFetchResultFetcher(
                 _statement,
+                initialResults,
                 _memoryManager,
                 _downloadQueue,
                 DefaultFetchBatchSize,

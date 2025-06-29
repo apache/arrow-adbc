@@ -326,8 +326,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {
-            // Get result format from metadata response if available
-            TSparkRowSetType resultFormat = TSparkRowSetType.ARROW_BASED_SET;
             bool isLz4Compressed = false;
 
             DatabricksStatement? databricksStatement = statement as DatabricksStatement;
@@ -337,29 +335,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 throw new InvalidOperationException("Cannot obtain a reader for Databricks");
             }
 
-            if (metadataResp != null)
+            if (metadataResp != null && metadataResp.__isset.lz4Compressed)
             {
-                if (metadataResp.__isset.resultFormat)
-                {
-                    resultFormat = metadataResp.ResultFormat;
-                }
-
-                if (metadataResp.__isset.lz4Compressed)
-                {
-                    isLz4Compressed = metadataResp.Lz4Compressed;
-                }
+                isLz4Compressed = metadataResp.Lz4Compressed;
             }
 
-            // Choose the appropriate reader based on the result format
-            if (resultFormat == TSparkRowSetType.URL_BASED_SET)
-            {
-                HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
-                return new CloudFetchReader(databricksStatement, schema, isLz4Compressed, cloudFetchHttpClient);
-            }
-            else
-            {
-                return new DatabricksReader(databricksStatement, schema, isLz4Compressed);
-            }
+            return new DatabricksCompositeReader(databricksStatement, schema, isLz4Compressed, TlsOptions, _proxyConfigurator);
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
