@@ -146,6 +146,14 @@ The Snowflake URI should be of one of the following formats:
 - ``user[:password]@host:port/database/schema?account=user_account[&param1=value1&paramN=valueN]``
 - ``host:port/database/schema?account=user_account[&param1=value1&paramN=valueN]``
 
+Refer to the official
+`Snowflake documentation <https://docs.snowflake.com/en/user-guide/gen-conn-config>`_
+to obtain a valid connection URI or to the
+`Snowflake Go driver documentation <https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-Connection_String>`_
+to build a URI manually.
+Notice that from the Snowflake context, arrow-adbc is considered the Snowflake Go driver since
+that implementation is used under the hood.
+
 Alternately, instead of providing a full URI, the configuration can
 be entirely supplied using the other available options or some combination
 of the URI and other options. If a URI is provided, it will be parsed first
