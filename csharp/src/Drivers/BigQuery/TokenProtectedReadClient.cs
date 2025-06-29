@@ -48,6 +48,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 throw new ArgumentNullException(nameof(credential));
             }
 
+            // There doesn't appear to be a way to set the proxy here other than
+            // https://grpc.github.io/grpc/core/md_doc_core_default_http_proxy_mapper.html
             BigQueryReadClientBuilder readClientBuilder = new BigQueryReadClientBuilder();
             readClientBuilder.Credential = credential;
             this.bigQueryReadClient = readClientBuilder.Build();
