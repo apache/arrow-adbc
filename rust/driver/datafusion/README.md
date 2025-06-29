@@ -19,6 +19,12 @@
 
 # ADBC Driver for Apache DataFusion
 
+![Vendor: Apache DataFusion](https://img.shields.io/badge/vendor-Apache%20DataFusion-blue?style=flat-square)
+![Implementation: Rust](https://img.shields.io/badge/implementation-Rust-violet?style=flat-square)
+![Status: Experimental](https://img.shields.io/badge/status-experimental-red?style=flat-square)
+
+[![crates.io: adbc_datafusion](https://img.shields.io/crates/v/adbc_datafusion?style=flat-square)](https://crates.io/crates/adbc_datafusion)
+
 ## Example Usage
 
 ```
