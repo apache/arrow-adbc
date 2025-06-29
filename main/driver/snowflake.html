@@ -509,6 +509,13 @@ Go</label><div class="sd-tab-content docutils">
 <li><p><code class="docutils literal notranslate"><span class="pre">user[:password]&#64;host:port/database/schema?account=user_account[&amp;param1=value1&amp;paramN=valueN]</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">host:port/database/schema?account=user_account[&amp;param1=value1&amp;paramN=valueN]</span></code></p></li>
 </ul>
+<p>Refer to the official
+<a class="reference external" href="https://docs.snowflake.com/en/user-guide/gen-conn-config">Snowflake documentation</a>
+to obtain a valid connection URI or to the
+<a class="reference external" href="https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-Connection_String">Snowflake Go driver documentation</a>
+to build a URI manually.
+Notice that from the Snowflake context, arrow-adbc is considered the Snowflake Go driver since
+that implementation is used under the hood.</p>
 <p>Alternately, instead of providing a full URI, the configuration can
 be entirely supplied using the other available options or some combination
 of the URI and other options. If a URI is provided, it will be parsed first
