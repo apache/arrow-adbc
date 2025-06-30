@@ -51,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
                 catch (Exception ex)
                 {
-                    activity?.AddTag("RetryAttempt", retryCount);
+                    activity?.AddBigQueryTag("retry_attempt", retryCount);
                     activity?.AddException(ex);
 
                     retryCount++;
@@ -61,7 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         {
                             if (tokenProtectedResource?.TokenRequiresUpdate(ex) == true)
                             {
-                                activity?.AddTag("UpdateToken.Status", "Expired");
+                                activity?.AddBigQueryTag("update_token.status", "Expired");
                                 throw new AdbcException($"Cannot update access token after {maxRetries} tries", AdbcStatusCode.Unauthenticated, ex);
                             }
                         }
@@ -73,9 +73,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     {
                         if (tokenProtectedResource.TokenRequiresUpdate(ex) == true)
                         {
-                            activity?.AddTag("UpdateToken.Status", "Required");
+                            activity?.AddBigQueryTag("update_token.status", "Required");
                             await tokenProtectedResource.UpdateToken();
-                            activity?.AddTag("UpdateToken.Status", "Completed");
+                            activity?.AddBigQueryTag("update_token.status", "Completed");
                         }
                     }
 

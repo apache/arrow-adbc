@@ -91,8 +91,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return await this.TraceActivity(async activity =>
             {
-                activity?.AddTag("Action", "ExecuteQueryInternalAsync");
-
                 QueryOptions queryOptions = ValidateOptions(activity);
 
                 activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.TracingToFile());
@@ -107,7 +105,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     seconds >= 0)
                 {
                     getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
-                    activity?.AddTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
+                    activity?.AddBigQueryParameterTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
                 }
 
                 // We can't checkJobStatus, Otherwise, the timeout in QueryResultsOptions is meaningless.
@@ -124,7 +122,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 TokenProtectedReadClientManger clientMgr = new TokenProtectedReadClientManger(Credential);
                 clientMgr.UpdateToken = () => Task.Run(() =>
                 {
-                    this.bigQueryConnection.SetCredential(activity);
+                    this.bigQueryConnection.SetCredential();
                     clientMgr.UpdateCredential(Credential);
                 });
 
@@ -225,8 +223,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return await this.TraceActivity(async activity =>
             {
-                activity?.AddTag("Action", "ExecuteUpdateInternalAsync");
-
                 GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
                 if (Options?.TryGetValue(BigQueryParameters.GetQueryResultsOptionsTimeout, out string? timeoutSeconds) == true &&
@@ -234,7 +230,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     seconds >= 0)
                 {
                     getQueryResultsOptions.Timeout = TimeSpan.FromSeconds(seconds);
-                    activity?.AddTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
+                    activity?.AddBigQueryParameterTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
                 }
 
                 activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.TracingToFile());
@@ -350,7 +346,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
-            activity?.AddTag("ReadStream", streamName);
+            activity?.AddBigQueryTag("read_stream", streamName);
             BigQueryReadClient.ReadRowsStream readRowsStream = client.ReadRows(new ReadRowsRequest { ReadStream = streamName });
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
 
@@ -358,12 +354,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (stream.HasRows)
             {
-                activity?.AddTag("ReadStream.HasRows", "true");
+                activity?.AddBigQueryTag("read_stream.has_rows", "true");
                 return new ArrowStreamReader(stream);
             }
             else
             {
-                activity?.AddTag("ReadStream.HasRows", "false");
+                activity?.AddBigQueryTag("read_stream.has_rows", "false");
                 return null;
             }
         }
@@ -374,7 +370,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (Client.ProjectId == BigQueryConstants.DetectProjectId)
             {
-                activity?.AddTag("client_project_id", BigQueryConstants.DetectProjectId);
+                activity?.AddBigQueryTag("client_project_id", BigQueryConstants.DetectProjectId);
 
                 // An error occurs when calling CreateQueryJob without the ID set,
                 // so use the first one that is found. This does not prevent from calling
@@ -393,7 +389,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     if (firstProjectId != null)
                     {
                         options.ProjectId = firstProjectId;
-                        activity?.AddTag("detected_client_project_id", firstProjectId);
+                        activity?.AddBigQueryTag("detected_client_project_id", firstProjectId);
                         // need to reopen the Client with the projectId specified
                         this.bigQueryConnection.Open(firstProjectId);
                     }
@@ -411,11 +407,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     case BigQueryParameters.AllowLargeResults:
                         options.AllowLargeResults = true ? keyValuePair.Value.ToLower().Equals("true") : false;
-                        activity?.AddTag(BigQueryParameters.AllowLargeResults, options.AllowLargeResults);
+                        activity?.AddBigQueryParameterTag(BigQueryParameters.AllowLargeResults, options.AllowLargeResults);
                         break;
                     case BigQueryParameters.LargeResultsDataset:
                         largeResultDatasetId = keyValuePair.Value;
-                        activity?.AddTag(BigQueryParameters.LargeResultsDataset, largeResultDatasetId);
+                        activity?.AddBigQueryParameterTag(BigQueryParameters.LargeResultsDataset, largeResultDatasetId);
                         break;
                     case BigQueryParameters.LargeResultsDestinationTable:
                         string destinationTable = keyValuePair.Value;
@@ -445,11 +441,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                             DatasetId = datasetId,
                             TableId = tableId
                         };
-                        activity?.AddTag(BigQueryParameters.LargeResultsDestinationTable, destinationTable);
+                        activity?.AddBigQueryParameterTag(BigQueryParameters.LargeResultsDestinationTable, destinationTable);
                         break;
                     case BigQueryParameters.UseLegacySQL:
                         options.UseLegacySql = true ? keyValuePair.Value.ToLower().Equals("true") : false;
-                        activity?.AddTag(BigQueryParameters.UseLegacySQL, options.UseLegacySql);
+                        activity?.AddBigQueryParameterTag(BigQueryParameters.UseLegacySQL, options.UseLegacySql);
                         break;
                 }
             }
@@ -473,9 +469,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             try
             {
-                activity?.AddTag("TryFindDataset", datasetId);
+                activity?.AddBigQueryTag("large_results.try_find_dataset", datasetId);
                 dataset = this.Client.GetDataset(datasetId);
-                activity?.AddTag("FoundDataset", datasetId);
+                activity?.AddBigQueryTag("large_results.found_dataset", datasetId);
             }
             catch (GoogleApiException gaEx)
             {
@@ -490,7 +486,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 try
                 {
-                    activity?.AddTag("TryCreateDataset", datasetId);
+                    activity?.AddBigQueryTag("large_results.try_create_dataset", datasetId);
                     DatasetReference reference = this.Client.GetDatasetReference(datasetId);
                     BigQueryDataset bigQueryDataset = new BigQueryDataset(this.Client, new Dataset()
                     {
@@ -504,7 +500,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     });
 
                     dataset = this.Client.CreateDataset(datasetId, bigQueryDataset.Resource);
-                    activity?.AddTag("CreatedDataset", datasetId);
+                    activity?.AddBigQueryTag("large_results.created_dataset", datasetId);
                 }
                 catch (Exception ex)
                 {
@@ -526,7 +522,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     TableId = "lg_" + Guid.NewGuid().ToString().Replace("-", "")
                 };
 
-                activity?.AddTag("LargeDestinationTableReference", reference.ToString());
+                activity?.AddBigQueryTag("large_results.reference", reference.ToString());
 
                 return reference;
             }
@@ -561,8 +557,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 return await this.TraceActivityAsync(async activity =>
                 {
-                    activity?.AddTag("Action", "ReadNextRecordBatchAsync");
-
                     if (this.readers == null)
                     {
                         return null;
@@ -592,15 +586,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 });
             }
 
-            public new void Dispose()
+            protected override void Dispose(bool disposing)
             {
-                if (this.readers != null)
+                if (disposing)
                 {
-                    this.readers.Dispose();
-                    this.readers = null;
+                    if (this.readers != null)
+                    {
+                        this.readers.Dispose();
+                        this.readers = null;
+                    }
                 }
-
-                base.Dispose();
             }
         }
 
