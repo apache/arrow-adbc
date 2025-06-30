@@ -47,14 +47,22 @@ function check_visibility {
         exit 1
     fi
 
-    # Also check the max glibc version, to avoid accidentally bumping our
-    # manylinux requirement
+    # Also check the max glibc/glibcxx version, to avoid accidentally bumping
+    # our manylinux requirement
+    # See https://peps.python.org/pep-0599/#the-manylinux2014-policy
     local -r glibc_max=2.17
+    local -r glibcxx_max=3.4.19
     local -r glibc_requirement=$(grep -Eo 'GLIBC_\S+' nm_arrow.log | awk -F_ '{print $2}' | sort --version-sort -u | tail -n1)
-    local -r maxver=$(echo -e "${glibc_requirement}\n${glibc_max}" | sort --version-sort | tail -n1)
-    if [[ "${maxver}" != "2.17" ]]; then
+    local -r glibc_maxver=$(echo -e "${glibc_requirement}\n${glibc_max}" | sort --version-sort | tail -n1)
+    local -r glibcxx_requirement=$(grep -Eo 'GLIBCXX_\S+' nm_arrow.log | awk -F_ '{print $2}' | sort --version-sort -u | tail -n1)
+    local -r glibcxx_maxver=$(echo -e "${glibcxx_requirement}\n${glibcxx_max}" | sort --version-sort | tail -n1)
+    if [[ "${glibc_maxver}" != "2.17" ]]; then
         echo "== glibc check failed for $1 =="
-        echo "Expected ${glibc_max} but found ${glibc_requirement}"
+        echo "Expected GLIBC_${glibc_max} but found GLIBC_${glibc_requirement}"
+        exit 1
+    elif [[ "${glibcxx_maxver}" != "3.4.19" ]]; then
+        echo "== glibc check failed for $1 =="
+        echo "Expected GLIBCXX_${glibcxx_max} but found GLIBCXX_${glibcxx_requirement}"
         exit 1
     fi
 }
