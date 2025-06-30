@@ -21,10 +21,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -62,6 +64,9 @@ type statement struct {
 	ingestPath          string
 	ingestFileDelimiter string
 	explicitSchema      []*bigquery.FieldSchema
+
+	// Field that contains Table.update columns descriptions
+	updateTableColumnsDescription string
 }
 
 func (st *statement) GetOptionBytes(key string) ([]byte, error) {
@@ -145,6 +150,8 @@ func (st *statement) GetOption(key string) (string, error) {
 		return st.ingestFileDelimiter, nil
 	case OptionStringIngestPath:
 		return st.ingestPath, nil
+	case OptionJsonUpdateTableColumnsDescription:
+		return st.updateTableColumnsDescription, nil
 
 	default:
 		val, err := st.cnxn.GetOption(key)
@@ -259,7 +266,6 @@ func (st *statement) SetOption(key string, v string) error {
 		val, err := strconv.ParseBool(v)
 		if err == nil {
 			st.queryConfig.CreateSession = val
-		} else {
 			return err
 		}
 	case OptionStringIngestPath:
@@ -270,6 +276,8 @@ func (st *statement) SetOption(key string, v string) error {
 		if err := st.loadExplicitSchema(v); err != nil {
 			return err
 		}
+	case OptionJsonUpdateTableColumnsDescription:
+		st.updateTableColumnsDescription = v
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -320,6 +328,10 @@ func (st *statement) SetSqlQuery(query string) error {
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
 	if st.ingestPath != "" {
 		return st.executeIngest(ctx)
+	}
+
+	if st.updateTableColumnsDescription != "" {
+		return st.executeUpdateTableColumnsDescription(ctx)
 	}
 
 	if st.queryConfig.Q == "" {
@@ -1074,6 +1086,90 @@ func (st *statement) executeIngest(ctx context.Context) (array.RecordReader, int
 	}
 
 	return reader, 0, nil
+}
+
+// executeUpdateTableColumnsDescription updates the table columns descriptions
+// based on the JSON string in st.updateTableColumnsDescription
+//
+// The JSON string is a map of column name to description.
+//
+// The driver will return an empty record reader since this operation doesn't return data
+func (st *statement) executeUpdateTableColumnsDescription(ctx context.Context) (array.RecordReader, int64, error) {
+	thisFunction := getFunctionName()
+
+	columnDescriptionsRaw, _ := st.GetOption(OptionJsonUpdateTableColumnsDescription)
+	if columnDescriptionsRaw == "" {
+		return nil, -1, adbcError(adbc.StatusInvalidState, thisFunction, "OptionJsonUpdateTableColumnsDescription must be set for statement")
+	}
+	if st.queryConfig.Dst == nil {
+		return nil, -1, adbcError(adbc.StatusInvalidState, thisFunction, "Dst must be set for statement.QueryConfig")
+	}
+
+	// deserialize the column name -> description mapping
+	var columnDescriptions map[string]string
+	if err := json.Unmarshal([]byte(columnDescriptionsRaw), &columnDescriptions); err != nil {
+		return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("failed to parse column descriptions JSON: %v", err))
+	}
+
+	// Create a new schema with updated descriptions
+	// The schema must be complete so a fetch of the existing schema is necessary
+	table := st.queryConfig.Dst
+	tableMetadata, err := table.Metadata(ctx)
+	if err != nil {
+		return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("failed to get table metadata: %v", err))
+	}
+
+	newSchema := make([]*bigquery.FieldSchema, len(tableMetadata.Schema))
+	for i, field := range tableMetadata.Schema {
+		newField := &bigquery.FieldSchema{
+			Name:        field.Name,
+			Type:        field.Type,
+			Description: field.Description,
+			Schema:      field.Schema, // For nested fields
+		}
+		if description, exists := columnDescriptions[field.Name]; exists {
+			newField.Description = description
+		}
+		newSchema[i] = newField
+	}
+
+	tableUpdate := bigquery.TableMetadataToUpdate{
+		Schema: newSchema,
+	}
+	if _, err := table.Update(ctx, tableUpdate, tableMetadata.ETag); err != nil {
+		return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("failed to update table schema: %v", err))
+	}
+
+	// Return an empty record reader since this operation doesn't return data
+	emptySchema := arrow.NewSchema([]arrow.Field{}, nil)
+	emptyRecord := array.NewRecord(emptySchema, []arrow.Array{}, 0)
+	reader, err := array.NewRecordReader(emptySchema, []arrow.Record{emptyRecord})
+	if err != nil {
+		return nil, -1, err
+	}
+
+	return reader, 0, nil
+}
+
+func adbcError(code adbc.Status, functionName string, details string) adbc.Error {
+	msg := fmt.Sprintf("Failed to execute '%s': %s", functionName, details)
+	return adbc.Error{
+		Code: code,
+		Msg:  msg,
+	}
+}
+
+// getFunctionName returns the fully qualified name of the calling function.
+func getFunctionName() string {
+	pc, _, _, ok := runtime.Caller(1) // 1 indicates the caller
+	if !ok {
+		return "unknown"
+	}
+	f := runtime.FuncForPC(pc)
+	if f == nil {
+		return "unknown"
+	}
+	return f.Name()
 }
 
 var _ adbc.GetSetOptions = (*statement)(nil)

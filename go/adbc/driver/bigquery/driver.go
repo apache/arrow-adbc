@@ -85,6 +85,8 @@ const (
 	OptionStringIngestFileDelimiter = "adbc.bigquery.ingest.csv_delimiter"
 	OptionStringIngestPath          = "adbc.bigquery.ingest.csv_filepath"
 	OptionStringIngestSchema        = "adbc.bigquery.ingest.csv_schema"
+
+	OptionJsonUpdateTableColumnsDescription = "adbc.bigquery.table.update.columns_description"
 )
 
 var (
