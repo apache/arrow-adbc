@@ -155,13 +155,12 @@ Install the appropriate driver package from CRAN:
    install.packages("adbcpostgresql")
    install.packages("duckdb")
 
-Drivers not yet available on CRAN can be installed from GitHub:
+Drivers not yet available on CRAN can be installed from R-multiverse:
 
 .. code-block:: r
 
-   # install.packages("pak")
-   pak::pak("apache/arrow-adbc/r/adbcflightsql")
-   pak::pak("apache/arrow-adbc/r/adbcsnowflake")
+   install.packages("adbcflightsql", repos = "https://community.r-multiverse.org")
+   install.packages("adbcsnowflake", repos = "https://community.r-multiverse.org")
 
 Ruby
 ====
