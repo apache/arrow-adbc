@@ -35,9 +35,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// A composite reader for Databricks that delegates to either CloudFetchReader or DatabricksReader
     /// based on CloudFetch configuration and result set characteristics.
     /// </summary>
-    public sealed class DatabricksCompositeReader : TracingReader
+    internal sealed class DatabricksCompositeReader : TracingReader
     {
-
         private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksCompositeReader));
         private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksCompositeReader));
 
@@ -46,7 +45,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public override string AssemblyVersion => s_assemblyVersion;
 
         public override Schema Schema { get { return _schema; } }
-
 
         private BaseDatabricksReader? _activeReader;
         private readonly DatabricksStatement _statement;
