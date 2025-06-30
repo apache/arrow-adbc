@@ -351,15 +351,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
 
             ReadRowsStream stream = new ReadRowsStream(enumerator);
+            activity?.AddBigQueryTag("read_stream.has_rows", stream.HasRows);
 
             if (stream.HasRows)
             {
-                activity?.AddBigQueryTag("read_stream.has_rows", "true");
                 return new ArrowStreamReader(stream);
             }
             else
             {
-                activity?.AddBigQueryTag("read_stream.has_rows", "false");
                 return null;
             }
         }
@@ -469,9 +468,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             try
             {
-                activity?.AddBigQueryTag("large_results.try_find_dataset", datasetId);
+                activity?.AddBigQueryTag("large_results.dataset.try_find", datasetId);
                 dataset = this.Client.GetDataset(datasetId);
-                activity?.AddBigQueryTag("large_results.found_dataset", datasetId);
+                activity?.AddBigQueryTag("large_results.dataset.found", datasetId);
             }
             catch (GoogleApiException gaEx)
             {
@@ -486,7 +485,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 try
                 {
-                    activity?.AddBigQueryTag("large_results.try_create_dataset", datasetId);
+                    activity?.AddBigQueryTag("large_results.dataset.try_create", datasetId);
                     DatasetReference reference = this.Client.GetDatasetReference(datasetId);
                     BigQueryDataset bigQueryDataset = new BigQueryDataset(this.Client, new Dataset()
                     {
@@ -500,7 +499,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     });
 
                     dataset = this.Client.CreateDataset(datasetId, bigQueryDataset.Resource);
-                    activity?.AddBigQueryTag("large_results.created_dataset", datasetId);
+                    activity?.AddBigQueryTag("large_results.dataset.created", datasetId);
                 }
                 catch (Exception ex)
                 {
@@ -522,7 +521,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     TableId = "lg_" + Guid.NewGuid().ToString().Replace("-", "")
                 };
 
-                activity?.AddBigQueryTag("large_results.reference", reference.ToString());
+                activity?.AddBigQueryTag("large_results.table_reference", reference.ToString());
 
                 return reference;
             }
