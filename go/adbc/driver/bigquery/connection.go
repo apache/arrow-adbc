@@ -66,7 +66,7 @@ type connectionImpl struct {
 	client *bigquery.Client
 }
 
-// Helper for configuration of a connection for use with a job
+// This creates a bigquery.Table associated with the connection's client
 func (c *connectionImpl) table(project, dataset, table string) *bigquery.Table {
 	return c.client.DatasetInProject(project, dataset).Table(table)
 }

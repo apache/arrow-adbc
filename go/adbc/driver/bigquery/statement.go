@@ -26,7 +26,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -120,8 +119,6 @@ func (st *statement) GetOption(key string) (string, error) {
 		}
 	case OptionStringQueryParameterMode:
 		return st.parameterMode, nil
-	case OptionStringQueryDestination:
-		return tableToString(st.queryConfig.Dst), nil
 	case OptionStringQueryDefaultProjectID:
 		return st.queryConfig.DefaultProjectID, nil
 	case OptionStringQueryDefaultDatasetID:
@@ -191,16 +188,13 @@ func (st *statement) SetOption(key string, v string) error {
 				Msg:  fmt.Sprintf("Parameter mode for the statement can only be either %s or %s", OptionValueQueryParameterModeNamed, OptionValueQueryParameterModePositional),
 			}
 		}
-	case OptionStringQueryDestination:
-		parts := strings.Split(v, ".")
-		if len(parts) != 3 {
-			return adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("Invalid destination format. Expected format: project_id.dataset_id.table_id, got %s", v),
-			}
+	case OptionStringQueryDestinationTable:
+		val, err := stringToTable(st, v)
+		if err == nil {
+			st.queryConfig.Dst = val
+		} else {
+			return err
 		}
-		proj, ds, tbl := parts[0], parts[1], parts[2]
-		st.queryConfig.Dst = st.cnxn.table(proj, ds, tbl)
 	case OptionStringQueryDefaultProjectID:
 		st.queryConfig.DefaultProjectID = v
 	case OptionStringQueryDefaultDatasetID:
