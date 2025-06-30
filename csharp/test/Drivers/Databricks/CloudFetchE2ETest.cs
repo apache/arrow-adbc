@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             yield return new object[] { smallQuery, 1000, true, false };
             yield return new object[] { smallQuery, 1000, false, false };
 
-            string largeQuery = $"SELECT * FROM system.access.audit LIMIT 1000000";
+            string largeQuery = $"SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000";
             yield return new object[] { largeQuery, 1000000, true, true };
             yield return new object[] { largeQuery, 1000000, false, true };
             yield return new object[] { largeQuery, 1000000, true, false };
