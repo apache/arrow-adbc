@@ -335,35 +335,24 @@ jobs:
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-
-      - name: Get Date
-        id: get-date
-        run: |
-          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
-
       - uses: actions/setup-go@v5
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
-
       - name: Build ADBC Driver
         working-directory: go/adbc/pkg
         run: |
           make libadbc_driver_flightsql.so
-          ls -l
-
       - name: Start Test Servers
         run: |
           docker compose up --wait --detach spiceai-test
-
       - name: Test Driver against Spice.ai OSS
         env:
-          FLIGHTSQL_INTEROP_TEST_CONFIG_FILE: "../../../../../ci/configs/flightsql-spiceai.json"
+          FLIGHTSQL_INTEROP_TEST_CONFIG_FILE: "../../../../../csharp/configs/flightsql-spiceai.json"
         run: |
           dotnet test ./csharp/test/Drivers/Interop/FlightSql/Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql.csproj
-
       - name: Stop Test Servers
         run: |
           docker compose down

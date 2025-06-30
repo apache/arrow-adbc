@@ -208,7 +208,7 @@ services:
       DREMIO_JAVA_EXTRA_OPTS: "-Ddebug.addDefaultUser=true -Ddremio.eula.disabled=true"
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://localhost:9047" ]
-      interval: 5s
+      interval: 10s
       timeout: 10s
       retries: 5
       start_period: 40s

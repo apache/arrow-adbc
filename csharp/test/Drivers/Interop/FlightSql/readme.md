@@ -88,10 +88,10 @@ simultaneously. To use multiple data sources, you can configure them like:
 
 ### Spice.ai OSS Configuration
 
-Use the following command to run a local test instance of Spice.ai OSS. An example test configuration is available at [flightsql-spiceai.json](/ci/configs/flightsql-spiceai.json).
+Use the following command to run a local test instance of Spice.ai OSS. An example test configuration is available at [flightsql-spiceai.json](/csharp/configs/flightsql-spiceai.json).
 
 ```bash
-docker-compose up spiceai-test
+docker compose up spiceai-test
 ```
 
 Output:
@@ -100,7 +100,7 @@ Output:
 [+] Running 1/0
  ✔ Container adbc-spiceai  Created                                                    0.0s
 Attaching to adbc-spiceai
-adbc-spiceai  | 2025-06-12T22:44:38.684347Z  INFO spiced: Starting runtime v1.4.0-unstable.nightly.20250611.cd21f4a
+adbc-spiceai  | 2025-06-12T22:44:38.684347Z  INFO spiced: Starting runtime v1.4.0+models
 adbc-spiceai  | 2025-06-12T22:44:38.684737Z  INFO runtime::init::caching: Initialized results cache; max size: 128.00 MiB, item ttl: 1s
 adbc-spiceai  | 2025-06-12T22:44:38.684772Z  INFO runtime::init::caching: Initialized search results cache;
 adbc-spiceai  | 2025-06-12T22:44:39.043113Z  INFO runtime::init::dataset: Initializing dataset nation
@@ -112,5 +112,4 @@ adbc-spiceai  | 2025-06-12T22:44:39.848102Z  INFO runtime::init::dataset: Datase
 adbc-spiceai  | 2025-06-12T22:44:39.849943Z  INFO runtime::accelerated_table::refresh_task: Loading data for dataset nation
 adbc-spiceai  | 2025-06-12T22:44:40.537458Z  INFO runtime::accelerated_table::refresh_task: Loaded 25 rows (3.35 kiB) for dataset nation in 687ms.
 adbc-spiceai  | 2025-06-12T22:44:40.568947Z  INFO runtime: All components are loaded. Spice runtime is ready!
-adbc-spiceai  | 2025-06-12T22:54:27.043906Z  INFO runtime: Shutdown initiated; waiting up to 30s for connections to drain
 ```
