@@ -266,6 +266,7 @@ func (st *statement) SetOption(key string, v string) error {
 		val, err := strconv.ParseBool(v)
 		if err == nil {
 			st.queryConfig.CreateSession = val
+		} else {
 			return err
 		}
 	case OptionStringIngestPath:
