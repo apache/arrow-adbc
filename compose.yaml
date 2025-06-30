@@ -291,6 +291,20 @@ services:
     ports:
       - "5432:5432"
 
+  spiceai-test:
+    container_name: adbc-spiceai
+    build:
+      context: .
+      dockerfile: ci/docker/spiceai-init.dockerfile
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8090/v1/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "50051:50051"
+      - "8090:8090"
+
   ################################ Verification ################################
 
   verify-all-ubuntu:
