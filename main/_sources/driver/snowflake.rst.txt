@@ -60,8 +60,7 @@ Installation
 
       .. code-block:: shell
 
-         # install.packages("pak")
-         pak::pak("apache/arrow-adbc/r/adbcsnowflake")
+         install.packages("adbcsnowflake", repos = "https://community.r-multiverse.org")
 
 Usage
 =====
