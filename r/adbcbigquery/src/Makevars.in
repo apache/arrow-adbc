@@ -27,6 +27,9 @@ GOMAXPROCS = @nproc@
 all: purify
 $(SHLIB): gostatic
 
+# R CMD check issues a warning for this `.a` file.
+# We remove this file after SHLIB generation to suppress the warning.
+# <https://github.com/apache/arrow-adbc/issues/3059>
 purify: $(SHLIB)
 	rm -Rf "$(CURDIR)/go/libadbc_driver_bigquery.a"
 
