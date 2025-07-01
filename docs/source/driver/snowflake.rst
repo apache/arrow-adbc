@@ -298,7 +298,7 @@ and resource usage may be tuned with the following options on the :c:struct:`Adb
     Maximum number of COPY operations to run concurrently. Bulk ingestion performance is optimized by executing COPY
     queries as files are still being uploaded. Snowflake COPY speed scales with warehouse size, so smaller warehouses
     may benefit from setting this value higher to ensure long-running COPY queries do not block newly uploaded files
-    from being loaded. Default is 4. If set to 0, there will be no limitation and instead a new COPY INTO query will 
+    from being loaded. Default is 4. If set to 0, there will be no limitation and instead a new COPY INTO query will
     be executed for each file that is uploaded. Cannot be negative.
 
 ``adbc.snowflake.statement.ingest_target_file_size``
