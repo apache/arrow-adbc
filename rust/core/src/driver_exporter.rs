@@ -1632,9 +1632,9 @@ unsafe extern "C" fn error_get_detail(
             }
             let private_data = error.private_data as *const ErrorPrivateData;
 
-            let key = (*private_data).keys[index].as_ptr();
-            let value = (*private_data).values[index].as_ptr();
-            let value_length = (*private_data).values[index].len();
+            let key = (&(*private_data).keys)[index].as_ptr();
+            let value = (&(*private_data).values)[index].as_ptr();
+            let value_length = (&(*private_data).values)[index].len();
 
             FFI_AdbcErrorDetail {
                 key,
