@@ -528,7 +528,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 TemporarilyUnavailableRetryTimeout = tempUnavailableRetryTimeoutValue;
             }
 
-            // When TemporarilyUnavailableRetry is enabled, we need to make sure connection timeout (which is used to cancel the HttpConnection) is equal 
+            // When TemporarilyUnavailableRetry is enabled, we need to make sure connection timeout (which is used to cancel the HttpConnection) is equal
             // or greater than TemporarilyUnavailableRetryTimeout so that it won't timeout before server startup timeout (TemporarilyUnavailableRetryTimeout)
             if (TemporarilyUnavailableRetry && TemporarilyUnavailableRetryTimeout * 1000 > ConnectTimeoutMilliseconds)
             {
