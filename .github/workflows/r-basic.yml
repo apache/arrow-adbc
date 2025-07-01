@@ -59,8 +59,7 @@ jobs:
     with:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
-      # For the r-basic check (that runs on many PRs), just check ERRORs
-      # (e.g., build failure, test failure)
-      error-on: error
+      # If update this to `error`, warnings will not fail the job
+      error-on: warning
     secrets:
       SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
