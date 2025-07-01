@@ -36,5 +36,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         [JsonPropertyName("enableMultipleCatalogSupport")]
         public string EnableMultipleCatalogSupport { get; set; } = string.Empty;
+
+        [JsonPropertyName("tracePropagationEnabled"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string TracePropagationEnabled { get; set; } = string.Empty;
+
+        [JsonPropertyName("traceParentHeaderName"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string TraceParentHeaderName { get; set; } = string.Empty;
+
+        [JsonPropertyName("traceStateEnabled"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string TraceStateEnabled { get; set; } = string.Empty;
     }
 }
