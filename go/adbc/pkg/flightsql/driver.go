@@ -1816,13 +1816,13 @@ func FlightSQLStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 //export FlightSqlDriverInit
 func FlightSqlDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
   // For backwards compatibility
-  return AdbcDriverFlightsqlInit(version, driver, error);
+  return AdbcDriverFlightsqlInit(version, rawDriver, err);
 }
 
 //export FlightSQLDriverInit
 func FlightSQLDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
   // For backwards compatibility
-  return AdbcDriverFlightsqlInit(version, driver, error);
+  return AdbcDriverFlightsqlInit(version, rawDriver, err);
 }
 
 //export AdbcDriverFlightsqlInit
