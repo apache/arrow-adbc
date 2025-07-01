@@ -595,6 +595,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         this.readers = null;
                     }
                 }
+
+                base.Dispose(disposing);
             }
         }
 
