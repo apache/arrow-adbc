@@ -63,5 +63,5 @@ or an instance of a ``javax.sql.DataSource`` as the
 Supported Features
 ==================
 
-The Flight SQL driver generally supports features defined in the ADBC
+The JDBC Adapter generally supports features defined in the ADBC
 API specification 1.0.0.
