@@ -4,7 +4,7 @@
     <TargetFrameworks Condition="'$(TargetFrameworks)'==''">net8.0</TargetFrameworks>
   </PropertyGroup>
     <ItemGroup>
-     <PackageReference Include="Azure.Identity" Version="1.14.0" />
+     <PackageReference Include="Azure.Identity" Version="1.14.1" />
      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
      <PackageReference Include="System.Net.Http.WinHttpHandler" Version="8.0.2" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
      <PackageReference Include="xunit" Version="2.9.3" />
