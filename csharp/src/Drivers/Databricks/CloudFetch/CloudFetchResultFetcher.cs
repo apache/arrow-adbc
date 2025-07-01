@@ -32,6 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
     internal class CloudFetchResultFetcher : ICloudFetchResultFetcher
     {
         private readonly IHiveServer2Statement _statement;
+        private readonly TFetchResultsResp? _initialResults;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
         private readonly SemaphoreSlim _fetchLock = new SemaphoreSlim(1, 1);
@@ -57,6 +58,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// <param name="clock">Clock implementation for time operations. If null, uses system clock.</param>
         public CloudFetchResultFetcher(
             IHiveServer2Statement statement,
+            TFetchResultsResp? initialResults,
             ICloudFetchMemoryBufferManager memoryManager,
             BlockingCollection<IDownloadResult> downloadQueue,
             long batchSize,
@@ -64,6 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             IClock? clock = null)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
+            _initialResults = initialResults;
             _memoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
             _downloadQueue = downloadQueue ?? throw new ArgumentNullException(nameof(downloadQueue));
             _batchSize = batchSize;
@@ -210,7 +213,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             try
             {
                 // Process direct results first, if available
-                if (_statement.HasDirectResults && _statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
+                if (_statement.HasDirectResults &&
+                    (_statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0 ||
+                    _initialResults?.Results?.ResultLinks?.Count > 0))
                 {
                     // Yield execution so the download queue doesn't get blocked before downloader is started
                     await Task.Yield();
@@ -328,7 +333,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 
         private void ProcessDirectResultsAsync(CancellationToken cancellationToken)
         {
-            List<TSparkArrowResultLink> resultLinks = _statement.DirectResults!.ResultSet.Results.ResultLinks;
+            TFetchResultsResp fetchResults;
+            if (_statement.HasDirectResults && _statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
+            {
+                fetchResults = _statement.DirectResults!.ResultSet;
+            }
+            else
+            {
+                fetchResults = _initialResults!;
+            }
+
+            List<TSparkArrowResultLink> resultLinks = fetchResults.Results.ResultLinks;
+
             long maxOffset = 0;
 
             // Process each link
@@ -350,7 +366,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             _startOffset = maxOffset;
 
             // Update whether there are more results
-            _hasMoreResults = _statement.DirectResults!.ResultSet.HasMoreRows;
+            _hasMoreResults = fetchResults.HasMoreRows;
         }
     }
 }
