@@ -85,7 +85,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             var httpClient = new HttpClient(retryHandler);
 
             // Send a request and expect an AdbcException
-            var exception = await Assert.ThrowsAsync<AdbcException>(async () =>
+            var exception = await Assert.ThrowsAsync<DatabricksException>(async () =>
                 await httpClient.GetAsync("http://test.com"));
 
             // Verify the exception has the correct SQL state in the message

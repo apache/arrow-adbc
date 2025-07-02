@@ -118,7 +118,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
             throw new DatabricksException(
-                lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded",
+                "[SQLState: 08001]" + (lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded"),
                  AdbcStatusCode.IOError);
         }
 
