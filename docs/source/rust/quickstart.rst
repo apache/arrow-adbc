@@ -42,6 +42,9 @@ connections can share.)
 
 .. code-block:: rust
 
+   // These traits must be in scope
+   use adbc_core::{Connection, Database, Driver, Statement};
+
    let mut driver = adbc_datafusion::DataFusionDriver {};
    let mut db = driver.new_database().expect("Failed to create database handle");
    let mut conn = db.new_connection().expect("Failed to create connection");
