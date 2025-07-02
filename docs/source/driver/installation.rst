@@ -167,3 +167,13 @@ Ruby
 
 Install the appropriate driver package for C/C++. You can use it from
 Ruby.
+
+Rust
+====
+
+Add a dependency on ``adbc_core`` and any driver packages
+(e.g. ``adbc_datafusion``):
+
+.. code-block:: shell
+
+   cargo add adbc_core adbc_datafusion
