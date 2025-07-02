@@ -302,13 +302,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override HttpMessageHandler CreateHttpHandler()
         {
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
-            
+
             // Add tracing handler to propagate W3C trace context if enabled
             if (_tracePropagationEnabled)
             {
                 baseHandler = new TracingDelegatingHandler(baseHandler, this, _traceParentHeaderName, _traceStateEnabled);
             }
-            
+
             if (TemporarilyUnavailableRetry)
             {
                 // Add retry handler for 503 responses

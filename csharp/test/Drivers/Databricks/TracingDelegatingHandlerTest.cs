@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests
             var mockTracer = new MockActivityTracer();
             var tracingHandler = new TracingDelegatingHandler(mockHandler, mockTracer);
             var httpClient = new HttpClient(tracingHandler);
-            
+
             // Create an activity with a listener to ensure it's created
             Activity.DefaultIdFormat = ActivityIdFormat.W3C;
             ActivitySource.AddActivityListener(new ActivityListener
@@ -74,27 +74,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests
                 ShouldListenTo = _ => true,
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
             });
-            
+
             using var activitySource = new ActivitySource("TestActivitySource");
             using var activity = activitySource.StartActivity("TestActivity", ActivityKind.Client);
-            
+
             // Skip test if activity creation is not supported in this environment
             if (activity == null)
             {
                 // Test with trace parent from tracer instead
                 var fallbackTraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
                 mockTracer.TraceParent = fallbackTraceParent;
-                
+
                 var request = new HttpRequestMessage(HttpMethod.Get, "https://test.databricks.com/api/test");
                 await httpClient.SendAsync(request);
-                
+
                 Assert.NotNull(mockHandler.CapturedRequest);
                 Assert.True(mockHandler.CapturedRequest.Headers.Contains("traceparent"));
                 var traceParentValue = mockHandler.CapturedRequest.Headers.GetValues("traceparent").FirstOrDefault();
                 Assert.Equal(fallbackTraceParent, traceParentValue);
                 return;
             }
-            
+
             var expectedTraceParent = activity.Id;
 
             // Act
@@ -156,7 +156,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests
             var mockTracer = new MockActivityTracer { TraceParent = tracerTraceParent };
             var tracingHandler = new TracingDelegatingHandler(mockHandler, mockTracer);
             var httpClient = new HttpClient(tracingHandler);
-            
+
             // Create an activity with a listener to ensure it's created
             Activity.DefaultIdFormat = ActivityIdFormat.W3C;
             ActivitySource.AddActivityListener(new ActivityListener
@@ -164,24 +164,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests
                 ShouldListenTo = _ => true,
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
             });
-            
+
             using var activitySource = new ActivitySource("TestActivitySource");
             using var activity = activitySource.StartActivity("TestActivity", ActivityKind.Client);
-            
+
             // Skip test if activity creation is not supported in this environment
             if (activity == null)
             {
                 // Can't test precedence without an activity - just verify tracer parent works
                 var request = new HttpRequestMessage(HttpMethod.Get, "https://test.databricks.com/api/test");
                 await httpClient.SendAsync(request);
-                
+
                 Assert.NotNull(mockHandler.CapturedRequest);
                 Assert.True(mockHandler.CapturedRequest.Headers.Contains("traceparent"));
                 var traceParentValue = mockHandler.CapturedRequest.Headers.GetValues("traceparent").FirstOrDefault();
                 Assert.Equal(tracerTraceParent, traceParentValue);
                 return;
             }
-            
+
             var expectedTraceParent = activity.Id;
 
             // Act
@@ -251,7 +251,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests
             var mockTracer = new MockActivityTracer();
             var tracingHandler = new TracingDelegatingHandler(mockHandler, mockTracer, "traceparent", includeTraceState: true);
             var httpClient = new HttpClient(tracingHandler);
-            
+
             // Create an activity with trace state
             Activity.DefaultIdFormat = ActivityIdFormat.W3C;
             ActivitySource.AddActivityListener(new ActivityListener
@@ -259,14 +259,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests
                 ShouldListenTo = _ => true,
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
             });
-            
+
             using var activitySource = new ActivitySource("TestActivitySource");
             using var activity = activitySource.StartActivity("TestActivity", ActivityKind.Client);
-            
+
             if (activity != null)
             {
                 activity.TraceStateString = "vendor1=value1,vendor2=value2";
-                
+
                 // Act
                 var request = new HttpRequestMessage(HttpMethod.Get, "https://test.databricks.com/api/test");
                 await httpClient.SendAsync(request);
@@ -288,7 +288,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests
             var mockTracer = new MockActivityTracer();
             var tracingHandler = new TracingDelegatingHandler(mockHandler, mockTracer, "traceparent", includeTraceState: false);
             var httpClient = new HttpClient(tracingHandler);
-            
+
             // Create an activity with trace state
             Activity.DefaultIdFormat = ActivityIdFormat.W3C;
             ActivitySource.AddActivityListener(new ActivityListener
@@ -296,14 +296,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests
                 ShouldListenTo = _ => true,
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
             });
-            
+
             using var activitySource = new ActivitySource("TestActivitySource");
             using var activity = activitySource.StartActivity("TestActivity", ActivityKind.Client);
-            
+
             if (activity != null)
             {
                 activity.TraceStateString = "vendor1=value1,vendor2=value2";
-                
+
                 // Act
                 var request = new HttpRequestMessage(HttpMethod.Get, "https://test.databricks.com/api/test");
                 await httpClient.SendAsync(request);

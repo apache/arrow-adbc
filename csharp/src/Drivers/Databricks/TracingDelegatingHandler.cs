@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <param name="traceParentHeaderName">The name of the trace parent header. Defaults to "traceparent".</param>
         /// <param name="includeTraceState">Whether to include trace state header. Defaults to false.</param>
         public TracingDelegatingHandler(
-            HttpMessageHandler innerHandler, 
+            HttpMessageHandler innerHandler,
             IActivityTracer activityTracer,
             string traceParentHeaderName = "traceparent",
             bool includeTraceState = false)
@@ -68,7 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 // Use the current activity's W3C trace parent format
                 traceParentValue = currentActivity.Id;
-                
+
                 // Get trace state if enabled
                 if (_includeTraceState)
                 {
@@ -79,7 +79,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 // Fall back to the trace parent set on the connection
                 traceParentValue = _activityTracer.TraceParent;
-                
+
                 // Note: We don't have trace state from the connection, only from Activity
             }
 
@@ -87,7 +87,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (!string.IsNullOrEmpty(traceParentValue))
             {
                 request.Headers.TryAddWithoutValidation(_traceParentHeaderName, traceParentValue);
-                
+
                 // Add trace state header if we have a value and it's enabled
                 if (_includeTraceState && !string.IsNullOrEmpty(traceStateValue))
                 {
