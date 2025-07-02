@@ -126,56 +126,57 @@ class StatementOptions(enum.Enum):
     #: DISABLE_QUERY_CACHE prevents results being fetched from the query cache.
     #: If this field is false, results are fetched from the cache if they are
     #: available.
-    #: The query cache is a best-effort cache that is flushed whenever tables
-    #: in the query are modified.
-    #: Cached results are only available when TableID is unspecified in the
-    #: query's destination Table.
-    #: For more information, see
+    #:
+    #: The query cache is a best-effort cache that is flushed whenever tables in
+    #: the query are modified. Cached results are only available when TableID is
+    #: unspecified in the query's destination Table.
+    #:
+    #: For more information, see:
     #: https://cloud.google.com/bigquery/querying-data#querycaching
     DISABLE_QUERY_CACHE = "adbc.bigquery.sql.query.disable_query_cache"
 
     #: DISABLE_FLATTEN_RESULTS prevents results being flattened.
     #: If this field is false, results from nested and repeated fields are
     #: flattened.
-    #: DISABLE_FLATTEN_RESULTS implies ALLOW_LARGE_RESULTS
-    #: For more information, see
+    #:
+    #: DISABLE_FLATTEN_RESULTS implies ALLOW_LARGE_RESULTS.
+    #:
+    #: For more information, see:
     #: https://cloud.google.com/bigquery/docs/data#nested
     DISABLE_FLATTEN_RESULTS = "adbc.bigquery.sql.query.disable_flatten_results"
 
-    #: ALLOW_LARGE_RESULTS allows the query to produce arbitrarily large
-    #: result tables.
-    #: The destination must be a table.
-    #: When using this option, queries will take longer to execute, even if
-    #: the result set is small.
-    #: For additional limitations, see
+    #: ALLOW_LARGE_RESULTS allows the query to produce arbitrarily large result
+    #: tables. The destination must be a table. When using this option, queries
+    #: will take longer to execute, even if the result set is small.
+    #:
+    #: For additional limitations, see:
     #: https://cloud.google.com/bigquery/querying-data#largequeryresults
     ALLOW_LARGE_RESULTS = "adbc.bigquery.sql.query.allow_large_results"
 
     #: PRIORITY specifies the priority with which to schedule the query.
-    #: The default priority is `"INTERACTIVE"`.
-    #: For more information, see
+    #: The default priority is ``INTERACTIVE``.
+    #:
+    #: For more information, see:
     #: https://cloud.google.com/bigquery/querying-data#batchqueries
     #:
     #: The following values are supported:
-    #: - "BATCH": BatchPriority specifies that the query should be scheduled
-    #:   with the batch priority.  BigQuery queues each batch query on your
-    #:   behalf, and starts the query as soon as idle resources are available,
-    #:   usually within a few minutes. If BigQuery hasn't started the query
-    #:   within 24 hours, BigQuery changes the job priority to interactive.
-    #:   Batch queries don't count towards your concurrent rate limit, which
-    #:   can make it easier to start many queries at once.
     #:
-    #:   More information can be found at
-    #:   https://cloud.google.com/bigquery/docs/running-queries#batchqueries.
-    #:
-    #: - "INTERACTIVE": specifies that the query should be scheduled with
-    #:   interactive priority, which means that the query is executed as soon
-    #:   as possible. Interactive queries count towards your concurrent rate
-    #:   limit and your daily limit. It is the default priority with which
-    #:   queries get executed.
-    #:
-    #:   More information can be found at
-    #:   https://cloud.google.com/bigquery/docs/running-queries#queries.
+    #: * ``BATCH``:
+    #:     BatchPriority specifies that the query should be scheduled with the
+    #:     batch priority. BigQuery queues each batch query on your behalf, and
+    #:     starts the query as soon as idle resources are available, usually
+    #:     within a few minutes. If BigQuery hasn't started the query within 24
+    #:     hours, BigQuery changes the job priority to interactive. Batch queries
+    #:     don't count towards your concurrent rate limit, which can make it
+    #:     easier to start many queries at once. More information can be found at:
+    #:     https://cloud.google.com/bigquery/docs/running-queries#batchqueries
+    #: * ``INTERACTIVE``:
+    #:     Specifies that the query should be scheduled with interactive priority,
+    #:     which means that the query is executed as soon as possible. Interactive
+    #:     queries count towards your concurrent rate limit and your daily limit.
+    #:     It is the default priority with which queries get executed. More
+    #:     information can be found at:
+    #:     https://cloud.google.com/bigquery/docs/running-queries#queries
     PRIORITY = "adbc.bigquery.sql.query.priority"
 
     #: MAX_BILLING_TIER sets the maximum billing tier for a Query.
