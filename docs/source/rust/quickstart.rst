@@ -26,7 +26,7 @@ Here we'll briefly tour using ADBC with the `DataFusion`_ driver.
 Installation
 ============
 
-Add a dependency on adbc_core and adbc_datafusion:
+Add a dependency on ``adbc_core`` and ``adbc_datafusion``:
 
 .. code-block:: shell
 
