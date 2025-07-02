@@ -96,25 +96,31 @@ class StatementOptions(enum.Enum):
 
     #: CREATE_DISPOSITION specifies the circumstances under which the
     #: destination table will be created.
-    #: The default is `"CREATE_IF_NEEDED"`.
+    #: The default is ``CREATE_IF_NEEDED``.
+    #:
     #: The following values are supported:
-    #: - "CREATE_IF_NEEDED": will create the table if it does not already exist
-    #:   Tables are created atomically on successful completion of a job.
-    #: - "CREATE_NEVER": ensures the table must already exist and will not be
-    #:   automatically created.
+    #:
+    #: * ``CREATE_IF_NEEDED``:
+    #:     Will create the table if it does not already exist.
+    #:     Tables are created atomically on successful completion of a job.
+    #: * ``CREATE_NEVER``:
+    #:     Ensures the table must already exist and will not be automatically created.
     CREATE_DISPOSITION = "adbc.bigquery.sql.query.create_disposition"
 
     #: WRITE_DISPOSITION specifies how existing data in the destination
     #: table is treated.
-    #: The default is `"WRITE_EMPTY"`.
+    #: The default is ``WRITE_EMPTY``.
+    #:
     #: The following values are supported:
-    #: - "WRITE_APPEND": will append to any existing data in the destination
-    #:   table.
-    #:   Data is appended atomically on successful completion of a job.
-    #: - "WRITE_TRUNCATE": overrides the existing data in the destination table
-    #:   Data is overwritten atomically on successful completion of a job.
-    #: - "WRITE_EMPTY": fails writes if the destination table already contains
-    #:   data.
+    #:
+    #: * ``WRITE_APPEND``:
+    #:     Will append to any existing data in the destination table.
+    #:     Data is appended atomically on successful completion of a job.
+    #: * ``WRITE_TRUNCATE``:
+    #:     Overrides the existing data in the destination table.
+    #:     Data is overwritten atomically on successful completion of a job.
+    #: * ``WRITE_EMPTY``:
+    #:     Fails writes if the destination table already contains data.
     WRITE_DISPOSITION = "adbc.bigquery.sql.query.write_disposition"
 
     #: DISABLE_QUERY_CACHE prevents results being fetched from the query cache.
