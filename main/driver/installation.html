@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
 <meta name="description" content="Source: The latest source release can be downloaded from the Apache mirrors. Compilation instructions can be found in CONTRIBUTING.md. C/C++: Install the appropriate driver package. You can use con..." />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Driver Implementation Status" href="status.html" /><link rel="prev" title="R" href="../r/index.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Driver Implementation Status" href="status.html" /><link rel="prev" title="Driver Manager" href="../rust/driver_manager.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
         <title>Installation - ADBC 19 (dev) documentation</title>
@@ -315,6 +315,12 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../r/index.html">R</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../rust/index.html">Rust</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Rust</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../rust/quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rust/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
+</ul>
+</li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
 <ul class="current">
@@ -520,6 +526,14 @@ sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<sp
 <p>Install the appropriate driver package for C/C++. You can use it from
 Ruby.</p>
 </section>
+<section id="rust">
+<h2>Rust<a class="headerlink" href="#rust" title="Link to this heading">¶</a></h2>
+<p>Add a dependency on <code class="docutils literal notranslate"><span class="pre">adbc_core</span></code> and any driver packages
+(e.g. <code class="docutils literal notranslate"><span class="pre">adbc_datafusion</span></code>):</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core<span class="w"> </span>adbc_datafusion
+</pre></div>
+</div>
+</section>
 </section>
 
         </article>
@@ -536,14 +550,14 @@ Ruby.</p>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="../r/index.html">
+          <a class="prev-page" href="../rust/driver_manager.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">R</div>
+                <div class="title">Driver Manager</div>
                 
               </div>
             </a>
@@ -588,6 +602,7 @@ United States and other countries.
 <li><a class="reference internal" href="#python">Python</a></li>
 <li><a class="reference internal" href="#r">R</a></li>
 <li><a class="reference internal" href="#ruby">Ruby</a></li>
+<li><a class="reference internal" href="#rust">Rust</a></li>
 </ul>
 </li>
 </ul>

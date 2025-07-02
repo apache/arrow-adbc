@@ -5,18 +5,18 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="ADBC API Standard" />
+<meta property="og:title" content="Quickstart" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://arrow.apache.org/adbc/main/format/specification.html" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/main/rust/quickstart.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="This document summarizes the general featureset. For C/C++ details, see adbc.h., For Go details, see the source., For Java details, see the source, particularly the package org.apache.arrow.adbc.co..." />
+<meta property="og:description" content="Here we’ll briefly tour using ADBC with the DataFusion driver. Installation: Add a dependency on adbc_core and adbc_datafusion: Loading DataFusion: Create a driver instance, then a database handle,..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="This document summarizes the general featureset. For C/C++ details, see adbc.h., For Go details, see the source., For Java details, see the source, particularly the package org.apache.arrow.adbc.co..." />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Versioning and Compatibility" href="versioning.html" /><link rel="prev" title="Writing New Drivers" href="../driver/authoring.html" />
+<meta name="description" content="Here we’ll briefly tour using ADBC with the DataFusion driver. Installation: Add a dependency on adbc_core and adbc_datafusion: Loading DataFusion: Create a driver instance, then a database handle,..." />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Driver Manager" href="driver_manager.html" /><link rel="prev" title="Rust" href="index.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
-        <title>ADBC API Standard - ADBC 19 (dev) documentation</title>
+        <title>Quickstart - ADBC 19 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
@@ -277,7 +277,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../cpp/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cpp/driver_manager.html">Driver Manager</a></li>
@@ -315,9 +315,9 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../r/index.html">R</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../rust/index.html">Rust</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Rust</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../rust/quickstart.html">Quickstart</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../rust/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Rust</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Rust</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
 </ul>
 </li>
@@ -335,12 +335,12 @@
 <li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
-<ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">ADBC API Standard</a></li>
-<li class="toctree-l1"><a class="reference internal" href="versioning.html">Versioning and Compatibility</a></li>
-<li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other APIs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="how_manager.html">How Drivers and the Driver Manager Work Together</a></li>
-<li class="toctree-l1"><a class="reference internal" href="related_work.html">Related Work</a></li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../format/specification.html">ADBC API Standard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/versioning.html">Versioning and Compatibility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/comparison.html">Comparison with Other APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/how_manager.html">How Drivers and the Driver Manager Work Together</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/related_work.html">Related Work</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Development</span></p>
 <ul>
@@ -368,12 +368,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/format/specification.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/rust/quickstart.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/format/specification.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/rust/quickstart.rst" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -392,230 +392,46 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="adbc-api-standard">
-<h1>ADBC API Standard<a class="headerlink" href="#adbc-api-standard" title="Link to this heading">¶</a></h1>
-<p>This document summarizes the general featureset.</p>
-<ul class="simple">
-<li><p>For C/C++ details, see <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc_8h.html" title="(in ADBC C vversion)"><span class="xref std std-doc">adbc.h</span></a>.</p></li>
-<li><p>For Go details, see the <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/go/adbc/adbc.go">source</a>.</p></li>
-<li><p>For Java details, see the <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/java/core">source</a>, particularly
-the package <a class="reference external" href="https://arrow.apache.org/adbc/main/java/api/org/apache/arrow/adbc/core/package-summary.html" title="(in ADBC Java vversion)"><code class="xref std std-jpackage docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core</span></code></a>.</p></li>
-</ul>
-<section id="databases">
-<h2>Databases<a class="headerlink" href="#databases" title="Link to this heading">¶</a></h2>
-<p>Databases hold state shared by multiple connections.  Generally, this
-means common configuration and caches.  For in-memory databases, it
-provides a place to hold ownership of the in-memory database.</p>
-<ul class="simple">
-<li><p>C/C++: <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-database.html#structAdbcDatabase" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a></p></li>
-<li><p>Go: <code class="docutils literal notranslate"><span class="pre">Driver</span></code></p></li>
-<li><p>Java: <a class="reference external" href="https://arrow.apache.org/adbc/main/java/api/org/apache/arrow/adbc/core/AdbcDatabase.html" title="(in ADBC Java vversion)"><code class="xref std std-jtype docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcDatabase</span></code></a></p></li>
-</ul>
-</section>
-<section id="connections">
-<h2>Connections<a class="headerlink" href="#connections" title="Link to this heading">¶</a></h2>
-<p>A connection is a single, logical connection to a database.</p>
-<ul class="simple">
-<li><p>C/C++: <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-connection.html#structAdbcConnection" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a></p></li>
-<li><p>Go: <code class="docutils literal notranslate"><span class="pre">Connection</span></code></p></li>
-<li><p>Java: <a class="reference external" href="https://arrow.apache.org/adbc/main/java/api/org/apache/arrow/adbc/core/AdbcConnection.html" title="(in ADBC Java vversion)"><code class="xref std std-jtype docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection</span></code></a></p></li>
-</ul>
-<section id="autocommit">
-<h3>Autocommit<a class="headerlink" href="#autocommit" title="Link to this heading">¶</a></h3>
-<p>By default, connections are expected to operate in autocommit mode;
-that is, queries take effect immediately upon execution.  This can be
-disabled in favor of manual commit/rollback calls, but not all
-implementations will support this.</p>
-<ul class="simple">
-<li><p>C/C++: <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-constants.html#ga67c5f2a5de514d4126b23fa7497ab9d4" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_CONNECTION_OPTION_AUTOCOMMIT</span></code></a></p></li>
-<li><p>Go: <code class="docutils literal notranslate"><span class="pre">OptionKeyAutoCommit</span></code></p></li>
-<li><p>Java: <a class="reference external" href="https://arrow.apache.org/adbc/main/java/api/org/apache/arrow/adbc/core/AdbcConnection.html#setAutoCommit(boolean)" title="(in ADBC Java vversion)"><code class="xref std std-jmember docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection#setAutoCommit(boolean)</span></code></a></p></li>
-</ul>
-</section>
-<section id="metadata">
-<h3>Metadata<a class="headerlink" href="#metadata" title="Link to this heading">¶</a></h3>
-<p>ADBC exposes a variety of metadata about the database, such as what catalogs,
-schemas, and tables exist, the Arrow schema of tables, and so on.</p>
-</section>
-<section id="statistics">
-<span id="specification-statistics"></span><h3>Statistics<a class="headerlink" href="#statistics" title="Link to this heading">¶</a></h3>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Since API revision 1.1.0</p>
-</div>
-<p>ADBC exposes table/column statistics, such as the (unique) row count, min/max
-values, and so on.  The goal here is to make ADBC work better in federation
-scenarios, where one query engine wants to read Arrow data from another
-database.  Having statistics available lets the “outer” query planner make
-better choices about things like join order, or even decide to skip reading
-data entirely.</p>
-</section>
-</section>
-<section id="statements">
-<h2>Statements<a class="headerlink" href="#statements" title="Link to this heading">¶</a></h2>
-<p>Statements hold state related to query execution.  They represent both
-one-off queries and prepared statements.  They can be reused, though
-doing so will invalidate prior result sets from that statement.  (See
-<a class="reference internal" href="../cpp/concurrency.html"><span class="doc">Concurrency and Thread Safety</span></a>.)</p>
-<ul class="simple">
-<li><p>C/C++: <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-statement.html#structAdbcStatement" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a></p></li>
-<li><p>Go: <code class="docutils literal notranslate"><span class="pre">Statement</span></code></p></li>
-<li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcStatement</span></code></p></li>
-</ul>
-<section id="bulk-ingestion">
-<span id="specification-bulk-ingestion"></span><h3>Bulk Ingestion<a class="headerlink" href="#bulk-ingestion" title="Link to this heading">¶</a></h3>
-<p>ADBC provides explicit facilities to ingest batches of Arrow data into
-a database table.  For databases which support it, this can avoid
-overheads from the typical bind-insert loop.  Also, this (mostly)
-frees the user from knowing the right SQL syntax for their database.</p>
-<ul class="simple">
-<li><p>C/C++: <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-statement-ingestion.html#gad325f2e1b05672d5986bff954daf1f5a" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_INGEST_OPTION_TARGET_TABLE</span></code></a> and related
-options.</p></li>
-<li><p>Go: <code class="docutils literal notranslate"><span class="pre">OptionKeyIngestTargetTable</span></code></p></li>
-<li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcConnection#bulkIngest(String,</span> <span class="pre">org.apache.arrow.adbc.core.BulkIngestMode)</span></code></p></li>
-</ul>
-</section>
-<section id="cancellation">
-<span id="specification-cancellation"></span><h3>Cancellation<a class="headerlink" href="#cancellation" title="Link to this heading">¶</a></h3>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Since API revision 1.1.0</p>
-</div>
-<p>Queries (and operations that implicitly represent queries, like fetching
-<a class="reference internal" href="#specification-statistics"><span class="std std-ref">Statistics</span></a>) can be cancelled.</p>
-</section>
-<section id="partitioned-result-sets">
-<h3>Partitioned Result Sets<a class="headerlink" href="#partitioned-result-sets" title="Link to this heading">¶</a></h3>
-<p>ADBC lets a driver explicitly expose partitioned and/or distributed
-result sets to clients.  (This is similar to functionality in Flight
-RPC/Flight SQL.)  Clients may take advantage of this to distribute
-computations on a result set across multiple threads, processes, or
-machines.</p>
-<ul class="simple">
-<li><p>C/C++: <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-statement-partition.html#ga4ad4068421a6e7d3fff41939ca757c77" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcStatementExecutePartitions()</span></code></a></p></li>
-<li><p>Go: <code class="docutils literal notranslate"><span class="pre">Statement.ExecutePartitions</span></code></p></li>
-<li><p>Java: <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core.AdbcStatement#executePartitioned()</span></code></p></li>
-</ul>
-<p id="specification-incremental-execution">In principle, a vendor could return the results of partitioned execution as
-they are available, instead of all at once.  Incremental execution allows
-drivers to expose this.  When enabled, each call to <code class="docutils literal notranslate"><span class="pre">ExecutePartitions</span></code> will
-return available endpoints to read instead of blocking to retrieve all
-endpoints.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Since API revision 1.1.0</p>
+          <section id="quickstart">
+<h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h1>
+<p>Here we’ll briefly tour using ADBC with the <a class="reference external" href="https://datafusion.apache.org/">DataFusion</a> driver.</p>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
+<p>Add a dependency on <code class="docutils literal notranslate"><span class="pre">adbc_core</span></code> and <code class="docutils literal notranslate"><span class="pre">adbc_datafusion</span></code>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core<span class="w"> </span>adbc_datafusion
+</pre></div>
 </div>
 </section>
-<section id="lifecycle-usage">
-<h3>Lifecycle &amp; Usage<a class="headerlink" href="#lifecycle-usage" title="Link to this heading">¶</a></h3>
-<a class="reference internal image-reference" href="../_images/AdbcStatement.svg"><img alt="The lifecycle of a statement." src="../_images/AdbcStatement.svg" style="width: 100%;" />
-</a>
-<section id="basic-usage">
-<h4>Basic Usage<a class="headerlink" href="#basic-usage" title="Link to this heading">¶</a></h4>
-<figure class="align-default" id="id1">
-<img alt="../_images/AdbcStatementBasicUsage.mmd.svg" src="../_images/AdbcStatementBasicUsage.mmd.svg" />
-<figcaption>
-<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id1" title="Link to this image">¶</a></p>
-</figcaption>
-</figure>
-</section>
-<section id="consuming-result-sets">
-<h4>Consuming Result Sets<a class="headerlink" href="#consuming-result-sets" title="Link to this heading">¶</a></h4>
-<figure class="align-default" id="id2">
-<img alt="../_images/AdbcStatementConsumeResultSet.mmd.svg" src="../_images/AdbcStatementConsumeResultSet.mmd.svg" />
-<figcaption>
-<p><span class="caption-text">This is equivalent to reading from what many Arrow libraries call a
-RecordBatchReader.</span><a class="headerlink" href="#id2" title="Link to this image">¶</a></p>
-</figcaption>
-</figure>
-</section>
-<section id="bulk-data-ingestion">
-<h4>Bulk Data Ingestion<a class="headerlink" href="#bulk-data-ingestion" title="Link to this heading">¶</a></h4>
-<figure class="align-default" id="id3">
-<img alt="../_images/AdbcStatementBulkIngest.mmd.svg" src="../_images/AdbcStatementBulkIngest.mmd.svg" />
-<figcaption>
-<p><span class="caption-text">There is no need to prepare the statement.</span><a class="headerlink" href="#id3" title="Link to this image">¶</a></p>
-</figcaption>
-</figure>
-</section>
-<section id="update-only-queries-no-result-set">
-<h4>Update-only Queries (No Result Set)<a class="headerlink" href="#update-only-queries-no-result-set" title="Link to this heading">¶</a></h4>
-<figure class="align-default" id="id4">
-<img alt="../_images/AdbcStatementUpdate.mmd.svg" src="../_images/AdbcStatementUpdate.mmd.svg" />
-<figcaption>
-<p><span class="caption-text">Preparing the statement and binding parameters are optional.</span><a class="headerlink" href="#id4" title="Link to this image">¶</a></p>
-</figcaption>
-</figure>
-</section>
-<section id="partitioned-execution">
-<h4>Partitioned Execution<a class="headerlink" href="#partitioned-execution" title="Link to this heading">¶</a></h4>
-<figure class="align-default" id="id5">
-<img alt="../_images/AdbcStatementPartitioned.mmd.svg" src="../_images/AdbcStatementPartitioned.mmd.svg" />
-<figcaption>
-<p><span class="caption-text">This is similar to fetching data in Arrow Flight RPC (by design). See
-<a class="reference external" href="https://arrow.apache.org/docs/format/Flight.html" title="(in Apache Arrow v20.0.0)"><span class="xref std std-doc">“Downloading Data”</span></a>.</span><a class="headerlink" href="#id5" title="Link to this image">¶</a></p>
-</figcaption>
-</figure>
-</section>
-</section>
-</section>
-<section id="error-handling">
-<h2>Error Handling<a class="headerlink" href="#error-handling" title="Link to this heading">¶</a></h2>
-<p>The error handling strategy varies by language.</p>
-<p>In C, most methods take a <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-error-handling.html#structAdbcError" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcError</span></code></a>.  In Go, most methods return
-an error that can be cast to an <code class="docutils literal notranslate"><span class="pre">AdbcError</span></code>.  In Java, most methods raise an
-<code class="docutils literal notranslate"><span class="pre">AdbcException</span></code>.</p>
-<p>In all cases, an error contains:</p>
-<ul class="simple">
-<li><p>A status code,</p></li>
-<li><p>An error message,</p></li>
-<li><p>An optional vendor code (a vendor-specific status code),</p></li>
-<li><p>An optional 5-character “SQLSTATE” code (a SQL-like vendor-specific code).</p></li>
-</ul>
-<section id="rich-error-metadata">
-<span id="specification-rich-error-metadata"></span><h3>Rich Error Metadata<a class="headerlink" href="#rich-error-metadata" title="Link to this heading">¶</a></h3>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Since API revision 1.1.0</p>
+<section id="loading-datafusion">
+<h2>Loading DataFusion<a class="headerlink" href="#loading-datafusion" title="Link to this heading">¶</a></h2>
+<p>Create a driver instance, then a database handle, and then finally a
+connection.  (This is a bit redundant for something like DataFusion, but the
+intent is that the database handle can hold shared state that multiple
+connections can share.)</p>
+<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="c1">// These traits must be in scope</span>
+<span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::{</span><span class="n">Connection</span><span class="p">,</span><span class="w"> </span><span class="n">Database</span><span class="p">,</span><span class="w"> </span><span class="n">Driver</span><span class="p">,</span><span class="w"> </span><span class="n">Statement</span><span class="p">};</span>
+
+<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adbc_datafusion</span><span class="p">::</span><span class="n">DataFusionDriver</span><span class="w"> </span><span class="p">{};</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="n">new_database</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create database handle&quot;</span><span class="p">);</span>
+<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">new_connection</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create connection&quot;</span><span class="p">);</span>
+</pre></div>
 </div>
-<p>Drivers can expose additional rich error metadata.  This can be used to return
-structured error information.  For example, a driver could use something like
-the <a class="reference external" href="https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto">Googleapis ErrorDetails</a>.</p>
-<p>In C, Go and Java, <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-error-handling.html#structAdbcError" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcError</span></code></a>, <code class="docutils literal notranslate"><span class="pre">AdbcError</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">AdbcException</span></code> respectively expose a list of additional metadata.  For C,
-see the documentation of <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-error-handling.html#structAdbcError" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcError</span></code></a> to learn how the struct was
-expanded while preserving ABI.</p>
 </section>
-</section>
-<section id="changelog">
-<h2>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">¶</a></h2>
-<section id="version-1-1-0">
-<h3>Version 1.1.0<a class="headerlink" href="#version-1-1-0" title="Link to this heading">¶</a></h3>
-<p>The info key ADBC_INFO_DRIVER_ADBC_VERSION can be used to retrieve the
-driver’s supported ADBC version.</p>
-<p>The canonical options “uri”, “username”, and “password” were added to make
-configuration consistent between drivers.</p>
-<p><a class="reference internal" href="#specification-cancellation"><span class="std std-ref">Cancellation</span></a> and the ability to both get and set options
-of different types were added.  (Previously, you could set string options but
-could not get option values or get/set values of other types.)  This can be
-used to get and set the current active catalog and/or schema through a pair of
-new canonical options.</p>
-<p><a class="reference internal" href="#specification-bulk-ingestion"><span class="std std-ref">Bulk Ingestion</span></a> supports two additional modes:</p>
-<ul class="simple">
-<li><p>“adbc.ingest.mode.replace” will drop existing data, then behave like
-“create”.</p></li>
-<li><p>“adbc.ingest.mode.create_append” will behave like “create”, except if the
-table already exists, it will not error.</p></li>
-</ul>
-<p><a class="reference internal" href="#specification-rich-error-metadata"><span class="std std-ref">Rich Error Metadata</span></a> has been added, allowing clients to
-get additional error metadata.</p>
-<p>The ability to retrieve table/column <a class="reference internal" href="#specification-statistics"><span class="std std-ref">statistics</span></a> was added.  The goal here is to make ADBC work
-better in federation scenarios, where one query engine wants to read Arrow
-data from another database.</p>
-<p><a class="reference internal" href="#specification-incremental-execution"><span class="std std-ref">Incremental execution</span></a> allows
-streaming partitions of a result set as they are available instead of blocking
-and waiting for query execution to finish before reading results.</p>
-</section>
+<section id="running-queries">
+<h2>Running Queries<a class="headerlink" href="#running-queries" title="Link to this heading">¶</a></h2>
+<p>To run queries, we can create a statement and set a query:</p>
+<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">stmt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">conn</span><span class="p">.</span><span class="n">new_statement</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create statement&quot;</span><span class="p">);</span>
+<span class="n">stmt</span><span class="p">.</span><span class="n">set_sql_query</span><span class="p">(</span><span class="s">&quot;SELECT 1&quot;</span><span class="p">).</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to set SQL query&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>We can then execute the query to get an Arrow <code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code>:</p>
+<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="n">reader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stmt</span><span class="p">.</span><span class="n">execute</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to execute statement&quot;</span><span class="p">);</span>
+<span class="k">for</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">reader</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">batch</span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to read batch&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;{:?}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">batch</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 </section>
 </section>
 
@@ -624,23 +440,23 @@ and waiting for query execution to finish before reading results.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="versioning.html">
+          <a class="next-page" href="driver_manager.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Versioning and Compatibility</div>
+                <div class="title">Driver Manager</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="../driver/authoring.html">
+          <a class="prev-page" href="index.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Writing New Drivers</div>
+                <div class="title">Rust</div>
                 
               </div>
             </a>
@@ -677,36 +493,10 @@ United States and other countries.
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">ADBC API Standard</a><ul>
-<li><a class="reference internal" href="#databases">Databases</a></li>
-<li><a class="reference internal" href="#connections">Connections</a><ul>
-<li><a class="reference internal" href="#autocommit">Autocommit</a></li>
-<li><a class="reference internal" href="#metadata">Metadata</a></li>
-<li><a class="reference internal" href="#statistics">Statistics</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#statements">Statements</a><ul>
-<li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
-<li><a class="reference internal" href="#cancellation">Cancellation</a></li>
-<li><a class="reference internal" href="#partitioned-result-sets">Partitioned Result Sets</a></li>
-<li><a class="reference internal" href="#lifecycle-usage">Lifecycle &amp; Usage</a><ul>
-<li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
-<li><a class="reference internal" href="#consuming-result-sets">Consuming Result Sets</a></li>
-<li><a class="reference internal" href="#bulk-data-ingestion">Bulk Data Ingestion</a></li>
-<li><a class="reference internal" href="#update-only-queries-no-result-set">Update-only Queries (No Result Set)</a></li>
-<li><a class="reference internal" href="#partitioned-execution">Partitioned Execution</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li><a class="reference internal" href="#error-handling">Error Handling</a><ul>
-<li><a class="reference internal" href="#rich-error-metadata">Rich Error Metadata</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#changelog">Changelog</a><ul>
-<li><a class="reference internal" href="#version-1-1-0">Version 1.1.0</a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#">Quickstart</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#loading-datafusion">Loading DataFusion</a></li>
+<li><a class="reference internal" href="#running-queries">Running Queries</a></li>
 </ul>
 </li>
 </ul>
