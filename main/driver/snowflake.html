@@ -652,8 +652,8 @@ Cannot be negative.</p>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.statement.ingest_copy_concurrency</span></code></dt><dd><p>Maximum number of COPY operations to run concurrently. Bulk ingestion performance is optimized by executing COPY
 queries as files are still being uploaded. Snowflake COPY speed scales with warehouse size, so smaller warehouses
 may benefit from setting this value higher to ensure long-running COPY queries do not block newly uploaded files
-from being loaded. Default is 4. If set to 0, only a single COPY query will be executed as part of ingestion,
-once all files have finished uploading. Cannot be negative.</p>
+from being loaded. Default is 4. If set to 0, there will be no limitation and instead a new COPY INTO query will
+be executed for each file that is uploaded. Cannot be negative.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.statement.ingest_target_file_size</span></code></dt><dd><p>Approximate size of Parquet files written during ingestion. Actual size will be slightly larger, depending on
 size of footer/metadata. Default is 10 MB. If set to 0, file size has no limit. Cannot be negative.</p>
