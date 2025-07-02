@@ -97,11 +97,11 @@ You can use CMake presets to build and test:
 
 ```shell
 $ mkdir build
-$ cd build
+$ pushd build
 $ cmake ../c --preset debug
 $ cmake --build .
 # ctest reads presets from PWD
-$ cd ../c
+$ pushd ../c
 $ ctest --preset debug --test-dir ../build
 ```
 
@@ -110,7 +110,7 @@ postgres driver may be built together as follows:
 
 ```shell
 $ mkdir build
-$ cd build
+$ pushd build
 $ export CMAKE_EXPORT_COMPILE_COMMANDS=ON
 $ cmake ../c -DADBC_DRIVER_POSTGRESQL=ON -DADBC_DRIVER_MANAGER=ON
 $ make -j
@@ -140,7 +140,7 @@ For example, to build and run tests for the SQLite3 driver:
 
 ```shell
 $ mkdir build
-$ cd build
+$ pushd build
 # You may need to set -DCMAKE_PREFIX_PATH such that googletest can be found
 $ cmake ../c -DADBC_BUILD_TESTS=ON -DADBC_DRIVER_SQLITE=ON
 $ make -j
@@ -198,7 +198,7 @@ $ meson test -C build
 Make sure [.NET Core is installed](https://dotnet.microsoft.com/en-us/download).
 
 ```shell
-$ cd csharp
+$ pushd csharp
 $ dotnet build
 ```
 
@@ -229,7 +229,7 @@ $ pushd python/adbc_driver_manager
 $ pip install -e .[test]
 $ popd
 
-$ cd docs
+$ pushd docs
 $ make html
 ```
 
@@ -239,7 +239,7 @@ Some documentations are maintained as [Mermaid][mermaid] diagrams, which must
 be rendered and checked in.  This can be done as follows:
 
 ```shell
-cd docs
+pushd docs
 make -f mermaid.makefile -j all
 # Check in the updated files
 ```
@@ -280,7 +280,7 @@ $ mamba activate adbc
 Go libraries are a standard Go project.
 
 ```shell
-$ cd go/adbc
+$ pushd go/adbc
 $ go build -v ./...
 $ go test -v ./...
 ```
@@ -290,7 +290,7 @@ $ go test -v ./...
 The Java components are a standard Maven project.
 
 ```shell
-$ cd java/
+$ pushd java/
 # Build and run tests
 $ mvn clean install
 ```
@@ -369,7 +369,7 @@ means all projects can be built as follows:
 
 ```shell
 $ mamba install --file ci/conda_env_python.txt
-$ cd python/adbc_driver_manager
+$ pushd python/adbc_driver_manager
 $ pip install -e .
 ```
 
@@ -409,7 +409,7 @@ The Ruby libraries are bindings around the GLib libraries.
 The Rust components are a standard Rust project.
 
 ```shell
-$ cd rust
+$ pushd rust
 # Build and run tests
 $ cargo test
 ```
@@ -505,7 +505,7 @@ $ go install github.com/google/go-licenses@latest
 You can generate the LICENSE.txt with the following command:
 
 ```shell
-$ cd go/adbc && go-licenses report ./... \
+$ pushd go/adbc && go-licenses report ./... \
   --ignore github.com/apache/arrow-adbc/go/adbc \
   --ignore github.com/apache/arrow/go/v11 \
   --ignore github.com/apache/arrow/go/v12 \
