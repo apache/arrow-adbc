@@ -532,3 +532,14 @@ pub struct PartitionedResult {
     /// The number of rows affected if known, else -1.
     pub rows_affected: i64,
 }
+
+pub type LoadFlags = u32;
+
+pub const LOAD_FLAG_SEARCH_ENV: LoadFlags = 1 << 1;
+pub const LOAD_FLAG_SEARCH_USER: LoadFlags = 1 << 2;
+pub const LOAD_FLAG_SEARCH_SYSTEM: LoadFlags = 1 << 3;
+pub const LOAD_FLAG_ALLOW_RELATIVE_PATHS: LoadFlags = 1 << 4;
+pub const LOAD_FLAG_DEFAULT: LoadFlags = LOAD_FLAG_SEARCH_ENV
+    | LOAD_FLAG_SEARCH_USER
+    | LOAD_FLAG_SEARCH_SYSTEM
+    | LOAD_FLAG_ALLOW_RELATIVE_PATHS;
