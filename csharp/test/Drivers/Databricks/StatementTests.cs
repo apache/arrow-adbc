@@ -654,49 +654,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 var columnArray = batch.Column(i);
                 Assert.Equal(actualField.DataType, columnArray.Data.DataType);
             }
-
-            //// Read and verify data
-            //var result = await ConvertQueryResultToList(queryResult);
-            //var resultJson = JsonSerializer.Serialize(result);
-            //var rowCount = result.Count;
-
-            //// Load expected result
-            //var rows = new List<Dictionary<string, object?>>();
-            //var resultString = File.ReadAllText(resultLocation)
-            //    .Replace("{CATALOG_NAME}", catalogName)
-            //    .Replace("{SCHEMA_NAME}", schemaName)
-            //    .Replace("{TABLE_NAME}", tableName)
-            //    .Replace("{REF_TABLE_NAME}", refTableName);
-
-            //// Apply extra placeholder replacements if provided
-            //if (extraPlaceholdsInResult != null)
-            //{
-            //    foreach (var placeholderReplacement in extraPlaceholdsInResult)
-            //    {
-            //        var parts = placeholderReplacement.Split(':');
-            //        if (parts.Length == 2)
-            //        {
-            //            var placeholder = parts[0];
-            //            var replacement = parts[1];
-            //            resultString = resultString.Replace("{" + placeholder + "}", replacement);
-            //        }
-            //    }
-            //}
-
-            //var expectedResult = JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(resultString);
-
-            //// For debug
-            //OutputHelper?.WriteLine(resultJson);
-
-            //// Verify we got rows matching the expected column count
-            //Assert.Equal(expectedResult!.Count, rowCount);
-
-            //// Verify the result match expected result
-            //// Assert.Equal cannot do the deep compare between 2 list with nested object, let us compare with json
-            //var expectedResultJson = JsonSerializer.Serialize(expectedResult);
-            //Assert.Equal(expectedResultJson, resultJson);
-
-            //OutputHelper?.WriteLine($"Successfully retrieved {rowCount} columns with extended information");
         }
 
         // Helper method to get string representation of array values
