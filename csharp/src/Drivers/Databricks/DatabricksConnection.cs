@@ -438,7 +438,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version)) {
                     throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
                 }
-                _enablePKFK = FeatureVersionNegotiator.SupportsPKFK(version);
+                _enablePKFK = _enablePKFK && FeatureVersionNegotiator.SupportsPKFK(version);
                 _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
                 if (session.__isset.initialNamespace)
                 {
