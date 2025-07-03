@@ -17,6 +17,7 @@
 
 """Misc directives for the ADBC docs."""
 
+import collections
 import dataclasses
 import functools
 import itertools
@@ -24,16 +25,26 @@ import typing
 from pathlib import Path
 
 import docutils
+import sphinx
 from docutils.statemachine import StringList
 from sphinx.util.docutils import SphinxDirective
 from sphinx.util.nodes import nested_parse_with_titles
 from sphinx.util.typing import OptionSpec
 
-_PACKAGE_REPOS = {
-    "cran": "CRAN",
-    "maven": "Maven",
-    "nuget": "NuGet",
-    "pypi": "PyPI",
+LOGGER = sphinx.util.logging.getLogger(__name__)
+
+# conda-forge is handled specially
+_REPO_TO_LANGUAGE = {
+    "CRAN": "R",
+    "crates.io": "Rust",
+    "Maven": "Java",
+    "NuGet": "C#",
+    "RubyGems": "Ruby",
+    "PyPI": "Python",
+}
+
+_LANGUAGE_TO_KEY = {
+    "C/C++": "cpp",
 }
 
 
@@ -67,13 +78,13 @@ def _driver_status(path: Path) -> DriverStatus:
                 before, _, after = line.partition("img.shields.io")
                 tag = before[before.index("![") + 2 : before.index("]")].strip()
                 key, _, value = tag.partition(": ")
-                key = key.strip().lower()
+                key = key.strip()
                 value = value.strip()
 
-                if key in {"vendor", "implementation", "status"}:
-                    meta[key] = value
+                if key.lower() in {"vendor", "implementation", "status"}:
+                    meta[key.lower()] = value
                 else:
-                    repo = _PACKAGE_REPOS.get(key, key)
+                    repo = key
                     url = after[after.rfind("(") + 1 : after.rfind(")")].strip()
                     packages.append((repo, value, url))
     return DriverStatus(**meta, packages=packages)
@@ -81,6 +92,121 @@ def _driver_status(path: Path) -> DriverStatus:
 
 def driver_status(path: Path) -> DriverStatus:
     return _driver_status(path.resolve())
+
+
+class DriverInstallationDirective(SphinxDirective):
+    has_content = False
+    required_arguments = 1
+    optional_arguments = 0
+    option_spec: OptionSpec = {}
+
+    def run(self):
+        rel_filename, filename = self.env.relfn2path(self.arguments[0])
+        self.env.note_dependency(rel_filename)
+
+        path = Path(filename).resolve()
+        status = driver_status(path)
+
+        generated_lines = []
+
+        if not status.packages:
+            generated_lines.append("No packages available; install from source.")
+        else:
+            generated_lines.append(".. tab-set::")
+
+            # language : list of (repo, package, url)
+            languages = collections.defaultdict(list)
+
+            for i, (repo, package, url) in enumerate(status.packages):
+                language = None
+                if repo == "conda-forge":
+                    if package.startswith("lib"):
+                        language = "C/C++"
+                    else:
+                        language = "Python"
+                else:
+                    language = _REPO_TO_LANGUAGE.get(repo)
+
+                if language is None:
+                    LOGGER.warning(
+                        f"Unknown language mapping for package repo {repo}",
+                        type="adbc_misc",
+                    )
+                    continue
+
+                languages[language].append((repo, package, url))
+
+            if "Go" not in languages:
+                languages["Go"] = []
+
+            for language, packages in sorted(languages.items(), key=lambda x: x[0]):
+                generated_lines.append("")
+                generated_lines.append(f"   .. tab-item:: {language}")
+                generated_lines.append(
+                    f"      :sync: {_LANGUAGE_TO_KEY.get(language, language.lower())}"
+                )
+                generated_lines.append("")
+
+                for repo, package, url in sorted(packages, key=lambda x: (x[0], x[1])):
+                    generated_lines.append(
+                        f"      Install `{package} <{url}>`_ from {repo}:"
+                    )
+                    generated_lines.append("")
+                    if repo == "conda-forge":
+                        generated_lines.append("      .. code-block:: shell")
+                        generated_lines.append("")
+                        generated_lines.append(f"         mamba install {package}")
+                    elif repo == "CRAN":
+                        generated_lines.append("      .. code-block:: r")
+                        generated_lines.append("")
+                        generated_lines.append(
+                            f'         install.packages("{package}")'
+                        )
+                    elif repo == "PyPI":
+                        generated_lines.append("      .. code-block:: shell")
+                        generated_lines.append("")
+                        generated_lines.append(f"         pip install {package}")
+                    else:
+                        LOGGER.warning(f"Unknown package repo {repo}", type="adbc_misc")
+                        continue
+                    generated_lines.append("")
+
+                if not packages:
+                    if language == "Go":
+                        generated_lines.append(
+                            "      Install the C/C++ driver, "
+                            "then use the Go driver manager.  "
+                            "Requires CGO."
+                        )
+                        generated_lines.append("")
+                        generated_lines.append("      .. code-block:: shell")
+                        generated_lines.append("")
+                        generated_lines.append(
+                            "         go get "
+                            "github.com/apache/arrow-adbc/go/adbc/drivermgr"
+                        )
+                    else:
+                        LOGGER.warning(
+                            f"No packages and unknown language {language}",
+                            type="adbc_misc",
+                        )
+
+        if status.implementation in {"C/C++", "C#", "Go", "Rust"}:
+            generated_lines.append("")
+            generated_lines.append(
+                "May be used from C/C++, C#, GLib, Go, R, "
+                "Ruby, and Rust via the driver manager."
+            )
+
+        print("\n".join(generated_lines))
+
+        parsed = docutils.nodes.Element()
+        nested_parse_with_titles(
+            self.state,
+            StringList(generated_lines, source=""),
+            parsed,
+        )
+        return parsed.children
 
 
 class DriverStatusDirective(SphinxDirective):
@@ -100,24 +226,6 @@ class DriverStatusDirective(SphinxDirective):
             f":bdg-primary:`Language: {status.implementation}`"
             f":bdg-{status.badge_type}:`Status: {status.status}`"
         ]
-
-        if status.packages:
-            generated_lines.append("")
-            generated_lines.append("**Available from:**")
-            for i, (repo, package, url) in enumerate(status.packages):
-                if i > 0:
-                    generated_lines[-1] += ", "
-                generated_lines.append(f"`{repo} ({package}) <{url}>`_")
-                if i + 1 == len(status.packages):
-                    generated_lines[-1] += "."
-
-        if status.implementation in {"C/C++", "C#", "Go", "Rust"}:
-            if not status.packages:
-                generated_lines.append("")
-            generated_lines.append(
-                "May be used from C/C++, C#, GLib, Go, R, "
-                "Ruby, and Rust via the driver manager."
-            )
 
         parsed = docutils.nodes.Element()
         nested_parse_with_titles(
@@ -218,6 +326,7 @@ class DriverStatusTableDirective(SphinxDirective):
 
 
 def setup(app) -> None:
+    app.add_directive("adbc_driver_installation", DriverInstallationDirective)
     app.add_directive("adbc_driver_status", DriverStatusDirective)
     app.add_directive("adbc_driver_status_table", DriverStatusTableDirective)
 
