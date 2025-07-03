@@ -29,6 +29,13 @@ from sphinx.util.docutils import SphinxDirective
 from sphinx.util.nodes import nested_parse_with_titles
 from sphinx.util.typing import OptionSpec
 
+_PACKAGE_REPOS = {
+    "cran": "CRAN",
+    "maven": "Maven",
+    "nuget": "NuGet",
+    "pypi": "PyPI",
+}
+
 
 @dataclasses.dataclass(frozen=True)
 class DriverStatus:
@@ -66,7 +73,7 @@ def _driver_status(path: Path) -> DriverStatus:
                 if key in {"vendor", "implementation", "status"}:
                     meta[key] = value
                 else:
-                    repo = key
+                    repo = _PACKAGE_REPOS.get(key, key)
                     url = after[after.rfind("(") + 1 : after.rfind(")")].strip()
                     packages.append((repo, value, url))
     return DriverStatus(**meta, packages=packages)
@@ -90,17 +97,19 @@ class DriverStatusDirective(SphinxDirective):
         status = driver_status(path)
 
         generated_lines = [
-            f":bdg-primary:`{status.implementation}`"
-            f":bdg-{status.badge_type}:`{status.status}`"
+            f":bdg-primary:`Language: {status.implementation}`"
+            f":bdg-{status.badge_type}:`Status: {status.status}`"
         ]
 
         if status.packages:
             generated_lines.append("")
-            generated_lines.append("Available from:")
-            for repo, package, url in status.packages:
-                generated_lines.append(
-                    f":bdg-link-secondary:`{repo} ({package}) <{url}>`"
-                )
+            generated_lines.append("**Available from:**")
+            for i, (repo, package, url) in enumerate(status.packages):
+                if i > 0:
+                    generated_lines[-1] += ", "
+                generated_lines.append(f"`{repo} ({package}) <{url}>`_")
+                if i + 1 == len(status.packages):
+                    generated_lines[-1] += "."
 
         if status.implementation in {"C/C++", "C#", "Go", "Rust"}:
             if not status.packages:
@@ -171,13 +180,12 @@ class DriverStatusTableDirective(SphinxDirective):
                 generated_lines[-1] += f" [#{row[2]}]_"
 
             generated_lines.append(f"     - {row[0].implementation}")
-            badge_type = row[0].badge_type
-            generated_lines.append(f"     - :bdg-{badge_type}:`{row[0].status}`")
+            generated_lines.append(f"     - {row[0].status}")
 
             generated_lines.append("     -")
-            sortkey = lambda x: x[0]  # noqa:E731
             packages = itertools.groupby(
-                sorted(row[0].packages, key=sortkey), key=sortkey
+                sorted(row[0].packages, key=lambda x: x[0].lower()),
+                key=lambda x: x[0],
             )
             for repo, group in packages:
                 group = list(group)
@@ -189,9 +197,7 @@ class DriverStatusTableDirective(SphinxDirective):
                 if len(group) == 1:
                     generated_lines[-1] += f"`{repo} <{group[0][2]}>`__"
                 else:
-                    links = ", ".join(
-                        f"`{i} <{pkg[2]}>`__" for i, pkg in enumerate(group)
-                    )
+                    links = ", ".join(f"`{pkg[1]} <{pkg[2]}>`__" for pkg in group)
                     generated_lines[-1] += f"{repo} ({links})"
             generated_lines.append("")
 
@@ -201,22 +207,6 @@ class DriverStatusTableDirective(SphinxDirective):
                 ".. [#packages] This lists only packages available in package repositories.  However, as noted above, many of these drivers can be used from languages not listed via the driver manager, even if a package is not yet available.",  # noqa:E501
             ]
         )
-
-        # if status.packages:
-        #     generated_lines.append("")
-        #     generated_lines.append("Available from:")
-        #     for repo, package, url in status.packages:
-        #         generated_lines.append(
-        #             f":bdg-link-secondary:`{repo} ({package}) <{url}>`"
-        #         )
-
-        # if status.implementation in {"C/C++", "C#", "Go", "Rust"}:
-        #     if not status.packages:
-        #         generated_lines.append("")
-        #     generated_lines.append(
-        #         "May be used from C/C++, C#, GLib, Go, R, "
-        #         "Ruby, and Rust via the driver manager."
-        #     )
 
         parsed = docutils.nodes.Element()
         nested_parse_with_titles(

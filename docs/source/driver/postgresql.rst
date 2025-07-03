@@ -31,16 +31,12 @@ overall approach.
 .. _libpq: https://www.postgresql.org/docs/current/libpq.html
 .. _pgeon: https://github.com/0x0L/pgeon
 
-.. note:: The PostgreSQL driver is in beta.
-          Performance/optimization and support for complex types and
-          different ADBC features is still ongoing.
-
-.. note:: AWS Redshift supports a very old version of the PostgreSQL
-          wire protocol and has a basic level of support in the ADBC
-          PostgreSQL driver. Because Redshift does not support reading or
-          writing COPY in PostgreSQL binary format, the optimizations that
-          accelerate non-Redshift queries are not enabled when connecting
-          to a Redshift database. This functionality is experimental.
+.. note:: This driver has experimental support for Amazon Redshift.  As
+          Redshift does not support reading or writing COPY in PostgreSQL
+          binary format, however, the optimizations that accelerate
+          non-Redshift queries are not enabled when connecting to a Redshift
+          database.  There may also be other differences in functionality;
+          please file a bug report if problems are encountered.
 
 Installation
 ============
