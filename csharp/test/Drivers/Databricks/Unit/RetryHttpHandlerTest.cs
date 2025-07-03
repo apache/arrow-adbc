@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 {
     /// <summary>
     /// Tests for the RetryHttpHandler class.
