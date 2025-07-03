@@ -24,3 +24,33 @@ dynamically-loaded drivers.  This allows applications to load drivers at
 runtime, and use drivers that aren't necessarily written in Rust.  It is
 currently part of the adbc_core package, though we plan to split it into its
 own package for users who don't want or need FFI.
+
+Installation
+============
+
+.. code-block:: shell
+
+   cargo add adbc_core --features driver_manager
+
+Usage
+=====
+
+.. code-block:: rust
+
+    use adbc_core::{Connection, Database, Driver, Statement};
+    use adbc_core::options::{AdbcVersion, OptionDatabase};
+    use adbc_core::driver_manager::ManagedDriver;
+
+    // You must build/locate the driver yourself
+    let mut driver = ManagedDriver::load_dynamic_from_filename(
+        "/PATH/TO/libadbc_driver_sqlite.so",
+        None,
+        AdbcVersion::default(),
+    ).expect("Failed to load driver");
+    let db = driver.new_database().expect("Failed to create database handle");
+    let mut conn = db.new_connection().expect("Failed to create connection");
+
+API Reference
+=============
+
+See the API reference: `Module driver_manager <https://docs.rs/adbc_core/latest/adbc_core/driver_manager/>`_.
