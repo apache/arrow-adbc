@@ -43,7 +43,7 @@ class DatabaseOptions(enum.Enum):
     #:
     #: or, it should be the encoded JSON string if
     #: AUTH_TYPE is AUTH_VALUE_JSON_CREDENTIAL_STRING
-    AUTH_CREDENTIALS = "adbc.bigquery.sql.auth.credentials"
+    AUTH_CREDENTIALS = "adbc.bigquery.sql.auth_credentials"
 
     #: Specify the client ID, client secret and refresh_token to
     #: use for bigquery connection if AUTH_TYPE is
