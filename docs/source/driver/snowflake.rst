@@ -60,8 +60,7 @@ Installation
 
       .. code-block:: shell
 
-         # install.packages("pak")
-         pak::pak("apache/arrow-adbc/r/adbcsnowflake")
+         install.packages("adbcsnowflake", repos = "https://community.r-multiverse.org")
 
 Usage
 =====
@@ -145,6 +144,14 @@ The Snowflake URI should be of one of the following formats:
 - ``user[:password]@account/database[?param1=value1&paramN=valueN]``
 - ``user[:password]@host:port/database/schema?account=user_account[&param1=value1&paramN=valueN]``
 - ``host:port/database/schema?account=user_account[&param1=value1&paramN=valueN]``
+
+Refer to the official
+`Snowflake documentation <https://docs.snowflake.com/en/user-guide/gen-conn-config>`_
+to obtain a valid connection URI or to the
+`Snowflake Go driver documentation <https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-Connection_String>`_
+to build a URI manually.
+Notice that from the Snowflake context, arrow-adbc is considered the Snowflake Go driver since
+that implementation is used under the hood.
 
 Alternately, instead of providing a full URI, the configuration can
 be entirely supplied using the other available options or some combination
@@ -298,8 +305,8 @@ and resource usage may be tuned with the following options on the :c:struct:`Adb
     Maximum number of COPY operations to run concurrently. Bulk ingestion performance is optimized by executing COPY
     queries as files are still being uploaded. Snowflake COPY speed scales with warehouse size, so smaller warehouses
     may benefit from setting this value higher to ensure long-running COPY queries do not block newly uploaded files
-    from being loaded. Default is 4. If set to 0, only a single COPY query will be executed as part of ingestion,
-    once all files have finished uploading. Cannot be negative.
+    from being loaded. Default is 4. If set to 0, there will be no limitation and instead a new COPY INTO query will
+    be executed for each file that is uploaded. Cannot be negative.
 
 ``adbc.snowflake.statement.ingest_target_file_size``
     Approximate size of Parquet files written during ingestion. Actual size will be slightly larger, depending on

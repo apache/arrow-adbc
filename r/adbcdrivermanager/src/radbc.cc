@@ -20,6 +20,7 @@
 #include <Rinternals.h>
 
 #include <cstring>
+#include <string>
 #include <utility>
 
 #include "arrow-adbc/adbc.h"
@@ -90,28 +91,60 @@ static void finalize_database_xptr(SEXP database_xptr) {
   adbc_xptr_default_finalize<AdbcDatabase>(database_xptr);
 }
 
-extern "C" SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp) {
-  const char* driver_name = adbc_as_const_char(driver_name_sexp);
-  const char* entrypoint = adbc_as_const_char(entrypoint_sexp);
-
-  SEXP driver_xptr = PROTECT(adbc_allocate_xptr<AdbcDriver>());
-  auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
-
-  int status =
-      AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_1_0, driver, nullptr);
-  if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
-    status = AdbcLoadDriver(driver_name, entrypoint, ADBC_VERSION_1_0_0, driver, nullptr);
-  }
-
-  if (status != ADBC_STATUS_OK) {
-    Rf_error("Failed to initialize driver");
-  }
-
-  UNPROTECT(1);
-  return driver_xptr;
+namespace adbc {
+const std::string& CurrentArch();
 }
 
-extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr) {
+extern "C" SEXP RAdbcCurrentArch(void) {
+  auto current_arch = adbc::CurrentArch();
+  return Rf_mkString(current_arch.c_str());
+}
+
+extern "C" SEXP RAdbcAllocateDriver(void) {
+  SEXP driver_xptr = PROTECT(adbc_allocate_xptr<AdbcDriver>());
+  R_RegisterCFinalizer(driver_xptr, &finalize_driver_xptr);
+
+  // Make sure we error when the ADBC spec is updated
+  static_assert(sizeof(AdbcDriver) == ADBC_DRIVER_1_1_0_SIZE);
+  SEXP version_sexp = PROTECT(Rf_ScalarInteger(ADBC_VERSION_1_1_0));
+
+  const char* names[] = {"driver", "version", ""};
+  SEXP out = PROTECT(Rf_mkNamed(VECSXP, names));
+  SET_VECTOR_ELT(out, 0, driver_xptr);
+  SET_VECTOR_ELT(out, 1, version_sexp);
+  UNPROTECT(3);
+  return out;
+}
+
+extern "C" SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp,
+                                SEXP version_sexp, SEXP load_flags_sexp, SEXP driver_sexp,
+                                SEXP error_sexp) {
+  const char* driver_name = adbc_as_const_char(driver_name_sexp);
+  const char* entrypoint = adbc_as_const_char(entrypoint_sexp, /*nullable*/ true);
+  int version = adbc_as_int(version_sexp);
+  int load_flags = adbc_as_int(load_flags_sexp);
+
+  if (TYPEOF(driver_sexp) != EXTPTRSXP) {
+    Rf_error("driver must be an externalptr");
+  }
+  void* driver = R_ExternalPtrAddr(driver_sexp);
+
+  AdbcError* error;
+  if (error_sexp == R_NilValue) {
+    error = nullptr;
+  } else if (TYPEOF(error_sexp) == EXTPTRSXP) {
+    error = reinterpret_cast<AdbcError*>(R_ExternalPtrAddr(error_sexp));
+  } else {
+    Rf_error("error must be an externalptr");
+  }
+
+  int status =
+      AdbcFindLoadDriver(driver_name, entrypoint, version, load_flags, driver, error);
+  return Rf_ScalarInteger(status);
+}
+
+extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr, SEXP version_sexp,
+                                            SEXP driver_sexp, SEXP error_sexp) {
   if (!Rf_inherits(driver_init_func_xptr, "adbc_driver_init_func")) {
     Rf_error("Expected external pointer with class '%s'", "adbc_driver_init_func");
   }
@@ -119,26 +152,27 @@ extern "C" SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr) {
   auto driver_init_func =
       reinterpret_cast<AdbcDriverInitFunc>(R_ExternalPtrAddrFn(driver_init_func_xptr));
 
-  SEXP driver_xptr = PROTECT(adbc_allocate_xptr<AdbcDriver>());
-  R_RegisterCFinalizer(driver_xptr, &finalize_driver_xptr);
-  auto driver = adbc_from_xptr<AdbcDriver>(driver_xptr);
+  int version = adbc_as_int(version_sexp);
 
-  int status =
-      AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_1_0, driver, nullptr);
-  if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
-    status =
-        AdbcLoadDriverFromInitFunc(driver_init_func, ADBC_VERSION_1_0_0, driver, nullptr);
+  if (TYPEOF(driver_sexp) != EXTPTRSXP) {
+    Rf_error("driver must be an externalptr");
+  }
+  void* driver = R_ExternalPtrAddr(driver_sexp);
+
+  AdbcError* error;
+  if (error_sexp == R_NilValue) {
+    error = nullptr;
+  } else if (TYPEOF(error_sexp) == EXTPTRSXP) {
+    error = reinterpret_cast<AdbcError*>(R_ExternalPtrAddr(error_sexp));
+  } else {
+    Rf_error("error must be an externalptr");
   }
 
-  if (status != ADBC_STATUS_OK) {
-    Rf_error("Failed to initialize driver");
-  }
-
-  UNPROTECT(1);
-  return driver_xptr;
+  int status = AdbcLoadDriverFromInitFunc(driver_init_func, version, driver, error);
+  return Rf_ScalarInteger(status);
 }
 
-extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
+extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr, SEXP load_flags_sexp) {
   SEXP database_xptr = PROTECT(adbc_allocate_xptr<AdbcDatabase>());
   R_RegisterCFinalizer(database_xptr, &finalize_database_xptr);
 
@@ -146,6 +180,10 @@ extern "C" SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr) {
 
   AdbcError error = ADBC_ERROR_INIT;
   int status = AdbcDatabaseNew(database, &error);
+  adbc_error_stop(status, &error);
+
+  int load_flags = adbc_as_int(load_flags_sexp);
+  status = AdbcDriverManagerDatabaseSetLoadFlags(database, load_flags, &error);
   adbc_error_stop(status, &error);
 
   if (driver_init_func_xptr != R_NilValue) {

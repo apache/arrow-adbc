@@ -37,6 +37,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     internal class ImpalaHttpConnection : ImpalaConnection
     {
         private const string BasicAuthenticationScheme = "Basic";
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(ImpalaHttpConnection));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(ImpalaHttpConnection));
 
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
@@ -205,5 +207,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override ImpalaServerType ServerType => ImpalaServerType.Http;
 
         protected override int ColumnMapIndexOffset => 0;
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

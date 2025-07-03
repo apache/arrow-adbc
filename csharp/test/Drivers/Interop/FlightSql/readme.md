@@ -32,6 +32,7 @@ A growing number of data sources support Arrow Flight SQL. This library has test
 - [Dremio](https://docs.dremio.com/current/sonar/developing-client-apps/arrow-flight-sql/)
 - [DuckDB](https://github.com/voltrondata/SQLFlite)
 - [SQLite](https://github.com/voltrondata/SQLFlite)
+- [Spice.ai OSS](https://github.com/spiceai/spiceai)
 
 It is recommended you test your data source with the Flight SQL Go driver to ensure compatibility, since each data source can implement the Flight protocol slightly differently.
 
@@ -49,6 +50,7 @@ A sample configuration file is provided in the Resources directory. The configur
     - Denodo
     - DuckDB
     - SQLite
+    - SpiceAI
 - **tableTypes**: The table types to include in the GetObjects call
 - **sqlFile**: A path to a SQL file to run queries to test CRUD operations
 - **metadata**: Used for the GetObjects calls
@@ -82,4 +84,32 @@ simultaneously. To use multiple data sources, you can configure them like:
         "Dremio_Remote**: {
            ...
         }
+```
+
+### Spice.ai OSS Configuration
+
+Use the following command to run a local test instance of Spice.ai OSS. An example test configuration is available at [flightsql-spiceai.json](/csharp/configs/flightsql-spiceai.json).
+
+```bash
+docker compose up spiceai-test
+```
+
+Output:
+
+```console
+[+] Running 1/0
+ ✔ Container adbc-spiceai  Created                                                    0.0s
+Attaching to adbc-spiceai
+adbc-spiceai  | 2025-06-12T22:44:38.684347Z  INFO spiced: Starting runtime v1.4.0+models
+adbc-spiceai  | 2025-06-12T22:44:38.684737Z  INFO runtime::init::caching: Initialized results cache; max size: 128.00 MiB, item ttl: 1s
+adbc-spiceai  | 2025-06-12T22:44:38.684772Z  INFO runtime::init::caching: Initialized search results cache;
+adbc-spiceai  | 2025-06-12T22:44:39.043113Z  INFO runtime::init::dataset: Initializing dataset nation
+adbc-spiceai  | 2025-06-12T22:44:39.044803Z  INFO runtime::metrics_server: Spice Runtime Metrics listening on 0.0.0.0:9090
+adbc-spiceai  | 2025-06-12T22:44:39.044866Z  INFO runtime::opentelemetry: Spice Runtime OpenTelemetry listening on 127.0.0.1:50052
+adbc-spiceai  | 2025-06-12T22:44:39.044926Z  INFO runtime::http: Spice Runtime HTTP listening on 0.0.0.0:8090
+adbc-spiceai  | 2025-06-12T22:44:39.044351Z  INFO runtime::flight: Spice Runtime Flight listening on 0.0.0.0:50051
+adbc-spiceai  | 2025-06-12T22:44:39.848102Z  INFO runtime::init::dataset: Dataset nation registered (s3://spiceai-demo-datasets/tpch/nation/), acceleration (arrow), results cache enabled.
+adbc-spiceai  | 2025-06-12T22:44:39.849943Z  INFO runtime::accelerated_table::refresh_task: Loading data for dataset nation
+adbc-spiceai  | 2025-06-12T22:44:40.537458Z  INFO runtime::accelerated_table::refresh_task: Loaded 25 rows (3.35 kiB) for dataset nation in 687ms.
+adbc-spiceai  | 2025-06-12T22:44:40.568947Z  INFO runtime: All components are loaded. Spice runtime is ready!
 ```

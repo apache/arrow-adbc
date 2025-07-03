@@ -16,11 +16,12 @@
 */
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -32,6 +33,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
     /// </summary>
     internal sealed class CloudFetchReader : BaseDatabricksReader
     {
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(CloudFetchReader));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(CloudFetchReader));
+
         private ICloudFetchDownloadManager? downloadManager;
         private ArrowStreamReader? currentReader;
         private IDownloadResult? currentDownloadResult;
@@ -43,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// <param name="statement">The Databricks statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        public CloudFetchReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, HttpClient httpClient)
+        public CloudFetchReader(DatabricksStatement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed, HttpClient httpClient)
             : base(statement, schema, isLz4Compressed)
         {
             // Check if prefetch is enabled
@@ -64,17 +68,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             // Initialize the download manager
             if (isPrefetchEnabled)
             {
-                downloadManager = new CloudFetchDownloadManager(statement, schema, isLz4Compressed, httpClient);
+                downloadManager = new CloudFetchDownloadManager(statement, schema, initialResults, isLz4Compressed, httpClient);
                 downloadManager.StartAsync().Wait();
             }
             else
             {
                 // For now, we only support the prefetch implementation
                 // This flag is reserved for future use if we need to support a non-prefetch mode
-                downloadManager = new CloudFetchDownloadManager(statement, schema, isLz4Compressed, httpClient);
+                downloadManager = new CloudFetchDownloadManager(statement, schema, initialResults, isLz4Compressed, httpClient);
                 downloadManager.StartAsync().Wait();
             }
         }
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
 
         /// <summary>
         /// Reads the next record batch from the result set.
@@ -83,80 +91,83 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// <returns>The next record batch, or null if there are no more batches.</returns>
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            ThrowIfDisposed();
-
-            while (true)
+            return await this.TraceActivityAsync(async _ =>
             {
-                // If we have a current reader, try to read the next batch
-                if (this.currentReader != null)
-                {
-                    RecordBatch? next = await this.currentReader.ReadNextRecordBatchAsync(cancellationToken);
-                    if (next != null)
-                    {
-                        return next;
-                    }
-                    else
-                    {
-                        // Clean up the current reader and download result
-                        this.currentReader.Dispose();
-                        this.currentReader = null;
+                ThrowIfDisposed();
 
-                        if (this.currentDownloadResult != null)
+                while (true)
+                {
+                    // If we have a current reader, try to read the next batch
+                    if (this.currentReader != null)
+                    {
+                        RecordBatch? next = await this.currentReader.ReadNextRecordBatchAsync(cancellationToken);
+                        if (next != null)
                         {
-                            this.currentDownloadResult.Dispose();
-                            this.currentDownloadResult = null;
+                            return next;
+                        }
+                        else
+                        {
+                            // Clean up the current reader and download result
+                            this.currentReader.Dispose();
+                            this.currentReader = null;
+
+                            if (this.currentDownloadResult != null)
+                            {
+                                this.currentDownloadResult.Dispose();
+                                this.currentDownloadResult = null;
+                            }
                         }
                     }
-                }
 
-                // If we don't have a current reader, get the next downloaded file
-                if (this.downloadManager != null)
-                {
-                    // Start the download manager if it's not already started
-                    if (!this.isPrefetchEnabled)
+                    // If we don't have a current reader, get the next downloaded file
+                    if (this.downloadManager != null)
                     {
-                        throw new InvalidOperationException("Prefetch must be enabled.");
-                    }
-
-                    try
-                    {
-                        // Get the next downloaded file
-                        this.currentDownloadResult = await this.downloadManager.GetNextDownloadedFileAsync(cancellationToken);
-                        if (this.currentDownloadResult == null)
+                        // Start the download manager if it's not already started
+                        if (!this.isPrefetchEnabled)
                         {
-                            this.downloadManager.Dispose();
-                            this.downloadManager = null;
-                            // No more files
-                            return null;
+                            throw new InvalidOperationException("Prefetch must be enabled.");
                         }
 
-                        await this.currentDownloadResult.DownloadCompletedTask;
-
-                        // Create a new reader for the downloaded file
                         try
                         {
-                            this.currentReader = new ArrowStreamReader(this.currentDownloadResult.DataStream);
-                            continue;
+                            // Get the next downloaded file
+                            this.currentDownloadResult = await this.downloadManager.GetNextDownloadedFileAsync(cancellationToken);
+                            if (this.currentDownloadResult == null)
+                            {
+                                this.downloadManager.Dispose();
+                                this.downloadManager = null;
+                                // No more files
+                                return null;
+                            }
+
+                            await this.currentDownloadResult.DownloadCompletedTask;
+
+                            // Create a new reader for the downloaded file
+                            try
+                            {
+                                this.currentReader = new ArrowStreamReader(this.currentDownloadResult.DataStream);
+                                continue;
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Error creating Arrow reader: {ex.Message}");
+                                this.currentDownloadResult.Dispose();
+                                this.currentDownloadResult = null;
+                                throw;
+                            }
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Error creating Arrow reader: {ex.Message}");
-                            this.currentDownloadResult.Dispose();
-                            this.currentDownloadResult = null;
+                            Debug.WriteLine($"Error getting next downloaded file: {ex.Message}");
                             throw;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error getting next downloaded file: {ex.Message}");
-                        throw;
-                    }
-                }
 
-                StopOperationStatusPoller();
-                // If we get here, there are no more files
-                return null;
-            }
+                    StopOperationStatusPoller();
+                    // If we get here, there are no more files
+                    return null;
+                }
+            });
         }
 
         protected override void DisposeResources()

@@ -15,19 +15,30 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <stdlib.h>
+#include <algorithm>
+#include <filesystem>  // NOLINT [build/c++17]
 #include <memory>
 #include <string>
+#include <toml++/toml.hpp>
 #include <vector>
 
 #include "arrow-adbc/adbc.h"
 #include "arrow-adbc/adbc_driver_manager.h"
+#include "current_arch.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
 
-std::string AdbcDriverManagerDefaultEntrypoint(const std::string& filename);
+std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& filename);
+std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
+std::filesystem::path InternalAdbcUserConfigDir();
 
 // Tests of the SQLite example driver, except using the driver manager
 
@@ -299,7 +310,7 @@ class SqliteStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
-TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
+TEST(AdbcDriverManagerInternal, InternalAdbcDriverManagerDefaultEntrypoint) {
   for (const auto& driver : {
            "adbc_driver_sqlite",
            "adbc_driver_sqlite.dll",
@@ -312,7 +323,8 @@ TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
            "C:\\System32\\adbc_driver_sqlite.dll",
        }) {
     SCOPED_TRACE(driver);
-    EXPECT_EQ("AdbcDriverSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+    EXPECT_EQ("AdbcDriverSqliteInit",
+              ::InternalAdbcDriverManagerDefaultEntrypoint(driver));
   }
 
   for (const auto& driver : {
@@ -322,7 +334,7 @@ TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
            "C:\\System32\\sqlite.dll",
        }) {
     SCOPED_TRACE(driver);
-    EXPECT_EQ("AdbcSqliteInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+    EXPECT_EQ("AdbcSqliteInit", ::InternalAdbcDriverManagerDefaultEntrypoint(driver));
   }
 
   for (const auto& driver : {
@@ -332,7 +344,351 @@ TEST(AdbcDriverManagerInternal, AdbcDriverManagerDefaultEntrypoint) {
            "C:\\System32\\proprietary_engine.dll",
        }) {
     SCOPED_TRACE(driver);
-    EXPECT_EQ("AdbcProprietaryEngineInit", ::AdbcDriverManagerDefaultEntrypoint(driver));
+    EXPECT_EQ("AdbcProprietaryEngineInit",
+              ::InternalAdbcDriverManagerDefaultEntrypoint(driver));
+  }
+
+  for (const auto& driver : {
+           "driver_example",
+           "libdriver_example.so",
+       }) {
+    SCOPED_TRACE(driver);
+    EXPECT_EQ("AdbcDriverExampleInit",
+              ::InternalAdbcDriverManagerDefaultEntrypoint(driver));
   }
 }
+
+TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
+  // Test parsing a path of directories
+#ifdef _WIN32
+  static const char* const delimiter = ";";
+#else
+  static const char* const delimiter = ":";
+#endif
+
+  std::vector<std::string> paths = {
+      "/usr/lib/adbc/drivers", "/usr/local/lib/adbc/drivers",
+      "/opt/adbc/drivers",     "/home/user/.config/adbc/drivers",
+#ifdef _WIN32
+      "/home/\":foo:\"/bar",
+#endif
+  };
+
+  std::ostringstream joined;
+  std::copy(paths.begin(), paths.end(),
+            std::ostream_iterator<std::string>(joined, delimiter));
+
+  auto output = InternalAdbcParsePath(joined.str());
+  EXPECT_THAT(output, ::testing::ElementsAreArray(paths));
+}
+
+class DriverManifest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    std::memset(&driver, 0, sizeof(driver));
+    std::memset(&error, 0, sizeof(error));
+
+#ifndef ADBC_DRIVER_MANAGER_TEST_LIB
+    GTEST_SKIP() << "ADBC_DRIVER_MANAGER_TEST_LIB is not defined. "
+                    "This test requires a driver library to be specified.";
+#else
+    driver_path = std::filesystem::path(ADBC_DRIVER_MANAGER_TEST_LIB);
+    if (!std::filesystem::exists(driver_path)) {
+      GTEST_SKIP() << "Driver library does not exist: " << driver_path;
+    }
+
+    simple_manifest = toml::table{
+        {"name", "SQLite3"},
+        {"publisher", "arrow-adbc"},
+        {"version", "X.Y.Z"},
+        {"ADBC",
+         toml::table{
+             {"version", "1.1.0"},
+         }},
+        {"Driver",
+         toml::table{
+             {"shared",
+              toml::table{
+                  {adbc::CurrentArch(), driver_path.string()},
+              }},
+         }},
+    };
+
+    auto temp_path = std::filesystem::temp_directory_path();
+    temp_path /= "adbc_driver_manager_test";
+
+    ASSERT_TRUE(std::filesystem::create_directories(temp_path));
+    temp_dir = temp_path;
+#endif
+  }
+
+  void TearDown() override {
+    if (error.release) {
+      error.release(&error);
+    }
+
+    if (driver.release) {
+      ASSERT_THAT(driver.release(&driver, &error), IsOkStatus(&error));
+      ASSERT_EQ(driver.private_data, nullptr);
+      ASSERT_EQ(driver.private_manager, nullptr);
+    }
+
+    driver_path.clear();
+    if (std::filesystem::exists(temp_dir)) {
+      std::filesystem::remove_all(temp_dir);
+    }
+  }
+
+ protected:
+  void SetConfigPath(const char* path) {
+#ifdef _WIN32
+    ASSERT_TRUE(SetEnvironmentVariable("ADBC_CONFIG_PATH", path));
+#else
+    setenv("ADBC_CONFIG_PATH", path, 1);
+#endif
+  }
+
+  void UnsetConfigPath() { SetConfigPath(""); }
+
+  struct AdbcDriver driver = {};
+  struct AdbcError error = {};
+
+  std::filesystem::path driver_path;
+  std::filesystem::path temp_dir;
+  toml::table simple_manifest;
+};
+
+TEST_F(DriverManifest, LoadDriverEnv) {
+  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              Not(IsOkStatus(&error)));
+
+  std::ofstream test_manifest_file(temp_dir / "sqlite.toml");
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  SetConfigPath(temp_dir.string().c_str());
+
+  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
+
+  UnsetConfigPath();
+}
+
+TEST_F(DriverManifest, LoadNonAsciiPath) {
+  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              Not(IsOkStatus(&error)));
+
+#ifdef _WIN32
+  std::filesystem::path non_ascii_dir = temp_dir / L"majestik møøse";
+#else
+  std::filesystem::path non_ascii_dir = temp_dir / "majestik møøse";
+#endif
+
+  ASSERT_TRUE(std::filesystem::create_directories(non_ascii_dir));
+
+  std::ofstream test_manifest_file(non_ascii_dir / "sqlite.toml");
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  SetConfigPath(non_ascii_dir.string().c_str());
+
+  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove(non_ascii_dir / "sqlite.toml"));
+
+  UnsetConfigPath();
+}
+
+TEST_F(DriverManifest, DisallowEnvConfig) {
+  std::ofstream test_manifest_file(temp_dir / "sqlite.toml");
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  SetConfigPath(temp_dir.string().c_str());
+
+  auto load_options = ADBC_LOAD_FLAG_DEFAULT & ~ADBC_LOAD_FLAG_SEARCH_ENV;
+  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, load_options,
+                                 &driver, &error),
+              Not(IsOkStatus(&error)));
+
+  ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
+
+  UnsetConfigPath();
+}
+
+TEST_F(DriverManifest, LoadAbsolutePath) {
+  auto filepath = temp_dir / "sqlite.toml";
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, LoadAbsolutePathNoExtension) {
+  auto filepath = temp_dir / "sqlite.toml";
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  auto noext = filepath;
+  noext.replace_extension();  // Remove the .toml extension
+  ASSERT_THAT(AdbcFindLoadDriver(noext.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, LoadRelativePath) {
+  std::ofstream test_manifest_file("sqlite.toml");
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  ASSERT_THAT(
+      AdbcFindLoadDriver("sqlite.toml", nullptr, ADBC_VERSION_1_1_0, 0, &driver, &error),
+      IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  ASSERT_THAT(AdbcFindLoadDriver("sqlite.toml", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS, &driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove("sqlite.toml"));
+}
+
+TEST_F(DriverManifest, ManifestMissingDriver) {
+  // Create a manifest without the "Driver" section
+  auto filepath = temp_dir / "sqlite.toml";
+  toml::table manifest_without_driver = simple_manifest;
+  manifest_without_driver.erase("Driver");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << manifest_without_driver;
+  test_manifest_file.close();
+
+  // Attempt to load the driver
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, ManifestWrongArch) {
+  auto filepath = temp_dir / "sqlite.toml";
+  toml::table manifest_without_driver = simple_manifest;
+  manifest_without_driver.erase("Driver");
+  manifest_without_driver.insert("Driver",
+                                 toml::table{
+                                     {"shared",
+                                      toml::table{
+                                          {"non-existent", "path/to/bad/driver.so"},
+                                      }},
+                                 });
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << manifest_without_driver;
+  test_manifest_file.close();
+
+  // Attempt to load the driver
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+// only build and run test that puts files in the users home directory if
+// it's been enabled via the build system setting this compile def
+#ifdef ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL
+TEST_F(DriverManifest, LoadUserLevelManifest) {
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              Not(IsOkStatus(&error)));
+
+  auto user_config_dir = InternalAdbcUserConfigDir();
+  bool created = false;
+  if (!std::filesystem::exists(user_config_dir)) {
+    ASSERT_TRUE(std::filesystem::create_directories(user_config_dir));
+    created = true;
+  }
+
+  std::ofstream test_manifest_file(user_config_dir / "adbc-test-sqlite.toml");
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  // fail to load if flag doesn't have ADBC_LOAD_FLAG_SEARCH_USER
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, 0,
+                                 &driver, &error),
+              Not(IsOkStatus(&error)));
+
+  // succeed with default load options
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove(user_config_dir / "adbc-test-sqlite.toml"));
+  if (created) {
+    std::filesystem::remove_all(user_config_dir);
+  }
+}
+#endif
+
+// only build and run test that creates / adds a file to /etc/adbc if
+// it's been enabled via the build system setting this compile def
+#ifdef ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL
+TEST_F(DriverManifest, LoadSystemLevelManifest) {
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              Not(IsOkStatus(&error)));
+
+  auto system_config_dir = std::filesystem::path("/etc/adbc");
+  bool created = false;
+  if (!std::filesystem::exists(system_config_dir)) {
+    ASSERT_TRUE(std::filesystem::create_directories(system_config_dir));
+    created = true;
+  }
+
+  std::ofstream test_manifest_file(system_config_dir / "adbc-test-sqlite.toml");
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  // fail to load if flag doesn't have ADBC_LOAD_FLAG_SEARCH_SYSTEM
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, 0,
+                                 &driver, &error),
+              Not(IsOkStatus(&error)));
+
+  // succeed with default load options
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_TRUE(std::filesystem::remove(system_config_dir / "adbc-test-sqlite.toml"));
+  if (created) {
+    std::filesystem::remove_all(system_config_dir);
+  }
+}
+#endif
+
 }  // namespace adbc

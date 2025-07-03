@@ -29,6 +29,7 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -54,8 +55,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
-        private const bool DefaultRetryOnUnavailable= true;
+        private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
+        private bool _useDescTableExtended = true;
+
+        // Trace propagation configuration
+        private bool _tracePropagationEnabled = true;
+        private string _traceParentHeaderName = "traceparent";
+        private bool _traceStateEnabled = false;
 
         // Default namespace
         private TNamespace? _defaultNamespace;
@@ -145,6 +152,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.UseDescTableExtended, out string? useDescTableExtendedStr))
+            {
+                if (bool.TryParse(useDescTableExtendedStr, out bool useDescTableExtended))
+                {
+                    _useDescTableExtended = useDescTableExtended;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.UseDescTableExtended}' value '{useDescTableExtendedStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
             if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr))
             {
                 if (!long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
@@ -179,11 +198,49 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
             {
-                _defaultNamespace = new TNamespace
+                var ns = new TNamespace();
+                if (!string.IsNullOrWhiteSpace(defaultCatalog))
+                    ns.CatalogName = defaultCatalog!;
+                if (!string.IsNullOrWhiteSpace(defaultSchema))
+                    ns.SchemaName = defaultSchema;
+                _defaultNamespace = ns;
+            }
+
+            // Parse trace propagation options
+            if (Properties.TryGetValue(DatabricksParameters.TracePropagationEnabled, out string? tracePropagationEnabledStr))
+            {
+                if (bool.TryParse(tracePropagationEnabledStr, out bool tracePropagationEnabled))
                 {
-                    CatalogName = defaultCatalog,
-                    SchemaName = defaultSchema
-                };
+                    _tracePropagationEnabled = tracePropagationEnabled;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.TracePropagationEnabled}' value '{tracePropagationEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.TraceParentHeaderName, out string? traceParentHeaderName))
+            {
+                if (!string.IsNullOrWhiteSpace(traceParentHeaderName))
+                {
+                    _traceParentHeaderName = traceParentHeaderName;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.TraceParentHeaderName}' cannot be empty.");
+                }
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.TraceStateEnabled, out string? traceStateEnabledStr))
+            {
+                if (bool.TryParse(traceStateEnabledStr, out bool traceStateEnabled))
+                {
+                    _traceStateEnabled = traceStateEnabled;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.TraceStateEnabled}' value '{traceStateEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
             }
         }
 
@@ -223,6 +280,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal bool EnableMultipleCatalogSupport => _enableMultipleCatalogSupport;
 
         /// <summary>
+        /// Check if current connection can use `DESC TABLE EXTENDED` query
+        /// </summary>
+        internal bool CanUseDescTableExtended => _useDescTableExtended && ServerProtocolVersion != null && ServerProtocolVersion >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7;
+
+        /// <summary>
         /// Gets whether PK/FK metadata call is enabled
         /// </summary>
         public bool EnablePKFK => _enablePKFK;
@@ -240,9 +302,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override HttpMessageHandler CreateHttpHandler()
         {
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
+
+            // Add tracing handler to propagate W3C trace context if enabled
+            if (_tracePropagationEnabled)
+            {
+                baseHandler = new TracingDelegatingHandler(baseHandler, this, _traceParentHeaderName, _traceStateEnabled);
+            }
+
             if (TemporarilyUnavailableRetry)
             {
-                // Add OAuth handler if OAuth authentication is being used
+                // Add retry handler for 503 responses
                 baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
             }
 
@@ -307,8 +376,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
         {
-            // Get result format from metadata response if available
-            TSparkRowSetType resultFormat = TSparkRowSetType.ARROW_BASED_SET;
             bool isLz4Compressed = false;
 
             DatabricksStatement? databricksStatement = statement as DatabricksStatement;
@@ -318,29 +385,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 throw new InvalidOperationException("Cannot obtain a reader for Databricks");
             }
 
-            if (metadataResp != null)
+            if (metadataResp != null && metadataResp.__isset.lz4Compressed)
             {
-                if (metadataResp.__isset.resultFormat)
-                {
-                    resultFormat = metadataResp.ResultFormat;
-                }
-
-                if (metadataResp.__isset.lz4Compressed)
-                {
-                    isLz4Compressed = metadataResp.Lz4Compressed;
-                }
+                isLz4Compressed = metadataResp.Lz4Compressed;
             }
 
-            // Choose the appropriate reader based on the result format
-            if (resultFormat == TSparkRowSetType.URL_BASED_SET)
-            {
-                HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
-                return new CloudFetchReader(databricksStatement, schema, isLz4Compressed, cloudFetchHttpClient);
-            }
-            else
-            {
-                return new DatabricksReader(databricksStatement, schema, isLz4Compressed);
-            }
+            return new DatabricksCompositeReader(databricksStatement, schema, isLz4Compressed, TlsOptions, _proxyConfigurator);
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
@@ -379,11 +429,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return req;
         }
 
-        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session)
+        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
         {
-            await base.HandleOpenSessionResponse(session);
+            await base.HandleOpenSessionResponse(session, activity);
             if (session != null)
             {
+                var version = session.ServerProtocolVersion;
+                if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version)) {
+                    throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
+                }
+                _enablePKFK = _enablePKFK && FeatureVersionNegotiator.SupportsPKFK(version);
                 _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
                 if (session.__isset.initialNamespace)
                 {
@@ -391,10 +446,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName))
                 {
+                    // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
                     // server version is too old. Explicitly set the schema using queries
                     await SetSchema(_defaultNamespace.SchemaName);
                 }
-                // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
             }
         }
 
@@ -493,7 +548,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
 
-            if(Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
+            if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
             {
                 if (!int.TryParse(tempUnavailableRetryTimeoutStr, out int tempUnavailableRetryTimeoutValue) ||
                     tempUnavailableRetryTimeoutValue < 0)
@@ -502,6 +557,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         $"must be a value of 0 (retry indefinitely) or a positive integer representing seconds. Default is 900 seconds (15 minutes).");
                 }
                 TemporarilyUnavailableRetryTimeout = tempUnavailableRetryTimeoutValue;
+            }
+
+            // When TemporarilyUnavailableRetry is enabled, we need to make sure connection timeout (which is used to cancel the HttpConnection) is equal
+            // or greater than TemporarilyUnavailableRetryTimeout so that it won't timeout before server startup timeout (TemporarilyUnavailableRetryTimeout)
+            if (TemporarilyUnavailableRetry && TemporarilyUnavailableRetryTimeout * 1000 > ConnectTimeoutMilliseconds)
+            {
+                ConnectTimeoutMilliseconds = TemporarilyUnavailableRetryTimeout * 1000;
             }
         }
 

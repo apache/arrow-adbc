@@ -347,7 +347,7 @@
 - **c/driver/postgresql,c/driver/sqlite**: Implement FOREIGN KEY constraints (#1099)
 - **go/adbc/driver/flightsql**: log new connections (#1146)
 - **c/driver/postgresql**: add integral COPY writers (#1130)
-- **c/driver/postgresql**: Inital COPY Writer design (#1110)
+- **c/driver/postgresql**: Initial COPY Writer design (#1110)
 - **c/driver/postgresql,c/driver/sqlite**: implement BOOL support in drivers (#1091)
 
 ### Fix
@@ -690,7 +690,7 @@
 - **ci**: Pin r-lib actions as a workaround for latest action updates (#2051)
 - **csharp/src/Drivers/BigQuery**: update BigQuery documents (#2047)
 - **go/adbc/driver/snowflake**: split files properly after reaching targetSize on ingestion (#2026)
-- **c/driver/postgresql**: Ensure schema ordering is consisent and respects case sensitivity of table names (#2028)
+- **c/driver/postgresql**: Ensure schema ordering is consistent and respects case sensitivity of table names (#2028)
 - **docs**: update broken link (#2016)
 - **docs**: correct snowflake options for bulk ingest (#2004)
 - **go/adbc/driver/flightsql**: propagate headers in GetObjects (#1996)

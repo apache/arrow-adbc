@@ -23,7 +23,7 @@ nodejs
 numpydoc
 polars
 pytest
-sphinx>=8.1
+sphinx>=8.2
 sphinx-autobuild
 sphinx-copybutton
 sphinx-design

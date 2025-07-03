@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -27,67 +28,79 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal sealed class DatabricksReader : BaseDatabricksReader
     {
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksReader));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksReader));
+
         List<TSparkArrowBatch>? batches;
         int index;
         IArrowReader? reader;
 
-        public DatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
+        public DatabricksReader(DatabricksStatement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
         {
             // If we have direct results, initialize the batches from them
             if (statement.HasDirectResults)
             {
                 this.batches = statement.DirectResults!.ResultSet.Results.ArrowBatches;
-
-                if (!statement.DirectResults.ResultSet.HasMoreRows)
-                {
-                    this.statement = null;
-                    return;
-                }
+                this.hasNoMoreRows = !statement.DirectResults.ResultSet.HasMoreRows;
+            }
+            else if (initialResults != null)
+            {
+                this.batches = initialResults.Results.ArrowBatches;
+                this.hasNoMoreRows = !initialResults.HasMoreRows;
             }
         }
 
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
+
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            ThrowIfDisposed();
-
-            while (true)
+            return await this.TraceActivity(async activity =>
             {
-                if (this.reader != null)
+                ThrowIfDisposed();
+
+                while (true)
                 {
-                    RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
-                    if (next != null)
+                    if (this.reader != null)
                     {
-                        return next;
+                        RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        if (next != null)
+                        {
+                            activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, next.Length)]);
+                            return next;
+                        }
+                        this.reader = null;
                     }
-                    this.reader = null;
+
+                    if (this.batches != null && this.index < this.batches.Count)
+                    {
+                        ProcessFetchedBatches();
+                        continue;
+                    }
+
+                    this.batches = null;
+                    this.index = 0;
+
+                    if (this.hasNoMoreRows)
+                    {
+                        StopOperationStatusPoller();
+                        return null;
+                    }
+
+                    TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+                    TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
+
+                    // Make sure we get the arrowBatches
+                    this.batches = response.Results.ArrowBatches;
+                    for (int i = 0; i < this.batches.Count; i++)
+                    {
+                        activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, this.batches[i].RowCount);
+                    }
+
+                    this.hasNoMoreRows = !response.HasMoreRows;
                 }
-
-                if (this.batches != null && this.index < this.batches.Count)
-                {
-                    ProcessFetchedBatches();
-                    continue;
-                }
-
-                this.batches = null;
-                this.index = 0;
-
-                if (this.statement == null)
-                {
-                    StopOperationStatusPoller();
-                    return null;
-                }
-
-                TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
-                TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
-
-                // Make sure we get the arrowBatches
-                this.batches = response.Results.ArrowBatches;
-
-                if (!response.HasMoreRows)
-                {
-                    this.statement = null;
-                }
-            }
+            });
         }
 
         private void ProcessFetchedBatches()

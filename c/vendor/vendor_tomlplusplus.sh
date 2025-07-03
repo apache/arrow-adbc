@@ -1,5 +1,4 @@
-# -*- ruby -*-
-#
+#!/bin/bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,31 +16,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require "pkg-config"
-require "native-package-installer"
-require_relative "../lib/adbc/version"
+# Check for updates: https://marzer.github.io/tomlplusplus/index.html
+rm -rf toml++
+curl -L https://github.com/marzer/tomlplusplus/archive/refs/tags/v3.4.0.zip > tomlplusplus.zip
+unzip tomlplusplus.zip -d .
+rm tomlplusplus.zip
+mkdir toml++
+mv tomlplusplus-*/toml.hpp toml++/toml.hpp
+rm -rf tomlplusplus-*
 
-case RUBY_PLATFORM
-when /mingw|mswin/
-  task :default => "nothing"
-else
-  task :default => "dependency:check"
-end
-
-task :nothing do
-end
-
-namespace :dependency do
-  desc "Check dependency"
-  task :check do
-    unless PKGConfig.check_version?("adbc-arrow-glib",
-                                    ADBC::Version::MAJOR,
-                                    ADBC::Version::MINOR,
-                                    ADBC::Version::MICRO)
-      unless NativePackageInstaller.install(debian: "libadbc-arrow-glib-dev",
-                                            redhat: "adbc-arrow-glib-devel")
-        exit(false)
-      end
-    end
-  end
-end
+echo "Please manually update toml.hpp to suppress warnings about operator\"\"."

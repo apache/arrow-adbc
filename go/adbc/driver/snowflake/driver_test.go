@@ -1724,6 +1724,98 @@ func (suite *SnowflakeTests) TestBooleanType() {
 	}
 }
 
+func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
+	opts := suite.Quirks.DatabaseOptions()
+	opts[driver.OptionMaxTimestampPrecision] = "microseconds"
+
+	db, err := suite.driver.NewDatabase(opts)
+	suite.NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+	cnxn, err := db.Open(suite.ctx)
+	suite.NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+	stmt, _ := cnxn.NewStatement()
+
+	id := uuid.New()
+	tempTable := "pk_" + strings.ReplaceAll(id.String(), "-", "")
+
+	query := fmt.Sprintf(`CREATE OR REPLACE TABLE %s.%s.%s (
+	id INT PRIMARY KEY,
+	name STRING);`, suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
+
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	_, err = stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NoError(stmt.Close())
+
+	query = fmt.Sprintf("SHOW PRIMARY KEYS IN TABLE %s.%s.%s", suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
+	stmt, _ = cnxn.NewStatement()
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	rdr, _, err := stmt.ExecuteQuery(suite.ctx)
+	defer rdr.Release()
+	suite.Require().NoError(err)
+
+	suite.True(rdr.Next())
+	rec := rdr.Record()
+
+	suite.Equal(1, int(rec.NumRows()))
+
+	// Get column indexes
+	getColIdx := func(name string) int {
+		for i := 0; i < int(rec.NumCols()); i++ {
+			if rec.ColumnName(i) == name {
+				return i
+			}
+		}
+		panic("Column not found: " + name)
+	}
+
+	// Expected column names
+	dbIdx := getColIdx("database_name")
+	schemaIdx := getColIdx("schema_name")
+	tableIdx := getColIdx("table_name")
+	colIdx := getColIdx("column_name")
+	seqIdx := getColIdx("key_sequence")
+	createdIdx := getColIdx("created_on")
+
+	i := 0
+	dbName := rec.Column(dbIdx).(*array.String).Value(i)
+	schema := rec.Column(schemaIdx).(*array.String).Value(i)
+	tbl := rec.Column(tableIdx).(*array.String).Value(i)
+	column := rec.Column(colIdx).(*array.String).Value(i)
+	keySeq := rec.Column(seqIdx).(*array.Int64).Value(i)
+
+	// Created_on should be a timestamp array
+	createdCol := rec.Column(createdIdx).(*array.Timestamp)
+	created := time.Unix(0, int64(createdCol.Value(i))*int64(time.Microsecond)).UTC()
+
+	// Perform checks
+	if strings.EqualFold(dbName, suite.Quirks.catalogName) &&
+		strings.EqualFold(schema, suite.Quirks.schemaName) &&
+		strings.EqualFold(tbl, tempTable) &&
+		strings.EqualFold(column, "id") &&
+		keySeq == 1 {
+
+		now := time.Now().UTC()
+		diff := now.Sub(created)
+		if diff < 0 {
+			diff = -diff
+		}
+		// since this was just created, make sure the times are within a short difference
+		suite.Assert().True(diff <= 2*time.Minute)
+	} else {
+		panic("Invalid values")
+	}
+	suite.Require().NoError(stmt.Close())
+
+	query = fmt.Sprintf("DROP TABLE %s.%s.%s", suite.Quirks.catalogName, suite.Quirks.schemaName, tempTable)
+	stmt, _ = cnxn.NewStatement()
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	_, err = stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NoError(stmt.Close())
+}
+
 func (suite *SnowflakeTests) TestTimestampPrecision() {
 
 	query_ntz := "select TO_TIMESTAMP_NTZ('0001-01-01 00:00:00.000000000') as Jan01_0001, TO_TIMESTAMP_NTZ('2025-06-02 10:37:56.123456789') as June02_2025, TO_TIMESTAMP_NTZ('9999-12-31 23:59:59.999999999') As December31_9999"

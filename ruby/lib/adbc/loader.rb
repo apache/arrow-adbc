@@ -23,9 +23,17 @@ module ADBC
       end
     end
 
+    def initialize(...)
+      super
+      @load_flags_default = nil
+    end
+
     private
     def post_load(repository, namespace)
       require_libraries
+
+      load_flags = @base_module.const_get(:LoadFlags)
+      load_flags.const_set(:DEFAULT, load_flags.new(@load_flags_default))
     end
 
     def require_libraries
@@ -37,6 +45,15 @@ module ADBC
     def load_function_info_singleton_method(info, klass, method_name)
       if klass.name == "ADBC::IsolationLevel" and method_name == "to_string"
         define_method(info, klass, "to_s")
+      else
+        super
+      end
+    end
+
+    def load_constant_info(info)
+      case info.name
+      when "LOAD_FLAGS_DEFAULT"
+        @load_flags_default = info.value
       else
         super
       end

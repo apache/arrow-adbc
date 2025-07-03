@@ -81,7 +81,7 @@ extern "C" SEXP RAdbcDatabaseSetOption(SEXP database_xptr, SEXP key_sexp, SEXP v
       return adbc_set_option<AdbcDatabase, double>(
           database_xptr, key_sexp, value_sexp, error_xptr, &AdbcDatabaseSetOptionDouble);
     default:
-      Rf_error("Option value type not suppported");
+      Rf_error("Option value type not supported");
   }
 }
 
@@ -103,7 +103,7 @@ extern "C" SEXP RAdbcConnectionSetOption(SEXP connection_xptr, SEXP key_sexp,
                                                      value_sexp, error_xptr,
                                                      &AdbcConnectionSetOptionDouble);
     default:
-      Rf_error("Option value type not suppported");
+      Rf_error("Option value type not supported");
   }
 }
 
@@ -124,7 +124,7 @@ extern "C" SEXP RAdbcStatementSetOption(SEXP statement_xptr, SEXP key_sexp,
                                                     error_xptr,
                                                     &AdbcStatementSetOptionDouble);
     default:
-      Rf_error("Option value type not suppported");
+      Rf_error("Option value type not supported");
   }
 }
 

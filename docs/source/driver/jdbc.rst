@@ -31,7 +31,7 @@ Installation
    .. tab-item:: Java
       :sync: java
 
-      Add a dependency on ``org.apache.arrow.adbc:adbc-driver-flight-sql``.
+      Add a dependency on ``org.apache.arrow.adbc:adbc-driver-jdbc``.
 
       For Maven users:
 
@@ -63,5 +63,5 @@ or an instance of a ``javax.sql.DataSource`` as the
 Supported Features
 ==================
 
-The Flight SQL driver generally supports features defined in the ADBC
+The JDBC Adapter generally supports features defined in the ADBC
 API specification 1.0.0.

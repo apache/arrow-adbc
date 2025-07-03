@@ -18,10 +18,11 @@
 # NOTE: generated with mypy's stubgen, then hand-edited to fix things
 
 import typing_extensions
-from typing import Any, ClassVar, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, ClassVar, List, Literal, Optional, Tuple, Union
 
 from typing import overload
 import enum
+import pathlib
 import typing
 
 INGEST_OPTION_MODE: str
@@ -71,7 +72,7 @@ class AdbcConnection(_AdbcHandle):
     def set_options(self, **kwargs: Union[bytes, float, int, str, None]) -> None: ...
 
 class AdbcDatabase(_AdbcHandle):
-    def __init__(self, **kwargs: str) -> None: ...
+    def __init__(self, **kwargs: Union[str, pathlib.Path]) -> None: ...
     def close(self) -> None: ...
     def get_option(
         self,

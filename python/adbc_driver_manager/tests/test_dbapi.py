@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pathlib
+
 import pandas
 import polars
 import polars.testing
@@ -476,3 +478,12 @@ def test_release(sqlite, op) -> None:
         if handle:
             # The original handle (if it exists) should have been released
             assert not handle.is_valid
+
+
+def test_driver_path():
+    with pytest.raises(
+        dbapi.InternalError,
+        match="(dlopen|LoadLibraryExW).*failed:",
+    ):
+        with dbapi.connect(driver=pathlib.Path("/tmp/thisdriverdoesnotexist")):
+            pass

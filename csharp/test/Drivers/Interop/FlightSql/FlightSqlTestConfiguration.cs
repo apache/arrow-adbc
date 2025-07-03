@@ -40,7 +40,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         Denodo,
         Dremio,
         DuckDB,
-        SQLite
+        SQLite,
+        SpiceAI,
     }
 
     internal class FlightSqlTestEnvironment : TestConfiguration

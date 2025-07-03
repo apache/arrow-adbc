@@ -19,7 +19,10 @@
 
 if build_example and generate_vapi
     vala_example_executable_kwargs = {
-        'c_args': ['-I' + meson.build_root(), '-I' + meson.source_root()],
+        'c_args': [
+            '-I' + meson.project_build_root(),
+            '-I' + meson.project_source_root(),
+        ],
         'dependencies': [
             adbc_glib_vapi,
             adbc_arrow_glib_vapi,

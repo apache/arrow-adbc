@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
@@ -50,6 +51,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         public override void CanGetObjectsTables(string tableNamePattern)
         {
             GetObjectsTablesTest(tableNamePattern);
+        }
+
+
+        [SkippableFact]
+        public async Task CanGetObjectsOnNoColumnTable()
+        {
+            string? catalogName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+            string tableName = Guid.NewGuid().ToString("N");
+            string fullTableName = string.Format(
+                "{0}{1}{2}",
+                string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".",
+                string.IsNullOrEmpty(schemaName) ? string.Empty : DelimitIdentifier(schemaName) + ".",
+                DelimitIdentifier(tableName));
+            using TemporaryTable temporaryTable = await TemporaryTable.NewTemporaryTableAsync(
+                Statement,
+                fullTableName,
+                $"CREATE TABLE IF NOT EXISTS {fullTableName} ();",
+                OutputHelper);
+            using AdbcConnection adbcConnection = NewConnection();
+
+            GetObjectsTablesTest(tableNamePattern: tableName, expectedTableName: tableName);
         }
 
         public override void CanDetectInvalidServer()

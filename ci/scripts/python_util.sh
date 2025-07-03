@@ -149,6 +149,10 @@ function setup_build_vars {
     fi
     # No PyPy, no Python 3.8
     export CIBW_SKIP="pp* cp38-* ${CIBW_SKIP}"
+    # Make sure our manylinux version doesn't creep up (this only matters for
+    # the driver manager)
+    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014"
+    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux2014"
 }
 
 function test_packages {
@@ -189,6 +193,7 @@ import $component.dbapi
         fi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
-        python -m pytest -vvx --import-mode append "${test_files[@]}"
+        # set env var so that we don't skip tests if we somehow accidentally installed pyarrow
+        env ADBC_NO_SKIP_TESTS=1 python -m pytest -vvx --import-mode append "${test_files[@]}"
     done
 }

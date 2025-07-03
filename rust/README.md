@@ -34,10 +34,13 @@ It currently provides:
 
 To run the integration tests you must:
 
+1. Install a recent version of [protobuf](https://github.com/protocolbuffers/protobuf) and have its `bin` (`protoc`) in path.
 1. Install [SQLite](https://www.sqlite.org/) and have its dynamic library in path.
-1. Build the official ADBC SQLite driver by following the [documentation](../CONTRIBUTING.md).
+1. Build the official ADBC SQLite driver and ADBC Snowflake driver by following the [documentation](../CONTRIBUTING.md).
+   * Add `-DADBC_DRIVER_SNOWFLAKE=ON` option to build the Snowflake driver.
 1. Place the resulting object file into your dynamic loader path or set
    `LD_LIBRARY_PATH/DYLD_LIBRARY_PATH` appropriately.
+1. Set `ADBC_SNOWFLAKE_GO_LIB_DIR` appropriately.
 1. Run `cargo test --all-features --workspace`
 
 ## Writing Drivers

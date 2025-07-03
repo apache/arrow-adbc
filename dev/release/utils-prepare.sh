@@ -49,6 +49,13 @@ update_versions() {
       exit 1
       ;;
   esac
+  # 1.7.0 -> 1.7
+  # 1.7.0-SNAPSHOT -> 1.7
+  local glib_version_major_minor="${glib_version%.*}"
+  # 1.7 -> 1
+  local glib_version_major="${glib_version_major_minor%.*}"
+  # 1.7 -> 7
+  local glib_version_minor="${glib_version_major_minor#*.}"
 
   header "Updating versions for release ${RELEASE}"
   echo "C: ${c_version}"
@@ -105,6 +112,17 @@ update_versions() {
   rm "${ADBC_DIR}/glib/meson.build.bak"
   git add "${ADBC_DIR}/glib/meson.build"
 
+  # Add a new version entry only when the next release is a new
+  # major/minor release and it doesn't exist yet.
+  if [ "${type}" = "snapshot" ] && \
+     ! grep -q -F "(${glib_version_major}, ${glib_version_minor})" glib/tool/generate-version-header.py; then
+    sed -i.bak -E -e \
+      "s/^ALL_VERSIONS = \[$/&\\n    (${glib_version_major}, ${glib_version_minor}),/" \
+      glib/tool/generate-version-header.py
+    rm -f glib/tool/generate-version-header.py.bak
+    git add glib/tool/generate-version-header.py
+  fi
+
   sed -i.bak -E "s/version = \".+\"/version = \"${py_version}\"/g" "${ADBC_DIR}"/python/adbc_*/adbc_*/_static_version.py
   rm "${ADBC_DIR}"/python/adbc_*/adbc_*/_static_version.py.bak
   git add "${ADBC_DIR}"/python/adbc_*/adbc_*/_static_version.py
@@ -121,7 +139,7 @@ update_versions() {
 
   sed -i.bak -E \
     -e "s/^version = \".+\"/version = \"${rust_version}\"/" \
-    -e "s/^adbc_core = { path = \".\/core\", version = \".+\"/adbc_core = { path = \".\/core\", version = \"${rust_version}\"/" \
+    -e "s/^adbc_core = \{ path = \".\/core\", version = \".+\"/adbc_core = { path = \".\/core\", version = \"${rust_version}\"/" \
     "${ADBC_DIR}/rust/Cargo.toml"
   rm "${ADBC_DIR}/rust/Cargo.toml.bak"
   git add "${ADBC_DIR}/rust/Cargo.toml"

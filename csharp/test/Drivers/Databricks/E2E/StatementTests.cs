@@ -26,6 +26,8 @@ using Apache.Arrow.Types;
 using Xunit;
 using Xunit.Abstractions;
 using System.Linq;
+using System.IO;
+using System.Text.Json;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
@@ -127,6 +129,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         public async Task CanGetCrossReferenceFromChildTableDatabricks()
         {
             await base.CanGetCrossReferenceFromChildTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        /// <summary>
+        /// Verifies that Dispose() can be called on metadata query statements without throwing
+        /// "Invalid OperationHandle" errors. This tests the fix for the issue where the server
+        /// auto-closes operations but the client still tries to close them during disposal.
+        /// </summary>
+        [SkippableFact]
+        public async Task CanDisposeMetadataQueriesWithoutError()
+        {
+            // Test a simple metadata command that's most likely to trigger the issue
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetSchemas";
+
+            // Execute the metadata query
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            // This should not throw "Invalid OperationHandle" errors
+            // The fix ensures _directResults is set so dispose logic works correctly
+            statement.Dispose();
         }
 
         [SkippableFact]
@@ -341,20 +365,38 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, actualBatchLength);
         }
 
-        [SkippableFact]
-        public async Task CanGetColumnsExtended()
+        [SkippableTheory]
+        [InlineData("all_column_types", "Resources/create_table_all_types.sql", "Resources/result_get_column_extended_all_types.json", true, new[] { "PK_IS_NULLABLE:NO" })]
+        [InlineData("all_column_types", "Resources/create_table_all_types.sql", "Resources/result_get_column_extended_all_types.json", false, new[] { "PK_IS_NULLABLE:YES" })]
+        public async Task CanGetColumnsExtended(string tableName,string createTableSqlLocation, string resultLocation, bool useDescTableExtended, string[] ?extraPlaceholdsInResult = null)
         {
+            var connectionParams = new Dictionary<string, string> { ["adbc.databricks.use_desc_table_extended"] = $"{useDescTableExtended}" };
+
+            using AdbcConnection connection = NewConnection(TestConfiguration, connectionParams);
+
             // Get the runtime version using GetInfo
             var infoCodes = new List<AdbcInfoCode> { AdbcInfoCode.VendorVersion };
             var infoValues = Connection.GetInfo(infoCodes);
+            var catalog = TestConfiguration.Metadata.Catalog;
+            var schema = TestConfiguration.Metadata.Schema;
+
+            // Prepare table for test
+
+            // First create reference table
+            var refTableName = "fk_test_ref_table";
+            var refFullTableName = $"`{catalog}`.`{schema}`.`{refTableName}`";
+            await PrepareTableAsync(refFullTableName, "Resources/create_reference_table.sql");
+
+            var fullTableName = $"`{catalog}`.`{schema}`.`{tableName}`";
+            await PrepareTableAsync(fullTableName, createTableSqlLocation, refTableName);
 
             // Set up statement for GetColumnsExtended
-            var statement = Connection.CreateStatement();
+            var statement = connection.CreateStatement();
             statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
-            statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
-            statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
-            statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
-            statement.SetOption(ApacheParameters.EscapeUnderscore, "true");
+            statement.SetOption(ApacheParameters.CatalogName, catalog);
+            statement.SetOption(ApacheParameters.SchemaName, schema);
+            statement.SetOption(ApacheParameters.TableName, tableName);
+            statement.SetOption(ApacheParameters.EscapePatternWildcards, "true");
             statement.SqlQuery = "GetColumnsExtended";
 
             QueryResult queryResult = await statement.ExecuteQueryAsync();
@@ -387,38 +429,253 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.True(hasPkKeySeq, "Schema should contain PK_KEY_SEQ field from GetPrimaryKeys");
             Assert.True(hasFkTableName, "Schema should contain FK_PKTABLE_NAME field from GetCrossReference");
 
-            // Read and verify data
-            int rowCount = 0;
-            while (queryResult.Stream != null)
+            // Define the expected schema as (name, type) pairs
+            var expectedSchema = new (string Name, string Type)[]
             {
-                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
-                if (batch == null) break;
+                ("TABLE_CAT", "Apache.Arrow.Types.StringType"),
+                ("TABLE_SCHEM", "Apache.Arrow.Types.StringType"),
+                ("TABLE_NAME", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("DATA_TYPE", "Apache.Arrow.Types.Int32Type"),
+                ("TYPE_NAME", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_SIZE", "Apache.Arrow.Types.Int32Type"),
+                ("BUFFER_LENGTH", "Apache.Arrow.Types.Int8Type"),
+                ("DECIMAL_DIGITS", "Apache.Arrow.Types.Int32Type"),
+                ("NUM_PREC_RADIX", "Apache.Arrow.Types.Int32Type"),
+                ("NULLABLE", "Apache.Arrow.Types.Int32Type"),
+                ("REMARKS", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_DEF", "Apache.Arrow.Types.StringType"),
+                ("SQL_DATA_TYPE", "Apache.Arrow.Types.Int32Type"),
+                ("SQL_DATETIME_SUB", "Apache.Arrow.Types.Int32Type"),
+                ("CHAR_OCTET_LENGTH", "Apache.Arrow.Types.Int32Type"),
+                ("ORDINAL_POSITION", "Apache.Arrow.Types.Int32Type"),
+                ("IS_NULLABLE", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_CATALOG", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_SCHEMA", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_TABLE", "Apache.Arrow.Types.StringType"),
+                ("SOURCE_DATA_TYPE", "Apache.Arrow.Types.Int16Type"),
+                ("IS_AUTO_INCREMENT", "Apache.Arrow.Types.StringType"),
+                ("BASE_TYPE_NAME", "Apache.Arrow.Types.StringType"),
+                ("PK_COLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_PKCOLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_CAT", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_SCHEM", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_FKCOLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_FK_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_KEQ_SEQ", "Apache.Arrow.Types.Int32Type"),
+            };
 
-                rowCount += batch.Length;
+            // Assert each expected field exists in the actual schema with the correct type
+            foreach (var (expectedName, expectedType) in expectedSchema)
+            {
+                var actualField = queryResult.Stream?.Schema.FieldsList
+                    .FirstOrDefault(f => f.Name == expectedName);
 
-                // Output rows for debugging (limit to first 10)
-                if (batch.Length > 0)
+                Assert.NotNull(actualField); // Field must exist
+                Assert.Equal(expectedType, actualField.DataType.GetType().ToString());
+            }
+
+            // Read and verify data
+            var result = await ConvertQueryResultToList(queryResult);
+            var resultJson = JsonSerializer.Serialize(result);
+            var rowCount = result.Count;
+
+            // Load expected result
+            var rows = new List<Dictionary<string, object?>>();
+            var resultString = File.ReadAllText(resultLocation)
+                .Replace("{CATALOG_NAME}", catalog)
+                .Replace("{SCHEMA_NAME}", schema)
+                .Replace("{TABLE_NAME}", tableName)
+                .Replace("{REF_TABLE_NAME}", refTableName);
+
+            // Apply extra placeholder replacements if provided
+            if (extraPlaceholdsInResult != null)
+            {
+                foreach (var placeholderReplacement in extraPlaceholdsInResult)
                 {
-                    int rowsToPrint = Math.Min(batch.Length, 10); // Limit to 10 rows
-                    OutputHelper?.WriteLine($"Found {batch.Length} rows, showing first {rowsToPrint}:");
-
-                    for (int rowIndex = 0; rowIndex < rowsToPrint; rowIndex++)
+                    var parts = placeholderReplacement.Split(':');
+                    if (parts.Length == 2)
                     {
-                        OutputHelper?.WriteLine($"Row {rowIndex}:");
-                        for (int i = 0; i < batch.ColumnCount; i++)
-                        {
-                            string fieldName = queryResult.Stream.Schema.FieldsList[i].Name;
-                            string fieldValue = GetStringValue(batch.Column(i), rowIndex);
-                            OutputHelper?.WriteLine($"  {fieldName}: {fieldValue}");
-                        }
-                        OutputHelper?.WriteLine(""); // Add blank line between rows
+                        var placeholder = parts[0];
+                        var replacement = parts[1];
+                        resultString = resultString.Replace("{" + placeholder + "}", replacement);
                     }
                 }
             }
 
+            var expectedResult = JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(resultString);
+
+            // For debug
+            OutputHelper?.WriteLine(resultJson);
+
             // Verify we got rows matching the expected column count
-            Assert.Equal(TestConfiguration.Metadata.ExpectedColumnCount, rowCount);
+            Assert.Equal(expectedResult!.Count, rowCount);
+
+            // Verify the result match expected result
+            // Assert.Equal cannot do the deep compare between 2 list with nested object, let us compare with json
+            var expectedResultJson = JsonSerializer.Serialize(expectedResult);
+            Assert.Equal(expectedResultJson, resultJson);
+
             OutputHelper?.WriteLine($"Successfully retrieved {rowCount} columns with extended information");
+        }
+
+        [SkippableFact]
+        public async Task CanGetColumnsOnNoColumnTable()
+        {
+            string? catalogName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+            string tableName = Guid.NewGuid().ToString("N");
+            string fullTableName = string.Format(
+                "{0}{1}{2}",
+                string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".",
+                string.IsNullOrEmpty(schemaName) ? string.Empty : DelimitIdentifier(schemaName) + ".",
+                DelimitIdentifier(tableName));
+            using TemporaryTable temporaryTable = await TemporaryTable.NewTemporaryTableAsync(
+                Statement,
+                fullTableName,
+                $"CREATE TABLE IF NOT EXISTS {fullTableName} ();",
+                OutputHelper);
+
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SetOption(ApacheParameters.CatalogName, catalogName);
+            statement.SetOption(ApacheParameters.SchemaName, schemaName);
+            statement.SetOption(ApacheParameters.TableName, tableName);
+            statement.SqlQuery = "GetColumns";
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            // 23 original metadata columns and one added for "base type"
+            Assert.Equal(24, queryResult.Stream.Schema.FieldsList.Count);
+            int actualBatchLength = 0;
+
+            while (queryResult.Stream != null)
+            {
+                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                {
+                    break;
+                }
+                actualBatchLength += batch.Length;
+            }
+            Assert.Equal(0, actualBatchLength);
+        }
+
+        [SkippableFact]
+        public async Task CanGetColumnsExtendedOnNoColumnTable()
+        {
+            string? catalogName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+            string tableName = Guid.NewGuid().ToString("N");
+            string fullTableName = string.Format(
+                "{0}{1}{2}",
+                string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".",
+                string.IsNullOrEmpty(schemaName) ? string.Empty : DelimitIdentifier(schemaName) + ".",
+                DelimitIdentifier(tableName));
+            using TemporaryTable temporaryTable = await TemporaryTable.NewTemporaryTableAsync(
+                Statement,
+                fullTableName,
+                $"CREATE TABLE IF NOT EXISTS {fullTableName} ();",
+                OutputHelper);
+
+            using AdbcConnection connection = NewConnection();
+
+            // Get the runtime version using GetInfo
+            var infoCodes = new List<AdbcInfoCode> { AdbcInfoCode.VendorVersion };
+            var infoValues = Connection.GetInfo(infoCodes);
+
+            // Set up statement for GetColumnsExtended
+            var statement = connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SetOption(ApacheParameters.CatalogName, catalogName);
+            statement.SetOption(ApacheParameters.SchemaName, schemaName);
+            statement.SetOption(ApacheParameters.TableName, tableName);
+            statement.SetOption(ApacheParameters.EscapePatternWildcards, "true");
+            statement.SqlQuery = "GetColumnsExtended";
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            // Verify schema has more fields than the regular GetColumns result (which has 24 fields)
+            // We expect additional PK and FK fields
+            OutputHelper?.WriteLine($"Column count in result schema: {queryResult.Stream.Schema.FieldsList.Count}");
+            Assert.True(queryResult.Stream.Schema.FieldsList.Count > 24,
+                "GetColumnsExtended should return more columns than GetColumns (at least 24+)");
+
+            // Verify that key fields from each original metadata call are present
+            bool hasColumnName = false;
+            bool hasPkKeySeq = false;
+            bool hasFkTableName = false;
+
+            foreach (var field in queryResult.Stream.Schema.FieldsList)
+            {
+                OutputHelper?.WriteLine($"Field in schema: {field.Name} ({field.DataType})");
+
+                if (field.Name.Equals("COLUMN_NAME", StringComparison.OrdinalIgnoreCase))
+                    hasColumnName = true;
+                else if (field.Name.Equals("PK_COLUMN_NAME", StringComparison.OrdinalIgnoreCase))
+                    hasPkKeySeq = true;
+                else if (field.Name.Equals("FK_PKTABLE_NAME", StringComparison.OrdinalIgnoreCase))
+                    hasFkTableName = true;
+            }
+
+            Assert.True(hasColumnName, "Schema should contain COLUMN_NAME field from GetColumns");
+            Assert.True(hasPkKeySeq, "Schema should contain PK_KEY_SEQ field from GetPrimaryKeys");
+            Assert.True(hasFkTableName, "Schema should contain FK_PKTABLE_NAME field from GetCrossReference");
+
+            // Define the expected schema as (name, type) pairs
+            var expectedSchema = new (string Name, string Type)[]
+            {
+                ("TABLE_CAT", "Apache.Arrow.Types.StringType"),
+                ("TABLE_SCHEM", "Apache.Arrow.Types.StringType"),
+                ("TABLE_NAME", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("DATA_TYPE", "Apache.Arrow.Types.Int32Type"),
+                ("TYPE_NAME", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_SIZE", "Apache.Arrow.Types.Int32Type"),
+                ("BUFFER_LENGTH", "Apache.Arrow.Types.Int8Type"),
+                ("DECIMAL_DIGITS", "Apache.Arrow.Types.Int32Type"),
+                ("NUM_PREC_RADIX", "Apache.Arrow.Types.Int32Type"),
+                ("NULLABLE", "Apache.Arrow.Types.Int32Type"),
+                ("REMARKS", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_DEF", "Apache.Arrow.Types.StringType"),
+                ("SQL_DATA_TYPE", "Apache.Arrow.Types.Int32Type"),
+                ("SQL_DATETIME_SUB", "Apache.Arrow.Types.Int32Type"),
+                ("CHAR_OCTET_LENGTH", "Apache.Arrow.Types.Int32Type"),
+                ("ORDINAL_POSITION", "Apache.Arrow.Types.Int32Type"),
+                ("IS_NULLABLE", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_CATALOG", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_SCHEMA", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_TABLE", "Apache.Arrow.Types.StringType"),
+                ("SOURCE_DATA_TYPE", "Apache.Arrow.Types.Int16Type"),
+                ("IS_AUTO_INCREMENT", "Apache.Arrow.Types.StringType"),
+                ("BASE_TYPE_NAME", "Apache.Arrow.Types.StringType"),
+                ("PK_COLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_PKCOLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_CAT", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_SCHEM", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_FKCOLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_FK_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_KEQ_SEQ", "Apache.Arrow.Types.Int32Type"),
+            };
+
+            RecordBatch batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            // Assert each expected field exists in the actual schema with the correct type
+            for (int i = 0; i < expectedSchema.Length; i++)
+            {
+                (string expectedName, string expectedType) = expectedSchema[i];
+                var actualField = queryResult.Stream?.Schema.FieldsList
+                    .FirstOrDefault(f => f.Name == expectedName);
+
+                Assert.NotNull(actualField); // Field must exist
+                Assert.Equal(expectedType, actualField.DataType.GetType().ToString());
+                var columnArray = batch.Column(i);
+                Assert.Equal(actualField.DataType, columnArray.Data.DataType);
+            }
         }
 
         // Helper method to get string representation of array values
@@ -455,6 +712,118 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 + "  PRIMARY KEY (INDEX), \n"
                 + $"  FOREIGN KEY (USERINDEX, USERNAME) REFERENCES {fullTableNameParent} (INDEX, NAME))";
             foreignKeys = ["userindex", "username"];
+        }
+
+        private async Task PrepareTableAsync(string fullTableName, string sqlResourceLocation, string? refTableName = null)
+        {
+            var sql = File.ReadAllText(sqlResourceLocation);
+            using var dropStmt = Connection.CreateStatement();
+            dropStmt.SqlQuery = $"DROP TABLE IF EXISTS {fullTableName}";
+            await dropStmt.ExecuteUpdateAsync();
+
+            using var createStmt = Connection.CreateStatement();
+            var finalSql = sql.Replace("{TABLE_NAME}", fullTableName);
+            if (refTableName != null)
+            {
+                finalSql = finalSql.Replace("{CATALOG_NAME}", TestConfiguration.Metadata.Catalog)
+                .Replace("{SCHEMA_NAME}", TestConfiguration.Metadata.Schema)
+                .Replace("{REF_TABLE_NAME}", refTableName);
+            }
+
+            createStmt.SqlQuery = finalSql;
+            await createStmt.ExecuteUpdateAsync();
+        }
+
+        internal static List<Dictionary<string, object?>> LoadFromResultFile(string resultResourceLocation, string tableName)
+        {
+            var rows = new List<Dictionary<string, object?>>();
+            var resultString = File.ReadAllText(resultResourceLocation).Replace("{TABLE_NAME}", tableName);
+            var result = JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(resultString);
+            if (result == null)
+            {
+                return rows;
+            }
+
+            // C# deserialization will convert the value to JsonValueKind instead of the original type
+            // We need to convert it back to the original type
+            foreach (var row in result)
+            {
+                foreach (var key in row.Keys.ToList())
+                {
+                    if (row[key] is JsonElement jsonElement)
+                    {
+                        row[key] = jsonElement.ValueKind switch
+                        {
+                            JsonValueKind.String => jsonElement.GetString(),
+                            JsonValueKind.Number => jsonElement.GetInt32(),
+                            JsonValueKind.True => true,
+                            JsonValueKind.False => false,
+                            JsonValueKind.Null => null,
+                            _ => null
+                        };
+                    }
+                }
+                rows.Add(row);
+            }
+            return rows;
+        }
+
+        internal static async Task<List<Dictionary<string, object?>>> ConvertQueryResultToList(QueryResult result)
+        {
+            var rows = new List<Dictionary<string, object?>>();
+            if (result.Stream == null)
+                return rows;
+
+            while (result.Stream != null)
+            {
+                using var batch = await result.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                    break;
+
+
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    var row = new Dictionary<string, object?>();
+                    for (int j = 0; j < batch.ColumnCount; j++)
+                    {
+                        string fieldName = result.Stream.Schema.FieldsList[j].Name;
+                        var value = GetArrayValue(batch.Column(j), i);
+                        row[fieldName] = value;
+                    }
+                    rows.Add(row);
+                }
+            }
+            return rows;
+        }
+
+        internal static object? GetArrayValue(IArrowArray array, int index)
+        {
+            if (array == null || index >= array.Length || array.IsNull(index))
+                return null;
+
+            return array switch
+            {
+                StringArray strArray => strArray.GetString(index),
+                Int32Array int32Array => int32Array.GetValue(index),
+                Int64Array int64Array => int64Array.GetValue(index),
+                Int16Array int16Array => int16Array.GetValue(index),
+                Int8Array int8Array => int8Array.GetValue(index),
+                UInt32Array uint32Array => uint32Array.GetValue(index),
+                UInt64Array uint64Array => uint64Array.GetValue(index),
+                UInt16Array uint16Array => uint16Array.GetValue(index),
+                UInt8Array uint8Array => uint8Array.GetValue(index),
+                FloatArray floatArray => floatArray.GetValue(index),
+                DoubleArray doubleArray => doubleArray.GetValue(index),
+                BooleanArray boolArray => boolArray.GetValue(index),
+                TimestampArray timestampArray => timestampArray.GetValue(index),
+                Date32Array date32Array => date32Array.GetValue(index),
+                Date64Array date64Array => date64Array.GetValue(index),
+                Time32Array time32Array => time32Array.GetValue(index),
+                Time64Array time64Array => time64Array.GetValue(index),
+                Decimal128Array decimal128Array => decimal128Array.GetValue(index),
+                Decimal256Array decimal256Array => decimal256Array.GetValue(index),
+                _ => null
+            };
         }
 
         // NOTE: this is a thirty minute test. As of writing, databricks commands have 20 minutes of idle time (and checked every 5 minutes)
@@ -696,7 +1065,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             var statement = connection.CreateStatement();
 
             // Set CatalogName using SetOption
-            if(catalogName != null)
+            if (catalogName != null)
             {
                 statement.SetOption(ApacheParameters.CatalogName, catalogName);
             }

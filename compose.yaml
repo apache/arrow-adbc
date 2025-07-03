@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-version: '3.9'
-
 services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
@@ -87,7 +85,7 @@ services:
   ################################### Java ###################################
 
   java-dist:
-    image: ${ARCH}/maven:${MAVEN}-jdk-${JDK}
+    image: ${ARCH}/maven:${MAVEN}-eclipse-temurin-${JDK}
     volumes:
       - .:/adbc:delegated
     command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
@@ -292,6 +290,20 @@ services:
       retries: 5
     ports:
       - "5432:5432"
+
+  spiceai-test:
+    container_name: adbc-spiceai
+    build:
+      context: .
+      dockerfile: ci/docker/spiceai-init.dockerfile
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8090/v1/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "50051:50051"
+      - "8090:8090"
 
   ################################ Verification ################################
 

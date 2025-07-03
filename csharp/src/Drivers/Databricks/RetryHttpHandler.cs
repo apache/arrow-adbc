@@ -117,9 +117,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 throw new OperationCanceledException("Request cancelled during retry wait", cancellationToken);
             }
 
-            throw new DatabricksException(
-                lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded",
-                 AdbcStatusCode.IOError);
+            throw new DatabricksException(lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded", AdbcStatusCode.IOError)
+                .SetSqlState("08001");
         }
 
         /// <summary>

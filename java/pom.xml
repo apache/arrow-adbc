@@ -23,7 +23,7 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>34</version>
+    <version>35</version>
   </parent>
 
   <groupId>org.apache.arrow.adbc</groupId>
@@ -97,7 +97,7 @@
 
   <properties>
     <dep.arrow.version>18.0.0</dep.arrow.version>
-    <dep.org.checkerframework.version>3.49.4</dep.org.checkerframework.version>
+    <dep.org.checkerframework.version>3.49.5</dep.org.checkerframework.version>
     <!-- org.apache:apache overrides -->
     <minimalJavaBuildVersion>11</minimalJavaBuildVersion>
     <maven.compiler.target>11</maven.compiler.target>
@@ -164,7 +164,7 @@
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
-        <version>5.13.1</version>
+        <version>5.13.2</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -300,7 +300,7 @@
                 <path>
                   <groupId>com.google.errorprone</groupId>
                   <artifactId>error_prone_core</artifactId>
-                  <version>2.38.0</version>
+                  <version>2.39.0</version>
                 </path>
                 <path>
                   <groupId>com.uber.nullaway</groupId>

@@ -75,8 +75,7 @@ Installation
 
       .. code-block:: r
 
-         # install.packages("pak")
-         pak::pak("apache/arrow-adbc/r/adbcflightsql")
+         install.packages("adbcflightsql", repos = "https://community.r-multiverse.org")
 
 Usage
 =====

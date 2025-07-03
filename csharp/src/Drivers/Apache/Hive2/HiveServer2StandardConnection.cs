@@ -15,13 +15,13 @@
 * limitations under the License.
 */
 
-using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
 using Thrift.Transport.Client;
@@ -30,6 +30,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2StandardConnection : HiveServer2ExtendedConnection
     {
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2StandardConnection));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2StandardConnection));
+
         public HiveServer2StandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
@@ -172,5 +175,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Standard;
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

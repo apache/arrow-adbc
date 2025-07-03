@@ -553,6 +553,10 @@ func (base *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, in
 	return nil, 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteQuery")
 }
 
+func (base *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	return nil, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteSchema")
+}
+
 func (base *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	return 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteUpdate")
 }

@@ -23,7 +23,7 @@ resolver = "2"
 version = "0.19.0"
 description = "Rust implementation of Arrow Database Connectivity (ADBC)"
 edition = "2021"
-rust-version = "1.80.1"
+rust-version = "1.81"
 authors = ["Apache Arrow <dev@arrow.apache.org>"]
 license = "Apache-2.0"
 documentation = "https://docs.rs/adbc_core/"
@@ -35,9 +35,9 @@ categories = ["database"]
 
 [workspace.dependencies]
 adbc_core = { path = "./core", version = "0.19.0" }
-arrow-array = { version = "55.1.0", default-features = false, features = [
+arrow-array = { version = ">=53.1.0, <56", default-features = false, features = [
     "ffi",
 ] }
-arrow-buffer = { version = "55.0.0", default-features = false }
-arrow-schema = { version = "55.0.0", default-features = false }
-arrow-select = { version = "55.1.0", default-features = false }
+arrow-buffer = { version = ">=53.1.0, <56", default-features = false }
+arrow-schema = { version = ">=53.1.0, <56", default-features = false }
+arrow-select = { version = ">=53.1.0, <56", default-features = false }
