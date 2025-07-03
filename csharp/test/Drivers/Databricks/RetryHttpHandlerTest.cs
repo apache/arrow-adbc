@@ -88,8 +88,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             var exception = await Assert.ThrowsAsync<DatabricksException>(async () =>
                 await httpClient.GetAsync("http://test.com"));
 
-            // Verify the exception has the correct SQL state in the message
-            Assert.Contains("[SQLState: 08001]", exception.Message);
+            // Verify the exception has the correct SQL state
+            Assert.Contains("08001", exception.SqlState);
             Assert.Equal(AdbcStatusCode.IOError, exception.Status);
 
             // Verify we only tried once (since the Retry-After value of 2 exceeds our timeout of 1)
