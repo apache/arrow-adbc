@@ -29,6 +29,7 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -57,6 +58,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
         private bool _useDescTableExtended = true;
+
+        // Trace propagation configuration
+        private bool _tracePropagationEnabled = true;
+        private string _traceParentHeaderName = "traceparent";
+        private bool _traceStateEnabled = false;
 
         // Default namespace
         private TNamespace? _defaultNamespace;
@@ -199,6 +205,43 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     ns.SchemaName = defaultSchema;
                 _defaultNamespace = ns;
             }
+
+            // Parse trace propagation options
+            if (Properties.TryGetValue(DatabricksParameters.TracePropagationEnabled, out string? tracePropagationEnabledStr))
+            {
+                if (bool.TryParse(tracePropagationEnabledStr, out bool tracePropagationEnabled))
+                {
+                    _tracePropagationEnabled = tracePropagationEnabled;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.TracePropagationEnabled}' value '{tracePropagationEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.TraceParentHeaderName, out string? traceParentHeaderName))
+            {
+                if (!string.IsNullOrWhiteSpace(traceParentHeaderName))
+                {
+                    _traceParentHeaderName = traceParentHeaderName;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.TraceParentHeaderName}' cannot be empty.");
+                }
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.TraceStateEnabled, out string? traceStateEnabledStr))
+            {
+                if (bool.TryParse(traceStateEnabledStr, out bool traceStateEnabled))
+                {
+                    _traceStateEnabled = traceStateEnabled;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.TraceStateEnabled}' value '{traceStateEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
         }
 
         /// <summary>
@@ -259,9 +302,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override HttpMessageHandler CreateHttpHandler()
         {
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
+
+            // Add tracing handler to propagate W3C trace context if enabled
+            if (_tracePropagationEnabled)
+            {
+                baseHandler = new TracingDelegatingHandler(baseHandler, this, _traceParentHeaderName, _traceStateEnabled);
+            }
+
             if (TemporarilyUnavailableRetry)
             {
-                // Add OAuth handler if OAuth authentication is being used
+                // Add retry handler for 503 responses
                 baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
             }
 
@@ -388,7 +438,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version)) {
                     throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
                 }
-                _enablePKFK = FeatureVersionNegotiator.SupportsPKFK(version);
+                _enablePKFK = _enablePKFK && FeatureVersionNegotiator.SupportsPKFK(version);
                 _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
                 if (session.__isset.initialNamespace)
                 {

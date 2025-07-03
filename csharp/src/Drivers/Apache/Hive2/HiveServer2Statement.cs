@@ -566,6 +566,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
         {
+            // Set _directResults so that dispose logic can check if operation was already closed
+            _directResults = directResults;
+
             Schema schema;
             if (Connection.AreResultsAvailableDirectly && directResults?.ResultSet?.Results != null)
             {
@@ -797,7 +800,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         // Helper method to create an empty result with the complete extended columns schema
-        protected QueryResult CreateEmptyExtendedColumnsResult(Schema baseSchema)
+        protected static QueryResult CreateEmptyExtendedColumnsResult(Schema baseSchema)
         {
             // Create the complete schema with all fields
             var allFields = new List<Field>(baseSchema.FieldsList);
@@ -819,8 +822,48 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             var combinedData = new List<IArrowArray>();
             foreach (var field in allFields)
             {
-                var builder = new StringArray.Builder();
-                combinedData.Add(builder.Build());
+                switch (field.DataType.TypeId)
+                {
+                    case ArrowTypeId.String:
+                        combinedData.Add(new StringArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Int8:
+                        combinedData.Add(new Int8Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Int16:
+                        combinedData.Add(new Int16Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Int32:
+                        combinedData.Add(new Int32Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Int64:
+                        combinedData.Add(new Int64Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Boolean:
+                        combinedData.Add(new BooleanArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Float:
+                        combinedData.Add(new FloatArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Double:
+                        combinedData.Add(new  DoubleArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Date32:
+                        combinedData.Add(new Date32Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Date64:
+                        combinedData.Add(new Date64Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Timestamp:
+                        combinedData.Add(new TimestampArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Decimal128:
+                        combinedData.Add(new Decimal128Array.Builder((Decimal128Type)field.DataType).Build());
+                        break;
+                    default:
+                        throw AdbcException.NotImplemented(
+                            $"Data type '{field.DataType}' is not supported for empty extended columns result.");
+                }
             }
 
             return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));

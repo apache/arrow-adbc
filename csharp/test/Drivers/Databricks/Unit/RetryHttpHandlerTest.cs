@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 {
     /// <summary>
     /// Tests for the RetryHttpHandler class.
@@ -85,11 +85,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             var httpClient = new HttpClient(retryHandler);
 
             // Send a request and expect an AdbcException
-            var exception = await Assert.ThrowsAsync<AdbcException>(async () =>
+            var exception = await Assert.ThrowsAsync<DatabricksException>(async () =>
                 await httpClient.GetAsync("http://test.com"));
 
-            // Verify the exception has the correct SQL state in the message
-            Assert.Contains("[SQLState: 08001]", exception.Message);
+            // Verify the exception has the correct SQL state
+            Assert.Contains("08001", exception.SqlState);
             Assert.Equal(AdbcStatusCode.IOError, exception.Status);
 
             // Verify we only tried once (since the Retry-After value of 2 exceeds our timeout of 1)

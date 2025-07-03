@@ -145,6 +145,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 parameters.Add(DatabricksParameters.EnableMultipleCatalogSupport, testConfiguration.EnableMultipleCatalogSupport!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.TracePropagationEnabled))
+            {
+                parameters.Add(DatabricksParameters.TracePropagationEnabled, testConfiguration.TracePropagationEnabled!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.TraceParentHeaderName))
+            {
+                parameters.Add(DatabricksParameters.TraceParentHeaderName, testConfiguration.TraceParentHeaderName!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.TraceStateEnabled))
+            {
+                parameters.Add(DatabricksParameters.TraceStateEnabled, testConfiguration.TraceStateEnabled!);
+            }
             if (testConfiguration.HttpOptions != null)
             {
                 if (testConfiguration.HttpOptions.Tls != null)

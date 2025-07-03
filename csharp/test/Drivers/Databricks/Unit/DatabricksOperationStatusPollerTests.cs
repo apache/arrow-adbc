@@ -25,7 +25,7 @@ using Moq;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 {
     public class DatabricksOperationStatusPollerTests
     {

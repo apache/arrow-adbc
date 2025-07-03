@@ -131,6 +131,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             await base.CanGetCrossReferenceFromChildTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
         }
 
+        /// <summary>
+        /// Verifies that Dispose() can be called on metadata query statements without throwing
+        /// "Invalid OperationHandle" errors. This tests the fix for the issue where the server
+        /// auto-closes operations but the client still tries to close them during disposal.
+        /// </summary>
+        [SkippableFact]
+        public async Task CanDisposeMetadataQueriesWithoutError()
+        {
+            // Test a simple metadata command that's most likely to trigger the issue
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetSchemas";
+
+            // Execute the metadata query
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            // This should not throw "Invalid OperationHandle" errors
+            // The fix ensures _directResults is set so dispose logic works correctly
+            statement.Dispose();
+        }
+
         [SkippableFact]
         public async Task CanGetColumnsWithBaseTypeName()
         {
@@ -496,6 +518,164 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.Equal(expectedResultJson, resultJson);
 
             OutputHelper?.WriteLine($"Successfully retrieved {rowCount} columns with extended information");
+        }
+
+        [SkippableFact]
+        public async Task CanGetColumnsOnNoColumnTable()
+        {
+            string? catalogName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+            string tableName = Guid.NewGuid().ToString("N");
+            string fullTableName = string.Format(
+                "{0}{1}{2}",
+                string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".",
+                string.IsNullOrEmpty(schemaName) ? string.Empty : DelimitIdentifier(schemaName) + ".",
+                DelimitIdentifier(tableName));
+            using TemporaryTable temporaryTable = await TemporaryTable.NewTemporaryTableAsync(
+                Statement,
+                fullTableName,
+                $"CREATE TABLE IF NOT EXISTS {fullTableName} ();",
+                OutputHelper);
+
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SetOption(ApacheParameters.CatalogName, catalogName);
+            statement.SetOption(ApacheParameters.SchemaName, schemaName);
+            statement.SetOption(ApacheParameters.TableName, tableName);
+            statement.SqlQuery = "GetColumns";
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            // 23 original metadata columns and one added for "base type"
+            Assert.Equal(24, queryResult.Stream.Schema.FieldsList.Count);
+            int actualBatchLength = 0;
+
+            while (queryResult.Stream != null)
+            {
+                RecordBatch? batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                {
+                    break;
+                }
+                actualBatchLength += batch.Length;
+            }
+            Assert.Equal(0, actualBatchLength);
+        }
+
+        [SkippableFact]
+        public async Task CanGetColumnsExtendedOnNoColumnTable()
+        {
+            string? catalogName = TestConfiguration.Metadata.Catalog;
+            string? schemaName = TestConfiguration.Metadata.Schema;
+            string tableName = Guid.NewGuid().ToString("N");
+            string fullTableName = string.Format(
+                "{0}{1}{2}",
+                string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".",
+                string.IsNullOrEmpty(schemaName) ? string.Empty : DelimitIdentifier(schemaName) + ".",
+                DelimitIdentifier(tableName));
+            using TemporaryTable temporaryTable = await TemporaryTable.NewTemporaryTableAsync(
+                Statement,
+                fullTableName,
+                $"CREATE TABLE IF NOT EXISTS {fullTableName} ();",
+                OutputHelper);
+
+            using AdbcConnection connection = NewConnection();
+
+            // Get the runtime version using GetInfo
+            var infoCodes = new List<AdbcInfoCode> { AdbcInfoCode.VendorVersion };
+            var infoValues = Connection.GetInfo(infoCodes);
+
+            // Set up statement for GetColumnsExtended
+            var statement = connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SetOption(ApacheParameters.CatalogName, catalogName);
+            statement.SetOption(ApacheParameters.SchemaName, schemaName);
+            statement.SetOption(ApacheParameters.TableName, tableName);
+            statement.SetOption(ApacheParameters.EscapePatternWildcards, "true");
+            statement.SqlQuery = "GetColumnsExtended";
+
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            // Verify schema has more fields than the regular GetColumns result (which has 24 fields)
+            // We expect additional PK and FK fields
+            OutputHelper?.WriteLine($"Column count in result schema: {queryResult.Stream.Schema.FieldsList.Count}");
+            Assert.True(queryResult.Stream.Schema.FieldsList.Count > 24,
+                "GetColumnsExtended should return more columns than GetColumns (at least 24+)");
+
+            // Verify that key fields from each original metadata call are present
+            bool hasColumnName = false;
+            bool hasPkKeySeq = false;
+            bool hasFkTableName = false;
+
+            foreach (var field in queryResult.Stream.Schema.FieldsList)
+            {
+                OutputHelper?.WriteLine($"Field in schema: {field.Name} ({field.DataType})");
+
+                if (field.Name.Equals("COLUMN_NAME", StringComparison.OrdinalIgnoreCase))
+                    hasColumnName = true;
+                else if (field.Name.Equals("PK_COLUMN_NAME", StringComparison.OrdinalIgnoreCase))
+                    hasPkKeySeq = true;
+                else if (field.Name.Equals("FK_PKTABLE_NAME", StringComparison.OrdinalIgnoreCase))
+                    hasFkTableName = true;
+            }
+
+            Assert.True(hasColumnName, "Schema should contain COLUMN_NAME field from GetColumns");
+            Assert.True(hasPkKeySeq, "Schema should contain PK_KEY_SEQ field from GetPrimaryKeys");
+            Assert.True(hasFkTableName, "Schema should contain FK_PKTABLE_NAME field from GetCrossReference");
+
+            // Define the expected schema as (name, type) pairs
+            var expectedSchema = new (string Name, string Type)[]
+            {
+                ("TABLE_CAT", "Apache.Arrow.Types.StringType"),
+                ("TABLE_SCHEM", "Apache.Arrow.Types.StringType"),
+                ("TABLE_NAME", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("DATA_TYPE", "Apache.Arrow.Types.Int32Type"),
+                ("TYPE_NAME", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_SIZE", "Apache.Arrow.Types.Int32Type"),
+                ("BUFFER_LENGTH", "Apache.Arrow.Types.Int8Type"),
+                ("DECIMAL_DIGITS", "Apache.Arrow.Types.Int32Type"),
+                ("NUM_PREC_RADIX", "Apache.Arrow.Types.Int32Type"),
+                ("NULLABLE", "Apache.Arrow.Types.Int32Type"),
+                ("REMARKS", "Apache.Arrow.Types.StringType"),
+                ("COLUMN_DEF", "Apache.Arrow.Types.StringType"),
+                ("SQL_DATA_TYPE", "Apache.Arrow.Types.Int32Type"),
+                ("SQL_DATETIME_SUB", "Apache.Arrow.Types.Int32Type"),
+                ("CHAR_OCTET_LENGTH", "Apache.Arrow.Types.Int32Type"),
+                ("ORDINAL_POSITION", "Apache.Arrow.Types.Int32Type"),
+                ("IS_NULLABLE", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_CATALOG", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_SCHEMA", "Apache.Arrow.Types.StringType"),
+                ("SCOPE_TABLE", "Apache.Arrow.Types.StringType"),
+                ("SOURCE_DATA_TYPE", "Apache.Arrow.Types.Int16Type"),
+                ("IS_AUTO_INCREMENT", "Apache.Arrow.Types.StringType"),
+                ("BASE_TYPE_NAME", "Apache.Arrow.Types.StringType"),
+                ("PK_COLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_PKCOLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_CAT", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_SCHEM", "Apache.Arrow.Types.StringType"),
+                ("FK_PKTABLE_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_FKCOLUMN_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_FK_NAME", "Apache.Arrow.Types.StringType"),
+                ("FK_KEQ_SEQ", "Apache.Arrow.Types.Int32Type"),
+            };
+
+            RecordBatch batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            // Assert each expected field exists in the actual schema with the correct type
+            for (int i = 0; i < expectedSchema.Length; i++)
+            {
+                (string expectedName, string expectedType) = expectedSchema[i];
+                var actualField = queryResult.Stream?.Schema.FieldsList
+                    .FirstOrDefault(f => f.Name == expectedName);
+
+                Assert.NotNull(actualField); // Field must exist
+                Assert.Equal(expectedType, actualField.DataType.GetType().ToString());
+                var columnArray = batch.Column(i);
+                Assert.Equal(actualField.DataType, columnArray.Data.DataType);
+            }
         }
 
         // Helper method to get string representation of array values
