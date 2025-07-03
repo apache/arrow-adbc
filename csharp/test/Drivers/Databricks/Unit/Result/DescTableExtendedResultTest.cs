@@ -23,7 +23,7 @@ using static Apache.Arrow.Adbc.Drivers.Apache.Hive2.HiveServer2Connection;
 
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Result
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Result
 {
     public class DescTableExtendedResultTest
     {
