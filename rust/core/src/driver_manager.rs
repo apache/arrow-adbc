@@ -101,9 +101,12 @@
 // would prevent any parallelism between driver calls, which is not desirable.
 
 use std::collections::HashSet;
+use std::env;
 use std::ffi::{CStr, CString, OsStr};
+use std::fs;
 use std::ops::DerefMut;
 use std::os::raw::{c_char, c_void};
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::ptr::{null, null_mut};
 use std::sync::{Arc, Mutex};
@@ -111,11 +114,14 @@ use std::sync::{Arc, Mutex};
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
+use constcat::concat;
+use toml::{Table, Value};
 
 use crate::{
     error::{Error, Status},
     options::{self, AdbcVersion, InfoCode, OptionValue},
-    PartitionedResult, Result,
+    LoadFlags, PartitionedResult, Result, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
+    LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
 };
 use crate::{ffi, ffi::types::driver_method, Optionable};
 use crate::{Connection, Database, Driver, Statement};
@@ -161,6 +167,16 @@ struct ManagedDriverInner {
     _library: Option<libloading::Library>,
 }
 
+struct DriverInfo {
+    manifest_file: std::path::PathBuf,
+    driver_name: String,
+    lib_path: std::path::PathBuf,
+    entrypoint: Option<Vec<u8>>,
+
+    version: String,
+    source: String,
+}
+
 /// Implementation of [Driver].
 #[derive(Clone)]
 pub struct ManagedDriver {
@@ -182,6 +198,63 @@ impl ManagedDriver {
             _library: None,
         });
         Ok(ManagedDriver { inner })
+    }
+
+    pub fn find_load_from_name(
+        name: impl AsRef<OsStr>,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+    ) -> Result<Self> {
+        let driver_path = Path::new(name.as_ref());
+        let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
+        let ext = driver_path.extension();
+        if ext.is_some() {
+            if !allow_relative && driver_path.is_relative() {
+                return Err(Error::with_message_and_status(
+                    "Relative paths are not allowed",
+                    Status::InvalidArguments,
+                ));
+            }
+
+            match ext {
+                Some(ext) if ext == "toml" => {
+                    Self::load_driver_from_manifest(driver_path, entrypoint, version)
+                }
+                _ => Self::load_dynamic_from_filename(driver_path, entrypoint, version),
+            }
+        } else if driver_path.is_absolute() {
+            let toml_path = driver_path.with_extension("toml");
+            if toml_path.is_file() {
+                return Self::load_driver_from_manifest(&toml_path, entrypoint, version);
+            }
+
+            Self::load_dynamic_from_filename(driver_path, entrypoint, version)
+        } else {
+            for path in get_search_paths(load_flags) {
+                let mut full_path = path.join(driver_path);
+                full_path.set_extension("toml");
+                if full_path.is_file() {
+                    if let Ok(result) =
+                        Self::load_driver_from_manifest(&full_path, entrypoint, version)
+                    {
+                        return Ok(result);
+                    }
+                }
+
+                full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
+                if let Ok(result) = Self::load_dynamic_from_filename(full_path, entrypoint, version)
+                {
+                    return Ok(result);
+                }
+            }
+
+            let driver_name = name.as_ref().to_string_lossy();
+            Err(Error::with_message_and_status(
+                format!("Driver '{driver_name}' not found in search paths"),
+                Status::NotFound,
+            ))
+        }
     }
 
     /// Load a driver from a dynamic library filename.
@@ -276,6 +349,23 @@ impl ManagedDriver {
 
         Ok(database)
     }
+
+    fn load_driver_from_manifest(
+        driver_path: &Path,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+    ) -> Result<Self> {
+        let mut info = DriverInfo {
+            manifest_file: driver_path.to_path_buf(),
+            driver_name: String::new(),
+            lib_path: PathBuf::new(),
+            entrypoint: entrypoint.map(|e| e.to_vec()),
+            version: String::new(),
+            source: String::new(),
+        };
+        load_driver_manifest(&mut info)?;
+        Self::load_dynamic_from_filename(info.lib_path, entrypoint, version)
+    }
 }
 
 impl Driver for ManagedDriver {
@@ -314,6 +404,65 @@ impl Driver for ManagedDriver {
         });
         Ok(Self::DatabaseType { inner })
     }
+}
+
+fn get_optional_key(manifest: &Table, key: &str) -> String {
+    manifest
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn load_driver_manifest(info: &mut DriverInfo) -> Result<()> {
+    let contents = fs::read_to_string(info.manifest_file.as_path()).map_err(|e| {
+        let file = info.manifest_file.to_string_lossy();
+        Error::with_message_and_status(
+            format!("Could not read manifest '{file}': {e}"),
+            Status::InvalidArguments,
+        )
+    })?;
+
+    let manifest = contents
+        .parse::<Table>()
+        .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
+
+    info.driver_name = get_optional_key(&manifest, "name");
+    if info.entrypoint.is_none() && manifest.contains_key("entrypoint") {
+        info.entrypoint = manifest["entrypoint"]
+            .as_str()
+            .map(|s| s.as_bytes().to_vec());
+    }
+
+    info.version = get_optional_key(&manifest, "version");
+    info.source = get_optional_key(&manifest, "source");
+
+    let driver = manifest.get("Driver").and_then(|v| v.get("shared"));
+    match driver {
+        Some(driver) => {
+            if driver.is_str() {
+                info.lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
+            } else if driver.is_table() {
+                info.lib_path = PathBuf::from(
+                    driver
+                        .get(current_arch())
+                        .and_then(Value::as_str)
+                        .unwrap_or_default(),
+                );
+            }
+        }
+        None => {}
+    }
+
+    if info.lib_path.as_os_str().is_empty() {
+        let file = info.manifest_file.to_string_lossy();
+        return Err(Error::with_message_and_status(
+            format!("Driver path not found in manifest '{file}'"),
+            Status::InvalidArguments,
+        ));
+    }
+
+    Ok(())
 }
 
 fn set_option_database(
@@ -1308,5 +1457,482 @@ impl Drop for ManagedStatement {
         // TODO(alexandreyc): how should we handle `StatementRelease` failing?
         // See: https://github.com/apache/arrow-adbc/pull/1742#discussion_r1574388409
         unsafe { method(statement.deref_mut(), null_mut()) };
+    }
+}
+
+const fn current_arch() -> &'static str {
+    #[cfg(target_arch = "x86_64")]
+    const ARCH: &str = "amd64";
+    #[cfg(target_arch = "aarch64")]
+    const ARCH: &str = "arm64";
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    const ARCH: &str = std::env::consts::ARCH;
+
+    #[cfg(target_os = "macos")]
+    const OS: &str = "osx";
+    #[cfg(not(target_os = "macos"))]
+    const OS: &str = std::env::consts::OS;
+
+    #[cfg(target_env = "musl")]
+    const EXTRA: &str = "_musl";
+    #[cfg(all(target_os = "windows", target_env = "gnu"))]
+    const EXTRA: &str = "_mingw";
+    #[cfg(not(any(target_env = "musl", all(target_os = "windows", target_env = "gnu"))))]
+    const EXTRA: &str = "";
+
+    concat!(OS, "_", ARCH, EXTRA)
+}
+
+#[cfg(target_os = "windows")]
+extern crate windows_sys as windows;
+
+#[cfg(target_os = "windows")]
+mod target_windows {
+    use std::ffi::c_void;
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
+    use std::path::PathBuf;
+    use std::slice;
+
+    use super::windows::Win32::UI::Shell;
+
+    fn user_config_dir() -> Option<PathBuf> {
+        unsafe {
+            let mut path_ptr: windows::core::PWSTR = std::ptr::null_mut();
+            let result = Shell::SHGetKnownFolderPath(
+                Shell::FOLDERID_LocalAppData,
+                0,
+                std::ptr::null_mut(),
+                &mut path_ptr,
+            );
+
+            if result == 0 {
+                let len = windows::Win32::Globalization::lstrlenW(path_ptr) as usize;
+                let path = slice::from_raw_parts(path_ptr, len);
+                let ostr: OsString = OsStringExt::from_wide(path);
+                windows::Win32::System::Com::CoTaskMemFree(path_ptr as *const c_void);
+                Some(PathBuf::from(ostr))
+            } else {
+                windows::Win32::System::Com::CoTaskMemFree(path_ptr as *const c_void);
+                None
+            }
+        }
+    }
+}
+
+fn user_config_dir() -> Option<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        use target_windows::user_config_dir;
+        user_config_dir().and_then(|path| {
+            path.push("ADBC");
+            path.push("drivers");
+            Some(path)
+        })
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        env::var_os("HOME").map(PathBuf::from).and_then(|mut path| {
+            path.push("Library");
+            path.push("Application Support");
+            path.push("ADBC");
+            Some(path)
+        })
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        env::var_os("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|| {
+                env::var_os("HOME").map(|home| {
+                    let mut path = PathBuf::from(home);
+                    path.push(".config");
+                    path
+                })
+            })
+            .and_then(|mut path| {
+                path.push("adbc");
+                Some(path)
+            })
+    }
+}
+
+fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
+    let mut result = Vec::new();
+    if lvls & LOAD_FLAG_SEARCH_ENV != 0 {
+        env::var_os("ADBC_CONFIG_PATH").and_then(|paths| {
+            for p in env::split_paths(&paths) {
+                result.push(p);
+            }
+            Some(())
+        });
+    }
+
+    if lvls & LOAD_FLAG_SEARCH_USER != 0 {
+        if let Some(path) = user_config_dir() {
+            if path.exists() {
+                result.push(path);
+            }
+        }
+    }
+
+    // system level for windows is to search the registry keys
+    #[cfg(not(windows))]
+    if lvls & LOAD_FLAG_SEARCH_SYSTEM != 0 {
+        let system_config_dir = PathBuf::from("/etc/adbc");
+        if system_config_dir.exists() {
+            result.push(system_config_dir);
+        }
+    }
+
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::LOAD_FLAG_DEFAULT;
+    use tempfile::Builder;
+
+    fn simple_manifest() -> toml::Table {
+        // if this test is enabled, we expect the env var ADBC_DRIVER_MANAGER_TEST_LIB
+        // to be defined.
+        let driver_path =
+            PathBuf::from(env::var_os("ADBC_DRIVER_MANAGER_TEST_LIB").expect(
+                "ADBC_DRIVER_MANAGER_TEST_LIB must be set for driver manager manifest tests",
+            ));
+
+        assert!(
+            driver_path.exists(),
+            "ADBC_DRIVER_MANAGER_TEST_LIB path does not exist: {}",
+            driver_path.display()
+        );
+
+        let arch = current_arch();
+        format!(
+            r#"
+    name = 'SQLite3'
+    publisher = 'arrow-adbc'
+    version = '1.0.0'
+
+    [ADBC]
+    version = '1.1.0'
+
+    [Driver]
+    [Driver.shared]
+    {arch} = {driver_path:?}
+    "#
+        )
+        .parse::<toml::Table>()
+        .unwrap()
+    }
+
+    fn write_manifest_to_tempfile(p: PathBuf, tbl: toml::Table) -> (tempfile::TempDir, PathBuf) {
+        let tmp_dir = Builder::new()
+            .prefix("adbc_tests")
+            .tempdir()
+            .expect("Failed to create temporary directory for driver manager manifest test");
+
+        let manifest_path = tmp_dir.path().join(p);
+        if let Some(parent) = manifest_path.parent() {
+            std::fs::create_dir_all(parent)
+                .expect("Failed to create parent directory for manifest");
+        }
+
+        std::fs::write(&manifest_path, toml::to_string_pretty(&tbl).unwrap())
+            .expect("Failed to write driver manager manifest to temporary file");
+
+        (tmp_dir, manifest_path)
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_load_driver_env() {
+        // ensure that we fail without the env var set
+        assert!(ManagedDriver::find_load_from_name(
+            "sqlite",
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_SEARCH_ENV
+        )
+        .is_err());
+
+        let (tmp_dir, manifest_path) =
+            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+
+        env::set_var(
+            "ADBC_CONFIG_PATH",
+            manifest_path.parent().unwrap().as_os_str(),
+        );
+
+        assert!(ManagedDriver::find_load_from_name(
+            "sqlite",
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_SEARCH_ENV,
+        )
+        .is_ok());
+
+        env::remove_var("ADBC_CONFIG_PATH");
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_load_driver_env_multiple_paths() {
+        let (tmp_dir, manifest_path) =
+            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+
+        let path_os_string =
+            env::join_paths([Path::new("/home"), Path::new(""), manifest_path.as_path()]).unwrap();
+        env::set_var("ADBC_CONFIG_PATH", path_os_string);
+        assert!(ManagedDriver::find_load_from_name(
+            "sqlite",
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_SEARCH_ENV,
+        )
+        .is_ok());
+
+        env::remove_var("ADBC_CONFIG_PATH");
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_load_non_ascii_path() {
+        let p = PathBuf::from("majestik møøse/sqlite.toml");
+        let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
+
+        env::set_var(
+            "ADBC_CONFIG_PATH",
+            manifest_path.parent().unwrap().as_os_str(),
+        );
+        assert!(ManagedDriver::find_load_from_name(
+            "sqlite",
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_SEARCH_ENV,
+        )
+        .is_ok());
+
+        env::remove_var("ADBC_CONFIG_PATH");
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_disallow_env_config() {
+        let (tmp_dir, manifest_path) =
+            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+
+        env::set_var(
+            "ADBC_CONFIG_PATH",
+            manifest_path.parent().unwrap().as_os_str(),
+        );
+
+        let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;
+        assert!(
+            ManagedDriver::find_load_from_name("sqlite", None, AdbcVersion::V100, load_flags)
+                .is_err_and(|e| e.status == Status::NotFound)
+        );
+
+        env::remove_var("ADBC_CONFIG_PATH");
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_load_absolute_path() {
+        let (tmp_dir, manifest_path) =
+            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+
+        assert!(ManagedDriver::find_load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT,
+        )
+        .is_ok());
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_load_absolute_path_no_ext() {
+        let (tmp_dir, mut manifest_path) =
+            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+
+        manifest_path.set_extension("");
+        assert!(ManagedDriver::find_load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT,
+        )
+        .is_ok());
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_load_relative_path() {
+        std::fs::write(
+            PathBuf::from("sqlite.toml"),
+            toml::to_string_pretty(&simple_manifest()).unwrap(),
+        )
+        .expect("Failed to write driver manager manifest to file");
+
+        assert!(
+            ManagedDriver::find_load_from_name("sqlite.toml", None, AdbcVersion::V100, 0)
+                .is_err_and(|e| e.status == Status::InvalidArguments)
+        );
+
+        assert!(ManagedDriver::find_load_from_name(
+            "sqlite.toml",
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_ALLOW_RELATIVE_PATHS,
+        ).is_ok());
+
+        std::fs::remove_file("sqlite.toml")
+            .expect("Failed to remove temporary driver manifest file");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_manifest_missing_driver() {
+        let mut manifest_without_driver = simple_manifest();
+        manifest_without_driver.remove("Driver");
+
+        let (tmp_dir, manifest_path) =
+            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest_without_driver);
+
+        assert!(ManagedDriver::find_load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT
+        )
+        .is_err_and(|e| e.status == Status::InvalidArguments));
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_manifest_wrong_arch() {
+        let mut manifest_wrong_arch = simple_manifest();
+        manifest_wrong_arch
+            .get_mut("Driver")
+            .unwrap()
+            .get_mut("shared")
+            .unwrap()
+            .as_table_mut()
+            .unwrap()
+            .clear();
+        manifest_wrong_arch
+            .get_mut("Driver")
+            .unwrap()
+            .get_mut("shared")
+            .unwrap()
+            .as_table_mut()
+            .unwrap()
+            .insert("non-existing".into(), "path/to/bad/driver.so".into());
+
+        let (tmp_dir, manifest_path) =
+            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest_wrong_arch);
+
+        assert!(ManagedDriver::find_load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT
+        )
+        .is_err_and(|e| e.status == Status::InvalidArguments));
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(all(feature = "driver_manager_test_lib", feature = "driver_manager_test_manifest_user")), ignore)]
+    fn test_manifest_user_config() {
+        assert!(ManagedDriver::find_load_from_name(
+            "adbc-test-sqlite",
+            None,
+            AdbcVersion::V110,
+            LOAD_FLAG_DEFAULT
+        ).is_err());
+
+        let usercfg_dir = user_config_dir().unwrap();
+        let mut created = false;
+        if !usercfg_dir.exists() {
+            std::fs::create_dir_all(&usercfg_dir)
+                .expect("Failed to create user config directory for driver manager test");
+            created = true;
+        }
+
+        let manifest_path = usercfg_dir.join("adbc-test-sqlite.toml");
+        std::fs::write(
+            &manifest_path,
+            toml::to_string_pretty(&simple_manifest()).unwrap(),
+        )
+        .expect("Failed to write driver manager manifest to user config directory");
+
+        // fail to load if the load flag doesn't have LOAD_FLAG_SEARCH_USER
+        assert!(ManagedDriver::find_load_from_name(
+            "adbc-test-sqlite",
+            None,
+            AdbcVersion::V110,
+            LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_USER,
+        )
+        .is_err_and(|e| e.status == Status::NotFound));
+
+        // succeed loading if LOAD_FLAG_SEARCH_USER flag is set
+        assert!(ManagedDriver::find_load_from_name(
+            "adbc-test-sqlite",
+            None,
+            AdbcVersion::V110,
+            LOAD_FLAG_SEARCH_USER,
+        ).is_ok());
+
+        std::fs::remove_file(&manifest_path)
+            .expect("Failed to remove driver manager manifest from user config directory");
+        if created {
+            assert!(std::fs::remove_dir(usercfg_dir).is_ok());
+        }
+    }
+
+    #[test]
+    #[cfg_attr(not(windows), ignore)]
+    fn test_get_search_paths() {
+        let system_path = PathBuf::from("/etc/adbc");
+        let search_paths = get_search_paths(LOAD_FLAG_SEARCH_SYSTEM);
+        if system_path.exists() {
+            assert_eq!(search_paths, vec![system_path]);
+        } else {
+            assert_eq!(search_paths, Vec::<PathBuf>::new());
+        }
     }
 }

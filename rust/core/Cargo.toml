@@ -16,31 +16,39 @@
 # under the License.
 
 [package]
-name = "adbc_core"
-description = "Public abstract API, driver manager and driver exporter"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
 authors.workspace = true
-license.workspace = true
-readme = "../README.md"
-documentation.workspace = true
-homepage.workspace = true
-repository.workspace = true
-keywords.workspace = true
 categories.workspace = true
+description = "Public abstract API, driver manager and driver exporter"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "adbc_core"
+readme = "../README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [features]
 default = []
-driver_manager = ["dep:libloading"]
+driver_manager = ["dep:libloading", "dep:toml", "dep:windows-sys"]
+driver_manager_test_lib = ["driver_manager"]
+driver_manager_test_manifest_user = ["driver_manager_test_lib"]
 
 [dependencies]
 arrow-array.workspace = true
 arrow-schema.workspace = true
-libloading = { version = "0.8", optional = true }
+constcat = "0.6.1"
+libloading = {version = "0.8", optional = true}
+toml = {version = "0.8.23", optional = true}
 
 [dev-dependencies]
 arrow-select.workspace = true
+tempfile = "3.20.0"
 
 [package.metadata.docs.rs]
 all-features = true
+
+[target.windows.dependencies]
+windows-sys = {version = ">= 0.59.0", features = ["Win32_UI_Shell"], optional = true}
