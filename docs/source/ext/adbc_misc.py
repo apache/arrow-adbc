@@ -37,14 +37,17 @@ LOGGER = sphinx.util.logging.getLogger(__name__)
 _REPO_TO_LANGUAGE = {
     "CRAN": "R",
     "crates.io": "Rust",
+    "Go": "Go",
     "Maven": "Java",
     "NuGet": "C#",
     "RubyGems": "Ruby",
+    "R-multiverse": "R",
     "PyPI": "Python",
 }
 
 _LANGUAGE_TO_KEY = {
     "C/C++": "cpp",
+    "C#": "csharp",
 }
 
 
@@ -147,7 +150,9 @@ class DriverInstallationDirective(SphinxDirective):
                 )
                 generated_lines.append("")
 
-                for repo, package, url in sorted(packages, key=lambda x: (x[0], x[1])):
+                for repo, package, url in sorted(
+                    packages, key=lambda x: (x[0].lower(), x[1])
+                ):
                     generated_lines.append(
                         f"      Install `{package} <{url}>`_ from {repo}:"
                     )
@@ -156,16 +161,35 @@ class DriverInstallationDirective(SphinxDirective):
                         generated_lines.append("      .. code-block:: shell")
                         generated_lines.append("")
                         generated_lines.append(f"         mamba install {package}")
+                    elif repo == "crates.io":
+                        generated_lines.append("      .. code-block:: shell")
+                        generated_lines.append("")
+                        generated_lines.append(f"         cargo add {package}")
                     elif repo == "CRAN":
                         generated_lines.append("      .. code-block:: r")
                         generated_lines.append("")
                         generated_lines.append(
                             f'         install.packages("{package}")'
                         )
+                    elif repo == "Go":
+                        generated_lines.append("      .. code-block:: shell")
+                        generated_lines.append("")
+                        generated_lines.append(f"         go get {package}")
+                    elif repo == "NuGet":
+                        generated_lines.append("      .. code-block:: shell")
+                        generated_lines.append("")
+                        generated_lines.append(f"         dotnet package add {package}")
                     elif repo == "PyPI":
                         generated_lines.append("      .. code-block:: shell")
                         generated_lines.append("")
                         generated_lines.append(f"         pip install {package}")
+                    elif repo == "R-multiverse":
+                        generated_lines.append("      .. code-block:: r")
+                        generated_lines.append("")
+                        generated_lines.append(
+                            f'         install.packages("{package}", '
+                            'repos = "https://community.r-multiverse.org")'
+                        )
                     else:
                         LOGGER.warning(f"Unknown package repo {repo}", type="adbc_misc")
                         continue
@@ -194,8 +218,8 @@ class DriverInstallationDirective(SphinxDirective):
         if status.implementation in {"C/C++", "C#", "Go", "Rust"}:
             generated_lines.append("")
             generated_lines.append(
-                "May be used from C/C++, C#, GLib, Go, R, "
-                "Ruby, and Rust via the driver manager."
+                "Additionally, the driver may be used from C/C++, C#, GLib, "
+                "Go, R, Ruby, and Rust via the driver manager."
             )
 
         print("\n".join(generated_lines))
