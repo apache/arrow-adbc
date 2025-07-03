@@ -40,7 +40,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         public long MaxTraceFileSizeKb { get; set; } = FileExporter.MaxFileSizeKbDefault;
 
         /// <summary>
-        /// The maxiumum number of trace files in the tracing folder. If the number of files exceeds this maximum, older files will be removed.
+        /// The maximum number of trace files in the tracing folder. If the number of files exceeds this maximum, older files will be removed.
         /// </summary>
         public int MaxTraceFiles { get; set; } = FileExporter.MaxTraceFilesDefault;
     }

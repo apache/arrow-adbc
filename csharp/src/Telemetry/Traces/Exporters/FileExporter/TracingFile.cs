@@ -158,7 +158,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     }
                     catch (OperationCanceledException)
                     {
-                        // Need to catch this exception or it will be propogated.
+                        // Need to catch this exception or it will be propagated.
                         break;
                     }
                 }
@@ -194,7 +194,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     }
                     catch (OperationCanceledException)
                     {
-                        // Need to catch this exception or it will be propogated.
+                        // Need to catch this exception or it will be propagated.
                         break;
                     }
                 }

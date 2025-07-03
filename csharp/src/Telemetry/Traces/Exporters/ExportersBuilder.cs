@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
         /// added to the <see cref="Builder"/>. If the value of exporterOption is not null and not empty, it will be
         /// used as the key to the dictionary. If exporterOption is null or empty, then the exporter option will
         /// check the environment variable identified by environmentName (default <see cref="ExportersOptions.Environment.Exporter"/>).
-        /// If both the exporterOption and the enviroment variable value are null or empty, then this function will return null
+        /// If both the exporterOption and the environment variable value are null or empty, then this function will return null
         /// and no exporeter will be activated.
         /// </para>
         /// <para>

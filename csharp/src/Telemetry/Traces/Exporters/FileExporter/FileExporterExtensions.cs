@@ -108,7 +108,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         /// If the folder doesn not exist, it will be created.
         /// </param>
         /// <param name="maxTraceFileSizeKb">The maximum size of each trace file (in KB). If a trace file exceeds this limit, a new trace file is created.</param>
-        /// <param name="maxTraceFiles">The maxiumum number of trace files in the tracing folder. If the number of files exceeds this maximum, older files will be removed.</param>
+        /// <param name="maxTraceFiles">The maximum number of trace files in the tracing folder. If the number of files exceeds this maximum, older files will be removed.</param>
         /// <returns>The previous <see cref="OpenTelemetry.Trace.TracerProviderBuilder"/> with the exporter added.</returns>
         /// <remarks>
         /// Note that only one global instance of the exporter is added.
