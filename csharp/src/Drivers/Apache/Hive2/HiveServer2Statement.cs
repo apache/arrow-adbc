@@ -566,6 +566,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
         {
+            // Set _directResults so that dispose logic can check if operation was already closed
+            _directResults = directResults;
+
             Schema schema;
             if (Connection.AreResultsAvailableDirectly && directResults?.ResultSet?.Results != null)
             {
