@@ -140,6 +140,8 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
       - name: Test
         working-directory: rust
+        env:
+          ADBC_DRIVER_MANAGER_TEST_LIB: ${{ github.workspace }}/local/lib/libadbc_driver_sqlite3.so
         run: |
           cargo test --all-targets --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
         # env:
