@@ -305,12 +305,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a pattern.
         /// </summary>
-        protected void GetObjectsTablesTest(string tableNamePattern)
+        protected void GetObjectsTablesTest(string tableNamePattern, string? expectedTableName = default)
         {
             // need to add the database
             string? databaseName = TestConfiguration.Metadata.Catalog;
             string? schemaName = TestConfiguration.Metadata.Schema;
-            string? tableName = TestConfiguration.Metadata.Table;
+            string? tableName = expectedTableName ?? TestConfiguration.Metadata.Table;
 
             using IArrowArrayStream stream = Connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
