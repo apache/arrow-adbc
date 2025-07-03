@@ -179,6 +179,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string UseDescTableExtended = "adbc.databricks.use_desc_table_extended";
+
+        /// <summary>
+        /// Whether to propagate trace parent headers in HTTP requests.
+        /// Default value is true if not specified.
+        /// When enabled, the driver will add W3C Trace Context headers to all HTTP requests.
+        /// </summary>
+        public const string TracePropagationEnabled = "adbc.databricks.trace_propagation.enabled";
+
+        /// <summary>
+        /// The name of the HTTP header to use for trace parent propagation.
+        /// Default value is "traceparent" (W3C standard) if not specified.
+        /// This allows customization for systems that use different header names.
+        /// </summary>
+        public const string TraceParentHeaderName = "adbc.databricks.trace_propagation.header_name";
+
+        /// <summary>
+        /// Whether to include trace state header in HTTP requests.
+        /// Default value is false if not specified.
+        /// When enabled, the driver will also propagate the tracestate header if available.
+        /// </summary>
+        public const string TraceStateEnabled = "adbc.databricks.trace_propagation.state_enabled";
     }
 
     /// <summary>

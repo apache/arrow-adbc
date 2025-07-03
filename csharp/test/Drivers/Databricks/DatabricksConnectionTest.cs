@@ -320,6 +320,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
                 // Tests for EnableMultipleCatalogSupport parameter
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.EnableMultipleCatalogSupport] = "notabool" }, typeof(ArgumentException)));
+
+                // Tests for trace propagation configuration parameters
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TracePropagationEnabled] = "notabool" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TraceParentHeaderName] = "" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TraceStateEnabled] = "notabool" }, typeof(ArgumentException)));
             }
         }
 
@@ -402,6 +407,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             OutputHelper?.WriteLine(
                 $"Test passed for inputCatalog={inputCatalog}, inputSchema={inputSchema}, enableMultipleCatalogSupport={enableMultipleCatalogSupport}. " +
                 $"Runtime catalog={catalogFromRuntime}, schema={schemaFromRuntime}, Statement catalog={dbStatement.CatalogName}");
+        }
+
+        /// <summary>
+        /// Tests that trace propagation configuration is correctly parsed and stored.
+        /// </summary>
+        [SkippableTheory]
+        [InlineData("true", "traceparent", "false")]
+        [InlineData("false", "X-Trace-Id", "true")]
+        [InlineData("TRUE", "X-Custom-Trace", "FALSE")]
+        [InlineData("False", "custom-header", "True")]
+        public void TracePropagationConfigurationTest(string tracePropagationEnabled, string traceParentHeaderName, string traceStateEnabled)
+        {
+            // Arrange
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            testConfig.TracePropagationEnabled = tracePropagationEnabled;
+            testConfig.TraceParentHeaderName = traceParentHeaderName;
+            testConfig.TraceStateEnabled = traceStateEnabled;
+
+            // Act
+            using var connection = NewConnection(testConfig);
+
+            // Assert
+            Assert.NotNull(connection);
+            Assert.IsType<DatabricksConnection>(connection);
+
+            // We can't directly test the private fields, but we can verify the connection was created successfully
+            // with the provided configuration. The actual functionality is tested in TracingDelegatingHandlerTest.
+            OutputHelper?.WriteLine(
+                $"Connection created successfully with tracePropagationEnabled={tracePropagationEnabled}, " +
+                $"traceParentHeaderName={traceParentHeaderName}, traceStateEnabled={traceStateEnabled}");
         }
     }
 }
