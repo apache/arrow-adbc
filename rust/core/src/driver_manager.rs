@@ -200,6 +200,8 @@ impl ManagedDriver {
         Ok(ManagedDriver { inner })
     }
 
+    /// Load a driver either by name, filename, path, or via locating a toml manifest file.
+    /// The LoadFlags control what directories are searched to locate a manifest.
     pub fn find_load_from_name(
         name: impl AsRef<OsStr>,
         entrypoint: Option<&[u8]>,
