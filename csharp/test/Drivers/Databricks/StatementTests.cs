@@ -131,6 +131,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             await base.CanGetCrossReferenceFromChildTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
         }
 
+        /// <summary>
+        /// Verifies that Dispose() can be called on metadata query statements without throwing
+        /// "Invalid OperationHandle" errors. This tests the fix for the issue where the server
+        /// auto-closes operations but the client still tries to close them during disposal.
+        /// </summary>
+        [SkippableFact]
+        public async Task CanDisposeMetadataQueriesWithoutError()
+        {
+            // Test a simple metadata command that's most likely to trigger the issue
+            var statement = Connection.CreateStatement();
+            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+            statement.SqlQuery = "GetSchemas";
+
+            // Execute the metadata query
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            // This should not throw "Invalid OperationHandle" errors
+            // The fix ensures _directResults is set so dispose logic works correctly
+            statement.Dispose();
+        }
+
         [SkippableFact]
         public async Task CanGetColumnsWithBaseTypeName()
         {
