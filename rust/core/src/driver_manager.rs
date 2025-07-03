@@ -1812,7 +1812,8 @@ mod tests {
             None,
             AdbcVersion::V100,
             LOAD_FLAG_ALLOW_RELATIVE_PATHS,
-        ).is_ok());
+        )
+        .is_ok());
 
         std::fs::remove_file("sqlite.toml")
             .expect("Failed to remove temporary driver manifest file");
@@ -1878,14 +1879,21 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(not(all(feature = "driver_manager_test_lib", feature = "driver_manager_test_manifest_user")), ignore)]
+    #[cfg_attr(
+        not(all(
+            feature = "driver_manager_test_lib",
+            feature = "driver_manager_test_manifest_user"
+        )),
+        ignore
+    )]
     fn test_manifest_user_config() {
         assert!(ManagedDriver::find_load_from_name(
             "adbc-test-sqlite",
             None,
             AdbcVersion::V110,
             LOAD_FLAG_DEFAULT
-        ).is_err());
+        )
+        .is_err());
 
         let usercfg_dir = user_config_dir().unwrap();
         let mut created = false;
@@ -1917,7 +1925,8 @@ mod tests {
             None,
             AdbcVersion::V110,
             LOAD_FLAG_SEARCH_USER,
-        ).is_ok());
+        )
+        .is_ok());
 
         std::fs::remove_file(&manifest_path)
             .expect("Failed to remove driver manager manifest from user config directory");
