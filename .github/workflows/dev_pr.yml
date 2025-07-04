@@ -68,6 +68,10 @@ jobs:
       # Pings make it into the commit message where they annoy the user every
       # time the commit gets pushed somewhere
       - name: Check PR body for pings
+        # Don't check this if it's dependabot - dependabot doesn't ping users
+        # and it tends to include things that look like pings (but are
+        # escaped)
+        if: github.actor != 'dependabot[bot]'
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
