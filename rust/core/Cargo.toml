@@ -33,11 +33,18 @@ categories.workspace = true
 [features]
 default = []
 driver_manager = ["dep:libloading"]
+manifest = ["dep:serde", "dep:semver", "dep:spdx", "dep:toml"]
 
 [dependencies]
 arrow-array.workspace = true
 arrow-schema.workspace = true
 libloading = { version = "0.8", optional = true }
+serde = { version = "1.0.219", features = ["derive"], optional = true }
+semver = { version = "1.0.26", features = ["serde"], optional = true }
+spdx = { version = "0.10.8", optional = true }
+toml = { version = "0.8.23", default-features = false, features = [
+    "parse",
+], optional = true }
 
 [dev-dependencies]
 arrow-select.workspace = true
