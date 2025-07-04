@@ -101,10 +101,10 @@ class StatementOptions(enum.Enum):
     #: The following values are supported:
     #:
     #: * ``CREATE_IF_NEEDED``:
-    #:     Will create the table if it does not already exist.
-    #:     Tables are created atomically on successful completion of a job.
+    #:   Will create the table if it does not already exist.
+    #:   Tables are created atomically on successful completion of a job.
     #: * ``CREATE_NEVER``:
-    #:     Ensures the table must already exist and will not be automatically created.
+    #:   Ensures the table must already exist and will not be automatically created.
     CREATE_DISPOSITION = "adbc.bigquery.sql.query.create_disposition"
 
     #: WRITE_DISPOSITION specifies how existing data in the destination
@@ -114,13 +114,13 @@ class StatementOptions(enum.Enum):
     #: The following values are supported:
     #:
     #: * ``WRITE_APPEND``:
-    #:     Will append to any existing data in the destination table.
-    #:     Data is appended atomically on successful completion of a job.
+    #:   Will append to any existing data in the destination table.
+    #:   Data is appended atomically on successful completion of a job.
     #: * ``WRITE_TRUNCATE``:
-    #:     Overrides the existing data in the destination table.
-    #:     Data is overwritten atomically on successful completion of a job.
+    #:   Overrides the existing data in the destination table.
+    #:   Data is overwritten atomically on successful completion of a job.
     #: * ``WRITE_EMPTY``:
-    #:     Fails writes if the destination table already contains data.
+    #:   Fails writes if the destination table already contains data.
     WRITE_DISPOSITION = "adbc.bigquery.sql.query.write_disposition"
 
     #: DISABLE_QUERY_CACHE prevents results being fetched from the query cache.
@@ -162,21 +162,21 @@ class StatementOptions(enum.Enum):
     #: The following values are supported:
     #:
     #: * ``BATCH``:
-    #:     BatchPriority specifies that the query should be scheduled with the
-    #:     batch priority. BigQuery queues each batch query on your behalf, and
-    #:     starts the query as soon as idle resources are available, usually
-    #:     within a few minutes. If BigQuery hasn't started the query within 24
-    #:     hours, BigQuery changes the job priority to interactive. Batch queries
-    #:     don't count towards your concurrent rate limit, which can make it
-    #:     easier to start many queries at once. More information can be found at:
-    #:     https://cloud.google.com/bigquery/docs/running-queries#batchqueries
+    #:   BatchPriority specifies that the query should be scheduled with the
+    #:   batch priority. BigQuery queues each batch query on your behalf, and
+    #:   starts the query as soon as idle resources are available, usually
+    #:   within a few minutes. If BigQuery hasn't started the query within 24
+    #:   hours, BigQuery changes the job priority to interactive. Batch queries
+    #:   don't count towards your concurrent rate limit, which can make it
+    #:   easier to start many queries at once. More information can be found at:
+    #:   https://cloud.google.com/bigquery/docs/running-queries#batchqueries
     #: * ``INTERACTIVE``:
-    #:     Specifies that the query should be scheduled with interactive priority,
-    #:     which means that the query is executed as soon as possible. Interactive
-    #:     queries count towards your concurrent rate limit and your daily limit.
-    #:     It is the default priority with which queries get executed. More
-    #:     information can be found at:
-    #:     https://cloud.google.com/bigquery/docs/running-queries#queries
+    #:   Specifies that the query should be scheduled with interactive priority,
+    #:   which means that the query is executed as soon as possible. Interactive
+    #:   queries count towards your concurrent rate limit and your daily limit.
+    #:   It is the default priority with which queries get executed. More
+    #:   information can be found at:
+    #:   https://cloud.google.com/bigquery/docs/running-queries#queries
     PRIORITY = "adbc.bigquery.sql.query.priority"
 
     #: MAX_BILLING_TIER sets the maximum billing tier for a Query.

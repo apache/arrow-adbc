@@ -19,6 +19,10 @@
 
 # Hive Driver
 
+![Vendor: Apache Hive](https://img.shields.io/badge/vendor-Apache%20Hive-blue?style=flat-square)
+![Implementation: C#](https://img.shields.io/badge/language-C%23-violet?style=flat-square)
+![Status: Experimental](https://img.shields.io/badge/status-experimental-red?style=flat-square)
+
 ## Database and Connection Properties
 
 Properties should be passed in the call to `HiveServer2Driver.Open`,
