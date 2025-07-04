@@ -18,13 +18,21 @@
 use std::error::Error;
 
 /// Build and link the Go driver statically.
+///
+/// This defaults to assuming the source of the ADBC Go implementation is
+/// available via the `go` symlink. This can be overridden by setting the
+/// `ADBC_GO_SRC_DIR` environment variable.
 #[cfg(feature = "bundled")]
 fn bundled() -> Result<(), Box<dyn Error>> {
     use std::{env, path::PathBuf, process::Command};
 
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
-    let go_dir = manifest_dir.ancestors().nth(3).unwrap().join("go");
-    let go_pkg = go_dir.join("adbc/pkg/snowflake");
+    let go_pkg = match env::var("ADBC_GO_SRC_DIR") {
+        // Use the provides path to find the source
+        Ok(path) => PathBuf::from(path),
+        // Assume the source is available via the symlink
+        Err(_) => PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("go"),
+    }
+    .join("adbc/pkg/snowflake");
 
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
     let archive = out_dir.join("libsnowflake.a");
