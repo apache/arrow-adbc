@@ -28,8 +28,8 @@
 [![crates.io: adbc_snowflake](https://img.shields.io/crates/v/adbc_snowflake?style=flat-square)](https://crates.io/crates/adbc_snowflake)
 [![Go: github.com/apache/arrow-adbc/go/adbc/driver/snowflake](https://img.shields.io/badge/Go-go%2Fadbc%2Fdriver%2Fsnowflake-blue)](https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc/driver/snowflake)
 [![NuGet: Apache.Arrow.Adbc.Drivers.Interop.Snowflake](https://img.shields.io/nuget/v/Apache.Arrow.Adbc.Drivers.Interop.Snowflake)](https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.Interop.Snowflake)
-[![R-multiverse: adbcsnowflake](https://img.shields.io/github/r-package/v/apache/arrow-adbc?filename=r%2Fadbcsnowflake%2FDESCRIPTION&style=flat-square)](https://apache.r-universe.dev/adbcsnowflake)
 [![PyPI: adbc-driver-snowflake](https://img.shields.io/pypi/v/adbc-driver-snowflake?style=flat-square)](https://pypi.org/project/adbc-driver-snowflake/)
+[![R-multiverse: adbcsnowflake](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcommunity.r-multiverse.org%2Fapi%2Fpackages%2Fadbcsnowflake&query=%24.Version&label=r-multiverse%3A%20adbcsnowflake&style=flat-square)](https://community.r-multiverse.org/adbcsnowflake/)
 
 This driver provides an interface to
 [Snowflake](https://www.snowflake.com/) using ADBC.

@@ -25,8 +25,8 @@
 
 [![conda-forge: adbc-driver-flightsql](https://img.shields.io/conda/vn/conda-forge/adbc-driver-flightsql?label=conda-forge%3A%20adbc-driver-flightsql&style=flat-square)](https://anaconda.org/conda-forge/adbc-driver-flightsql)
 [![conda-forge: libadbc-driver-flightsql](https://img.shields.io/conda/vn/conda-forge/libadbc-driver-flightsql?label=conda-forge%3A%20libadbc-driver-flightsql&style=flat-square)](https://anaconda.org/conda-forge/libadbc-driver-flightsql)
-[![CRAN: adbcflightsql](https://img.shields.io/github/r-package/v/apache/arrow-adbc?filename=r%2Fadbcflightsql%2FDESCRIPTION&style=flat-square)](https://github.com/apache/arrow-adbc/tree/main/r/adbcflightsql)
 [![PyPI: adbc-driver-flightsql](https://img.shields.io/pypi/v/adbc-driver-flightsql?style=flat-square)](https://pypi.org/project/adbc-driver-flightsql/)
+[![R-multiverse: adbcflightsql](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcommunity.r-multiverse.org%2Fapi%2Fpackages%2Fadbcflightsql&query=%24.Version&label=r-multiverse%3A%20adbcflightsql&style=flat-square)](https://community.r-multiverse.org/adbcflightsql/)
 
 This driver provides an interface to databases supporting
 [Apache Arrow Flight SQL](https://arrow.apache.org/docs/format/FlightSql.html) using ADBC.

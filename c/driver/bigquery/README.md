@@ -25,8 +25,8 @@
 
 [![conda-forge: adbc-driver-bigquery](https://img.shields.io/conda/vn/conda-forge/adbc-driver-bigquery?label=conda-forge%3A%20adbc-driver-bigquery&style=flat-square)](https://anaconda.org/conda-forge/adbc-driver-bigquery)
 [![conda-forge: libadbc-driver-bigquery](https://img.shields.io/conda/vn/conda-forge/libadbc-driver-bigquery?label=conda-forge%3A%20libadbc-driver-bigquery&style=flat-square)](https://anaconda.org/conda-forge/libadbc-driver-bigquery)
-[![R-multiverse: adbcbigquery](https://img.shields.io/github/r-package/v/apache/arrow-adbc?filename=r%2Fadbcbigquery%2FDESCRIPTION&style=flat-square)](https://github.com/apache/arrow-adbc/tree/main/r/adbcbigquery)
 [![PyPI: adbc-driver-bigquery](https://img.shields.io/pypi/v/adbc-driver-bigquery?style=flat-square)](https://pypi.org/project/adbc-driver-bigquery/)
+[![R-multiverse: adbcbigquery](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcommunity.r-multiverse.org%2Fapi%2Fpackages%2Fadbcbigquery&query=%24.Version&label=r-multiverse%3A%20adbcbigquery&style=flat-square)](https://community.r-multiverse.org/adbcbigquery/)
 
 This driver provides an interface to
 [BigQuery](https://cloud.google.com/bigquery) using ADBC.
