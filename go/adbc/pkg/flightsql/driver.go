@@ -1810,5 +1810,4 @@ func FlightSQLStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 	return C.ADBC_STATUS_OK
 }
 
-
 func main() {}
