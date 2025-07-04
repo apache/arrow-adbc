@@ -1,12 +1,14 @@
 //! Driver manifest.
 
 use std::{
+    collections::HashMap,
     fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
 use serde::{de, Deserialize, Deserializer};
+use toml::Value;
 
 use crate::{
     error::{Error, Status},
@@ -36,6 +38,10 @@ pub struct Manifest {
     /// Driver
     #[serde(rename = "Driver")]
     driver: Driver,
+
+    /// Additional fields
+    #[serde(flatten)]
+    additional: HashMap<String, Value>,
 }
 
 impl Manifest {
@@ -59,14 +65,19 @@ impl Manifest {
         self.version.as_ref()
     }
 
-    // Returns the ADBC field of the manifest.
+    /// Returns the ADBC field of the manifest.
     pub fn adbc(&self) -> Option<&ADBC> {
         self.adbc.as_ref()
     }
 
-    // Returns the Driver field of the manifest.
+    /// Returns the Driver field of the manifest.
     pub fn driver(&self) -> &Driver {
         &self.driver
+    }
+
+    /// Returns the additional fields in this manifest.
+    pub fn additional(&self) -> &HashMap<String, Value> {
+        &self.additional
     }
 }
 
@@ -243,6 +254,22 @@ mod tests {
                 .and_then(ADBC::features)
                 .and_then(Features::unsupported),
             Some(["async".to_owned()].as_slice())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn additional_fields() -> error::Result<()> {
+        let input = r#"
+            another_field = 42
+
+            [Driver]
+            shared = "/path/to/dynamic_lib.so"
+        "#;
+        let manifest = input.parse::<Manifest>()?;
+        assert_eq!(
+            manifest.additional().get("another_field"),
+            Some(&Value::Integer(42))
         );
         Ok(())
     }
