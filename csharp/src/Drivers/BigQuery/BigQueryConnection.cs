@@ -45,10 +45,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         bool includePublicProjectIds = false;
         const string infoDriverName = "ADBC BigQuery Driver";
         const string infoVendorName = "BigQuery";
-        readonly string? infoDriverArrowVersion;
 
-        private static readonly string s_assemblyName = BigQueryUtils.GetAssemblyName(typeof(BigQueryStatement));
-        private static readonly string s_assemblyVersion = BigQueryUtils.GetAssemblyVersion(typeof(BigQueryStatement));
+        private readonly string infoDriverArrowVersion = BigQueryUtils.GetAssemblyVersion(typeof(IArrowArray));
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
@@ -85,8 +83,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 RetryDelayMs = delay;
             }
-
-            this.infoDriverArrowVersion = typeof(IArrowArray).Assembly.GetName().Version?.ToString();
         }
 
         /// <summary>
@@ -104,9 +100,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         internal int RetryDelayMs { get; private set; } = 200;
 
-        public override string AssemblyVersion => s_assemblyVersion;
+        public override string AssemblyVersion => BigQueryUtils.BigQueryAssemblyVersion;
 
-        public override string AssemblyName => s_assemblyName;
+        public override string AssemblyName => BigQueryUtils.BigQueryAssemblyName;
 
         /// <summary>
         /// Initializes the internal BigQuery connection
@@ -350,7 +346,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 foreach (AdbcInfoCode code in codes)
                 {
                     string tagKey = SemanticConventions.Db.Operation.Parameter(code.ToString().ToLowerInvariant());
-                    Func<object?> tagValue = () => null;
+                    string? tagValue = null;
                     switch (code)
                     {
                         case AdbcInfoCode.DriverName:
@@ -358,28 +354,28 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                             typeBuilder.Append(strValTypeID);
                             offsetBuilder.Append(stringInfoBuilder.Length);
                             stringInfoBuilder.Append(infoDriverName);
-                            tagValue = () => infoDriverName;
+                            tagValue = infoDriverName;
                             break;
                         case AdbcInfoCode.DriverVersion:
                             infoNameBuilder.Append((UInt32)code);
                             typeBuilder.Append(strValTypeID);
                             offsetBuilder.Append(stringInfoBuilder.Length);
-                            stringInfoBuilder.Append(s_assemblyVersion);
-                            tagValue = () => s_assemblyVersion;
+                            stringInfoBuilder.Append(BigQueryUtils.BigQueryAssemblyVersion);
+                            tagValue = BigQueryUtils.BigQueryAssemblyVersion;
                             break;
                         case AdbcInfoCode.DriverArrowVersion:
                             infoNameBuilder.Append((UInt32)code);
                             typeBuilder.Append(strValTypeID);
                             offsetBuilder.Append(stringInfoBuilder.Length);
                             stringInfoBuilder.Append(infoDriverArrowVersion);
-                            tagValue = () => infoDriverArrowVersion;
+                            tagValue = infoDriverArrowVersion;
                             break;
                         case AdbcInfoCode.VendorName:
                             infoNameBuilder.Append((UInt32)code);
                             typeBuilder.Append(strValTypeID);
                             offsetBuilder.Append(stringInfoBuilder.Length);
                             stringInfoBuilder.Append(infoVendorName);
-                            tagValue = () => infoVendorName;
+                            tagValue = infoVendorName;
                             break;
                         default:
                             infoNameBuilder.Append((UInt32)code);
@@ -474,7 +470,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             return this.TraceActivity(activity =>
             {
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, BigQueryUtils.TracingToFile());
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, BigQueryUtils.IsSafeToTrace());
 
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
                 BigQueryResults? result = ExecuteWithRetriesAsync<BigQueryResults?>(func, activity).GetAwaiter().GetResult();

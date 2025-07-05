@@ -43,8 +43,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     class BigQueryStatement : TracingStatement, ITokenProtectedResource, IDisposable
     {
         readonly BigQueryConnection bigQueryConnection;
-        private static readonly string s_assemblyName = BigQueryUtils.GetAssemblyName(typeof(BigQueryStatement));
-        private static readonly string s_assemblyVersion = BigQueryUtils.GetAssemblyVersion(typeof(BigQueryStatement));
 
         public BigQueryStatement(BigQueryConnection bigQueryConnection) : base(bigQueryConnection)
         {
@@ -68,9 +66,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private int RetryDelayMs => this.bigQueryConnection.RetryDelayMs;
 
-        public override string AssemblyVersion => s_assemblyVersion;
+        public override string AssemblyVersion => BigQueryUtils.BigQueryAssemblyVersion;
 
-        public override string AssemblyName => s_assemblyName;
+        public override string AssemblyName => BigQueryUtils.BigQueryAssemblyName;
 
         public override void SetOption(string key, string value)
         {
@@ -93,7 +91,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 QueryOptions queryOptions = ValidateOptions(activity);
 
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.TracingToFile());
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.IsSafeToTrace());
 
                 BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
 
@@ -233,7 +231,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     activity?.AddBigQueryParameterTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
                 }
 
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.TracingToFile());
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.IsSafeToTrace());
 
                 // Cannot set destination table in jobs with DDL statements, otherwise an error will be prompted
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(SqlQuery, null, null, getQueryResultsOptions);
@@ -346,7 +344,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
-            activity?.AddBigQueryTag("read_stream", streamName);
+            activity?.AddConditionalBigQueryTag("read_stream", streamName, BigQueryUtils.IsSafeToTrace());
             BigQueryReadClient.ReadRowsStream readRowsStream = client.ReadRows(new ReadRowsRequest { ReadStream = streamName });
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
 
@@ -405,7 +403,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 switch (keyValuePair.Key)
                 {
                     case BigQueryParameters.AllowLargeResults:
-                        options.AllowLargeResults = true ? keyValuePair.Value.ToLower().Equals("true") : false;
+                        options.AllowLargeResults = true ? keyValuePair.Value.Equals("true", StringComparison.OrdinalIgnoreCase) : false;
                         activity?.AddBigQueryParameterTag(BigQueryParameters.AllowLargeResults, options.AllowLargeResults);
                         break;
                     case BigQueryParameters.LargeResultsDataset:
@@ -443,7 +441,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         activity?.AddBigQueryParameterTag(BigQueryParameters.LargeResultsDestinationTable, destinationTable);
                         break;
                     case BigQueryParameters.UseLegacySQL:
-                        options.UseLegacySql = true ? keyValuePair.Value.ToLower().Equals("true") : false;
+                        options.UseLegacySql = true ? keyValuePair.Value.Equals("true", StringComparison.OrdinalIgnoreCase) : false;
                         activity?.AddBigQueryParameterTag(BigQueryParameters.UseLegacySQL, options.UseLegacySql);
                         break;
                 }

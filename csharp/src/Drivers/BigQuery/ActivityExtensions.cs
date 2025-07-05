@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
@@ -33,10 +34,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return activity.AddTag(bigQueryKey, value);
         }
 
+        public static Activity AddConditionalBigQueryTag(this Activity activity, string key, string? value, bool condition)
+        {
+            string bigQueryKey = bigQueryKeyPrefix + key;
+            return activity.AddConditionalTag(key, value, condition)!;
+        }
+
         public static Activity AddBigQueryParameterTag(this Activity activity, string parameterName, object? value)
         {
-            string bigQueryParameterValueKey = parameterName + bigQueryParameterKeyValueSuffix;
-            return activity.AddTag(bigQueryParameterValueKey, value);
+            if (BigQueryParameters.IsSafeToLog(parameterName))
+            {
+                string bigQueryParameterValueKey = parameterName + bigQueryParameterKeyValueSuffix;
+                return activity.AddTag(bigQueryParameterValueKey, value);
+            }
+
+            return activity;
         }
     }
 }
