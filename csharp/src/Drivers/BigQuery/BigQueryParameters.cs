@@ -62,10 +62,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public static bool IsSafeToLog(string name)
         {
-            if (!safeToLog.Contains(name.ToLower()))
-                return false;
+            if (safeToLog.Contains(name.ToLower()))
+                return true;
 
-            return true;
+            return false;
         }
     }
 
