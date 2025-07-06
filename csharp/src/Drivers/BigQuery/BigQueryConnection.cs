@@ -298,7 +298,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return this.TraceActivity(activity =>
             {
-               const int strValTypeID = 0;
+                const int strValTypeID = 0;
 
                 UnionType infoUnionType = new UnionType(
                     new Field[]

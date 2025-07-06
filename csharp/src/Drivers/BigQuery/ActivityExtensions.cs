@@ -15,10 +15,7 @@
 * limitations under the License.
 */
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
