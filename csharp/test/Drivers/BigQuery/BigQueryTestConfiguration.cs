@@ -71,6 +71,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("allowLargeResults")]
         public bool AllowLargeResults { get; set; }
 
+        [JsonPropertyName("largeResultsDataset")]
+        public string LargeResultsDataset { get; set; } = string.Empty;
+
         [JsonPropertyName("largeResultsDestinationTable")]
         public string LargeResultsDestinationTable { get; set; } = string.Empty;
 
