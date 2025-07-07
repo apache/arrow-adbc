@@ -1099,7 +1099,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             metaData.Add("ORDINAL_POSITION", GetValue(row["ordinal_position"]));
             metaData.Add("DATA_TYPE", GetValue(row["data_type"]));
 
-            Field.Builder fieldBuilder = SchemaFieldGenerator(GetValue(row["column_name"]).ToLower(), GetValue(row["data_type"]));
+            Field.Builder fieldBuilder = SchemaFieldGenerator(GetValue(row["column_name"]), GetValue(row["data_type"]));
             fieldBuilder.Metadata(metaData);
 
             if (!GetValue(row["is_nullable"]).Equals("YES", StringComparison.OrdinalIgnoreCase))
@@ -1107,7 +1107,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 fieldBuilder.Nullable(false);
             }
 
-            fieldBuilder.Name(GetValue(row["column_name"]).ToLower());
+            fieldBuilder.Name(GetValue(row["column_name"]));
 
             return fieldBuilder.Build();
         }

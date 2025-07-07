@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using System;
 using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
@@ -51,7 +52,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string UseLegacySQL = "adbc.bigquery.use_legacy_sql";
 
         // these values are safe to log any time
-        private static HashSet<string> safeToLog = new HashSet<string>()
+        private static HashSet<string> safeToLog = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             AllowLargeResults, AuthenticationType, BillingProjectId, ClientId, ClientTimeout,
             EvaluationKind, GetQueryResultsOptionsTimeout, IncludeConstraintsWithGetObjects,
@@ -62,7 +63,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public static bool IsSafeToLog(string name)
         {
-            if (safeToLog.Contains(name.ToLower()))
+            if (safeToLog.Contains(name))
                 return true;
 
             return false;

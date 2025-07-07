@@ -492,7 +492,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         Labels = new Dictionary<string, string>()
                         {
                             // lower case, no spaces or periods per https://cloud.google.com/bigquery/docs/labels-intro
-                            { "created_by", this.bigQueryConnection.DriverName.ToLower().Replace(" ","_") + "_v_" + AssemblyVersion.Replace(".","_") }
+                            { "created_by", this.bigQueryConnection.DriverName.ToLowerInvariant().Replace(" ","_") + "_v_" + AssemblyVersion.Replace(".","_") }
                         }
                     });
 
