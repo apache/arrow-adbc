@@ -1666,6 +1666,7 @@ mod tests {
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
+        println!("{:?}", manifest_path.parent());
         env::set_var(
             "ADBC_CONFIG_PATH",
             manifest_path.parent().unwrap().as_os_str(),
