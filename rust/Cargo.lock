@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "adbc_core"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_datafusion"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "adbc_core",
  "arrow-array",
@@ -29,7 +29,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_dummy"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "adbc_core",
  "arrow-array",
@@ -40,7 +40,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_snowflake"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "adbc_core",
  "arrow-array",
