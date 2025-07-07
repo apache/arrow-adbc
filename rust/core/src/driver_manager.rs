@@ -168,6 +168,7 @@ struct ManagedDriverInner {
 }
 
 #[derive(Default)]
+#[allow(dead_code)]
 struct DriverInfo {
     manifest_file: std::path::PathBuf,
     driver_name: String,
@@ -354,7 +355,11 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let mut info = DriverInfo::default();
+        let mut info = DriverInfo {
+            entrypoint: entrypoint.map(|e| e.to_vec()),
+            manifest_file: driver_path.to_owned(),
+            ..Default::default()
+        };
         info.entrypoint = entrypoint.map(|e| e.to_vec());
         info.manifest_file = driver_path.to_owned();
         info = load_driver_manifest(&info)?;
@@ -433,22 +438,19 @@ fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
     let source = get_optional_key(&manifest, "source");
 
     let (os, arch, extra) = arch_triplet();
-    let driver = manifest.get("Driver").and_then(|v| v.get("shared"));
     let mut lib_path = PathBuf::default();
-    match driver {
-        Some(driver) => {
-            if driver.is_str() {
-                lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
-            } else if driver.is_table() {
-                lib_path = PathBuf::from(
-                    driver
-                        .get(&format!("{}_{}{}", os, arch, extra))
-                        .and_then(Value::as_str)
-                        .unwrap_or_default(),
-                );
-            }
+    let driver = manifest.get("Driver").and_then(|v| v.get("shared"));
+    if let Some(driver) = driver {
+        if driver.is_str() {
+            lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
+        } else if driver.is_table() {
+            lib_path = PathBuf::from(
+                driver
+                    .get(format!("{os}_{arch}{extra}"))
+                    .and_then(Value::as_str)
+                    .unwrap_or_default(),
+            );
         }
-        None => {}
     }
 
     if lib_path.as_os_str().is_empty() {
@@ -1484,7 +1486,7 @@ const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
     #[cfg(not(any(target_env = "musl", all(target_os = "windows", target_env = "gnu"))))]
     const EXTRA: &str = "";
 
-    return (OS, ARCH, EXTRA);
+    (OS, ARCH, EXTRA)
 }
 
 #[cfg(target_os = "windows")]
@@ -1557,9 +1559,9 @@ fn user_config_dir() -> Option<PathBuf> {
                     path
                 })
             })
-            .and_then(|mut path| {
+            .map(|mut path| {
                 path.push("adbc");
-                Some(path)
+                path
             })
     }
 }
@@ -1567,12 +1569,11 @@ fn user_config_dir() -> Option<PathBuf> {
 fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     let mut result = Vec::new();
     if lvls & LOAD_FLAG_SEARCH_ENV != 0 {
-        env::var_os("ADBC_CONFIG_PATH").and_then(|paths| {
+        if let Some(paths) = env::var_os("ADBC_CONFIG_PATH") {
             for p in env::split_paths(&paths) {
                 result.push(p);
             }
-            Some(())
-        });
+        }
     }
 
     if lvls & LOAD_FLAG_SEARCH_USER != 0 {
@@ -1685,8 +1686,12 @@ mod tests {
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
-        let path_os_string =
-            env::join_paths([Path::new("/home"), Path::new(""), manifest_path.parent().unwrap()]).unwrap();
+        let path_os_string = env::join_paths([
+            Path::new("/home"),
+            Path::new(""),
+            manifest_path.parent().unwrap(),
+        ])
+        .unwrap();
         env::set_var("ADBC_CONFIG_PATH", path_os_string);
         ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV)
             .unwrap();

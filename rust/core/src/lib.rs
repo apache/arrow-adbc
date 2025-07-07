@@ -543,4 +543,3 @@ pub struct PartitionedResult {
     /// The number of rows affected if known, else -1.
     pub rows_affected: i64,
 }
-
