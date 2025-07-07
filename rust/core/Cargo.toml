@@ -32,7 +32,8 @@ version.workspace = true
 
 [features]
 default = []
-driver_manager = ["dep:libloading", "dep:toml", "dep:windows-sys"]
+manifest = ["dep:serde", "dep:semver", "dep:spdx", "dep:toml", "dep:void"]
+driver_manager = ["manifest", "dep:libloading", "dep:windows-sys"]
 driver_manager_test_lib = ["driver_manager"]
 driver_manager_test_manifest_user = ["driver_manager_test_lib"]
 
@@ -40,7 +41,13 @@ driver_manager_test_manifest_user = ["driver_manager_test_lib"]
 arrow-array.workspace = true
 arrow-schema.workspace = true
 libloading = {version = "0.8", optional = true}
-toml = {version = "0.8.23", optional = true}
+semver = { version = "1.0.26", features = ["serde"], optional = true }
+serde = { version = "1.0.219", features = ["derive"], optional = true }
+spdx = { version = "0.10.8", optional = true }
+toml = {version = "0.8.23", features = [
+    "parse",
+], optional = true}
+void = { version = "1.0.2", optional = true }
 
 [dev-dependencies]
 arrow-select.workspace = true

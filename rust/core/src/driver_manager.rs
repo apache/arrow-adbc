@@ -114,8 +114,8 @@ use std::sync::{Arc, Mutex};
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
-use toml::{Table, Value};
 
+use crate::manifest::Manifest;
 use crate::{
     error::{Error, Status},
     options::{self, AdbcVersion, InfoCode, OptionValue},
@@ -405,14 +405,6 @@ impl Driver for ManagedDriver {
     }
 }
 
-fn get_optional_key(manifest: &Table, key: &str) -> String {
-    manifest
-        .get(key)
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string()
-}
-
 fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
     let contents = fs::read_to_string(info.manifest_file.as_path()).map_err(|e| {
         let file = info.manifest_file.to_string_lossy();
@@ -422,52 +414,39 @@ fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
         )
     })?;
 
-    let manifest = contents
-        .parse::<Table>()
-        .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
+    let manifest = contents.parse::<Manifest>().map_err(|e| {
+        let file = info.manifest_file.to_string_lossy();
+        Error::with_message_and_status(
+            format!("Could not parse manifest '{file}': {e}"),
+            Status::InvalidArguments,
+        )
+    })?;
 
-    let driver_name = get_optional_key(&manifest, "name");
+    let default_version = semver::Version::new(0, 0, 0);
     let mut entrypoint = info.entrypoint.clone();
-    if info.entrypoint.is_none() && manifest.contains_key("entrypoint") {
-        entrypoint = manifest["entrypoint"]
-            .as_str()
+    if entrypoint.is_none() {
+        entrypoint = manifest
+            .driver()
+            .entrypoint()
             .map(|s| s.as_bytes().to_vec());
     }
 
-    let version = get_optional_key(&manifest, "version");
-    let source = get_optional_key(&manifest, "source");
-
-    let (os, arch, extra) = arch_triplet();
-    let mut lib_path = PathBuf::default();
-    let driver = manifest.get("Driver").and_then(|v| v.get("shared"));
-    if let Some(driver) = driver {
-        if driver.is_str() {
-            lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
-        } else if driver.is_table() {
-            lib_path = PathBuf::from(
-                driver
-                    .get(format!("{os}_{arch}{extra}"))
-                    .and_then(Value::as_str)
-                    .unwrap_or_default(),
-            );
-        }
-    }
-
+    let lib_path = manifest.driver().shared().to_owned();
     if lib_path.as_os_str().is_empty() {
         let file = info.manifest_file.to_string_lossy();
         return Err(Error::with_message_and_status(
-            format!("Driver path not found in manifest '{file}'"),
+            format!("Manifest '{file}' missing appropriate path for current arch"),
             Status::InvalidArguments,
         ));
     }
 
     Ok(DriverInfo {
         manifest_file: info.manifest_file.clone(),
-        driver_name,
+        driver_name: manifest.name().unwrap_or_default().to_owned(),
         lib_path,
-        entrypoint: entrypoint.clone(),
-        version,
-        source,
+        entrypoint,
+        version: format!("{}", manifest.version().unwrap_or(&default_version)),
+        source: manifest.source().unwrap_or_default().to_string(),
     })
 }
 
@@ -1466,29 +1445,6 @@ impl Drop for ManagedStatement {
     }
 }
 
-const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
-    #[cfg(target_arch = "x86_64")]
-    const ARCH: &str = "amd64";
-    #[cfg(target_arch = "aarch64")]
-    const ARCH: &str = "arm64";
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-    const ARCH: &str = std::env::consts::ARCH;
-
-    #[cfg(target_os = "macos")]
-    const OS: &str = "osx";
-    #[cfg(not(target_os = "macos"))]
-    const OS: &str = std::env::consts::OS;
-
-    #[cfg(target_env = "musl")]
-    const EXTRA: &str = "_musl";
-    #[cfg(all(target_os = "windows", target_env = "gnu"))]
-    const EXTRA: &str = "_mingw";
-    #[cfg(not(any(target_env = "musl", all(target_os = "windows", target_env = "gnu"))))]
-    const EXTRA: &str = "";
-
-    (OS, ARCH, EXTRA)
-}
-
 #[cfg(target_os = "windows")]
 extern crate windows_sys as windows;
 
@@ -1600,6 +1556,7 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
 mod tests {
     use super::*;
 
+    use crate::manifest::arch_triplet;
     use crate::LOAD_FLAG_DEFAULT;
     use tempfile::Builder;
 
