@@ -210,8 +210,7 @@ impl ManagedDriver {
     ) -> Result<Self> {
         let driver_path = Path::new(name.as_ref());
         let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
-        let ext = driver_path.extension();
-        if ext.is_some() {
+        if let Some(ext) = driver_path.extension() {
             if !allow_relative && driver_path.is_relative() {
                 return Err(Error::with_message_and_status(
                     "Relative paths are not allowed",
