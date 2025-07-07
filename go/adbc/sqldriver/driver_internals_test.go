@@ -146,6 +146,11 @@ var (
 		Name: "int",
 		Type: arrow.PrimitiveTypes.Int32,
 	}
+
+	tstampSec, _   = arrow.TimestampFromTime(testTime, arrow.Second)
+	tstampMilli, _ = arrow.TimestampFromTime(testTime, arrow.Millisecond)
+	tstampMicro, _ = arrow.TimestampFromTime(testTime, arrow.Microsecond)
+	tstampNano, _  = arrow.TimestampFromTime(testTime, arrow.Nanosecond)
 )
 
 func TestNextRowTypes(t *testing.T) {
@@ -328,6 +333,7 @@ func TestNextRowTypes(t *testing.T) {
 func TestArrFromVal(t *testing.T) {
 	tests := []struct {
 		value               any
+		inputDataType       arrow.DataType
 		expectedDataType    arrow.DataType
 		expectedStringValue string
 	}{
@@ -402,14 +408,74 @@ func TestArrFromVal(t *testing.T) {
 			expectedStringValue: base64.StdEncoding.EncodeToString([]byte("my-string")),
 		},
 		{
+			value:               []byte("my-string"),
+			inputDataType:       arrow.BinaryTypes.LargeBinary,
+			expectedDataType:    arrow.BinaryTypes.LargeBinary,
+			expectedStringValue: base64.StdEncoding.EncodeToString([]byte("my-string")),
+		},
+		{
 			value:               "my-string",
 			expectedDataType:    arrow.BinaryTypes.String,
 			expectedStringValue: "my-string",
 		},
+		{
+			value:               "my-string",
+			inputDataType:       arrow.BinaryTypes.LargeString,
+			expectedDataType:    arrow.BinaryTypes.LargeString,
+			expectedStringValue: "my-string",
+		},
+		{
+			value:               tstampSec,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Second},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Second},
+			expectedStringValue: testTime.UTC().Truncate(time.Second).Format("2006-01-02 15:04:05Z"),
+		},
+		{
+			value:               tstampMilli,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Millisecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Millisecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Millisecond).Format("2006-01-02 15:04:05.000Z"),
+		},
+		{
+			value:               tstampMicro,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Microsecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Microsecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Microsecond).Format("2006-01-02 15:04:05.000000Z"),
+		},
+		{
+			value:               tstampNano,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Nanosecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Nanosecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Nanosecond).Format("2006-01-02 15:04:05.000000000Z"),
+		},
+		{
+			value:               testTime,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Second},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Second},
+			expectedStringValue: testTime.UTC().Truncate(time.Second).Format("2006-01-02 15:04:05Z"),
+		},
+		{
+			value:               testTime,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Millisecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Millisecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Millisecond).Format("2006-01-02 15:04:05.000Z"),
+		},
+		{
+			value:               testTime,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Microsecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Microsecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Microsecond).Format("2006-01-02 15:04:05.000000Z"),
+		},
+		{
+			value:               testTime,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Nanosecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Nanosecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Nanosecond).Format("2006-01-02 15:04:05.000000000Z"),
+		},
 	}
 	for i, test := range tests {
 		t.Run(fmt.Sprintf("%d-%T", i, test.value), func(t *testing.T) {
-			arr := arrFromVal(test.value)
+			arr := arrFromVal(test.value, test.inputDataType)
 
 			assert.Equal(t, test.expectedDataType, arr.DataType())
 			require.Equal(t, 1, arr.Len())

@@ -413,10 +413,9 @@ func (s *stmt) CheckNamedValue(val *driver.NamedValue) error {
 	return nil
 }
 
-func arrFromVal(val any) arrow.Array {
+func arrFromVal(val any, dt arrow.DataType) arrow.Array {
 	var (
 		buffers = make([]*memory.Buffer, 2)
-		dt      arrow.DataType
 	)
 	switch v := val.(type) {
 	case bool:
@@ -459,15 +458,63 @@ func arrFromVal(val any) arrow.Array {
 		dt = arrow.PrimitiveTypes.Date64
 		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
 	case []byte:
-		dt = arrow.BinaryTypes.Binary
-		buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
+		if dt == nil || dt.ID() == arrow.BINARY {
+			dt = arrow.BinaryTypes.Binary
+			buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
+		} else if dt.ID() == arrow.LARGE_BINARY {
+			dt = arrow.BinaryTypes.LargeBinary
+			buffers[1] = memory.NewBufferBytes(arrow.Int64Traits.CastToBytes([]int64{0, int64(len(v))}))
+		}
 		buffers = append(buffers, memory.NewBufferBytes(v))
 	case string:
-		dt = arrow.BinaryTypes.String
-		buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
-
+		if dt == nil || dt.ID() == arrow.STRING {
+			dt = arrow.BinaryTypes.String
+			buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
+		} else if dt.ID() == arrow.LARGE_STRING {
+			dt = arrow.BinaryTypes.LargeString
+			buffers[1] = memory.NewBufferBytes(arrow.Int64Traits.CastToBytes([]int64{0, int64(len(v))}))
+		}
 		buf := unsafe.Slice(unsafe.StringData(v), len(v))
 		buffers = append(buffers, memory.NewBufferBytes(buf))
+	case arrow.Time32:
+		if dt == nil || dt.ID() != arrow.TIME32 {
+			panic(errors.New("can only create array from arrow.Time32 with known type"))
+		}
+
+		buffers[1] = memory.NewBufferBytes((*[4]byte)(unsafe.Pointer(&v))[:])
+	case arrow.Time64:
+		if dt == nil || dt.ID() != arrow.TIME64 {
+			panic(errors.New("can only create array from arrow.Time64 with known type"))
+		}
+
+		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
+	case arrow.Timestamp:
+		if dt == nil || dt.ID() != arrow.TIMESTAMP {
+			panic(errors.New("can only create array from arrow.Timestamp with known type"))
+		}
+
+		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
+	case time.Time:
+		if dt == nil {
+			panic(errors.New("can only create array from time.Time with known type"))
+		}
+
+		switch dt.ID() {
+		case arrow.DATE32:
+			val := arrow.Date32FromTime(v)
+			buffers[1] = memory.NewBufferBytes((*[4]byte)(unsafe.Pointer(&val))[:])
+		case arrow.DATE64:
+			val := arrow.Date64FromTime(v)
+			buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&val))[:])
+		case arrow.TIMESTAMP:
+			val, err := arrow.TimestampFromTime(v, dt.(*arrow.TimestampType).Unit)
+			if err != nil {
+				panic(fmt.Sprintf("could not convert time.Time to arrow.Timestamp: %v", err))
+			}
+			buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&val))[:])
+		default:
+			panic(fmt.Sprintf("time.Time with type %s unsupported", dt))
+		}
 	default:
 		panic(fmt.Sprintf("unsupported type %T", val))
 	}
@@ -492,7 +539,7 @@ func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) arrow.R
 			} else {
 				f.Name = v.Name
 			}
-			arr := arrFromVal(v.Value)
+			arr := arrFromVal(v.Value, nil)
 			defer arr.Release()
 			f.Type = arr.DataType()
 			cols[v.Ordinal-1] = arr
@@ -514,7 +561,7 @@ func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) arrow.R
 
 		f := &fields[idx]
 		f.Name = name
-		arr := arrFromVal(v.Value)
+		arr := arrFromVal(v.Value, f.Type)
 		defer arr.Release()
 		f.Type = arr.DataType()
 		cols[idx] = arr
