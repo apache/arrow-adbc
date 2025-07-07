@@ -129,7 +129,7 @@ where
 {
     // visitor that forwards string types to T's `FromStr` impl
     // and forwards map types to T's `Deserialize` impl. The `PhantomData`
-    // is to keep the compiler from compaining about T being an unused
+    // is to keep the compiler from complaining about T being an unused
     // generic type parameter. We need T in order to know the Value type
     // for the Visitor impl.
     struct StringOrStruct<T>(PhantomData<fn() -> T>);
