@@ -14,8 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GO_BUILD=go build
-RM=rm -f
+MANAGERS = bigquery flightsql panicdummy snowflake
+
+GO_BUILD := go build
+RM := rm -f
+
 ifeq ($(shell go env GOOS),linux)
 	SUFFIX=so
 else ifeq ($(shell go env GOOS),windows)
@@ -25,18 +28,21 @@ else
 	SUFFIX=dylib
 endif
 
-DRIVERS := \
-	libadbc_driver_bigquery.$(SUFFIX) \
-	libadbc_driver_databricks.$(SUFFIX) \
-	libadbc_driver_flightsql.$(SUFFIX) \
-	libadbc_driver_panicdummy.$(SUFFIX) \
-	libadbc_driver_snowflake.$(SUFFIX)
+GIT_VERSION=$(shell git tag -l --points-at $(shell git rev-list --tags --max-count=1) --sort=-v:refname | head -n 1)
+VERSION=$(subst go/adbc/,,$(GIT_VERSION))
+
+# Expand dynamically libadbc_driver_.SUFFIX
+DRIVERS := $(addsuffix .$(SUFFIX),$(addprefix libadbc_driver_,$(MANAGERS)))
+
+# =========
+#  Targets
+# =========
 
 .PHONY: all regenerate
 all: $(DRIVERS)
 
-libadbc_driver_%.$(SUFFIX): %
-	$(GO_BUILD) -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w" ./$<
+libadbc_driver_%.$(SUFFIX): % ../driver/% ../go.mod ../go.sum
+	$(GO_BUILD) -buildvcs=true -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./$*
 	$(RM) $(basename $@).h
 
 regenerate:
