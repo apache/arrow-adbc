@@ -111,6 +111,9 @@ use std::pin::Pin;
 use std::ptr::{null, null_mut};
 use std::sync::{Arc, Mutex};
 
+#[cfg(windows)]
+use windows_registry;
+
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
@@ -233,27 +236,7 @@ impl ManagedDriver {
 
             Self::load_dynamic_from_filename(driver_path, entrypoint, version)
         } else {
-            for path in get_search_paths(load_flags) {
-                let mut full_path = path.join(driver_path);
-                full_path.set_extension("toml");
-                if full_path.is_file() {
-                    if let Ok(result) = Self::load_from_manifest(&full_path, entrypoint, version) {
-                        return Ok(result);
-                    }
-                }
-
-                full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
-                if let Ok(result) = Self::load_dynamic_from_filename(full_path, entrypoint, version)
-                {
-                    return Ok(result);
-                }
-            }
-
-            let driver_name = name.as_ref().to_string_lossy();
-            Err(Error::with_message_and_status(
-                format!("Driver '{driver_name}' not found in search paths"),
-                Status::NotFound,
-            ))
+            Self::find_driver(driver_path, entrypoint, version, load_flags)
         }
     }
 
@@ -360,10 +343,115 @@ impl ManagedDriver {
             manifest_file: driver_path.to_owned(),
             ..Default::default()
         };
-        info.entrypoint = entrypoint.map(|e| e.to_vec());
-        info.manifest_file = driver_path.to_owned();
         info = load_driver_manifest(&info)?;
         Self::load_dynamic_from_filename(info.lib_path, entrypoint, version)
+    }
+
+    fn search_path_list(
+        driver_path: &Path,
+        path_list: Vec<PathBuf>,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+    ) -> Result<Self> {
+        for path in path_list {
+            let mut full_path = path.join(driver_path);
+            full_path.set_extension("toml");
+            if full_path.is_file() {
+                if let Ok(result) = Self::load_from_manifest(&full_path, entrypoint, version) {
+                    return Ok(result);
+                }
+            }
+
+            full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
+            if let Ok(result) = Self::load_dynamic_from_filename(full_path, entrypoint, version) {
+                return Ok(result);
+            }
+        }
+
+        Err(Error::with_message_and_status(
+            format!("Driver not found: {}", driver_path.display()),
+            Status::NotFound,
+        ))
+    }
+
+    #[cfg(windows)]
+    fn find_driver(
+        driver_path: &Path,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+    ) -> Result<Self> {
+        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
+            if let Ok(result) =
+                Self::search_path_list(driver_path, LOAD_FLAG_SEARCH_ENV, entrypoint, version)
+            {
+                return Ok(result);
+            }
+        }
+
+        if load_flags & LOAD_FLAG_SEARCH_USER != 0 {
+            // first check registry for the driver, then check the user config path
+            if let Ok(result) = load_driver_from_registry(
+                &windows_registry::CURRENT_USER,
+                driver_path.as_os_str(),
+                entrypoint,
+            ) {
+                return Self::load_dynamic_from_filename(result.lib_path, entrypoint, version);
+            }
+
+            if let Ok(result) =
+                Self::search_path_list(driver_path, LOAD_FLAG_SEARCH_USER, entrypoint, version)
+            {
+                return Ok(result);
+            }
+        }
+
+        if load_flags & LOAD_FLAG_SEARCH_SYSTEM != 0 {
+            if let Ok(result) = load_driver_from_registry(
+                &windows_registry::LOCAL_MACHINE,
+                driver_path.as_os_str(),
+                entrypoint,
+            ) {
+                return Self::load_dynamic_from_filename(result.lib_path, entrypoint, version);
+            }
+
+            if let Ok(result) =
+                Self::search_path_list(driver_path, LOAD_FLAG_SEARCH_SYSTEM, entrypoint, version)
+            {
+                return Ok(result);
+            }
+        }
+
+        let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
+        Self::load_dynamic_from_name(driver_name, entrypoint, version)
+    }
+
+    #[cfg(not(windows))]
+    fn find_driver(
+        driver_path: &Path,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+    ) -> Result<Self> {
+        if let Ok(result) = Self::search_path_list(
+            driver_path,
+            get_search_paths(load_flags),
+            entrypoint,
+            version,
+        ) {
+            return Ok(result);
+        }
+
+        // Convert OsStr to String before passing to load_dynamic_from_name
+        let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
+        if let Ok(driver) = Self::load_dynamic_from_name(driver_name, entrypoint, version) {
+            return Ok(driver);
+        }
+
+        Err(Error::with_message_and_status(
+            format!("Driver not found: {}", driver_path.display()),
+            Status::NotFound,
+        ))
     }
 }
 
@@ -405,6 +493,25 @@ impl Driver for ManagedDriver {
     }
 }
 
+#[cfg(windows)]
+fn load_driver_from_registry(
+    root: &windows_registry::Key,
+    driver_name: &OsStr,
+    entrypoint: Option<&[u8]>,
+) -> Result<DriverInfo> {
+    const ADBC_DRIVER_REGISTRY: &str = "SOFTWARE\\ADBC\\Drivers";
+    let drivers_key = root.open(ADBC_DRIVER_REGISTRY)?;
+
+    Ok(DriverInfo {
+        driver_name: drivers_key.get_string("name").unwrap_or_default(),
+        entrypoint: entrypoint
+            .or_else(|| drivers_key.get_string("entrypoint").map(|e| e.into_bytes())),
+        version: drivers_key.get_string("version").unwrap_or_default(),
+        source: drivers_key.get_string("source").unwrap_or_default(),
+        lib_path: PathBuf::from(drivers_key.get_string("driver").unwrap_or_default()),
+    })
+}
+
 fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
     let contents = fs::read_to_string(info.manifest_file.as_path()).map_err(|e| {
         let file = info.manifest_file.to_string_lossy();
@@ -423,14 +530,6 @@ fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
     })?;
 
     let default_version = semver::Version::new(0, 0, 0);
-    let mut entrypoint = info.entrypoint.clone();
-    if entrypoint.is_none() {
-        entrypoint = manifest
-            .driver()
-            .entrypoint()
-            .map(|s| s.as_bytes().to_vec());
-    }
-
     let lib_path = manifest.driver().shared().to_owned();
     if lib_path.as_os_str().is_empty() {
         let file = info.manifest_file.to_string_lossy();
@@ -444,7 +543,10 @@ fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
         manifest_file: info.manifest_file.clone(),
         driver_name: manifest.name().unwrap_or_default().to_owned(),
         lib_path,
-        entrypoint,
+        entrypoint: info.entrypoint.clone().or(manifest
+            .driver()
+            .entrypoint()
+            .map(|s| s.as_bytes().to_vec())),
         version: format!("{}", manifest.version().unwrap_or(&default_version)),
         source: manifest.source().unwrap_or_default().to_string(),
     })
@@ -1623,7 +1725,6 @@ mod tests {
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
-        println!("{:?}", manifest_path.parent());
         env::set_var(
             "ADBC_CONFIG_PATH",
             manifest_path.parent().unwrap().as_os_str(),

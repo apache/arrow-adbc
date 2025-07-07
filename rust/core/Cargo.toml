@@ -33,7 +33,7 @@ version.workspace = true
 [features]
 default = []
 manifest = ["dep:serde", "dep:semver", "dep:spdx", "dep:toml", "dep:void"]
-driver_manager = ["manifest", "dep:libloading", "dep:windows-sys"]
+driver_manager = ["manifest", "dep:libloading", "dep:windows-sys", "dep:windows-registry"]
 driver_manager_test_lib = ["driver_manager"]
 driver_manager_test_manifest_user = ["driver_manager_test_lib"]
 
@@ -58,3 +58,4 @@ all-features = true
 
 [target.windows.dependencies]
 windows-sys = {version = ">= 0.59.0", features = ["Win32_UI_Shell"], optional = true}
+windows-registry = {version = ">= 0.5.3", optional = true}
