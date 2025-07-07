@@ -1,0 +1,7 @@
+org.apache.arrow.adbc.core
+org.apache.arrow.adbc.driver.flightsql
+org.apache.arrow.adbc.driver.jdbc
+org.apache.arrow.adbc.driver.jdbc.adapter
+org.apache.arrow.adbc.driver.testsuite
+org.apache.arrow.adbc.drivermanager
+org.apache.arrow.adbc.sql
