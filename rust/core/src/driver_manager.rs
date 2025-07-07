@@ -1531,20 +1531,20 @@ fn user_config_dir() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {
         use target_windows::user_config_dir;
-        user_config_dir().and_then(|path| {
+        user_config_dir().map(|mut path| {
             path.push("ADBC");
             path.push("drivers");
-            Some(path)
+            path
         })
     }
 
     #[cfg(target_os = "macos")]
     {
-        env::var_os("HOME").map(PathBuf::from).and_then(|mut path| {
+        env::var_os("HOME").map(PathBuf::from).map(|mut path| {
             path.push("Library");
             path.push("Application Support");
             path.push("ADBC");
-            Some(path)
+            path
         })
     }
 
