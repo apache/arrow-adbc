@@ -127,6 +127,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("entraConfiguration")]
         public EntraConfiguration? EntraConfiguration { get; set; }
+
+        [JsonPropertyName("httpProxy")]
+        public string? HttpProxy  { get; set; }
     }
 
     class EntraConfiguration

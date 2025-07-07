@@ -42,10 +42,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         readonly HttpClient httpClient;
         bool includePublicProjectIds = false;
         const string infoDriverName = "ADBC BigQuery Driver";
-        const string infoDriverVersion = "1.0.1";
+        const string infoDriverVersion = "1.0.2";
         const string infoVendorName = "BigQuery";
-        const string infoDriverArrowVersion = "19.0.0";
+        const string infoDriverArrowVersion = "20.0.0";
         const string publicProjectId = "bigquery-public-data";
+
+        internal readonly string? proxyAddress;
 
         readonly AdbcInfoCode[] infoSupportedCodes = new[] {
             AdbcInfoCode.DriverName,
@@ -67,7 +69,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             // add the default value for now and set to true until C# has a BigDecimal
             this.properties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
-            this.httpClient = new HttpClient();
+
+            this.properties.TryGetValue(BigQueryParameters.Proxy, out this.proxyAddress);
+
+            this.httpClient = ProxyManager.GetHttpClient(this.proxyAddress);
 
             if (this.properties.TryGetValue(BigQueryParameters.MaximumRetryAttempts, out string? sRetryAttempts) &&
                 int.TryParse(sRetryAttempts, out int retries) &&
@@ -140,6 +145,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 ProjectId = projectId,
                 QuotaProject = billingProjectId,
+                HttpClientFactory = ProxyManager.GetHttpClientFactory(this.proxyAddress),
                 GoogleCredential = Credential
             };
 
@@ -1224,12 +1230,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 clientSecret,
                 Uri.EscapeDataString(refreshToken));
 
-            HttpClient httpClient = new HttpClient();
+            HttpClient httpClient = ProxyManager.GetHttpClient(this.proxyAddress);
 
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint);
             request.Headers.Add("Accept", "application/json");
             request.Content = new StringContent(body, Encoding.UTF8, "application/x-www-form-urlencoded");
             HttpResponseMessage response = httpClient.SendAsync(request).GetAwaiter().GetResult();
+            response.EnsureSuccessStatusCode();
+
             string responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
             BigQueryTokenResponse? bigQueryTokenResponse = JsonSerializer.Deserialize<BigQueryTokenResponse>(responseBody);
