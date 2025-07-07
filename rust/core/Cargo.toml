@@ -39,7 +39,6 @@ driver_manager_test_manifest_user = ["driver_manager_test_lib"]
 [dependencies]
 arrow-array.workspace = true
 arrow-schema.workspace = true
-constcat = "0.6.1"
 libloading = {version = "0.8", optional = true}
 toml = {version = "0.8.23", optional = true}
 
