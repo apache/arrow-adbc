@@ -26,6 +26,11 @@ export LD_LIBRARY_PATH="${cpp_libs_dir}/lib:${LD_LIBRARY_PATH:-}"
 export DYLD_LIBRARY_PATH="${cpp_libs_dir}/lib:${DYLD_LIBRARY_PATH:-}"
 
 pushd "${source_dir}"
-export ADBC_DRIVER_MANAGER_TEST_LIB="${cpp_libs_dir}/lib/libadbc_driver_sqlite.so"
+case "$(uname)" in
+    Linux) EXT="so" ;;
+    Darwin) EXT="dylib" ;;
+    MINGW*|MSYS*) EXT="dll" ;;
+esac
+export ADBC_DRIVER_MANAGER_TEST_LIB="${cpp_libs_dir}/lib/libadbc_driver_sqlite.${EXT:-}"
 cargo test --all-features --workspace
 popd
