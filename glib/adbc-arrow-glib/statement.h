@@ -36,6 +36,9 @@ struct _GADBCArrowStatementClass {
 GADBC_ARROW_AVAILABLE_IN_0_10
 GADBCArrowStatement* gadbc_arrow_statement_new(GADBCConnection* connection,
                                                GError** error);
+GADBC_ARROW_AVAILABLE_IN_1_8
+GArrowSchema* gadbc_arrow_statement_get_parameter_schema(GADBCArrowStatement* statement,
+                                                         GError** error);
 GADBC_ARROW_AVAILABLE_IN_0_10
 gboolean gadbc_arrow_statement_bind(GADBCArrowStatement* statement,
                                     GArrowRecordBatch* record_batch, GError** error);
