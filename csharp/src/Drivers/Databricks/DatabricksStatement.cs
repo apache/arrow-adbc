@@ -530,10 +530,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 descResult = await descStmt.ExecuteQueryAsync();
             }
-            catch (HiveServer2Exception ex) when (ex.Message.Contains("Error running query"))
+            catch (HiveServer2Exception ex) when (ex.SqlState == "42601")
             {
-                // Fallback to base implementation
-                Debug.WriteLine($"[ERROR] Failed to run {query}. Fallback to base::GetColumnsExtendedAsync.Error message:{ex.Message}");
+                // 42601 is error code of syntax error, which this command (DESC TABLE EXTENDED ... AS JSON) is not supported by current DBR
+                // So we should fallback to base implementation
+                Debug.WriteLine($"[WARN] Failed to run {query} (reason={ex.Message}). Fallback to base::GetColumnsExtendedAsync.");
                 return await base.GetColumnsExtendedAsync(cancellationToken);
             }
 
