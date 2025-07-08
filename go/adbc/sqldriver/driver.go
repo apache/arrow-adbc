@@ -413,7 +413,7 @@ func (s *stmt) CheckNamedValue(val *driver.NamedValue) error {
 	return nil
 }
 
-func arrFromVal(val any, dt arrow.DataType) arrow.Array {
+func arrFromVal(val any, dt arrow.DataType) (arrow.Array, error) {
 	var (
 		buffers = make([]*memory.Buffer, 2)
 	)
@@ -478,25 +478,25 @@ func arrFromVal(val any, dt arrow.DataType) arrow.Array {
 		buffers = append(buffers, memory.NewBufferBytes(buf))
 	case arrow.Time32:
 		if dt == nil || dt.ID() != arrow.TIME32 {
-			panic(errors.New("can only create array from arrow.Time32 with known type"))
+			return nil, errors.New("can only create array from arrow.Time32 with known type")
 		}
 
 		buffers[1] = memory.NewBufferBytes((*[4]byte)(unsafe.Pointer(&v))[:])
 	case arrow.Time64:
 		if dt == nil || dt.ID() != arrow.TIME64 {
-			panic(errors.New("can only create array from arrow.Time64 with known type"))
+			return nil, errors.New("can only create array from arrow.Time64 with known type")
 		}
 
 		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
 	case arrow.Timestamp:
 		if dt == nil || dt.ID() != arrow.TIMESTAMP {
-			panic(errors.New("can only create array from arrow.Timestamp with known type"))
+			return nil, errors.New("can only create array from arrow.Timestamp with known type")
 		}
 
 		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
 	case time.Time:
 		if dt == nil {
-			panic(errors.New("can only create array from time.Time with known type"))
+			return nil, errors.New("can only create array from time.Time with known type")
 		}
 
 		switch dt.ID() {
@@ -509,14 +509,14 @@ func arrFromVal(val any, dt arrow.DataType) arrow.Array {
 		case arrow.TIMESTAMP:
 			val, err := arrow.TimestampFromTime(v, dt.(*arrow.TimestampType).Unit)
 			if err != nil {
-				panic(fmt.Sprintf("could not convert time.Time to arrow.Timestamp: %v", err))
+				return nil, fmt.Errorf("could not convert time.Time to arrow.Timestamp: %v", err)
 			}
 			buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&val))[:])
 		default:
-			panic(fmt.Sprintf("time.Time with type %s unsupported", dt))
+			return nil, fmt.Errorf("time.Time with type %s unsupported", dt)
 		}
 	default:
-		panic(fmt.Sprintf("unsupported type %T", val))
+		return nil, fmt.Errorf("unsupported type %T", val)
 	}
 	for _, b := range buffers {
 		if b != nil {
@@ -525,10 +525,10 @@ func arrFromVal(val any, dt arrow.DataType) arrow.Array {
 	}
 	data := array.NewData(dt, 1, buffers, nil, 0, 0)
 	defer data.Release()
-	return array.MakeFromData(data)
+	return array.MakeFromData(data), nil
 }
 
-func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) arrow.Record {
+func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) (arrow.Record, error) {
 	fields := make([]arrow.Field, len(values))
 	cols := make([]arrow.Array, len(values))
 	if schema == nil {
@@ -539,13 +539,16 @@ func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) arrow.R
 			} else {
 				f.Name = v.Name
 			}
-			arr := arrFromVal(v.Value, nil)
+			arr, err := arrFromVal(v.Value, nil)
+			if err != nil {
+				return nil, err
+			}
 			defer arr.Release()
 			f.Type = arr.DataType()
 			cols[v.Ordinal-1] = arr
 		}
 
-		return array.NewRecord(arrow.NewSchema(fields, nil), cols, 1)
+		return array.NewRecord(arrow.NewSchema(fields, nil), cols, 1), nil
 	}
 
 	for _, v := range values {
@@ -561,17 +564,25 @@ func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) arrow.R
 
 		f := &fields[idx]
 		f.Name = name
-		arr := arrFromVal(v.Value, f.Type)
+		arr, err := arrFromVal(v.Value, f.Type)
+		if err != nil {
+			return nil, err
+		}
 		defer arr.Release()
 		f.Type = arr.DataType()
 		cols[idx] = arr
 	}
-	return array.NewRecord(arrow.NewSchema(fields, nil), cols, 1)
+	return array.NewRecord(arrow.NewSchema(fields, nil), cols, 1), nil
 }
 
 func (s *stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	if len(args) > 0 {
-		if err := s.stmt.Bind(ctx, createBoundRecord(args, s.paramSchema)); err != nil {
+		rec, err := createBoundRecord(args, s.paramSchema)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := s.stmt.Bind(ctx, rec); err != nil {
 			return nil, err
 		}
 	}
@@ -586,7 +597,12 @@ func (s *stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (drive
 
 func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	if len(args) > 0 {
-		if err := s.stmt.Bind(ctx, createBoundRecord(args, s.paramSchema)); err != nil {
+		rec, err := createBoundRecord(args, s.paramSchema)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := s.stmt.Bind(ctx, rec); err != nil {
 			return nil, err
 		}
 	}
