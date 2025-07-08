@@ -117,8 +117,8 @@ use windows_registry;
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
+use toml::{Value, Table};
 
-use crate::manifest::Manifest;
 use crate::{
     error::{Error, Status},
     options::{self, AdbcVersion, InfoCode, OptionValue},
@@ -512,43 +512,63 @@ fn load_driver_from_registry(
     })
 }
 
+fn get_optional_key(manifest: &Table, key: &str) -> String {
+    manifest.get(key).and_then(Value::as_str).unwrap_or_default().to_string()
+}
+
 fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
     let contents = fs::read_to_string(info.manifest_file.as_path()).map_err(|e| {
-        let file = info.manifest_file.to_string_lossy();
         Error::with_message_and_status(
-            format!("Could not read manifest '{file}': {e}"),
+            format!(
+                "Could not read manifest '{}': {e}",
+                info.manifest_file.display()
+            ),
             Status::InvalidArguments,
         )
     })?;
 
-    let manifest = contents.parse::<Manifest>().map_err(|e| {
-        let file = info.manifest_file.to_string_lossy();
-        Error::with_message_and_status(
-            format!("Could not parse manifest '{file}': {e}"),
-            Status::InvalidArguments,
-        )
-    })?;
+    let manifest = contents
+        .parse::<Table>()
+        .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
 
-    let default_version = semver::Version::new(0, 0, 0);
-    let lib_path = manifest.driver().shared().to_owned();
-    if lib_path.as_os_str().is_empty() {
-        let file = info.manifest_file.to_string_lossy();
+    let driver_name = get_optional_key(&manifest, "name");
+    let version = get_optional_key(&manifest, "version");
+    let source = get_optional_key(&manifest, "source");
+    let (os, arch, extra) = arch_triplet();
+
+    let mut lib_path = PathBuf::default();
+    if let Some(driver) = manifest.get("Driver").and_then(|v| v.get("shared")) {
+        if driver.is_str() {
+            lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
+        } else if driver.is_table() {
+            lib_path = PathBuf::from(
+                driver.get(format!("{os}_{arch}{extra}"))
+                .and_then(Value::as_str)
+                .unwrap_or_default(),
+            );
+        }
+    }
+        
+    if lib_path.as_os_str().is_empty() {        
         return Err(Error::with_message_and_status(
-            format!("Manifest '{file}' missing appropriate path for current arch"),
+            format!("Manifest '{}' missing appropriate path for current arch", lib_path.display()),
             Status::InvalidArguments,
         ));
     }
 
+    let entrypoint = manifest.get("Driver")
+        .and_then(Value::as_table)
+        .and_then(|t| t.get("entrypoint"))
+        .and_then(Value::as_str)
+        .map(|s| info.entrypoint.clone().unwrap_or_else(|| s.as_bytes().to_vec()));
+
     Ok(DriverInfo {
         manifest_file: info.manifest_file.clone(),
-        driver_name: manifest.name().unwrap_or_default().to_owned(),
+        driver_name,
         lib_path,
-        entrypoint: info.entrypoint.clone().or(manifest
-            .driver()
-            .entrypoint()
-            .map(|s| s.as_bytes().to_vec())),
-        version: format!("{}", manifest.version().unwrap_or(&default_version)),
-        source: manifest.source().unwrap_or_default().to_string(),
+        entrypoint,
+        version,
+        source,
     })
 }
 
@@ -1654,11 +1674,33 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     result
 }
 
+const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
+    #[cfg(target_arch = "x86_64")]
+    const ARCH: &str = "amd64";
+    #[cfg(target_arch = "aarch64")]
+    const ARCH: &str = "arm64";
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    const ARCH: &str = std::env::consts::ARCH;
+
+    #[cfg(target_os = "macos")]
+    const OS: &str = "osx";
+    #[cfg(not(target_os = "macos"))]
+    const OS: &str = std::env::consts::OS;
+
+    #[cfg(target_env = "musl")]
+    const EXTRA: &str = "_musl";
+    #[cfg(all(target_os = "windows", target_env = "gnu"))]
+    const EXTRA: &str = "_mingw";
+    #[cfg(not(any(target_env = "musl", all(target_os = "windows", target_env = "gnu"))))]
+    const EXTRA: &str = "";
+
+    (OS, ARCH, EXTRA)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use crate::manifest::arch_triplet;
     use crate::LOAD_FLAG_DEFAULT;
     use tempfile::Builder;
 

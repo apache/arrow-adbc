@@ -65,8 +65,6 @@ pub use driver_exporter::FFIDriver;
 pub mod driver_manager;
 pub mod error;
 pub mod ffi;
-#[cfg(feature = "manifest")]
-pub mod manifest;
 pub mod options;
 pub mod schemas;
 
