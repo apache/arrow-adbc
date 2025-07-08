@@ -117,7 +117,7 @@ use windows_registry;
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
-use toml::{Value, Table};
+use toml::{Table, Value};
 
 use crate::{
     error::{Error, Status},
@@ -513,7 +513,11 @@ fn load_driver_from_registry(
 }
 
 fn get_optional_key(manifest: &Table, key: &str) -> String {
-    manifest.get(key).and_then(Value::as_str).unwrap_or_default().to_string()
+    manifest
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
 }
 
 fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
@@ -542,25 +546,34 @@ fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
             lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
         } else if driver.is_table() {
             lib_path = PathBuf::from(
-                driver.get(format!("{os}_{arch}{extra}"))
-                .and_then(Value::as_str)
-                .unwrap_or_default(),
+                driver
+                    .get(format!("{os}_{arch}{extra}"))
+                    .and_then(Value::as_str)
+                    .unwrap_or_default(),
             );
         }
     }
-        
-    if lib_path.as_os_str().is_empty() {        
+
+    if lib_path.as_os_str().is_empty() {
         return Err(Error::with_message_and_status(
-            format!("Manifest '{}' missing appropriate path for current arch", lib_path.display()),
+            format!(
+                "Manifest '{}' missing appropriate path for current arch",
+                lib_path.display()
+            ),
             Status::InvalidArguments,
         ));
     }
 
-    let entrypoint = manifest.get("Driver")
+    let entrypoint = manifest
+        .get("Driver")
         .and_then(Value::as_table)
         .and_then(|t| t.get("entrypoint"))
         .and_then(Value::as_str)
-        .map(|s| info.entrypoint.clone().unwrap_or_else(|| s.as_bytes().to_vec()));
+        .map(|s| {
+            info.entrypoint
+                .clone()
+                .unwrap_or_else(|| s.as_bytes().to_vec())
+        });
 
     Ok(DriverInfo {
         manifest_file: info.manifest_file.clone(),
