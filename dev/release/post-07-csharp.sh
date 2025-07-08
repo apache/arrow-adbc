@@ -54,8 +54,11 @@ main() {
   local base_names=()
   base_names+=(Apache.Arrow.Adbc.${VERSION_CSHARP})
   base_names+=(Apache.Arrow.Adbc.Client.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Drivers.Apache.${VERSION_CSHARP})
   base_names+=(Apache.Arrow.Adbc.Drivers.BigQuery.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Drivers.Databricks.${VERSION_CSHARP})
   base_names+=(Apache.Arrow.Adbc.Drivers.FlightSql.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Drivers.Interop.FlightSql.${VERSION_CSHARP})
   base_names+=(Apache.Arrow.Adbc.Drivers.Interop.Snowflake.${VERSION_CSHARP})
   for base_name in "${base_names[@]}"; do
     dotnet nuget push \
