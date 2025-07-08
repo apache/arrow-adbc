@@ -1111,7 +1111,7 @@ objects.</p>
 <span class="linenos">37</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>We’ll use <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html#pandas.DataFrame.to_sql" title="(in pandas v2.3.0)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pd.DataFrame.to_sql</span></code></a>
+<p>We’ll use <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html#pandas.DataFrame.to_sql" title="(in pandas v2.3.1)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pd.DataFrame.to_sql</span></code></a>
 to create a sample table.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">42</span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
 <span class="linenos">43</span>    <span class="p">{</span>
@@ -1124,7 +1124,7 @@ to create a sample table.</p>
 </pre></div>
 </div>
 <p>After creating the table, we can pass an ADBC connection and a SQL query to
-<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.read_sql.html#pandas.read_sql" title="(in pandas v2.3.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">pd.read_sql</span></code></a> to get the result set as a
+<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.read_sql.html#pandas.read_sql" title="(in pandas v2.3.1)"><code class="xref py py-func docutils literal notranslate"><span class="pre">pd.read_sql</span></code></a> to get the result set as a
 pandas DataFrame.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">55</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM example WHERE ints &gt; 1&quot;</span><span class="p">,</span> <span class="n">conn</span><span class="p">)</span>
 <span class="linenos">56</span>
