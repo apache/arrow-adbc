@@ -475,7 +475,8 @@ func TestArrFromVal(t *testing.T) {
 	}
 	for i, test := range tests {
 		t.Run(fmt.Sprintf("%d-%T", i, test.value), func(t *testing.T) {
-			arr := arrFromVal(test.value, test.inputDataType)
+			arr, err := arrFromVal(test.value, test.inputDataType)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.expectedDataType, arr.DataType())
 			require.Equal(t, 1, arr.Len())
