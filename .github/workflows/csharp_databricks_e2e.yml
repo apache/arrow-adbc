@@ -93,6 +93,21 @@ jobs:
             DATABRICKS_DIR="$HOME/.databricks"
             DATABRICKS_CONFIG_FILE="$HOME/.databricks/connection.json"
           fi
+
+          # Get GitHub OIDC token
+          echo "Getting GitHub OIDC token..."
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL: '$ACTIONS_ID_TOKEN_REQUEST_URL'"
+          
+          # Construct the full URL for the OIDC token request
+          OIDC_TOKEN_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://github.com/apache"
+          echo "Full OIDC token URL: '$OIDC_TOKEN_URL'"
+          
+          # Test the URL format
+          if [[ "$OIDC_TOKEN_URL" =~ ^https?:// ]]; then
+            echo "OIDC URL format appears valid (starts with http/https)"
+          else
+            echo "WARNING: OIDC URL format may be invalid - doesn't start with http/https"
+          fi
           
           # Get GitHub OIDC token
           GITHUB_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
@@ -103,8 +118,13 @@ jobs:
             exit 1
           fi  
           
+          # Debug the URL construction
+          echo "DATABRICKS_WORKSPACE_URL: '$DATABRICKS_WORKSPACE_URL'"
+          TOKEN_URL="https://$DATABRICKS_WORKSPACE_URL/oidc/v1/token"
+          echo "Constructed token URL: '$TOKEN_URL'"
+          
           # Exchange OIDC token for Databricks OAuth token
-          OAUTH_RESPONSE=$(curl -X POST "https://$DATABRICKS_WORKSPACE_URL/oidc/v1/token" \
+          OAUTH_RESPONSE=$(curl -X POST "$TOKEN_URL" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
             -d "client_id=$DATABRICKS_SP_CLIENT_ID" \
