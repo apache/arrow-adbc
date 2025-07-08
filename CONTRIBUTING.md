@@ -220,32 +220,57 @@ $ npm install -g @mermaid-js/mermaid-cli
 To build the HTML documentation:
 
 ```shell
-$ pushd c/apidoc
-$ doxygen
-$ popd
-
-# Optionally: to also build the Python documentation
-$ pushd python/adbc_driver_manager
-$ pip install -e .[test]
-$ popd
-
 $ pushd docs
 $ make html
 ```
 
-The output can be found in `build/`.
+The output can be found in `build/`.  This does not generate API references
+and results in some warnings, but it is not a problem if you're not working
+with the API documentation.
 
 Some documentations are maintained as [Mermaid][mermaid] diagrams, which must
 be rendered and checked in.  This can be done as follows:
 
 ```shell
-pushd docs
-make -f mermaid.makefile -j all
+$ pushd docs
+$ make -f mermaid.makefile -j all
 # Check in the updated files
 ```
 
 [mermaid]: https://mermaid.js.org/
 [sphinx]: https://www.sphinx-doc.org/en/master/
+
+#### Building more complete documentation
+
+You can remove the warnings of `make html` and generate the Python API
+reference as follows:
+
+```shell
+$ mamba create -n adbc \
+  --file ci/conda_env_docs.txt \
+  --file ci/conda_env_cpp.txt \
+  --file ci/conda_env_python.txt \
+  --file ci/conda_env_java.txt
+$ mamba activate adbc
+$ env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 ./ci/scripts/python_build.sh $(pwd) $(pwd)/build
+$ pushd docs
+$ make html
+```
+
+For a more complete build, you can use the following script:
+
+```shell
+$ ./ci/scripts/docs_build.sh "$(pwd)"
+```
+
+This generates all available API references, and also runs doctests.
+
+To generate the R API reference, you need to run the following additionally:
+
+```shell
+$ mamba install --file ci/conda_env_r.txt
+$ ./ci/scripts/r_build.sh $(pwd)
+```
 
 ### GLib
 
