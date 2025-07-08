@@ -41,6 +41,14 @@ class ArrowStatementTest < Test::Unit::TestCase
                  reader.read_all)
   end
 
+  def test_parameter_schema
+    @statement.set_sql_query("SELECT ?, $2")
+    @statement.prepare
+    assert_equal(Arrow::Schema.new("0" => :null,
+                                   "$2" => :null),
+                 @statement.parameter_schema)
+  end
+
   def test_bind
     @statement.set_sql_query("CREATE TABLE data (number int)")
     @statement.execute(false)
