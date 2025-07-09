@@ -34,17 +34,17 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
 
         static ExportersBuilder()
         {
-            var defaultProviers = new Dictionary<string, Func<string, string?, TracerProvider?>>
+            var defaultProviders = new Dictionary<string, Func<string, string?, TracerProvider?>>
             {
                 [ExportersOptions.Exporters.None] = NewNoopTracerProvider,
                 [ExportersOptions.Exporters.Otlp] = NewOtlpTracerProvider,
                 [ExportersOptions.Exporters.Console] = NewConsoleTracerProvider,
                 [ExportersOptions.Exporters.AdbcFile] = NewAdbcFileTracerProvider,
             };
-            s_tracerProviderFactoriesDefault = defaultProviers;
+            s_tracerProviderFactoriesDefault = defaultProviders;
         }
 
-        private ExportersBuilder(IBuilder builder)
+        private ExportersBuilder(Builder builder)
         {
             _sourceName = builder.SourceName;
             _sourceVersion = builder.SourceVersion;
@@ -155,24 +155,17 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
         public static TracerProvider? NewNoopTracerProvider(string sourceName, string? sourceVersion) =>
             null;
 
-        private interface IBuilder
-        {
-            string SourceName { get; }
-            string? SourceVersion { get; }
-            IReadOnlyDictionary<string, Func<string, string?, TracerProvider?>> TracerProviderFactories { get; }
-        }
-
-        public class Builder : IBuilder
+        public class Builder
         {
             private readonly string _sourceName;
             private readonly string? _sourceVersion;
             private readonly Dictionary<string, Func<string, string?, TracerProvider?>> _tracerProviderFactories;
 
-            string IBuilder.SourceName => _sourceName;
+            internal string SourceName => _sourceName;
 
-            string? IBuilder.SourceVersion => _sourceVersion;
+            internal string? SourceVersion => _sourceVersion;
 
-            IReadOnlyDictionary<string, Func<string, string?, TracerProvider?>> IBuilder.TracerProviderFactories => _tracerProviderFactories;
+            internal IReadOnlyDictionary<string, Func<string, string?, TracerProvider?>> TracerProviderFactories => _tracerProviderFactories;
 
             public Builder(string sourceName, string? sourceVersion)
             {
