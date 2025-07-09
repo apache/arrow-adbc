@@ -171,15 +171,89 @@ struct ManagedDriverInner {
 }
 
 #[derive(Default)]
-#[allow(dead_code)]
 struct DriverInfo {
     manifest_file: std::path::PathBuf,
-    driver_name: String,
     lib_path: std::path::PathBuf,
     entrypoint: Option<Vec<u8>>,
+    // TODO: until we add more logging these are unused so we'll leave
+    // them out until such time that we do so.
+    // driver_name: String,
+    // version: String,
+    // source: String,
+}
 
-    version: String,
-    source: String,
+impl DriverInfo {
+    fn load_driver_manifest(&self) -> Result<Self> {
+        let contents = fs::read_to_string(self.manifest_file.as_path()).map_err(|e| {
+            Error::with_message_and_status(
+                format!(
+                    "Could not read manifest '{}': {e}",
+                    self.manifest_file.display()
+                ),
+                Status::InvalidArguments,
+            )
+        })?;
+
+        let manifest = contents
+            .parse::<Table>()
+            .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
+
+        // leave these out until we add logging that would actually utilize them
+        // let driver_name = get_optional_key(&manifest, "name");
+        // let version = get_optional_key(&manifest, "version");
+        // let source = get_optional_key(&manifest, "source");
+        let (os, arch, extra) = arch_triplet();
+
+        let mut lib_path = PathBuf::default();
+        if let Some(driver) = manifest.get("Driver").and_then(|v| v.get("shared")) {
+            if driver.is_str() {
+                lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
+            } else if driver.is_table() {
+                lib_path = PathBuf::from(
+                    driver
+                        .get(format!("{os}_{arch}{extra}"))
+                        .and_then(Value::as_str)
+                        .unwrap_or_default(),
+                );
+            }
+        }
+
+        if lib_path.as_os_str().is_empty() {
+            return Err(Error::with_message_and_status(
+                format!(
+                    "Manifest '{}' missing Driver.shared key of {os}_{arch}{extra}",
+                    lib_path.display()
+                ),
+                Status::InvalidArguments,
+            ));
+        }
+
+        let entrypoint_val = manifest
+            .get("Driver")
+            .and_then(Value::as_table)
+            .and_then(|t| t.get("entrypoint"));
+
+        if let Some(entry) = entrypoint_val {
+            if !entry.is_str() {
+                return Err(Error::with_message_and_status(
+                    "Driver entrypoint must be a string".to_string(),
+                    Status::InvalidArguments,
+                ));
+            }
+        }
+
+        let entrypoint = entrypoint_val.and_then(Value::as_str).map(|s| {
+            self.entrypoint
+                .clone()
+                .unwrap_or_else(|| s.as_bytes().to_vec())
+        });
+
+        Ok(DriverInfo {
+            manifest_file: self.manifest_file.clone(),
+            lib_path,
+            entrypoint,
+        })
+    }
 }
 
 /// Implementation of [Driver].
@@ -206,7 +280,11 @@ impl ManagedDriver {
     }
 
     /// Load a driver either by name, filename, path, or via locating a toml manifest file.
-    /// The LoadFlags control what directories are searched to locate a manifest.
+    /// The `load_flags` control what directories are searched to locate a manifest.
+    /// The `entrypoint` allows customizing the name of the driver initialization function
+    /// if it is not the default `AdbcDriverInit` and isn't described in the loaded manifest.
+    /// If not provided, an entrypoint will be searched for based on the driver's name.    
+    /// The `version` defines the ADBC revision to attempt to initialize.
     pub fn load_from_name(
         name: impl AsRef<OsStr>,
         entrypoint: Option<&[u8]>,
@@ -255,10 +333,15 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let entrypoint = entrypoint.unwrap_or(b"AdbcDriverInit");
+        let default_entrypoint = get_default_entrypoint(filename.as_ref());
+
+        let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
         let library = unsafe { libloading::Library::new(filename.as_ref())? };
-        let init: libloading::Symbol<ffi::FFI_AdbcDriverInitFunc> =
-            unsafe { library.get(entrypoint)? };
+        let init: libloading::Symbol<ffi::FFI_AdbcDriverInitFunc> = unsafe {
+            library
+                .get(entrypoint)
+                .or_else(|_| library.get(b"AdbcDriverInit"))?
+        };
         let driver = Self::load_impl(&init, version)?;
         let inner = Arc::pin(ManagedDriverInner {
             driver,
@@ -338,12 +421,12 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let mut info = DriverInfo {
+        let info = DriverInfo {
             entrypoint: entrypoint.map(|e| e.to_vec()),
             manifest_file: driver_path.to_owned(),
             ..Default::default()
-        };
-        info = load_driver_manifest(&info)?;
+        }
+        .load_driver_manifest()?;
         Self::load_dynamic_from_filename(info.lib_path, entrypoint, version)
     }
 
@@ -512,77 +595,47 @@ fn load_driver_from_registry(
     })
 }
 
-fn get_optional_key(manifest: &Table, key: &str) -> String {
-    manifest
-        .get(key)
-        .and_then(Value::as_str)
-        .unwrap_or_default()
+// construct default entrypoint from the library name
+fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
+    // - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
+    // - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
+    // - proprietary_driver.dll -> AdbcProprietaryDriverInit
+
+    // potential path -> filename
+    let mut filename = driver_path.as_ref().to_str().unwrap_or_default();
+    if let Some(pos) = filename.rfind(&['/', '\\']) {
+        filename = &filename[pos + 1..];
+    }
+
+    // remove all extensions
+    filename = filename
+        .find('.')
+        .map_or_else(|| filename, |pos| &filename[..pos]);
+
+    let mut entrypoint = filename
         .to_string()
-}
-
-fn load_driver_manifest(info: &DriverInfo) -> Result<DriverInfo> {
-    let contents = fs::read_to_string(info.manifest_file.as_path()).map_err(|e| {
-        Error::with_message_and_status(
-            format!(
-                "Could not read manifest '{}': {e}",
-                info.manifest_file.display()
-            ),
-            Status::InvalidArguments,
-        )
-    })?;
-
-    let manifest = contents
-        .parse::<Table>()
-        .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
-
-    let driver_name = get_optional_key(&manifest, "name");
-    let version = get_optional_key(&manifest, "version");
-    let source = get_optional_key(&manifest, "source");
-    let (os, arch, extra) = arch_triplet();
-
-    let mut lib_path = PathBuf::default();
-    if let Some(driver) = manifest.get("Driver").and_then(|v| v.get("shared")) {
-        if driver.is_str() {
-            lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
-        } else if driver.is_table() {
-            lib_path = PathBuf::from(
-                driver
-                    .get(format!("{os}_{arch}{extra}"))
-                    .and_then(Value::as_str)
-                    .unwrap_or_default(),
-            );
-        }
-    }
-
-    if lib_path.as_os_str().is_empty() {
-        return Err(Error::with_message_and_status(
-            format!(
-                "Manifest '{}' missing appropriate path for current arch",
-                lib_path.display()
-            ),
-            Status::InvalidArguments,
-        ));
-    }
-
-    let entrypoint = manifest
-        .get("Driver")
-        .and_then(Value::as_table)
-        .and_then(|t| t.get("entrypoint"))
-        .and_then(Value::as_str)
+        .strip_prefix(env::consts::DLL_PREFIX)
+        .unwrap_or(filename)
+        .split(&['-', '_'][..])
+        .into_iter()
         .map(|s| {
-            info.entrypoint
-                .clone()
-                .unwrap_or_else(|| s.as_bytes().to_vec())
-        });
+            // uppercase first character of a string
+            // https://stackoverflow.com/questions/38406793/why-is-capitalizing-the-first-letter-of-a-string-so-convoluted-in-rust
+            let mut c = s.chars();
+            match c.next() {
+                None => String::new(),
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("");
 
-    Ok(DriverInfo {
-        manifest_file: info.manifest_file.clone(),
-        driver_name,
-        lib_path,
-        entrypoint,
-        version,
-        source,
-    })
+    if !entrypoint.starts_with("Adbc") {
+        entrypoint = format!("Adbc{}", entrypoint);
+    }
+
+    entrypoint.push_str("Init");
+    entrypoint
 }
 
 fn set_option_database(
@@ -1766,6 +1819,45 @@ mod tests {
             .expect("Failed to write driver manager manifest to temporary file");
 
         (tmp_dir, manifest_path)
+    }
+
+    #[test]
+    fn test_default_entrypoint() {
+        for driver in [
+            "adbc_driver_sqlite",
+            "adbc_driver_sqlite.dll",
+            "driver_sqlite",
+            "libadbc_driver_sqlite",
+            "libadbc_driver_sqlite.so",
+            "libadbc_driver_sqlite.so.6.0.0",
+            "/usr/lib/libadbc_driver_sqlite.so",
+            "/usr/lib/libadbc_driver_sqlite.so.6.0.0",
+            "C:\\System32\\adbc_driver_sqlite.dll",
+        ] {
+            assert_eq!(get_default_entrypoint(driver), "AdbcDriverSqliteInit");
+        }
+
+        for driver in [
+            "adbc_sqlite",
+            "sqlite",
+            "/usr/lib/sqlite.so",
+            "C:\\System32\\sqlite.dll",
+        ] {
+            assert_eq!(get_default_entrypoint(driver), "AdbcSqliteInit");
+        }
+
+        for driver in [
+            "proprietary_engine",
+            "libproprietary_engine.so.6.0.0",
+            "/usr/lib/proprietary_engine.so",
+            "C:\\System32\\proprietary_engine.dll",
+        ] {
+            assert_eq!(get_default_entrypoint(driver), "AdbcProprietaryEngineInit");
+        }
+
+        for driver in ["driver_example", "libdriver_example.so"] {
+            assert_eq!(get_default_entrypoint(driver), "AdbcDriverExampleInit");
+        }
     }
 
     #[test]
