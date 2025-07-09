@@ -247,8 +247,8 @@ class DriverStatusDirective(SphinxDirective):
         status = driver_status(path)
 
         generated_lines = [
-            f":bdg-primary:`Language: {status.implementation}`"
-            f":bdg-{status.badge_type}:`Status: {status.status}`"
+            f":bdg-primary:`Language: {status.implementation}`",
+            f":bdg-{status.badge_type}:`Status: {status.status}`",
         ]
 
         parsed = docutils.nodes.Element()
