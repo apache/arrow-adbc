@@ -23,7 +23,7 @@
 ![Implementation: Java](https://img.shields.io/badge/language-Java-violet?style=flat-square)
 ![Status: Beta](https://img.shields.io/badge/status-beta-yellow?style=flat-square)
 
-[![Maven: org.apache.arrow.adbc/adbc-driver-jdbc](https://img.shields.io/maven-central/v/org.apache.arrow.adbc/adbc-driver-jdbc)](https://mvnrepository.com/artifact/org.apache.arrow.adbc/adbc-driver-jdbc)
+[![Maven: org.apache.arrow.adbc:adbc-driver-jdbc](https://img.shields.io/maven-central/v/org.apache.arrow.adbc/adbc-driver-jdbc)](https://mvnrepository.com/artifact/org.apache.arrow.adbc/adbc-driver-jdbc)
 
 This driver provides an interface to databases supporting
 [Apache Arrow Flight SQL](https://arrow.apache.org/docs/format/FlightSql.html) using ADBC.

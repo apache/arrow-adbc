@@ -109,6 +109,7 @@ class DriverInstallationDirective(SphinxDirective):
 
         path = Path(filename).resolve()
         status = driver_status(path)
+        is_native = status.implementation in {"C/C++", "C#", "Go", "Rust"}
 
         generated_lines = []
 
@@ -139,7 +140,7 @@ class DriverInstallationDirective(SphinxDirective):
 
                 languages[language].append((repo, package, url))
 
-            if "Go" not in languages:
+            if "Go" not in languages and is_native:
                 languages["Go"] = []
 
             for language, packages in sorted(languages.items(), key=lambda x: x[0]):
@@ -175,6 +176,16 @@ class DriverInstallationDirective(SphinxDirective):
                         generated_lines.append("      .. code-block:: shell")
                         generated_lines.append("")
                         generated_lines.append(f"         go get {package}")
+                    elif repo == "Maven":
+                        group, artifact = package.split(":")
+                        generated_lines.append("      .. code-block:: xml")
+                        generated_lines.append("")
+                        generated_lines.append("         <dependency>")
+                        generated_lines.append(f"           <groupId>{group}</groupId>")
+                        generated_lines.append(
+                            f"           <artifactId>{artifact}</artifactId>"
+                        )
+                        generated_lines.append("         </dependency>")
                     elif repo == "NuGet":
                         generated_lines.append("      .. code-block:: shell")
                         generated_lines.append("")
@@ -195,7 +206,7 @@ class DriverInstallationDirective(SphinxDirective):
                         continue
                     generated_lines.append("")
 
-                if not packages:
+                if not packages and is_native:
                     if language == "Go":
                         generated_lines.append(
                             "      Install the C/C++ driver, "
@@ -215,7 +226,7 @@ class DriverInstallationDirective(SphinxDirective):
                             type="adbc_misc",
                         )
 
-        if status.implementation in {"C/C++", "C#", "Go", "Rust"}:
+        if is_native:
             generated_lines.append("")
             generated_lines.append(
                 "Additionally, the driver may be used from C/C++, C#, GLib, "
