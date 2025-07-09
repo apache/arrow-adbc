@@ -478,25 +478,25 @@ func arrFromVal(val any, dt arrow.DataType) (arrow.Array, error) {
 		buffers = append(buffers, memory.NewBufferBytes(buf))
 	case arrow.Time32:
 		if dt == nil || dt.ID() != arrow.TIME32 {
-			return nil, errors.New("can only create array from arrow.Time32 with known type")
+			return nil, errors.New("can only create array from arrow.Time32 with a provided parameter schema")
 		}
 
 		buffers[1] = memory.NewBufferBytes((*[4]byte)(unsafe.Pointer(&v))[:])
 	case arrow.Time64:
 		if dt == nil || dt.ID() != arrow.TIME64 {
-			return nil, errors.New("can only create array from arrow.Time64 with known type")
+			return nil, errors.New("can only create array from arrow.Time64 with a provided parameter schema")
 		}
 
 		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
 	case arrow.Timestamp:
 		if dt == nil || dt.ID() != arrow.TIMESTAMP {
-			return nil, errors.New("can only create array from arrow.Timestamp with known type")
+			return nil, errors.New("can only create array from arrow.Timestamp with a provided parameter schema")
 		}
 
 		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
 	case time.Time:
 		if dt == nil {
-			return nil, errors.New("can only create array from time.Time with known type")
+			return nil, errors.New("can only create array from time.Time with a provided parameter schema")
 		}
 
 		switch dt.ID() {
