@@ -155,7 +155,7 @@ class DriverInstallationDirective(SphinxDirective):
                     packages, key=lambda x: (x[0].lower(), x[1])
                 ):
                     generated_lines.append(
-                        f"      Install `{package} <{url}>`_ from {repo}:"
+                        f"      Install `{package} <{url}>`__ from {repo}:"
                     )
                     generated_lines.append("")
                     if repo == "conda-forge":
