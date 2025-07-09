@@ -28,18 +28,18 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
     /// Provides access to writing trace files, limiting the
     /// individual files size and ensuring unique file names.
     /// </summary>
-    internal class TracingFile : IDisposable
+    internal class TracingFile
     {
         private static readonly string s_defaultTracePath = FileExporter.TracingLocationDefault;
+        private static readonly Random s_random = new Random();
         private readonly string _fileBaseName;
         private readonly DirectoryInfo _tracingDirectory;
         private FileInfo? _currentTraceFileInfo;
-        private bool _disposedValue;
         private readonly long _maxFileSizeKb = FileExporter.MaxFileSizeKbDefault;
         private readonly int _maxTraceFiles = FileExporter.MaxTraceFilesDefault;
 
         internal TracingFile(string fileBaseName, string? traceDirectoryPath = default, long maxFileSizeKb = FileExporter.MaxFileSizeKbDefault, int maxTraceFiles = FileExporter.MaxTraceFilesDefault) :
-            this(fileBaseName, traceDirectoryPath == null ? new DirectoryInfo(s_defaultTracePath) : new DirectoryInfo(traceDirectoryPath), maxFileSizeKb, maxTraceFiles)
+            this(fileBaseName, ResolveTraceDirectory(traceDirectoryPath), maxFileSizeKb, maxTraceFiles)
         { }
 
         internal TracingFile(string fileBaseName, DirectoryInfo traceDirectory, long maxFileSizeKb, int maxTraceFiles)
@@ -87,7 +87,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     for (int i = tracingFiles.Length - 1; i >= _maxTraceFiles; i--)
                     {
                         FileInfo? file = tracingFiles.ElementAtOrDefault(i);
-                        // Note: don't pass the cancellation tokenm, as we want this to ALWAYS run at the end.
+                        // Note: don't pass the cancellation token, as we want this to ALWAYS run at the end.
                         await ActionWithRetryAsync<IOException>(() => file?.Delete());
                     }
                 }
@@ -117,6 +117,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                         await stream.CopyToAsync(fileStream);
                     }
                 }
+                await Task.Yield(); // Yield to allow other tasks to run.
                 if (newFileRequired)
                 {
                     // If tracing file is maxxed-out, start a new tracing file.
@@ -132,10 +133,14 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 .OrderByDescending(f => f.LastWriteTimeUtc);
         }
 
-        private static async Task ActionWithRetryAsync<T>(Action action, int maxRetries = 5, CancellationToken cancellationToken = default) where T : Exception
+        private static async Task ActionWithRetryAsync<T>(
+            Action action,
+            int maxRetries = 50,
+            CancellationToken cancellationToken = default) where T : Exception
         {
             int retryCount = 0;
-            TimeSpan pauseTime = TimeSpan.FromMilliseconds(10);
+            int delayTime = s_random.Next(50, 500); // Introduce a small random delay to avoid contention.
+            TimeSpan pauseTime = TimeSpan.FromMilliseconds(delayTime);
             bool completed = false;
 
             while (!cancellationToken.IsCancellationRequested && !completed && retryCount < maxRetries)
@@ -145,13 +150,9 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     action.Invoke();
                     completed = true;
                 }
-                catch (T)
+                catch (T) when (retryCount < (maxRetries - 1))
                 {
                     retryCount++;
-                    if (retryCount >= maxRetries)
-                    {
-                        throw;
-                    }
                     try
                     {
                         await Task.Delay(pauseTime, cancellationToken);
@@ -167,11 +168,12 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private static async Task ActionWithRetryAsync<T>(
             Func<Task> action,
-            int maxRetries = 5,
+            int maxRetries = 100,
             CancellationToken cancellationToken = default) where T : Exception
         {
             int retryCount = 0;
-            TimeSpan pauseTime = TimeSpan.FromMilliseconds(10);
+            int delayTime = s_random.Next(50, 500); // Introduce a small random delay to avoid contention.
+            TimeSpan pauseTime = TimeSpan.FromMilliseconds(delayTime);
             bool completed = false;
 
             while (!cancellationToken.IsCancellationRequested && !completed && retryCount < maxRetries)
@@ -181,13 +183,9 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     await action.Invoke();
                     completed = true;
                 }
-                catch (T)
+                catch (T) when (retryCount < (maxRetries - 1))
                 {
                     retryCount++;
-                    if (retryCount >= maxRetries)
-                    {
-                        throw;
-                    }
                     try
                     {
                         await Task.Delay(pauseTime, cancellationToken);
@@ -215,19 +213,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             }
         }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue && disposing)
-            {
-                _disposedValue = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
+        private static DirectoryInfo ResolveTraceDirectory(string? traceDirectoryPath) =>
+            traceDirectoryPath == null ? new DirectoryInfo(s_defaultTracePath) : new DirectoryInfo(traceDirectoryPath);
     }
 }

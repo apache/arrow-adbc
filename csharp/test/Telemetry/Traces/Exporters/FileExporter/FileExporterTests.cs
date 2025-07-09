@@ -1,19 +1,19 @@
 ﻿/*
-* Licensed to the Apache Software Foundation (ASF) under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The ASF licenses this file to You under the Apache License, Version 2.0
-* (the "License"); you may not use this file except in compliance with
-* the License.  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 using System;
 using System.Diagnostics;
@@ -241,6 +241,67 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                 .Build());
         }
 
+        [Fact]
+        internal async Task CanTraceMultipleConcurrentWriters()
+        {
+            const int writeCount = 1000;
+            var delay = TimeSpan.FromSeconds(8);
+            string customFolderName = ExportersBuilderTests.NewName();
+            string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
+
+            if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
+            try
+            {
+                var tasks = new Task[]
+                {
+                    Task.Run(async () => await TraceActivities(traceFolder, "activity1", writeCount)),
+                    Task.Run(async () => await TraceActivities(traceFolder, "activity2", writeCount)),
+                };
+                await Task.WhenAll(tasks);
+
+                int activity1Count = 0;
+                int activity2Count = 0;
+                foreach (string file in Directory.GetFiles(traceFolder))
+                {
+                    foreach (string line in File.ReadLines(file, Encoding.UTF8))
+                    {
+                        if (line.Contains("activity1"))
+                        {
+                            activity1Count++;
+                        }
+                        else if (line.Contains("activity2"))
+                        {
+                            activity2Count++;
+                        }
+                    }
+                }
+                // Note, because we don't reference count, one of the listeners will likely
+                // close the shared instance before the other is finished.
+                // That can result in some events not being written.
+                Assert.InRange(activity1Count, writeCount * 0.9, writeCount);
+                Assert.InRange(activity2Count, writeCount * 0.9, writeCount);
+            }
+            finally
+            {
+                if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
+            }
+        }
+
+        private async Task TraceActivities(string traceFolder, string activityName, int writeCount)
+        {
+            using (TracerProvider provider = Sdk.CreateTracerProviderBuilder()
+                .AddSource(_activitySourceName)
+                .AddAdbcFileExporter(_activitySourceName, traceFolder)
+                .Build())
+            {
+                for (int i = 0; i < writeCount; i++)
+                {
+                    await StartActivity(activityName);
+                    await Task.Delay(TimeSpan.FromMilliseconds(0.1));
+                }
+            }
+        }
+
         private Task AddEvent(string eventName, string activityName = nameof(AddEvent))
         {
             using Activity? activity = _activitySource.StartActivity(activityName);
@@ -252,7 +313,6 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
         {
             using Activity? activity = _activitySource.StartActivity(activityName);
             return Task.CompletedTask;
-
         }
 
         protected virtual void Dispose(bool disposing)

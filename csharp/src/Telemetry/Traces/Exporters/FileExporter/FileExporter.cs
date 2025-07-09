@@ -201,9 +201,9 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             if (!_disposed && disposing)
             {
                 // Allow flush of any existing events.
-                using CancellationTokenSource flushTimeoutTS = new();
-                flushTimeoutTS.CancelAfter(TimeSpan.FromSeconds(5));
-                FlushAsync(flushTimeoutTS.Token).Wait();
+                using CancellationTokenSource flushTimeout = new();
+                flushTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+                FlushAsync(flushTimeout.Token).Wait();
 
                 // Remove and dispose of single instance of exporter
                 string listenerId = GetListenerId(_fileBaseName, _tracesDirectoryFullName);
