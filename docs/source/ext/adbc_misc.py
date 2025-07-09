@@ -222,8 +222,6 @@ class DriverInstallationDirective(SphinxDirective):
                 "Go, R, Ruby, and Rust via the driver manager."
             )
 
-        print("\n".join(generated_lines))
-
         parsed = docutils.nodes.Element()
         nested_parse_with_titles(
             self.state,
@@ -248,7 +246,7 @@ class DriverStatusDirective(SphinxDirective):
 
         generated_lines = [
             f":bdg-primary:`Language: {status.implementation}`",
-            f":bdg-{status.badge_type}:`Status: {status.status}`",
+            f":bdg-ref-{status.badge_type}:`Status: {status.status} <driver-status>`",
         ]
 
         parsed = docutils.nodes.Element()
@@ -298,7 +296,7 @@ class DriverStatusTableDirective(SphinxDirective):
             "",
             "   * - Vendor",
             "     - Implementation",
-            "     - Driver Status",
+            "     - :ref:`driver-status`",
             "     - Packages [#packages]_",
             "",
         ]

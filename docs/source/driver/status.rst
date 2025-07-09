@@ -25,17 +25,22 @@ Driver Implementation Status
              details, see `GH-1841
              <https://github.com/apache/arrow-adbc/issues/1841>`_.
 
-Implementation Status
-=====================
+.. note::
+
+   Drivers that support C/C++ can also be used from C#, GLib, Go, Python, R,
+   Ruby, and Rust, regardless of their implementation language.
+
+.. _driver-status:
+
+Driver Status
+=============
 
 **Experimental** drivers are not feature-complete and the implementation is still progressing.
 **Beta** drivers are (mostly) feature-complete but have only been available for a short time.
 **Stable** drivers are (mostly) feature-complete (as much as possible for the underlying database) and have been available/tested for a while.
 
-.. note::
-
-   Drivers that support C/C++ can also be used from C#, GLib, Go, Python, R,
-   Ruby, and Rust, regardless of their implementation language.
+Feature Support
+===============
 
 .. adbc_driver_status_table::
 
