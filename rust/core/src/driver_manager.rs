@@ -283,8 +283,22 @@ impl ManagedDriver {
     /// The `load_flags` control what directories are searched to locate a manifest.
     /// The `entrypoint` allows customizing the name of the driver initialization function
     /// if it is not the default `AdbcDriverInit` and isn't described in the loaded manifest.
-    /// If not provided, an entrypoint will be searched for based on the driver's name.    
+    /// If not provided, an entrypoint will be searched for based on the driver's name.
     /// The `version` defines the ADBC revision to attempt to initialize.
+    ///
+    /// The full logic used here is as follows:
+    ///  - if `name` has an extension: it is treated as a filename. If the load_flags does not
+    ///    contain `LOAD_FLAG_ALLOW_RELATIVE_PATHS`, then relative paths will be rejected.
+    ///    - if the extension is `toml` then we attempt to load the Driver Manifest, otherwise
+    ///      we defer to the previous logic in load_dynamic_from_filename which will attempt to
+    ///      load the library
+    ///  - if `name` does not have an extension but is an absolute path: we first check to see
+    ///    if there is an existing file with the same name that *does* have a "toml" extension,
+    ///    attempting to load that if it exists. Otherwise we just pass it to load_dynamic_from_filename.
+    ///  - Finally, if there's no extension and it is not an absolute path, we call `find_driver`
+    ///    which will search through the relevant directories (based on the set load flags) for a
+    ///    manifest file with this name, and if one is not found we see if the name refers to a
+    ///    library on the LD_LIBRARY_PATH etc.
     pub fn load_from_name(
         name: impl AsRef<OsStr>,
         entrypoint: Option<&[u8]>,
@@ -603,7 +617,7 @@ fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
 
     // potential path -> filename
     let mut filename = driver_path.as_ref().to_str().unwrap_or_default();
-    if let Some(pos) = filename.rfind(&['/', '\\']) {
+    if let Some(pos) = filename.rfind(['/', '\\']) {
         filename = &filename[pos + 1..];
     }
 
@@ -617,7 +631,6 @@ fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
         .strip_prefix(env::consts::DLL_PREFIX)
         .unwrap_or(filename)
         .split(&['-', '_'][..])
-        .into_iter()
         .map(|s| {
             // uppercase first character of a string
             // https://stackoverflow.com/questions/38406793/why-is-capitalizing-the-first-letter-of-a-string-so-convoluted-in-rust
@@ -631,7 +644,7 @@ fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
         .join("");
 
     if !entrypoint.starts_with("Adbc") {
-        entrypoint = format!("Adbc{}", entrypoint);
+        entrypoint = format!("Adbc{entrypoint}");
     }
 
     entrypoint.push_str("Init");
