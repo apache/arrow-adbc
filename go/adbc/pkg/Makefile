@@ -21,13 +21,17 @@ RM := rm -f
 
 ifeq ($(shell go env GOOS),linux)
 	SUFFIX=so
-	GIT_VERSION=$(shell git tag --sort=-v:refname --points-at $(shell git rev-list --tags --max-count=1 2>/dev/null) 2>/dev/null | head -n 1)
 else ifeq ($(shell go env GOOS),windows)
 	SUFFIX=dll
 	RM=del
-	GIT_VERSION=$(shell powershell -Command "git tag --sort=-v:refname --points-at $(git rev-list --tags --max-count=1) | Select-Object -First 1")
 else
 	SUFFIX=dylib
+endif
+
+ifeq ($(shell go env GOOS),windows)
+	GIT_VERSION=$(shell powershell -Command "git tag --sort=-v:refname --points-at $(git rev-list --tags --max-count=1) | Select-Object -First 1")
+else
+	GIT_VERSION=$(shell git tag --sort=-v:refname --points-at $(shell git rev-list --tags --max-count=1 2>/dev/null) 2>/dev/null | head -n 1)
 endif
 
 GIT_VERSION ?= unknown
