@@ -360,6 +360,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected internal override bool AreResultsAvailableDirectly => _enableDirectResults;
 
+        protected override bool GetObjectsPatternsRequireLowerCase => true;
+
         protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = defaultGetDirectResults;
 
         protected override void SetDirectResults(TGetCatalogsReq request) => request.GetDirectResults = defaultGetDirectResults;
