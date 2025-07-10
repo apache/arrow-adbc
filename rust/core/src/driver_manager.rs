@@ -199,29 +199,47 @@ impl DriverInfo {
         // let source = get_optional_key(&manifest, "source");
         let (os, arch, extra) = arch_triplet();
 
-        let mut lib_path = PathBuf::new();
-        if let Some(driver) = manifest
+        let lib_path = match manifest
             .get_ref()
             .get("Driver")
             .and_then(|v| v.get_ref().get("shared"))
             .map(|v| v.get_ref())
         {
-            if driver.is_str() {
-                lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
-            } else if driver.is_table() {
-                lib_path = PathBuf::from(
-                    driver
-                        .get(format!("{os}_{arch}{extra}"))
-                        .and_then(|v| v.get_ref().as_str())
-                        .unwrap_or_default(),
-                );
+            Some(driver) => {
+                if driver.is_str() {
+                    // If the value is a string, we assume it is the path to the shared library.
+                    Ok(PathBuf::from(driver.as_str().unwrap_or_default()))
+                } else if driver.is_table() {
+                    // If the value is a table, we look for the specific key for this OS and architecture.
+                    Ok(PathBuf::from(
+                        driver
+                            .get(format!("{os}_{arch}{extra}"))
+                            .and_then(|v| v.get_ref().as_str())
+                            .unwrap_or_default(),
+                    ))
+                } else {
+                    Err(Error::with_message_and_status(
+                        format!(
+                            "Driver.shared must be a string or a table, found '{}'",
+                            driver.type_str()
+                        ),
+                        Status::InvalidArguments,
+                    ))
+                }
             }
-        }
+            None => Err(Error::with_message_and_status(
+                format!(
+                    "Manifest '{}' missing Driver.shared key",
+                    manifest_file.display()
+                ),
+                Status::InvalidArguments,
+            )),
+        }?;
 
         if lib_path.as_os_str().is_empty() {
             return Err(Error::with_message_and_status(
                 format!(
-                    "Manifest '{}' missing Driver.shared key of {os}_{arch}{extra}",
+                    "Manifest '{}' found empty string for library path of Driver.shared.{os}_{arch}{extra}",
                     lib_path.display()
                 ),
                 Status::InvalidArguments,
@@ -295,10 +313,9 @@ impl ManagedDriver {
     ///  - if `name` does not have an extension but is an absolute path: we first check to see
     ///    if there is an existing file with the same name that *does* have a "toml" extension,
     ///    attempting to load that if it exists. Otherwise we just pass it to load_dynamic_from_filename.
-    ///  - Finally, if there's no extension and it is not an absolute path, we call `find_driver`
-    ///    which will search through the relevant directories (based on the set load flags) for a
-    ///    manifest file with this name, and if one is not found we see if the name refers to a
-    ///    library on the LD_LIBRARY_PATH etc.
+    ///  - Finally, if there's no extension and it is not an absolute path, we will search through
+    ///    the relevant directories (based on the set load flags) for a manifest file with this name, and
+    ///    if one is not found we see if the name refers to a library on the LD_LIBRARY_PATH etc.
     pub fn load_from_name(
         name: impl AsRef<OsStr>,
         entrypoint: Option<&[u8]>,
