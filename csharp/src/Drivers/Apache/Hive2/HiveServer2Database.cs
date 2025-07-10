@@ -23,21 +23,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2Database : AdbcDatabase
     {
-        readonly IReadOnlyDictionary<string, string> properties;
+        private readonly HiveServer2ConfigurationManager _configManager;
 
         internal HiveServer2Database(IReadOnlyDictionary<string, string> properties)
         {
-            this.properties = properties;
+            _configManager = new HiveServer2ConfigurationManager(properties);
         }
 
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
-            // connection options takes precedence over database properties for the same option
-            IReadOnlyDictionary<string, string> mergedProperties = options == null
-                ? properties
-                : options
-                    .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
-                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            // Set connection options in the configuration manager
+            _configManager.SetConnectionOptions(options);
+            
+            // Get merged properties from the configuration manager
+            var mergedProperties = _configManager.GetMergedProperties();
+            
             HiveServer2Connection connection = HiveServer2ConnectionFactory.NewConnection(mergedProperties);
             connection.OpenAsync().Wait();
             return connection;

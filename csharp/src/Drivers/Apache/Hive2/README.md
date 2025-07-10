@@ -62,6 +62,54 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.proxy_options.proxy_pwd` | Password for proxy authentication. Only feature-complete in Spark driver. Required when proxy_auth is True | |
 | `adbc.telemetry.trace_parent` | The [trace parent](https://www.w3.org/TR/trace-context/#traceparent-header) identifier for an existing [trace context](https://www.w3.org/TR/trace-context/) \(span/activity\) in a tracing system. This option is most likely to be set using `Statement.SetOption` to set the trace parent for driver interaction with a specific `Statement`. However, it can also be set using `Driver.Open`, `Database.Connect` or `Connection.SetOption` to set the trace parent for all interactions with the driver on that specific `Connection`. |  |
 
+## Environment Variable Configuration
+
+All database and connection properties can be set using environment variables, providing a convenient way to configure the driver without modifying code. This is particularly useful for deployment scenarios, testing, and keeping sensitive information like credentials out of source code.
+
+### Environment Variable Naming Convention
+
+Environment variables follow this naming pattern:
+- Convert the parameter name to uppercase
+- Replace dots (`.`) with underscores (`_`)
+- Add the prefix `ADBC_`
+
+For example:
+- `adbc.hive.host` → `ADBC_HIVE_HOST`
+- `adbc.hive.connect_timeout_ms` → `ADBC_HIVE_CONNECT_TIMEOUT_MS`
+
+### Priority Order
+
+Configuration values are resolved in the following priority order (highest to lowest):
+1. Connection options (passed to `Connect`)
+2. Database properties (passed to `Open`)
+3. Environment variables
+4. Default values
+
+### Example
+
+```bash
+# Set environment variables
+export ADBC_HIVE_HOST=my-hive-server.com
+export ADBC_HIVE_PORT=443
+export ADBC_HIVE_PATH=/hive2
+export ADBC_HIVE_AUTH_TYPE=basic
+```
+
+```csharp
+// Properties can be omitted when set via environment variables
+var dbProperties = new Dictionary<string, string>
+{
+    // These are provided via environment variables
+    // { "adbc.hive.host", "my-hive-server.com" },
+    // { "adbc.hive.port", "443" },
+    
+    // This overrides any environment variable
+    { "adbc.hive.transport_type", "http" }
+};
+
+var db = new HiveServer2Driver().Open(dbProperties);
+```
+
 ## Timeout Configuration
 
 Timeouts have a hierarchy to their behavior. As specified above, the `adbc.hive.connect_timeout_ms` is analogous to a ConnectTimeout and used to initially establish a new session with the server.
