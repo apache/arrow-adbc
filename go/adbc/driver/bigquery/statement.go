@@ -27,6 +27,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"slices"
 	"strconv"
 	"time"
 
@@ -67,6 +68,9 @@ type statement struct {
 
 	// Field that contains Table.update columns descriptions
 	updateTableColumnsDescription string
+
+	// Field that contains the JSON string to authorize a view to source datasets
+	authorizeViewToDatasets string
 }
 
 func (st *statement) GetOptionBytes(key string) ([]byte, error) {
@@ -152,6 +156,8 @@ func (st *statement) GetOption(key string) (string, error) {
 		return st.ingestPath, nil
 	case OptionJsonUpdateTableColumnsDescription:
 		return st.updateTableColumnsDescription, nil
+	case OptionJsonAuthorizeViewToDatasets:
+		return st.authorizeViewToDatasets, nil
 
 	default:
 		val, err := st.cnxn.GetOption(key)
@@ -279,6 +285,8 @@ func (st *statement) SetOption(key string, v string) error {
 		}
 	case OptionJsonUpdateTableColumnsDescription:
 		st.updateTableColumnsDescription = v
+	case OptionJsonAuthorizeViewToDatasets:
+		st.authorizeViewToDatasets = v
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -333,6 +341,10 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 
 	if st.updateTableColumnsDescription != "" {
 		return st.executeUpdateTableColumnsDescription(ctx)
+	}
+
+	if st.authorizeViewToDatasets != "" {
+		return st.executeAuthorizeViewToDatasets(ctx)
 	}
 
 	if st.queryConfig.Q == "" {
@@ -1098,14 +1110,11 @@ func (st *statement) executeIngest(ctx context.Context) (array.RecordReader, int
 func (st *statement) executeUpdateTableColumnsDescription(ctx context.Context) (array.RecordReader, int64, error) {
 	thisFunction := getFunctionName()
 
-	columnDescriptionsRaw, _ := st.GetOption(OptionJsonUpdateTableColumnsDescription)
-	if columnDescriptionsRaw == "" {
-		return nil, -1, adbcError(adbc.StatusInvalidState, thisFunction, "OptionJsonUpdateTableColumnsDescription must be set for statement")
-	}
 	if st.queryConfig.Dst == nil {
 		return nil, -1, adbcError(adbc.StatusInvalidState, thisFunction, "Dst must be set for statement.QueryConfig")
 	}
 
+	columnDescriptionsRaw, _ := st.GetOption(OptionJsonUpdateTableColumnsDescription)
 	// deserialize the column name -> description mapping
 	var columnDescriptions map[string]string
 	if err := json.Unmarshal([]byte(columnDescriptionsRaw), &columnDescriptions); err != nil {
@@ -1141,14 +1150,72 @@ func (st *statement) executeUpdateTableColumnsDescription(ctx context.Context) (
 		return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("failed to update table schema: %v", err))
 	}
 
-	// Return an empty record reader since this operation doesn't return data
+	return emptyResult()
+}
+
+func (st *statement) executeAuthorizeViewToDatasets(ctx context.Context) (array.RecordReader, int64, error) {
+	thisFunction := getFunctionName()
+
+	type Dataset struct {
+		Project string `json:"project"`
+		Dataset string `json:"dataset"`
+	}
+	var viewToDataset map[string][]Dataset
+
+	authorizeViewToDatasetsRaw, _ := st.GetOption(OptionJsonAuthorizeViewToDatasets)
+	if err := json.Unmarshal([]byte(authorizeViewToDatasetsRaw), &viewToDataset); err != nil {
+		return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("failed to parse view to dataset JSON: %v", err))
+	}
+
+	for viewName, datasets := range viewToDataset {
+		view, err := stringToTable(st, viewName)
+		if err != nil {
+			return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("invalid view name: %s", view))
+		}
+
+		for _, dataset := range datasets {
+			dataset := st.cnxn.datasetInProject(dataset.Project, dataset.Dataset)
+			metadata, err := dataset.Metadata(ctx)
+			if err != nil {
+				return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("failed to get dataset metadata: %v", err))
+			}
+
+			if slices.ContainsFunc(metadata.Access, func(existing *bigquery.AccessEntry) bool {
+				return tableEqual(existing.View, view)
+			}) {
+				continue
+			}
+
+			accessEntry := bigquery.AccessEntry{
+				View:       view,
+				EntityType: bigquery.ViewEntity,
+			}
+			if _, err := dataset.Update(ctx, bigquery.DatasetMetadataToUpdate{
+				Access: append(metadata.Access, &accessEntry),
+			}, metadata.ETag); err != nil {
+				return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("failed to update dataset: %v", err))
+			}
+		}
+	}
+
+	return emptyResult()
+}
+
+func tableEqual(self *bigquery.Table, other *bigquery.Table) bool {
+	if self == nil || other == nil {
+		return self == other
+	}
+	return self.TableID == other.TableID && self.DatasetID == other.DatasetID && self.ProjectID == other.ProjectID
+}
+
+// emptyResult returns an empty record reader when the caller doesn't return any data
+func emptyResult() (array.RecordReader, int64, error) {
 	emptySchema := arrow.NewSchema([]arrow.Field{}, nil)
 	emptyRecord := array.NewRecord(emptySchema, []arrow.Array{}, 0)
 	reader, err := array.NewRecordReader(emptySchema, []arrow.Record{emptyRecord})
 	if err != nil {
 		return nil, -1, err
 	}
-
 	return reader, 0, nil
 }
 

@@ -86,7 +86,8 @@ const (
 	OptionStringIngestPath          = "adbc.bigquery.ingest.csv_filepath"
 	OptionStringIngestSchema        = "adbc.bigquery.ingest.csv_schema"
 
-	OptionJsonUpdateTableColumnsDescription = "adbc.bigquery.table.update.columns_description"
+	OptionJsonUpdateTableColumnsDescription = "adbc.bigquery.table.update_columns_description"
+	OptionJsonAuthorizeViewToDatasets       = "adbc.bigquery.dataset.authorize_view_to_datasets"
 )
 
 var (

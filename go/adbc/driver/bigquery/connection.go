@@ -66,6 +66,10 @@ type connectionImpl struct {
 	client *bigquery.Client
 }
 
+func (c *connectionImpl) datasetInProject(projectID, datasetID string) *bigquery.Dataset {
+	return c.client.DatasetInProject(projectID, datasetID)
+}
+
 // This creates a bigquery.Table associated with the connection's client
 func (c *connectionImpl) table(project, dataset, table string) *bigquery.Table {
 	return c.client.DatasetInProject(project, dataset).Table(table)
