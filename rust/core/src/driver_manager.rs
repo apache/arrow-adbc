@@ -111,7 +111,7 @@ use std::pin::Pin;
 use std::ptr::{null, null_mut};
 use std::sync::{Arc, Mutex};
 
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 use windows_registry;
 
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
@@ -483,7 +483,7 @@ impl ManagedDriver {
         ))
     }
 
-    #[cfg(windows)]
+    #[cfg(target_os = "windows")]
     fn find_driver(
         driver_path: &Path,
         entrypoint: Option<&[u8]>,
@@ -602,7 +602,7 @@ impl Driver for ManagedDriver {
     }
 }
 
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 fn load_driver_from_registry(
     root: &windows_registry::Key,
     driver_name: &OsStr,
@@ -1659,7 +1659,7 @@ impl Drop for ManagedStatement {
 }
 
 #[cfg(target_os = "windows")]
-extern crate windows_sys as windows;
+use windows_sys as windows;
 
 #[cfg(target_os = "windows")]
 mod target_windows {
