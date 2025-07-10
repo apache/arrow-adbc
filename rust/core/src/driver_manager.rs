@@ -117,7 +117,7 @@ use windows_registry;
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
-use toml::{Table, Value};
+use toml::de::DeTable;
 
 use crate::{
     error::{Error, Status},
@@ -171,8 +171,7 @@ struct ManagedDriverInner {
 }
 
 #[derive(Default)]
-struct DriverInfo {
-    manifest_file: std::path::PathBuf,
+struct DriverInfo {    
     lib_path: std::path::PathBuf,
     entrypoint: Option<Vec<u8>>,
     // TODO: until we add more logging these are unused so we'll leave
@@ -183,19 +182,15 @@ struct DriverInfo {
 }
 
 impl DriverInfo {
-    fn load_driver_manifest(&self) -> Result<Self> {
-        let contents = fs::read_to_string(self.manifest_file.as_path()).map_err(|e| {
+    fn load_driver_manifest(manifest_file: &Path, entrypoint: Option<&[u8]>) -> Result<Self> {
+        let contents = fs::read_to_string(manifest_file).map_err(|e| {
             Error::with_message_and_status(
-                format!(
-                    "Could not read manifest '{}': {e}",
-                    self.manifest_file.display()
-                ),
+                format!("Could not read manifest '{}': {e}", manifest_file.display()),
                 Status::InvalidArguments,
             )
         })?;
 
-        let manifest = contents
-            .parse::<Table>()
+        let manifest = DeTable::parse(&contents)            
             .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
 
         // leave these out until we add logging that would actually utilize them
@@ -204,15 +199,19 @@ impl DriverInfo {
         // let source = get_optional_key(&manifest, "source");
         let (os, arch, extra) = arch_triplet();
 
-        let mut lib_path = PathBuf::default();
-        if let Some(driver) = manifest.get("Driver").and_then(|v| v.get("shared")) {
+        let mut lib_path = PathBuf::new();
+        if let Some(driver) = manifest.get_ref()
+            .get("Driver")
+            .and_then(|v| v.get_ref().get("shared"))
+            .and_then(|v| Some(v.get_ref()))
+        {
             if driver.is_str() {
                 lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
             } else if driver.is_table() {
                 lib_path = PathBuf::from(
                     driver
                         .get(format!("{os}_{arch}{extra}"))
-                        .and_then(Value::as_str)
+                        .and_then(|v| v.get_ref().as_str())
                         .unwrap_or_default(),
                 );
             }
@@ -228,10 +227,12 @@ impl DriverInfo {
             ));
         }
 
-        let entrypoint_val = manifest
+        let entrypoint_val = manifest.get_ref()
             .get("Driver")
-            .and_then(Value::as_table)
-            .and_then(|t| t.get("entrypoint"));
+            .and_then(|v| v.get_ref().as_table())
+            .and_then(|t| t.get("entrypoint"))
+            .and_then(|v| Some(v.get_ref()));
+    
 
         if let Some(entry) = entrypoint_val {
             if !entry.is_str() {
@@ -242,14 +243,12 @@ impl DriverInfo {
             }
         }
 
-        let entrypoint = entrypoint_val.and_then(Value::as_str).map(|s| {
-            self.entrypoint
-                .clone()
-                .unwrap_or_else(|| s.as_bytes().to_vec())
-        });
+        let entrypoint = match entrypoint_val.and_then(|v| v.as_str()) {
+            Some(s) => Some(s.as_bytes().to_vec()),
+            None => entrypoint.map(|s| s.to_vec()),
+        };
 
-        Ok(DriverInfo {
-            manifest_file: self.manifest_file.clone(),
+        Ok(DriverInfo {            
             lib_path,
             entrypoint,
         })
@@ -435,13 +434,8 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let info = DriverInfo {
-            entrypoint: entrypoint.map(|e| e.to_vec()),
-            manifest_file: driver_path.to_owned(),
-            ..Default::default()
-        }
-        .load_driver_manifest()?;
-        Self::load_dynamic_from_filename(info.lib_path, entrypoint, version)
+        let info = DriverInfo::load_driver_manifest(driver_path, entrypoint)?;
+        Self::load_dynamic_from_filename(info.lib_path, info.entrypoint.as_deref(), version)
     }
 
     fn search_path_list(
@@ -1783,7 +1777,18 @@ mod tests {
     use crate::LOAD_FLAG_DEFAULT;
     use tempfile::Builder;
 
-    fn simple_manifest() -> toml::Table {
+    fn manifest_without_driver() -> &'static str {
+        r#"
+        name = 'SQLite3'
+        publisher = 'arrow-adbc'
+        version = '1.0.0'
+        
+        [ADBC]
+        version = '1.1.0'
+        "#
+    }
+
+    fn simple_manifest() -> String {
         // if this test is enabled, we expect the env var ADBC_DRIVER_MANAGER_TEST_LIB
         // to be defined.
         let driver_path =
@@ -1800,23 +1805,17 @@ mod tests {
         let (os, arch, extra) = arch_triplet();
         format!(
             r#"
-    name = 'SQLite3'
-    publisher = 'arrow-adbc'
-    version = '1.0.0'
-
-    [ADBC]
-    version = '1.1.0'
+    {}
 
     [Driver]
     [Driver.shared]
     {os}_{arch}{extra} = {driver_path:?}
-    "#
+    "#,
+            manifest_without_driver()
         )
-        .parse::<toml::Table>()
-        .unwrap()
     }
 
-    fn write_manifest_to_tempfile(p: PathBuf, tbl: toml::Table) -> (tempfile::TempDir, PathBuf) {
+    fn write_manifest_to_tempfile(p: PathBuf, tbl: String) -> (tempfile::TempDir, PathBuf) {
         let tmp_dir = Builder::new()
             .prefix("adbc_tests")
             .tempdir()
@@ -1828,7 +1827,7 @@ mod tests {
                 .expect("Failed to create parent directory for manifest");
         }
 
-        std::fs::write(&manifest_path, toml::to_string_pretty(&tbl).unwrap())
+        std::fs::write(&manifest_path, tbl.as_str())
             .expect("Failed to write driver manager manifest to temporary file");
 
         (tmp_dir, manifest_path)
@@ -1994,11 +1993,8 @@ mod tests {
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_relative_path() {
-        std::fs::write(
-            PathBuf::from("sqlite.toml"),
-            toml::to_string_pretty(&simple_manifest()).unwrap(),
-        )
-        .expect("Failed to write driver manager manifest to file");
+        std::fs::write(PathBuf::from("sqlite.toml"), simple_manifest())
+            .expect("Failed to write driver manager manifest to file");
 
         let err =
             ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0).unwrap_err();
@@ -2019,11 +2015,10 @@ mod tests {
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_manifest_missing_driver() {
-        let mut manifest_without_driver = simple_manifest();
-        manifest_without_driver.remove("Driver");
-
-        let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest_without_driver);
+        let (tmp_dir, manifest_path) = write_manifest_to_tempfile(
+            PathBuf::from("sqlite.toml"),
+            manifest_without_driver().to_string(),
+        );
 
         let err = ManagedDriver::load_from_name(
             manifest_path,
@@ -2042,23 +2037,16 @@ mod tests {
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_manifest_wrong_arch() {
-        let mut manifest_wrong_arch = simple_manifest();
-        manifest_wrong_arch
-            .get_mut("Driver")
-            .unwrap()
-            .get_mut("shared")
-            .unwrap()
-            .as_table_mut()
-            .unwrap()
-            .clear();
-        manifest_wrong_arch
-            .get_mut("Driver")
-            .unwrap()
-            .get_mut("shared")
-            .unwrap()
-            .as_table_mut()
-            .unwrap()
-            .insert("non-existing".into(), "path/to/bad/driver.so".into());
+        let manifest_wrong_arch = format!(
+            r#"
+    {}
+    
+    [Driver]
+    [Driver.shared]
+    non-existing = 'path/to/bad/driver.so'
+    "#,
+            manifest_without_driver()
+        );
 
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest_wrong_arch);
@@ -2104,11 +2092,8 @@ mod tests {
         }
 
         let manifest_path = usercfg_dir.join("adbc-test-sqlite.toml");
-        std::fs::write(
-            &manifest_path,
-            toml::to_string_pretty(&simple_manifest()).unwrap(),
-        )
-        .expect("Failed to write driver manager manifest to user config directory");
+        std::fs::write(&manifest_path, simple_manifest())
+            .expect("Failed to write driver manager manifest to user config directory");
 
         // fail to load if the load flag doesn't have LOAD_FLAG_SEARCH_USER
         let err = ManagedDriver::load_from_name(
