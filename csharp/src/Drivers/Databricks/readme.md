@@ -38,8 +38,44 @@ The Databricks ADBC driver supports the following authentication methods:
 
 Basic (username and password) authentication is not supported at this time.
 
+## Configuration
+
 Optional default catalog and default schema can be set for the session with `adbc.connection.catalog` and `adbc.connection.db_schema`.
 The default catalog and schema will be used for subsequent metadata calls unless user specified different catalog/schema to use.
+
+### Configuration File Support
+
+The Databricks driver supports loading configuration parameters from a JSON file specified by an environment variable. This is useful when you need to configure multiple options but your application doesn't provide a way to set all of them directly.
+
+To use a configuration file:
+
+1. Create a JSON file with your configuration parameters. For example:
+
+```json
+{
+  "adbc.connection.catalog": "my_catalog",
+  "adbc.connection.db_schema": "my_schema",
+  "adbc.spark.auth_type": "oauth",
+  "adbc.spark.oauth.access_token": "your_access_token",
+  "adbc.databricks.cloudfetch.enabled": "true",
+  "adbc.databricks.enable_direct_results": "true"
+}
+```
+
+2. Set the `ADBC_CONFIG_FILE` environment variable to the path of your JSON file:
+
+```bash
+# Linux/macOS
+export ADBC_CONFIG_FILE=/path/to/your/config.json
+
+# Windows Command Prompt
+set ADBC_CONFIG_FILE=C:\path\to\your\config.json
+
+# Windows PowerShell
+$env:ADBC_CONFIG_FILE="C:\path\to\your\config.json"
+```
+
+Parameters specified directly when creating the connection take precedence over parameters from the configuration file.
 
 ## Data Types
 

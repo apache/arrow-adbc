@@ -1,0 +1,10 @@
+{
+  "adbc.connection.catalog": "test_catalog",
+  "adbc.connection.db_schema": "test_schema",
+  "adbc.spark.auth_type": "oauth",
+  "adbc.spark.oauth.access_token": "test_token",
+  "adbc.databricks.cloudfetch.enabled": "true",
+  "adbc.databricks.enable_direct_results": "true",
+  "adbc.databricks.cloudfetch.max_retries": "5",
+  "adbc.databricks.cloudfetch.max_bytes_per_file": "10485760"
+}
