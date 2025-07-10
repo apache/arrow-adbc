@@ -171,7 +171,7 @@ struct ManagedDriverInner {
 }
 
 #[derive(Default)]
-struct DriverInfo {    
+struct DriverInfo {
     lib_path: std::path::PathBuf,
     entrypoint: Option<Vec<u8>>,
     // TODO: until we add more logging these are unused so we'll leave
@@ -190,7 +190,7 @@ impl DriverInfo {
             )
         })?;
 
-        let manifest = DeTable::parse(&contents)            
+        let manifest = DeTable::parse(&contents)
             .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
 
         // leave these out until we add logging that would actually utilize them
@@ -200,10 +200,11 @@ impl DriverInfo {
         let (os, arch, extra) = arch_triplet();
 
         let mut lib_path = PathBuf::new();
-        if let Some(driver) = manifest.get_ref()
+        if let Some(driver) = manifest
+            .get_ref()
             .get("Driver")
             .and_then(|v| v.get_ref().get("shared"))
-            .and_then(|v| Some(v.get_ref()))
+            .map(|v| v.get_ref())
         {
             if driver.is_str() {
                 lib_path = PathBuf::from(driver.as_str().unwrap_or_default());
@@ -227,12 +228,12 @@ impl DriverInfo {
             ));
         }
 
-        let entrypoint_val = manifest.get_ref()
+        let entrypoint_val = manifest
+            .get_ref()
             .get("Driver")
             .and_then(|v| v.get_ref().as_table())
             .and_then(|t| t.get("entrypoint"))
-            .and_then(|v| Some(v.get_ref()));
-    
+            .map(|v| v.get_ref());
 
         if let Some(entry) = entrypoint_val {
             if !entry.is_str() {
@@ -248,7 +249,7 @@ impl DriverInfo {
             None => entrypoint.map(|s| s.to_vec()),
         };
 
-        Ok(DriverInfo {            
+        Ok(DriverInfo {
             lib_path,
             entrypoint,
         })
@@ -1782,7 +1783,7 @@ mod tests {
         name = 'SQLite3'
         publisher = 'arrow-adbc'
         version = '1.0.0'
-        
+
         [ADBC]
         version = '1.1.0'
         "#
@@ -2040,7 +2041,7 @@ mod tests {
         let manifest_wrong_arch = format!(
             r#"
     {}
-    
+
     [Driver]
     [Driver.shared]
     non-existing = 'path/to/bad/driver.so'
