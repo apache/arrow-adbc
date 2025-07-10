@@ -289,7 +289,7 @@ impl ManagedDriver {
     ///  - if `name` has an extension: it is treated as a filename. If the load_flags does not
     ///    contain `LOAD_FLAG_ALLOW_RELATIVE_PATHS`, then relative paths will be rejected.
     ///    - if the extension is `toml` then we attempt to load the Driver Manifest, otherwise
-    ///      we defer to the previous logic in load_dynamic_from_filename which will attempt to
+    ///      we defer to the previous logic in [`Self::load_dynamic_from_filename`] which will attempt to
     ///      load the library
     ///  - if `name` does not have an extension but is an absolute path: we first check to see
     ///    if there is an existing file with the same name that *does* have a "toml" extension,
