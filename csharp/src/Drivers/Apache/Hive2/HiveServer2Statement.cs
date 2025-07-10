@@ -523,6 +523,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
 
+            // Set _directResults so that dispose logic can check if operation was already closed
+            _directResults = resp.DirectResults;
+
             // Common variables declared upfront
             TGetResultSetMetadataResp metadata;
             Schema schema;
