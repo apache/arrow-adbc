@@ -19,48 +19,14 @@
 Snowflake Driver
 ================
 
-**Available for:** C/C++, GLib/Ruby, Go, Python, R
+.. adbc_driver_status:: ../../../c/driver/snowflake/README.md
 
 The Snowflake Driver provides access to Snowflake Database Warehouses.
 
 Installation
 ============
 
-.. tab-set::
-
-   .. tab-item:: C/C++
-      :sync: cpp
-
-      For conda-forge users:
-
-      .. code-block:: shell
-
-         mamba install libadbc-driver-snowflake
-
-   .. tab-item:: Go
-      :sync: go
-
-      .. code-block:: shell
-
-        go get github.com/apache/arrow-adbc/go/adbc/driver/snowflake
-
-   .. tab-item:: Python
-      :sync: python
-
-      .. code-block:: shell
-
-         # For conda-forge
-         mamba install adbc-driver-snowflake
-
-         # For pip
-         pip install adbc_driver_snowflake
-
-   .. tab-item:: R
-      :sync: r
-
-      .. code-block:: shell
-
-         install.packages("adbcsnowflake", repos = "https://community.r-multiverse.org")
+.. adbc_driver_installation:: ../../../c/driver/snowflake/README.md
 
 Usage
 =====

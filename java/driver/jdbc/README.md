@@ -17,40 +17,17 @@
   under the License.
 -->
 
-# Red ADBC
+# ADBC JDBC Adapter
 
-[![RubyGems: red-adbc](https://img.shields.io/gem/v/red-adbc?style=flat-square)](https://rubygems.org/gems/red-adbc)
+![Vendor: JDBC](https://img.shields.io/badge/vendor-JDBC-blue?style=flat-square)
+![Implementation: Java](https://img.shields.io/badge/language-Java-violet?style=flat-square)
+![Status: Beta](https://img.shields.io/badge/status-beta-yellow?style=flat-square)
 
-Red ADBC is the Ruby bindings of ADBC GLib.
+[![Maven: org.apache.arrow.adbc:adbc-driver-jdbc](https://img.shields.io/maven-central/v/org.apache.arrow.adbc/adbc-driver-jdbc)](https://mvnrepository.com/artifact/org.apache.arrow.adbc/adbc-driver-jdbc)
 
-## How to install
+This driver provides an interface to databases supporting
+[Apache Arrow Flight SQL](https://arrow.apache.org/docs/format/FlightSql.html) using ADBC.
 
-If you want to install Red ADBC by Bundler, you can add the following
-to your `Gemfile`:
+## Building
 
-```ruby
-plugin "rubygems-requirements-system"
-
-gem "red-adbc"
-```
-
-If you want to install Red ADBC by RubyGems, you can use the following
-command line:
-
-```console
-$ gem install rubygems-requirements-system
-$ gem install red-adbc
-```
-
-## How to use
-
-```ruby
-require "adbc"
-
-ADBC::Database.open(driver: "adbc_driver_sqlite",
-                    uri: ":memory:") do |database|
-  database.connect do |connection|
-    puts(connection.query("SELECT 1"))
-  end
-end
-```
+See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for details.

@@ -19,6 +19,10 @@
 
 # Databricks
 
+![Vendor: Databricks](https://img.shields.io/badge/vendor-Databricks-blue?style=flat-square)
+![Implementation: C#](https://img.shields.io/badge/language-C%23-violet?style=flat-square)
+![Status: Experimental](https://img.shields.io/badge/status-experimental-red?style=flat-square)
+
 The Databricks ADBC driver is built on top of the Spark ADBC driver and inherits many of it's [properties](../Apache/Spark/readme.md).
 
 The Databricks ADBC driver supports the following authentication methods:
