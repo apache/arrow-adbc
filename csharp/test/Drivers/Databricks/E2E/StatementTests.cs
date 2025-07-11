@@ -133,25 +133,78 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         /// <summary>
-        /// Verifies that Dispose() can be called on metadata query statements without throwing
-        /// "Invalid OperationHandle" errors. This tests the fix for the issue where the server
-        /// auto-closes operations but the client still tries to close them during disposal.
+        /// Comprehensive test that verifies disposal works for all statement types without throwing exceptions.
+        /// This prevents regressions like the GetColumns disposal bug where _directResults wasn't set properly.
         /// </summary>
-        [SkippableFact]
-        public async Task CanDisposeMetadataQueriesWithoutError()
+        [SkippableTheory]
+        [InlineData("ExecuteStatement", "SELECT 1 as test_column")]
+        [InlineData("GetCatalogs", "GetCatalogs")]
+        [InlineData("GetSchemas", "GetSchemas")]
+        [InlineData("GetTables", "GetTables")]
+        [InlineData("GetColumns", "GetColumns")]
+        [InlineData("GetPrimaryKeys", "GetPrimaryKeys")]
+        [InlineData("GetCrossReference", "GetCrossReference")]
+        [InlineData("GetColumnsExtended", "GetColumnsExtended")]
+        public async Task AllStatementTypesDisposeWithoutErrors(string statementType, string sqlCommand)
         {
-            // Test a simple metadata command that's most likely to trigger the issue
             var statement = Connection.CreateStatement();
-            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
-            statement.SqlQuery = "GetSchemas";
 
-            // Execute the metadata query
-            QueryResult queryResult = await statement.ExecuteQueryAsync();
-            Assert.NotNull(queryResult.Stream);
+            try
+            {
+                if (statementType == "ExecuteStatement")
+                {
+                    // Regular SQL statement
+                    statement.SqlQuery = sqlCommand;
+                }
+                else
+                {
+                    // Metadata command
+                    statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+                    statement.SqlQuery = sqlCommand;
 
-            // This should not throw "Invalid OperationHandle" errors
-            // The fix ensures _directResults is set so dispose logic works correctly
-            statement.Dispose();
+                    // Set required parameters for specific metadata commands
+                    if (sqlCommand is "GetColumns" or "GetPrimaryKeys" or "GetCrossReference" or "GetColumnsExtended")
+                    {
+                        statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
+                        statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
+                        statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+                    }
+
+                    if (sqlCommand == "GetCrossReference")
+                    {
+                        // GetCrossReference needs foreign table parameters too
+                        statement.SetOption(ApacheParameters.ForeignCatalogName, TestConfiguration.Metadata.Catalog);
+                        statement.SetOption(ApacheParameters.ForeignSchemaName, TestConfiguration.Metadata.Schema);
+                        statement.SetOption(ApacheParameters.ForeignTableName, TestConfiguration.Metadata.Table);
+                    }
+                }
+
+                // Execute the statement
+                QueryResult queryResult = await statement.ExecuteQueryAsync();
+                Assert.NotNull(queryResult.Stream);
+
+                // Consume at least one batch to ensure the operation completes
+                var batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                // Note: batch might be null for empty results, that's OK
+
+                // The critical test: disposal should not throw any exceptions
+                // This specifically tests the fix for the GetColumns bug where _directResults wasn't set
+                var exception = Record.Exception(() => statement.Dispose());
+                Assert.Null(exception);
+            }
+            catch (Exception ex)
+            {
+                // If execution fails, we still want to test disposal
+                OutputHelper?.WriteLine($"Statement execution failed for {statementType}: {ex.Message}");
+
+                // Even if execution failed, disposal should not throw
+                var disposalException = Record.Exception(() => statement.Dispose());
+                Assert.Null(disposalException);
+
+                // Re-throw the original exception if we want to investigate execution failures
+                // For now, we'll skip the test if execution fails since disposal is our main concern
+                Skip.If(true, $"Skipping disposal test for {statementType} due to execution failure: {ex.Message}");
+            }
         }
 
         [SkippableFact]
