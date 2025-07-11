@@ -561,13 +561,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// </summary>
     internal class ShortRunningStatementTimeoutTestData : TheoryData<StatementWithExceptions>
     {
-        public ShortRunningStatementTimeoutTestData()
+        public ShortRunningStatementTimeoutTestData(string? defaultQuery = null)
         {
-            Add(new(0, null, null));
-            Add(new(null, null, null));
-            Add(new(1, null, typeof(TimeoutException)));
-            Add(new(5, null, null));
-            Add(new(30, null, null));
+            Add(new(0, defaultQuery, null));
+            Add(new(null, defaultQuery, null));
+            Add(new(1, defaultQuery, typeof(TimeoutException)));
+            Add(new(5, defaultQuery, null));
+            Add(new(30, defaultQuery, null));
         }
     }
 }

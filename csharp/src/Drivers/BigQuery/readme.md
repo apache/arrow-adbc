@@ -85,6 +85,9 @@ The following parameters can be used to configure the driver behavior. The param
 **adbc.bigquery.include_public_project_id**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Include the `bigquery-public-data` project ID with the list of project IDs.
 
+**adbc.bigquery.large_results_dataset**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the dataset ID to use for large results. The dataset needs to be in the same region as the data being queried. If no value is specified, the driver will attempt to use or create `_bqodbc_temp_tables`. A randomly generated table name will be used for the DestinationTable.
+
 **adbc.bigquery.large_results_destination_table**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [DestinationTable](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_DestinationTable) value of the QueryOptions if configured. Expects the format to be `{projectId}.{datasetId}.{tableId}` to set the corresponding values in the [TableReference](https://github.com/googleapis/google-api-dotnet-client/blob/6c415c73788b848711e47c6dd33c2f93c76faf97/Src/Generated/Google.Apis.Bigquery.v2/Google.Apis.Bigquery.v2.cs#L9348) class.
 
@@ -145,3 +148,52 @@ connection.UpdateToken = () => Task.Run(() =>
 ```
 
 In the sample above, when a new token is needed, the delegate is invoked and updates the `adbc.bigquery.access_token` parameter on the connection object.
+
+## Default Project ID
+
+If a `adbc.bigquery.project_id` is not specified, or if it equals `bigquery-public-data`, the driver will query for the first project ID that is associated with the credentials provided. This will be the project ID that is used to perform queries.
+
+## Large Results
+
+If a result set will contain large results, the `adbc.bigquery.allow_large_results` parameter should be set to `"true"`. If this value is set, a destination must be specified.
+The caller can either explicitly specify the fully qualified name of the destination table using the `adbc.bigquery.large_results_destination_table` value, or they can specify
+a dataset using the `adbc.bigquery.large_results_dataset` parameter.
+
+Behavior:
+- If a destination table is explicitly set, the driver will use that value.
+- If only a dataset value is set, the driver will attempt to retrieve the dataset. If the dataset does not exist, the driver will attempt to
+  create it. The default table expiration will be set to 1 day and a `created_by` label will be included with the driver name and version that created the dataset. For example `created_by : adbc_bigquery_driver_v_0_19_0_0`. A randomly generated name will be used for the table name.
+- If a destination table and a dataset are not specified, the driver will attempt to use or create the `_bqodbc_temp_tables` dataset using the same defaults and label specified above. A randomly generated name will be used for the table name.
+
+## Permissions
+
+The ADBC driver uses the BigQuery Client APIs to communicate with BigQuery. The following actions are performed in the driver and require the calling user to have the specified permissions. For more details on the permissions, or what roles may already have the permissions required, please see the additional references section below.
+
+|Action|Permissions Required
+|:----------|:-------------|
+|Create Dataset<sup>*+</sup>|bigquery.datasets.create|
+|Create Query Job|bigquery.jobs.create|
+|Create Read Session|bigquery.readsessions.create<br> bigquery.tables.getData|
+|Execute Query|bigquery.jobs.create<br> bigquery.jobs.get<br> bigquery.jobs.list|
+|Get Dataset<sup>*</sup>|bigquery.datasets.get|
+|Get Job|bigquery.jobs.get|
+|Get Query Results|bigquery.jobs.get|
+|List Jobs|bigquery.jobs.list|
+|Read Rows|bigquery.readsessions.getData|
+
+<sup>
+*Only for large result sets<br>
++If a specified dataset does not already exist.
+</sup>
+<br>
+<br>
+
+Some environments may also require:
+- [VPC Service Controls](https://cloud.google.com/vpc-service-controls/docs/troubleshooting)
+- [Service Usage Consumer](https://cloud.google.com/service-usage/docs/access-control#serviceusage.serviceUsageConsumer) permissions
+
+**Additional References**:
+- [BigQuery IAM roles and permissions | Google Cloud](https://cloud.google.com/bigquery/docs/access-control)
+- [Running jobs programmatically | BigQuery | Google Cloud](https://cloud.google.com/bigquery/docs/running-jobs)
+- [Create datasets | BigQuery | Google Cloud](https://cloud.google.com/bigquery/docs/datasets#required_permissions)
+- [Use the BigQuery Storage Read API to read table data |  Google Cloud](https://cloud.google.com/bigquery/docs/reference/storage/#permissions)

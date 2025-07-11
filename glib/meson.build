@@ -22,7 +22,7 @@ project(
     'c',
     default_options: ['c_std=c99', 'cpp_std=c++17'],
     license: 'Apache-2.0',
-    version: '1.7.0-SNAPSHOT',
+    version: '1.8.0-SNAPSHOT',
 )
 
 version_numbers = meson.project_version().split('-')[0].split('.')

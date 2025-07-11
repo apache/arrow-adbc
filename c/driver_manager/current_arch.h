@@ -76,7 +76,7 @@ const std::string& CurrentArch() {
 #if defined(__MINGW32__) || defined(__MINGW64__)
   static const std::string target = "_mingw";
 #elif defined(__MUSL__)
-  static const std::string target = "_musl"
+  static const std::string target = "_musl";
 #else
   static const std::string target = "";
 #endif
