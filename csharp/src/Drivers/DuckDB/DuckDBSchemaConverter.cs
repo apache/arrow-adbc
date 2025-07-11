@@ -60,6 +60,13 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 // Handle parameterized types
                 if (upperTypeName.StartsWith("DECIMAL"))
                 {
+                    // For numeric literals, DuckDB might return DECIMAL
+                    // but if the CLR type is double, we should use DoubleType
+                    if (clrType == typeof(double))
+                    {
+                        return DoubleType.Default;
+                    }
+                    
                     // Try to parse precision and scale from DECIMAL(p,s)
                     // Default to DECIMAL(38,4) if parsing fails
                     return new Decimal128Type(38, 4);

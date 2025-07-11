@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
@@ -202,7 +203,7 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             {
                 var connection = _connection.GetConnection();
                 _command = connection.CreateCommand();
-                _command.CommandText = SqlQuery;
+                _command.CommandText = SqlQuery ?? string.Empty;
                 
                 // Add parameters
                 foreach (var kvp in _parameters)
@@ -309,17 +310,31 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         {
             command.Parameters.Clear();
 
+            // Validate parameter count matches SQL placeholders
+            var sqlPlaceholders = SqlQuery?.Count(c => c == '?') ?? 0;
+            if (sqlPlaceholders != batch.ColumnCount)
+            {
+                throw new InvalidOperationException($"SQL query has {sqlPlaceholders} parameter placeholders but RecordBatch has {batch.ColumnCount} columns");
+            }
+
             for (int colIndex = 0; colIndex < batch.ColumnCount; colIndex++)
             {
                 var column = batch.Column(colIndex);
                 var parameter = command.CreateParameter();
                 
-                // Use column name as parameter name, or ordinal if name not available
-                var field = _boundSchema?.GetFieldByIndex(colIndex) ?? batch.Schema.GetFieldByIndex(colIndex);
-                parameter.ParameterName = field.Name ?? $"p{colIndex}";
+                // DuckDB uses positional parameters, not named ones
+                // Don't set ParameterName - let DuckDB handle positional mapping
                 
                 // Get value from Arrow array
-                parameter.Value = GetValueFromArrowArray(column, rowIndex) ?? DBNull.Value;
+                try
+                {
+                    parameter.Value = GetValueFromArrowArray(column, rowIndex) ?? DBNull.Value;
+                }
+                catch (Exception ex)
+                {
+                    var field = _boundSchema?.GetFieldByIndex(colIndex) ?? batch.Schema.GetFieldByIndex(colIndex);
+                    throw new InvalidOperationException($"Failed to convert value from column {colIndex} ({field.Name}): {ex.Message}", ex);
+                }
                 
                 command.Parameters.Add(parameter);
             }

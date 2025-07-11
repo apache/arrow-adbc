@@ -39,7 +39,11 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
 
         public DuckDBConnection(IReadOnlyDictionary<string, string> properties)
         {
-            _properties = new Dictionary<string, string>(properties);
+            _properties = new Dictionary<string, string>();
+            foreach (var kvp in properties)
+            {
+                _properties[kvp.Key] = kvp.Value;
+            }
         }
 
         public override void Dispose()

@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.DuckDB;
 using Apache.Arrow.Ipc;
+using Apache.Arrow.Types;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
@@ -54,9 +55,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             statement.SqlQuery = "SELECT 1 as id, 'test' as name, 3.14 as value";
 
             var result = await statement.ExecuteQueryAsync();
-            await using var stream = result.Stream;
+            using var stream = result.Stream;
 
-            var batch = await stream.ReadNextRecordBatchAsync();
+            var batch = await stream!.ReadNextRecordBatchAsync();
             Assert.NotNull(batch);
             Assert.Equal(3, batch!.ColumnCount);
             Assert.Equal(1, batch.Length);
@@ -110,8 +111,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
         [Fact]
         public async Task CanGetTableTypes()
         {
-            await using var stream = _connection!.GetTableTypes();
-            var batch = await stream.ReadNextRecordBatchAsync();
+            using var stream = _connection!.GetTableTypes();
+            var batch = await stream!.ReadNextRecordBatchAsync();
             
             Assert.NotNull(batch);
             Assert.Equal(1, batch!.ColumnCount);
@@ -133,8 +134,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
                 AdbcInfoCode.VendorSql
             };
 
-            await using var stream = _connection!.GetInfo(codes);
-            var batch = await stream.ReadNextRecordBatchAsync();
+            using var stream = _connection!.GetInfo(codes);
+            var batch = await stream!.ReadNextRecordBatchAsync();
             
             Assert.NotNull(batch);
             Assert.Equal(2, batch!.ColumnCount);
@@ -151,9 +152,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             statement.SqlQuery = "SELECT NULL as nullable_column, 42 as non_null_column";
 
             var result = await statement.ExecuteQueryAsync();
-            await using var stream = result.Stream;
+            using var stream = result.Stream;
 
-            var batch = await stream.ReadNextRecordBatchAsync();
+            var batch = await stream!.ReadNextRecordBatchAsync();
             Assert.NotNull(batch);
             
             var nullableArray = batch!.Column(0);
@@ -178,12 +179,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             statement.SqlQuery = "SELECT * FROM numbers ORDER BY num";
 
             var result = await statement.ExecuteQueryAsync();
-            await using var stream = result.Stream;
+            using var stream = result.Stream;
 
             var totalRows = 0;
             var batchCount = 0;
 
-            while (await stream.ReadNextRecordBatchAsync() is RecordBatch batch)
+            while (await stream!.ReadNextRecordBatchAsync() is RecordBatch batch)
             {
                 batchCount++;
                 totalRows += batch.Length;
@@ -220,16 +221,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             Assert.Equal(4, schema.FieldsList.Count);
             
             Assert.Equal("id", schema.FieldsList[0].Name);
-            Assert.Equal(typeof(int), schema.FieldsList[0].DataType.TypeId.GetTypeFor());
+            Assert.Equal(Int32Type.Default.TypeId, schema.FieldsList[0].DataType.TypeId);
             
             Assert.Equal("name", schema.FieldsList[1].Name);
-            Assert.Equal(ArrowTypeId.String, schema.FieldsList[1].DataType.TypeId);
+            Assert.Equal(StringType.Default.TypeId, schema.FieldsList[1].DataType.TypeId);
             
             Assert.Equal("value", schema.FieldsList[2].Name);
-            Assert.Equal(typeof(double), schema.FieldsList[2].DataType.TypeId.GetTypeFor());
+            Assert.Equal(DoubleType.Default.TypeId, schema.FieldsList[2].DataType.TypeId);
             
             Assert.Equal("created_date", schema.FieldsList[3].Name);
-            Assert.Equal(ArrowTypeId.Date32, schema.FieldsList[3].DataType.TypeId);
+            Assert.Equal(Date32Type.Default.TypeId, schema.FieldsList[3].DataType.TypeId);
         }
     }
 }

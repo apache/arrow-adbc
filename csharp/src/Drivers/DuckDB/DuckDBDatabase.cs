@@ -35,7 +35,11 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
             // Merge database properties with connection options
-            var mergedOptions = new Dictionary<string, string>(_properties);
+            var mergedOptions = new Dictionary<string, string>();
+            foreach (var kvp in _properties)
+            {
+                mergedOptions[kvp.Key] = kvp.Value;
+            }
             if (options != null)
             {
                 foreach (var kvp in options)

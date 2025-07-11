@@ -88,7 +88,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             var queryResult = await statement.ExecuteQueryAsync();
             using var stream = queryResult.Stream;
             
-            var resultBatch = await stream.ReadNextRecordBatchAsync();
+            var resultBatch = await stream!.ReadNextRecordBatchAsync();
             Assert.NotNull(resultBatch);
             Assert.Equal(3, resultBatch!.Length);
             
@@ -128,7 +128,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             var queryResult = await statement.ExecuteQueryAsync();
             using var stream = queryResult.Stream;
             
-            var resultBatch = await stream.ReadNextRecordBatchAsync();
+            var resultBatch = await stream!.ReadNextRecordBatchAsync();
             Assert.NotNull(resultBatch);
             Assert.Equal(3, resultBatch!.Length);
             
@@ -173,7 +173,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             var queryResult = await statement.ExecuteQueryAsync();
             using var stream = queryResult.Stream;
             
-            var resultBatch = await stream.ReadNextRecordBatchAsync();
+            var resultBatch = await stream!.ReadNextRecordBatchAsync();
             Assert.NotNull(resultBatch);
             Assert.Equal(3, resultBatch!.Length);
             
@@ -212,7 +212,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             var queryResult = await statement.ExecuteQueryAsync();
             using var stream = queryResult.Stream;
             
-            var resultBatch = await stream.ReadNextRecordBatchAsync();
+            var resultBatch = await stream!.ReadNextRecordBatchAsync();
             Assert.NotNull(resultBatch);
             Assert.Equal(3, resultBatch!.Length);
             
@@ -259,9 +259,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             // Verify all data was inserted
             statement.SqlQuery = "SELECT COUNT(*) FROM test_table WHERE id >= 13";
             var queryResult = await statement.ExecuteQueryAsync();
-            await using var resultStream = queryResult.Stream;
+            using var resultStream = queryResult.Stream;
             
-            var resultBatch = await resultStream.ReadNextRecordBatchAsync();
+            var resultBatch = await resultStream!.ReadNextRecordBatchAsync();
             Assert.NotNull(resultBatch);
             var countArray = (Int64Array)resultBatch!.Column(0);
             Assert.Equal(4, countArray.GetValue(0));
@@ -323,7 +323,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             var queryResult = await statement.ExecuteQueryAsync();
             using var stream = queryResult.Stream;
             
-            var resultBatch = await stream.ReadNextRecordBatchAsync();
+            var resultBatch = await stream!.ReadNextRecordBatchAsync();
             Assert.NotNull(resultBatch);
             var countArray = (Int64Array)resultBatch!.Column(0);
             Assert.Equal(3, countArray.GetValue(0));

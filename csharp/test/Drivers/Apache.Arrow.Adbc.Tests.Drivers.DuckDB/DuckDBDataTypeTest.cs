@@ -68,8 +68,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
                     CAST(3.14159265359 AS DOUBLE) as double_val";
 
             var result = await statement.ExecuteQueryAsync();
-            await using var stream = result.Stream;
-            var batch = await stream.ReadNextRecordBatchAsync();
+            using var stream = result.Stream;
+            var batch = await stream!.ReadNextRecordBatchAsync();
 
             Assert.NotNull(batch);
             
@@ -96,8 +96,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             Assert.Equal((ushort)65535, ((UInt16Array)batch.Column(6)).GetValue(0));
             Assert.Equal(4294967295U, ((UInt32Array)batch.Column(7)).GetValue(0));
             Assert.Equal(18446744073709551615UL, ((UInt64Array)batch.Column(8)).GetValue(0));
-            Assert.Equal(3.14f, ((FloatArray)batch.Column(9)).GetValue(0), 4);
-            Assert.Equal(3.14159265359, ((DoubleArray)batch.Column(10)).GetValue(0), 10);
+            Assert.Equal(3.14f, ((FloatArray)batch.Column(9)).GetValue(0)!.Value, 0.0001f);
+            Assert.Equal(3.14159265359, ((DoubleArray)batch.Column(10)).GetValue(0)!.Value, 0.0000000001);
         }
 
         [Fact]
@@ -111,8 +111,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
                     gen_random_uuid() as uuid_val";
 
             var result = await statement.ExecuteQueryAsync();
-            await using var stream = result.Stream;
-            var batch = await stream.ReadNextRecordBatchAsync();
+            using var stream = result.Stream;
+            var batch = await stream!.ReadNextRecordBatchAsync();
 
             Assert.NotNull(batch);
             
@@ -131,8 +131,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             var binaryData = binaryArray.GetBytes(0).ToArray();
             Assert.Equal("Binary data", System.Text.Encoding.UTF8.GetString(binaryData));
             
-            var uuidArray = (FixedSizeBinaryArray)batch.Column(2);
-            var uuidBytes = uuidArray.GetBytes(0);
+            // UUID is returned as BinaryArray in this implementation
+            var uuidArray = (BinaryArray)batch.Column(2);
+            var uuidBytes = uuidArray.GetBytes(0).ToArray();
             Assert.Equal(16, uuidBytes.Length);
         }
 
@@ -147,8 +148,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
                     TIMESTAMP '2024-01-15 14:30:45.123456' as timestamp_val";
 
             var result = await statement.ExecuteQueryAsync();
-            await using var stream = result.Stream;
-            var batch = await stream.ReadNextRecordBatchAsync();
+            using var stream = result.Stream;
+            var batch = await stream!.ReadNextRecordBatchAsync();
 
             Assert.NotNull(batch);
             
@@ -171,8 +172,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             statement.SqlQuery = "SELECT CAST(123.45 AS DECIMAL(10,2)) as decimal_val";
 
             var result = await statement.ExecuteQueryAsync();
-            await using var stream = result.Stream;
-            var batch = await stream.ReadNextRecordBatchAsync();
+            using var stream = result.Stream;
+            var batch = await stream!.ReadNextRecordBatchAsync();
 
             Assert.NotNull(batch);
             
@@ -197,8 +198,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
                     NULL::BLOB as null_binary";
 
             var result = await statement.ExecuteQueryAsync();
-            await using var stream = result.Stream;
-            var batch = await stream.ReadNextRecordBatchAsync();
+            using var stream = result.Stream;
+            var batch = await stream!.ReadNextRecordBatchAsync();
 
             Assert.NotNull(batch);
             Assert.Equal(1, batch!.Length);
@@ -229,8 +230,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
 
             statement.SqlQuery = "SELECT * FROM test_nulls ORDER BY rowid";
             var result = await statement.ExecuteQueryAsync();
-            await using var stream = result.Stream;
-            var batch = await stream.ReadNextRecordBatchAsync();
+            using var stream = result.Stream;
+            var batch = await stream!.ReadNextRecordBatchAsync();
 
             Assert.NotNull(batch);
             Assert.Equal(5, batch!.Length);

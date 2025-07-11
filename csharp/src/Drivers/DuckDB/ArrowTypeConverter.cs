@@ -30,6 +30,17 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
     {
         public IArrowArray ConvertToArrowArray(List<object?> values, IArrowType arrowType)
         {
+            // Debug: Log the conversion
+            if (values.Count > 0 && values[0] != null)
+            {
+                var firstValue = values[0];
+                if (firstValue.GetType() == typeof(decimal) && arrowType is DoubleType)
+                {
+                    // Special case: DuckDB returns decimal for numeric literals but we want double
+                    return ConvertToDoubleArray(values);
+                }
+            }
+            
             return arrowType switch
             {
                 BooleanType => ConvertToBooleanArray(values),
@@ -223,6 +234,14 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 {
                     builder.Append(bytes.AsSpan());
                 }
+                else if (value is System.IO.Stream stream)
+                {
+                    using (var ms = new System.IO.MemoryStream())
+                    {
+                        stream.CopyTo(ms);
+                        builder.Append(ms.ToArray().AsSpan());
+                    }
+                }
                 else
                 {
                     throw new InvalidCastException($"Cannot convert {value.GetType()} to binary");
@@ -247,8 +266,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                     DateTime date;
                     if (value is DateTime dt)
                         date = dt;
+#if NET6_0_OR_GREATER
                     else if (value is DateOnly dateOnly)
                         date = dateOnly.ToDateTime(TimeOnly.MinValue);
+#endif
                     else
                         date = Convert.ToDateTime(value);
                     
@@ -273,8 +294,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                     TimeSpan time;
                     if (value is TimeSpan ts)
                         time = ts;
+#if NET6_0_OR_GREATER
                     else if (value is TimeOnly timeOnly)
                         time = timeOnly.ToTimeSpan();
+#endif
                     else if (value is DateTime dt)
                         time = dt.TimeOfDay;
                     else
