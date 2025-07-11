@@ -23,6 +23,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using DuckDB.NET.Data;
+using System.Data;
 
 namespace Apache.Arrow.Adbc.Drivers.DuckDB
 {
@@ -69,9 +70,16 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 return ExecuteUpdateWithBoundParameters();
             }
             
-            // Otherwise, execute normally
+            // Always reset command for updates to ensure we have the correct SQL
+            ResetCommand();
             var command = GetCommand();
             var affectedRows = command.ExecuteNonQuery();
+            
+            // DuckDB returns 0 for DDL operations, but ADBC expects -1
+            if (affectedRows == 0 && IsDdlStatement(SqlQuery))
+            {
+                affectedRows = -1;
+            }
             
             return new UpdateResult(affectedRows);
         }
@@ -86,9 +94,16 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 return await ExecuteUpdateWithBoundParametersAsync();
             }
             
-            // Otherwise, execute normally
+            // Always reset command for updates to ensure we have the correct SQL
+            ResetCommand();
             var command = GetCommand();
             var affectedRows = await command.ExecuteNonQueryAsync();
+            
+            // DuckDB returns 0 for DDL operations, but ADBC expects -1
+            if (affectedRows == 0 && IsDdlStatement(SqlQuery))
+            {
+                affectedRows = -1;
+            }
             
             return new UpdateResult(affectedRows);
         }
@@ -97,6 +112,8 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         {
             ValidateStatement();
             
+            // Always reset command for queries to ensure we have the correct SQL
+            ResetCommand();
             var command = GetCommand();
             var reader = command.ExecuteReader();
             
@@ -122,6 +139,8 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         {
             ValidateStatement();
             
+            // Always reset command for queries to ensure we have the correct SQL
+            ResetCommand();
             var command = GetCommand();
             var reader = await command.ExecuteReaderAsync();
             
@@ -224,6 +243,20 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             _command = null;
         }
 
+        private static bool IsDdlStatement(string? sql)
+        {
+            if (string.IsNullOrWhiteSpace(sql))
+                return false;
+                
+            var trimmedSql = sql.TrimStart().ToUpperInvariant();
+            return trimmedSql.StartsWith("CREATE ") ||
+                   trimmedSql.StartsWith("DROP ") ||
+                   trimmedSql.StartsWith("ALTER ") ||
+                   trimmedSql.StartsWith("TRUNCATE ") ||
+                   trimmedSql.StartsWith("RENAME ") ||
+                   trimmedSql.StartsWith("COMMENT ");
+        }
+
         private UpdateResult ExecuteUpdateWithBoundParameters()
         {
             long totalAffectedRows = 0;
@@ -280,7 +313,16 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                     // Bind parameters for this row
                     BindParametersFromArrow(_boundBatch, i, command);
                     
-                    totalAffectedRows += await command.ExecuteNonQueryAsync();
+                    try
+                    {
+                        var affectedRows = await command.ExecuteNonQueryAsync();
+                        totalAffectedRows += affectedRows;
+                    }
+                    catch (Exception ex)
+                    {
+                        var paramInfo = string.Join(", ", command.Parameters.Cast<DuckDBParameter>().Select(p => $"{p.ParameterName ?? "?"}: {p.Value}"));
+                        throw new InvalidOperationException($"Failed to execute bound statement for row {i}. SQL: {SqlQuery}, Parameters: {paramInfo}", ex);
+                    }
                 }
             }
             else if (_boundStream != null)
@@ -297,7 +339,16 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                         // Bind parameters for this row
                         BindParametersFromArrow(batch, i, command);
                         
-                        totalAffectedRows += await command.ExecuteNonQueryAsync();
+                        try
+                        {
+                            var affectedRows = await command.ExecuteNonQueryAsync();
+                            totalAffectedRows += affectedRows;
+                        }
+                        catch (Exception ex)
+                        {
+                            var paramInfo = string.Join(", ", command.Parameters.Cast<DuckDBParameter>().Select(p => $"{p.ParameterName ?? "?"}: {p.Value}"));
+                            throw new InvalidOperationException($"Failed to execute bound statement for batch row {i}. SQL: {SqlQuery}, Parameters: {paramInfo}", ex);
+                        }
                     }
                     batch.Dispose();
                 }
@@ -328,7 +379,15 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 // Get value from Arrow array
                 try
                 {
-                    parameter.Value = GetValueFromArrowArray(column, rowIndex) ?? DBNull.Value;
+                    var value = GetValueFromArrowArray(column, rowIndex);
+                    parameter.Value = value ?? DBNull.Value;
+                    
+                    // Debug: Log null values
+                    if (value == null)
+                    {
+                        var field = _boundSchema?.GetFieldByIndex(colIndex) ?? batch.Schema.GetFieldByIndex(colIndex);
+                        System.Diagnostics.Debug.WriteLine($"Setting NULL for column {colIndex} ({field.Name}), row {rowIndex}");
+                    }
                 }
                 catch (Exception ex)
                 {

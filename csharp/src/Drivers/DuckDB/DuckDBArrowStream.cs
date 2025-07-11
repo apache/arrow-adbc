@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Memory;
+using Apache.Arrow.Types;
 using DuckDB.NET.Data;
 
 namespace Apache.Arrow.Adbc.Drivers.DuckDB
@@ -62,7 +63,41 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 var row = new object?[_reader.FieldCount];
                 for (int i = 0; i < _reader.FieldCount; i++)
                 {
-                    row[i] = _reader.IsDBNull(i) ? null : _reader.GetValue(i);
+                    if (_reader.IsDBNull(i))
+                    {
+                        row[i] = null;
+                    }
+                    else
+                    {
+                        // Check if this is a BLOB field by looking at the schema
+                        var field = _schema.FieldsList[i];
+                        if (field.DataType is BinaryType || field.DataType is FixedSizeBinaryType)
+                        {
+                            // For BLOB data, DuckDB.NET returns a Stream
+                            var value = _reader.GetValue(i);
+                            if (value is System.IO.Stream stream)
+                            {
+                                // Read the stream into a byte array
+                                if (stream.CanSeek)
+                                {
+                                    stream.Position = 0;
+                                }
+                                using (var ms = new System.IO.MemoryStream())
+                                {
+                                    stream.CopyTo(ms);
+                                    row[i] = ms.ToArray();
+                                }
+                            }
+                            else
+                            {
+                                row[i] = value;
+                            }
+                        }
+                        else
+                        {
+                            row[i] = _reader.GetValue(i);
+                        }
+                    }
                 }
                 values.Add(row);
                 rowCount++;

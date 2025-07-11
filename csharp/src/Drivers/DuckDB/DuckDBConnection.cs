@@ -141,16 +141,14 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         {
             ValidateConnection();
             
-            using var command = _connection!.CreateCommand();
-            command.CommandText = "SELECT DISTINCT table_type FROM information_schema.tables ORDER BY table_type";
-            
-            using var reader = command.ExecuteReader();
-            var tableTypes = new List<string>();
-
-            while (reader.Read())
+            // DuckDB supports these table types
+            var tableTypes = new List<string>
             {
-                tableTypes.Add(reader.GetString(0));
-            }
+                "BASE TABLE",
+                "VIEW",
+                "TEMPORARY TABLE",
+                "TEMPORARY VIEW"
+            };
 
             var schema = new Schema(new List<Field>
             {

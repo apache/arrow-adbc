@@ -52,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
         public async Task CanExecuteQuery()
         {
             using var statement = _connection!.CreateStatement();
-            statement.SqlQuery = "SELECT 1 as id, 'test' as name, 3.14 as value";
+            statement.SqlQuery = "SELECT 1 as id, 'test' as name, 3.14::DOUBLE as value";
 
             var result = await statement.ExecuteQueryAsync();
             using var stream = result.Stream;
@@ -87,23 +87,27 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
         {
             using var statement = _connection!.CreateStatement();
             
+            // Drop table if exists
+            statement.SqlQuery = "DROP TABLE IF EXISTS test_update_table";
+            await statement.ExecuteUpdateAsync();
+            
             // Create table
-            statement.SqlQuery = "CREATE TABLE test_table (id INTEGER, name VARCHAR)";
+            statement.SqlQuery = "CREATE TABLE test_update_table (id INTEGER, name VARCHAR)";
             var createResult = await statement.ExecuteUpdateAsync();
             Assert.Equal(-1, createResult.AffectedRows); // DDL returns -1
 
             // Insert data
-            statement.SqlQuery = "INSERT INTO test_table VALUES (1, 'test1'), (2, 'test2')";
+            statement.SqlQuery = "INSERT INTO test_update_table VALUES (1, 'test1'), (2, 'test2')";
             var insertResult = await statement.ExecuteUpdateAsync();
             Assert.Equal(2, insertResult.AffectedRows);
 
             // Update data
-            statement.SqlQuery = "UPDATE test_table SET name = 'updated' WHERE id = 1";
+            statement.SqlQuery = "UPDATE test_update_table SET name = 'updated' WHERE id = 1";
             var updateResult = await statement.ExecuteUpdateAsync();
             Assert.Equal(1, updateResult.AffectedRows);
 
             // Delete data
-            statement.SqlQuery = "DELETE FROM test_table WHERE id = 2";
+            statement.SqlQuery = "DELETE FROM test_update_table WHERE id = 2";
             var deleteResult = await statement.ExecuteUpdateAsync();
             Assert.Equal(1, deleteResult.AffectedRows);
         }

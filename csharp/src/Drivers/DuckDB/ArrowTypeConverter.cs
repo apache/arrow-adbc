@@ -236,6 +236,13 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 }
                 else if (value is System.IO.Stream stream)
                 {
+                    // DuckDB.NET returns UnmanagedMemoryStream for BLOBs
+                    // We need to ensure we're reading from the beginning
+                    if (stream.CanSeek)
+                    {
+                        stream.Position = 0;
+                    }
+                    
                     using (var ms = new System.IO.MemoryStream())
                     {
                         stream.CopyTo(ms);

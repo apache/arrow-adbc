@@ -124,7 +124,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             Assert.Equal(3, result.AffectedRows);
 
             // Verify nulls were handled correctly
-            statement.SqlQuery = "SELECT * FROM test_table WHERE id >= 4 OR id IS NULL ORDER BY id";
+            statement.SqlQuery = "SELECT * FROM test_table WHERE id >= 4 OR id IS NULL ORDER BY id NULLS FIRST";
             var queryResult = await statement.ExecuteQueryAsync();
             using var stream = queryResult.Stream;
             
@@ -132,16 +132,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             Assert.NotNull(resultBatch);
             Assert.Equal(3, resultBatch!.Length);
             
-            // Check nulls
+            // Check nulls - with NULLS FIRST ordering
             var idArray = (Int32Array)resultBatch.Column(0);
-            Assert.Equal(4, idArray.GetValue(0));
-            Assert.True(idArray.IsNull(1));
+            Assert.True(idArray.IsNull(0));  // NULL comes first
+            Assert.Equal(4, idArray.GetValue(1));
             Assert.Equal(6, idArray.GetValue(2));
             
             var nameArray = (StringArray)resultBatch.Column(1);
-            Assert.True(nameArray.IsNull(0));
-            Assert.Equal("Eve", nameArray.GetString(1));
-            Assert.True(nameArray.IsNull(2));
+            Assert.Equal("Eve", nameArray.GetString(0));  // Corresponds to NULL id
+            Assert.True(nameArray.IsNull(1));  // Corresponds to id=4
+            Assert.True(nameArray.IsNull(2));  // Corresponds to id=6
             
             batch.Dispose();
         }

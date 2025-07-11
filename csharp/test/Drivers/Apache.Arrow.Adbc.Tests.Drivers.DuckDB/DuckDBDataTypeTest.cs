@@ -107,7 +107,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             statement.SqlQuery = @"
                 SELECT 
                     'Hello, World!' as string_val,
-                    CAST('Binary data' AS BLOB) as binary_val,
+                    'Binary data'::BLOB as binary_val,
                     gen_random_uuid() as uuid_val";
 
             var result = await statement.ExecuteQueryAsync();
@@ -220,11 +220,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.DuckDB
             statement.SqlQuery = @"
                 CREATE TABLE test_nulls AS 
                 SELECT * FROM (VALUES 
-                    (1, 'one', 1.1),
-                    (NULL, 'two', 2.2),
-                    (3, NULL, 3.3),
-                    (4, 'four', NULL),
-                    (NULL, NULL, NULL)
+                    (1, 'one', 1.1::DOUBLE),
+                    (NULL, 'two', 2.2::DOUBLE),
+                    (3, NULL, 3.3::DOUBLE),
+                    (4, 'four', NULL::DOUBLE),
+                    (NULL, NULL, NULL::DOUBLE)
                 ) t(int_col, str_col, dbl_col)";
             await statement.ExecuteUpdateAsync();
 
