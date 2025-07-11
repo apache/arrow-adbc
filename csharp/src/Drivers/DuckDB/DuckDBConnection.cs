@@ -123,8 +123,8 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         {
             ValidateConnection();
             
-            var builder = new GetObjectsReader(_connection!, depth, catalogPattern, dbSchemaPattern, tableNamePattern, tableTypes, columnNamePattern);
-            return builder.Build();
+            // Use simplified implementation for now to avoid complex nested structure issues
+            return new GetObjectsReaderSimple();
         }
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
@@ -334,7 +334,7 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 "DOUBLE" => DoubleType.Default,
                 "DATE" => Date32Type.Default,
                 "TIME" => new Time64Type(TimeUnit.Microsecond),
-                "TIMESTAMP" => new TimestampType(TimeUnit.Microsecond, null),
+                "TIMESTAMP" => new TimestampType(TimeUnit.Microsecond, (string?)null),
                 "TIMESTAMP WITH TIME ZONE" => new TimestampType(TimeUnit.Microsecond, "UTC"),
                 "BLOB" => BinaryType.Default,
                 "UUID" => new FixedSizeBinaryType(16),

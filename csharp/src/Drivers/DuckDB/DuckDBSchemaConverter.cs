@@ -102,10 +102,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                     case "TIME":
                         return new Time64Type(TimeUnit.Microsecond);
                     case "TIMESTAMP":
-                        return new TimestampType(TimeUnit.Microsecond, null);
+                        return new TimestampType(TimeUnit.Microsecond, (string?)null);
                     case "TIMESTAMP WITH TIME ZONE":
                     case "TIMESTAMPTZ":
-                        return new TimestampType(TimeUnit.Microsecond, TimeZoneInfo.Utc);
+                        return new TimestampType(TimeUnit.Microsecond, "UTC");
                     case "BLOB":
                         return BinaryType.Default;
                     case "UUID":
@@ -152,9 +152,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             if (clrType == typeof(byte[]))
                 return BinaryType.Default;
             if (clrType == typeof(DateTime))
-                return new TimestampType(TimeUnit.Microsecond, null);
+                return new TimestampType(TimeUnit.Microsecond, (string?)null);
             if (clrType == typeof(DateTimeOffset))
-                return new TimestampType(TimeUnit.Microsecond, TimeZoneInfo.Utc);
+                return new TimestampType(TimeUnit.Microsecond, "UTC");
             if (clrType == typeof(TimeSpan))
                 return new Time64Type(TimeUnit.Microsecond);
             if (clrType == typeof(Guid))

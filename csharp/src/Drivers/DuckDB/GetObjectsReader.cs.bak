@@ -69,7 +69,7 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             if (catalogs.Any())
             {
                 var catalogNameBuilder = new StringArray.Builder();
-                var dbSchemaListBuilder = new ListArray.Builder(StandardSchemas.DbSchemaSchema);
+                var dbSchemaListBuilder = new ListArray.Builder(new StructType(StandardSchemas.DbSchemaSchema));
                 
                 foreach (var catalog in catalogs)
                 {
@@ -106,10 +106,8 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 return;
             }
             
-            var dbSchemaStructBuilder = new StructArray.Builder(StandardSchemas.DbSchemaSchema);
-            var dbSchemaNameBuilder = dbSchemaStructBuilder.Field("db_schema_name", new StringArray.Builder());
-            var dbSchemaTablesBuilder = dbSchemaStructBuilder.Field("db_schema_tables", 
-                new ListArray.Builder(StandardSchemas.TableSchema));
+            var dbSchemaNameBuilder = new StringArray.Builder();
+            var dbSchemaTablesBuilder = new ListArray.Builder(new StructType(StandardSchemas.TableSchema));
             
             foreach (var schema in schemas)
             {
@@ -126,6 +124,25 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 }
             }
             
+            // Build the struct array for db_schema
+            var dbSchemaStruct = new StructArray(
+                new StructType(StandardSchemas.DbSchemaSchema),
+                schemas.Count,
+                new IArrowArray[] {
+                    dbSchemaNameBuilder.Build(),
+                    dbSchemaTablesBuilder.Build()
+                },
+                ArrowBuffer.Empty
+            );
+            
+            // For ListArray.Builder, we need to get the value builder
+            var valueBuilder = ((ListArray.Builder)dbSchemaListBuilder).ValueBuilder;
+            // Add the struct to the value builder
+            foreach (var array in dbSchemaStruct.Data)
+            {
+                valueBuilder.Append(array);
+            }
+            // Mark the end of this list item
             dbSchemaListBuilder.Append();
         }
 
@@ -137,20 +154,17 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 return;
             }
             
-            var tableStructBuilder = new StructArray.Builder(StandardSchemas.TableSchema);
-            var tableNameBuilder = tableStructBuilder.Field("table_name", new StringArray.Builder());
-            var tableTypeBuilder = tableStructBuilder.Field("table_type", new StringArray.Builder());
-            var tableColumnsBuilder = tableStructBuilder.Field("table_columns",
-                new ListArray.Builder(StandardSchemas.ColumnSchema));
-            var tableConstraintsBuilder = tableStructBuilder.Field("table_constraints",
-                new ListArray.Builder(StandardSchemas.ConstraintSchema));
+            var tableNameBuilder = new StringArray.Builder();
+            var tableTypeBuilder = new StringArray.Builder();
+            var tableColumnsBuilder = new ListArray.Builder(new StructType(StandardSchemas.ColumnSchema));
+            var tableConstraintsBuilder = new ListArray.Builder(new StructType(StandardSchemas.ConstraintSchema));
             
             foreach (var (tableName, tableType) in tables)
             {
                 tableNameBuilder.Append(tableName);
                 tableTypeBuilder.Append(tableType);
                 
-                if (_depth >= GetObjectsDepth.Columns)
+                if (_depth >= GetObjectsDepth.Tables)
                 {
                     var columns = GetColumns(catalog, schema, tableName);
                     AppendColumns(tableColumnsBuilder as ListArray.Builder, columns);
@@ -164,7 +178,20 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 tableConstraintsBuilder.AppendNull();
             }
             
-            tableListBuilder.Append();
+            // Build the struct array for tables
+            var tableStruct = new StructArray(
+                new StructType(StandardSchemas.TableSchema),
+                tables.Count,
+                new IArrowArray[] {
+                    tableNameBuilder.Build(),
+                    tableTypeBuilder.Build(),
+                    tableColumnsBuilder.Build(),
+                    tableConstraintsBuilder.Build()
+                },
+                ArrowBuffer.Empty
+            );
+            
+            tableListBuilder.Append(tableStruct);
         }
 
         private void AppendColumns(ListArray.Builder? columnListBuilder, List<ColumnInfo> columns)
@@ -175,26 +202,25 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 return;
             }
             
-            var columnStructBuilder = new StructArray.Builder(StandardSchemas.ColumnSchema);
-            var columnNameBuilder = columnStructBuilder.Field("column_name", new StringArray.Builder());
-            var ordinalPositionBuilder = columnStructBuilder.Field("ordinal_position", new Int32Array.Builder());
-            var remarksBuilder = columnStructBuilder.Field("remarks", new StringArray.Builder());
-            var xdbcDataTypeBuilder = columnStructBuilder.Field("xdbc_data_type", new Int16Array.Builder());
-            var xdbcTypeNameBuilder = columnStructBuilder.Field("xdbc_type_name", new StringArray.Builder());
-            var xdbcColumnSizeBuilder = columnStructBuilder.Field("xdbc_column_size", new Int32Array.Builder());
-            var xdbcDecimalDigitsBuilder = columnStructBuilder.Field("xdbc_decimal_digits", new Int16Array.Builder());
-            var xdbcNumPrecRadixBuilder = columnStructBuilder.Field("xdbc_num_prec_radix", new Int16Array.Builder());
-            var xdbcNullableBuilder = columnStructBuilder.Field("xdbc_nullable", new Int16Array.Builder());
-            var xdbcColumnDefBuilder = columnStructBuilder.Field("xdbc_column_def", new StringArray.Builder());
-            var xdbcSqlDataTypeBuilder = columnStructBuilder.Field("xdbc_sql_data_type", new Int16Array.Builder());
-            var xdbcDatetimeSubBuilder = columnStructBuilder.Field("xdbc_datetime_sub", new Int16Array.Builder());
-            var xdbcCharOctetLengthBuilder = columnStructBuilder.Field("xdbc_char_octet_length", new Int32Array.Builder());
-            var xdbcIsNullableBuilder = columnStructBuilder.Field("xdbc_is_nullable", new StringArray.Builder());
-            var xdbcScopeCatalogBuilder = columnStructBuilder.Field("xdbc_scope_catalog", new StringArray.Builder());
-            var xdbcScopeSchemaBuilder = columnStructBuilder.Field("xdbc_scope_schema", new StringArray.Builder());
-            var xdbcScopeTableBuilder = columnStructBuilder.Field("xdbc_scope_table", new StringArray.Builder());
-            var xdbcIsAutoincrementBuilder = columnStructBuilder.Field("xdbc_is_autoincrement", new BooleanArray.Builder());
-            var xdbcIsGeneratedcolumnBuilder = columnStructBuilder.Field("xdbc_is_generatedcolumn", new BooleanArray.Builder());
+            var columnNameBuilder = new StringArray.Builder();
+            var ordinalPositionBuilder = new Int32Array.Builder();
+            var remarksBuilder = new StringArray.Builder();
+            var xdbcDataTypeBuilder = new Int16Array.Builder();
+            var xdbcTypeNameBuilder = new StringArray.Builder();
+            var xdbcColumnSizeBuilder = new Int32Array.Builder();
+            var xdbcDecimalDigitsBuilder = new Int16Array.Builder();
+            var xdbcNumPrecRadixBuilder = new Int16Array.Builder();
+            var xdbcNullableBuilder = new Int16Array.Builder();
+            var xdbcColumnDefBuilder = new StringArray.Builder();
+            var xdbcSqlDataTypeBuilder = new Int16Array.Builder();
+            var xdbcDatetimeSubBuilder = new Int16Array.Builder();
+            var xdbcCharOctetLengthBuilder = new Int32Array.Builder();
+            var xdbcIsNullableBuilder = new StringArray.Builder();
+            var xdbcScopeCatalogBuilder = new StringArray.Builder();
+            var xdbcScopeSchemaBuilder = new StringArray.Builder();
+            var xdbcScopeTableBuilder = new StringArray.Builder();
+            var xdbcIsAutoincrementBuilder = new BooleanArray.Builder();
+            var xdbcIsGeneratedcolumnBuilder = new BooleanArray.Builder();
             
             foreach (var column in columns)
             {
@@ -219,7 +245,35 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 xdbcIsGeneratedcolumnBuilder.Append(false);
             }
             
-            columnListBuilder.Append();
+            // Build the struct array for columns
+            var columnStruct = new StructArray(
+                new StructType(StandardSchemas.ColumnSchema),
+                columns.Count,
+                new IArrowArray[] {
+                    columnNameBuilder.Build(),
+                    ordinalPositionBuilder.Build(),
+                    remarksBuilder.Build(),
+                    xdbcDataTypeBuilder.Build(),
+                    xdbcTypeNameBuilder.Build(),
+                    xdbcColumnSizeBuilder.Build(),
+                    xdbcDecimalDigitsBuilder.Build(),
+                    xdbcNumPrecRadixBuilder.Build(),
+                    xdbcNullableBuilder.Build(),
+                    xdbcColumnDefBuilder.Build(),
+                    xdbcSqlDataTypeBuilder.Build(),
+                    xdbcDatetimeSubBuilder.Build(),
+                    xdbcCharOctetLengthBuilder.Build(),
+                    xdbcIsNullableBuilder.Build(),
+                    xdbcScopeCatalogBuilder.Build(),
+                    xdbcScopeSchemaBuilder.Build(),
+                    xdbcScopeTableBuilder.Build(),
+                    xdbcIsAutoincrementBuilder.Build(),
+                    xdbcIsGeneratedcolumnBuilder.Build()
+                },
+                ArrowBuffer.Empty
+            );
+            
+            columnListBuilder.Append(columnStruct);
         }
 
         private List<string> GetCatalogs()

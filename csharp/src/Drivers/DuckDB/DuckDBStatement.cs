@@ -34,6 +34,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         private DuckDBCommand? _command;
         private readonly Dictionary<string, object?> _parameters;
         private int _batchSize = 1024;
+        private RecordBatch? _boundBatch;
+        private Schema? _boundSchema;
+        private IArrowArrayStream? _boundStream;
 
         public DuckDBStatement(DuckDBConnection connection)
         {
@@ -43,18 +46,29 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
 
         public override void Bind(RecordBatch batch, Schema? schema)
         {
-            throw new NotSupportedException("DuckDB ADBC driver does not support bulk parameter binding");
+            _boundBatch = batch ?? throw new ArgumentNullException(nameof(batch));
+            _boundSchema = schema ?? batch.Schema;
+            _boundStream = null; // Clear any previously bound stream
         }
 
         public override void BindStream(IArrowArrayStream stream)
         {
-            throw new NotSupportedException("DuckDB ADBC driver does not support stream parameter binding");
+            _boundStream = stream ?? throw new ArgumentNullException(nameof(stream));
+            _boundBatch = null; // Clear any previously bound batch
+            _boundSchema = null;
         }
 
         public override UpdateResult ExecuteUpdate()
         {
             ValidateStatement();
             
+            // If we have bound parameters, execute for each row
+            if (_boundBatch != null || _boundStream != null)
+            {
+                return ExecuteUpdateWithBoundParameters();
+            }
+            
+            // Otherwise, execute normally
             var command = GetCommand();
             var affectedRows = command.ExecuteNonQuery();
             
@@ -65,6 +79,13 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         {
             ValidateStatement();
             
+            // If we have bound parameters, execute for each row
+            if (_boundBatch != null || _boundStream != null)
+            {
+                return await ExecuteUpdateWithBoundParametersAsync();
+            }
+            
+            // Otherwise, execute normally
             var command = GetCommand();
             var affectedRows = await command.ExecuteNonQueryAsync();
             
@@ -200,6 +221,185 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         {
             _command?.Dispose();
             _command = null;
+        }
+
+        private UpdateResult ExecuteUpdateWithBoundParameters()
+        {
+            long totalAffectedRows = 0;
+
+            if (_boundBatch != null)
+            {
+                // Execute for each row in the bound batch
+                for (int i = 0; i < _boundBatch.Length; i++)
+                {
+                    ResetCommand(); // Create fresh command for each row
+                    var command = GetCommand();
+                    
+                    // Bind parameters for this row
+                    BindParametersFromArrow(_boundBatch, i, command);
+                    
+                    totalAffectedRows += command.ExecuteNonQuery();
+                }
+            }
+            else if (_boundStream != null)
+            {
+                // Execute for each batch in the stream
+                RecordBatch? batch;
+                while ((batch = _boundStream.ReadNextRecordBatchAsync().Result) != null)
+                {
+                    for (int i = 0; i < batch.Length; i++)
+                    {
+                        ResetCommand(); // Create fresh command for each row
+                        var command = GetCommand();
+                        
+                        // Bind parameters for this row
+                        BindParametersFromArrow(batch, i, command);
+                        
+                        totalAffectedRows += command.ExecuteNonQuery();
+                    }
+                    batch.Dispose();
+                }
+            }
+
+            return new UpdateResult(totalAffectedRows);
+        }
+
+        private async Task<UpdateResult> ExecuteUpdateWithBoundParametersAsync()
+        {
+            long totalAffectedRows = 0;
+
+            if (_boundBatch != null)
+            {
+                // Execute for each row in the bound batch
+                for (int i = 0; i < _boundBatch.Length; i++)
+                {
+                    ResetCommand(); // Create fresh command for each row
+                    var command = GetCommand();
+                    
+                    // Bind parameters for this row
+                    BindParametersFromArrow(_boundBatch, i, command);
+                    
+                    totalAffectedRows += await command.ExecuteNonQueryAsync();
+                }
+            }
+            else if (_boundStream != null)
+            {
+                // Execute for each batch in the stream
+                RecordBatch? batch;
+                while ((batch = await _boundStream.ReadNextRecordBatchAsync()) != null)
+                {
+                    for (int i = 0; i < batch.Length; i++)
+                    {
+                        ResetCommand(); // Create fresh command for each row
+                        var command = GetCommand();
+                        
+                        // Bind parameters for this row
+                        BindParametersFromArrow(batch, i, command);
+                        
+                        totalAffectedRows += await command.ExecuteNonQueryAsync();
+                    }
+                    batch.Dispose();
+                }
+            }
+
+            return new UpdateResult(totalAffectedRows);
+        }
+
+        private void BindParametersFromArrow(RecordBatch batch, int rowIndex, DuckDBCommand command)
+        {
+            command.Parameters.Clear();
+
+            for (int colIndex = 0; colIndex < batch.ColumnCount; colIndex++)
+            {
+                var column = batch.Column(colIndex);
+                var parameter = command.CreateParameter();
+                
+                // Use column name as parameter name, or ordinal if name not available
+                var field = _boundSchema?.GetFieldByIndex(colIndex) ?? batch.Schema.GetFieldByIndex(colIndex);
+                parameter.ParameterName = field.Name ?? $"p{colIndex}";
+                
+                // Get value from Arrow array
+                parameter.Value = GetValueFromArrowArray(column, rowIndex) ?? DBNull.Value;
+                
+                command.Parameters.Add(parameter);
+            }
+        }
+
+        private object? GetValueFromArrowArray(IArrowArray array, int index)
+        {
+            if (array.IsNull(index))
+            {
+                return null;
+            }
+
+            switch (array)
+            {
+                case BooleanArray boolArray:
+                    return boolArray.GetValue(index);
+                    
+                case Int8Array int8Array:
+                    return int8Array.GetValue(index);
+                    
+                case Int16Array int16Array:
+                    return int16Array.GetValue(index);
+                    
+                case Int32Array int32Array:
+                    return int32Array.GetValue(index);
+                    
+                case Int64Array int64Array:
+                    return int64Array.GetValue(index);
+                    
+                case UInt8Array uint8Array:
+                    return uint8Array.GetValue(index);
+                    
+                case UInt16Array uint16Array:
+                    return uint16Array.GetValue(index);
+                    
+                case UInt32Array uint32Array:
+                    return uint32Array.GetValue(index);
+                    
+                case UInt64Array uint64Array:
+                    var uint64Value = uint64Array.GetValue(index);
+                    return uint64Value.HasValue ? (long)uint64Value.Value : null; // DuckDB doesn't support uint64, convert to int64
+                    
+                case FloatArray floatArray:
+                    return floatArray.GetValue(index);
+                    
+                case DoubleArray doubleArray:
+                    return doubleArray.GetValue(index);
+                    
+                case StringArray stringArray:
+                    return stringArray.GetString(index);
+                    
+                case BinaryArray binaryArray:
+                    return binaryArray.GetBytes(index).ToArray();
+                    
+                case Date32Array date32Array:
+                    return date32Array.GetDateTime(index);
+                    
+                case Date64Array date64Array:
+                    return date64Array.GetDateTime(index);
+                    
+                case TimestampArray timestampArray:
+                    return timestampArray.GetTimestamp(index).GetValueOrDefault();
+                    
+                case Time32Array time32Array:
+                    var time32Value = time32Array.GetValue(index);
+                    return time32Value.HasValue ? new TimeSpan(0, 0, 0, 0, time32Value.Value) : null;
+                    
+                case Time64Array time64Array:
+                    var time64Value = time64Array.GetValue(index);
+                    return time64Value.HasValue ? new TimeSpan(time64Value.Value * 100) : null; // nanoseconds to ticks
+                    
+                case Decimal128Array decimal128Array:
+                    return decimal128Array.GetValue(index);
+                    
+                case Decimal256Array decimal256Array:
+                    return decimal256Array.GetValue(index);
+                    
+                default:
+                    throw new NotSupportedException($"Arrow type {array.GetType().Name} is not supported for parameter binding");
+            }
         }
     }
 }

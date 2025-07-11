@@ -221,7 +221,7 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                 }
                 else if (value is byte[] bytes)
                 {
-                    builder.Append(bytes);
+                    builder.Append(bytes.AsSpan());
                 }
                 else
                 {
@@ -252,8 +252,7 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                     else
                         date = Convert.ToDateTime(value);
                     
-                    var days = (int)(date.ToUniversalTime() - epoch).TotalDays;
-                    builder.Append(days);
+                    builder.Append(date);
                 }
             }
             return builder.Build();
@@ -312,17 +311,7 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                     else
                         dateTime = DateTimeOffset.Parse(value.ToString()!);
                     
-                    var diff = dateTime - epoch;
-                    long ticks = timestampType.Unit switch
-                    {
-                        TimeUnit.Second => (long)diff.TotalSeconds,
-                        TimeUnit.Millisecond => (long)diff.TotalMilliseconds,
-                        TimeUnit.Microsecond => diff.Ticks / 10,
-                        TimeUnit.Nanosecond => diff.Ticks * 100,
-                        _ => throw new NotSupportedException($"TimeUnit {timestampType.Unit} not supported")
-                    };
-                    
-                    builder.Append(ticks);
+                    builder.Append(dateTime);
                 }
             }
             return builder.Build();
@@ -364,18 +353,18 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                     {
                         // Pad or truncate to match fixed size
                         var fixedBytes = new byte[fixedBinaryType.ByteWidth];
-                        Array.Copy(bytes, 0, fixedBytes, 0, Math.Min(bytes.Length, fixedBinaryType.ByteWidth));
-                        builder.Append(fixedBytes);
+                        Buffer.BlockCopy(bytes, 0, fixedBytes, 0, Math.Min(bytes.Length, fixedBinaryType.ByteWidth));
+                        builder.Append(fixedBytes.AsSpan());
                     }
                     else
                     {
-                        builder.Append(bytes);
+                        builder.Append(bytes.AsSpan());
                     }
                 }
                 else if (value is Guid guid)
                 {
                     // Special case for UUID (16 bytes)
-                    builder.Append(guid.ToByteArray());
+                    builder.Append(guid.ToByteArray().AsSpan());
                 }
                 else
                 {

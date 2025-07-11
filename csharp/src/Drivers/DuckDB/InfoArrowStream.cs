@@ -137,21 +137,6 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                         arrayLength++;
                         break;
 
-                    case AdbcInfoCode.VendorSubstraitVersion:
-                        infoNameBuilder.Append((uint)code);
-                        typeBuilder.Append(0); // string_value
-                        offsetBuilder.Append(currentOffset++);
-                        stringValueBuilder.AppendNull();
-                        arrayLength++;
-                        break;
-
-                    case AdbcInfoCode.VendorSqlConformance:
-                        infoNameBuilder.Append((uint)code);
-                        typeBuilder.Append(0); // string_value
-                        offsetBuilder.Append(currentOffset++);
-                        stringValueBuilder.Append("SQL:2016");
-                        arrayLength++;
-                        break;
 
                     default:
                         // Skip unknown codes
@@ -179,12 +164,15 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             var infoValueField = _schema.GetFieldByName("info_value");
             var unionType = (UnionType)infoValueField.DataType;
             
+            var typeArray = typeBuilder.Build();
+            var offsetArray = offsetBuilder.Build();
+            
             var infoValue = new DenseUnionArray(
                 unionType,
                 arrayLength,
                 childrenArrays,
-                typeBuilder.Build(),
-                offsetBuilder.Build(),
+                typeArray.ValueBuffer,
+                offsetArray.ValueBuffer,
                 0 // nullCount
             );
 
