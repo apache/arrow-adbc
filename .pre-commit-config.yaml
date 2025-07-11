@@ -136,4 +136,4 @@ repos:
     hooks:
     - id: codespell
 
-exclude: "^c/vendor/.*"
+exclude: "^(c/vendor/.*)|(go/adbc/drivermgr/vendored/.*)"
