@@ -67,9 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Default namespace
         private TNamespace? _defaultNamespace;
 
-        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(
-            // Load and merge parameters from config file if specified by environment variable
-            Common.ConfigLoader.LoadAndMergeConfig(properties))
+        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
             ValidateProperties();
         }

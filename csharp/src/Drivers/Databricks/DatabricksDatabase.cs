@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Apache.Arrow.Adbc.Drivers.Apache.Common;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -30,7 +31,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public DatabricksDatabase(IReadOnlyDictionary<string, string> properties)
         {
-            this.properties = properties;
+            // Load and merge parameters from config file if specified by environment variable
+            this.properties = ConfigLoader.LoadAndMergeConfig(properties);
         }
 
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)

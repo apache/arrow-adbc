@@ -77,8 +77,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Common
             {
                 Debug.WriteLine($"Error loading config file: {ex.Message}");
                 throw new AdbcException(
-                    AdbcStatusCode.InvalidArgument,
-                    $"Failed to load configuration from file '{configFilePath}' specified by environment variable '{ConfigFilePathEnvVar}': {ex.Message}");
+                    $"Failed to load configuration from file '{configFilePath}' specified by environment variable '{ConfigFilePathEnvVar}': {ex.Message}",
+                    AdbcStatusCode.InvalidArgument);
             }
         }
 
@@ -131,8 +131,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Common
             catch (JsonException ex)
             {
                 throw new AdbcException(
-                    AdbcStatusCode.InvalidArgument,
-                    $"Invalid JSON format in configuration file '{configFilePath}': {ex.Message}");
+                    $"Invalid JSON format in configuration file '{configFilePath}': {ex.Message}",
+                    AdbcStatusCode.InvalidArgument);
             }
         }
         
