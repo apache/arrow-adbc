@@ -27,11 +27,20 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
     {
         private readonly IReadOnlyDictionary<string, string> _properties;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuckDBDatabase"/> class.
+        /// </summary>
+        /// <param name="properties">The database properties.</param>
         public DuckDBDatabase(IReadOnlyDictionary<string, string> properties)
         {
             _properties = properties ?? new Dictionary<string, string>();
         }
 
+        /// <summary>
+        /// Creates a new connection to the database.
+        /// </summary>
+        /// <param name="options">Additional connection options.</param>
+        /// <returns>A new ADBC connection.</returns>
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
             // Merge database properties with connection options

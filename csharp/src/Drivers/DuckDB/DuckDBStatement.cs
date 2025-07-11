@@ -40,12 +40,21 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         private Schema? _boundSchema;
         private IArrowArrayStream? _boundStream;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuckDBStatement"/> class.
+        /// </summary>
+        /// <param name="connection">The DuckDB connection.</param>
         public DuckDBStatement(DuckDBConnection connection)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
             _parameters = new Dictionary<string, object?>();
         }
 
+        /// <summary>
+        /// Binds a record batch to the statement for bulk operations.
+        /// </summary>
+        /// <param name="batch">The record batch to bind.</param>
+        /// <param name="schema">The schema for the batch (optional).</param>
         public override void Bind(RecordBatch batch, Schema? schema)
         {
             _boundBatch = batch ?? throw new ArgumentNullException(nameof(batch));
@@ -53,6 +62,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             _boundStream = null; // Clear any previously bound stream
         }
 
+        /// <summary>
+        /// Binds an Arrow array stream to the statement for bulk operations.
+        /// </summary>
+        /// <param name="stream">The Arrow array stream to bind.</param>
         public override void BindStream(IArrowArrayStream stream)
         {
             _boundStream = stream ?? throw new ArgumentNullException(nameof(stream));
@@ -60,6 +73,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             _boundSchema = null;
         }
 
+        /// <summary>
+        /// Executes an update statement.
+        /// </summary>
+        /// <returns>The result of the update operation.</returns>
         public override UpdateResult ExecuteUpdate()
         {
             ValidateStatement();
@@ -84,6 +101,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             return new UpdateResult(affectedRows);
         }
 
+        /// <summary>
+        /// Executes an update statement asynchronously.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
             ValidateStatement();
@@ -108,6 +129,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             return new UpdateResult(affectedRows);
         }
 
+        /// <summary>
+        /// Executes a query and returns the results.
+        /// </summary>
+        /// <returns>The query results.</returns>
         public override QueryResult ExecuteQuery()
         {
             ValidateStatement();
@@ -135,6 +160,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             }
         }
 
+        /// <summary>
+        /// Executes a query asynchronously and returns the results.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
             ValidateStatement();
@@ -164,6 +193,11 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
 
         // No need to override SetSqlQuery, just use the property
 
+        /// <summary>
+        /// Sets a statement option.
+        /// </summary>
+        /// <param name="key">The option key.</param>
+        /// <param name="value">The option value.</param>
         public override void SetOption(string key, string value)
         {
             switch (key)
@@ -185,6 +219,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             }
         }
 
+        /// <summary>
+        /// Prepares the statement for execution.
+        /// </summary>
         public override void Prepare()
         {
             ValidateStatement();
@@ -192,6 +229,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             command.Prepare();
         }
 
+        /// <summary>
+        /// Gets the schema for statement parameters.
+        /// </summary>
+        /// <returns>The parameter schema.</returns>
         public override Schema GetParameterSchema()
         {
             // DuckDB doesn't provide parameter schema information
@@ -201,6 +242,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         // Parameter binding not implemented yet
         // TODO: Add parameter support
 
+        /// <summary>
+        /// Disposes of the statement and its resources.
+        /// </summary>
         public override void Dispose()
         {
             _command?.Dispose();
@@ -248,7 +292,7 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             if (string.IsNullOrWhiteSpace(sql))
                 return false;
                 
-            var trimmedSql = sql.TrimStart().ToUpperInvariant();
+            var trimmedSql = sql!.TrimStart().ToUpperInvariant();
             return trimmedSql.StartsWith("CREATE ") ||
                    trimmedSql.StartsWith("DROP ") ||
                    trimmedSql.StartsWith("ALTER ") ||

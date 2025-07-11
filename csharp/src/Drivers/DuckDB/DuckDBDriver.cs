@@ -27,11 +27,18 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
     {
         private readonly Dictionary<string, string> _properties;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuckDBDriver"/> class.
+        /// </summary>
         public DuckDBDriver()
         {
             _properties = new Dictionary<string, string>();
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuckDBDriver"/> class with the specified properties.
+        /// </summary>
+        /// <param name="properties">The driver properties.</param>
         public DuckDBDriver(Dictionary<string, string> properties) : this()
         {
             if (properties != null)
@@ -43,6 +50,11 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             }
         }
 
+        /// <summary>
+        /// Opens a database with the specified parameters.
+        /// </summary>
+        /// <param name="parameters">The database parameters.</param>
+        /// <returns>A new ADBC database instance.</returns>
         public override AdbcDatabase Open(IReadOnlyDictionary<string, string>? parameters)
         {
             if (parameters != null)

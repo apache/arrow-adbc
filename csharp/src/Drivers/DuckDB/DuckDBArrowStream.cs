@@ -37,6 +37,12 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         private readonly ArrowTypeConverter _converter;
         private bool _disposed;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuckDBArrowStream"/> class.
+        /// </summary>
+        /// <param name="reader">The DuckDB data reader to read from.</param>
+        /// <param name="schema">The Arrow schema for the result set.</param>
+        /// <param name="batchSize">The number of rows to read per batch.</param>
         public DuckDBArrowStream(DuckDBDataReader reader, Schema schema, int batchSize = 1024)
         {
             _reader = reader ?? throw new ArgumentNullException(nameof(reader));
@@ -45,8 +51,16 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             _converter = new ArrowTypeConverter();
         }
 
+        /// <summary>
+        /// Gets the Arrow schema for this stream.
+        /// </summary>
         public Schema Schema => _schema;
 
+        /// <summary>
+        /// Reads the next batch of records from the stream.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A record batch, or null if no more records are available.</returns>
         public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             if (_disposed)
@@ -127,6 +141,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             return new RecordBatch(_schema, arrays, rowCount);
         }
 
+        /// <summary>
+        /// Disposes of the stream and its underlying resources.
+        /// </summary>
         public void Dispose()
         {
             if (!_disposed)

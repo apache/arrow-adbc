@@ -37,6 +37,10 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         private readonly Dictionary<string, string> _properties;
         private readonly object _lock = new object();
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuckDBConnection"/> class.
+        /// </summary>
+        /// <param name="properties">The connection properties.</param>
         public DuckDBConnection(IReadOnlyDictionary<string, string> properties)
         {
             _properties = new Dictionary<string, string>();
@@ -46,6 +50,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             }
         }
 
+        /// <summary>
+        /// Disposes of the connection and its resources.
+        /// </summary>
         public override void Dispose()
         {
             lock (_lock)
@@ -59,12 +66,23 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             base.Dispose();
         }
 
+        /// <summary>
+        /// Creates a new statement for this connection.
+        /// </summary>
+        /// <returns>A new ADBC statement.</returns>
         public override AdbcStatement CreateStatement()
         {
             ValidateConnection();
             return new DuckDBStatement(this);
         }
 
+        /// <summary>
+        /// Gets the schema for a specific table.
+        /// </summary>
+        /// <param name="catalog">The catalog name (optional).</param>
+        /// <param name="dbSchema">The schema name (optional).</param>
+        /// <param name="tableName">The table name.</param>
+        /// <returns>The Arrow schema for the table.</returns>
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName)
         {
             ValidateConnection();
@@ -123,6 +141,16 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             return new Schema(fields, null);
         }
 
+        /// <summary>
+        /// Gets database objects matching the specified criteria.
+        /// </summary>
+        /// <param name="depth">The depth of information to retrieve.</param>
+        /// <param name="catalogPattern">The catalog pattern to match.</param>
+        /// <param name="dbSchemaPattern">The schema pattern to match.</param>
+        /// <param name="tableNamePattern">The table name pattern to match.</param>
+        /// <param name="tableTypes">The table types to include.</param>
+        /// <param name="columnNamePattern">The column name pattern to match.</param>
+        /// <returns>An Arrow stream containing the matching objects.</returns>
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
             ValidateConnection();
@@ -131,12 +159,21 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             return new GetObjectsReaderSimple();
         }
 
+        /// <summary>
+        /// Gets information about the database and driver.
+        /// </summary>
+        /// <param name="codes">The information codes to retrieve.</param>
+        /// <returns>An Arrow stream containing the requested information.</returns>
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
             ValidateConnection();
             return new InfoArrowStream(_connection!, codes);
         }
 
+        /// <summary>
+        /// Gets the available table types in the database.
+        /// </summary>
+        /// <returns>An Arrow stream containing the table types.</returns>
         public override IArrowArrayStream GetTableTypes()
         {
             ValidateConnection();
@@ -163,6 +200,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             return new ListArrayStream(schema, new[] { batch });
         }
 
+        /// <summary>
+        /// Commits the current transaction.
+        /// </summary>
         public override void Commit()
         {
             ValidateConnection();
@@ -172,6 +212,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             command.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// Rolls back the current transaction.
+        /// </summary>
         public override void Rollback()
         {
             ValidateConnection();
@@ -181,6 +224,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             command.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// Gets or sets whether the connection is in auto-commit mode.
+        /// </summary>
         public override bool AutoCommit
         {
             get
@@ -217,6 +263,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             }
         }
 
+        /// <summary>
+        /// Gets or sets whether the connection is read-only.
+        /// </summary>
         public override bool ReadOnly
         {
             get
@@ -235,6 +284,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             }
         }
 
+        /// <summary>
+        /// Gets or sets the transaction isolation level.
+        /// </summary>
         public override IsolationLevel IsolationLevel
         {
             get
@@ -259,6 +311,9 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             return _connection!;
         }
 
+        /// <summary>
+        /// Validates that the connection is open and ready for use.
+        /// </summary>
         protected virtual void ValidateConnection()
         {
             lock (_lock)

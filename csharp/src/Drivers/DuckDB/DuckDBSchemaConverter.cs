@@ -29,6 +29,11 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
     /// </summary>
     public static class DuckDBSchemaConverter
     {
+        /// <summary>
+        /// Converts a DuckDB data reader's schema to an Arrow schema.
+        /// </summary>
+        /// <param name="reader">The DuckDB data reader.</param>
+        /// <returns>The corresponding Arrow schema.</returns>
         public static Schema ConvertToArrowSchema(DuckDBDataReader reader)
         {
             var fields = new List<Field>();

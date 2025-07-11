@@ -28,13 +28,19 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
     /// </summary>
     public class ArrowTypeConverter
     {
+        /// <summary>
+        /// Converts a list of values to an Arrow array of the specified type.
+        /// </summary>
+        /// <param name="values">The values to convert.</param>
+        /// <param name="arrowType">The target Arrow type.</param>
+        /// <returns>An Arrow array containing the converted values.</returns>
         public IArrowArray ConvertToArrowArray(List<object?> values, IArrowType arrowType)
         {
             // Debug: Log the conversion
             if (values.Count > 0 && values[0] != null)
             {
                 var firstValue = values[0];
-                if (firstValue.GetType() == typeof(decimal) && arrowType is DoubleType)
+                if (firstValue?.GetType() == typeof(decimal) && arrowType is DoubleType)
                 {
                     // Special case: DuckDB returns decimal for numeric literals but we want double
                     return ConvertToDoubleArray(values);
