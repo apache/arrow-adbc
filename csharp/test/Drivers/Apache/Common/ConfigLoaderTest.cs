@@ -20,6 +20,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Xunit;
+using Apache.Arrow.Adbc.Drivers.Apache.Common;
+using Apache.Arrow.Adbc;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 {
@@ -36,10 +39,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             };
 
             // Ensure environment variable is not set
-            Environment.SetEnvironmentVariable(Drivers.Apache.Common.ConfigLoader.ConfigFilePathEnvVar, null);
+            Environment.SetEnvironmentVariable(ConfigLoader.ConfigFilePathEnvVar, null);
 
             // Load and merge the parameters
-            var mergedParams = Drivers.Apache.Common.ConfigLoader.LoadAndMergeConfig(explicitParams);
+            var mergedParams = ConfigLoader.LoadAndMergeConfig(explicitParams);
 
             // Verify the parameters are unchanged
             Assert.Equal(2, mergedParams.Count);
@@ -53,7 +56,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             try
             {
                 // Set environment variable to non-existent file
-                Environment.SetEnvironmentVariable(Drivers.Apache.Common.ConfigLoader.ConfigFilePathEnvVar, "non_existent_file.json");
+                Environment.SetEnvironmentVariable(ConfigLoader.ConfigFilePathEnvVar, "non_existent_file.json");
 
                 // Create a dictionary with explicitly provided parameters
                 var explicitParams = new Dictionary<string, string>
@@ -63,17 +66,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 
                 // Attempt to load and merge the parameters
                 var exception = Assert.Throws<AdbcException>(() => 
-                    Drivers.Apache.Common.ConfigLoader.LoadAndMergeConfig(explicitParams));
+                    ConfigLoader.LoadAndMergeConfig(explicitParams));
 
                 // Verify the exception message
                 Assert.Contains("Failed to load configuration from file", exception.Message);
                 Assert.Contains("non_existent_file.json", exception.Message);
-                Assert.Equal(AdbcStatusCode.InvalidArgument, exception.StatusCode);
+                Assert.Equal(AdbcStatusCode.InvalidArgument, exception.Status);
             }
             finally
             {
                 // Clean up
-                Environment.SetEnvironmentVariable(Drivers.Apache.Common.ConfigLoader.ConfigFilePathEnvVar, null);
+                Environment.SetEnvironmentVariable(ConfigLoader.ConfigFilePathEnvVar, null);
             }
         }
 
@@ -87,32 +90,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 // Write JSON content to the file
                 File.WriteAllText(tempFile, @"
                 {
-                    ""adbc.connection.catalog"": ""test_catalog"",
-                    ""adbc.connection.db_schema"": ""test_schema"",
-                    ""adbc.spark.auth_type"": ""oauth"",
-                    ""adbc.spark.oauth.access_token"": ""test_token"",
+                    """ + AdbcOptions.Connection.CurrentCatalog + @""": ""test_catalog"",
+                    """ + AdbcOptions.Connection.CurrentDbSchema + @""": ""test_schema"",
+                    """ + SparkParameters.AuthType + @""": ""oauth"",
+                    """ + SparkParameters.AccessToken + @""": ""test_token"",
                     ""numeric_value"": 123,
                     ""boolean_value"": true
                 }");
 
                 // Set environment variable to the temp file
-                Environment.SetEnvironmentVariable(Drivers.Apache.Common.ConfigLoader.ConfigFilePathEnvVar, tempFile);
+                Environment.SetEnvironmentVariable(ConfigLoader.ConfigFilePathEnvVar, tempFile);
 
                 // Create a dictionary with explicitly provided parameters
                 var explicitParams = new Dictionary<string, string>
                 {
-                    { "adbc.connection.catalog", "override_catalog" }, // This should override the value in the config file
+                    { AdbcOptions.Connection.CurrentCatalog, "override_catalog" }, // This should override the value in the config file
                     { "custom.parameter", "custom_value" } // This should be preserved
                 };
 
                 // Load and merge the parameters
-                var mergedParams = Drivers.Apache.Common.ConfigLoader.LoadAndMergeConfig(explicitParams);
+                var mergedParams = ConfigLoader.LoadAndMergeConfig(explicitParams);
 
                 // Verify the merged parameters
-                Assert.Equal("override_catalog", mergedParams["adbc.connection.catalog"]); // Should be overridden
-                Assert.Equal("test_schema", mergedParams["adbc.connection.db_schema"]);
-                Assert.Equal("oauth", mergedParams["adbc.spark.auth_type"]);
-                Assert.Equal("test_token", mergedParams["adbc.spark.oauth.access_token"]);
+                Assert.Equal("override_catalog", mergedParams[AdbcOptions.Connection.CurrentCatalog]); // Should be overridden
+                Assert.Equal("test_schema", mergedParams[AdbcOptions.Connection.CurrentDbSchema]);
+                Assert.Equal("oauth", mergedParams[SparkParameters.AuthType]);
+                Assert.Equal("test_token", mergedParams[SparkParameters.AccessToken]);
                 Assert.Equal("123", mergedParams["numeric_value"]); // Converted to string
                 Assert.Equal("true", mergedParams["boolean_value"]); // Converted to string
                 Assert.Equal("custom_value", mergedParams["custom.parameter"]); // Should be preserved
@@ -120,7 +123,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             finally
             {
                 // Clean up
-                Environment.SetEnvironmentVariable(Drivers.Apache.Common.ConfigLoader.ConfigFilePathEnvVar, null);
+                Environment.SetEnvironmentVariable(ConfigLoader.ConfigFilePathEnvVar, null);
                 if (File.Exists(tempFile))
                 {
                     File.Delete(tempFile);
@@ -139,7 +142,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 File.WriteAllText(tempFile, @"{ ""key"": ""value"", invalid_json }");
 
                 // Set environment variable to the temp file
-                Environment.SetEnvironmentVariable(Drivers.Apache.Common.ConfigLoader.ConfigFilePathEnvVar, tempFile);
+                Environment.SetEnvironmentVariable(ConfigLoader.ConfigFilePathEnvVar, tempFile);
 
                 // Create a dictionary with explicitly provided parameters
                 var explicitParams = new Dictionary<string, string>
@@ -149,16 +152,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
 
                 // Attempt to load and merge the parameters
                 var exception = Assert.Throws<AdbcException>(() => 
-                    Drivers.Apache.Common.ConfigLoader.LoadAndMergeConfig(explicitParams));
+                    ConfigLoader.LoadAndMergeConfig(explicitParams));
 
                 // Verify the exception message
                 Assert.Contains("Invalid JSON format", exception.Message);
-                Assert.Equal(AdbcStatusCode.InvalidArgument, exception.StatusCode);
+                Assert.Equal(AdbcStatusCode.InvalidArgument, exception.Status);
             }
             finally
             {
                 // Clean up
-                Environment.SetEnvironmentVariable(Drivers.Apache.Common.ConfigLoader.ConfigFilePathEnvVar, null);
+                Environment.SetEnvironmentVariable(ConfigLoader.ConfigFilePathEnvVar, null);
                 if (File.Exists(tempFile))
                 {
                     File.Delete(tempFile);

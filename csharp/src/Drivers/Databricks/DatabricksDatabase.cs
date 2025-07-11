@@ -28,6 +28,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     public class DatabricksDatabase : AdbcDatabase
     {
         readonly IReadOnlyDictionary<string, string> properties;
+        
+        /// <summary>
+        /// Gets the merged properties including those loaded from config file.
+        /// This is primarily for testing purposes.
+        /// </summary>
+        internal IReadOnlyDictionary<string, string> MergedProperties => properties;
 
         public DatabricksDatabase(IReadOnlyDictionary<string, string> properties)
         {
