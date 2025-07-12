@@ -41,6 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long maxBytesPerFile;
         private bool enableMultipleCatalogSupport;
         private bool enablePKFK;
+        private bool useArrowNativeTypes;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -62,11 +63,38 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             maxBytesPerFile = connection.MaxBytesPerFile;
             enableMultipleCatalogSupport = connection.EnableMultipleCatalogSupport;
             enablePKFK = connection.EnablePKFK;
+            useArrowNativeTypes = connection.UseArrowNativeTypes;
         }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
             base.SetStatementProperties(statement);
+
+            // Set Databricks-specific statement properties
+            // TODO: Ensure this is set dynamically depending on server capabilities.
+            statement.EnforceResultPersistenceMode = false;
+            statement.ResultPersistenceMode = TResultPersistenceMode.ALL_RESULTS;
+            statement.CanReadArrowResult = true;
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            statement.ConfOverlay = SparkConnection.timestampConfig;
+#pragma warning restore CS0618 // Type or member is obsolete
+
+            // Set UseArrowNativeTypes based on protocol version
+            if (useArrowNativeTypes)
+            {
+                statement.UseArrowNativeTypes = new TSparkArrowTypes
+                {
+                    TimestampAsArrow = true,
+                    DecimalAsArrow = true,
+
+                    // set to false so they return as string
+                    // otherwise, they return as ARRAY_TYPE but you can't determine
+                    // the object type of the items in the array
+                    ComplexTypesAsArrow = false,
+                    IntervalTypesAsArrow = false,
+                };
+            }
 
             // Set CloudFetch capabilities
             statement.CanDownloadResult = useCloudFetch;
