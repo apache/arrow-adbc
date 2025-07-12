@@ -39,6 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         private RecordBatch? _boundBatch;
         private Schema? _boundSchema;
         private IArrowArrayStream? _boundStream;
+        private bool _useArrowIpc = false; // Default to false until type mapping issues are resolved
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DuckDBStatement"/> class.
@@ -137,6 +138,21 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         {
             ValidateStatement();
             
+            // Try to use Arrow IPC for better performance if available
+            if (UseArrowIpc && !string.IsNullOrEmpty(SqlQuery))
+            {
+                try
+                {
+                    var ipcStream = new DuckDBArrowIpcStream(_connection, SqlQuery!);
+                    // For IPC, we don't know affected rows until we read the data
+                    return new QueryResult(-1, ipcStream);
+                }
+                catch (NotSupportedException)
+                {
+                    // Fall back to regular approach if Arrow IPC is not available
+                }
+            }
+            
             // Always reset command for queries to ensure we have the correct SQL
             ResetCommand();
             var command = GetCommand();
@@ -167,6 +183,21 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
             ValidateStatement();
+            
+            // Try to use Arrow IPC for better performance if available
+            if (UseArrowIpc && !string.IsNullOrEmpty(SqlQuery))
+            {
+                try
+                {
+                    var ipcStream = new DuckDBArrowIpcStream(_connection, SqlQuery!);
+                    // For IPC, we don't know affected rows until we read the data
+                    return new QueryResult(-1, ipcStream);
+                }
+                catch (NotSupportedException)
+                {
+                    // Fall back to regular approach if Arrow IPC is not available
+                }
+            }
             
             // Always reset command for queries to ensure we have the correct SQL
             ResetCommand();
@@ -210,6 +241,17 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
                     else
                     {
                         throw new ArgumentException($"Invalid batch size: {value}");
+                    }
+                    break;
+                    
+                case DuckDBParameters.UseArrowIpc:
+                    if (bool.TryParse(value, out var useIpc))
+                    {
+                        _useArrowIpc = useIpc;
+                    }
+                    else
+                    {
+                        throw new ArgumentException($"Invalid boolean value for UseArrowIpc: {value}");
                     }
                     break;
                     
@@ -286,6 +328,11 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
             _command?.Dispose();
             _command = null;
         }
+        
+        /// <summary>
+        /// Gets whether to use Arrow IPC for query execution.
+        /// </summary>
+        private bool UseArrowIpc => _useArrowIpc;
 
         private static bool IsDdlStatement(string? sql)
         {

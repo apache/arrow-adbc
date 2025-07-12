@@ -78,12 +78,34 @@ while (await stream.ReadNextRecordBatchAsync() is RecordBatch batch)
 | TIMESTAMP | Timestamp |
 | UUID | FixedSizeBinary(16) |
 
+## Performance Optimization
+
+### Arrow IPC Support
+
+The driver supports DuckDB's new Arrow IPC format for improved performance. This feature requires the `nanoarrow` extension:
+
+```csharp
+// Install the extension (one-time setup)
+using var cmd = connection.CreateCommand();
+cmd.CommandText = "INSTALL nanoarrow FROM community";
+cmd.ExecuteNonQuery();
+
+// Enable Arrow IPC (disabled by default due to type mapping differences)
+statement.SetOption("adbc.duckdb.use_arrow_ipc", "true");
+```
+
+When Arrow IPC is enabled, query results are serialized using DuckDB's native Arrow IPC support, which can be more efficient than row-by-row conversion.
+
 ## Known Limitations
 
-- No support for bulk parameter binding (Bind/BindStream)
+- Limited support for bulk parameter binding (only RecordBatch binding is supported)
 - Limited support for complex nested types
-- No direct Arrow export (DuckDB's Arrow C API is deprecated)
+- Arrow IPC requires the nanoarrow extension to be installed
 
 ## Development
 
-The driver converts DuckDB query results to Arrow format on the client side, as DuckDB's native Arrow C API has been deprecated in favor of the Arrow IPC format.
+The driver supports two modes of operation:
+1. **Arrow IPC mode** (default) - Uses DuckDB's `to_arrow_ipc()` function for efficient data transfer when the nanoarrow extension is available
+2. **Row-by-row mode** (fallback) - Converts DuckDB query results to Arrow format on the client side
+
+The driver automatically falls back to row-by-row conversion if the Arrow IPC extension is not available.

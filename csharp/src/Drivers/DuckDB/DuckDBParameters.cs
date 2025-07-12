@@ -46,5 +46,11 @@ namespace Apache.Arrow.Adbc.Drivers.DuckDB
         /// Whether to enable memory pooling (default: true).
         /// </summary>
         public const string EnableMemoryPooling = "adbc.duckdb.enable_memory_pooling";
+        
+        /// <summary>
+        /// Whether to use Arrow IPC for query execution (default: true).
+        /// This requires the nanoarrow extension to be available.
+        /// </summary>
+        public const string UseArrowIpc = "adbc.duckdb.use_arrow_ipc";
     }
 }
