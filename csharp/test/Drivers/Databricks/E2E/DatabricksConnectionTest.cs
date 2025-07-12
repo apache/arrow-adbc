@@ -373,8 +373,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
             testConfig.EnableMultipleCatalogSupport = enableMultipleCatalogSupport;
 
-            if (inputCatalog is not null) testConfig.Catalog = inputCatalog;
-            if (inputSchema is not null) testConfig.DbSchema = inputSchema;
+            if (inputCatalog is not null)
+            {
+                testConfig.Catalog = inputCatalog;
+            } else
+            {
+                testConfig.Catalog = string.Empty;
+            }
+            if (inputSchema is not null)
+            {
+                testConfig.DbSchema = inputSchema;
+            }
+            else
+            {
+                testConfig.DbSchema = string.Empty;
+            }
 
             var connection = NewConnection(testConfig);
             var statement = connection.CreateStatement();
