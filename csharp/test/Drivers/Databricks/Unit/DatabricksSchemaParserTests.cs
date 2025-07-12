@@ -16,7 +16,7 @@
 */
 
 using System.Collections.Generic;
-using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -74,4 +74,5 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 }
             };
         }
+    }
 } 

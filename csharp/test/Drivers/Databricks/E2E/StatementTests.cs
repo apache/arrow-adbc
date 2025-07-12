@@ -1279,48 +1279,60 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.True(foundSchemas.Count == 1, "Should have exactly one schema");
         }
 
-        [SkippableFact]
-        public async Task CanExecuteDecimalQuery()
+        [SkippableTheory]
+        [InlineData("cast(-6 as decimal(3, 1))", "-6.0", 3, 1, "Negative decimal with scale")]
+        [InlineData("cast(0 as decimal(1, 0))", "0", 1, 0, "Zero decimal")]
+        [InlineData("cast(123 as decimal(3, 0))", "123", 3, 0, "Positive integer decimal")]
+        [InlineData("cast(123456789.123456789 as decimal(18, 9))", "123456789.123456789", 18, 9, "High precision decimal")]
+        [InlineData("cast(-123456789.123456789 as decimal(18, 9))", "-123456789.123456789", 18, 9, "High precision negative decimal")]
+        public async Task CanExecuteDecimalQuery(string sqlExpression, string expectedValueString, int expectedPrecision, int expectedScale, string testDescription)
         {
+            decimal expectedValue = decimal.Parse(expectedValueString);
             // This tests the bug where older DBR versions return decimal values as strings when UseArrowNativeTypes is false
             // To repro issue, run this with dbr < 10.0
+            OutputHelper?.WriteLine($"Testing: {testDescription}");
+            OutputHelper?.WriteLine($"SQL Expression: {sqlExpression}");
+            OutputHelper?.WriteLine($"Expected Value: {expectedValue}");
+            OutputHelper?.WriteLine($"Expected Precision: {expectedPrecision}, Scale: {expectedScale}");
+
             using AdbcConnection connection = NewConnection();
             using var statement = connection.CreateStatement();
 
-            // Use the same query from the original bug report
-            statement.SqlQuery = "SELECT cast(-6 as decimal(3, 1)) as A";
+            // Use the provided SQL expression
+            statement.SqlQuery = $"SELECT {sqlExpression} as A";
             QueryResult result = statement.ExecuteQuery();
 
             Assert.NotNull(result.Stream);
-            
+
             // Verify the schema
             var schema = result.Stream.Schema;
-            Assert.Equal(1, schema.FieldsList.Count);
-            
+            Assert.Single(schema.FieldsList);
+
             var field = schema.GetFieldByName("A");
             Assert.NotNull(field);
-            
+
             OutputHelper?.WriteLine($"Decimal field type: {field.DataType.GetType().Name}");
             OutputHelper?.WriteLine($"Decimal field type ID: {field.DataType.TypeId}");
-            
+
             // Read the actual data
             var batch = await result.Stream.ReadNextRecordBatchAsync();
             Assert.NotNull(batch);
             Assert.Equal(1, batch.Length);
-            
+
             if (field.DataType is Decimal128Type decimalType)
             {
                 // For newer DBR versions with UseArrowNativeTypes enabled, decimal is returned as Decimal128Type
-                Assert.Equal(3, decimalType.Precision);
-                Assert.Equal(1, decimalType.Scale);
-                
+                Assert.Equal(expectedPrecision, decimalType.Precision);
+                Assert.Equal(expectedScale, decimalType.Scale);
+
                 var col0 = batch.Column(0) as Decimal128Array;
                 Assert.NotNull(col0);
                 Assert.Equal(1, col0.Length);
-                
+
                 var sqlDecimal = col0.GetSqlDecimal(0);
-                Assert.Equal(-6.0m, sqlDecimal.Value);
-                
+                Assert.NotNull(sqlDecimal);
+                Assert.Equal(expectedValue, sqlDecimal.Value);
+
                 OutputHelper?.WriteLine($"Decimal value: {sqlDecimal.Value} (precision: {decimalType.Precision}, scale: {decimalType.Scale})");
             }
             else if (field.DataType is StringType)
@@ -1329,21 +1341,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 var col0 = batch.Column(0) as StringArray;
                 Assert.NotNull(col0);
                 Assert.Equal(1, col0.Length);
-                
+
                 var stringValue = col0.GetString(0);
                 Assert.NotNull(stringValue);
+                Assert.Equal(expectedValueString, stringValue);
                 
-                // Parse the string value and verify it matches expected
-                Assert.True(decimal.TryParse(stringValue, out decimal parsedValue));
-                Assert.Equal(-6.0m, parsedValue);
-                
-                OutputHelper?.WriteLine($"Decimal as string value: '{stringValue}' -> {parsedValue}");
+                OutputHelper?.WriteLine($"Decimal as string value: '{stringValue}'");
             }
             else
             {
                 Assert.Fail($"Unexpected field type for decimal: {field.DataType.GetType().Name}");
             }
+            OutputHelper?.WriteLine($"Test passed: {testDescription}");
         }
-
     }
 }
