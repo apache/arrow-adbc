@@ -55,8 +55,6 @@ To use a configuration file:
 {
   "adbc.connection.catalog": "my_catalog",
   "adbc.connection.db_schema": "my_schema",
-  "adbc.spark.auth_type": "oauth",
-  "adbc.spark.oauth.access_token": "your_access_token",
   "adbc.databricks.cloudfetch.enabled": "true",
   "adbc.databricks.enable_direct_results": "true"
 }
