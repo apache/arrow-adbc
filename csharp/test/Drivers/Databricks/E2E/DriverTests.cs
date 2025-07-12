@@ -18,7 +18,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.IO;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
 using Xunit.Abstractions;
@@ -180,6 +182,80 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                     return true;
                 default:
                     return false;
+            }
+        }
+
+        [SkippableFact]
+        public void CanLoadConfigFileParameters()
+        {
+            // Create a temporary config file with test parameters
+            string tempConfigFile = Path.GetTempFileName();
+            try
+            {
+                // Write test parameters to config file
+                var configParams = new Dictionary<string, string>
+                {
+                    { "test_param_1", "config_value_1" },
+                    { "test_param_2", "config_value_2" },
+                    { DatabricksParameters.UseCloudFetch, "true" },
+                    { DatabricksParameters.EnableDirectResults, "false" }
+                };
+
+                // Convert to JSON
+                string jsonConfig = System.Text.Json.JsonSerializer.Serialize(configParams, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+                File.WriteAllText(tempConfigFile, jsonConfig);
+
+                // Set environment variable to point to our config file
+                Environment.SetEnvironmentVariable("ADBC_CONFIG_FILE", tempConfigFile);
+
+                try
+                {
+                    // Test that config file parameters are loaded and merged with explicit parameters
+                    AdbcDriver driver = NewDriver;
+                    Dictionary<string, string> explicitParams = new()
+                    {
+                        { "test_param_1", "override_value" }, // This should override config file
+                        { "explicit_param", "explicit_value" } // This should be added
+                    };
+                    
+                    // Open the database and get the merged properties
+                    using DatabricksDatabase database = (DatabricksDatabase)driver.Open(explicitParams);
+                    IReadOnlyDictionary<string, string> mergedProperties = database.MergedProperties;
+                    
+                    // Verify that config file parameters are present
+                    Assert.True(mergedProperties.ContainsKey("test_param_2"), "Config file parameter 'test_param_2' should be present");
+                    Assert.Equal("config_value_2", mergedProperties["test_param_2"]);
+                    
+                    // Verify that explicit parameters override config file parameters
+                    Assert.True(mergedProperties.ContainsKey("test_param_1"), "Parameter 'test_param_1' should be present");
+                    Assert.Equal("override_value", mergedProperties["test_param_1"]);
+                    
+                    // Verify that explicit-only parameters are present
+                    Assert.True(mergedProperties.ContainsKey("explicit_param"), "Explicit parameter 'explicit_param' should be present");
+                    Assert.Equal("explicit_value", mergedProperties["explicit_param"]);
+                    
+                    // Verify that Databricks-specific parameters from config file are present
+                    Assert.True(mergedProperties.ContainsKey(DatabricksParameters.UseCloudFetch), "CloudFetch parameter should be present");
+                    Assert.Equal("true", mergedProperties[DatabricksParameters.UseCloudFetch]);
+                    Assert.True(mergedProperties.ContainsKey(DatabricksParameters.EnableDirectResults));
+                    Assert.Equal("false", mergedProperties[DatabricksParameters.EnableDirectResults]);
+                }
+                finally
+                {
+                    // Clean up environment variable
+                    Environment.SetEnvironmentVariable("ADBC_CONFIG_FILE", null);
+                }
+            }
+            finally
+            {
+                // Clean up temp file
+                if (File.Exists(tempConfigFile))
+                {
+                    File.Delete(tempConfigFile);
+                }
             }
         }
     }
