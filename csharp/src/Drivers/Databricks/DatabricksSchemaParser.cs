@@ -25,8 +25,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksSchemaParser : SchemaParser
     {
+        private readonly bool _useArrowNativeTypes;
+
+        public DatabricksSchemaParser(bool useArrowNativeTypes = true)
+        {
+            _useArrowNativeTypes = useArrowNativeTypes;
+        }
+
         public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, DataTypeConversion dataTypeConversion)
         {
+            // For decimal types, check if we're using Arrow native types
+            if (thriftType.Type == TTypeId.DECIMAL_TYPE && !_useArrowNativeTypes)
+            {
+                // When decimal is not returned as Arrow, it's returned as a string
+                return StringType.Default;
+            }
+
+            // For future expansion: handle other types that might be affected by useArrowNativeTypes
+            // For example, timestamps, complex types, etc.
+
             return thriftType.Type switch
             {
                 TTypeId.BIGINT_TYPE => Int64Type.Default,

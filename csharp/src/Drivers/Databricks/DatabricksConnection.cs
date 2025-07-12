@@ -55,6 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
+        private bool _useArrowNativeTypes = true;
         private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
         private bool _useDescTableExtended = true;
@@ -265,6 +266,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal bool CanDecompressLz4 => _canDecompressLz4;
 
         /// <summary>
+        /// Gets whether Arrow native types are used.
+        /// </summary>
+        internal bool UseArrowNativeTypes => _useArrowNativeTypes;
+
+        /// <summary>
         /// Gets the maximum bytes per file for CloudFetch.
         /// </summary>
         internal long MaxBytesPerFile => _maxBytesPerFile;
@@ -395,7 +401,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return new DatabricksCompositeReader(databricksStatement, schema, isLz4Compressed, TlsOptions, _proxyConfigurator);
         }
 
-        internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
+        internal override SchemaParser SchemaParser => new DatabricksSchemaParser(_useArrowNativeTypes);
 
         public override AdbcStatement CreateStatement()
         {
@@ -442,6 +448,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 _enablePKFK = _enablePKFK && FeatureVersionNegotiator.SupportsPKFK(version);
                 _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
+                _useArrowNativeTypes = FeatureVersionNegotiator.SupportsArrowNativeTypes(version);
                 if (session.__isset.initialNamespace)
                 {
                     _defaultNamespace = session.InitialNamespace;
