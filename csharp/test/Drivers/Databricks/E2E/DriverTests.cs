@@ -223,28 +223,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                     
                     // Open the database and get the merged properties
                     using DatabricksDatabase database = (DatabricksDatabase)driver.Open(explicitParams);
-                    var mergedProperties = database.MergedProperties;
-                    
-                    // Convert to dictionary for easier access
-                    var propertiesDict = mergedProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                    IReadOnlyDictionary<string, string> mergedProperties = database.MergedProperties;
                     
                     // Verify that config file parameters are present
-                    Assert.True(propertiesDict.ContainsKey("test_param_2"), "Config file parameter 'test_param_2' should be present");
-                    Assert.Equal("config_value_2", propertiesDict["test_param_2"]);
+                    Assert.True(mergedProperties.ContainsKey("test_param_2"), "Config file parameter 'test_param_2' should be present");
+                    Assert.Equal("config_value_2", mergedProperties["test_param_2"]);
                     
                     // Verify that explicit parameters override config file parameters
-                    Assert.True(propertiesDict.ContainsKey("test_param_1"), "Parameter 'test_param_1' should be present");
-                    Assert.Equal("override_value", propertiesDict["test_param_1"], "Explicit parameter should override config file value");
+                    Assert.True(mergedProperties.ContainsKey("test_param_1"), "Parameter 'test_param_1' should be present");
+                    Assert.Equal("override_value", mergedProperties["test_param_1"]);
                     
                     // Verify that explicit-only parameters are present
-                    Assert.True(propertiesDict.ContainsKey("explicit_param"), "Explicit parameter 'explicit_param' should be present");
-                    Assert.Equal("explicit_value", propertiesDict["explicit_param"]);
+                    Assert.True(mergedProperties.ContainsKey("explicit_param"), "Explicit parameter 'explicit_param' should be present");
+                    Assert.Equal("explicit_value", mergedProperties["explicit_param"]);
                     
                     // Verify that Databricks-specific parameters from config file are present
-                    Assert.True(propertiesDict.ContainsKey(DatabricksParameters.UseCloudFetch), "CloudFetch parameter should be present");
-                    Assert.Equal("true", propertiesDict[DatabricksParameters.UseCloudFetch]);
-                    Assert.True(propertiesDict.ContainsKey(DatabricksParameters.EnableDirectResults), "DirectResults parameter should be present");
-                    Assert.Equal("false", propertiesDict[DatabricksParameters.EnableDirectResults]);
+                    Assert.True(mergedProperties.ContainsKey(DatabricksParameters.UseCloudFetch), "CloudFetch parameter should be present");
+                    Assert.Equal("true", mergedProperties[DatabricksParameters.UseCloudFetch]);
+                    Assert.True(mergedProperties.ContainsKey(DatabricksParameters.EnableDirectResults));
+                    Assert.Equal("false", mergedProperties[DatabricksParameters.EnableDirectResults]);
                 }
                 finally
                 {
