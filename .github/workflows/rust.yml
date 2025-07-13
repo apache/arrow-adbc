@@ -106,6 +106,16 @@ jobs:
       - name: Install sqlite3
         if: runner.os == 'Linux'
         run: sudo apt-get install libsqlite3-dev
+      - name: Setup mamba
+        uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
+        if: runner.os == 'Windows'
+        with:
+          miniforge-version: latest
+          use-mamba: true
+      - name: Install Dependencies
+        if: runner.os == 'Windows'
+        run: |
+          mamba install -c conda-forge --file ci\conda_env_cpp.txt
       - name: Build C++/Go drivers
         run: |
           mkdir -p build
