@@ -33,6 +33,7 @@ fn bundled() -> Result<(), Box<dyn Error>> {
     let status = Command::new("go")
         .current_dir(go_pkg.as_path())
         .arg("build")
+        .arg("-a")
         .arg("-tags")
         .arg("driverlib")
         .arg("-buildmode=c-archive")
@@ -77,7 +78,7 @@ fn linked() -> Result<(), Box<dyn Error>> {
     if let Some(path) = option_env!("ADBC_SNOWFLAKE_GO_LIB_DIR") {
         println!("cargo:rustc-link-search={path}");
     }
-
+    
     // Link the driver.
     println!("cargo:rustc-link-lib=adbc_driver_snowflake");
 
