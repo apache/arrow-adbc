@@ -282,12 +282,11 @@ Functions</h2></td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">entrypoint</td><td>An identifier for the entrypoint (e.g. the symbol to call for <a class="el" href="group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db" title="Common entry point for drivers via the driver manager (which uses dlopen(3)/LoadLibrary)....">AdbcDriverInitFunc</a> on Linux). If not provided, search for an entrypoint based on the driver name. </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">version</td><td>The ADBC revision to attempt to initialize. </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">load_options</td><td>bit mask of AdbcLoadFlags to control the directories searched </td></tr>
-    <tr><td class="paramdir">[out]</td><td class="paramname">raw_driver</td><td>The table of function pointers to initialize </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">driver</td><td>The table of function pointers to initialize </td></tr>
     <tr><td class="paramdir">[out]</td><td class="paramname">error</td><td>An optional location to return an error message </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd></dd></dl>
 
 </div>
 </div>
