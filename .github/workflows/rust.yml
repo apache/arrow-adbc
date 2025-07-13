@@ -49,7 +49,7 @@ jobs:
           - macos-13
           - macos-latest
           - ubuntu-latest
-          - windows-latest
+          # - windows-latest # TODO: uncomment this line after fixing driver manager
         minimal-versions:
           - false
         include:
