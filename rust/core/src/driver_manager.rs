@@ -1894,6 +1894,7 @@ mod tests {
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_driver_env() {
         // ensure that we fail without the env var set
+        env::remove_var("ADBC_CONFIG_PATH");
         let err =
             ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV)
                 .unwrap_err();
