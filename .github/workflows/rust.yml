@@ -49,7 +49,7 @@ jobs:
           - macos-13
           - macos-latest
           - ubuntu-latest
-          # - windows-latest # TODO: uncomment this line after fixing driver manager
+          - windows-latest
         minimal-versions:
           - false
         include:
@@ -153,7 +153,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           echo "LD_LIBRARY_PATH=${{ github.workspace }}/local/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
-          echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/adbc_driver_sqlite.dll" >> "$GITHUB_ENV"
+          echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/adbc_driver_sqlite.lib" >> "$GITHUB_ENV"
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy

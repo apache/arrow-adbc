@@ -52,5 +52,9 @@ tempfile = "3.20.0"
 all-features = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = {version = ">= 0.59.0", features = ["Win32_UI_Shell"], optional = true}
+windows-sys = {version = ">= 0.59.0", features = [
+    "Win32_UI_Shell",
+    "Win32_Globalization",
+    "Win32_System_Com",
+], optional = true}
 windows-registry = {version = ">= 0.5.3", optional = true}

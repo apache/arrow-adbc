@@ -491,9 +491,12 @@ impl ManagedDriver {
         load_flags: LoadFlags,
     ) -> Result<Self> {
         if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
-            if let Ok(result) =
-                Self::search_path_list(driver_path, LOAD_FLAG_SEARCH_ENV, entrypoint, version)
-            {
+            if let Ok(result) = Self::search_path_list(
+                driver_path,
+                get_search_paths(LOAD_FLAG_SEARCH_ENV),
+                entrypoint,
+                version,
+            ) {
                 return Ok(result);
             }
         }
@@ -501,32 +504,38 @@ impl ManagedDriver {
         if load_flags & LOAD_FLAG_SEARCH_USER != 0 {
             // first check registry for the driver, then check the user config path
             if let Ok(result) = load_driver_from_registry(
-                &windows_registry::CURRENT_USER,
+                windows_registry::CURRENT_USER,
                 driver_path.as_os_str(),
                 entrypoint,
             ) {
                 return Self::load_dynamic_from_filename(result.lib_path, entrypoint, version);
             }
 
-            if let Ok(result) =
-                Self::search_path_list(driver_path, LOAD_FLAG_SEARCH_USER, entrypoint, version)
-            {
+            if let Ok(result) = Self::search_path_list(
+                driver_path,
+                get_search_paths(LOAD_FLAG_SEARCH_USER),
+                entrypoint,
+                version,
+            ) {
                 return Ok(result);
             }
         }
 
         if load_flags & LOAD_FLAG_SEARCH_SYSTEM != 0 {
             if let Ok(result) = load_driver_from_registry(
-                &windows_registry::LOCAL_MACHINE,
+                windows_registry::LOCAL_MACHINE,
                 driver_path.as_os_str(),
                 entrypoint,
             ) {
                 return Self::load_dynamic_from_filename(result.lib_path, entrypoint, version);
             }
 
-            if let Ok(result) =
-                Self::search_path_list(driver_path, LOAD_FLAG_SEARCH_SYSTEM, entrypoint, version)
-            {
+            if let Ok(result) = Self::search_path_list(
+                driver_path,
+                get_search_paths(LOAD_FLAG_SEARCH_SYSTEM),
+                entrypoint,
+                version,
+            ) {
                 return Ok(result);
             }
         }
@@ -609,15 +618,27 @@ fn load_driver_from_registry(
     entrypoint: Option<&[u8]>,
 ) -> Result<DriverInfo> {
     const ADBC_DRIVER_REGISTRY: &str = "SOFTWARE\\ADBC\\Drivers";
-    let drivers_key = root.open(ADBC_DRIVER_REGISTRY)?;
+    let drivers_key = root
+        .open(ADBC_DRIVER_REGISTRY)
+        .and_then(|k| k.open(driver_name.to_str().unwrap_or_default()))
+        .map_err(|e| {
+            Error::with_message_and_status(
+                format!("Failed to open registry key: {e}"),
+                Status::NotFound,
+            )
+        })?;
+
+    let entrypoint_val = match drivers_key.get_string("entrypoint") {
+        Ok(s) => Some(s.into_bytes()),
+        Err(_) => None,
+    };
 
     Ok(DriverInfo {
-        driver_name: drivers_key.get_string("name").unwrap_or_default(),
-        entrypoint: entrypoint
-            .or_else(|| drivers_key.get_string("entrypoint").map(|e| e.into_bytes())),
-        version: drivers_key.get_string("version").unwrap_or_default(),
-        source: drivers_key.get_string("source").unwrap_or_default(),
         lib_path: PathBuf::from(drivers_key.get_string("driver").unwrap_or_default()),
+        entrypoint: match entrypoint_val {
+            Some(e) => Some(e),
+            None => entrypoint.map(|s| s.to_vec()),
+        },
     })
 }
 
@@ -1659,24 +1680,24 @@ impl Drop for ManagedStatement {
 }
 
 #[cfg(target_os = "windows")]
-use windows_sys as windows;
-
-#[cfg(target_os = "windows")]
 mod target_windows {
+    #[cfg(target_os = "windows")]
+    use windows_sys as windows;
+
     use std::ffi::c_void;
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
     use std::path::PathBuf;
     use std::slice;
 
-    use super::windows::Win32::UI::Shell;
+    use windows::Win32::UI::Shell;
 
     // adapted from https://github.com/dirs-dev/dirs-sys-rs/blob/main/src/lib.rs#L150
-    fn user_config_dir() -> Option<PathBuf> {
+    pub fn user_config_dir() -> Option<PathBuf> {
         unsafe {
             let mut path_ptr: windows::core::PWSTR = std::ptr::null_mut();
             let result = Shell::SHGetKnownFolderPath(
-                Shell::FOLDERID_LocalAppData,
+                &Shell::FOLDERID_LocalAppData,
                 0,
                 std::ptr::null_mut(),
                 &mut path_ptr,
