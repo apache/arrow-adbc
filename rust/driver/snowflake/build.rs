@@ -57,7 +57,7 @@ fn bundled() -> Result<(), Box<dyn Error>> {
     }
     #[cfg(target_os = "windows")]
     {
-       println!("cargo:rustc-link-lib=legacy_stdio_definitions");
+        println!("cargo:rustc-link-lib=legacy_stdio_definitions");
     }
     #[cfg(target_os = "macos")]
     {
