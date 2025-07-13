@@ -44,12 +44,12 @@ jobs:
   rust:
     strategy:
       matrix:
-        # TODO(alexandreyc): add `windows-latest`
         # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
         os:
           - macos-13
           - macos-latest
           - ubuntu-latest
+          - windows-latest
         minimal-versions:
           - false
         include:
@@ -97,6 +97,12 @@ jobs:
           curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-universal_binary.zip" -o protoc.zip
           unzip "protoc.zip" -d $HOME/.local
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install Protoc
+        if: runner.os == 'Windows'
+        run: |
+          curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-win64.zip" -o protoc.zip
+          unzip "protoc.zip" -d $HOME/.local
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install sqlite3
         if: runner.os == 'Linux'
         run: sudo apt-get install libsqlite3-dev
@@ -120,9 +126,10 @@ jobs:
           cmake --build . --target install
           popd
       - name: Set dynamic linker path
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: |
           echo "LD_LIBRARY_PATH=${{ github.workspace }}/local/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.so" >> "$GITHUB_ENV"
       - name: Set dynamic linker path
         if: matrix.os == 'macos-latest'
         run: |
@@ -133,9 +140,11 @@ jobs:
         run: |
           echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
-      - name: Set test env var
-        if: runner.os == 'Linux'
-        run: echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.so" >> "$GITHUB_ENV"
+      - name: Set dynamic linker path
+        if: runner.os == 'Windows'
+        run: |
+          echo "LD_LIBRARY_PATH=${{ github.workspace }}/local/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/adbc_driver_sqlite.dll" >> "$GITHUB_ENV"
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy
