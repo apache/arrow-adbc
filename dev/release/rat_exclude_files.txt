@@ -40,4 +40,5 @@ r/*/cran-comments.md
 r/*/.Rbuildignore
 r/*/tests/testthat/_snaps/*
 rust/Cargo.lock
+rust/driver/snowflake/go
 testing/*
