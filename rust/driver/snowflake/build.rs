@@ -50,7 +50,14 @@ fn bundled() -> Result<(), Box<dyn Error>> {
     println!("cargo:rustc-link-lib=static=snowflake");
 
     // Link other dependencies.
-    println!("cargo:rustc-link-lib=resolv");
+    #[cfg(not(target_os = "windows"))]
+    {
+        println!("cargo:rustc-link-lib=resolv");
+    }
+    #[cfg(target_os = "windows")]
+    {
+       println!("cargo:rustc-link-lib=legacy_stdio_definitions");
+    }
     #[cfg(target_os = "macos")]
     {
         println!("cargo:rustc-link-lib=framework=CoreFoundation");
