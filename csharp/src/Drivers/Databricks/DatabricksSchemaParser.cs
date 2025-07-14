@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             try
             {
                 using var stream = new MemoryStream(schemaBytes);
-                using var reader = new ArrowFileReader(stream);
+                using var reader = new ArrowStreamReader(stream);
                 return reader.Schema;
             }
             catch (Exception ex)
@@ -58,16 +58,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, DataTypeConversion dataTypeConversion)
         {
-            // For decimal types, check if we're using Arrow native types
-            if (thriftType.Type == TTypeId.DECIMAL_TYPE && !_useArrowNativeTypes)
-            {
-                // When decimal is not returned as Arrow, it's returned as a string
-                return StringType.Default;
-            }
-
-            // For future expansion: handle other types that might be affected by useArrowNativeTypes
-            // For example, timestamps, complex types, etc.
-
             return thriftType.Type switch
             {
                 TTypeId.BIGINT_TYPE => Int64Type.Default,
@@ -81,8 +71,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 TTypeId.SMALLINT_TYPE => Int16Type.Default,
                 TTypeId.TIMESTAMP_TYPE => new TimestampType(TimeUnit.Microsecond, (string?)null),
                 TTypeId.TINYINT_TYPE => Int8Type.Default,
-                TTypeId.DECIMAL_TYPE => NewDecima128Type(thriftType),
-                TTypeId.CHAR_TYPE
+                TTypeId.DECIMAL_TYPE
+                or TTypeId.CHAR_TYPE
                 or TTypeId.STRING_TYPE
                 or TTypeId.VARCHAR_TYPE
                 or TTypeId.INTERVAL_DAY_TIME_TYPE
