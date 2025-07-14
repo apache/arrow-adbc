@@ -152,7 +152,7 @@ jobs:
       - name: Set dynamic linker path
         if: runner.os == 'Windows'
         run: |
-          echo "LD_LIBRARY_PATH=${{ github.workspace }}/local/bin:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "PATH=${{ github.workspace }}/local/bin;${{ github.workspace }}/local/lib;$PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/bin/adbc_driver_sqlite.dll" >> "$GITHUB_ENV"
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
