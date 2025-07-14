@@ -579,15 +579,6 @@ type Connection interface {
 	//
 	// A partition can be retrieved by using ExecutePartitions on a statement.
 	ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
-
-	// IngestStream constructs a statement for ingesting Arrow record batches.
-	// It binds the provided RecordReader, sets any driver options, and executes
-	// the update, returning the number of rows written.
-	//
-	// It wraps NewStatement, BindStream, SetOption for each key/value in opts,
-	// and ExecuteUpdate in one call. The driver will call Release on the record
-	// reader, but may not do so until Close is called on the statement.
-	IngestStream(ctx context.Context, reader array.RecordReader, opts map[string]string) (int64, error)
 }
 
 // PostInitOptions is an optional interface which can be implemented by
@@ -826,4 +817,38 @@ type GetSetOptions interface {
 	GetOptionBytes(key string) ([]byte, error)
 	GetOptionInt(key string) (int64, error)
 	GetOptionDouble(key string) (float64, error)
+}
+
+// IngestStream is a helper for executing a bulk ingestion. This is a wrapper around
+// the five-step boilerplate of NewStatement, SetOption, Bind,
+// Execute, and Close.
+//
+// This is not part of the ADBC API specification.
+func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReader, opts map[string]string) (int64, error) {
+	// 1) Create a new statement
+	stmt, err := cnxn.NewStatement()
+	if err != nil {
+		return -1, fmt.Errorf("IngestStream: NewStatement: %w", err)
+	}
+	defer stmt.Close()
+
+	// 2) Bind the record batch stream
+	if err = stmt.BindStream(ctx, reader); err != nil {
+		return -1, fmt.Errorf("IngestStream: BindStream: %w", err)
+	}
+
+	// 3) Apply options
+	for key, val := range opts {
+		if err := stmt.SetOption(key, val); err != nil {
+			return 0, fmt.Errorf("IngestStream: SetOption(%s=%s): %w", key, val, err)
+		}
+	}
+
+	// 4) Execute the update
+	count, err := stmt.ExecuteUpdate(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("IngestStream: ExecuteUpdate: %w", err)
+	}
+
+	return count, nil
 }

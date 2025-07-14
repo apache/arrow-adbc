@@ -588,73 +588,6 @@ func (dm *DriverMgrSuite) TestBindStream() {
 	dm.Truef(array.TableEqual(tableIn, tableOut), "expected: %s\ngot: %s", tableIn, tableOut)
 }
 
-func (dm *DriverMgrSuite) TestIngestStream() {
-	// 1) Create the target table
-	st, err := dm.conn.NewStatement()
-	dm.Require().NoError(err)
-	defer validation.CheckedClose(dm.T(), st)
-
-	dm.NoError(st.SetSqlQuery(`
-		CREATE TABLE IF NOT EXISTS ingest_test (
-			col1 INTEGER,
-			col2 TEXT
-		)
-	`))
-	n, err := st.ExecuteUpdate(dm.ctx)
-	dm.NoError(err)
-	dm.Equal(int64(0), n, "CREATE TABLE should report 0 rows affected")
-
-	// 2) Build two Arrow batches of data
-	schema := arrow.NewSchema(
-		[]arrow.Field{
-			{Name: "col1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
-			{Name: "col2", Type: arrow.BinaryTypes.String, Nullable: true},
-		}, nil,
-	)
-	b := array.NewRecordBuilder(memory.DefaultAllocator, schema)
-	defer b.Release()
-
-	// first batch: 3 rows
-	b.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
-	b.Field(1).(*array.StringBuilder).AppendValues([]string{"one", "two", "three"}, nil)
-	rec1 := b.NewRecord()
-	defer rec1.Release()
-
-	// second batch: 2 rows
-	b.Field(0).(*array.Int64Builder).AppendValues([]int64{4, 5}, nil)
-	b.Field(1).(*array.StringBuilder).AppendValues([]string{"four", "five"}, nil)
-	rec2 := b.NewRecord()
-	defer rec2.Release()
-
-	rdr, err := array.NewRecordReader(schema, []arrow.Record{rec1, rec2})
-	dm.Require().NoError(err)
-	defer rdr.Release()
-
-	// 3) Call IngestStream (append mode into ingest_test)
-	count, err := dm.conn.IngestStream(dm.ctx, rdr, map[string]string{
-		adbc.OptionKeyIngestTargetTable: "ingest_test",
-		adbc.OptionKeyIngestMode:        adbc.OptionValueIngestModeCreateAppend,
-	})
-	dm.NoError(err)
-	dm.Equal(int64(5), count, "should report 5 rows ingested")
-
-	// 4) Verify with a simple COUNT(*) query
-	st2, err := dm.conn.NewStatement()
-	dm.Require().NoError(err)
-	defer validation.CheckedClose(dm.T(), st2)
-
-	dm.NoError(st2.SetSqlQuery(`SELECT COUNT(*) AS cnt FROM ingest_test`))
-	rdr2, _, err := st2.ExecuteQuery(dm.ctx)
-	dm.NoError(err)
-	defer rdr2.Release()
-
-	dm.True(rdr2.Next(), "expected one row with the count")
-	recCount := rdr2.Record()
-	cntArr := recCount.Column(0).(*array.Int64)
-	dm.Equal(int64(5), cntArr.Value(0), "table should contain 5 rows")
-	dm.False(rdr2.Next(), "no more rows expected")
-}
-
 func TestDriverMgr(t *testing.T) {
 	suite.Run(t, new(DriverMgrSuite))
 }
@@ -694,4 +627,72 @@ func TestDriverMgrCustomInitFunc(t *testing.T) {
 	default:
 		assert.Contains(t, exp.Msg, "undefined symbol: ThisSymbolDoesNotExist")
 	}
+}
+
+func (dm *DriverMgrSuite) TestIngestStream() {
+	// 1) Create the target table
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st)
+
+	dm.NoError(st.SetSqlQuery(`
+        CREATE TABLE IF NOT EXISTS ingest_test (
+            col1 INTEGER,
+            col2 TEXT
+        )
+    `))
+	n, err := st.ExecuteUpdate(dm.ctx)
+	dm.NoError(err)
+	dm.Equal(int64(0), n, "CREATE TABLE should report 0 rows affected")
+
+	// 2) Build two Arrow batches of data
+	schema := arrow.NewSchema(
+		[]arrow.Field{
+			{Name: "col1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+			{Name: "col2", Type: arrow.BinaryTypes.String, Nullable: true},
+		}, nil,
+	)
+	b := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+	defer b.Release()
+
+	// first batch: 3 rows
+	b.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
+	b.Field(1).(*array.StringBuilder).AppendValues([]string{"one", "two", "three"}, nil)
+	rec1 := b.NewRecord()
+	defer rec1.Release()
+
+	// second batch: 2 rows
+	b.Field(0).(*array.Int64Builder).AppendValues([]int64{4, 5}, nil)
+	b.Field(1).(*array.StringBuilder).AppendValues([]string{"four", "five"}, nil)
+	rec2 := b.NewRecord()
+	defer rec2.Release()
+
+	rdr, err := array.NewRecordReader(schema, []arrow.Record{rec1, rec2})
+	dm.Require().NoError(err)
+
+	// 3) Call the new helper
+	opts := map[string]string{
+		adbc.OptionKeyIngestTargetTable: "ingest_test",
+		adbc.OptionKeyIngestMode:        adbc.OptionValueIngestModeCreateAppend,
+	}
+
+	count, err := adbc.IngestStream(dm.ctx, dm.conn, rdr, opts)
+	dm.NoError(err)
+	dm.Equal(int64(5), count, "should report 5 rows ingested")
+
+	// 4) Verify with a simple COUNT(*) query
+	st2, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st2)
+
+	dm.NoError(st2.SetSqlQuery(`SELECT COUNT(*) AS cnt FROM ingest_test`))
+	rdr2, _, err := st2.ExecuteQuery(dm.ctx)
+	dm.NoError(err)
+	defer rdr2.Release()
+
+	dm.True(rdr2.Next(), "expected one row with the count")
+	recCount := rdr2.Record()
+	cntArr := recCount.Column(0).(*array.Int64)
+	dm.Equal(int64(5), cntArr.Value(0), "table should contain 5 rows")
+	dm.False(rdr2.Next(), "no more rows expected")
 }
