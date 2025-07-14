@@ -1123,6 +1123,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 statement.SetOption(ApacheParameters.CatalogName, catalogName);
             }
+            else
+            {
+                statement.SetOption(ApacheParameters.CatalogName, string.Empty);
+            }
 
             // Act
             var result = ((DatabricksStatement)statement).ShouldReturnEmptyPkFkResult();
