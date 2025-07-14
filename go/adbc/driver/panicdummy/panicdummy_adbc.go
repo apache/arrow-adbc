@@ -128,6 +128,11 @@ func (c *cnxn) ReadPartition(ctx context.Context, serializedPartition []byte) (r
 	return nil, adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
+func (c *cnxn) IngestStream(ctx context.Context, reader array.RecordReader, opts map[string]string) (int64, error) {
+	maybePanic("ConnectionIngestStream")
+	return -1, adbc.Error{Code: adbc.StatusNotImplemented}
+}
+
 type statement struct{}
 
 func (s *statement) Close() error {

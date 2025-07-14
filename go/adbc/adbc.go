@@ -579,6 +579,15 @@ type Connection interface {
 	//
 	// A partition can be retrieved by using ExecutePartitions on a statement.
 	ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
+
+	// IngestStream constructs a statement for ingesting Arrow record batches.
+	// It binds the provided RecordReader, sets any driver options, and executes
+	// the update, returning the number of rows written.
+	//
+	// It wraps NewStatement, BindStream, SetOption for each key/value in opts,
+	// and ExecuteUpdate in one call. The driver will call Release on the record
+	// reader, but may not do so until Close is called on the statement.
+	IngestStream(ctx context.Context, reader array.RecordReader, opts map[string]string) (int64, error)
 }
 
 // PostInitOptions is an optional interface which can be implemented by
