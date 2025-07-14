@@ -51,7 +51,6 @@ package drivermgr
 import "C"
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"sync"
 	"unsafe"
@@ -438,35 +437,6 @@ func (c *cnxn) Close() error {
 
 func (c *cnxn) ReadPartition(_ context.Context, serializedPartition []byte) (array.RecordReader, error) {
 	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
-}
-
-func (c *cnxn) IngestStream(ctx context.Context, reader array.RecordReader, opts map[string]string) (int64, error) {
-	// 1) Create a new statement
-	stmt, err := c.NewStatement()
-	if err != nil {
-		return 0, fmt.Errorf("IngestStream: NewStatement: %w", err)
-	}
-	defer stmt.Close()
-
-	// 2) Bind the record batch stream
-	if err := stmt.BindStream(ctx, reader); err != nil {
-		return 0, fmt.Errorf("IngestStream: BindStream: %w", err)
-	}
-
-	// 3) Apply options
-	for key, val := range opts {
-		if err := stmt.SetOption(key, val); err != nil {
-			return 0, fmt.Errorf("IngestStream: SetOption(%s=%s): %w", key, val, err)
-		}
-	}
-
-	// 4) Execute the update
-	count, err := stmt.ExecuteUpdate(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("IngestStream: ExecuteUpdate: %w", err)
-	}
-
-	return count, nil
 }
 
 func (c *cnxn) SetOption(key, value string) error {

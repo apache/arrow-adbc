@@ -283,10 +283,6 @@ func (base *ConnectionImplBase) SetOptionInt(key string, val int64) error {
 	return base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "%s '%s'", ConnectionMessageOptionUnknown, key)
 }
 
-func (base *ConnectionImplBase) IngestStream(ctx context.Context, reader array.RecordReader, opts map[string]string) (int64, error) {
-	return -1, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "IngestStream")
-}
-
 type connection struct {
 	ConnectionImpl
 
