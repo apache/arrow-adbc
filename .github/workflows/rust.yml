@@ -163,8 +163,10 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
       - name: Test
         working-directory: rust
-        run: |
-          cargo test --all-targets --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
+        run: >
+          cargo test --all-targets --all-features --workspace
+          ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
+          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
         # env:
         # ADBC_SNOWFLAKE_TESTS: 1
         # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
