@@ -62,7 +62,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 TTypeId.INT_TYPE => Int32Type.Default,
                 TTypeId.NULL_TYPE => NullType.Default,
                 TTypeId.SMALLINT_TYPE => Int16Type.Default,
-                TTypeId.TIMESTAMP_TYPE => new TimestampType(TimeUnit.Microsecond, (string?)null),
+                TTypeId.TIMESTAMP_TYPE => new TimestampType(TimeUnit.Microsecond, (string?)null), 
+                // TIMESTAMP_TYPE could be a string if SQLConf.get.arrowThriftTimestampToString is configured differently
                 TTypeId.TINYINT_TYPE => Int8Type.Default,
                 TTypeId.DECIMAL_TYPE
                 or TTypeId.CHAR_TYPE
