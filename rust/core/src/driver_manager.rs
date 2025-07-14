@@ -1871,7 +1871,6 @@ mod tests {
         (tmp_dir, manifest_path)
     }
 
-    #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
     #[test]
     fn test_default_entrypoint() {
         for driver in [
@@ -1913,7 +1912,6 @@ mod tests {
 
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
     fn test_load_driver_env() {
         // ensure that we fail without the env var set
         env::remove_var("ADBC_CONFIG_PATH");
@@ -1982,7 +1980,6 @@ mod tests {
 
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
     fn test_disallow_env_config() {
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
@@ -2115,7 +2112,6 @@ mod tests {
         )),
         ignore
     )]
-    #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
     fn test_manifest_user_config() {
         let err = ManagedDriver::load_from_name(
             "adbc-test-sqlite",
