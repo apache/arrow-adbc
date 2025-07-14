@@ -1681,7 +1681,6 @@ impl Drop for ManagedStatement {
 
 #[cfg(target_os = "windows")]
 mod target_windows {
-    #[cfg(target_os = "windows")]
     use windows_sys as windows;
 
     use std::ffi::c_void;

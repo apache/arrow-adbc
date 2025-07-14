@@ -52,13 +52,9 @@ fn bundled() -> Result<(), Box<dyn Error>> {
 
     // Link other dependencies.
     #[cfg(not(target_os = "windows"))]
-    {
-        println!("cargo:rustc-link-lib=resolv");
-    }
+    println!("cargo:rustc-link-lib=resolv");
     #[cfg(target_os = "windows")]
-    {
-        println!("cargo:rustc-link-lib=legacy_stdio_definitions");
-    }
+    println!("cargo:rustc-link-lib=legacy_stdio_definitions");
     #[cfg(target_os = "macos")]
     {
         println!("cargo:rustc-link-lib=framework=CoreFoundation");
@@ -79,9 +75,7 @@ fn linked() -> Result<(), Box<dyn Error>> {
         println!("cargo:rustc-link-search={path}");
     }
     #[cfg(target_os = "windows")]
-    {
-        println!("cargo:rustc-link-lib=legacy_stdio_definitions");
-    }
+    println!("cargo:rustc-link-lib=legacy_stdio_definitions");
     // Link the driver.
     println!("cargo:rustc-link-lib=adbc_driver_snowflake");
 
