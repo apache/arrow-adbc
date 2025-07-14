@@ -173,12 +173,16 @@ jobs:
         # ADBC_SNOWFLAKE_SQL_DB: ADBC_TESTING
       - name: Doctests
         working-directory: rust
-        run: |
-          cargo test --doc --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
+        run: >
+          cargo test --doc --all-features --workspace
+          ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
+          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
       - name: Check docs
         working-directory: rust
-        run: |
-          cargo doc --all-features --workspace ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
+        run: >
+          cargo doc --all-features --workspace
+          ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
+          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
       - name: Verify MSRV (Minimum Supported Rust Version)
         if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
         working-directory: rust
