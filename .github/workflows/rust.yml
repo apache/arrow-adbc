@@ -163,6 +163,7 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
       - name: Test
         working-directory: rust
+        # TODO: enable snowflake tests on windows
         run: >
           cargo test --all-targets --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
@@ -173,12 +174,14 @@ jobs:
         # ADBC_SNOWFLAKE_SQL_DB: ADBC_TESTING
       - name: Doctests
         working-directory: rust
+        # TODO: enable snowflake tests on windows
         run: >
           cargo test --doc --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
           ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
       - name: Check docs
         working-directory: rust
+        # TODO: enable snowflake tests on windows
         run: >
           cargo doc --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
