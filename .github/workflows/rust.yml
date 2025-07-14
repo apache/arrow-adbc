@@ -161,6 +161,11 @@ jobs:
         working-directory: rust
         run: |
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
+      - name: Test (snowflake with the linked feature)
+        working-directory: rust
+        if: runner.os == 'Windows'
+        run: >
+          cargo test -p adbc_snowflake --no-default-features --features linked,env,dotenv
       - name: Test
         working-directory: rust
         run: >
