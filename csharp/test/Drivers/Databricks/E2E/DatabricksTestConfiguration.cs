@@ -47,6 +47,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         public string TraceStateEnabled { get; set; } = string.Empty;
 
         [JsonPropertyName("isCITesting"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public bool isCITesting { get; set; } = false;
+        public bool IsCITesting { get; set; } = false;
     }
 }
