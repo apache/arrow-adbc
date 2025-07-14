@@ -103,8 +103,8 @@ github.com/databricks/databricks-sdk-go v0.72.0/go.mod h1:xBtjeP9nq+6MgTewZW1Ecb
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dbt-labs/gosnowflake v1.14.3-0.20250714011904-c6c9162fa0b7 h1:5PGm3CUJmXQynRKzD9948Nx0uEb8vgpcEtcCICfpO9M=
-github.com/dbt-labs/gosnowflake v1.14.3-0.20250714011904-c6c9162fa0b7/go.mod h1:zdq8h1S5I/LL+2wkomtch0tzYP6eD4I/F+5lUKt8MF4=
+github.com/dbt-labs/gosnowflake v1.14.3-0.20250714123216-6a8437bcdb81 h1:vOBuAUH2g+EtT8HiyA5tKNb5X4bUghujxnR3ifRVL/A=
+github.com/dbt-labs/gosnowflake v1.14.3-0.20250714123216-6a8437bcdb81/go.mod h1:zdq8h1S5I/LL+2wkomtch0tzYP6eD4I/F+5lUKt8MF4=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/dvsekhvalnov/jose2go v1.7.0 h1:bnQc8+GMnidJZA8zc6lLEAb4xNrIqHwO+9TzqvtQZPo=
