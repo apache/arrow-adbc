@@ -19,8 +19,11 @@ package adbc
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 
+	"github.com/apache/arrow-go/v18/arrow/array"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -77,4 +80,56 @@ type OTelTracing interface {
 
 	// Gets the initial span attributes for any newly started span.
 	GetInitialSpanAttributes() []attribute.KeyValue
+}
+
+// IngestStreamOption bundles the most-common IngestStream settings.
+// Any other ADBC options can go into Extra.
+type IngestStreamOption struct {
+	TargetTable string            // required
+	IngestMode  string            // required, e.g. adbc.OptionValueIngestModeCreateAppend, or OptionValueIngestModeReplace
+	Extra       map[string]string // any other stmt.SetOption(...) args
+}
+
+// IngestStream is a helper for executing a bulk ingestion. This is a wrapper around
+// the five-step boilerplate of NewStatement, SetOption, Bind,
+// Execute, and Close.
+//
+// This is not part of the ADBC API specification.
+func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReader, opt IngestStreamOption) (int64, error) {
+	// 1) Create a new statement
+	stmt, err := cnxn.NewStatement()
+	if err != nil {
+		return -1, fmt.Errorf("IngestStream: NewStatement: %w", err)
+	}
+	defer func() {
+		err = errors.Join(err, stmt.Close())
+	}()
+
+	// 2) Bind the record batch stream
+	if err = stmt.BindStream(ctx, reader); err != nil {
+		return -1, fmt.Errorf("IngestStream: BindStream: %w", err)
+	}
+
+	// required options
+	if err := stmt.SetOption(OptionKeyIngestTargetTable, opt.TargetTable); err != nil {
+		return 0, fmt.Errorf("IngestStream: SetOption(target_table=%s): %w", opt.TargetTable, err)
+	}
+	if err := stmt.SetOption(OptionKeyIngestMode, opt.IngestMode); err != nil {
+		return 0, fmt.Errorf("IngestStream: SetOption(mode=%s): %w", opt.IngestMode, err)
+	}
+
+	// any extras
+	for k, v := range opt.Extra {
+		if err := stmt.SetOption(k, v); err != nil {
+			return 0, fmt.Errorf("IngestStream: SetOption(%s=%s): %w", k, v, err)
+		}
+	}
+
+	// 4) Execute the update
+	count, err := stmt.ExecuteUpdate(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("IngestStream: ExecuteUpdate: %w", err)
+	}
+
+	return count, nil
 }

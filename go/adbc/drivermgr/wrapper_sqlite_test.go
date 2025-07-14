@@ -630,63 +630,55 @@ func TestDriverMgrCustomInitFunc(t *testing.T) {
 }
 
 func (dm *DriverMgrSuite) TestIngestStream() {
-	// 1) Create the target table
-	st, err := dm.conn.NewStatement()
-	dm.Require().NoError(err)
-	defer validation.CheckedClose(dm.T(), st)
+	// 1) Define the Arrow schema
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "col1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+		{Name: "col2", Type: arrow.BinaryTypes.String, Nullable: true},
+	}, nil)
 
-	dm.NoError(st.SetSqlQuery(`
-        CREATE TABLE IF NOT EXISTS ingest_test (
-            col1 INTEGER,
-            col2 TEXT
-        )
-    `))
-	n, err := st.ExecuteUpdate(dm.ctx)
-	dm.NoError(err)
-	dm.Equal(int64(0), n, "CREATE TABLE should report 0 rows affected")
-
-	// 2) Build two Arrow batches of data
-	schema := arrow.NewSchema(
-		[]arrow.Field{
-			{Name: "col1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
-			{Name: "col2", Type: arrow.BinaryTypes.String, Nullable: true},
-		}, nil,
+	// 2) Build two batches via JSON
+	rec1, _, err := array.RecordFromJSON(
+		memory.DefaultAllocator, schema,
+		strings.NewReader(`[
+            {"col1": 1, "col2": "one"},
+            {"col1": 2, "col2": "two"},
+            {"col1": 3, "col2": "three"}
+        ]`),
 	)
-	b := array.NewRecordBuilder(memory.DefaultAllocator, schema)
-	defer b.Release()
-
-	// first batch: 3 rows
-	b.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
-	b.Field(1).(*array.StringBuilder).AppendValues([]string{"one", "two", "three"}, nil)
-	rec1 := b.NewRecord()
+	dm.Require().NoError(err)
 	defer rec1.Release()
 
-	// second batch: 2 rows
-	b.Field(0).(*array.Int64Builder).AppendValues([]int64{4, 5}, nil)
-	b.Field(1).(*array.StringBuilder).AppendValues([]string{"four", "five"}, nil)
-	rec2 := b.NewRecord()
+	rec2, _, err := array.RecordFromJSON(
+		memory.DefaultAllocator, schema,
+		strings.NewReader(`[
+            {"col1": 4, "col2": "four"},
+            {"col1": 5, "col2": "five"}
+        ]`),
+	)
+	dm.Require().NoError(err)
 	defer rec2.Release()
 
 	rdr, err := array.NewRecordReader(schema, []arrow.Record{rec1, rec2})
 	dm.Require().NoError(err)
+	defer rdr.Release()
 
-	// 3) Call the new helper
-	opts := map[string]string{
-		adbc.OptionKeyIngestTargetTable: "ingest_test",
-		adbc.OptionKeyIngestMode:        adbc.OptionValueIngestModeCreateAppend,
+	// 3) Call the helper in “create” mode (it will create the table for you)
+	opt := adbc.IngestStreamOption{
+		TargetTable: "ingest_test",
+		IngestMode:  adbc.OptionValueIngestModeCreate, // ← use Create, not CreateAppend
+		Extra:       nil,
 	}
-
-	count, err := adbc.IngestStream(dm.ctx, dm.conn, rdr, opts)
+	count, err := adbc.IngestStream(dm.ctx, dm.conn, rdr, opt)
 	dm.NoError(err)
 	dm.Equal(int64(5), count, "should report 5 rows ingested")
 
 	// 4) Verify with a simple COUNT(*) query
-	st2, err := dm.conn.NewStatement()
+	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
-	defer validation.CheckedClose(dm.T(), st2)
+	defer validation.CheckedClose(dm.T(), st)
 
-	dm.NoError(st2.SetSqlQuery(`SELECT COUNT(*) AS cnt FROM ingest_test`))
-	rdr2, _, err := st2.ExecuteQuery(dm.ctx)
+	dm.NoError(st.SetSqlQuery(`SELECT COUNT(*) AS cnt FROM ingest_test`))
+	rdr2, _, err := st.ExecuteQuery(dm.ctx)
 	dm.NoError(err)
 	defer rdr2.Release()
 
