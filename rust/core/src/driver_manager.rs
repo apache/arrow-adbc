@@ -1793,6 +1793,7 @@ mod tests {
     use super::*;
 
     use crate::LOAD_FLAG_DEFAULT;
+    use temp_env::{with_var, with_var_unset};
     use tempfile::Builder;
 
     fn manifest_without_driver() -> &'static str {
@@ -1894,24 +1895,34 @@ mod tests {
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_driver_env() {
         // ensure that we fail without the env var set
-        env::remove_var("ADBC_CONFIG_PATH");
-        let err =
-            ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV)
-                .unwrap_err();
-        assert_eq!(err.status, Status::NotFound);
+        with_var_unset("ADBC_CONFIG_PATH", || {
+            let err = ManagedDriver::load_from_name(
+                "sqlite",
+                None,
+                AdbcVersion::V100,
+                LOAD_FLAG_SEARCH_ENV,
+            )
+            .unwrap_err();
+            assert_eq!(err.status, Status::NotFound);
+        });
 
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
-        env::set_var(
+        with_var(
             "ADBC_CONFIG_PATH",
-            manifest_path.parent().unwrap().as_os_str(),
+            Some(manifest_path.parent().unwrap().as_os_str()),
+            || {
+                ManagedDriver::load_from_name(
+                    "sqlite",
+                    None,
+                    AdbcVersion::V100,
+                    LOAD_FLAG_SEARCH_ENV,
+                )
+                .unwrap();
+            },
         );
 
-        ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV)
-            .unwrap();
-
-        env::remove_var("ADBC_CONFIG_PATH");
         tmp_dir
             .close()
             .expect("Failed to close/remove temporary directory");
@@ -1929,11 +1940,12 @@ mod tests {
             manifest_path.parent().unwrap(),
         ])
         .unwrap();
-        env::set_var("ADBC_CONFIG_PATH", path_os_string);
-        ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV)
-            .unwrap();
 
-        env::remove_var("ADBC_CONFIG_PATH");
+        with_var("ADBC_CONFIG_PATH", Some(&path_os_string), || {
+            ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV)
+                .unwrap();
+        });
+
         tmp_dir
             .close()
             .expect("Failed to close/remove temporary directory");
@@ -1945,14 +1957,20 @@ mod tests {
         let p = PathBuf::from("majestik møøse/sqlite.toml");
         let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
 
-        env::set_var(
+        with_var(
             "ADBC_CONFIG_PATH",
-            manifest_path.parent().unwrap().as_os_str(),
+            Some(manifest_path.parent().unwrap().as_os_str()),
+            || {
+                ManagedDriver::load_from_name(
+                    "sqlite",
+                    None,
+                    AdbcVersion::V100,
+                    LOAD_FLAG_SEARCH_ENV,
+                )
+                .unwrap();
+            },
         );
-        ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV)
-            .unwrap();
 
-        env::remove_var("ADBC_CONFIG_PATH");
         tmp_dir
             .close()
             .expect("Failed to close/remove temporary directory");
@@ -1964,17 +1982,18 @@ mod tests {
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
-        env::set_var(
+        with_var(
             "ADBC_CONFIG_PATH",
-            manifest_path.parent().unwrap().as_os_str(),
+            Some(manifest_path.parent().unwrap().as_os_str()),
+            || {
+                let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;
+                let err =
+                    ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, load_flags)
+                        .unwrap_err();
+                assert_eq!(err.status, Status::NotFound);
+            },
         );
 
-        let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;
-        let err = ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, load_flags)
-            .unwrap_err();
-        assert_eq!(err.status, Status::NotFound);
-
-        env::remove_var("ADBC_CONFIG_PATH");
         tmp_dir
             .close()
             .expect("Failed to close/remove temporary directory");

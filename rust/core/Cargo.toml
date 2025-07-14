@@ -45,6 +45,7 @@ toml = { version = "0.9.0", default-features = false, features = [
 ], optional = true }
 
 [dev-dependencies]
+temp-env = "0.3"
 arrow-select.workspace = true
 tempfile = "3.20.0"
 
