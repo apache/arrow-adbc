@@ -376,7 +376,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             if (inputCatalog is not null)
             {
                 testConfig.Catalog = inputCatalog;
-            } else
+            }
+            else
             {
                 testConfig.Catalog = string.Empty;
             }
