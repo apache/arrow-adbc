@@ -662,10 +662,10 @@ func (dm *DriverMgrSuite) TestIngestStream() {
 	dm.Require().NoError(err)
 	defer rdr.Release()
 
-	// 3) Call the helper in “create” mode (it will create the table for you)
+	// 3) Use the IngestStream
 	opt := adbc.IngestStreamOption{
 		TargetTable: "ingest_test",
-		IngestMode:  adbc.OptionValueIngestModeCreate, // ← use Create, not CreateAppend
+		IngestMode:  adbc.OptionValueIngestModeCreateAppend,
 		Extra:       nil,
 	}
 	count, err := adbc.IngestStream(dm.ctx, dm.conn, rdr, opt)

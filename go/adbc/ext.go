@@ -110,7 +110,7 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 		return -1, fmt.Errorf("IngestStream: BindStream: %w", err)
 	}
 
-	// required options
+	// Set required options
 	if err := stmt.SetOption(OptionKeyIngestTargetTable, opt.TargetTable); err != nil {
 		return 0, fmt.Errorf("IngestStream: SetOption(target_table=%s): %w", opt.TargetTable, err)
 	}
@@ -118,7 +118,7 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 		return 0, fmt.Errorf("IngestStream: SetOption(mode=%s): %w", opt.IngestMode, err)
 	}
 
-	// any extras
+	// Set any extras
 	for k, v := range opt.Extra {
 		if err := stmt.SetOption(k, v); err != nil {
 			return 0, fmt.Errorf("IngestStream: SetOption(%s=%s): %w", k, v, err)
