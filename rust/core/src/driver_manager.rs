@@ -628,17 +628,14 @@ fn load_driver_from_registry(
             )
         })?;
 
-    let entrypoint_val = match drivers_key.get_string("entrypoint") {
-        Ok(s) => Some(s.into_bytes()),
-        Err(_) => None,
-    };
+    let entrypoint_val = drivers_key
+        .get_string("entrypoint")
+        .ok()
+        .map(|s| s.into_bytes());
 
     Ok(DriverInfo {
         lib_path: PathBuf::from(drivers_key.get_string("driver").unwrap_or_default()),
-        entrypoint: match entrypoint_val {
-            Some(e) => Some(e),
-            None => entrypoint.map(|s| s.to_vec()),
-        },
+        entrypoint: entrypoint_val.or_else(|| entrypoint.map(|s| s.to_vec())),
     })
 }
 
