@@ -78,7 +78,6 @@ fn linked() -> Result<(), Box<dyn Error>> {
     if let Some(path) = option_env!("ADBC_SNOWFLAKE_GO_LIB_DIR") {
         println!("cargo:rustc-link-search={path}");
     }
-    
     // Link the driver.
     println!("cargo:rustc-link-lib=adbc_driver_snowflake");
 
