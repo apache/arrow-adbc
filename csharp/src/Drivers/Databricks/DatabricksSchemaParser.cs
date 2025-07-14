@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         /// <param name="schemaBytes">The serialized Arrow schema bytes</param>
         /// <returns>The parsed Arrow Schema</returns>
-        public override Schema? ParseArrowSchema(byte[] schemaBytes)
+        public Schema? ParseArrowSchema(byte[] schemaBytes)
         {
             if (schemaBytes == null || schemaBytes.Length == 0)
                 return null;
