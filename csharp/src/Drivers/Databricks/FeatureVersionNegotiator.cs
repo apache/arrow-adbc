@@ -81,16 +81,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /**
         * V5 introduced the following features:
         * - ArrowNativeTypes (used to prompt server to send arrow-native types)
-        * - ArrowMetadata (field is not used)
+        * - ArrowMetadata (used to determine advanced arrow types in metadata response schema)
         */
-
-        /// <summary>
-        /// Gets whether Arrow native types are supported.
-        /// </summary>
-        /// <param name="protocolVersion">The current protocol version.</param>
-        /// <returns>True if Arrow native types are supported; otherwise, false.</returns>
-        public static bool SupportsArrowNativeTypes(TProtocolVersion protocolVersion) =>
-            SupportsProtocolVersion(protocolVersion, TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V5);
 
         #endregion
 

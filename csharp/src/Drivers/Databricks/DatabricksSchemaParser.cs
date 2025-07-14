@@ -27,13 +27,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksSchemaParser : SchemaParser
     {
-        private readonly bool _useArrowNativeTypes;
-
-        public DatabricksSchemaParser(bool useArrowNativeTypes = true)
-        {
-            _useArrowNativeTypes = useArrowNativeTypes;
-        }
-
         /// <summary>
         /// Parses an Arrow schema from serialized schema bytes
         /// </summary>

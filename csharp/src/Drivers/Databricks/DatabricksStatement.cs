@@ -41,7 +41,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long maxBytesPerFile;
         private bool enableMultipleCatalogSupport;
         private bool enablePKFK;
-        private bool useArrowNativeTypes;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -63,7 +62,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             maxBytesPerFile = connection.MaxBytesPerFile;
             enableMultipleCatalogSupport = connection.EnableMultipleCatalogSupport;
             enablePKFK = connection.EnablePKFK;
-            useArrowNativeTypes = connection.UseArrowNativeTypes;
         }
 
         /// <summary>
@@ -101,21 +99,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.ConfOverlay = SparkConnection.timestampConfig;
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            // Set UseArrowNativeTypes based on protocol version
-            if (useArrowNativeTypes)
+            statement.UseArrowNativeTypes = new TSparkArrowTypes
             {
-                statement.UseArrowNativeTypes = new TSparkArrowTypes
-                {
-                    TimestampAsArrow = true,
-                    DecimalAsArrow = true,
+                TimestampAsArrow = true,
+                DecimalAsArrow = true,
 
-                    // set to false so they return as string
-                    // otherwise, they return as ARRAY_TYPE but you can't determine
-                    // the object type of the items in the array
-                    ComplexTypesAsArrow = false,
-                    IntervalTypesAsArrow = false,
-                };
-            }
+                // set to false so they return as string
+                // otherwise, they return as ARRAY_TYPE but you can't determine
+                // the object type of the items in the array
+                ComplexTypesAsArrow = false,
+                IntervalTypesAsArrow = false,
+            };
 
             // Set CloudFetch capabilities
             statement.CanDownloadResult = useCloudFetch;
