@@ -18,7 +18,7 @@
 use std::error::Error;
 
 /// Build and link the Go driver statically.
-#[cfg(feature = "bundled")]
+#[cfg(all(not(target_os = "windows"), feature = "bundled"))]
 fn bundled() -> Result<(), Box<dyn Error>> {
     use std::{env, path::PathBuf, process::Command};
 
@@ -86,7 +86,7 @@ fn linked() -> Result<(), Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Bundle the Go driver.
-    #[cfg(feature = "bundled")]
+    #[cfg(all(not(target_os = "windows"), feature = "bundled"))]
     bundled()?;
 
     // Link the Go driver.
