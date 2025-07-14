@@ -25,24 +25,24 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         private const string bigQueryKeyPrefix = "adbc.bigquery.tracing.";
         private const string bigQueryParameterKeyValueSuffix = ".value";
 
-        public static Activity AddBigQueryTag(this Activity activity, string key, object? value)
+        public static ActivityWithPii AddBigQueryTag(this ActivityWithPii activity, string key, object? value, bool isPii = true)
         {
             string bigQueryKey = bigQueryKeyPrefix + key;
-            return activity.AddTag(bigQueryKey, value);
+            return activity.AddTag(bigQueryKey, value, isPii);
         }
 
-        public static Activity AddConditionalBigQueryTag(this Activity activity, string key, string? value, bool condition)
+        public static ActivityWithPii AddConditionalBigQueryTag(this ActivityWithPii activity, string key, string? value, bool condition, bool isPii = true)
         {
             string bigQueryKey = bigQueryKeyPrefix + key;
-            return activity.AddConditionalTag(key, value, condition)!;
+            return activity.AddConditionalTag(key, value, condition, isPii)!;
         }
 
-        public static Activity AddBigQueryParameterTag(this Activity activity, string parameterName, object? value)
+        public static ActivityWithPii AddBigQueryParameterTag(this ActivityWithPii activity, string parameterName, object? value, bool isPii = true)
         {
             if (BigQueryParameters.IsSafeToLog(parameterName))
             {
                 string bigQueryParameterValueKey = parameterName + bigQueryParameterKeyValueSuffix;
-                return activity.AddTag(bigQueryParameterValueKey, value);
+                return activity.AddTag(bigQueryParameterValueKey, value, isPii);
             }
 
             return activity;

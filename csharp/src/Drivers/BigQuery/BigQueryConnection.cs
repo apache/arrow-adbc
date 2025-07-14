@@ -125,7 +125,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                     else
                     {
-                        activity?.AddBigQueryParameterTag(BigQueryParameters.ProjectId, projectId);
+                        activity?.AddBigQueryParameterTag(BigQueryParameters.ProjectId, projectId, isPii: false);
                     }
 
                     // in some situations, the publicProjectId gets passed and causes an error when we try to create a query job:
@@ -136,14 +136,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     if (projectId.Equals(BigQueryConstants.PublicProjectId, StringComparison.OrdinalIgnoreCase))
                     {
                         projectId = BigQueryConstants.DetectProjectId;
-                        activity?.AddBigQueryTag("change_public_projectId_to_detect_project_id", projectId);
+                        activity?.AddBigQueryTag("change_public_projectId_to_detect_project_id", projectId, isPii: false);
                     }
                 }
 
                 // the billing project can be null if it's not specified
                 if (this.properties.TryGetValue(BigQueryParameters.BillingProjectId, out billingProjectId))
                 {
-                    activity?.AddBigQueryParameterTag((BigQueryParameters.BillingProjectId), billingProjectId);
+                    activity?.AddBigQueryParameterTag((BigQueryParameters.BillingProjectId), billingProjectId, isPii: false);
                 }
 
                 if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectId, out string? result))
@@ -151,7 +151,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     if (!string.IsNullOrEmpty(result))
                     {
                         this.includePublicProjectIds = Convert.ToBoolean(result);
-                        activity?.AddBigQueryParameterTag(BigQueryParameters.IncludePublicProjectId, this.includePublicProjectIds);
+                        activity?.AddBigQueryParameterTag(BigQueryParameters.IncludePublicProjectId, this.includePublicProjectIds, isPii: false);
                     }
                 }
 
@@ -159,7 +159,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     int.TryParse(timeoutSeconds, out int seconds))
                 {
                     clientTimeout = TimeSpan.FromSeconds(seconds);
-                    activity?.AddBigQueryParameterTag(BigQueryParameters.ClientTimeout, seconds);
+                    activity?.AddBigQueryParameterTag(BigQueryParameters.ClientTimeout, seconds, isPii: false);
                 }
 
                 SetCredential();
@@ -180,7 +180,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 Client = client;
                 return client;
-            });
+            }, exceptionIsPii: false);
         }
 
         internal void SetCredential()
@@ -214,7 +214,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                     else
                     {
-                        activity?.AddBigQueryParameterTag((BigQueryParameters.AuthenticationType), authenticationType);
+                        activity?.AddBigQueryParameterTag((BigQueryParameters.AuthenticationType), authenticationType, isPii: false);
                     }
                 }
 
@@ -417,7 +417,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 StandardSchemas.GetInfoSchema.Validate(dataArrays);
 
                 return new BigQueryInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
-            });
+            }, exceptionIsPii: false);
         }
 
         public override IArrowArrayStream GetObjects(
@@ -451,7 +451,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// </summary>
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
-        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
+        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, ActivityWithPii? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
 
         /// <summary>
         /// Executes the query using the BigQueryClient.

@@ -431,7 +431,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return req;
         }
 
-        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
+        protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, ActivityWithPii? activity = default)
         {
             await base.HandleOpenSessionResponse(session, activity);
             if (session != null)

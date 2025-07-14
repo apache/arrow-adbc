@@ -206,7 +206,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 finally
                 {
-                    activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1);
+                    activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1, isPii: false);
                 }
             });
         }
@@ -299,12 +299,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new InvalidOperationException("Invalid session");
                 }
 
-                activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
+                activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N", isPii: false);
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
                 SetStatementProperties(executeRequest);
                 TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
                 HiveServer2Connection.HandleThriftResponse(executeResponse.Status, activity);
-                activity?.AddTag(SemanticConventions.Db.Response.OperationId, executeResponse.OperationHandle.OperationId.Guid, "N");
+                activity?.AddTag(SemanticConventions.Db.Response.OperationId, executeResponse.OperationHandle.OperationId.Guid, "N", isPii: false);
 
                 OperationHandle = executeResponse.OperationHandle;
 
@@ -380,7 +380,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
                 {
                     CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                    activity?.AddTag(SemanticConventions.Db.Operation.OperationId, OperationHandle.OperationId.Guid, "N");
+                    activity?.AddTag(SemanticConventions.Db.Operation.OperationId, OperationHandle.OperationId.Guid, "N", isPii: false);
                     TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
                     TCloseOperationResp resp = Connection.Client.CloseOperation(request, cancellationToken).Result;
                     HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
@@ -388,7 +388,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
 
                 base.Dispose();
-            });
+            }, exceptionIsPii: false);
         }
 
         protected void ValidateOptions(IReadOnlyDictionary<string, string> properties)
