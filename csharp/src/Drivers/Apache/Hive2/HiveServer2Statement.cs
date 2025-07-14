@@ -66,6 +66,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             statement.QueryTimeout = QueryTimeoutSeconds;
         }
 
+        /// <summary>
+        /// Gets the schema from metadata response. Base implementation uses traditional Thrift schema.
+        /// Subclasses can override to support Arrow schema parsing.
+        /// </summary>
+        /// <param name="metadata">The metadata response containing schema information</param>
+        /// <returns>The Arrow schema</returns>
+        protected virtual Schema GetSchemaFromMetadata(TGetResultSetMetadataResp metadata)
+        {
+            return Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+        }
+
         public override QueryResult ExecuteQuery()
         {
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
@@ -132,8 +143,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
                     metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
                 }
-                // Store metadata for use in readers
-                Schema schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+                Schema schema = GetSchemaFromMetadata(metadata);
                 return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
             });
         }

@@ -16,10 +16,12 @@
 */
 
 using System;
+using System.IO;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
+using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -30,6 +32,28 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public DatabricksSchemaParser(bool useArrowNativeTypes = true)
         {
             _useArrowNativeTypes = useArrowNativeTypes;
+        }
+
+        /// <summary>
+        /// Parses an Arrow schema from serialized schema bytes
+        /// </summary>
+        /// <param name="schemaBytes">The serialized Arrow schema bytes</param>
+        /// <returns>The parsed Arrow Schema</returns>
+        public override Schema? ParseArrowSchema(byte[] schemaBytes)
+        {
+            if (schemaBytes == null || schemaBytes.Length == 0)
+                return null;
+
+            try
+            {
+                using var stream = new MemoryStream(schemaBytes);
+                using var reader = new ArrowFileReader(stream);
+                return reader.Schema;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to parse Arrow schema", ex);
+            }
         }
 
         public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, DataTypeConversion dataTypeConversion)

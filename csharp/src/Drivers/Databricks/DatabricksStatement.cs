@@ -66,6 +66,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             useArrowNativeTypes = connection.UseArrowNativeTypes;
         }
 
+        /// <summary>
+        /// Gets the schema from metadata response. Handles both Arrow schema (Protocol V5+) and traditional Thrift schema.
+        /// </summary>
+        /// <param name="metadata">The metadata response containing schema information</param>
+        /// <returns>The Arrow schema</returns>
+        protected override Schema GetSchemaFromMetadata(TGetResultSetMetadataResp metadata)
+        {
+            // For Protocol V5+, prefer Arrow schema if available
+            if (metadata.__isset.arrowSchema)
+            {
+                Schema? arrowSchema = ((DatabricksSchemaParser)Connection.SchemaParser).ParseArrowSchema(metadata.ArrowSchema);
+                if (arrowSchema != null)
+                {
+                    return arrowSchema;
+                }
+            }
+
+            // Fallback to traditional Thrift schema
+            return Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+        }
+
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
             base.SetStatementProperties(statement);
