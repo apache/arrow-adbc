@@ -82,12 +82,20 @@ type OTelTracing interface {
 	GetInitialSpanAttributes() []attribute.KeyValue
 }
 
-// IngestStreamOption bundles the most-common IngestStream settings.
-// Any other ADBC options can go into Extra.
+// IngestStreamOption bundles the IngestStream options.
+// Driver specific options can go into Extra.
 type IngestStreamOption struct {
-	TargetTable string            // required
-	IngestMode  string            // required, e.g. adbc.OptionValueIngestModeCreateAppend, or OptionValueIngestModeReplace
-	Extra       map[string]string // any other stmt.SetOption(...) args
+	// Optional catalog/catalogue name
+	Catalog string
+
+	// Optional database schema (namespace)
+	DBSchema string
+
+	// If true, ingest into a temporary table
+	Temporary bool
+
+	// Driver-specific options
+	Extra map[string]string
 }
 
 // IngestStream is a helper for executing a bulk ingestion. This is a wrapper around
@@ -95,40 +103,58 @@ type IngestStreamOption struct {
 // Execute, and Close.
 //
 // This is not part of the ADBC API specification.
-func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReader, opt IngestStreamOption) (int64, error) {
-	// 1) Create a new statement
+func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReader, targetTable, ingestMode string, opt IngestStreamOption) (int64, error) {
+	// Create a new statement
 	stmt, err := cnxn.NewStatement()
 	if err != nil {
-		return -1, fmt.Errorf("IngestStream: NewStatement: %w", err)
+		return -1, fmt.Errorf("error during ingestion: NewStatement: %w", err)
 	}
 	defer func() {
 		err = errors.Join(err, stmt.Close())
 	}()
 
-	// 2) Bind the record batch stream
+	// Bind the record batch stream
 	if err = stmt.BindStream(ctx, reader); err != nil {
-		return -1, fmt.Errorf("IngestStream: BindStream: %w", err)
+		return -1, fmt.Errorf("error during ingestion: BindStream: %w", err)
 	}
 
 	// Set required options
-	if err := stmt.SetOption(OptionKeyIngestTargetTable, opt.TargetTable); err != nil {
-		return 0, fmt.Errorf("IngestStream: SetOption(target_table=%s): %w", opt.TargetTable, err)
+	if err = stmt.SetOption(OptionKeyIngestTargetTable, targetTable); err != nil {
+		return 0, fmt.Errorf("error during ingestion: SetOption(target_table=%s): %w", targetTable, err)
 	}
-	if err := stmt.SetOption(OptionKeyIngestMode, opt.IngestMode); err != nil {
-		return 0, fmt.Errorf("IngestStream: SetOption(mode=%s): %w", opt.IngestMode, err)
+	if err = stmt.SetOption(OptionKeyIngestMode, ingestMode); err != nil {
+		return 0, fmt.Errorf("error during ingestion: SetOption(mode=%s): %w", ingestMode, err)
 	}
 
-	// Set any extras
-	for k, v := range opt.Extra {
-		if err := stmt.SetOption(k, v); err != nil {
-			return 0, fmt.Errorf("IngestStream: SetOption(%s=%s): %w", k, v, err)
+	// Set other options if provided
+	if opt.Catalog != "" {
+		if err = stmt.SetOption(OptionValueIngestTargetCatalog, opt.Catalog); err != nil {
+			return 0, fmt.Errorf("error during ingestion: target_catalog=%s: %w", opt.Catalog, err)
+		}
+	}
+	if opt.DBSchema != "" {
+		if err = stmt.SetOption(OptionValueIngestTargetDBSchema, opt.DBSchema); err != nil {
+			return 0, fmt.Errorf("error during ingestion: target_db_schema=%s: %w", opt.DBSchema, err)
+		}
+	}
+	if opt.Temporary {
+		if err = stmt.SetOption(OptionValueIngestTemporary, OptionValueEnabled); err != nil {
+			return 0, fmt.Errorf("error during ingestion: temporary=true: %w", err)
 		}
 	}
 
-	// 4) Execute the update
-	count, err := stmt.ExecuteUpdate(ctx)
+	// Set driver specific options
+	for k, v := range opt.Extra {
+		if err = stmt.SetOption(k, v); err != nil {
+			return 0, fmt.Errorf("error during ingestion: SetOption(%s=%s): %w", k, v, err)
+		}
+	}
+
+	// Execute the update
+	var count int64
+	count, err = stmt.ExecuteUpdate(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("IngestStream: ExecuteUpdate: %w", err)
+		return 0, fmt.Errorf("error during ingestion: ExecuteUpdate: %w", err)
 	}
 
 	return count, nil
