@@ -21,6 +21,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
@@ -36,6 +37,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal class DatabricksStatement : SparkStatement, IHiveServer2Statement
     {
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksStatement));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksStatement));
+
         private bool useCloudFetch;
         private bool canDecompressLz4;
         private long maxBytesPerFile;
@@ -566,6 +570,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
             return CreateExtendedColumnsResult(columnMetadataSchema,result);
         }
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
 
         /// <summary>
         /// Creates the schema for the column metadata result set.

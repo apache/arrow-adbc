@@ -16,11 +16,8 @@
 */
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Apache.Arrow;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -29,6 +26,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal abstract class BaseDatabricksReader : TracingReader
     {
+        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(BaseDatabricksReader));
+        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(BaseDatabricksReader));
+
         protected DatabricksStatement statement;
         protected readonly Schema schema;
         protected readonly bool isLz4Compressed;
@@ -93,5 +93,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 throw new ObjectDisposedException(GetType().Name);
             }
         }
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }
