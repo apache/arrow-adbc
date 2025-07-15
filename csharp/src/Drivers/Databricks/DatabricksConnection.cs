@@ -42,6 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
         private bool _enablePKFK = true;
+        private bool _runAsyncInThrift = false;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
@@ -163,6 +164,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     throw new ArgumentException($"Parameter '{DatabricksParameters.UseDescTableExtended}' value '{useDescTableExtendedStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
+
+            if (Properties.TryGetValue(DatabricksParameters.EnableRunAsyncInThriftOp, out string? enableRunAsyncInThriftStr))
+            {
+                if (bool.TryParse(enableRunAsyncInThriftStr, out bool enableRunAsyncInThrift))
+                {
+                    _runAsyncInThrift = enableRunAsyncInThrift;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableRunAsyncInThriftOp}' value '{enableRunAsyncInThriftStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
 
             if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr))
             {
@@ -288,6 +302,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets whether PK/FK metadata call is enabled
         /// </summary>
         public bool EnablePKFK => _enablePKFK;
+
+        /// <summary>
+        /// Enable RunAsync flag in Thrift Operation
+        /// </summary>
+        public bool RunAsyncInThrift => _runAsyncInThrift;
 
         /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.

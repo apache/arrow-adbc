@@ -41,6 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long maxBytesPerFile;
         private bool enableMultipleCatalogSupport;
         private bool enablePKFK;
+        private bool runAsyncInThrift;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -62,6 +63,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             maxBytesPerFile = connection.MaxBytesPerFile;
             enableMultipleCatalogSupport = connection.EnableMultipleCatalogSupport;
             enablePKFK = connection.EnablePKFK;
+
+            runAsyncInThrift = connection.RunAsyncInThrift;
         }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
@@ -72,6 +75,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.CanDownloadResult = useCloudFetch;
             statement.CanDecompressLZ4Result = canDecompressLz4;
             statement.MaxBytesPerFile = maxBytesPerFile;
+
+            statement.RunAsync = runAsyncInThrift;
 
             if (Connection.AreResultsAvailableDirectly)
             {
