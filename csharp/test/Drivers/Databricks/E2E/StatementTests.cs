@@ -1345,7 +1345,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 var stringValue = col0.GetString(0);
                 Assert.NotNull(stringValue);
                 Assert.Equal(expectedValueString, stringValue);
-                
+
                 OutputHelper?.WriteLine($"Decimal as string value: '{stringValue}'");
             }
             else
