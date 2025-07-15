@@ -48,3 +48,7 @@ fn main() {
     print_batches(&batches).unwrap();
 }
 ```
+
+## FFI
+
+Build with the `ffi` feature to export this driver as a C driver.
