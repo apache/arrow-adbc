@@ -21,7 +21,7 @@ package drivermgr
 // #cgo windows CFLAGS: -DADBC_EXPORTING
 // #cgo windows CPPFLAGS: -DADBC_EXPORTING
 // #cgo windows LDFLAGS: -lshell32 -ladvapi32 -luuid
-// #cgo CXXFLAGS: -std=c++17 -I${SRCDIR}/../../../c/vendor/
+// #cgo CXXFLAGS: -std=c++17 -I${SRCDIR}/vendored/
 // #if !defined(ADBC_EXPORTING)
 // #define ADBC_EXPORTING
 // #endif

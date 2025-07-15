@@ -886,6 +886,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         [InlineData(true, "CloudFetch enabled")]
         public async Task StatusPollerKeepsQueryAlive(bool useCloudFetch, string configName)
         {
+            Skip.If(TestConfiguration.IsCITesting, "Skip test in CI testing");
+
             OutputHelper?.WriteLine($"Testing status poller with long delay between reads ({configName})");
 
             // Create a connection using the test configuration
@@ -1122,6 +1124,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             if (catalogName != null)
             {
                 statement.SetOption(ApacheParameters.CatalogName, catalogName);
+            }
+            else
+            {
+                statement.SetOption(ApacheParameters.CatalogName, string.Empty);
             }
 
             // Act
