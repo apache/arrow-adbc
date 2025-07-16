@@ -194,11 +194,11 @@ namespace Apache.Arrow.Adbc.Tracing
         }
 
         private static object? MaybeToRedactedValue(object? value, bool isPii) =>
-            (value is RedactedValue redactedValue)
-                ? redactedValue
-                : (isPii && value != null)
-                    ? new RedactedValue(value, isPii)
-                    : value;
+            (!isPii || value == null)
+                ? value
+                : (value is RedactedValue redactedValue)
+                    ? redactedValue
+                    : new RedactedValue(value, isPii: true);
 
         private static ActivityTagsCollection? ToActivityTagsCollection(IReadOnlyList<KeyValuePair<string, object?>>? tags, bool isPii)
         {
