@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             this.schema = schema;
             this.isLz4Compressed = isLz4Compressed;
             this.statement = statement;
-            if (statement.DirectResults != null && !statement.DirectResults.ResultSet.HasMoreRows)
+            if (statement.DirectResults?.ResultSet != null && !statement.DirectResults.ResultSet.HasMoreRows)
             {
                 return;
             }
