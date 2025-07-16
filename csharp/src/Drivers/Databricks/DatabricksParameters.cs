@@ -180,7 +180,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         public const string UseDescTableExtended = "adbc.databricks.use_desc_table_extended";
 
-
         /// <summary>
         /// Whether to enable RunAsync flag in Thrift operation
         /// Default value is false if not specified.
