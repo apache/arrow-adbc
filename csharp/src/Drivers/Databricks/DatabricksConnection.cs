@@ -177,7 +177,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
-
             if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr))
             {
                 if (!long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
