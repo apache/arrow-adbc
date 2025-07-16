@@ -55,7 +55,7 @@ Implementation Status
      - C#
      - Experimental
 
-   * - BigQuery (Go)
+   * - `BigQuery (Go) <bigquery.html>`_
      - C/C++
      - Go
      - Experimental
@@ -158,6 +158,11 @@ Update Queries
      - SQL
      - Substrait
 
+   * - BigQuery (Go)
+     - Y
+     - Y
+     - N/A
+
    * - Flight SQL (Go)
      - Y
      - Y
@@ -193,6 +198,14 @@ Update Queries
      - Prepared Statements
      - Select Queries
      - Update Queries
+
+   * - BigQuery (Go)
+     - N/A
+     - N/A
+     - Y
+     - Y
+     - Y
+     - Y
 
    * - Flight SQL (Go)
      - Y
@@ -247,6 +260,11 @@ Update Queries
      - Bulk Ingestion
      - Database Metadata (catalogs, etc.)
      - Transactions
+
+   * - BigQuery (Go)
+     - Y
+     - Y
+     - N
 
    * - Flight SQL (Go)
      - N
