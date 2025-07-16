@@ -28,8 +28,6 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -38,6 +36,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksConnection : SparkHttpConnection
     {
+        internal static new readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksConnection));
+        internal static new readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksConnection));
+
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
@@ -647,6 +648,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 base.ValidateOAuthParameters();
             }
         }
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
 
         internal static string? HandleSparkCatalog(string? CatalogName)
         {

@@ -37,12 +37,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal sealed class DatabricksCompositeReader : TracingReader
     {
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksCompositeReader));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksCompositeReader));
+        public override string AssemblyName => DatabricksConnection.s_assemblyName;
 
-        public override string AssemblyName => s_assemblyName;
-
-        public override string AssemblyVersion => s_assemblyVersion;
+        public override string AssemblyVersion => DatabricksConnection.s_assemblyVersion;
 
         public override Schema Schema { get { return _schema; } }
 

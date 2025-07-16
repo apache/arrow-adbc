@@ -37,8 +37,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     internal class ImpalaHttpConnection : ImpalaConnection
     {
         private const string BasicAuthenticationScheme = "Basic";
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(ImpalaHttpConnection));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(ImpalaHttpConnection));
 
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 

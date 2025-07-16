@@ -21,6 +21,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
@@ -566,6 +567,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
             return CreateExtendedColumnsResult(columnMetadataSchema,result);
         }
+
+        public override string AssemblyName => DatabricksConnection.s_assemblyName;
+
+        public override string AssemblyVersion => DatabricksConnection.s_assemblyVersion;
 
         /// <summary>
         /// Creates the schema for the column metadata result set.

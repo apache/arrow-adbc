@@ -16,11 +16,8 @@
 */
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Apache.Arrow;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -93,5 +90,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 throw new ObjectDisposedException(GetType().Name);
             }
         }
+
+        public override string AssemblyName => DatabricksConnection.s_assemblyName;
+
+        public override string AssemblyVersion => DatabricksConnection.s_assemblyVersion;
     }
 }
