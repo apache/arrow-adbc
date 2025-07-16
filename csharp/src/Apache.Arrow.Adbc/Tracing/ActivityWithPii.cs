@@ -23,6 +23,14 @@ using System.Text;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
+    /// <summary>
+    /// ActivityWithPii is a wrapper to the <see cref="Activity "/> which represents operation with
+    /// context to be used for logging.
+    ///
+    /// By default, all values added the ActivityWithPii are considered to be PII (Personally Identifiable Information).
+    ///
+    /// To indicate that a value is not PII, you can use the `isPii` parameter in methods.
+    /// </summary>
     public sealed class ActivityWithPii : IDisposable
     {
         private readonly Activity _activity;
@@ -30,21 +38,6 @@ namespace Apache.Arrow.Adbc.Tracing
         internal ActivityWithPii(Activity activity)
         {
             _activity = activity;
-        }
-
-        /// <summary>
-        /// Update the Activity to have baggage with an additional 'key' and value 'value'.
-        /// This shows up in the <see cref="Baggage"/> enumeration as well as the <see cref="GetBaggageItem(string)"/>
-        /// method.
-        /// Baggage is meant for information that is needed for runtime control.   For information
-        /// that is simply useful to show up in the log with the activity use <see cref="Tags"/>.
-        /// Returns 'this' for convenient chaining.
-        /// </summary>
-        /// <returns><see langword="this" /> for convenient chaining.</returns>
-        public ActivityWithPii AddBaggage(string key, RedactedValue value)
-        {
-            _activity.AddBaggage(key, value.ToString());
-            return this;
         }
 
         /// <summary>
@@ -57,21 +50,10 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Returns 'this' for convenient chaining.
         /// </summary>
         /// <returns><see langword="this" /> for convenient chaining.</returns>
-        public ActivityWithPii AddBaggage(string key, object? value, bool isPii = true)
+        public ActivityWithPii AddBaggage(string key, string? value, bool isPii = true)
         {
-            _activity.AddBaggage(key, ToRedactedValue(value, isPii).ToString());
-            return this;
-        }
-
-        /// <summary>
-        /// Add <see cref="ActivityEvent" /> object to the <see cref="Events" /> list.
-        /// </summary>
-        /// <param name="e"> object of <see cref="ActivityEvent"/> to add to the attached events list.</param>
-        /// <returns><see langword="this" /> for convenient chaining.</returns>
-        public ActivityWithPii AddEvent(string eventName, IReadOnlyList<KeyValuePair<string, RedactedValue?>>? tags)
-        {
-            ActivityTagsCollection? tagsCollection = ToActivityTagsCollection(tags);
-            _activity.AddEvent(new ActivityEvent(eventName, tags: tagsCollection));
+            object? obj = MaybeToRedactedValue(value, isPii);
+            _activity.AddBaggage(key, obj?.ToString());
             return this;
         }
 
@@ -139,20 +121,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="isPii">Indicates whether the value is PII (Personally Identifiable Information).</param>
         public ActivityWithPii AddTag(string key, object? value, bool isPii = true)
         {
-            _activity.AddTag(key, ToRedactedValue(value, isPii));
-            return this;
-        }
-
-        /// <summary>
-        /// Update the Activity to have a tag with an additional 'key' and value 'value'.
-        /// This shows up in the <see cref="TagObjects"/> enumeration. It is meant for information that
-        /// is useful to log but not needed for runtime control (for the latter, <see cref="Baggage"/>)
-        /// </summary>
-        /// <returns><see langword="this" /> for convenient chaining.</returns>
-        /// <param name="key">The tag key name</param>
-        /// <param name="value">The tag value mapped to the input key</param>
-        public ActivityWithPii AddTag(string key, RedactedValue value)
-        {
+            value = MaybeToRedactedValue(value, isPii);
             _activity.AddTag(key, value);
             return this;
         }
@@ -168,7 +137,8 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="isPii">Indicates whether the value is PII (Personally Identifiable Information).</param>
         public ActivityWithPii AddTag(string key, Func<object?> valueFn, bool isPii = true)
         {
-            _activity.AddTag(key, ToRedactedValue(valueFn(), isPii));
+            object? value = MaybeToRedactedValue(valueFn(), isPii);
+            _activity.AddTag(key, value);
             return this;
         }
 
@@ -192,25 +162,6 @@ namespace Apache.Arrow.Adbc.Tracing
                 return AddTag(key, new Guid(value).ToString(guidFormat), isPii);
             }
             return AddTag(key, ToHexString(value), isPii);
-        }
-
-        /// <summary>
-        /// Update the Activity to have a tag with an additional 'key' and value 'value'.
-        /// This shows up in the <see cref="TagObjects"/> enumeration. It is meant for information that
-        /// is useful to log but not needed for runtime control (for the latter, <see cref="Baggage"/>)
-        /// </summary>
-        /// <returns><see langword="this" /> for convenient chaining.</returns>
-        /// <param name="key">The tag key name as a function</param>
-        /// <param name="value">The tag value mapped to the input key</param>
-        /// /// <param name="condition">The condition to check before adding the tag</param>
-        public ActivityWithPii AddConditionalTag(string key, string? value, bool condition, bool isPii = true)
-        {
-            if (condition)
-            {
-                return AddTag(key, value, isPii);
-            }
-
-            return this;
         }
 
         /// <summary>
@@ -242,21 +193,18 @@ namespace Apache.Arrow.Adbc.Tracing
             _activity.Dispose();
         }
 
-        private static RedactedValue ToRedactedValue(object? value, bool isPii) =>
-            value is RedactedValue redactedValue ? redactedValue : new RedactedValue(value);
+        private static object? MaybeToRedactedValue(object? value, bool isPii) =>
+            (value is RedactedValue redactedValue)
+                ? redactedValue
+                : (isPii && value != null)
+                    ? new RedactedValue(value, isPii)
+                    : value;
 
         private static ActivityTagsCollection? ToActivityTagsCollection(IReadOnlyList<KeyValuePair<string, object?>>? tags, bool isPii)
         {
-
             IEnumerable<KeyValuePair<string, object?>>? tagsCopy = isPii
-                ? (tags?.Select(x => new KeyValuePair<string, object?>(x.Key, ToRedactedValue(x.Value, isPii))))
+                ? (tags?.Select(x => new KeyValuePair<string, object?>(x.Key, MaybeToRedactedValue(x.Value, isPii))))
                 : (tags?.ToList());
-            return tagsCopy == null ? null : [.. tagsCopy];
-        }
-
-        private static ActivityTagsCollection? ToActivityTagsCollection(IReadOnlyList<KeyValuePair<string, RedactedValue?>>? tags)
-        {
-            IEnumerable<KeyValuePair<string, object?>>? tagsCopy = tags?.Select(x => new KeyValuePair<string, object?>(x.Key, x.Value));
             return tagsCopy == null ? null : [.. tagsCopy];
         }
 

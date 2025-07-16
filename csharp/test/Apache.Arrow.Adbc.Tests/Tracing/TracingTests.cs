@@ -249,7 +249,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                     foreach (KeyValuePair<string, object?> tag in tags)
                     {
                         activity?.AddTag(tag.Key, tag.Value, isPii: false)
-                            .AddBaggage(tag.Key, tag.Value, isPii: false);
+                            .AddBaggage(tag.Key, tag.Value?.ToString(), isPii: false);
                     }
                     activity?.AddEvent(eventName, tags)
                         .AddLink(traceParent, tags);

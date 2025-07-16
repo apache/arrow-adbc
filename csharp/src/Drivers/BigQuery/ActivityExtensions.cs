@@ -31,12 +31,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return activity.AddTag(bigQueryKey, value, isPii);
         }
 
-        public static ActivityWithPii AddConditionalBigQueryTag(this ActivityWithPii activity, string key, string? value, bool condition, bool isPii = true)
-        {
-            string bigQueryKey = bigQueryKeyPrefix + key;
-            return activity.AddConditionalTag(key, value, condition, isPii)!;
-        }
-
         public static ActivityWithPii AddBigQueryParameterTag(this ActivityWithPii activity, string parameterName, object? value, bool isPii = true)
         {
             if (BigQueryParameters.IsSafeToLog(parameterName))
