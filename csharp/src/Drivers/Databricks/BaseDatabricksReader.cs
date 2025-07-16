@@ -26,9 +26,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal abstract class BaseDatabricksReader : TracingReader
     {
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(BaseDatabricksReader));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(BaseDatabricksReader));
-
         protected DatabricksStatement statement;
         protected readonly Schema schema;
         protected readonly bool isLz4Compressed;
@@ -94,8 +91,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
-        public override string AssemblyName => s_assemblyName;
+        public override string AssemblyName => DatabricksConnection.s_assemblyName;
 
-        public override string AssemblyVersion => s_assemblyVersion;
+        public override string AssemblyVersion => DatabricksConnection.s_assemblyVersion;
     }
 }

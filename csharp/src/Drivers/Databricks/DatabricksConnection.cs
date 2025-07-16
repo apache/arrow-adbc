@@ -36,8 +36,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksConnection : SparkHttpConnection
     {
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksConnection));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksConnection));
+        internal static new readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksConnection));
+        internal static new readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksConnection));
 
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;

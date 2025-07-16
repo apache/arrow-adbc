@@ -40,6 +40,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal const bool InfoVendorSql = true;
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
+        internal static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2HttpConnection));
+        internal static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2HttpConnection));
         private const int ConnectTimeoutMillisecondsDefault = 30000;
         private TTransport? _transport;
         private TCLIService.IAsync? _client;

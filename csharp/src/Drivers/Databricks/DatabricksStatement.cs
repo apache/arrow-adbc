@@ -37,9 +37,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal class DatabricksStatement : SparkStatement, IHiveServer2Statement
     {
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksStatement));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksStatement));
-
         private bool useCloudFetch;
         private bool canDecompressLz4;
         private long maxBytesPerFile;
@@ -571,9 +568,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return CreateExtendedColumnsResult(columnMetadataSchema,result);
         }
 
-        public override string AssemblyName => s_assemblyName;
+        public override string AssemblyName => DatabricksConnection.s_assemblyName;
 
-        public override string AssemblyVersion => s_assemblyVersion;
+        public override string AssemblyVersion => DatabricksConnection.s_assemblyVersion;
 
         /// <summary>
         /// Creates the schema for the column metadata result set.

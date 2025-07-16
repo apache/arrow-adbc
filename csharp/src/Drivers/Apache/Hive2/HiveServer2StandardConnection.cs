@@ -30,9 +30,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2StandardConnection : HiveServer2ExtendedConnection
     {
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2StandardConnection));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2StandardConnection));
-
         public HiveServer2StandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
