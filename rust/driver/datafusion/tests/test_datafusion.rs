@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#![cfg(feature = "ffi")]
+
 use adbc_core::driver_manager::{ManagedConnection, ManagedDriver};
 use adbc_core::{Connection, Database, Driver, Optionable, Statement};
 use arrow_array::RecordBatch;
