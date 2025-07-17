@@ -15,33 +15,24 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#![cfg(feature = "ffi")]
-
-use adbc_core::driver_manager::{ManagedConnection, ManagedDriver};
 use adbc_core::{Connection, Database, Driver, Optionable, Statement};
+use adbc_datafusion::{DataFusionConnection, DataFusionDriver};
 use arrow_array::RecordBatch;
 use datafusion::prelude::*;
 
-use adbc_core::options::{AdbcVersion, OptionConnection, OptionStatement, OptionValue};
+use adbc_core::options::{OptionConnection, OptionStatement, OptionValue};
 use arrow_select::concat::concat_batches;
 use datafusion_substrait::logical_plan::producer::to_substrait_plan;
 use datafusion_substrait::substrait::proto::Plan;
 use prost::Message;
 
-fn get_connection() -> ManagedConnection {
-    let mut driver = ManagedDriver::load_dynamic_from_name(
-        "adbc_datafusion",
-        Some(b"DataFusionDriverInit"),
-        AdbcVersion::V110,
-    )
-    .unwrap();
-
+fn get_connection() -> DataFusionConnection {
+    let mut driver = DataFusionDriver::default();
     let database = driver.new_database().unwrap();
-
     database.new_connection().unwrap()
 }
 
-fn get_objects(connection: &ManagedConnection) -> RecordBatch {
+fn get_objects(connection: &DataFusionConnection) -> RecordBatch {
     let objects = connection.get_objects(
         adbc_core::options::ObjectDepth::All,
         None,
@@ -58,13 +49,13 @@ fn get_objects(connection: &ManagedConnection) -> RecordBatch {
     concat_batches(&schema, &batches).unwrap()
 }
 
-fn execute_update(connection: &mut ManagedConnection, query: &str) {
+fn execute_update(connection: &mut DataFusionConnection, query: &str) {
     let mut statement = connection.new_statement().unwrap();
     let _ = statement.set_sql_query(query);
     let _ = statement.execute_update();
 }
 
-fn execute_sql_query(connection: &mut ManagedConnection, query: &str) -> RecordBatch {
+fn execute_sql_query(connection: &mut DataFusionConnection, query: &str) -> RecordBatch {
     let mut statement = connection.new_statement().unwrap();
     let _ = statement.set_sql_query(query);
 
@@ -75,7 +66,7 @@ fn execute_sql_query(connection: &mut ManagedConnection, query: &str) -> RecordB
     concat_batches(&schema, &batches).unwrap()
 }
 
-fn execute_substrait(connection: &mut ManagedConnection, plan: Plan) -> RecordBatch {
+fn execute_substrait(connection: &mut DataFusionConnection, plan: Plan) -> RecordBatch {
     let mut statement = connection.new_statement().unwrap();
 
     let _ = statement.set_substrait_plan(plan.encode_to_vec());
