@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#ifdef ADBC_REDSHIFT_FLAVOR
 #pragma once
 
 #include <memory>
@@ -75,3 +76,4 @@ class AwsAuthClient {
   std::unique_ptr<Impl> pimpl_;
 };
 }  // namespace adbcpq
+#endif
