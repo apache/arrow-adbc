@@ -19,17 +19,50 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <memory>
+#include <optional>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
+#include <postgresql/redshift_auth.h>
 
 #include "driver/framework/status.h"
 #include "postgres_type.h"
 
 namespace adbcpq {
 using adbc::driver::Status;
+
+struct ConnectionParams {
+  // Validate connection parameters and return error message if invalid
+  std::optional<std::string> Validate() const;
+
+  // Convert to PQconnectdbParams format including custom parameters
+  std::pair<std::vector<const char*>, std::vector<const char*>> BuildAllConnectionParams()
+      const;
+
+  // See: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+  std::string host;
+  std::string user;
+  std::optional<std::string> password;
+  std::string port = "5432";
+  std::string dbname;
+
+  // Optional parameters
+  std::string connect_timeout;
+  std::string application_name;
+  std::string sslmode;
+  std::string sslcert;
+  std::string sslkey;
+  std::string sslrootcert;
+
+  // Custom parameters
+  std::unordered_map<std::string, std::string> custom_params;
+  // Add more as needed
+};
 
 class PostgresDatabase {
  public:
@@ -82,6 +115,10 @@ class PostgresDatabase {
  private:
   int32_t open_connections_;
   std::string uri_;
+  ConnectionParams params_;
+#ifdef ADBC_REDSHIFT_FLAVOR
+  AwsAuthOptions aws_opts;
+#endif
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::array<int, 3> postgres_server_version_{};
   std::array<int, 3> redshift_server_version_{};

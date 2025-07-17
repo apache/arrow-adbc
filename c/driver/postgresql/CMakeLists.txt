@@ -26,11 +26,24 @@ else()
   pkg_check_modules(LIBPQ REQUIRED libpq)
 endif()
 
-add_arrow_lib(adbc_driver_postgresql
+# The Redshift driver requires the AWS SDK
+if(ADBC_REDSHIFT_FLAVOR)
+  find_package(AWSSDK CONFIG COMPONENTS core sts redshift REQUIRED)
+endif()
+
+# Set library name based on flavor
+if(ADBC_REDSHIFT_FLAVOR)
+  set(DRIVER_LIB_NAME adbc_driver_redshift)
+else()
+  set(DRIVER_LIB_NAME adbc_driver_postgresql)
+endif()
+
+add_arrow_lib(${DRIVER_LIB_NAME}
               SOURCES
               connection.cc
               error.cc
               database.cc
+              redshift_auth.cc
               postgresql.cc
               result_helper.cc
               result_reader.cc
@@ -58,12 +71,19 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_include_directories(${LIB_TARGET} SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
+
+  if(ADBC_REDSHIFT_FLAVOR)
+    target_compile_definitions(${LIB_TARGET} PUBLIC ADBC_REDSHIFT_FLAVOR)
+    target_include_directories(${LIB_TARGET} SYSTEM
+                               PRIVATE ${AWSSDK_INCLUDE_DIRS})
+    target_link_libraries(${LIB_TARGET} PRIVATE ${AWSSDK_LIBRARIES})
+  endif()
 endforeach()
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")
-  set(TEST_LINK_LIBS adbc_driver_postgresql_shared)
+  set(TEST_LINK_LIBS ${DRIVER_LIB_NAME}_shared)
 else()
-  set(TEST_LINK_LIBS adbc_driver_postgresql_static)
+  set(TEST_LINK_LIBS ${DRIVER_LIB_NAME}_static)
 endif()
 
 if(ADBC_BUILD_TESTS)
@@ -83,6 +103,11 @@ if(ADBC_BUILD_TESTS)
   target_include_directories(adbc-driver-postgresql-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
+  if(ADBC_REDSHIFT_FLAVOR)
+    target_include_directories(adbc-driver-postgresql-test SYSTEM
+                               PRIVATE ${AWSSDK_INCLUDE_DIRS})
+    target_link_libraries(adbc-driver-postgresql-test PRIVATE ${AWSSDK_LIBRARIES})
+  endif()
   adbc_configure_target(adbc-driver-postgresql-test)
 
   add_test_case(driver_postgresql_copy_test
@@ -101,6 +126,11 @@ if(ADBC_BUILD_TESTS)
   target_include_directories(adbc-driver-postgresql-copy-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
+  if(ADBC_REDSHIFT_FLAVOR)
+    target_include_directories(adbc-driver-postgresql-copy-test SYSTEM
+                               PRIVATE ${AWSSDK_INCLUDE_DIRS})
+    target_link_libraries(adbc-driver-postgresql-copy-test PRIVATE ${AWSSDK_LIBRARIES})
+  endif()
   adbc_configure_target(adbc-driver-postgresql-copy-test)
 endif()
 
