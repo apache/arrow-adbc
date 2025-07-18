@@ -28,8 +28,6 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -38,10 +36,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksConnection : SparkHttpConnection
     {
+        internal static new readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksConnection));
+        internal static new readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksConnection));
+
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
         private bool _enablePKFK = true;
+        private bool _runAsyncInThrift = false;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
@@ -161,6 +163,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 else
                 {
                     throw new ArgumentException($"Parameter '{DatabricksParameters.UseDescTableExtended}' value '{useDescTableExtendedStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.EnableRunAsyncInThriftOp, out string? enableRunAsyncInThriftStr))
+            {
+                if (bool.TryParse(enableRunAsyncInThriftStr, out bool enableRunAsyncInThrift))
+                {
+                    _runAsyncInThrift = enableRunAsyncInThrift;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableRunAsyncInThriftOp}' value '{enableRunAsyncInThriftStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
 
@@ -288,6 +302,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets whether PK/FK metadata call is enabled
         /// </summary>
         public bool EnablePKFK => _enablePKFK;
+
+        /// <summary>
+        /// Enable RunAsync flag in Thrift Operation
+        /// </summary>
+        public bool RunAsyncInThrift => _runAsyncInThrift;
 
         /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
@@ -647,6 +666,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 base.ValidateOAuthParameters();
             }
         }
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
 
         internal static string? HandleSparkCatalog(string? CatalogName)
         {

@@ -181,6 +181,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const string UseDescTableExtended = "adbc.databricks.use_desc_table_extended";
 
         /// <summary>
+        /// Whether to enable RunAsync flag in Thrift operation
+        /// Default value is false if not specified.
+        /// </summary>
+        public const string EnableRunAsyncInThriftOp = "adbc.databricks.enable_run_async_thrift";
+
+        /// <summary>
         /// Whether to propagate trace parent headers in HTTP requests.
         /// Default value is true if not specified.
         /// When enabled, the driver will add W3C Trace Context headers to all HTTP requests.

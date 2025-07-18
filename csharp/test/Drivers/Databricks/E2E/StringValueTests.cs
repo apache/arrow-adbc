@@ -62,7 +62,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         [SkippableTheory]
-        [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "DELTA_EXCEED_CHAR_VARCHAR_LIMIT", "DeltaInvariantViolationException" }, "22001")]
+        [InlineData("String whose length is too long for VARCHAR(10).", new string[] { "DELTA_EXCEED_CHAR_VARCHAR_LIMIT" }, "22001")]
         public async Task TestVarcharExceptionDataDatabricks(string value, string[] expectedTexts, string? expectedSqlState)
         {
             await base.TestVarcharExceptionData(value, expectedTexts, expectedSqlState);
