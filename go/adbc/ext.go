@@ -120,33 +120,33 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 
 	// Set required options
 	if err = stmt.SetOption(OptionKeyIngestTargetTable, targetTable); err != nil {
-		return 0, fmt.Errorf("error during ingestion: SetOption(target_table=%s): %w", targetTable, err)
+		return -1, fmt.Errorf("error during ingestion: SetOption(target_table=%s): %w", targetTable, err)
 	}
 	if err = stmt.SetOption(OptionKeyIngestMode, ingestMode); err != nil {
-		return 0, fmt.Errorf("error during ingestion: SetOption(mode=%s): %w", ingestMode, err)
+		return -1, fmt.Errorf("error during ingestion: SetOption(mode=%s): %w", ingestMode, err)
 	}
 
 	// Set other options if provided
 	if opt.Catalog != "" {
 		if err = stmt.SetOption(OptionValueIngestTargetCatalog, opt.Catalog); err != nil {
-			return 0, fmt.Errorf("error during ingestion: target_catalog=%s: %w", opt.Catalog, err)
+			return -1, fmt.Errorf("error during ingestion: target_catalog=%s: %w", opt.Catalog, err)
 		}
 	}
 	if opt.DBSchema != "" {
 		if err = stmt.SetOption(OptionValueIngestTargetDBSchema, opt.DBSchema); err != nil {
-			return 0, fmt.Errorf("error during ingestion: target_db_schema=%s: %w", opt.DBSchema, err)
+			return -1, fmt.Errorf("error during ingestion: target_db_schema=%s: %w", opt.DBSchema, err)
 		}
 	}
 	if opt.Temporary {
 		if err = stmt.SetOption(OptionValueIngestTemporary, OptionValueEnabled); err != nil {
-			return 0, fmt.Errorf("error during ingestion: temporary=true: %w", err)
+			return -1, fmt.Errorf("error during ingestion: temporary=true: %w", err)
 		}
 	}
 
 	// Set driver specific options
 	for k, v := range opt.Extra {
 		if err = stmt.SetOption(k, v); err != nil {
-			return 0, fmt.Errorf("error during ingestion: SetOption(%s=%s): %w", k, v, err)
+			return -1, fmt.Errorf("error during ingestion: SetOption(%s=%s): %w", k, v, err)
 		}
 	}
 
@@ -154,7 +154,7 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 	var count int64
 	count, err = stmt.ExecuteUpdate(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("error during ingestion: ExecuteUpdate: %w", err)
+		return -1, fmt.Errorf("error during ingestion: ExecuteUpdate: %w", err)
 	}
 
 	return count, nil
