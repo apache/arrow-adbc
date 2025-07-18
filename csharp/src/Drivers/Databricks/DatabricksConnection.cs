@@ -389,13 +389,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     if (_httpClient == null)
                     {
                         HttpMessageHandler baseHandlerForToken = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
-                        
+
                         // Add retry handler for token exchange client
                         if (TemporarilyUnavailableRetry)
                         {
                             baseHandlerForToken = new RetryHttpHandler(baseHandlerForToken, TemporarilyUnavailableRetryTimeout);
                         }
-                        
+
                         _httpClient = new HttpClient(baseHandlerForToken);
                     }
 
@@ -713,7 +713,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 return host;
             }
-            
+
             if (Properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrEmpty(uri))
             {
                 // Parse the URI to extract the host
@@ -738,7 +738,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
             return CatalogName;
         }
-        
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

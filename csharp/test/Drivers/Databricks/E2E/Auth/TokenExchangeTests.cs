@@ -89,25 +89,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 
             // Create a token that's about to expire (by setting expiry time to near future)
             DateTime nearFutureExpiry = DateTime.UtcNow.AddMinutes(5);
-            
+
             string host = GetHost();
             var tokenExchangeClient = new TokenExchangeClient(_httpClient, host);
-            
+
             var handler = new TokenExchangeDelegatingHandler(
                 new HttpClientHandler(),
                 tokenExchangeClient,
                 TestConfiguration.AccessToken,
                 nearFutureExpiry,
                 10);
-            
+
             var httpClient = new HttpClient(handler);
-            
+
             var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/api/2.0/sql/config/warehouses");
             var response = await httpClient.SendAsync(request, CancellationToken.None);
 
             // The request should succeed with the refreshed token
             response.EnsureSuccessStatusCode();
-            
+
             string content = await response.Content.ReadAsStringAsync();
             Assert.Contains("sql_configuration_parameters", content);
         }
@@ -123,7 +123,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 
             string host = GetHost();
             var tokenExchangeClient = new TokenExchangeClient(_httpClient, host);
-            
+
             // Create a handler that should not refresh the token (token not near expiry)
             var handler = new TokenExchangeDelegatingHandler(
                 new HttpClientHandler(),
@@ -131,15 +131,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
                 TestConfiguration.AccessToken,
                 expiryTime,
                 10);
-            
+
             var httpClient = new HttpClient(handler);
-            
+
             var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/api/2.0/sql/config/warehouses");
             var response = await httpClient.SendAsync(request, CancellationToken.None);
-            
+
             // The request should succeed with the original token
             response.EnsureSuccessStatusCode();
-            
+
             string content = await response.Content.ReadAsStringAsync();
             Assert.Contains("sql_configuration_parameters", content);
         }

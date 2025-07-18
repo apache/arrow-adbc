@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         private readonly int _tokenRenewLimitMinutes;
         private readonly SemaphoreSlim _tokenLock = new SemaphoreSlim(1, 1);
         private readonly ITokenExchangeClient _tokenExchangeClient;
-        
+
         private string _currentToken;
         private DateTime _tokenExpiryTime;
         private bool _tokenExchangeAttempted = false;
@@ -87,7 +87,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
 
             // Acquire the lock to ensure only one thread attempts renewal
             await _tokenLock.WaitAsync(cancellationToken);
-            
+
             try
             {
                 // Double-check pattern in case another thread renewed while we were waiting
@@ -99,9 +99,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 try
                 {
                     _tokenExchangeAttempted = true;
-                    
+
                     TokenExchangeResponse response = await _tokenExchangeClient.ExchangeTokenAsync(_initialToken, cancellationToken);
-                    
+
                     _currentToken = response.AccessToken;
                     _tokenExpiryTime = response.ExpiryTime;
                 }
@@ -137,7 +137,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             {
                 _tokenLock.Dispose();
             }
-            
+
             base.Dispose(disposing);
         }
     }

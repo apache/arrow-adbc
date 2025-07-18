@@ -46,9 +46,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 }
 
                 string payload = DecodeBase64Url(parts[1]);
-                
+
                 using JsonDocument jsonDoc = JsonDocument.Parse(payload);
-                
+
                 if (!jsonDoc.RootElement.TryGetProperty("exp", out JsonElement expElement))
                 {
                     return false;
@@ -89,7 +89,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             }
 
             byte[] bytes = Convert.FromBase64String(base64);
-            
+
             return Encoding.UTF8.GetString(bytes);
         }
     }
