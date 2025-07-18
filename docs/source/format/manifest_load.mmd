@@ -1,0 +1,30 @@
+---
+// [MermaidChart: 9800b551-3a02-4ce5-af92-c6d25d464d2b]
+config:
+  theme: neo-dark
+---
+
+flowchart TD
+    Start["Driver name"] -- Has Extension --> R{"Is Relative Path?"}
+    Start -- No Extension --> Abs{{"Is Absolute Path?"}}
+    R -- Yes --> DR{{"Disallow Relative Path?"}}
+    DR -- Yes --> Err("fa:fa-exclamation-triangle Error")
+    DR -- No --> Ext{"Extension"}
+    R -- No --> Ext
+    Ext -- ".toml" --> LM[["fa:fa-file-text Load Manifest"]]
+    Ext -- Other --> LD("fa:fa-file Attempt to Load Driver")
+    LM -- "Driver.shared" --> LD
+    Abs -- No --> S[["Search for Manifest"]]
+    Abs -- Yes --> L{{"Check for {name}.toml"}}
+    S -- Found --> LM
+    L -- exists --> LM
+    L -- does not exist --> LD
+    Start@{ shape: manual-input}
+    style Start color:#FFFFFF, fill:#AA00FF, stroke:#AA00FF
+    style R fill:transparent
+    style Abs fill:transparent
+    style DR fill:transparent
+    style Err fill:#FFCDD2, stroke:#B71C1C, color:#B71C1C        
+    style LD color:#FFFFFF, stroke:#00C853, fill:#00C853
+    style S color:#FFFFFF, stroke:#FFFFFF, fill:#2962FF
+    style L fill:transparent
