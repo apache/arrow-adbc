@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/flight_sql.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Available for: C/C++, GLib/Ruby, Go, Java, Python, R The Flight SQL Driver provides access to any database implementing a Arrow Flight SQL compatible endpoint. Installation: C/C++ For conda-forge u..." />
+<meta property="og:description" content="Language: Go Status: Stable The Flight SQL Driver provides access to any database implementing a Arrow Flight SQL compatible endpoint. Installation: C/C++ Install libadbc-driver-flightsql from cond..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Java, Python, R The Flight SQL Driver provides access to any database implementing a Arrow Flight SQL compatible endpoint. Installation: C/C++ For conda-forge u..." />
+<meta name="description" content="Language: Go Status: Stable The Flight SQL Driver provides access to any database implementing a Arrow Flight SQL compatible endpoint. Installation: C/C++ Install libadbc-driver-flightsql from cond..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="JDBC Adapter" href="jdbc.html" /><link rel="prev" title="DuckDB Support" href="duckdb.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
@@ -396,7 +396,8 @@
         <article role="main" id="furo-main-content">
           <section id="flight-sql-driver">
 <h1>Flight SQL Driver<a class="headerlink" href="#flight-sql-driver" title="Link to this heading">¶</a></h1>
-<p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Java, Python, R</p>
+<p><span class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary">Language: Go</span>
+<a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="status.html#driver-status"><span class="std std-ref">Status: Stable</span></a></p>
 <p>The Flight SQL Driver provides access to any database implementing a
 <a class="reference external" href="https://arrow.apache.org/docs/format/FlightSql.html" title="(in Apache Arrow v20.0.0)"><span>Arrow Flight SQL</span></a> compatible endpoint.</p>
 <section id="installation">
@@ -405,7 +406,7 @@
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
 C/C++</label><div class="sd-tab-content docutils">
-<p>For conda-forge users:</p>
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-flightsql">libadbc-driver-flightsql</a> from conda-forge:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-flightsql
 </pre></div>
 </div>
@@ -413,49 +414,41 @@ C/C++</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
 Go</label><div class="sd-tab-content docutils">
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc
+<p>Install the C/C++ driver, then use the Go driver manager.  Requires CGO.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/drivermgr
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="java" for="sd-tab-item-2">
-Java</label><div class="sd-tab-content docutils">
-<p>Add a dependency on <code class="docutils literal notranslate"><span class="pre">org.apache.arrow.adbc:adbc-driver-flight-sql</span></code>.</p>
-<p>For Maven users:</p>
-<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;dependency&gt;</span>
-<span class="w">  </span><span class="nt">&lt;groupId&gt;</span>org.apache.arrow.adbc<span class="nt">&lt;/groupId&gt;</span>
-<span class="w">  </span><span class="nt">&lt;artifactId&gt;</span>adbc-driver-flight-sql<span class="nt">&lt;/artifactId&gt;</span>
-<span class="nt">&lt;/dependency&gt;</span>
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-2">
+Python</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-flightsql">adbc-driver-flightsql</a> from conda-forge:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-flightsql
+</pre></div>
+</div>
+<p>Install <a class="reference external" href="https://pypi.org/project/adbc-driver-flightsql/">adbc-driver-flightsql</a> from PyPI:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc-driver-flightsql
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-3">
-Python</label><div class="sd-tab-content docutils">
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># For conda-forge</span>
-mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-flightsql
-
-<span class="c1"># For pip</span>
-pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_flightsql
-</pre></div>
-</div>
-</div>
-<input id="sd-tab-item-4" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-4">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-3">
 R</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://community.r-multiverse.org/adbcflightsql/">adbcflightsql</a> from R-multiverse:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcflightsql&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">repos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://community.r-multiverse.org&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
+<p>Additionally, the driver may be used from C/C++, C#, GLib, Go, R, Ruby, and Rust via the driver manager.</p>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
 <p>To connect to a database, supply the “uri” parameter when constructing
 the <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-database.html#structAdbcDatabase" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
 <div class="sd-tab-set docutils">
-<input checked="checked" id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-5">
+<input checked="checked" id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-4">
 C++</label><div class="sd-tab-content docutils">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;arrow-adbc/adbc.h&quot;</span>
 
@@ -468,8 +461,8 @@ C++</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-6">
+<input id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-5">
 Python</label><div class="sd-tab-content docutils">
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -495,8 +488,8 @@ Python</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-7">
+<input id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-6">
 Go</label><div class="sd-tab-content docutils">
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/../../go/adbc/driver/flightsql/example_usage_test.go">example_usage_test.go</a></p>
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 20</span><span class="c1">// Tests that use the SQLite server example.</span>

@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/postgresql.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The PostgreSQL driver provides access to any database that supports the PostgreSQL wire format. It wraps libpq, the client library for PostgreSQL. The..." />
+<meta property="og:description" content="Language: C/C++ Status: Stable The PostgreSQL driver provides access to any database that supports the PostgreSQL wire format. It wraps libpq, the client library for PostgreSQL. The project owes cr..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The PostgreSQL driver provides access to any database that supports the PostgreSQL wire format. It wraps libpq, the client library for PostgreSQL. The..." />
+<meta name="description" content="Language: C/C++ Status: Stable The PostgreSQL driver provides access to any database that supports the PostgreSQL wire format. It wraps libpq, the client library for PostgreSQL. The project owes cr..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Snowflake Driver" href="snowflake.html" /><link rel="prev" title="JDBC Adapter" href="jdbc.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
@@ -396,7 +396,8 @@
         <article role="main" id="furo-main-content">
           <section id="postgresql-driver">
 <h1>PostgreSQL Driver<a class="headerlink" href="#postgresql-driver" title="Link to this heading">¶</a></h1>
-<p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Python, R</p>
+<p><span class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary">Language: C/C++</span>
+<a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="status.html#driver-status"><span class="std std-ref">Status: Stable</span></a></p>
 <p>The PostgreSQL driver provides access to any database that supports
 the PostgreSQL wire format.  It wraps <a class="reference external" href="https://www.postgresql.org/docs/current/libpq.html">libpq</a>, the client library for
 PostgreSQL.  The project owes credit to 0x0L’s <a class="reference external" href="https://github.com/0x0L/pgeon">pgeon</a> for the
@@ -407,18 +408,12 @@ overall approach.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The PostgreSQL driver is in beta.
-Performance/optimization and support for complex types and
-different ADBC features is still ongoing.</p>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>AWS Redshift supports a very old version of the PostgreSQL
-wire protocol and has a basic level of support in the ADBC
-PostgreSQL driver. Because Redshift does not support reading or
-writing COPY in PostgreSQL binary format, the optimizations that
-accelerate non-Redshift queries are not enabled when connecting
-to a Redshift database. This functionality is experimental.</p>
+<p>This driver has experimental support for Amazon Redshift.  As
+Redshift does not support reading or writing COPY in PostgreSQL
+binary format, however, the optimizations that accelerate queries
+are not enabled when connecting to Redshift.  There may also be
+other differences in functionality; please file a bug report if
+problems are encountered.</p>
 </div>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
@@ -426,7 +421,7 @@ to a Redshift database. This functionality is experimental.</p>
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
 C/C++</label><div class="sd-tab-content docutils">
-<p>For conda-forge users:</p>
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-postgresql">libadbc-driver-postgresql</a> from conda-forge:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-postgresql
 </pre></div>
 </div>
@@ -434,8 +429,7 @@ C/C++</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
 Go</label><div class="sd-tab-content docutils">
-<p>Install the C/C++ package and use the Go driver manager.
-Requires CGO.</p>
+<p>Install the C/C++ driver, then use the Go driver manager.  Requires CGO.</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/drivermgr
 </pre></div>
 </div>
@@ -443,22 +437,25 @@ Requires CGO.</p>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-2">
 Python</label><div class="sd-tab-content docutils">
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># For conda-forge</span>
-mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-postgresql
-
-<span class="c1"># For pip</span>
-pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_postgresql
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-postgresql">adbc-driver-postgresql</a> from conda-forge:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-postgresql
+</pre></div>
+</div>
+<p>Install <a class="reference external" href="https://pypi.org/project/adbc-driver-postgresql/">adbc-driver-postgresql</a> from PyPI:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc-driver-postgresql
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-3">
 R</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://cran.r-project.org/web/packages/adbcpostgresql/index.html">adbcpostgresql</a> from CRAN:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcpostgresql&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
+<p>Additionally, the driver may be used from C/C++, C#, GLib, Go, R, Ruby, and Rust via the driver manager.</p>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>

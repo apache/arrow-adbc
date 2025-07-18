@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/sqlite.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The SQLite driver provides access to SQLite databases. This driver is essentially a “reference” driver that was used during ADBC development. It gener..." />
+<meta property="og:description" content="Language: C/C++ Status: Stable The SQLite driver provides access to SQLite databases. This driver is essentially a “reference” driver that was used during ADBC development. It generally supports mo..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The SQLite driver provides access to SQLite databases. This driver is essentially a “reference” driver that was used during ADBC development. It gener..." />
+<meta name="description" content="Language: C/C++ Status: Stable The SQLite driver provides access to SQLite databases. This driver is essentially a “reference” driver that was used during ADBC development. It generally supports mo..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Writing New Drivers" href="authoring.html" /><link rel="prev" title="Snowflake Driver" href="snowflake.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
@@ -396,7 +396,8 @@
         <article role="main" id="furo-main-content">
           <section id="sqlite-driver">
 <h1>SQLite Driver<a class="headerlink" href="#sqlite-driver" title="Link to this heading">¶</a></h1>
-<p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Python, R</p>
+<p><span class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary">Language: C/C++</span>
+<a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="status.html#driver-status"><span class="std std-ref">Status: Stable</span></a></p>
 <p>The SQLite driver provides access to SQLite databases.</p>
 <p>This driver is essentially a “reference” driver that was used during
 ADBC development.  It generally supports most ADBC features but has
@@ -407,7 +408,7 @@ not received attention to optimization.</p>
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
 C/C++</label><div class="sd-tab-content docutils">
-<p>For conda-forge users:</p>
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-sqlite">libadbc-driver-sqlite</a> from conda-forge:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-sqlite
 </pre></div>
 </div>
@@ -415,8 +416,7 @@ C/C++</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
 Go</label><div class="sd-tab-content docutils">
-<p>Install the C/C++ package and use the Go driver manager.
-Requires CGO.</p>
+<p>Install the C/C++ driver, then use the Go driver manager.  Requires CGO.</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/drivermgr
 </pre></div>
 </div>
@@ -424,22 +424,25 @@ Requires CGO.</p>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-2">
 Python</label><div class="sd-tab-content docutils">
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># For conda-forge</span>
-mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-sqlite
-
-<span class="c1"># For pip</span>
-pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_sqlite
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-sqlite">adbc-driver-sqlite</a> from conda-forge:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-sqlite
+</pre></div>
+</div>
+<p>Install <a class="reference external" href="https://pypi.org/project/adbc-driver-sqlite/">adbc-driver-sqlite</a> from PyPI:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc-driver-sqlite
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-3">
 R</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://cran.r-project.org/web/packages/adbcsqlite/index.html">adbcsqlite</a> from CRAN:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcsqlite&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
+<p>Additionally, the driver may be used from C/C++, C#, GLib, Go, R, Ruby, and Rust via the driver manager.</p>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>

@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/status.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Implementation Status: Experimental drivers are not feature-complete and the implementation is still progressing. Beta drivers are (mostly) feature-complete but have only been available for a short..." />
+<meta property="og:description" content="Driver Status: Experimental drivers are not feature-complete and the implementation is still progressing. Beta drivers are (mostly) feature-complete but have only been available for a short time. S..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Implementation Status: Experimental drivers are not feature-complete and the implementation is still progressing. Beta drivers are (mostly) feature-complete but have only been available for a short..." />
+<meta name="description" content="Driver Status: Experimental drivers are not feature-complete and the implementation is still progressing. Beta drivers are (mostly) feature-complete but have only been available for a short time. S..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="DuckDB Support" href="duckdb.html" /><link rel="prev" title="Installation" href="installation.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
@@ -403,104 +403,121 @@ written in Go in the same process (unless working in a pure-Go
 application), where using the second driver may crash.  For more
 details, see <a class="reference external" href="https://github.com/apache/arrow-adbc/issues/1841">GH-1841</a>.</p>
 </div>
-<section id="implementation-status">
-<h2>Implementation Status<a class="headerlink" href="#implementation-status" title="Link to this heading">¶</a></h2>
-<p><strong>Experimental</strong> drivers are not feature-complete and the implementation is still progressing.
-<strong>Beta</strong> drivers are (mostly) feature-complete but have only been available for a short time.
-<strong>Stable</strong> drivers are (mostly) feature-complete (as much as possible for the underlying database) and have been available/tested for a while.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Drivers that support C/C++ can also be used from C#, GLib, Go, Python, R,
 Ruby, and Rust, regardless of their implementation language.</p>
 </div>
+<section id="driver-status">
+<span id="id1"></span><h2>Driver Status<a class="headerlink" href="#driver-status" title="Link to this heading">¶</a></h2>
+<p><strong>Experimental</strong> drivers are not feature-complete and the implementation is still progressing.
+<strong>Beta</strong> drivers are (mostly) feature-complete but have only been available for a short time.
+<strong>Stable</strong> drivers are (mostly) feature-complete (as much as possible for the underlying database) and have been available/tested for a while.</p>
+</section>
+<section id="feature-support">
+<h2>Feature Support<a class="headerlink" href="#feature-support" title="Link to this heading">¶</a></h2>
 <div class="table-wrapper docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Driver</p></th>
-<th class="head"><p>Supported Languages</p></th>
-<th class="head"><p>Implementation Language</p></th>
-<th class="head"><p>Status</p></th>
+<tr class="row-odd"><th class="head"><p>Vendor</p></th>
+<th class="head"><p>Implementation</p></th>
+<th class="head"><p><a class="reference internal" href="#driver-status"><span class="std std-ref">Driver Status</span></a></p></th>
+<th class="head"><p>Packages <a class="footnote-reference brackets" href="#packages" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>Apache DataFusion</p></td>
+<tr class="row-even"><td><p>Apache Arrow Flight SQL</p></td>
+<td><p>C#</p></td>
+<td><p>Beta</p></td>
+<td><p><a class="reference external" href="https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.FlightSql">NuGet</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="flight_sql.html"><span class="doc">Apache Arrow Flight SQL</span></a></p></td>
+<td><p>Go</p></td>
+<td><p>Stable</p></td>
+<td><p>conda-forge (<a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-flightsql">adbc-driver-flightsql</a>, <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-flightsql">libadbc-driver-flightsql</a>), <a class="reference external" href="https://pypi.org/project/adbc-driver-flightsql/">PyPI</a>, <a class="reference external" href="https://community.r-multiverse.org/adbcflightsql/">R-multiverse</a></p></td>
+</tr>
+<tr class="row-even"><td><p>Apache Arrow Flight SQL</p></td>
+<td><p>Java</p></td>
+<td><p>Beta</p></td>
+<td><p><a class="reference external" href="https://mvnrepository.com/artifact/org.apache.arrow.adbc/adbc-driver-flight-sql">Maven</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Apache DataFusion</p></td>
 <td><p>Rust</p></td>
-<td><p>Rust</p></td>
 <td><p>Experimental</p></td>
+<td><p><a class="reference external" href="https://crates.io/crates/adbc_datafusion">crates.io</a></p></td>
 </tr>
-<tr class="row-odd"><td><p>BigQuery (C#)</p></td>
-<td><p>C#</p></td>
+<tr class="row-even"><td><p>Apache Hive</p></td>
 <td><p>C#</p></td>
 <td><p>Experimental</p></td>
+<td></td>
 </tr>
-<tr class="row-even"><td><p>BigQuery (Go)</p></td>
+<tr class="row-odd"><td><p>Apache Impala</p></td>
+<td><p>C#</p></td>
+<td><p>Experimental</p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p>Apache Spark</p></td>
+<td><p>C#</p></td>
+<td><p>Experimental</p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p>Databricks</p></td>
+<td><p>C#</p></td>
+<td><p>Experimental</p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="duckdb.html"><span class="doc">DuckDB</span></a> <a class="footnote-reference brackets" href="#duckdb" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p></td>
 <td><p>C/C++</p></td>
+<td><p>Stable</p></td>
+<td><p><a class="reference external" href="https://anaconda.org/conda-forge/python-duckdb">conda-forge</a>, <a class="reference external" href="https://pypi.org/project/duckdb/">PyPI</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Google BigQuery</p></td>
+<td><p>C#</p></td>
+<td><p>Beta</p></td>
+<td><p><a class="reference external" href="https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery">NuGet</a></p></td>
+</tr>
+<tr class="row-even"><td><p>Google BigQuery</p></td>
 <td><p>Go</p></td>
 <td><p>Experimental</p></td>
+<td><p>conda-forge (<a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-bigquery">adbc-driver-bigquery</a>, <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-bigquery">libadbc-driver-bigquery</a>), <a class="reference external" href="https://pypi.org/project/adbc-driver-bigquery/">PyPI</a>, <a class="reference external" href="https://community.r-multiverse.org/adbcbigquery/">R-multiverse</a></p></td>
 </tr>
-<tr class="row-odd"><td><p>DuckDB <a class="footnote-reference brackets" href="#duckdb" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="jdbc.html"><span class="doc">JDBC</span></a></p></td>
+<td><p>Java</p></td>
+<td><p>Beta</p></td>
+<td><p><a class="reference external" href="https://mvnrepository.com/artifact/org.apache.arrow.adbc/adbc-driver-jdbc">Maven</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="postgresql.html"><span class="doc">PostgreSQL</span></a></p></td>
 <td><p>C/C++</p></td>
-<td><p>C++</p></td>
 <td><p>Stable</p></td>
+<td><p>conda-forge (<a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-postgresql">adbc-driver-postgresql</a>, <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-postgresql">libadbc-driver-postgresql</a>), <a class="reference external" href="https://cran.r-project.org/web/packages/adbcpostgresql/index.html">CRAN</a>, <a class="reference external" href="https://pypi.org/project/adbc-driver-postgresql/">PyPI</a></p></td>
 </tr>
-<tr class="row-even"><td><p>Flight SQL (Go)</p></td>
-<td><p>C/C++, C# <a class="footnote-reference brackets" href="#wrapper" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="sqlite.html"><span class="doc">SQLite</span></a></p></td>
+<td><p>C/C++</p></td>
+<td><p>Stable</p></td>
+<td><p>conda-forge (<a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-sqlite">adbc-driver-sqlite</a>, <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-sqlite">libadbc-driver-sqlite</a>), <a class="reference external" href="https://cran.r-project.org/web/packages/adbcsqlite/index.html">CRAN</a>, <a class="reference external" href="https://pypi.org/project/adbc-driver-sqlite/">PyPI</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="snowflake.html"><span class="doc">Snowflake</span></a></p></td>
 <td><p>Go</p></td>
 <td><p>Stable</p></td>
-</tr>
-<tr class="row-odd"><td><p>Flight SQL (Java)</p></td>
-<td><p>Java</p></td>
-<td><p>Java</p></td>
-<td><p>Experimental</p></td>
-</tr>
-<tr class="row-even"><td><p>JDBC Adapter</p></td>
-<td><p>Java</p></td>
-<td><p>Java</p></td>
-<td><p>Experimental</p></td>
-</tr>
-<tr class="row-odd"><td><p>PostgreSQL</p></td>
-<td><p>C/C++</p></td>
-<td><p>C++</p></td>
-<td><p>Stable</p></td>
-</tr>
-<tr class="row-even"><td><p>SQLite</p></td>
-<td><p>C/C++</p></td>
-<td><p>C</p></td>
-<td><p>Stable</p></td>
-</tr>
-<tr class="row-odd"><td><p>Snowflake</p></td>
-<td><p>C/C++, Rust <a class="footnote-reference brackets" href="#wrapper" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a></p></td>
-<td><p>Go</p></td>
-<td><p>Stable</p></td>
-</tr>
-<tr class="row-even"><td><p>Thrift protocol-based <a class="footnote-reference brackets" href="#thrift" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p></td>
-<td><p>C#</p></td>
-<td><p>C#</p></td>
-<td><p>Experimental</p></td>
+<td><p>conda-forge (<a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-snowflake">adbc-driver-snowflake</a>, <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-snowflake">libadbc-driver-snowflake</a>), <a class="reference external" href="https://crates.io/crates/adbc_snowflake">crates.io</a>, <a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc/driver/snowflake">Go</a>, <a class="reference external" href="https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.Interop.Snowflake">NuGet</a>, <a class="reference external" href="https://pypi.org/project/adbc-driver-snowflake/">PyPI</a>, <a class="reference external" href="https://community.r-multiverse.org/adbcsnowflake/">R-multiverse</a></p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <aside class="footnote-list brackets">
+<aside class="footnote brackets" id="packages" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">1</a><span class="fn-bracket">]</span></span>
+<p>This lists only packages available in package repositories.  However, as noted above, many of these drivers can be used from languages not listed via the driver manager, even if a package is not yet available.</p>
+</aside>
 <aside class="footnote brackets" id="duckdb" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">2</a><span class="fn-bracket">]</span></span>
 <p>DuckDB is developed and provided by a third party.  See the
 <a class="reference external" href="https://duckdb.org/docs/stable/clients/adbc.html">DuckDB documentation</a> for details.</p>
 </aside>
-<aside class="footnote brackets" id="thrift" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">2</a><span class="fn-bracket">]</span></span>
-<p>Supports Apache Hive/Impala/Spark.</p>
-</aside>
-<aside class="footnote brackets" id="wrapper" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></span>
-<span class="backrefs">(<a role="doc-backlink" href="#id2">1</a>,<a role="doc-backlink" href="#id3">2</a>)</span>
-<p>Listed separately because a wrapper package is provided that
-combines the driver and the bindings for you.</p>
-</aside>
 </aside>
 </section>
-<section id="feature-support">
-<h2>Feature Support<a class="headerlink" href="#feature-support" title="Link to this heading">¶</a></h2>
+<section id="id4">
+<h2>Feature Support<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
 <p>N/A indicates that it is not possible to support this feature in the underlying database.</p>
 <p>See individual driver documentation pages for full details.</p>
 <dl class="simple">
@@ -608,7 +625,7 @@ result set (<a class="reference external" href="https://arrow.apache.org/adbc/ma
 <tr class="row-odd"><td><p>PostgreSQL</p></td>
 <td><p>N/A</p></td>
 <td><p>N/A</p></td>
-<td><p>Y <a class="footnote-reference brackets" href="#postgresql-prepared" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a></p></td>
+<td><p>Y <a class="footnote-reference brackets" href="#postgresql-prepared" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a></p></td>
 <td><p>Y</p></td>
 <td><p>Y</p></td>
 <td><p>Y</p></td>
@@ -626,7 +643,7 @@ result set (<a class="reference external" href="https://arrow.apache.org/adbc/ma
 </div>
 <aside class="footnote-list brackets">
 <aside class="footnote brackets" id="postgresql-prepared" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">4</a><span class="fn-bracket">]</span></span>
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">3</a><span class="fn-bracket">]</span></span>
 <p>The PostgreSQL driver only supports executing
 prepared statements with parameters that do not return result sets
 (basically, an INSERT with parameters).  Queries that return result sets
@@ -735,8 +752,9 @@ United States and other countries.
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Driver Implementation Status</a><ul>
-<li><a class="reference internal" href="#implementation-status">Implementation Status</a></li>
+<li><a class="reference internal" href="#driver-status">Driver Status</a></li>
 <li><a class="reference internal" href="#feature-support">Feature Support</a></li>
+<li><a class="reference internal" href="#id4">Feature Support</a></li>
 </ul>
 </li>
 </ul>

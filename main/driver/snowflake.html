@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/snowflake.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The Snowflake Driver provides access to Snowflake Database Warehouses. Installation: C/C++ For conda-forge users: Go Python R Usage: To connect to a S..." />
+<meta property="og:description" content="Language: Go Status: Stable The Snowflake Driver provides access to Snowflake Database Warehouses. Installation: C# Install Apache.Arrow.Adbc.Drivers.Interop.Snowflake from NuGet: C/C++ Install lib..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Available for: C/C++, GLib/Ruby, Go, Python, R The Snowflake Driver provides access to Snowflake Database Warehouses. Installation: C/C++ For conda-forge users: Go Python R Usage: To connect to a S..." />
+<meta name="description" content="Language: Go Status: Stable The Snowflake Driver provides access to Snowflake Database Warehouses. Installation: C# Install Apache.Arrow.Adbc.Drivers.Interop.Snowflake from NuGet: C/C++ Install lib..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="SQLite Driver" href="sqlite.html" /><link rel="prev" title="PostgreSQL Driver" href="postgresql.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
@@ -396,53 +396,74 @@
         <article role="main" id="furo-main-content">
           <section id="snowflake-driver">
 <h1>Snowflake Driver<a class="headerlink" href="#snowflake-driver" title="Link to this heading">¶</a></h1>
-<p><strong>Available for:</strong> C/C++, GLib/Ruby, Go, Python, R</p>
+<p><span class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary">Language: Go</span>
+<a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="status.html#driver-status"><span class="std std-ref">Status: Stable</span></a></p>
 <p>The Snowflake Driver provides access to Snowflake Database Warehouses.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
-C/C++</label><div class="sd-tab-content docutils">
-<p>For conda-forge users:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-snowflake
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="csharp" for="sd-tab-item-0">
+C#</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.Interop.Snowflake">Apache.Arrow.Adbc.Drivers.Interop.Snowflake</a> from NuGet:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>dotnet<span class="w"> </span>package<span class="w"> </span>add<span class="w"> </span>Apache.Arrow.Adbc.Drivers.Interop.Snowflake
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
-Go</label><div class="sd-tab-content docutils">
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/driver/snowflake
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-1">
+C/C++</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-snowflake">libadbc-driver-snowflake</a> from conda-forge:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-snowflake
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-2">
-Python</label><div class="sd-tab-content docutils">
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># For conda-forge</span>
-mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-snowflake
-
-<span class="c1"># For pip</span>
-pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_snowflake
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-2">
+Go</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc/driver/snowflake">github.com/apache/arrow-adbc/go/adbc/driver/snowflake</a> from Go:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/driver/snowflake
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-3">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-3">
+Python</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-snowflake">adbc-driver-snowflake</a> from conda-forge:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-snowflake
+</pre></div>
+</div>
+<p>Install <a class="reference external" href="https://pypi.org/project/adbc-driver-snowflake/">adbc-driver-snowflake</a> from PyPI:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc-driver-snowflake
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-4" name="sd-tab-set-0" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-4">
 R</label><div class="sd-tab-content docutils">
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>install.packages<span class="o">(</span><span class="s2">&quot;adbcsnowflake&quot;</span>,<span class="w"> </span><span class="nv">repos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://community.r-multiverse.org&quot;</span><span class="o">)</span>
+<p>Install <a class="reference external" href="https://community.r-multiverse.org/adbcsnowflake/">adbcsnowflake</a> from R-multiverse:</p>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcsnowflake&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">repos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://community.r-multiverse.org&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-5" name="sd-tab-set-0" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="rust" for="sd-tab-item-5">
+Rust</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://crates.io/crates/adbc_snowflake">adbc_snowflake</a> from crates.io:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_snowflake
 </pre></div>
 </div>
 </div>
 </div>
+<p>Additionally, the driver may be used from C/C++, C#, GLib, Go, R, Ruby, and Rust via the driver manager.</p>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
 <p>To connect to a Snowflake database you can supply the “uri” parameter when
 constructing the <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-database.html#structAdbcDatabase" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
 <div class="sd-tab-set docutils">
-<input checked="checked" id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-4">
+<input checked="checked" id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-6">
 C++</label><div class="sd-tab-content docutils">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;arrow-adbc/adbc.h&quot;</span>
 
@@ -455,8 +476,8 @@ C++</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-5">
+<input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-7">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_snowflake.dbapi</span>
 
@@ -465,8 +486,8 @@ Python</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-6">
+<input id="sd-tab-item-8" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-8">
 R</label><div class="sd-tab-content docutils">
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 
@@ -477,8 +498,8 @@ R</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-7">
+<input id="sd-tab-item-9" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-9">
 Go</label><div class="sd-tab-content docutils">
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
 <span class="w">   </span><span class="s">&quot;context&quot;</span>
@@ -561,8 +582,8 @@ object.  Some users have reported needing other configuration options, such as
 <code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.region</span></code> and <code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.uri.*</span></code> (see below for
 a listing).</p>
 <div class="sd-tab-set docutils">
-<input checked="checked" id="sd-tab-item-8" name="sd-tab-set-2" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-8">
+<input checked="checked" id="sd-tab-item-10" name="sd-tab-set-2" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-10">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_snowflake.dbapi</span>
 <span class="c1"># This will open a new browser tab, and block until you log in.</span>
@@ -574,8 +595,8 @@ Python</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-9" name="sd-tab-set-2" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-9">
+<input id="sd-tab-item-11" name="sd-tab-set-2" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-11">
 R</label><div class="sd-tab-content docutils">
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 <span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span>
@@ -589,8 +610,8 @@ R</label><div class="sd-tab-content docutils">
 </pre></div>
 </div>
 </div>
-<input id="sd-tab-item-10" name="sd-tab-set-2" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-10">
+<input id="sd-tab-item-12" name="sd-tab-set-2" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-12">
 Go</label><div class="sd-tab-content docutils">
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
 <span class="w">   </span><span class="s">&quot;context&quot;</span>

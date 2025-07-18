@@ -509,17 +509,11 @@ destination table will be created.
 The default is <code class="docutils literal notranslate"><span class="pre">CREATE_IF_NEEDED</span></code>.</p>
 <p>The following values are supported:</p>
 <ul class="simple">
-<li><dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">CREATE_IF_NEEDED</span></code>:</dt><dd><p>Will create the table if it does not already exist.
-Tables are created atomically on successful completion of a job.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">CREATE_NEVER</span></code>:</dt><dd><p>Ensures the table must already exist and will not be automatically created.</p>
-</dd>
-</dl>
-</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CREATE_IF_NEEDED</span></code>:
+Will create the table if it does not already exist.
+Tables are created atomically on successful completion of a job.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CREATE_NEVER</span></code>:
+Ensures the table must already exist and will not be automatically created.</p></li>
 </ul>
 </dd></dl>
 
@@ -617,28 +611,22 @@ The default priority is <code class="docutils literal notranslate"><span class="
 <a class="reference external" href="https://cloud.google.com/bigquery/querying-data#batchqueries">https://cloud.google.com/bigquery/querying-data#batchqueries</a></p>
 <p>The following values are supported:</p>
 <ul class="simple">
-<li><dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">BATCH</span></code>:</dt><dd><p>BatchPriority specifies that the query should be scheduled with the
+<li><p><code class="docutils literal notranslate"><span class="pre">BATCH</span></code>:
+BatchPriority specifies that the query should be scheduled with the
 batch priority. BigQuery queues each batch query on your behalf, and
 starts the query as soon as idle resources are available, usually
 within a few minutes. If BigQuery hasn’t started the query within 24
 hours, BigQuery changes the job priority to interactive. Batch queries
 don’t count towards your concurrent rate limit, which can make it
 easier to start many queries at once. More information can be found at:
-<a class="reference external" href="https://cloud.google.com/bigquery/docs/running-queries#batchqueries">https://cloud.google.com/bigquery/docs/running-queries#batchqueries</a></p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">INTERACTIVE</span></code>:</dt><dd><p>Specifies that the query should be scheduled with interactive priority,
+<a class="reference external" href="https://cloud.google.com/bigquery/docs/running-queries#batchqueries">https://cloud.google.com/bigquery/docs/running-queries#batchqueries</a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">INTERACTIVE</span></code>:
+Specifies that the query should be scheduled with interactive priority,
 which means that the query is executed as soon as possible. Interactive
 queries count towards your concurrent rate limit and your daily limit.
 It is the default priority with which queries get executed. More
 information can be found at:
-<a class="reference external" href="https://cloud.google.com/bigquery/docs/running-queries#queries">https://cloud.google.com/bigquery/docs/running-queries#queries</a></p>
-</dd>
-</dl>
-</li>
+<a class="reference external" href="https://cloud.google.com/bigquery/docs/running-queries#queries">https://cloud.google.com/bigquery/docs/running-queries#queries</a></p></li>
 </ul>
 </dd></dl>
 
@@ -656,23 +644,14 @@ table is treated.
 The default is <code class="docutils literal notranslate"><span class="pre">WRITE_EMPTY</span></code>.</p>
 <p>The following values are supported:</p>
 <ul class="simple">
-<li><dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">WRITE_APPEND</span></code>:</dt><dd><p>Will append to any existing data in the destination table.
-Data is appended atomically on successful completion of a job.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">WRITE_TRUNCATE</span></code>:</dt><dd><p>Overrides the existing data in the destination table.
-Data is overwritten atomically on successful completion of a job.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">WRITE_EMPTY</span></code>:</dt><dd><p>Fails writes if the destination table already contains data.</p>
-</dd>
-</dl>
-</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WRITE_APPEND</span></code>:
+Will append to any existing data in the destination table.
+Data is appended atomically on successful completion of a job.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WRITE_TRUNCATE</span></code>:
+Overrides the existing data in the destination table.
+Data is overwritten atomically on successful completion of a job.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WRITE_EMPTY</span></code>:
+Fails writes if the destination table already contains data.</p></li>
 </ul>
 </dd></dl>
 
