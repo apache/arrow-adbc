@@ -53,7 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
-
+        private const int DefaultQueryTimeSeconds = 3 * 60 * 60; // 3 hours
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
@@ -255,6 +255,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     throw new ArgumentException($"Parameter '{DatabricksParameters.TraceStateEnabled}' value '{traceStateEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
+            }
+
+            if (!Properties.ContainsKey(ApacheParameters.QueryTimeoutSeconds))
+            {
+                // Default QueryTimeSeconds in Hive2Connection is only 60s, which is too small for lots of long running query
+                QueryTimeoutSeconds = DefaultQueryTimeSeconds;
             }
         }
 
