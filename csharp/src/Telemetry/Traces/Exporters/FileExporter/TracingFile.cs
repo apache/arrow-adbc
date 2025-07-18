@@ -88,7 +88,11 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     {
                         FileInfo? file = tracingFiles.ElementAtOrDefault(i);
                         // Note: don't pass the cancellation token, as we want this to ALWAYS run at the end.
-                        await ActionWithRetryAsync<IOException>(() => file?.Delete());
+                        await ActionWithRetryAsync<IOException>(() =>
+                        {
+                            file?.Delete();
+                            return Task.CompletedTask;
+                        });
                     }
                 }
             }
@@ -131,39 +135,6 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             return tracingDirectory
                 .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
                 .OrderByDescending(f => f.LastWriteTimeUtc);
-        }
-
-        private static async Task ActionWithRetryAsync<T>(
-            Action action,
-            int maxRetries = 50,
-            CancellationToken cancellationToken = default) where T : Exception
-        {
-            int retryCount = 0;
-            int delayTime = s_random.Next(50, 500); // Introduce a small random delay to avoid contention.
-            TimeSpan pauseTime = TimeSpan.FromMilliseconds(delayTime);
-            bool completed = false;
-
-            while (!cancellationToken.IsCancellationRequested && !completed && retryCount < maxRetries)
-            {
-                try
-                {
-                    action.Invoke();
-                    completed = true;
-                }
-                catch (T) when (retryCount < (maxRetries - 1))
-                {
-                    retryCount++;
-                    try
-                    {
-                        await Task.Delay(pauseTime, cancellationToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Need to catch this exception or it will be propagated.
-                        break;
-                    }
-                }
-            }
         }
 
         private static async Task ActionWithRetryAsync<T>(

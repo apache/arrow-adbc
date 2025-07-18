@@ -31,8 +31,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters
             Environment.SetEnvironmentVariable(environmentName, null);
             if (exceptionType == null)
             {
-                using TracerProvider? tracerProvider = ExportersBuilder.Build(sourceName)
-                    .AddDefaultExporters()
+                using TracerProvider? tracerProvider = ExportersBuilder.Build(sourceName, addDefaultExporters: true)
                     .Build()
                     .Activate(exporterOption, out string? exporterName, environmentName);
                 if (willActivate)
@@ -47,8 +46,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters
             }
             else
             {
-                Assert.Throws(exceptionType, () => ExportersBuilder.Build(sourceName)
-                    .AddDefaultExporters()
+                Assert.Throws(exceptionType, () => ExportersBuilder.Build(sourceName, addDefaultExporters: true)
                     .Build()
                     .Activate(exporterOption, out string? exporterName, environmentName));
             }
@@ -70,8 +68,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters
             Environment.SetEnvironmentVariable(environmentName, exporterOption);
             if (exceptionType == null)
             {
-                using TracerProvider? tracerProvider = ExportersBuilder.Build(sourceName)
-                    .AddDefaultExporters()
+                using TracerProvider? tracerProvider = ExportersBuilder.Build(sourceName, addDefaultExporters: true)
                     .Build()
                     .Activate(null, out string? exporterName, environmentName);
                 if (activateExpected)
@@ -86,8 +83,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters
             }
             else
             {
-                Assert.Throws(exceptionType, () => ExportersBuilder.Build(sourceName)
-                    .AddDefaultExporters()
+                Assert.Throws(exceptionType, () => ExportersBuilder.Build(sourceName, addDefaultExporters: true)
                     .Build()
                     .Activate(null, out string? exporterName, environmentName));
             }
@@ -110,8 +106,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters
 
             // Test with other default exporters
             exporterOption = NewName();
-            using (TracerProvider? tracerProvider = ExportersBuilder.Build("sourceName")
-                .AddDefaultExporters()
+            using (TracerProvider? tracerProvider = ExportersBuilder.Build("sourceName", addDefaultExporters: true)
                 .AddExporter(exporterOption, ExportersBuilder.NewConsoleTracerProvider)
                 .Build()
                 .Activate(exporterOption, out string? exporterName))

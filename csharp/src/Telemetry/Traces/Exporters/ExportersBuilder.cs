@@ -59,13 +59,13 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
         /// <param name="sourceVersion">The (optional) version of the source that the exporter will filter on.</param>
         /// <returns>A <see cref="Builder"/> object.</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static Builder Build(string sourceName, string? sourceVersion = default)
+        public static Builder Build(string sourceName, string? sourceVersion = default, bool addDefaultExporters = false)
         {
             if (string.IsNullOrWhiteSpace(sourceName))
             {
                 throw new ArgumentNullException(nameof(sourceName));
             }
-            return new Builder(sourceName, sourceVersion);
+            return new Builder(sourceName, sourceVersion, addDefaultExporters);
         }
 
         /// <summary>
@@ -167,11 +167,15 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
 
             internal IReadOnlyDictionary<string, Func<string, string?, TracerProvider?>> TracerProviderFactories => _tracerProviderFactories;
 
-            public Builder(string sourceName, string? sourceVersion)
+            public Builder(string sourceName, string? sourceVersion, bool addDefaultExporters = false)
             {
                 _sourceName = sourceName;
                 _sourceVersion = sourceVersion;
                 _tracerProviderFactories = [];
+                if (addDefaultExporters)
+                {
+                    AddDefaultExporters();
+                }
             }
 
             public ExportersBuilder Build()
@@ -183,15 +187,6 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
                 return new ExportersBuilder(this);
             }
 
-            public Builder AddDefaultExporters()
-            {
-                foreach (KeyValuePair<string, Func<string, string?, TracerProvider?>> item in s_tracerProviderFactoriesDefault)
-                {
-                    _tracerProviderFactories[item.Key] = item.Value;
-                }
-                return this;
-            }
-
             public Builder AddExporter(string exporterName, Func<string, string?, TracerProvider?> tracerProviderFactory)
             {
                 if (string.IsNullOrWhiteSpace(exporterName))
@@ -200,6 +195,15 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
                 }
 
                 _tracerProviderFactories.Add(exporterName, tracerProviderFactory);
+                return this;
+            }
+
+            private Builder AddDefaultExporters()
+            {
+                foreach (KeyValuePair<string, Func<string, string?, TracerProvider?>> item in s_tracerProviderFactoriesDefault)
+                {
+                    _tracerProviderFactories[item.Key] = item.Value;
+                }
                 return this;
             }
         }
