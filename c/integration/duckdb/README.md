@@ -17,40 +17,13 @@
   under the License.
 -->
 
-# Red ADBC
+# ADBC DuckDB Integration Test
 
-[![RubyGems: red-adbc](https://img.shields.io/gem/v/red-adbc?style=flat-square)](https://rubygems.org/gems/red-adbc)
+![Vendor: DuckDB](https://img.shields.io/badge/vendor-DuckDB-blue?style=flat-square)
+![Implementation: C/C++](https://img.shields.io/badge/implementation-C%2FC%2B%2B-violet?style=flat-square)
+![Status: Stable](https://img.shields.io/badge/status-stable-green?style=flat-square)
 
-Red ADBC is the Ruby bindings of ADBC GLib.
+[![conda-forge: python-duckdb](https://img.shields.io/conda/vn/conda-forge/python-duckdb?label=conda-forge%3A%20python-duckdb&style=flat-square)](https://anaconda.org/conda-forge/python-duckdb)
+[![PyPI: duckdb](https://img.shields.io/pypi/v/duckdb?style=flat-square)](https://pypi.org/project/duckdb/)
 
-## How to install
-
-If you want to install Red ADBC by Bundler, you can add the following
-to your `Gemfile`:
-
-```ruby
-plugin "rubygems-requirements-system"
-
-gem "red-adbc"
-```
-
-If you want to install Red ADBC by RubyGems, you can use the following
-command line:
-
-```console
-$ gem install rubygems-requirements-system
-$ gem install red-adbc
-```
-
-## How to use
-
-```ruby
-require "adbc"
-
-ADBC::Database.open(driver: "adbc_driver_sqlite",
-                    uri: ":memory:") do |database|
-  database.connect do |connection|
-    puts(connection.query("SELECT 1"))
-  end
-end
-```
+This package provides an integration test between [DuckDB](https://duckdb.org/) and ADBC.
