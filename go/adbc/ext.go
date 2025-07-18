@@ -84,7 +84,7 @@ type OTelTracing interface {
 
 // IngestStreamOption bundles the IngestStream options.
 // Driver specific options can go into Extra.
-type IngestStreamOption struct {
+type IngestStreamOptions struct {
 	// Optional catalog/catalogue name
 	Catalog string
 
@@ -103,7 +103,7 @@ type IngestStreamOption struct {
 // Execute, and Close.
 //
 // This is not part of the ADBC API specification.
-func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReader, targetTable, ingestMode string, opt IngestStreamOption) (int64, error) {
+func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReader, targetTable, ingestMode string, opt IngestStreamOptions) (int64, error) {
 	// Create a new statement
 	stmt, err := cnxn.NewStatement()
 	if err != nil {

@@ -663,7 +663,7 @@ func (dm *DriverMgrSuite) TestIngestStream() {
 	defer rdr.Release()
 
 	// 3) Use the IngestStream
-	count, err := adbc.IngestStream(dm.ctx, dm.conn, rdr, "ingest_test", adbc.OptionValueIngestModeCreateAppend, adbc.IngestStreamOption{})
+	count, err := adbc.IngestStream(dm.ctx, dm.conn, rdr, "ingest_test", adbc.OptionValueIngestModeCreateAppend, adbc.IngestStreamOptions{})
 	dm.NoError(err)
 	dm.Equal(int64(5), count, "should report 5 rows ingested")
 
