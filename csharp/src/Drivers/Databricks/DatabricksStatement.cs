@@ -68,9 +68,52 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             runAsyncInThrift = connection.RunAsyncInThrift;
         }
 
+        /// <summary>
+        /// Gets the schema from metadata response. Handles both Arrow schema (Protocol V5+) and traditional Thrift schema.
+        /// </summary>
+        /// <param name="metadata">The metadata response containing schema information</param>
+        /// <returns>The Arrow schema</returns>
+        protected override Schema GetSchemaFromMetadata(TGetResultSetMetadataResp metadata)
+        {
+            // For Protocol V5+, prefer Arrow schema if available
+            if (metadata.__isset.arrowSchema)
+            {
+                Schema? arrowSchema = ((DatabricksSchemaParser)Connection.SchemaParser).ParseArrowSchema(metadata.ArrowSchema);
+                if (arrowSchema != null)
+                {
+                    return arrowSchema;
+                }
+            }
+
+            // Fallback to traditional Thrift schema
+            return Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+        }
+
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
             base.SetStatementProperties(statement);
+
+            // Set Databricks-specific statement properties
+            // TODO: Ensure this is set dynamically depending on server capabilities.
+            statement.EnforceResultPersistenceMode = false;
+            statement.ResultPersistenceMode = TResultPersistenceMode.ALL_RESULTS;
+            statement.CanReadArrowResult = true;
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            statement.ConfOverlay = SparkConnection.timestampConfig;
+#pragma warning restore CS0618 // Type or member is obsolete
+
+            statement.UseArrowNativeTypes = new TSparkArrowTypes
+            {
+                TimestampAsArrow = true,
+                DecimalAsArrow = true,
+
+                // set to false so they return as string
+                // otherwise, they return as ARRAY_TYPE but you can't determine
+                // the object type of the items in the array
+                ComplexTypesAsArrow = false,
+                IntervalTypesAsArrow = false,
+            };
 
             // Set CloudFetch capabilities
             statement.CanDownloadResult = useCloudFetch;

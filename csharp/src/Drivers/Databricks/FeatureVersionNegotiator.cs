@@ -81,9 +81,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /**
         * V5 introduced the following features:
         * - ArrowNativeTypes (used to prompt server to send arrow-native types)
-        * - ArrowMetadata (field is not used)
+        * - ArrowMetadata (used to determine advanced arrow types in metadata response schema)
         */
-
 
         #endregion
 
