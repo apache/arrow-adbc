@@ -206,6 +206,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// When enabled, the driver will also propagate the tracestate header if available.
         /// </summary>
         public const string TraceStateEnabled = "adbc.databricks.trace_propagation.state_enabled";
+
+        /// <summary>
+        /// The minutes before token expiration when we should start renewing the token.
+        /// Default value is 0 (disabled) if not specified.
+        /// </summary>
+        public const string TokenRenewLimit = "adbc.databricks.token_renew_limit";
     }
 
     /// <summary>
