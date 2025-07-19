@@ -87,7 +87,7 @@ const (
 const (
 	// WithAccessToken instructs the driver to authenticate using the given
 	// access token.
-	WithAccessToken = "adbc.rpc.flightsql.auth.access_token"
+	WithAccessToken = "adbc.google.bigquery.auth.access_token"
 
 	// WithAppDefaultCredentials instructs the driver to authenticate using
 	// Application Default Credentials (ADC).
@@ -150,6 +150,9 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 
 // NewDriverWithClientFactory creates a new BigQuery driver using the given Arrow allocator and client factory.
 func NewDriverWithClientFactory(alloc memory.Allocator, clientFactory bigqueryClientFactory) adbc.Driver {
+	if clientFactory == nil {
+		clientFactory = &defaultBigqueryClientFactory{}
+	}
 	return NewDriverWithClientAndTokenSourceFactory(alloc, clientFactory, &defaultImpersonatedTokenSourceFactory{})
 }
 

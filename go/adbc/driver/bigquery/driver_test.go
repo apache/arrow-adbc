@@ -1551,3 +1551,73 @@ func (suite *BigQueryTests) TestMetadataGetObjectsColumnsXdbc() {
 }
 
 var _ validation.DriverQuirks = (*BigQueryQuirks)(nil)
+
+// TestDriverConstructorWithNilClientFactory tests that the driver constructor
+// handles nil client factory gracefully by using the default factory.
+func TestDriverConstructorWithNilClientFactory(t *testing.T) {
+	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	defer mem.AssertSize(t, 0)
+
+	// Test that NewDriverWithClientFactory with nil doesn't panic
+	drv := driver.NewDriverWithClientFactory(mem, nil)
+	if drv == nil {
+		t.Error("Driver should not be nil")
+	}
+
+	// Test that we can create a database with the driver
+	db, err := drv.NewDatabase(nil)
+	if err != nil {
+		t.Errorf("Failed to create database: %v", err)
+	}
+	if db == nil {
+		t.Error("Database should not be nil")
+	}
+	defer db.Close()
+}
+
+// TestWithAccessTokenConstant tests that the WithAccessToken constant
+// follows the correct BigQuery naming pattern.
+func TestWithAccessTokenConstant(t *testing.T) {
+	expected := "adbc.google.bigquery.auth.access_token"
+	if driver.WithAccessToken != expected {
+		t.Errorf("WithAccessToken constant should be %s, got %s", expected, driver.WithAccessToken)
+	}
+}
+
+// TestAuthTypeConsolidation tests that all auth type values are handled
+// correctly in the consolidated switch statement.
+func TestAuthTypeConsolidation(t *testing.T) {
+	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	defer mem.AssertSize(t, 0)
+
+	drv := driver.NewDriver(mem)
+	db, err := drv.NewDatabase(nil)
+	if err != nil {
+		t.Fatalf("Failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	// Test all valid auth types
+	validAuthTypes := []string{
+		driver.OptionValueAuthTypeDefault,
+		driver.OptionValueAuthTypeJSONCredentialFile,
+		driver.OptionValueAuthTypeJSONCredentialString,
+		driver.OptionValueAuthTypeUserAuthentication,
+		driver.OptionValueAuthTypeAppDefaultCredentials,
+	}
+
+	for _, authType := range validAuthTypes {
+		err := db.SetOptions(map[string]string{driver.OptionStringAuthType: authType})
+		if err != nil {
+			t.Errorf("Failed to set auth type %s: %v", authType, err)
+		}
+	}
+
+	// Test invalid auth type
+	err = db.SetOptions(map[string]string{driver.OptionStringAuthType: "invalid_auth_type"})
+	if err == nil {
+		t.Error("Expected error for invalid auth type")
+	} else if !strings.Contains(err.Error(), "unknown database auth type value") {
+		t.Errorf("Expected error message to contain 'unknown database auth type value', got: %v", err)
+	}
+}

@@ -123,15 +123,11 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 	switch key {
 	case OptionStringAuthType:
 		switch value {
-		case OptionValueAuthTypeDefault:
-			d.authType = value
-		case OptionValueAuthTypeJSONCredentialFile:
-			d.authType = value
-		case OptionValueAuthTypeJSONCredentialString:
-			d.authType = value
-		case OptionValueAuthTypeUserAuthentication:
-			d.authType = value
-		case OptionValueAuthTypeAppDefaultCredentials:
+		case OptionValueAuthTypeDefault,
+			OptionValueAuthTypeJSONCredentialFile,
+			OptionValueAuthTypeJSONCredentialString,
+			OptionValueAuthTypeUserAuthentication,
+			OptionValueAuthTypeAppDefaultCredentials:
 			d.authType = value
 		default:
 			return adbc.Error{
