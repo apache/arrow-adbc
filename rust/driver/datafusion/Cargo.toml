@@ -38,7 +38,7 @@ arrow-schema = "55.2.0"
 datafusion = { version = "48.0.1", default-features = false }
 datafusion-substrait = { version = "48.0.1", default-features = false }
 tokio = { version = "1.46", features = ["rt-multi-thread"] }
-prost = "0.13.5"
+prost = "0.14.1"
 
 [dev-dependencies]
 arrow-select = "55.2.0"
