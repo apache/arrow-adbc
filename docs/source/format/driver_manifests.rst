@@ -54,10 +54,12 @@ direct file path to the dynamic library as the driver name.
     .. tab-item:: C/C++
        :sync: cpp
 
-        You can use the :c:func:`AdbcLoadDriver` function to load the driver directly.
+        You can use the :c:func:`AdbcLoadDriver` function to load the driver directly or you can use it as a driver
+        itself via :c:struct:`AdbcDatabase`.
 
        .. code-block:: cpp
 
+          // load directly
           struct AdbcDriver driver;
           struct AdbcError error;
 
@@ -68,18 +70,15 @@ direct file path to the dynamic library as the driver name.
             ADBC_VERSION_1_1_0, &driver, &error);
           // if status != ADBC_STATUS_OK then handle the error
 
-        Alternately, you can just use it as a driver via :c:struct:`AdbcDatabase`
-
-        .. code-block:: cpp
-
-           struct AdbcDatabase database;
-           struct AdbcError error;
-           std::memset(&database, 0, sizeof(database));
-           std::memset(&error, 0, sizeof(error));
-           auto status = AdbcDatabaseNew(&database, &error);
-           // check status
-           status = AdbcDatabaseSetOption(&database, "driver", "/path/to/libadbc_driver.so", &error);
-           // check status
+          // or use the Driver Manager as a driver itself
+          struct AdbcDatabase database;
+          struct AdbcError error;
+          std::memset(&database, 0, sizeof(database));
+          std::memset(&error, 0, sizeof(error));
+          auto status = AdbcDatabaseNew(&database, &error);
+          // check status
+          status = AdbcDatabaseSetOption(&database, "driver", "/path/to/libadbc_driver.so", &error);
+          // check status
 
     .. tab-item:: GLib
        :sync: glib
