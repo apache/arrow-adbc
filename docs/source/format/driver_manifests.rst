@@ -356,7 +356,7 @@ the given order:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
 
-   ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``
+   * ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration directory will be searched
 
