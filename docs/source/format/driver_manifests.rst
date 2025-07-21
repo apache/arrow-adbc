@@ -346,6 +346,9 @@ to control which directories will be searched for manifests, with the behavior b
         * ``LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be used
         * ``LOAD_FLAG_DEFAULT`` - default value with all flags set
 
+Unix-like Platforms
+^^^^^^^^^^^^^^^^^^^
+
 For unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
 the given order:
 
@@ -360,6 +363,9 @@ the given order:
      will search ``$XDG_CONFIG_HOME/adbc``, otherwise it will search ``~/.config/adbc``
 
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search ``/etc/adbc`` if it exists
+
+Windows
+^^^^^^^
 
 Things are slightly different on Windows, where the driver manager will also search for driver information in the registry just as
 would happen for ODBC drivers. The search for a manifest on windows would be the following:
