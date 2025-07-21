@@ -348,7 +348,7 @@ to control which directories will be searched for manifests, with the behavior b
        * ``LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be used
        * ``LOAD_FLAG_DEFAULT`` - default value with all flags set
 
-For unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
+For Unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
 the given order:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
