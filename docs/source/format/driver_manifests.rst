@@ -175,9 +175,10 @@ direct file path to the dynamic library as the driver name.
               ManagedDriver::load_dynamic_from_name("/path/to/libadbc_driver.so", None, AdbcVersion::V100).unwrap()
           }
 
-As an alternative to passing the full path to the dynamic library, you can also pass the
-name of the dynamic library if it is on your ``LD_LIBRARY_PATH``. Such as using ``adbc_driver``
-instead of ``/path/to/libadbc_driver.so``.
+As an alternative to passing the full path to the dynamic library, you may
+prefer to use ``LD_LIBRARY_PATH`` (or similar, depending on your operating
+system) and specify just the filename (i.e., ``libadbc_driver.so`` instead of
+``/path/to/libadbc_driver.so``.
 
 However, the requirement to having the path to the dynamic library or having it
 on your ``LD_LIBRARY_PATH`` can prove difficult for ensuring security, reproducibility,
