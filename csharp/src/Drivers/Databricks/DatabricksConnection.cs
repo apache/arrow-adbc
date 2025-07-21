@@ -69,7 +69,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Default namespace
         private TNamespace? _defaultNamespace;
 
-        private HttpClient? _httpClient;
+        private HttpClient? _authHttpClient;
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -323,18 +323,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override HttpMessageHandler CreateHttpHandler()
         {
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
+            HttpMessageHandler baseAuthHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
 
             // Add tracing handler to propagate W3C trace context if enabled
             if (_tracePropagationEnabled)
             {
                 baseHandler = new TracingDelegatingHandler(baseHandler, this, _traceParentHeaderName, _traceStateEnabled);
+                baseAuthHandler = new TracingDelegatingHandler(baseAuthHandler, this, _traceParentHeaderName, _traceStateEnabled);
             }
 
             if (TemporarilyUnavailableRetry)
             {
                 // Add retry handler for 503 responses
                 baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
+                baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout);
             }
+
+            Debug.Assert(_authHttpClient == null, "Auth HttpClient should not be initialized yet.");
+            _authHttpClient = new HttpClient(baseAuthHandler);
 
             // Add OAuth client credentials handler if OAuth M2M authentication is being used
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
@@ -350,13 +356,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
                 Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
 
-                if (_httpClient == null)
-                {
-                    _httpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
-                }
-
                 var tokenProvider = new OAuthClientCredentialsProvider(
-                    _httpClient,
+                    _authHttpClient,
                     clientId!,
                     clientSecret!,
                     host!,
@@ -366,9 +367,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 baseHandler = new OAuthDelegatingHandler(baseHandler, tokenProvider);
             }
-
             // Add token exchange handler if token renewal is enabled and the auth type is OAuth access token
-            if (Properties.TryGetValue(DatabricksParameters.TokenRenewLimit, out string? tokenRenewLimitStr) &&
+            else if (Properties.TryGetValue(DatabricksParameters.TokenRenewLimit, out string? tokenRenewLimitStr) &&
                 int.TryParse(tokenRenewLimitStr, out int tokenRenewLimit) &&
                 tokenRenewLimit > 0 &&
                 Properties.TryGetValue(SparkParameters.AuthType, out string? authTypeForToken) &&
@@ -386,20 +386,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     string host = GetHost();
 
-                    if (_httpClient == null)
-                    {
-                        HttpMessageHandler baseHandlerForToken = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
-
-                        // Add retry handler for token exchange client
-                        if (TemporarilyUnavailableRetry)
-                        {
-                            baseHandlerForToken = new RetryHttpHandler(baseHandlerForToken, TemporarilyUnavailableRetryTimeout);
-                        }
-
-                        _httpClient = new HttpClient(baseHandlerForToken);
-                    }
-
-                    var tokenExchangeClient = new TokenExchangeClient(_httpClient, host);
+                    var tokenExchangeClient = new TokenExchangeClient(_authHttpClient, host);
 
                     baseHandler = new TokenExchangeDelegatingHandler(
                         baseHandler,
@@ -743,7 +730,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             if (disposing)
             {
-                _httpClient?.Dispose();
+                _authHttpClient?.Dispose();
             }
             base.Dispose(disposing);
         }
