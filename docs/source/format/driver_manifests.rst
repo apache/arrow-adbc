@@ -250,8 +250,9 @@ Given the name of a driver, the name first has to be resolved to either a dynami
 that contains the path to the dynamic library to load. The following flowchart describes how this resolution is done:
 
 .. figure:: manifest_load.mmd.svg
+   :alt: Flowchart diagram showing the how the driver manager resolves a simple driver name and eventually attempts to load the driver or returns an error.
 
-    Driver manager attempting to resolve the passed in driver name
+   Flowchart diagram showing the how the driver manager resolves a simple driver name and eventually attempts to load the driver or returns an error.
 
 Thus, if the driver name is a path to a file the driver manager will attempt to load that file directly. If there's no
 extension provided, it will first look for a file with a ``.toml`` extension, and if that fails, it will look for the
