@@ -151,7 +151,7 @@ direct file path to the dynamic library as the driver name.
     .. tab-item:: Rust
        :sync: rust
 
-       Rust has a `ManagedDriver` type with static methods for loading drivers:
+       Rust has a ``ManagedDriver`` type with static methods for loading drivers:
 
        .. code-block:: rust
 
@@ -264,8 +264,20 @@ to control which directories will be searched for manifests, with the behavior b
         * :c:macro:`ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS` - allow a relative path to be provided
         * :c:macro:`ADBC_LOAD_FLAG_DEFAULT` - default value with all flags set
 
-        These can either be provided to :c:func:`AdbcFindLoadDriver` or by using :c:func:`AdbcDriverManagerDatabaseSetLoadFlags`
-    
+        These can either be provided to :c:func:`AdbcFindLoadDriver` or by using :c:func:`AdbcDriverManagerDatabaseSetLoadFlags`.
+
+    .. tab-item:: GLib
+       :sync: glib
+
+        The type ``GADBCLoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
+        * ``GADBC_LOAD_SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
+        * ``GADBC_LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
+        * ``GADBC_LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
+        * ``GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
+        * ``GADBC_LOAD_FLAG_DEFAULT`` - default value with all flags set
+
+        These can be provided by using ``gadbc_database_set_load_flags()``.
+
     .. tab-item:: Go
        :sync: go
 
@@ -285,11 +297,24 @@ to control which directories will be searched for manifests, with the behavior b
        Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_manager.dbapi.connect``) will
        allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
 
+    .. tab-item:: Ruby
+       :sync: ruby
+
+        The class ``ADBC::LoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
+        * ``ADBC::LoadFlags::SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
+        * ``ADBC::LoadFlags::SEARCH_USER`` - search the user configuration directory
+        * ``ADBC::LoadFlags::SEARCH_SYSTEM`` - search the system configuration directory
+        * ``ADBC::LoadFlags::ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
+        * ``ADBC::LoadFlags::DEFAULT`` - default value with all flags set
+
+        These can be provided by using ``ADBC::Database#load_flags=``.
+       Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_qmanager.dbapi.connect``) will
+       allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
     .. tab-item:: Rust
        :sync: rust
 
-       The `ManagedDriver` type has a method `load_dynamic_from_name` which takes an optional `load_flags` parameter. The flags as a ``u32`` with
-       the type `adbc_core::driver_manager::LoadFlags`, which has the following constants:
+       The ``ManagedDriver`` type has a method ``load_dynamic_from_name`` which takes an optional ``load_flags`` parameter. The flags as a ``u32`` with
+       the type ``adbc_core::driver_manager::LoadFlags``, which has the following constants:
        * `LOAD_FLAG_SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
        * `LOAD_FLAG_SEARCH_USER` - search the user configuration directory
        * `LOAD_FLAG_SEARCH_SYSTEM` - search the system configuration directory
