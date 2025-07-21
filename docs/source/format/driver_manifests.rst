@@ -83,7 +83,7 @@ direct file path to the dynamic library as the driver name.
     .. tab-item:: GLib
        :sync: glib
 
-        You can use it as a driver via ``GADBCDatabase`
+        You can use it as a driver via ``GADBCDatabase``
 
         .. code-block:: c
 
