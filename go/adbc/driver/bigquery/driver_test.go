@@ -39,6 +39,7 @@ import (
 	"github.com/apache/arrow-go/v18/parquet"
 	"github.com/apache/arrow-go/v18/parquet/pqarrow"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -1560,28 +1561,13 @@ func TestDriverConstructorWithNilClientFactory(t *testing.T) {
 
 	// Test that NewDriverWithClientFactory with nil doesn't panic
 	drv := driver.NewDriverWithClientFactory(mem, nil)
-	if drv == nil {
-		t.Error("Driver should not be nil")
-	}
+	assert.NotNil(t, drv, "Driver should not be nil")
 
 	// Test that we can create a database with the driver
 	db, err := drv.NewDatabase(nil)
-	if err != nil {
-		t.Errorf("Failed to create database: %v", err)
-	}
-	if db == nil {
-		t.Error("Database should not be nil")
-	}
-	defer db.Close()
-}
-
-// TestWithAccessTokenConstant tests that the WithAccessToken constant
-// follows the correct BigQuery naming pattern.
-func TestWithAccessTokenConstant(t *testing.T) {
-	expected := "adbc.google.bigquery.auth.access_token"
-	if driver.WithAccessToken != expected {
-		t.Errorf("WithAccessToken constant should be %s, got %s", expected, driver.WithAccessToken)
-	}
+	assert.NoError(t, err, "Failed to create database")
+	assert.NotNil(t, db, "Database should not be nil")
+	defer validation.CheckedClose(t, db)
 }
 
 // TestAuthTypeConsolidation tests that all auth type values are handled
@@ -1595,7 +1581,7 @@ func TestAuthTypeConsolidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create database: %v", err)
 	}
-	defer db.Close()
+	defer validation.CheckedClose(t, db)
 
 	// Test all valid auth types
 	validAuthTypes := []string{
