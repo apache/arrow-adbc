@@ -279,6 +279,7 @@ to control which directories will be searched for manifests, with the behavior b
        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_SYSTEM` - search the system configuration directory
        * :c:macro:`ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS` - allow a relative path to be provided
        * :c:macro:`ADBC_LOAD_FLAG_DEFAULT` - default value with all flags set
+
        These can either be provided to :c:func:`AdbcFindLoadDriver` or by using :c:func:`AdbcDriverManagerDatabaseSetLoadFlags`.
 
     .. tab-item:: GLib
@@ -291,6 +292,7 @@ to control which directories will be searched for manifests, with the behavior b
        * ``GADBC_LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
        * ``GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
        * ``GADBC_LOAD_FLAG_DEFAULT`` - default value with all flags set
+
        These can be provided by using ``gadbc_database_set_load_flags()``.
 
     .. tab-item:: Go
