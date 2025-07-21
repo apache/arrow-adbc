@@ -262,7 +262,7 @@ extension appropriate to the platform being used (e.g., ``.so`` for Linux, ``.dy
           reasons, this needs to be explicitly enabled by an option to enable relative paths, otherwise it will produce an error instead.
 
 As you can see in the flowchart, if the driver name is a string which does not have an extension and is not a file path, the
-driver manager will then search for a corresponding manifest file, before falling back seeing if ``LD_LIBRARY_PATH`` can find
+driver manager will then search for a corresponding manifest file, before falling back seeing if ``LD_LIBRARY_PATH`` (or the equivalent for your operating system) can find
 a library with the name provided. Searching for a manifest file is done by looking for a file with the name provided, but with
 a ``.toml`` extension (e.g. if you pass ``sqlite`` as the driver name, it will look for ``sqlite.toml``).  Options are provided
 to control which directories will be searched for manifests, with the behavior being slightly different based on the platform.
