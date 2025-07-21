@@ -136,6 +136,18 @@ direct file path to the dynamic library as the driver name.
               # use the connection
               pass
 
+    .. tab-item:: Ruby
+       :sync: ruby
+
+       You can use the ``ADBC::Database`` as follows:
+
+       .. code-block:: ruby
+          require "adbc"
+
+          ADBC::Database.open(driver: "/path/to/libadbc_driver.so") do |database|
+            # use the database
+          end
+          
     .. tab-item:: Rust
        :sync: rust
 
