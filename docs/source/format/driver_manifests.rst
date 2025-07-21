@@ -318,7 +318,7 @@ to control which directories will be searched for manifests, with the behavior b
     .. tab-item:: R
        :sync: r
 
-       Use ``adbc_driver(... , load_flags = adbc_load_flags())`` to pass options to the driver manager
+       Use ``adbc_driver(..., load_flags = adbc_load_flags())`` to pass options to the driver manager
        regarding how to locate drivers specified by manifest.
 
     .. tab-item:: Ruby
