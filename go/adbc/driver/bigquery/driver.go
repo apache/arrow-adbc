@@ -85,10 +85,6 @@ const (
 
 // option that can be passed to the NewClient method.
 const (
-	// WithAccessToken instructs the driver to authenticate using the given
-	// access token.
-	WithAccessToken = "adbc.google.bigquery.auth.access_token"
-
 	// WithAppDefaultCredentials instructs the driver to authenticate using
 	// Application Default Credentials (ADC).
 	WithAppDefaultCredentials = "adbc.google.bigquery.use_application_default_credentials"

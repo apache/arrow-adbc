@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
@@ -38,7 +39,7 @@ type databaseImpl struct {
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
 	impersonateScopes          []string
-	impersonateLifetime        string // Changed from time.Duration to string
+	impersonateLifetime        time.Duration
 
 	clientFactory      bigqueryClientFactory
 	tokenSourceFactory impersonatedTokenSourceFactory
@@ -104,6 +105,15 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.datasetID, nil
 	case OptionStringTableID:
 		return d.tableID, nil
+	case WithImpersonateLifetime:
+		if d.impersonateLifetime == 0 {
+			// If no lifetime is set but impersonation is enabled, return the default
+			if d.hasImpersonationOptions() {
+				return (3600 * time.Second).String(), nil
+			}
+			return "", nil
+		}
+		return d.impersonateLifetime.String(), nil
 	default:
 		return d.DatabaseImplBase.GetOption(key)
 	}
@@ -117,6 +127,12 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 		}
 	}
 	return nil
+}
+
+func (d *databaseImpl) hasImpersonationOptions() bool {
+	return d.impersonateTargetPrincipal != "" ||
+		len(d.impersonateDelegates) > 0 ||
+		len(d.impersonateScopes) > 0
 }
 
 func (d *databaseImpl) SetOption(key string, value string) error {
@@ -150,7 +166,14 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 	case WithImpersonateScopes:
 		d.impersonateScopes = strings.Split(value, ",")
 	case WithImpersonateLifetime:
-		d.impersonateLifetime = value
+		duration, err := time.ParseDuration(value)
+		if err != nil {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("invalid impersonate lifetime value `%s`: %v", value, err),
+			}
+		}
+		d.impersonateLifetime = duration
 	case OptionStringProjectID:
 		d.projectID = value
 	case OptionStringDatasetID:

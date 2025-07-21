@@ -55,7 +55,7 @@ type connectionImpl struct {
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
 	impersonateScopes          []string
-	impersonateLifetime        string // Changed from time.Duration to string
+	impersonateLifetime        time.Duration
 
 	clientFactory      bigqueryClientFactory
 	tokenSourceFactory impersonatedTokenSourceFactory
@@ -504,6 +504,15 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.dbSchema, nil
 	case OptionStringTableID:
 		return c.tableID, nil
+	case WithImpersonateLifetime:
+		if c.impersonateLifetime == 0 {
+			// If no lifetime is set but impersonation is enabled, return the default
+			if c.hasImpersonationOptions() {
+				return (3600 * time.Second).String(), nil
+			}
+			return "", nil
+		}
+		return c.impersonateLifetime.String(), nil
 	default:
 		return c.ConnectionImplBase.GetOption(key)
 	}
@@ -528,7 +537,14 @@ func (c *connectionImpl) SetOption(key string, value string) error {
 	case WithImpersonateScopes:
 		c.impersonateScopes = strings.Split(value, ",")
 	case WithImpersonateLifetime:
-		c.impersonateLifetime = value
+		dur, err := time.ParseDuration(value)
+		if err != nil {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("Invalid duration string for %s: %s", WithImpersonateLifetime, err.Error()),
+			}
+		}
+		c.impersonateLifetime = dur
 	default:
 		return c.ConnectionImplBase.SetOption(key, value)
 	}
@@ -615,15 +631,11 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		}
 
 		var lifetime time.Duration
-		if c.impersonateLifetime != "" {
-			dur, err := time.ParseDuration(c.impersonateLifetime)
-			if err != nil {
-				return adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("Invalid duration string for %s: %s", WithImpersonateLifetime, err.Error()),
-				}
-			}
-			lifetime = dur
+		if c.impersonateLifetime != 0 {
+			lifetime = c.impersonateLifetime
+		} else {
+			// Use default lifetime of 1 hour when impersonation is enabled but no lifetime is specified
+			lifetime = 3600 * time.Second
 		}
 
 		impCfg := impersonate.CredentialsConfig{
@@ -659,8 +671,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 func (c *connectionImpl) hasImpersonationOptions() bool {
 	return c.impersonateTargetPrincipal != "" ||
 		len(c.impersonateDelegates) > 0 ||
-		len(c.impersonateScopes) > 0 ||
-		c.impersonateLifetime != ""
+		len(c.impersonateScopes) > 0
 }
 
 var (
