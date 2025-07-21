@@ -21,22 +21,22 @@ ADBC Driver Manager and Manifests
 
 .. note:: This document focuses on scenarios that utilize the driver manager
           to load drivers.  The driver manager is not required to utilize ADBC
-          in general, but allows a convenient experience for dynamically 
+          in general, but allows a convenient experience for dynamically
           loading arbitrary drivers.
 
 The ADBC driver manager is itself, an ADBC driver which simply loads another driver
-dynamically and forwards the calls to the loaded driver.  For more information on the 
+dynamically and forwards the calls to the loaded driver.  For more information on the
 driver manager see :doc:`how_manager`.
 
 There are essentially two ways to specify a driver for the driver manager to load:
 
 1. Directly specifying the dynamic library to load
-2. Referring to a driver manifest file which contains metadata along with the 
+2. Referring to a driver manifest file which contains metadata along with the
    location of the dynamic library to be loaded
 
 When using the driver manager, you can either utilize the ``driver`` option to the
 driver manager, or you can use functions in the language bindings which explicitly
-load a driver by name. 
+load a driver by name.
 
 .. note:: In addition to the ``driver`` option, there is also an ``entrypoint`` option
           which can be used to specify the entrypoint function to call for populating
@@ -60,7 +60,7 @@ direct file path to the dynamic library as the driver name.
 
           struct AdbcDriver driver;
           struct AdbcError error;
-          
+
           std::memset(&driver, 0, sizeof(driver));
           std::memset(&error, 0, sizeof(error));
 
@@ -147,7 +147,7 @@ direct file path to the dynamic library as the driver name.
           ADBC::Database.open(driver: "/path/to/libadbc_driver.so") do |database|
             # use the database
           end
-          
+
     .. tab-item:: Rust
        :sync: rust
 
@@ -166,7 +166,7 @@ In addition to passing the full path to the dynamic library, you can also pass t
 name of the dynamic library if it is on your ``LD_LIBRARY_PATH``. Such as using ``adbc_driver``
 instead of ``/path/to/libadbc_driver.so``.
 
-However, the requirement to having the path to the dynamic library or having it 
+However, the requirement to having the path to the dynamic library or having it
 on your ``LD_LIBRARY_PATH`` can prove difficult for ensuring security, reproducibility,
 and ease of use.  For this reason, there is the concept of a driver manifest.
 
@@ -193,7 +193,7 @@ Below is an example of a driver manifest:
 .. code-block:: toml
 
    name = 'Driver Display Name'
-   version = '1.0.0' # driver version   
+   version = '1.0.0' # driver version
    publisher = 'string to identify the publisher'
    license = 'Apache-2.0' # or otherwise
    url = 'https://example.com' # URL with more info about the driver
@@ -204,7 +204,7 @@ Below is an example of a driver manifest:
 
    [ADBC.features]
    supported = [] # list of strings such as 'bulk insert'
-   unsupported = [] # list of strings such as 'async'   
+   unsupported = [] # list of strings such as 'async'
 
    [Driver]
    entrypoint = 'AdbcDriverInit' # entrypoint to use if not using default
@@ -232,7 +232,7 @@ When the driver manager is provided a driver name to load, there is defined beha
 to locate the driver to load.  This defined behavior will allow for consistent behavior across different
 implementations of the driver manager and bindings, while also providing for flexibility in how drivers are installed.
 
-Given the name of a driver, the name first has to be resolved to either a dynamic library to load, or a driver manifest 
+Given the name of a driver, the name first has to be resolved to either a dynamic library to load, or a driver manifest
 that contains the path to the dynamic library to load. The following flowchart describes how this resolution is done:
 
 .. figure:: manifest_load.mmd.svg
@@ -282,7 +282,7 @@ to control which directories will be searched for manifests, with the behavior b
        :sync: go
 
         The ``drivermgr`` package by default will use the default load flags, which enable searching the environment variable, user
-        configuration directory, and system configuration directory. You can set the flags to use by passing the option 
+        configuration directory, and system configuration directory. You can set the flags to use by passing the option
         ``drivermgr.LoadFlagsOptionKey`` with the value being the ``strconv.Itoa`` of the flags you want to use when you call ``NewDatabase``
         or ``NewDatabaseWithContext``. The flags are defined in the ``drivermgr`` package as constants:
         * ``drivermgr.LoadFlagsSearchEnv`` - search the environment variable ``ADBC_CONFIG_PATH``
@@ -349,4 +349,3 @@ would happen for ODBC drivers. The search for a manifest on windows would be the
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search for a system-level configuration
    * The registry is searched for the key ``HKEY_LOCAL_MACHINE\SOFTWARE\ADBC\Drivers\${name}``. If it exists, then the same sub-keys
      as above are used.
-
