@@ -54,8 +54,8 @@ direct file path to the dynamic library as the driver name.
     .. tab-item:: C/C++
        :sync: cpp
 
-        You can use the :c:func:`AdbcLoadDriver` function to load the driver directly or you can use it as a driver
-        itself via :c:struct:`AdbcDatabase`.
+       You can use the :c:func:`AdbcLoadDriver` function to load the driver directly or you can use it as a driver
+       itself via :c:struct:`AdbcDatabase`.
 
        .. code-block:: cpp
 
@@ -83,18 +83,18 @@ direct file path to the dynamic library as the driver name.
     .. tab-item:: GLib
        :sync: glib
 
-        You can use it as a driver via ``GADBCDatabase``
+       You can use it as a driver via ``GADBCDatabase``
 
-        .. code-block:: c
+       .. code-block:: c
 
-           GError *error = NULL;
-           GADBCDatabase *database = gadbc_database_new(&error);
-           if (!database) {
-             /* handle error */
-           }
-           if (!gadbc_database_set_option(database, "driver", "/path/to/libadbc_driver.so", &error)) {
-             /* handle error */
-           }
+          GError *error = NULL;
+          GADBCDatabase *database = gadbc_database_new(&error);
+          if (!database) {
+            /* handle error */
+          }
+          if (!gadbc_database_set_option(database, "driver", "/path/to/libadbc_driver.so", &error)) {
+            /* handle error */
+          }
 
     .. tab-item:: Go
        :sync: go
