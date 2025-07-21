@@ -86,6 +86,7 @@ direct file path to the dynamic library as the driver name.
         You can use it as a driver via ``GADBCDatabase`
 
         .. code-block:: c
+
            GError *error = NULL;
            GADBCDatabase *database = gadbc_database_new(&error);
            if (!database) {
@@ -141,6 +142,7 @@ direct file path to the dynamic library as the driver name.
        You can use the ``DBAPI`` interface as follows:
 
        .. code-block:: r
+
           library(adbcdrivermanager)
           con <- adbc_driver("/path/to/libadbc_driver.so") |>
             adbc_database_init(uri = "...") |>
@@ -152,6 +154,7 @@ direct file path to the dynamic library as the driver name.
        You can use the ``ADBC::Database`` as follows:
 
        .. code-block:: ruby
+
           require "adbc"
 
           ADBC::Database.open(driver: "/path/to/libadbc_driver.so") do |database|
@@ -324,8 +327,9 @@ to control which directories will be searched for manifests, with the behavior b
         * ``ADBC::LoadFlags::DEFAULT`` - default value with all flags set
 
         These can be provided by using ``ADBC::Database#load_flags=``.
-       Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_qmanager.dbapi.connect``) will
-       allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
+        Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_qmanager.dbapi.connect``) will
+        allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
+
     .. tab-item:: Rust
        :sync: rust
 
@@ -341,27 +345,38 @@ For unix-like platforms, (e.g. Linux, macOS), the driver manager will search the
 the given order:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
+
    * ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``
+
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration directory will be searched
+
    * On macOS, this will be ``~/Library/Application Support/ADBC``
    * On Linux (and other unix-like platforms), the ``XDG_CONFIG_HOME`` environment variable is checked first. If it is set, the driver manager
      will search ``$XDG_CONFIG_HOME/adbc``, otherwise it will search ``~/.config/adbc``
+
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search ``/etc/adbc`` if it exists
 
 Things are slightly different on Windows, where the driver manager will also search for driver information in the registry just as
 would happen for ODBC drivers. The search for a manifest on windows would be the following:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
-   * ``ADBC_CONFIG_PATH`` is a semicolon-separated list of directories to search for ``${name}.toml``
+
+    * ``ADBC_CONFIG_PATH`` is a semicolon-separated list of directories to search for ``${name}.toml``
+
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration is searched for
+
    * First, the registry is searched for the key ``HKEY_CURRENT_USER\SOFTWARE\ADBC\Drivers\${name}``. If it exists, then the following sub-keys
      are used:
+
      * ``name`` - the display name of the driver
      * ``version`` - the version of the driver
      * ``source`` - the source of the driver
      * ``entrypoint`` - the entrypoint to use for the driver if a non-default entrypoint is needed
      * ``driver`` - the path to the driver shared library
+
    * If no registry key is found, then the directory ``%LOCAL_APPDATA%\ADBC\drivers`` is searched for ``${name}.toml``
+
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search for a system-level configuration
+
    * The registry is searched for the key ``HKEY_LOCAL_MACHINE\SOFTWARE\ADBC\Drivers\${name}``. If it exists, then the same sub-keys
      as above are used.

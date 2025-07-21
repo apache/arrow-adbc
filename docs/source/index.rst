@@ -255,7 +255,7 @@ Why ADBC?
    format/versioning
    format/comparison
    format/how_manager
-   format/manifest_load
+   format/driver_manifests
    format/related_work
 
 .. toctree::
