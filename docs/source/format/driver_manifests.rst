@@ -358,7 +358,7 @@ the given order:
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration directory will be searched
 
    * On macOS, this will be ``~/Library/Application Support/ADBC``
-   * On Linux (and other unix-like platforms), the ``XDG_CONFIG_HOME`` environment variable is checked first. If it is set, the driver manager
+   * On Linux (and other Unix-like platforms), the ``XDG_CONFIG_HOME`` environment variable is checked first. If it is set, the driver manager
      will search ``$XDG_CONFIG_HOME/adbc``, otherwise it will search ``~/.config/adbc``
 
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search ``/etc/adbc`` if it exists
