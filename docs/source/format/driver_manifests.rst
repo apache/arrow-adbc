@@ -364,7 +364,7 @@ the given order:
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search ``/etc/adbc`` if it exists
 
 Things are slightly different on Windows, where the driver manager will also search for driver information in the registry just as
-would happen for ODBC drivers. The search for a manifest on windows would be the following:
+would happen for ODBC drivers. The search for a manifest on Windows would be the following:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
 
