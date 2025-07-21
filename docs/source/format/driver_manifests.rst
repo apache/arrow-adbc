@@ -19,8 +19,8 @@
 ADBC Driver Manager and Manifests
 =================================
 
-.. note:: This document focuses on scenarios that utilize the driver manager
-          to load drivers.  The driver manager is not required to utilize ADBC
+.. note:: This document focuses on scenarios that use the driver manager
+          to load drivers.  The driver manager is not required to use ADBC
           in general, but allows a convenient experience for dynamically
           loading arbitrary drivers.
 
@@ -34,7 +34,7 @@ There are essentially two ways to specify a driver for the driver manager to loa
 2. Referring to a driver manifest file which contains metadata along with the
    location of the dynamic library to be loaded
 
-When using the driver manager, you can either utilize the ``driver`` option to the
+When using the driver manager, you can either use the ``driver`` option to the
 driver manager, or you can use functions in the language bindings which explicitly
 load a driver by name.
 
@@ -187,7 +187,7 @@ Driver Manifests
 ================
 
 A ``driver manifest`` is a `TOML`_ file that contains both metadata about the driver along with the location
-of the shared library to load.  The driver manager can then locate the manifest and utilize it to load the
+of the shared library to load.  The driver manager can then locate the manifest and use it to load the
 driver if it was given the shared library path directly.  This allows for more portable installations of
 drivers, and sharing of configurations.  Tools can even be created and written to automatically manage driver
 installations.
