@@ -81,6 +81,21 @@ direct file path to the dynamic library as the driver name.
            status = AdbcDatabaseSetOption(&database, "driver", "/path/to/libadbc_driver.so", &error);
            // check status
 
+    .. tab-item:: GLib
+       :sync: glib
+
+        You can use it as a driver via ``GADBCDatabase`
+
+        .. code-block:: c
+           GError *error = NULL;
+           GADBCDatabase *database = gadbc_database_new(&error);
+           if (!database) {
+             /* handle error */
+           }
+           if (!gadbc_database_set_option(database, "driver", "/path/to/libadbc_driver.so", &error)) {
+             /* handle error */
+           }
+
     .. tab-item:: Go
        :sync: go
 
