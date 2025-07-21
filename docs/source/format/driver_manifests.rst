@@ -310,14 +310,14 @@ to control which directories will be searched for manifests, with the behavior b
     .. tab-item:: Python
        :sync: python
 
-       Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_manager.dbapi.connect``) will
-       allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
+        Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_manager.dbapi.connect``) will
+        allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
 
     .. tab-item:: R
        :sync: r
 
-       Use ``adbc_driver(... , load_flags = adbc_load_flags())`` to pass options to the driver manager
-       regarding how to locate drivers specified by manifest.
+        Use ``adbc_driver(... , load_flags = adbc_load_flags())`` to pass options to the driver manager
+        regarding how to locate drivers specified by manifest.
 
     .. tab-item:: Ruby
        :sync: ruby
@@ -337,14 +337,14 @@ to control which directories will be searched for manifests, with the behavior b
     .. tab-item:: Rust
        :sync: rust
 
-       The ``ManagedDriver`` type has a method ``load_dynamic_from_name`` which takes an optional ``load_flags`` parameter. The flags as a ``u32`` with
-       the type ``adbc_core::driver_manager::LoadFlags``, which has the following constants:
+        The ``ManagedDriver`` type has a method ``load_dynamic_from_name`` which takes an optional ``load_flags`` parameter. The flags as a ``u32`` with
+        the type ``adbc_core::driver_manager::LoadFlags``, which has the following constants:
 
-       * ``LOAD_FLAG_SEARCH_ENV`` - search the environment variable ``ADBC_CONFIG_PATH``
-       * ``LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
-       * ``LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
-       * ``LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be used
-       * ``LOAD_FLAG_DEFAULT`` - default value with all flags set
+        * ``LOAD_FLAG_SEARCH_ENV`` - search the environment variable ``ADBC_CONFIG_PATH``
+        * ``LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
+        * ``LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
+        * ``LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be used
+        * ``LOAD_FLAG_DEFAULT`` - default value with all flags set
 
 For unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
 the given order:
