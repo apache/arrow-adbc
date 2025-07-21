@@ -272,42 +272,40 @@ to control which directories will be searched for manifests, with the behavior b
     .. tab-item:: C/C++
        :sync: cpp
 
-        The type :c:type:`AdbcLoadFlags` is a set of bitflags to control the directories to be searched. The flags are
+       The type :c:type:`AdbcLoadFlags` is a set of bitflags to control the directories to be searched. The flags are
 
-        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
-        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_USER` - search the user configuration directory
-        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_SYSTEM` - search the system configuration directory
-        * :c:macro:`ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS` - allow a relative path to be provided
-        * :c:macro:`ADBC_LOAD_FLAG_DEFAULT` - default value with all flags set
-
-        These can either be provided to :c:func:`AdbcFindLoadDriver` or by using :c:func:`AdbcDriverManagerDatabaseSetLoadFlags`.
+       * :c:macro:`ADBC_LOAD_FLAG_SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
+       * :c:macro:`ADBC_LOAD_FLAG_SEARCH_USER` - search the user configuration directory
+       * :c:macro:`ADBC_LOAD_FLAG_SEARCH_SYSTEM` - search the system configuration directory
+       * :c:macro:`ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS` - allow a relative path to be provided
+       * :c:macro:`ADBC_LOAD_FLAG_DEFAULT` - default value with all flags set
+       These can either be provided to :c:func:`AdbcFindLoadDriver` or by using :c:func:`AdbcDriverManagerDatabaseSetLoadFlags`.
 
     .. tab-item:: GLib
        :sync: glib
 
-        The type ``GADBCLoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
+       The type ``GADBCLoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
 
-        * ``GADBC_LOAD_SEARCH_ENV`` - search the environment variable ``ADBC_CONFIG_PATH``
-        * ``GADBC_LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
-        * ``GADBC_LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
-        * ``GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
-        * ``GADBC_LOAD_FLAG_DEFAULT`` - default value with all flags set
-
-        These can be provided by using ``gadbc_database_set_load_flags()``.
+       * ``GADBC_LOAD_SEARCH_ENV`` - search the environment variable ``ADBC_CONFIG_PATH``
+       * ``GADBC_LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
+       * ``GADBC_LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
+       * ``GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
+       * ``GADBC_LOAD_FLAG_DEFAULT`` - default value with all flags set
+       These can be provided by using ``gadbc_database_set_load_flags()``.
 
     .. tab-item:: Go
        :sync: go
 
-        The ``drivermgr`` package by default will use the default load flags, which enable searching the environment variable, user
-        configuration directory, and system configuration directory. You can set the flags to use by passing the option
-        ``drivermgr.LoadFlagsOptionKey`` with the value being the ``strconv.Itoa`` of the flags you want to use when you call ``NewDatabase``
-        or ``NewDatabaseWithContext``. The flags are defined in the ``drivermgr`` package as constants:
+       The ``drivermgr`` package by default will use the default load flags, which enable searching the environment variable, user
+       configuration directory, and system configuration directory. You can set the flags to use by passing the option
+       ``drivermgr.LoadFlagsOptionKey`` with the value being the ``strconv.Itoa`` of the flags you want to use when you call ``NewDatabase``
+       or ``NewDatabaseWithContext``. The flags are defined in the ``drivermgr`` package as constants:
 
-        * ``drivermgr.LoadFlagsSearchEnv`` - search the environment variable ``ADBC_CONFIG_PATH``
-        * ``drivermgr.LoadFlagsSearchUser`` - search the user configuration directory
-        * ``drivermgr.LoadFlagsSearchSystem`` - search the system configuration directory
-        * ``drivermgr.LoadFlagsAllowRelativePaths`` - allow a relative path to be used
-        * ``drivermgr.LoadFlagsDefault`` - default value with all flags set
+       * ``drivermgr.LoadFlagsSearchEnv`` - search the environment variable ``ADBC_CONFIG_PATH``
+       * ``drivermgr.LoadFlagsSearchUser`` - search the user configuration directory
+       * ``drivermgr.LoadFlagsSearchSystem`` - search the system configuration directory
+       * ``drivermgr.LoadFlagsAllowRelativePaths`` - allow a relative path to be used
+       * ``drivermgr.LoadFlagsDefault`` - default value with all flags set
 
     .. tab-item:: Python
        :sync: python
@@ -324,17 +322,16 @@ to control which directories will be searched for manifests, with the behavior b
     .. tab-item:: Ruby
        :sync: ruby
 
-        The class ``ADBC::LoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
+       The class ``ADBC::LoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
 
-        * ``ADBC::LoadFlags::SEARCH_ENV`` - search the environment variable ``ADBC_CONFIG_PATH``
-        * ``ADBC::LoadFlags::SEARCH_USER`` - search the user configuration directory
-        * ``ADBC::LoadFlags::SEARCH_SYSTEM`` - search the system configuration directory
-        * ``ADBC::LoadFlags::ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
-        * ``ADBC::LoadFlags::DEFAULT`` - default value with all flags set
-
-        These can be provided by using ``ADBC::Database#load_flags=``.
-        Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_qmanager.dbapi.connect``) will
-        allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
+       * ``ADBC::LoadFlags::SEARCH_ENV`` - search the environment variable ``ADBC_CONFIG_PATH``
+       * ``ADBC::LoadFlags::SEARCH_USER`` - search the user configuration directory
+       * ``ADBC::LoadFlags::SEARCH_SYSTEM`` - search the system configuration directory
+       * ``ADBC::LoadFlags::ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
+       * ``ADBC::LoadFlags::DEFAULT`` - default value with all flags set
+       These can be provided by using ``ADBC::Database#load_flags=``.
+       Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_qmanager.dbapi.connect``) will
+       allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
 
     .. tab-item:: Rust
        :sync: rust
