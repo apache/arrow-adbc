@@ -126,7 +126,7 @@ direct file path to the dynamic library as the driver name.
     .. tab-item:: Python
        :sync: python
 
-       You can use the `DBAPI` interface as follows:
+       You can use the ``DBAPI`` interface as follows:
 
        .. code-block:: python
 
