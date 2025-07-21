@@ -28,7 +28,7 @@ The ADBC driver manager is itself, an ADBC driver which loads another driver
 dynamically and forwards the calls to the loaded driver.  For more information on the
 driver manager see :doc:`how_manager`.
 
-There are essentially two ways to specify a driver for the driver manager to load:
+There are two ways to specify a driver for the driver manager to load:
 
 1. Directly specifying the dynamic library to load
 2. Referring to a driver manifest file which contains metadata along with the
