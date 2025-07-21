@@ -24,7 +24,7 @@ ADBC Driver Manager and Manifests
           in general, but allows a convenient experience for dynamically
           loading arbitrary drivers.
 
-The ADBC driver manager is itself, an ADBC driver which simply loads another driver
+The ADBC driver manager is itself, an ADBC driver which loads another driver
 dynamically and forwards the calls to the loaded driver.  For more information on the
 driver manager see :doc:`how_manager`.
 
