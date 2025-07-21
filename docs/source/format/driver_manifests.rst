@@ -366,7 +366,7 @@ would happen for ODBC drivers. The search for a manifest on windows would be the
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
 
-    * ``ADBC_CONFIG_PATH`` is a semicolon-separated list of directories to search for ``${name}.toml``
+   * ``ADBC_CONFIG_PATH`` is a semicolon-separated list of directories to search for ``${name}.toml``
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration is searched for
 
