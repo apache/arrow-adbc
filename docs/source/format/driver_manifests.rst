@@ -136,6 +136,17 @@ direct file path to the dynamic library as the driver name.
               # use the connection
               pass
 
+    .. tab-item:: R
+       :sync: r
+
+       You can use the ``DBAPI`` interface as follows:
+
+       .. code-block:: r
+          library(adbcdrivermanager)
+          con <- adbc_driver("/path/to/libadbc_driver.so") |>
+            adbc_database_init(uri = "...") |>
+            adbc_connection_init()
+
     .. tab-item:: Ruby
        :sync: ruby
 
@@ -296,6 +307,12 @@ to control which directories will be searched for manifests, with the behavior b
 
        Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_manager.dbapi.connect``) will
        allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
+
+    .. tab-item:: R
+       :sync: r
+
+       Use ``adbc_driver(... , load_flags = adbc_load_flags())`` to pass options to the driver manager
+       regarding how to locate drivers specified by manifest.
 
     .. tab-item:: Ruby
        :sync: ruby
