@@ -47,7 +47,11 @@ echo "=== Installing sdists ==="
 for component in ${COMPONENTS}; do
     pip install --no-deps --force-reinstall ${source_dir}/python/${component}/dist/*.tar.gz
 done
-pip install importlib-resources pytest pyarrow pandas polars protobuf
+# N.B. for now, we still support manylinux2014 while PyArrow dropped support.
+# Explicitly install the last version of PyArrow supporting manylinux2014.
+# - https://github.com/apache/arrow-adbc/issues/3182
+# - https://github.com/apache/arrow/issues/46959
+pip install importlib-resources pytest pyarrow==19.0.1 pandas polars protobuf
 
 echo "=== (${PYTHON_VERSION}) Testing sdists ==="
 test_packages
