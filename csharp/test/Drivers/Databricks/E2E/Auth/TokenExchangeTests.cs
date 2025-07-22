@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,28 @@ using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 {
+    public class TokenCapturingHandler : DelegatingHandler
+    {
+        public List<string> CapturedTokens { get; } = new List<string>();
+        public List<DateTime> RequestTimes { get; } = new List<DateTime>();
+
+        public TokenCapturingHandler(HttpMessageHandler innerHandler) : base(innerHandler)
+        {
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            // Capture the authorization token
+            if (request.Headers.Authorization != null)
+            {
+                CapturedTokens.Add(request.Headers.Authorization.Parameter ?? string.Empty);
+                RequestTimes.Add(DateTime.UtcNow);
+            }
+
+            return await base.SendAsync(request, cancellationToken);
+        }
+    }
+
     public class TokenExchangeTests : TestBase<DatabricksTestConfiguration, DatabricksTestEnvironment>, IDisposable
     {
         private readonly HttpClient _httpClient;
@@ -80,7 +103,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
         }
 
         [SkippableFact]
-        public async Task TokenExchangeHandler_WithValidToken_RefreshesToken()
+        public async Task TokenExchangeHandler_WithValidToken_RefreshesTokenInBackgroundAcrossRequests()
         {
             Skip.IfNot(!string.IsNullOrEmpty(TestConfiguration.AccessToken), "OAuth access token not configured");
 
@@ -93,8 +116,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
             string host = GetHost();
             var tokenExchangeClient = new TokenExchangeClient(_httpClient, host);
 
+            // Create a token capturing handler to intercept the actual tokens being sent
+            var tokenCapturingHandler = new TokenCapturingHandler(new HttpClientHandler());
+
             var handler = new TokenExchangeDelegatingHandler(
-                new HttpClientHandler(),
+                tokenCapturingHandler,
                 tokenExchangeClient,
                 TestConfiguration.AccessToken,
                 nearFutureExpiry,
@@ -102,14 +128,40 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 
             var httpClient = new HttpClient(handler);
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/api/2.0/sql/config/warehouses");
-            var response = await httpClient.SendAsync(request, CancellationToken.None);
+            // First request - should trigger background token refresh but use original token
+            var firstRequest = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/api/2.0/sql/config/warehouses");
+            var startTime = DateTime.UtcNow;
+            var firstResponse = await httpClient.SendAsync(firstRequest, CancellationToken.None);
+            var firstRequestDuration = DateTime.UtcNow - startTime;
 
-            // The request should succeed with the refreshed token
-            response.EnsureSuccessStatusCode();
+            // The first request should succeed quickly (not waiting for token refresh)
+            firstResponse.EnsureSuccessStatusCode();
+            string firstContent = await firstResponse.Content.ReadAsStringAsync();
+            Assert.Contains("sql_configuration_parameters", firstContent);
 
-            string content = await response.Content.ReadAsStringAsync();
-            Assert.Contains("sql_configuration_parameters", content);
+            // Verify the request completed quickly (token refresh happens in background)
+            Assert.True(firstRequestDuration < TimeSpan.FromSeconds(5),
+                $"First request took {firstRequestDuration.TotalMilliseconds}ms, which may indicate it waited for token refresh");
+
+            // Verify the first request used the original token
+            Assert.Single(tokenCapturingHandler.CapturedTokens);
+
+            // Wait for background token refresh to complete
+            await Task.Delay(TimeSpan.FromSeconds(10));
+
+            // Second request - should use the refreshed token
+            var secondRequest = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/api/2.0/sql/config/warehouses");
+            var secondResponse = await httpClient.SendAsync(secondRequest, CancellationToken.None);
+
+            // The second request should also succeed (now with refreshed token)
+            secondResponse.EnsureSuccessStatusCode();
+            string secondContent = await secondResponse.Content.ReadAsStringAsync();
+            Assert.Contains("sql_configuration_parameters", secondContent);
+
+            // Verify we now have two different tokens
+            Assert.Equal(2, tokenCapturingHandler.CapturedTokens.Count);
+            Assert.Equal(TestConfiguration.AccessToken, tokenCapturingHandler.CapturedTokens[0]);
+            Assert.NotEqual(TestConfiguration.AccessToken, tokenCapturingHandler.CapturedTokens[1]);
         }
 
         [SkippableFact]
@@ -124,9 +176,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
             string host = GetHost();
             var tokenExchangeClient = new TokenExchangeClient(_httpClient, host);
 
+            // Create a token capturing handler to verify no token refresh occurs
+            var tokenCapturingHandler = new TokenCapturingHandler(new HttpClientHandler());
+
             // Create a handler that should not refresh the token (token not near expiry)
             var handler = new TokenExchangeDelegatingHandler(
-                new HttpClientHandler(),
+                tokenCapturingHandler,
                 tokenExchangeClient,
                 TestConfiguration.AccessToken,
                 expiryTime,
@@ -134,14 +189,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
 
             var httpClient = new HttpClient(handler);
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/api/2.0/sql/config/warehouses");
-            var response = await httpClient.SendAsync(request, CancellationToken.None);
+            // Make multiple requests to ensure no token refresh is triggered
+            var firstRequest = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/api/2.0/sql/config/warehouses");
+            var firstResponse = await httpClient.SendAsync(firstRequest, CancellationToken.None);
 
-            // The request should succeed with the original token
-            response.EnsureSuccessStatusCode();
+            // The first request should succeed with the original token
+            firstResponse.EnsureSuccessStatusCode();
+            string firstContent = await firstResponse.Content.ReadAsStringAsync();
+            Assert.Contains("sql_configuration_parameters", firstContent);
 
-            string content = await response.Content.ReadAsStringAsync();
-            Assert.Contains("sql_configuration_parameters", content);
+            // Similar wait as the token refresh case
+            await Task.Delay(TimeSpan.FromSeconds(10));
+
+            // Second request should also use original token (no refresh needed)
+            var secondRequest = new HttpRequestMessage(HttpMethod.Get, $"https://{host}/api/2.0/sql/config/warehouses");
+            var secondResponse = await httpClient.SendAsync(secondRequest, CancellationToken.None);
+
+            secondResponse.EnsureSuccessStatusCode();
+            string secondContent = await secondResponse.Content.ReadAsStringAsync();
+            Assert.Contains("sql_configuration_parameters", secondContent);
+
+            // Verify both requests used the same original token (no refresh occurred)
+            Assert.Equal(2, tokenCapturingHandler.CapturedTokens.Count);
+            Assert.Equal(TestConfiguration.AccessToken, tokenCapturingHandler.CapturedTokens[0]);
+            Assert.Equal(TestConfiguration.AccessToken, tokenCapturingHandler.CapturedTokens[1]);
         }
 
         protected override void Dispose(bool disposing)
