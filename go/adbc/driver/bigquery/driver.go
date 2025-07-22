@@ -100,22 +100,22 @@ const (
 	// is the client secret.
 	WithOAuthClientIDs = "adbc.google.bigquery.oauth_client_ids"
 
-	// WithImpersonateTargetPrincipal instructs the driver to impersonate the
+	// OptionStringImpersonateTargetPrincipal instructs the driver to impersonate the
 	// given service account email.
-	WithImpersonateTargetPrincipal = "adbc.google.bigquery.impersonate.target_principal"
+	OptionStringImpersonateTargetPrincipal = "adbc.bigquery.sql.impersonate.target_principal"
 
-	// WithImpersonateDelegates instructs the driver to impersonate using the
+	// OptionStringImpersonateDelegates instructs the driver to impersonate using the
 	// given comma-separated list of service account emails in the delegation
 	// chain.
-	WithImpersonateDelegates = "adbc.google.bigquery.impersonate.delegates"
+	OptionStringImpersonateDelegates = "adbc.bigquery.sql.impersonate.delegates"
 
-	// WithImpersonateScopes instructs the driver to impersonate using the
+	// OptionStringImpersonateScopes instructs the driver to impersonate using the
 	// given comma-separated list of OAuth 2.0 scopes.
-	WithImpersonateScopes = "adbc.google.bigquery.impersonate.scopes"
+	OptionStringImpersonateScopes = "adbc.bigquery.sql.impersonate.scopes"
 
-	// WithImpersonateLifetime instructs the driver to impersonate for the
+	// OptionStringImpersonateLifetime instructs the driver to impersonate for the
 	// given duration (e.g. "3600s").
-	WithImpersonateLifetime = "adbc.google.bigquery.impersonate.lifetime"
+	OptionStringImpersonateLifetime = "adbc.bigquery.sql.impersonate.lifetime"
 )
 
 var (

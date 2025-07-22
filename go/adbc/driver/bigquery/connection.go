@@ -504,7 +504,7 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.dbSchema, nil
 	case OptionStringTableID:
 		return c.tableID, nil
-	case WithImpersonateLifetime:
+	case OptionStringImpersonateLifetime:
 		if c.impersonateLifetime == 0 {
 			// If no lifetime is set but impersonation is enabled, return the default
 			if c.hasImpersonationOptions() {
@@ -530,18 +530,18 @@ func (c *connectionImpl) SetOption(key string, value string) error {
 		c.clientSecret = value
 	case OptionStringAuthRefreshToken:
 		c.refreshToken = value
-	case WithImpersonateTargetPrincipal:
+	case OptionStringImpersonateTargetPrincipal:
 		c.impersonateTargetPrincipal = value
-	case WithImpersonateDelegates:
+	case OptionStringImpersonateDelegates:
 		c.impersonateDelegates = strings.Split(value, ",")
-	case WithImpersonateScopes:
+	case OptionStringImpersonateScopes:
 		c.impersonateScopes = strings.Split(value, ",")
-	case WithImpersonateLifetime:
+	case OptionStringImpersonateLifetime:
 		dur, err := time.ParseDuration(value)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("Invalid duration string for %s: %s", WithImpersonateLifetime, err.Error()),
+				Msg:  fmt.Sprintf("Invalid duration string for %s: %s", OptionStringImpersonateLifetime, err.Error()),
 			}
 		}
 		c.impersonateLifetime = dur
@@ -626,7 +626,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		if c.impersonateTargetPrincipal == "" {
 			return adbc.Error{
 				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("The `%s` parameter is empty for impersonation", WithImpersonateTargetPrincipal),
+				Msg:  fmt.Sprintf("The `%s` parameter is empty for impersonation", OptionStringImpersonateTargetPrincipal),
 			}
 		}
 

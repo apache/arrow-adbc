@@ -105,7 +105,7 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.datasetID, nil
 	case OptionStringTableID:
 		return d.tableID, nil
-	case WithImpersonateLifetime:
+	case OptionStringImpersonateLifetime:
 		if d.impersonateLifetime == 0 {
 			// If no lifetime is set but impersonation is enabled, return the default
 			if d.hasImpersonationOptions() {
@@ -159,13 +159,13 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.clientSecret = value
 	case OptionStringAuthRefreshToken:
 		d.refreshToken = value
-	case WithImpersonateTargetPrincipal:
+	case OptionStringImpersonateTargetPrincipal:
 		d.impersonateTargetPrincipal = value
-	case WithImpersonateDelegates:
+	case OptionStringImpersonateDelegates:
 		d.impersonateDelegates = strings.Split(value, ",")
-	case WithImpersonateScopes:
+	case OptionStringImpersonateScopes:
 		d.impersonateScopes = strings.Split(value, ",")
-	case WithImpersonateLifetime:
+	case OptionStringImpersonateLifetime:
 		duration, err := time.ParseDuration(value)
 		if err != nil {
 			return adbc.Error{
