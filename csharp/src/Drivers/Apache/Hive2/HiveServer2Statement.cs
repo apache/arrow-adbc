@@ -457,6 +457,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ForeignTableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
@@ -474,6 +475,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
@@ -482,6 +484,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             TGetCatalogsResp resp = await Connection.GetCatalogsAsync(cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
@@ -493,6 +496,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 EscapePatternWildcardsInName(SchemaName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
@@ -507,6 +511,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 tableTypesList,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
