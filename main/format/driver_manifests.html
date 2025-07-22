@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/format/driver_manifests.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="The ADBC driver manager is itself, an ADBC driver which simply loads another driver dynamically and forwards the calls to the loaded driver. For more information on the driver manager see How Drive..." />
+<meta property="og:description" content="The ADBC driver manager is itself, an ADBC driver which loads another driver dynamically and forwards the calls to the loaded driver. For more information on the driver manager see How Drivers and ..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="The ADBC driver manager is itself, an ADBC driver which simply loads another driver dynamically and forwards the calls to the loaded driver. For more information on the driver manager see How Drive..." />
+<meta name="description" content="The ADBC driver manager is itself, an ADBC driver which loads another driver dynamically and forwards the calls to the loaded driver. For more information on the driver manager see How Drivers and ..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Related Work" href="related_work.html" /><link rel="prev" title="How Drivers and the Driver Manager Work Together" href="how_manager.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
@@ -399,21 +399,21 @@
 <h1>ADBC Driver Manager and Manifests<a class="headerlink" href="#adbc-driver-manager-and-manifests" title="Link to this heading">¶</a></h1>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>This document focuses on scenarios that utilize the driver manager
-to load drivers.  The driver manager is not required to utilize ADBC
+<p>This document focuses on scenarios that use the driver manager
+to load drivers.  The driver manager is not required to use ADBC
 in general, but allows a convenient experience for dynamically
 loading arbitrary drivers.</p>
 </div>
-<p>The ADBC driver manager is itself, an ADBC driver which simply loads another driver
+<p>The ADBC driver manager is itself, an ADBC driver which loads another driver
 dynamically and forwards the calls to the loaded driver.  For more information on the
 driver manager see <a class="reference internal" href="how_manager.html"><span class="doc">How Drivers and the Driver Manager Work Together</span></a>.</p>
-<p>There are essentially two ways to specify a driver for the driver manager to load:</p>
+<p>There are two ways to specify a driver for the driver manager to load:</p>
 <ol class="arabic simple">
 <li><p>Directly specifying the dynamic library to load</p></li>
 <li><p>Referring to a driver manifest file which contains metadata along with the
 location of the dynamic library to be loaded</p></li>
 </ol>
-<p>When using the driver manager, you can either utilize the <code class="docutils literal notranslate"><span class="pre">driver</span></code> option to the
+<p>When using the driver manager, you can either use the <code class="docutils literal notranslate"><span class="pre">driver</span></code> option to the
 driver manager, or you can use functions in the language bindings which explicitly
 load a driver by name.</p>
 <div class="admonition note">
@@ -431,10 +431,8 @@ direct file path to the dynamic library as the driver name.</p>
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
 C/C++</label><div class="sd-tab-content docutils">
-<blockquote>
-<div><p>You can use the <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ac9a4db661a21cca1bbb47a4bd47f9ad0" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcLoadDriver()</span></code></a> function to load the driver directly or you can use it as a driver
+<p>You can use the <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ac9a4db661a21cca1bbb47a4bd47f9ad0" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcLoadDriver()</span></code></a> function to load the driver directly or you can use it as a driver
 itself via <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-database.html#structAdbcDatabase" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
-</div></blockquote>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// load directly</span>
 <span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDriver</span><span class="w"> </span><span class="n">driver</span><span class="p">;</span>
 <span class="k">struct</span><span class="w"> </span><span class="nc">AdbcError</span><span class="w"> </span><span class="n">error</span><span class="p">;</span>
@@ -461,8 +459,7 @@ itself via <a class="reference external" href="https://arrow.apache.org/adbc/mai
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="glib" for="sd-tab-item-1">
 GLib</label><div class="sd-tab-content docutils">
-<blockquote>
-<div><p>You can use it as a driver via <code class="docutils literal notranslate"><span class="pre">GADBCDatabase</span></code></p>
+<p>You can use it as a driver via <code class="docutils literal notranslate"><span class="pre">GADBCDatabase</span></code></p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">GError</span><span class="w"> </span><span class="o">*</span><span class="n">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
 <span class="n">GADBCDatabase</span><span class="w"> </span><span class="o">*</span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">gadbc_database_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">database</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -473,7 +470,6 @@ GLib</label><div class="sd-tab-content docutils">
 <span class="p">}</span>
 </pre></div>
 </div>
-</div></blockquote>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-2">
@@ -550,9 +546,10 @@ Rust</label><div class="sd-tab-content docutils">
 </div>
 </div>
 </div>
-<p>In addition to passing the full path to the dynamic library, you can also pass the
-name of the dynamic library if it is on your <code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code>. Such as using <code class="docutils literal notranslate"><span class="pre">adbc_driver</span></code>
-instead of <code class="docutils literal notranslate"><span class="pre">/path/to/libadbc_driver.so</span></code>.</p>
+<p>As an alternative to passing the full path to the dynamic library, you may
+prefer to use <code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code> (or similar, depending on your operating
+system) and specify just the filename (i.e., <code class="docutils literal notranslate"><span class="pre">libadbc_driver.so</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">/path/to/libadbc_driver.so</span></code>.</p>
 <p>However, the requirement to having the path to the dynamic library or having it
 on your <code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code> can prove difficult for ensuring security, reproducibility,
 and ease of use.  For this reason, there is the concept of a driver manifest.</p>
@@ -560,7 +557,7 @@ and ease of use.  For this reason, there is the concept of a driver manifest.</p
 <section id="driver-manifests">
 <h2>Driver Manifests<a class="headerlink" href="#driver-manifests" title="Link to this heading">¶</a></h2>
 <p>A <code class="docutils literal notranslate"><span class="pre">driver</span> <span class="pre">manifest</span></code> is a <a class="reference external" href="https://toml.io/en/">TOML</a> file that contains both metadata about the driver along with the location
-of the shared library to load.  The driver manager can then locate the manifest and utilize it to load the
+of the shared library to load.  The driver manager can then locate the manifest and use it to load the
 driver if it was given the shared library path directly.  This allows for more portable installations of
 drivers, and sharing of configurations.  Tools can even be created and written to automatically manage driver
 installations.</p>
@@ -612,9 +609,9 @@ implementations of the driver manager and bindings, while also providing for fle
 <p>Given the name of a driver, the name first has to be resolved to either a dynamic library to load, or a driver manifest
 that contains the path to the dynamic library to load. The following flowchart describes how this resolution is done:</p>
 <figure class="align-default" id="id1">
-<img alt="../_images/manifest_load.mmd.svg" src="../_images/manifest_load.mmd.svg" />
+<img alt="Flowchart diagram showing the how the driver manager resolves a simple driver name and eventually attempts to load the driver or returns an error." src="../_images/manifest_load.mmd.svg" />
 <figcaption>
-<p><span class="caption-text">Driver manager attempting to resolve the passed in driver name</span><a class="headerlink" href="#id1" title="Link to this image">¶</a></p>
+<p><span class="caption-text">Flowchart diagram showing the how the driver manager resolves a simple driver name and eventually attempts to load the driver or returns an error.</span><a class="headerlink" href="#id1" title="Link to this image">¶</a></p>
 </figcaption>
 </figure>
 <p>Thus, if the driver name is a path to a file the driver manager will attempt to load that file directly. If there’s no
@@ -626,7 +623,7 @@ extension appropriate to the platform being used (e.g., <code class="docutils li
 reasons, this needs to be explicitly enabled by an option to enable relative paths, otherwise it will produce an error instead.</p>
 </div>
 <p>As you can see in the flowchart, if the driver name is a string which does not have an extension and is not a file path, the
-driver manager will then search for a corresponding manifest file, before falling back seeing if <code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code> can find
+driver manager will then search for a corresponding manifest file, before falling back seeing if <code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code> (or the equivalent for your operating system) can find
 a library with the name provided. Searching for a manifest file is done by looking for a file with the name provided, but with
 a <code class="docutils literal notranslate"><span class="pre">.toml</span></code> extension (e.g. if you pass <code class="docutils literal notranslate"><span class="pre">sqlite</span></code> as the driver name, it will look for <code class="docutils literal notranslate"><span class="pre">sqlite.toml</span></code>).  Options are provided
 to control which directories will be searched for manifests, with the behavior being slightly different based on the platform.</p>
@@ -634,43 +631,43 @@ to control which directories will be searched for manifests, with the behavior b
 <input checked="checked" id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-7">
 C/C++</label><div class="sd-tab-content docutils">
-<blockquote>
-<div><p>The type <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#aa16189c0130657033e15736baf973d48" title="(in ADBC C vversion)"><code class="xref c c-type docutils literal notranslate"><span class="pre">AdbcLoadFlags</span></code></a> is a set of bitflags to control the directories to be searched. The flags are
-* <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#af7c295dbe97a76960e2187057fa9a10c" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_ENV</span></code></a> - search the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code>
-* <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ab2af3e195d718476a218b9ce82ed9898" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_USER</span></code></a> - search the user configuration directory
-* <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#aa4fcbd5a0fec49eafc2ca41397b868af" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_SYSTEM</span></code></a> - search the system configuration directory
-* <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ab160ff0074d08d2a434ae1c89b7977aa" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS</span></code></a> - allow a relative path to be provided
-* <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ad18a2d10206e3d54be7aedab3c229c0e" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_DEFAULT</span></code></a> - default value with all flags set</p>
+<p>The type <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#aa16189c0130657033e15736baf973d48" title="(in ADBC C vversion)"><code class="xref c c-type docutils literal notranslate"><span class="pre">AdbcLoadFlags</span></code></a> is a set of bitflags to control the directories to be searched. The flags are</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#af7c295dbe97a76960e2187057fa9a10c" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_ENV</span></code></a> - search the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code></p></li>
+<li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ab2af3e195d718476a218b9ce82ed9898" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_USER</span></code></a> - search the user configuration directory</p></li>
+<li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#aa4fcbd5a0fec49eafc2ca41397b868af" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_SYSTEM</span></code></a> - search the system configuration directory</p></li>
+<li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ab160ff0074d08d2a434ae1c89b7977aa" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS</span></code></a> - allow a relative path to be provided</p></li>
+<li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ad18a2d10206e3d54be7aedab3c229c0e" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_DEFAULT</span></code></a> - default value with all flags set</p></li>
+</ul>
 <p>These can either be provided to <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#aac614a9303581eec3a0db0b6788f915b" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcFindLoadDriver()</span></code></a> or by using <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#a1efdaf7971a26a3c4073cc045a07970f" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcDriverManagerDatabaseSetLoadFlags()</span></code></a>.</p>
-</div></blockquote>
 </div>
 <input id="sd-tab-item-8" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="glib" for="sd-tab-item-8">
 GLib</label><div class="sd-tab-content docutils">
-<blockquote>
-<div><p>The type <code class="docutils literal notranslate"><span class="pre">GADBCLoadFlags</span></code> is a set of bitflags to control the directories to be searched. The flags are
-* <code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_SEARCH_ENV`</span> <span class="pre">-</span> <span class="pre">search</span> <span class="pre">the</span> <span class="pre">environment</span> <span class="pre">variable</span> <span class="pre">``ADBC_CONFIG_PATH</span></code>
-* <code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_SEARCH_USER</span></code> - search the user configuration directory
-* <code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_SEARCH_SYSTEM</span></code> - search the system configuration directory
-* <code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS</span></code> - allow a relative path to be provided
-* <code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_DEFAULT</span></code> - default value with all flags set</p>
+<p>The type <code class="docutils literal notranslate"><span class="pre">GADBCLoadFlags</span></code> is a set of bitflags to control the directories to be searched. The flags are</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_SEARCH_ENV</span></code> - search the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_SEARCH_USER</span></code> - search the user configuration directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_SEARCH_SYSTEM</span></code> - search the system configuration directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS</span></code> - allow a relative path to be provided</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_DEFAULT</span></code> - default value with all flags set</p></li>
+</ul>
 <p>These can be provided by using <code class="docutils literal notranslate"><span class="pre">gadbc_database_set_load_flags()</span></code>.</p>
-</div></blockquote>
 </div>
 <input id="sd-tab-item-9" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-9">
 Go</label><div class="sd-tab-content docutils">
-<blockquote>
-<div><p>The <code class="docutils literal notranslate"><span class="pre">drivermgr</span></code> package by default will use the default load flags, which enable searching the environment variable, user
+<p>The <code class="docutils literal notranslate"><span class="pre">drivermgr</span></code> package by default will use the default load flags, which enable searching the environment variable, user
 configuration directory, and system configuration directory. You can set the flags to use by passing the option
 <code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsOptionKey</span></code> with the value being the <code class="docutils literal notranslate"><span class="pre">strconv.Itoa</span></code> of the flags you want to use when you call <code class="docutils literal notranslate"><span class="pre">NewDatabase</span></code>
-or <code class="docutils literal notranslate"><span class="pre">NewDatabaseWithContext</span></code>. The flags are defined in the <code class="docutils literal notranslate"><span class="pre">drivermgr</span></code> package as constants:
-* <code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsSearchEnv</span></code> - search the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code>
-* <code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsSearchUser</span></code> - search the user configuration directory
-* <code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsSearchSystem</span></code> - search the system configuration directory
-* <code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsAllowRelativePaths</span></code> - allow a relative path to be used
-* <code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsDefault</span></code> - default value with all flags set</p>
-</div></blockquote>
+or <code class="docutils literal notranslate"><span class="pre">NewDatabaseWithContext</span></code>. The flags are defined in the <code class="docutils literal notranslate"><span class="pre">drivermgr</span></code> package as constants:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsSearchEnv</span></code> - search the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsSearchUser</span></code> - search the user configuration directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsSearchSystem</span></code> - search the system configuration directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsAllowRelativePaths</span></code> - allow a relative path to be used</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsDefault</span></code> - default value with all flags set</p></li>
+</ul>
 </div>
 <input id="sd-tab-item-10" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-10">
@@ -681,37 +678,41 @@ allow you to control the directories to be searched by using the value of the op
 <input id="sd-tab-item-11" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-11">
 R</label><div class="sd-tab-content docutils">
-<p>Use <code class="docutils literal notranslate"><span class="pre">adbc_driver(...</span> <span class="pre">,</span> <span class="pre">load_flags</span> <span class="pre">=</span> <span class="pre">adbc_load_flags())</span></code> to pass options to the driver manager
+<p>Use <code class="docutils literal notranslate"><span class="pre">adbc_driver(...,</span> <span class="pre">load_flags</span> <span class="pre">=</span> <span class="pre">adbc_load_flags())</span></code> to pass options to the driver manager
 regarding how to locate drivers specified by manifest.</p>
 </div>
 <input id="sd-tab-item-12" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="ruby" for="sd-tab-item-12">
 Ruby</label><div class="sd-tab-content docutils">
-<blockquote>
-<div><p>The class <code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags</span></code> is a set of bitflags to control the directories to be searched. The flags are
-* <code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_ENV`</span> <span class="pre">-</span> <span class="pre">search</span> <span class="pre">the</span> <span class="pre">environment</span> <span class="pre">variable</span> <span class="pre">``ADBC_CONFIG_PATH</span></code>
-* <code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_USER</span></code> - search the user configuration directory
-* <code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_SYSTEM</span></code> - search the system configuration directory
-* <code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::ALLOW_RELATIVE_PATHS</span></code> - allow a relative path to be provided
-* <code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::DEFAULT</span></code> - default value with all flags set</p>
+<p>The class <code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags</span></code> is a set of bitflags to control the directories to be searched. The flags are</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_ENV</span></code> - search the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_USER</span></code> - search the user configuration directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_SYSTEM</span></code> - search the system configuration directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::ALLOW_RELATIVE_PATHS</span></code> - allow a relative path to be provided</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::DEFAULT</span></code> - default value with all flags set</p></li>
+</ul>
 <p>These can be provided by using <code class="docutils literal notranslate"><span class="pre">ADBC::Database#load_flags=</span></code>.
 Passing the option <code class="docutils literal notranslate"><span class="pre">load_flags</span></code> as an option to <code class="docutils literal notranslate"><span class="pre">AdbcDatabase</span></code> (or via <code class="docutils literal notranslate"><span class="pre">db_kwargs</span></code> in <code class="docutils literal notranslate"><span class="pre">adbc_driver_qmanager.dbapi.connect</span></code>) will
 allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.</p>
-</div></blockquote>
 </div>
 <input id="sd-tab-item-13" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="rust" for="sd-tab-item-13">
 Rust</label><div class="sd-tab-content docutils">
 <p>The <code class="docutils literal notranslate"><span class="pre">ManagedDriver</span></code> type has a method <code class="docutils literal notranslate"><span class="pre">load_dynamic_from_name</span></code> which takes an optional <code class="docutils literal notranslate"><span class="pre">load_flags</span></code> parameter. The flags as a <code class="docutils literal notranslate"><span class="pre">u32</span></code> with
-the type <code class="docutils literal notranslate"><span class="pre">adbc_core::driver_manager::LoadFlags</span></code>, which has the following constants:
-* <cite>LOAD_FLAG_SEARCH_ENV</cite> - search the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code>
-* <cite>LOAD_FLAG_SEARCH_USER</cite> - search the user configuration directory
-* <cite>LOAD_FLAG_SEARCH_SYSTEM</cite> - search the system configuration directory
-* <cite>LOAD_FLAG_ALLOW_RELATIVE_PATHS</cite> - allow a relative path to be used
-* <cite>LOAD_FLAG_DEFAULT</cite> - default value with all flags set</p>
+the type <code class="docutils literal notranslate"><span class="pre">adbc_core::driver_manager::LoadFlags</span></code>, which has the following constants:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> - search the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_USER</span></code> - search the user configuration directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_SYSTEM</span></code> - search the system configuration directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_ALLOW_RELATIVE_PATHS</span></code> - allow a relative path to be used</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_DEFAULT</span></code> - default value with all flags set</p></li>
+</ul>
 </div>
 </div>
-<p>For unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
+<section id="unix-like-platforms">
+<h4>Unix-like Platforms<a class="headerlink" href="#unix-like-platforms" title="Link to this heading">¶</a></h4>
+<p>For Unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
 the given order:</p>
 <ol class="arabic simple">
 <li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> will be searched</p>
@@ -722,21 +723,22 @@ the given order:</p>
 <li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_USER</span></code> load option is set, then a user-level configuration directory will be searched</p>
 <ul class="simple">
 <li><p>On macOS, this will be <code class="docutils literal notranslate"><span class="pre">~/Library/Application</span> <span class="pre">Support/ADBC</span></code></p></li>
-<li><p>On Linux (and other unix-like platforms), the <code class="docutils literal notranslate"><span class="pre">XDG_CONFIG_HOME</span></code> environment variable is checked first. If it is set, the driver manager
+<li><p>On Linux (and other Unix-like platforms), the <code class="docutils literal notranslate"><span class="pre">XDG_CONFIG_HOME</span></code> environment variable is checked first. If it is set, the driver manager
 will search <code class="docutils literal notranslate"><span class="pre">$XDG_CONFIG_HOME/adbc</span></code>, otherwise it will search <code class="docutils literal notranslate"><span class="pre">~/.config/adbc</span></code></p></li>
 </ul>
 </li>
 <li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_SYSTEM</span></code> load option is set, the driver manager will search <code class="docutils literal notranslate"><span class="pre">/etc/adbc</span></code> if it exists</p></li>
 </ol>
+</section>
+<section id="windows">
+<h4>Windows<a class="headerlink" href="#windows" title="Link to this heading">¶</a></h4>
 <p>Things are slightly different on Windows, where the driver manager will also search for driver information in the registry just as
-would happen for ODBC drivers. The search for a manifest on windows would be the following:</p>
-<ol class="arabic">
+would happen for ODBC drivers. The search for a manifest on Windows would be the following:</p>
+<ol class="arabic simple">
 <li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> will be searched</p>
-<blockquote>
-<div><ul class="simple">
+<ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> is a semicolon-separated list of directories to search for <code class="docutils literal notranslate"><span class="pre">${name}.toml</span></code></p></li>
 </ul>
-</div></blockquote>
 </li>
 <li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_USER</span></code> load option is set, then a user-level configuration is searched for</p>
 <ul class="simple">
@@ -760,6 +762,7 @@ as above are used.</p></li>
 </ul>
 </li>
 </ol>
+</section>
 </section>
 </section>
 </section>
@@ -826,7 +829,11 @@ United States and other countries.
 <li><a class="reference internal" href="#directly-loading-a-driver">Directly Loading a Driver</a></li>
 <li><a class="reference internal" href="#driver-manifests">Driver Manifests</a><ul>
 <li><a class="reference internal" href="#manifest-structure">Manifest Structure</a></li>
-<li><a class="reference internal" href="#manifest-location-and-discovery">Manifest Location and Discovery</a></li>
+<li><a class="reference internal" href="#manifest-location-and-discovery">Manifest Location and Discovery</a><ul>
+<li><a class="reference internal" href="#unix-like-platforms">Unix-like Platforms</a></li>
+<li><a class="reference internal" href="#windows">Windows</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

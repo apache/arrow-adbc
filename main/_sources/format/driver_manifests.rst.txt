@@ -19,22 +19,22 @@
 ADBC Driver Manager and Manifests
 =================================
 
-.. note:: This document focuses on scenarios that utilize the driver manager
-          to load drivers.  The driver manager is not required to utilize ADBC
+.. note:: This document focuses on scenarios that use the driver manager
+          to load drivers.  The driver manager is not required to use ADBC
           in general, but allows a convenient experience for dynamically
           loading arbitrary drivers.
 
-The ADBC driver manager is itself, an ADBC driver which simply loads another driver
+The ADBC driver manager is itself, an ADBC driver which loads another driver
 dynamically and forwards the calls to the loaded driver.  For more information on the
 driver manager see :doc:`how_manager`.
 
-There are essentially two ways to specify a driver for the driver manager to load:
+There are two ways to specify a driver for the driver manager to load:
 
 1. Directly specifying the dynamic library to load
 2. Referring to a driver manifest file which contains metadata along with the
    location of the dynamic library to be loaded
 
-When using the driver manager, you can either utilize the ``driver`` option to the
+When using the driver manager, you can either use the ``driver`` option to the
 driver manager, or you can use functions in the language bindings which explicitly
 load a driver by name.
 
@@ -54,8 +54,8 @@ direct file path to the dynamic library as the driver name.
     .. tab-item:: C/C++
        :sync: cpp
 
-        You can use the :c:func:`AdbcLoadDriver` function to load the driver directly or you can use it as a driver
-        itself via :c:struct:`AdbcDatabase`.
+       You can use the :c:func:`AdbcLoadDriver` function to load the driver directly or you can use it as a driver
+       itself via :c:struct:`AdbcDatabase`.
 
        .. code-block:: cpp
 
@@ -83,18 +83,18 @@ direct file path to the dynamic library as the driver name.
     .. tab-item:: GLib
        :sync: glib
 
-        You can use it as a driver via ``GADBCDatabase``
+       You can use it as a driver via ``GADBCDatabase``
 
-        .. code-block:: c
+       .. code-block:: c
 
-           GError *error = NULL;
-           GADBCDatabase *database = gadbc_database_new(&error);
-           if (!database) {
-             /* handle error */
-           }
-           if (!gadbc_database_set_option(database, "driver", "/path/to/libadbc_driver.so", &error)) {
-             /* handle error */
-           }
+          GError *error = NULL;
+          GADBCDatabase *database = gadbc_database_new(&error);
+          if (!database) {
+            /* handle error */
+          }
+          if (!gadbc_database_set_option(database, "driver", "/path/to/libadbc_driver.so", &error)) {
+            /* handle error */
+          }
 
     .. tab-item:: Go
        :sync: go
@@ -175,9 +175,10 @@ direct file path to the dynamic library as the driver name.
               ManagedDriver::load_dynamic_from_name("/path/to/libadbc_driver.so", None, AdbcVersion::V100).unwrap()
           }
 
-In addition to passing the full path to the dynamic library, you can also pass the
-name of the dynamic library if it is on your ``LD_LIBRARY_PATH``. Such as using ``adbc_driver``
-instead of ``/path/to/libadbc_driver.so``.
+As an alternative to passing the full path to the dynamic library, you may
+prefer to use ``LD_LIBRARY_PATH`` (or similar, depending on your operating
+system) and specify just the filename (i.e., ``libadbc_driver.so`` instead of
+``/path/to/libadbc_driver.so``.
 
 However, the requirement to having the path to the dynamic library or having it
 on your ``LD_LIBRARY_PATH`` can prove difficult for ensuring security, reproducibility,
@@ -187,7 +188,7 @@ Driver Manifests
 ================
 
 A ``driver manifest`` is a `TOML`_ file that contains both metadata about the driver along with the location
-of the shared library to load.  The driver manager can then locate the manifest and utilize it to load the
+of the shared library to load.  The driver manager can then locate the manifest and use it to load the
 driver if it was given the shared library path directly.  This allows for more portable installations of
 drivers, and sharing of configurations.  Tools can even be created and written to automatically manage driver
 installations.
@@ -249,8 +250,9 @@ Given the name of a driver, the name first has to be resolved to either a dynami
 that contains the path to the dynamic library to load. The following flowchart describes how this resolution is done:
 
 .. figure:: manifest_load.mmd.svg
+   :alt: Flowchart diagram showing the how the driver manager resolves a simple driver name and eventually attempts to load the driver or returns an error.
 
-    Driver manager attempting to resolve the passed in driver name
+   Flowchart diagram showing the how the driver manager resolves a simple driver name and eventually attempts to load the driver or returns an error.
 
 Thus, if the driver name is a path to a file the driver manager will attempt to load that file directly. If there's no
 extension provided, it will first look for a file with a ``.toml`` extension, and if that fails, it will look for the
@@ -260,7 +262,7 @@ extension appropriate to the platform being used (e.g., ``.so`` for Linux, ``.dy
           reasons, this needs to be explicitly enabled by an option to enable relative paths, otherwise it will produce an error instead.
 
 As you can see in the flowchart, if the driver name is a string which does not have an extension and is not a file path, the
-driver manager will then search for a corresponding manifest file, before falling back seeing if ``LD_LIBRARY_PATH`` can find
+driver manager will then search for a corresponding manifest file, before falling back seeing if ``LD_LIBRARY_PATH`` (or the equivalent for your operating system) can find
 a library with the name provided. Searching for a manifest file is done by looking for a file with the name provided, but with
 a ``.toml`` extension (e.g. if you pass ``sqlite`` as the driver name, it will look for ``sqlite.toml``).  Options are provided
 to control which directories will be searched for manifests, with the behavior being slightly different based on the platform.
@@ -270,39 +272,42 @@ to control which directories will be searched for manifests, with the behavior b
     .. tab-item:: C/C++
        :sync: cpp
 
-        The type :c:type:`AdbcLoadFlags` is a set of bitflags to control the directories to be searched. The flags are
-        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
-        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_USER` - search the user configuration directory
-        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_SYSTEM` - search the system configuration directory
-        * :c:macro:`ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS` - allow a relative path to be provided
-        * :c:macro:`ADBC_LOAD_FLAG_DEFAULT` - default value with all flags set
+       The type :c:type:`AdbcLoadFlags` is a set of bitflags to control the directories to be searched. The flags are
 
-        These can either be provided to :c:func:`AdbcFindLoadDriver` or by using :c:func:`AdbcDriverManagerDatabaseSetLoadFlags`.
+       * :c:macro:`ADBC_LOAD_FLAG_SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
+       * :c:macro:`ADBC_LOAD_FLAG_SEARCH_USER` - search the user configuration directory
+       * :c:macro:`ADBC_LOAD_FLAG_SEARCH_SYSTEM` - search the system configuration directory
+       * :c:macro:`ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS` - allow a relative path to be provided
+       * :c:macro:`ADBC_LOAD_FLAG_DEFAULT` - default value with all flags set
+
+       These can either be provided to :c:func:`AdbcFindLoadDriver` or by using :c:func:`AdbcDriverManagerDatabaseSetLoadFlags`.
 
     .. tab-item:: GLib
        :sync: glib
 
-        The type ``GADBCLoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
-        * ``GADBC_LOAD_SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
-        * ``GADBC_LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
-        * ``GADBC_LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
-        * ``GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
-        * ``GADBC_LOAD_FLAG_DEFAULT`` - default value with all flags set
+       The type ``GADBCLoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
 
-        These can be provided by using ``gadbc_database_set_load_flags()``.
+       * ``GADBC_LOAD_SEARCH_ENV`` - search the environment variable ``ADBC_CONFIG_PATH``
+       * ``GADBC_LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
+       * ``GADBC_LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
+       * ``GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
+       * ``GADBC_LOAD_FLAG_DEFAULT`` - default value with all flags set
+
+       These can be provided by using ``gadbc_database_set_load_flags()``.
 
     .. tab-item:: Go
        :sync: go
 
-        The ``drivermgr`` package by default will use the default load flags, which enable searching the environment variable, user
-        configuration directory, and system configuration directory. You can set the flags to use by passing the option
-        ``drivermgr.LoadFlagsOptionKey`` with the value being the ``strconv.Itoa`` of the flags you want to use when you call ``NewDatabase``
-        or ``NewDatabaseWithContext``. The flags are defined in the ``drivermgr`` package as constants:
-        * ``drivermgr.LoadFlagsSearchEnv`` - search the environment variable ``ADBC_CONFIG_PATH``
-        * ``drivermgr.LoadFlagsSearchUser`` - search the user configuration directory
-        * ``drivermgr.LoadFlagsSearchSystem`` - search the system configuration directory
-        * ``drivermgr.LoadFlagsAllowRelativePaths`` - allow a relative path to be used
-        * ``drivermgr.LoadFlagsDefault`` - default value with all flags set
+       The ``drivermgr`` package by default will use the default load flags, which enable searching the environment variable, user
+       configuration directory, and system configuration directory. You can set the flags to use by passing the option
+       ``drivermgr.LoadFlagsOptionKey`` with the value being the ``strconv.Itoa`` of the flags you want to use when you call ``NewDatabase``
+       or ``NewDatabaseWithContext``. The flags are defined in the ``drivermgr`` package as constants:
+
+       * ``drivermgr.LoadFlagsSearchEnv`` - search the environment variable ``ADBC_CONFIG_PATH``
+       * ``drivermgr.LoadFlagsSearchUser`` - search the user configuration directory
+       * ``drivermgr.LoadFlagsSearchSystem`` - search the system configuration directory
+       * ``drivermgr.LoadFlagsAllowRelativePaths`` - allow a relative path to be used
+       * ``drivermgr.LoadFlagsDefault`` - default value with all flags set
 
     .. tab-item:: Python
        :sync: python
@@ -313,35 +318,40 @@ to control which directories will be searched for manifests, with the behavior b
     .. tab-item:: R
        :sync: r
 
-       Use ``adbc_driver(... , load_flags = adbc_load_flags())`` to pass options to the driver manager
+       Use ``adbc_driver(..., load_flags = adbc_load_flags())`` to pass options to the driver manager
        regarding how to locate drivers specified by manifest.
 
     .. tab-item:: Ruby
        :sync: ruby
 
-        The class ``ADBC::LoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
-        * ``ADBC::LoadFlags::SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
-        * ``ADBC::LoadFlags::SEARCH_USER`` - search the user configuration directory
-        * ``ADBC::LoadFlags::SEARCH_SYSTEM`` - search the system configuration directory
-        * ``ADBC::LoadFlags::ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
-        * ``ADBC::LoadFlags::DEFAULT`` - default value with all flags set
+       The class ``ADBC::LoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
 
-        These can be provided by using ``ADBC::Database#load_flags=``.
-        Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_qmanager.dbapi.connect``) will
-        allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
+       * ``ADBC::LoadFlags::SEARCH_ENV`` - search the environment variable ``ADBC_CONFIG_PATH``
+       * ``ADBC::LoadFlags::SEARCH_USER`` - search the user configuration directory
+       * ``ADBC::LoadFlags::SEARCH_SYSTEM`` - search the system configuration directory
+       * ``ADBC::LoadFlags::ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
+       * ``ADBC::LoadFlags::DEFAULT`` - default value with all flags set
+
+       These can be provided by using ``ADBC::Database#load_flags=``.
+       Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_qmanager.dbapi.connect``) will
+       allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
 
     .. tab-item:: Rust
        :sync: rust
 
        The ``ManagedDriver`` type has a method ``load_dynamic_from_name`` which takes an optional ``load_flags`` parameter. The flags as a ``u32`` with
        the type ``adbc_core::driver_manager::LoadFlags``, which has the following constants:
-       * `LOAD_FLAG_SEARCH_ENV` - search the environment variable ``ADBC_CONFIG_PATH``
-       * `LOAD_FLAG_SEARCH_USER` - search the user configuration directory
-       * `LOAD_FLAG_SEARCH_SYSTEM` - search the system configuration directory
-       * `LOAD_FLAG_ALLOW_RELATIVE_PATHS` - allow a relative path to be used
-       * `LOAD_FLAG_DEFAULT` - default value with all flags set
 
-For unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
+       * ``LOAD_FLAG_SEARCH_ENV`` - search the environment variable ``ADBC_CONFIG_PATH``
+       * ``LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
+       * ``LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
+       * ``LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be used
+       * ``LOAD_FLAG_DEFAULT`` - default value with all flags set
+
+Unix-like Platforms
+^^^^^^^^^^^^^^^^^^^
+
+For Unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
 the given order:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
@@ -351,17 +361,20 @@ the given order:
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration directory will be searched
 
    * On macOS, this will be ``~/Library/Application Support/ADBC``
-   * On Linux (and other unix-like platforms), the ``XDG_CONFIG_HOME`` environment variable is checked first. If it is set, the driver manager
+   * On Linux (and other Unix-like platforms), the ``XDG_CONFIG_HOME`` environment variable is checked first. If it is set, the driver manager
      will search ``$XDG_CONFIG_HOME/adbc``, otherwise it will search ``~/.config/adbc``
 
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search ``/etc/adbc`` if it exists
 
+Windows
+^^^^^^^
+
 Things are slightly different on Windows, where the driver manager will also search for driver information in the registry just as
-would happen for ODBC drivers. The search for a manifest on windows would be the following:
+would happen for ODBC drivers. The search for a manifest on Windows would be the following:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
 
-    * ``ADBC_CONFIG_PATH`` is a semicolon-separated list of directories to search for ``${name}.toml``
+   * ``ADBC_CONFIG_PATH`` is a semicolon-separated list of directories to search for ``${name}.toml``
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration is searched for
 
