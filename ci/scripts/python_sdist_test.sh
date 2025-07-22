@@ -51,7 +51,7 @@ done
 # Explicitly install the last version of PyArrow supporting manylinux2014.
 # - https://github.com/apache/arrow-adbc/issues/3182
 # - https://github.com/apache/arrow/issues/46959
-pip install importlib-resources pytest pyarrow==19.0.1 pandas polars protobuf
+pip install importlib-resources pytest pyarrow==20.0.0 pandas polars protobuf
 
 echo "=== (${PYTHON_VERSION}) Testing sdists ==="
 test_packages
