@@ -25,17 +25,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
 {
     /// <summary>
     /// HTTP message handler that automatically refreshes OAuth tokens before they expire.
+    /// Uses a non-blocking approach to refresh tokens in the background.
     /// </summary>
     internal class TokenExchangeDelegatingHandler : DelegatingHandler
     {
         private readonly string _initialToken;
         private readonly int _tokenRenewLimitMinutes;
-        private readonly SemaphoreSlim _tokenLock = new SemaphoreSlim(1, 1);
+        private readonly object _tokenLock = new object();
         private readonly ITokenExchangeClient _tokenExchangeClient;
 
         private string _currentToken;
         private DateTime _tokenExpiryTime;
         private bool _tokenExchangeAttempted = false;
+        private Task? _pendingTokenTask = null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TokenExchangeDelegatingHandler"/> class.
@@ -69,41 +71,54 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             // Only renew if:
             // 1. We haven't already attempted token exchange (a token can only be renewed once)
             // 2. The token will expire within the renewal limit
+            // 3. We don't already have a pending refresh task
             return !_tokenExchangeAttempted &&
-                   DateTime.UtcNow.AddMinutes(_tokenRenewLimitMinutes) >= _tokenExpiryTime;
+                   DateTime.UtcNow.AddMinutes(_tokenRenewLimitMinutes) >= _tokenExpiryTime &&
+                   _pendingTokenTask == null;
         }
 
         /// <summary>
-        /// Renews the token if needed.
+        /// Starts token renewal in the background if needed.
         /// </summary>
         /// <param name="cancellationToken">A cancellation token.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        private async Task RenewTokenIfNeededAsync(CancellationToken cancellationToken)
+        private void StartTokenRenewalIfNeeded(CancellationToken cancellationToken)
         {
             if (!NeedsTokenRenewal())
             {
                 return;
             }
 
-            // Acquire the lock to ensure only one thread attempts renewal
-            await _tokenLock.WaitAsync(cancellationToken);
-
-            try
+            bool needsRenewal;
+            lock (_tokenLock)
             {
                 // Double-check pattern in case another thread renewed while we were waiting
-                if (!NeedsTokenRenewal())
+                needsRenewal = NeedsTokenRenewal();
+                if (needsRenewal)
                 {
-                    return;
+                    // Mark that we've attempted token exchange to prevent multiple attempts
+                    // Specifically, NeedsTokenRenewal checks this flag
+                    _tokenExchangeAttempted = true;
                 }
+            }
 
+            if (!needsRenewal)
+            {
+                return;
+            }
+
+            // Start token refresh in the background
+            _pendingTokenTask = Task.Run(async () =>
+            {
                 try
                 {
-                    _tokenExchangeAttempted = true;
-
                     TokenExchangeResponse response = await _tokenExchangeClient.ExchangeTokenAsync(_initialToken, cancellationToken);
 
-                    _currentToken = response.AccessToken;
-                    _tokenExpiryTime = response.ExpiryTime;
+                    // Update the token atomically when ready
+                    lock (_tokenLock)
+                    {
+                        _currentToken = response.AccessToken;
+                        _tokenExpiryTime = response.ExpiryTime;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -111,11 +126,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                     // This is to avoid interrupting the operation if token exchange fails
                     System.Diagnostics.Debug.WriteLine($"Token exchange failed: {ex.Message}");
                 }
-            }
-            finally
-            {
-                _tokenLock.Release();
-            }
+            }, cancellationToken);
         }
 
         /// <summary>
@@ -126,8 +137,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         /// <returns>The HTTP response message.</returns>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            await RenewTokenIfNeededAsync(cancellationToken);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _currentToken);
+            StartTokenRenewalIfNeeded(cancellationToken);
+
+            // Use the current token (which might be the old one while refresh is in progress)
+            string tokenToUse;
+            lock (_tokenLock)
+            {
+                tokenToUse = _currentToken;
+            }
+
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenToUse);
             return await base.SendAsync(request, cancellationToken);
         }
 
@@ -135,7 +154,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         {
             if (disposing)
             {
-                _tokenLock.Dispose();
+                // Wait for any pending token task to complete to avoid leaking tasks
+                if (_pendingTokenTask != null)
+                {
+                    try
+                    {
+                        // Try to wait for the task to complete, but don't block indefinitely
+                        _pendingTokenTask.Wait(TimeSpan.FromSeconds(10));
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Exception during token task cleanup: {ex.Message}");
+                    }
+                }
             }
 
             base.Dispose(disposing);
