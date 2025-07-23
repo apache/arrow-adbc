@@ -59,8 +59,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
         private const int DefaultQueryTimeSeconds = 3 * 60 * 60; // 3 hours
-
-
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
@@ -286,7 +284,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             //Telemetry
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType))
             {
-                _connectionParams.AuthMech = TelemetryHelper.StringToAuthMech(authType);
+                _connectionParams.AuthMech = Util.StringToAuthMech(authType);
             }
 
             if (Properties.TryGetValue(SparkParameters.HostName, out string? host))
@@ -303,7 +301,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _clientContext.UserAgent = userAgent;
             }
-            _telemetry.log(TelemetryHelper.ExportTelemetry(_connectionParams, _clientContext));
+            TelemetryHelper.ExportTelemetry(_connectionParams, _clientContext, CreateHttpHandler());
         }
 
         /// <summary>
@@ -777,6 +775,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (disposing)
             {
                 _authHttpClient?.Dispose();
+                _telemetry?.Dispose();
+                
+                // Flush any pending telemetry events
+                try
+                {
+                    TelemetryHelper.ForceFlushAsync().Wait(TimeSpan.FromSeconds(2));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to flush telemetry on dispose: {ex.Message}");
+                }
             }
             base.Dispose(disposing);
         }

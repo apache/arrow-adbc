@@ -15,15 +15,20 @@
 * limitations under the License.
 */
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums
+using System.Text.Json.Serialization;
+using System.Collections.Generic;
+
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public enum DriverVolumeOperationType
+    public class TelemetryRequest
     {
-        TYPE_UNSPECIFIED = 0,
-        PUT = 1,
-        GET = 2,
-        DELETE = 3,
-        LIST = 4,
-        QUERY = 5
+        [JsonPropertyName("upload_time")]
+        public long UploadTime { get; set; }
+
+        [JsonPropertyName("items")]
+        public List<string> Items = new List<string>();
+
+        [JsonPropertyName("protoLogs")]
+        public List<string>? ProtoLogs { get; set; }
     }
 }

@@ -24,12 +24,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
     public class DatabricksTelemetryExporter : IDisposable
     {
-        // Source name, should be "Apache.Arrow.Adbc.Drivers.Databricks"
-        //private readonly string _sourceName = GetType().Assembly.GetName().Name!;
-        private readonly string _logFilePath = Path.Combine(Path.GetTempPath(), $"databricks/{DateTime.Now:yyyyMMdd-HHmmss}.log");
 
-        private ActivityListener _activityListener { get; }
-        private StreamWriter _logWriter;
+        private ActivityListener _activityListener;
 
         public DatabricksTelemetryExporter(String sourceName)
         {
@@ -42,28 +38,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
                 ActivityStopped = OnActivityStopped,
             };
             ActivitySource.AddActivityListener(_activityListener);
-            _logWriter = new StreamWriter(_logFilePath);
-        }
-
-        public void log(string message)
-        {
-            _logWriter.WriteLine(message);
-            _logWriter.WriteLine("hello");
-            _logWriter.Flush();
         }
 
         private void OnActivityStarted(Activity activity)
         {
-            _logWriter.WriteLine(activity.OperationName);
-            _logWriter.WriteLine(activity.Tags);
-            _logWriter.Flush();
         }
 
         private void OnActivityStopped(Activity activity)
         {
-            _logWriter.WriteLine(activity.OperationName);
-            _logWriter.WriteLine(activity.Duration);
-            _logWriter.Flush();
+            
         }
 
         private void SendToDatabricks()
@@ -75,7 +58,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
         public void Dispose()
         {   
             this._activityListener.Dispose();
-            _logWriter.Close();
         }
     }
 }
