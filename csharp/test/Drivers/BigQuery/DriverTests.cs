@@ -299,6 +299,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        [SkippableFact, Order(6)]
+        public void CanExecuteParallelQueries()
+        {
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
+
+                Parallel.For(0, environment.NumberOfParallelRuns, (i) =>
+                {
+                    Parallel.ForEach(environment.ParallelQueries, pq =>
+                    {
+                        using (AdbcStatement statement = adbcConnection.CreateStatement())
+                        {
+                            statement.SqlQuery = pq.Query;
+
+                            QueryResult queryResult = statement.ExecuteQuery();
+
+                            _outputHelper?.WriteLine($"({i}) {DateTime.Now.Ticks} - {queryResult.RowCount} results for {pq.Query}");
+
+                            Tests.DriverTests.CanExecuteQuery(queryResult, pq.ExpectedResultsCount, environment.Name);
+                        }
+                    });
+                });
+            }
+        }
+
         private AdbcConnection GetAdbcConnection(string? environmentName)
         {
             if (string.IsNullOrEmpty(environmentName))
