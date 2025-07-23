@@ -28,8 +28,6 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
-using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -38,10 +36,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksConnection : SparkHttpConnection
     {
+        internal static new readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksConnection));
+        internal static new readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksConnection));
+
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
         private bool _enablePKFK = true;
+        private bool _runAsyncInThrift = false;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
@@ -51,7 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
-
+        private const int DefaultQueryTimeSeconds = 3 * 60 * 60; // 3 hours
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
@@ -66,6 +68,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         // Default namespace
         private TNamespace? _defaultNamespace;
+
+        private HttpClient? _authHttpClient;
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -164,6 +168,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.EnableRunAsyncInThriftOp, out string? enableRunAsyncInThriftStr))
+            {
+                if (bool.TryParse(enableRunAsyncInThriftStr, out bool enableRunAsyncInThrift))
+                {
+                    _runAsyncInThrift = enableRunAsyncInThrift;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableRunAsyncInThriftOp}' value '{enableRunAsyncInThriftStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
             if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr))
             {
                 if (!long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
@@ -242,6 +258,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     throw new ArgumentException($"Parameter '{DatabricksParameters.TraceStateEnabled}' value '{traceStateEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
+
+            if (!Properties.ContainsKey(ApacheParameters.QueryTimeoutSeconds))
+            {
+                // Default QueryTimeSeconds in Hive2Connection is only 60s, which is too small for lots of long running query
+                QueryTimeoutSeconds = DefaultQueryTimeSeconds;
+            }
         }
 
         /// <summary>
@@ -290,6 +312,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public bool EnablePKFK => _enablePKFK;
 
         /// <summary>
+        /// Enable RunAsync flag in Thrift Operation
+        /// </summary>
+        public bool RunAsyncInThrift => _runAsyncInThrift;
+
+        /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
         /// </summary>
         protected bool TemporarilyUnavailableRetry { get; private set; } = DefaultRetryOnUnavailable;
@@ -302,20 +329,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override HttpMessageHandler CreateHttpHandler()
         {
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
+            HttpMessageHandler baseAuthHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
 
             // Add tracing handler to propagate W3C trace context if enabled
             if (_tracePropagationEnabled)
             {
                 baseHandler = new TracingDelegatingHandler(baseHandler, this, _traceParentHeaderName, _traceStateEnabled);
+                baseAuthHandler = new TracingDelegatingHandler(baseAuthHandler, this, _traceParentHeaderName, _traceStateEnabled);
             }
 
             if (TemporarilyUnavailableRetry)
             {
                 // Add retry handler for 503 responses
                 baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
+                baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout);
             }
 
-            // Add OAuth handler if OAuth authentication is being used
+            Debug.Assert(_authHttpClient == null, "Auth HttpClient should not be initialized yet.");
+            _authHttpClient = new HttpClient(baseAuthHandler);
+
+            // Add OAuth client credentials handler if OAuth M2M authentication is being used
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
                 SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue) &&
                 authTypeValue == SparkAuthType.OAuth &&
@@ -323,28 +356,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
                 grantType == DatabricksOAuthGrantType.ClientCredentials)
             {
-                // Note: We assume that properties have already been validated
-                if (Properties.TryGetValue(SparkParameters.HostName, out string? host) && !string.IsNullOrEmpty(host))
-                {
-                    // Use hostname directly if provided
-                }
-                else if (Properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrEmpty(uri))
-                {
-                    // Extract hostname from URI if URI is provided
-                    if (Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsedUri))
-                    {
-                        host = parsedUri.Host;
-                    }
-                }
+                string host = GetHost();
 
                 Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
                 Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
                 Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
 
-                HttpClient OauthHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
-
                 var tokenProvider = new OAuthClientCredentialsProvider(
-                    OauthHttpClient,
+                    _authHttpClient,
                     clientId!,
                     clientSecret!,
                     host!,
@@ -352,7 +371,36 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     timeoutMinutes: 1
                 );
 
-                return new OAuthDelegatingHandler(baseHandler, tokenProvider);
+                baseHandler = new OAuthDelegatingHandler(baseHandler, tokenProvider);
+            }
+            // Add token exchange handler if token renewal is enabled and the auth type is OAuth access token
+            else if (Properties.TryGetValue(DatabricksParameters.TokenRenewLimit, out string? tokenRenewLimitStr) &&
+                int.TryParse(tokenRenewLimitStr, out int tokenRenewLimit) &&
+                tokenRenewLimit > 0 &&
+                Properties.TryGetValue(SparkParameters.AuthType, out string? authTypeForToken) &&
+                SparkAuthTypeParser.TryParse(authTypeForToken, out SparkAuthType authTypeValueForToken) &&
+                authTypeValueForToken == SparkAuthType.OAuth &&
+                Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
+            {
+                if (string.IsNullOrEmpty(accessToken))
+                {
+                    throw new ArgumentException("Access token is required for OAuth authentication with token renewal.");
+                }
+
+                // Check if token is a JWT token by trying to decode it
+                if (JwtTokenDecoder.TryGetExpirationTime(accessToken, out DateTime expiryTime))
+                {
+                    string host = GetHost();
+
+                    var tokenExchangeClient = new TokenExchangeClient(_authHttpClient, host);
+
+                    baseHandler = new TokenExchangeDelegatingHandler(
+                        baseHandler,
+                        tokenExchangeClient,
+                        accessToken,
+                        expiryTime,
+                        tokenRenewLimit);
+                }
             }
 
             return baseHandler;
@@ -648,6 +696,33 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
+        /// <summary>
+        /// Gets the host from the connection properties.
+        /// </summary>
+        /// <returns>The host, or empty string if not found.</returns>
+        private string GetHost()
+        {
+            if (Properties.TryGetValue(SparkParameters.HostName, out string? host) && !string.IsNullOrEmpty(host))
+            {
+                return host;
+            }
+
+            if (Properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrEmpty(uri))
+            {
+                // Parse the URI to extract the host
+                if (Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsedUri))
+                {
+                    return parsedUri.Host;
+                }
+            }
+
+            throw new ArgumentException("Host not found in connection properties. Please provide a valid host using either 'HostName' or 'Uri' property.");
+        }
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
+
         internal static string? HandleSparkCatalog(string? CatalogName)
         {
             if (CatalogName != null && CatalogName.Equals("SPARK", StringComparison.OrdinalIgnoreCase))
@@ -655,6 +730,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 return null;
             }
             return CatalogName;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _authHttpClient?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

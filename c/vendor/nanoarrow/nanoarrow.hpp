@@ -15,16 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <cstring>
-#include <exception>
-#include <string>
-#include <vector>
-
-#include "nanoarrow.h"
-
-#ifndef NANOARROW_HPP_INCLUDED
-#define NANOARROW_HPP_INCLUDED
-
 /// \defgroup nanoarrow_hpp Nanoarrow C++ Helpers
 ///
 /// The utilities provided in this file are intended to support C++ users
@@ -32,7 +22,38 @@
 /// and error handling can be used with nanoarrow data structures.
 /// These utilities are not intended to mirror the nanoarrow C API.
 
-namespace nanoarrow {
+
+
+
+
+
+
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+#ifndef NANOARROW_HPP_EXCEPTION_HPP_INCLUDED
+#define NANOARROW_HPP_EXCEPTION_HPP_INCLUDED
+
+#include <exception>
+#include <string>
+
+#include "nanoarrow.h"
+
+NANOARROW_CXX_NAMESPACE_BEGIN
 
 /// \defgroup nanoarrow_hpp-errors Error handling helpers
 ///
@@ -83,6 +104,37 @@ class Exception : public std::exception {
 
 /// @}
 
+NANOARROW_CXX_NAMESPACE_END
+
+#endif
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+#ifndef NANOARROW_HPP_OPERATORS_HPP_INCLUDED
+#define NANOARROW_HPP_OPERATORS_HPP_INCLUDED
+
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "nanoarrow.h"
+
+NANOARROW_CXX_NAMESPACE_BEGIN
+
 namespace literals {
 
 /// \defgroup nanoarrow_hpp-string_view_helpers ArrowStringView helpers
@@ -93,11 +145,11 @@ namespace literals {
 
 /// \brief User literal operator allowing ArrowStringView construction like "str"_asv
 #if !defined(__clang__) && (defined(__GNUC__) && __GNUC__ < 6)
-inline ArrowStringView operator"" _asv(const char* data, std::size_t size_bytes) {
+inline ArrowStringView operator"" _asv(const char* data, size_t size_bytes) {
   return {data, static_cast<int64_t>(size_bytes)};
 }
 #else
-inline ArrowStringView operator""_asv(const char* data, std::size_t size_bytes) {
+inline ArrowStringView operator""_asv(const char* data, size_t size_bytes) {
   return {data, static_cast<int64_t>(size_bytes)};
 }
 #endif
@@ -106,6 +158,42 @@ inline ArrowStringView operator""_asv(const char* data, std::size_t size_bytes) 
 // @}
 
 }  // namespace literals
+
+NANOARROW_CXX_NAMESPACE_END
+
+/// \brief Equality comparison operator between ArrowStringView
+/// \ingroup nanoarrow_hpp-string_view_helpers
+inline bool operator==(ArrowStringView l, ArrowStringView r) {
+  if (l.size_bytes != r.size_bytes) return false;
+  return memcmp(l.data, r.data, l.size_bytes) == 0;
+}
+
+#endif
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+#ifndef NANOARROW_HPP_UNIQUE_HPP_INCLUDED
+#define NANOARROW_HPP_UNIQUE_HPP_INCLUDED
+
+#include <string.h>
+
+#include "nanoarrow.h"
+
+NANOARROW_CXX_NAMESPACE_BEGIN
 
 namespace internal {
 
@@ -225,13 +313,13 @@ class Unique {
  public:
   /// \brief Construct an invalid instance of T holding no resources
   Unique() {
-    std::memset(&data_, 0, sizeof(data_));
+    memset(&data_, 0, sizeof(data_));
     init_pointer(&data_);
   }
 
   /// \brief Move and take ownership of data
   Unique(T* data) {
-    std::memset(&data_, 0, sizeof(data_));
+    memset(&data_, 0, sizeof(data_));
     move_pointer(data, &data_);
   }
 
@@ -272,15 +360,6 @@ class Unique {
   T data_;
 };
 
-template <typename T>
-static inline void DeallocateWrappedBuffer(struct ArrowBufferAllocator* allocator,
-                                           uint8_t* ptr, int64_t size) {
-  NANOARROW_UNUSED(ptr);
-  NANOARROW_UNUSED(size);
-  auto obj = reinterpret_cast<T*>(allocator->private_data);
-  delete obj;
-}
-
 /// @}
 
 }  // namespace internal
@@ -313,50 +392,34 @@ using UniqueArrayView = internal::Unique<struct ArrowArrayView>;
 
 /// @}
 
-/// \defgroup nanoarrow_hpp-buffer Buffer helpers
-///
-/// Helpers to wrap buffer-like C++ objects as ArrowBuffer objects that can
-/// be used to build ArrowArray objects.
-///
-/// @{
+NANOARROW_CXX_NAMESPACE_END
 
-/// \brief Initialize a buffer wrapping an arbitrary C++ object
-///
-/// Initializes a buffer with a release callback that deletes the moved obj
-/// when ArrowBufferReset is called. This version is useful for wrapping
-/// an object whose .data() member is missing or unrelated to the buffer
-/// value that is destined for a the buffer of an ArrowArray. T must be movable.
-template <typename T>
-static inline void BufferInitWrapped(struct ArrowBuffer* buffer, T obj,
-                                     const uint8_t* data, int64_t size_bytes) {
-  T* obj_moved = new T(std::move(obj));
-  buffer->data = const_cast<uint8_t*>(data);
-  buffer->size_bytes = size_bytes;
-  buffer->capacity_bytes = 0;
-  buffer->allocator =
-      ArrowBufferDeallocator(&internal::DeallocateWrappedBuffer<T>, obj_moved);
-}
+#endif
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
 
-/// \brief Initialize a buffer wrapping a C++ sequence
-///
-/// Specifically, this uses obj.data() to set the buffer address and
-/// obj.size() * sizeof(T::value_type) to set the buffer size. This works
-/// for STL containers like std::vector, std::array, and std::string.
-/// This function moves obj and ensures it is deleted when ArrowBufferReset
-/// is called.
-template <typename T>
-void BufferInitSequence(struct ArrowBuffer* buffer, T obj) {
-  // Move before calling .data() (matters sometimes).
-  T* obj_moved = new T(std::move(obj));
-  buffer->data =
-      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(obj_moved->data()));
-  buffer->size_bytes = obj_moved->size() * sizeof(typename T::value_type);
-  buffer->capacity_bytes = 0;
-  buffer->allocator =
-      ArrowBufferDeallocator(&internal::DeallocateWrappedBuffer<T>, obj_moved);
-}
+#ifndef NANOARROW_HPP_ARRAY_STREAM_HPP_INCLUDED
+#define NANOARROW_HPP_ARRAY_STREAM_HPP_INCLUDED
 
-/// @}
+#include <vector>
+
+
+
+NANOARROW_CXX_NAMESPACE_BEGIN
 
 /// \defgroup nanoarrow_hpp-array-stream ArrayStream helpers
 ///
@@ -451,11 +514,6 @@ class ArrayStreamFactory {
 ///
 /// This class can be constructed from an struct ArrowSchema and implements a default
 /// get_next() method that always marks the output ArrowArray as released.
-///
-/// DEPRECATED (0.4.0): Early versions of nanoarrow allowed subclasses to override
-/// get_schema(), get_next(), and get_last_error(). This functionality will be removed
-/// in a future release: use the pattern documented in ArrayStreamFactory to create
-/// custom ArrowArrayStream implementations.
 class EmptyArrayStream {
  public:
   /// \brief Create an EmptyArrayStream from an ArrowSchema
@@ -471,43 +529,22 @@ class EmptyArrayStream {
     ArrayStreamFactory<EmptyArrayStream>::InitArrayStream(impl, out);
   }
 
-  /// \brief Create an empty UniqueArrayStream from a struct ArrowSchema
-  ///
-  /// DEPRECATED (0.4.0): Use the constructor + ToArrayStream() to export an
-  /// EmptyArrayStream to an ArrowArrayStream consumer.
-  static UniqueArrayStream MakeUnique(struct ArrowSchema* schema) {
-    UniqueArrayStream stream;
-    EmptyArrayStream(schema).ToArrayStream(stream.get());
-    return stream;
-  }
-
-  virtual ~EmptyArrayStream() {}
-
- protected:
+ private:
   UniqueSchema schema_;
   struct ArrowError error_;
 
-  void MakeStream(struct ArrowArrayStream* stream) { ToArrayStream(stream); }
+  friend class ArrayStreamFactory<EmptyArrayStream>;
 
-  virtual int get_schema(struct ArrowSchema* schema) {
+  int GetSchema(struct ArrowSchema* schema) {
     return ArrowSchemaDeepCopy(schema_.get(), schema);
   }
 
-  virtual int get_next(struct ArrowArray* array) {
+  int GetNext(struct ArrowArray* array) {
     array->release = nullptr;
     return NANOARROW_OK;
   }
 
-  virtual const char* get_last_error() { return error_.message; }
-
- private:
-  friend class ArrayStreamFactory<EmptyArrayStream>;
-
-  int GetSchema(struct ArrowSchema* schema) { return get_schema(schema); }
-
-  int GetNext(struct ArrowArray* array) { return get_next(array); }
-
-  const char* GetLastError() { return get_last_error(); }
+  const char* GetLastError() { return error_.message; }
 };
 
 /// \brief Implementation of an ArrowArrayStream backed by a vector of UniqueArray objects
@@ -531,28 +568,6 @@ class VectorArrayStream {
   void ToArrayStream(struct ArrowArrayStream* out) {
     VectorArrayStream* impl = new VectorArrayStream(schema_.get(), std::move(arrays_));
     ArrayStreamFactory<VectorArrayStream>::InitArrayStream(impl, out);
-  }
-
-  /// \brief Create a UniqueArrowArrayStream from an existing array
-  ///
-  /// DEPRECATED (0.4.0): Use the constructors + ToArrayStream() to export a
-  /// VectorArrayStream to an ArrowArrayStream consumer.
-  static UniqueArrayStream MakeUnique(struct ArrowSchema* schema,
-                                      struct ArrowArray* array) {
-    UniqueArrayStream stream;
-    VectorArrayStream(schema, array).ToArrayStream(stream.get());
-    return stream;
-  }
-
-  /// \brief Create a UniqueArrowArrayStream from existing arrays
-  ///
-  /// DEPRECATED (0.4.0): Use the constructor + ToArrayStream() to export a
-  /// VectorArrayStream to an ArrowArrayStream consumer.
-  static UniqueArrayStream MakeUnique(struct ArrowSchema* schema,
-                                      std::vector<UniqueArray> arrays) {
-    UniqueArrayStream stream;
-    VectorArrayStream(schema, std::move(arrays)).ToArrayStream(stream.get());
-    return stream;
   }
 
  private:
@@ -581,25 +596,146 @@ class VectorArrayStream {
 
 /// @}
 
+NANOARROW_CXX_NAMESPACE_END
+
+#endif
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+#ifndef NANOARROW_HPP_BUFFER_HPP_INCLUDED
+#define NANOARROW_HPP_BUFFER_HPP_INCLUDED
+
+#include <stdint.h>
+#include <utility>
+#include "nanoarrow.h"
+
+NANOARROW_CXX_NAMESPACE_BEGIN
+
+namespace internal {
+template <typename T>
+static inline void DeallocateWrappedBuffer(struct ArrowBufferAllocator* allocator,
+                                           uint8_t* ptr, int64_t size) {
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(size);
+  auto obj = reinterpret_cast<T*>(allocator->private_data);
+  delete obj;
+}
+}  // namespace internal
+
+/// \defgroup nanoarrow_hpp-buffer Buffer helpers
+///
+/// Helpers to wrap buffer-like C++ objects as ArrowBuffer objects that can
+/// be used to build ArrowArray objects.
+///
+/// @{
+
+/// \brief Initialize a buffer wrapping an arbitrary C++ object
+///
+/// Initializes a buffer with a release callback that deletes the moved obj
+/// when ArrowBufferReset is called. This version is useful for wrapping
+/// an object whose .data() member is missing or unrelated to the buffer
+/// value that is destined for a the buffer of an ArrowArray. T must be movable.
+template <typename T>
+static inline void BufferInitWrapped(struct ArrowBuffer* buffer, T obj,
+                                     const uint8_t* data, int64_t size_bytes) {
+  T* obj_moved = new T(std::move(obj));
+  buffer->data = const_cast<uint8_t*>(data);
+  buffer->size_bytes = size_bytes;
+  buffer->capacity_bytes = 0;
+  buffer->allocator =
+      ArrowBufferDeallocator(&internal::DeallocateWrappedBuffer<T>, obj_moved);
+}
+
+/// \brief Initialize a buffer wrapping a C++ sequence
+///
+/// Specifically, this uses obj.data() to set the buffer address and
+/// obj.size() * sizeof(T::value_type) to set the buffer size. This works
+/// for STL containers like std::vector, std::array, and std::string.
+/// This function moves obj and ensures it is deleted when ArrowBufferReset
+/// is called.
+template <typename T>
+void BufferInitSequence(struct ArrowBuffer* buffer, T obj) {
+  // Move before calling .data() (matters sometimes).
+  T* obj_moved = new T(std::move(obj));
+  buffer->data =
+      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(obj_moved->data()));
+  buffer->size_bytes = obj_moved->size() * sizeof(typename T::value_type);
+  buffer->capacity_bytes = 0;
+  buffer->allocator =
+      ArrowBufferDeallocator(&internal::DeallocateWrappedBuffer<T>, obj_moved);
+}
+
+/// @}
+
+NANOARROW_CXX_NAMESPACE_END
+
+#endif
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+#ifndef NANOARROW_HPP_VIEW_HPP_INCLUDED
+#define NANOARROW_HPP_VIEW_HPP_INCLUDED
+
+#include <stdint.h>
+#include <type_traits>
+
+
+#include "nanoarrow.h"
+
+NANOARROW_CXX_NAMESPACE_BEGIN
+
 namespace internal {
 struct Nothing {};
 
 template <typename T>
 class Maybe {
  public:
-  Maybe() : nothing_(Nothing()), is_something_(false) {}
+  Maybe() : is_something_(false) {}
   Maybe(Nothing) : Maybe() {}
 
   Maybe(T something)  // NOLINT(google-explicit-constructor)
-      : something_(something), is_something_(true) {}
+      : is_something_(true), something_(something) {}
 
   explicit constexpr operator bool() const { return is_something_; }
 
   const T& operator*() const { return something_; }
 
   friend inline bool operator==(Maybe l, Maybe r) {
-    if (l.is_something_ != r.is_something_) return false;
-    return l.is_something_ ? l.something_ == r.something_ : true;
+    if (l.is_something_) {
+      return r.is_something_ && l.something_ == r.something_;
+    } else if (r.is_something_) {
+      return l.is_something_ && l.something_ == r.something_;
+    } else {
+      return l.is_something_ == r.is_something_;
+    }
   }
   friend inline bool operator!=(Maybe l, Maybe r) { return !(l == r); }
 
@@ -610,16 +746,14 @@ class Maybe {
   // is_trivially_copyable<T>::value
   static_assert(std::is_trivially_destructible<T>::value, "");
 
-  union {
-    Nothing nothing_;
-    T something_;
-  };
-  bool is_something_;
+  bool is_something_{};
+  T something_{};
 };
 
 template <typename Get>
 struct RandomAccessRange {
   Get get;
+  int64_t offset;
   int64_t size;
 
   using value_type = decltype(std::declval<Get>()(0));
@@ -633,8 +767,8 @@ struct RandomAccessRange {
     value_type operator*() const { return range->get(i); }
   };
 
-  const_iterator begin() const { return {0, this}; }
-  const_iterator end() const { return {size, this}; }
+  const_iterator begin() const { return {offset, this}; }
+  const_iterator end() const { return {offset + size, this}; }
 };
 
 template <typename Next>
@@ -687,10 +821,8 @@ class ViewArrayAs {
   struct Get {
     const uint8_t* validity;
     const void* values;
-    int64_t offset;
 
     internal::Maybe<T> operator()(int64_t i) const {
-      i += offset;
       if (validity == nullptr || ArrowBitGet(validity, i)) {
         if (std::is_same<T, bool>::value) {
           return ArrowBitGet(static_cast<const uint8_t*>(values), i);
@@ -710,8 +842,8 @@ class ViewArrayAs {
             Get{
                 array_view->buffer_views[0].data.as_uint8,
                 array_view->buffer_views[1].data.data,
-                array_view->offset,
             },
+            array_view->offset,
             array_view->length,
         } {}
 
@@ -720,8 +852,8 @@ class ViewArrayAs {
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
                 array->buffers[1],
-                /*offset=*/0,
             },
+            array->offset,
             array->length,
         } {}
 
@@ -748,10 +880,8 @@ class ViewArrayAsBytes {
     const uint8_t* validity;
     const void* offsets;
     const char* data;
-    int64_t offset;
 
     internal::Maybe<ArrowStringView> operator()(int64_t i) const {
-      i += offset;
       auto* offsets = static_cast<const OffsetType*>(this->offsets);
       if (validity == nullptr || ArrowBitGet(validity, i)) {
         return ArrowStringView{data + offsets[i], offsets[i + 1] - offsets[i]};
@@ -769,8 +899,8 @@ class ViewArrayAsBytes {
                 array_view->buffer_views[0].data.as_uint8,
                 array_view->buffer_views[1].data.data,
                 array_view->buffer_views[2].data.as_char,
-                array_view->offset,
             },
+            array_view->offset,
             array_view->length,
         } {}
 
@@ -780,8 +910,62 @@ class ViewArrayAsBytes {
                 static_cast<const uint8_t*>(array->buffers[0]),
                 array->buffers[1],
                 static_cast<const char*>(array->buffers[2]),
-                /*offset=*/0,
             },
+            array->offset,
+            array->length,
+        } {}
+
+  using value_type = typename internal::RandomAccessRange<Get>::value_type;
+  using const_iterator = typename internal::RandomAccessRange<Get>::const_iterator;
+  const_iterator begin() const { return range_.begin(); }
+  const_iterator end() const { return range_.end(); }
+  value_type operator[](int64_t i) const { return range_.get(i); }
+};
+
+class ViewBinaryViewArrayAsBytes {
+ private:
+  struct Get {
+    const uint8_t* validity;
+    const union ArrowBinaryView* inline_data;
+    const void** variadic_buffers;
+
+    internal::Maybe<ArrowStringView> operator()(int64_t i) const {
+      if (validity == nullptr || ArrowBitGet(validity, i)) {
+        const union ArrowBinaryView* bv = &inline_data[i];
+        if (bv->inlined.size <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
+          return ArrowStringView{reinterpret_cast<const char*>(bv->inlined.data),
+                                 bv->inlined.size};
+        }
+
+        return ArrowStringView{
+            reinterpret_cast<const char*>(variadic_buffers[bv->ref.buffer_index]) +
+                bv->ref.offset,
+            bv->ref.size};
+      }
+      return NA;
+    }
+  };
+
+  internal::RandomAccessRange<Get> range_;
+
+ public:
+  ViewBinaryViewArrayAsBytes(const ArrowArrayView* array_view)
+      : range_{
+            Get{
+                array_view->buffer_views[0].data.as_uint8,
+                array_view->buffer_views[1].data.as_binary_view,
+                array_view->variadic_buffers,
+            },
+            array_view->offset,
+            array_view->length,
+        } {}
+
+  ViewBinaryViewArrayAsBytes(const ArrowArray* array)
+      : range_{
+            Get{static_cast<const uint8_t*>(array->buffers[0]),
+                static_cast<const union ArrowBinaryView*>(array->buffers[1]),
+                array->buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS},
+            array->offset,
             array->length,
         } {}
 
@@ -801,11 +985,9 @@ class ViewArrayAsFixedSizeBytes {
   struct Get {
     const uint8_t* validity;
     const char* data;
-    int64_t offset;
     int fixed_size;
 
     internal::Maybe<ArrowStringView> operator()(int64_t i) const {
-      i += offset;
       if (validity == nullptr || ArrowBitGet(validity, i)) {
         return ArrowStringView{data + i * fixed_size, fixed_size};
       }
@@ -821,9 +1003,9 @@ class ViewArrayAsFixedSizeBytes {
             Get{
                 array_view->buffer_views[0].data.as_uint8,
                 array_view->buffer_views[1].data.as_char,
-                array_view->offset,
                 fixed_size,
             },
+            array_view->offset,
             array_view->length,
         } {}
 
@@ -832,9 +1014,9 @@ class ViewArrayAsFixedSizeBytes {
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
                 static_cast<const char*>(array->buffers[1]),
-                /*offset=*/0,
                 fixed_size,
             },
+            array->offset,
             array->length,
         } {}
 
@@ -927,13 +1109,6 @@ class ViewArrayStream {
 
 /// @}
 
-}  // namespace nanoarrow
-
-/// \brief Equality comparison operator between ArrowStringView
-/// \ingroup nanoarrow_hpp-string_view_helpers
-inline bool operator==(ArrowStringView l, ArrowStringView r) {
-  if (l.size_bytes != r.size_bytes) return false;
-  return memcmp(l.data, r.data, l.size_bytes) == 0;
-}
+NANOARROW_CXX_NAMESPACE_END
 
 #endif

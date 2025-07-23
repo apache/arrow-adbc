@@ -16,11 +16,8 @@
 */
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Apache.Arrow;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -42,7 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             this.schema = schema;
             this.isLz4Compressed = isLz4Compressed;
             this.statement = statement;
-            if (statement.DirectResults != null && !statement.DirectResults.ResultSet.HasMoreRows)
+            if (statement.DirectResults?.ResultSet != null && !statement.DirectResults.ResultSet.HasMoreRows)
             {
                 return;
             }
@@ -93,5 +90,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 throw new ObjectDisposedException(GetType().Name);
             }
         }
+
+        public override string AssemblyName => DatabricksConnection.s_assemblyName;
+
+        public override string AssemblyVersion => DatabricksConnection.s_assemblyVersion;
     }
 }

@@ -49,8 +49,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // Add constants for PK and FK field names and prefixes
         protected static readonly string[] PrimaryKeyFields = new[] { "COLUMN_NAME" };
         protected static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME", "FK_NAME", "KEQ_SEQ" };
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2Statement));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2Statement));
         protected const string PrimaryKeyPrefix = "PK_";
         protected const string ForeignKeyPrefix = "FK_";
 
@@ -353,9 +351,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // Keep the original Client property for internal use
         public TCLIService.IAsync Client => Connection.Client;
 
-        public override string AssemblyName => s_assemblyName;
+        public override string AssemblyName => HiveServer2Connection.s_assemblyName;
 
-        public override string AssemblyVersion => s_assemblyVersion;
+        public override string AssemblyVersion => HiveServer2Connection.s_assemblyVersion;
 
         private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0
             ? pollTimeMilliseconds
@@ -439,6 +437,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
@@ -459,6 +458,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ForeignTableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
@@ -476,6 +476,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
@@ -484,6 +485,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             TGetCatalogsResp resp = await Connection.GetCatalogsAsync(cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
@@ -495,6 +497,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 EscapePatternWildcardsInName(SchemaName),
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
@@ -509,6 +512,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 tableTypesList,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }

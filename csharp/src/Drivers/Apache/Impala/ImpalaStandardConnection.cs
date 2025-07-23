@@ -32,9 +32,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
     internal class ImpalaStandardConnection : ImpalaConnection
     {
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(ImpalaStandardConnection));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(ImpalaStandardConnection));
-
         public ImpalaStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }

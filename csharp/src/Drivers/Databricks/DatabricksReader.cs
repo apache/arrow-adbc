@@ -28,9 +28,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal sealed class DatabricksReader : BaseDatabricksReader
     {
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksReader));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksReader));
-
         List<TSparkArrowBatch>? batches;
         int index;
         IArrowReader? reader;
@@ -49,10 +46,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 this.hasNoMoreRows = !initialResults.HasMoreRows;
             }
         }
-
-        public override string AssemblyName => s_assemblyName;
-
-        public override string AssemblyVersion => s_assemblyVersion;
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {

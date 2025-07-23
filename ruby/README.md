@@ -19,6 +19,8 @@
 
 # Red ADBC
 
+[![RubyGems: red-adbc](https://img.shields.io/gem/v/red-adbc?style=flat-square)](https://rubygems.org/gems/red-adbc)
+
 Red ADBC is the Ruby bindings of ADBC GLib.
 
 ## How to install

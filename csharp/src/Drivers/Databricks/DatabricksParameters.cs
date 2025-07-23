@@ -181,6 +181,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const string UseDescTableExtended = "adbc.databricks.use_desc_table_extended";
 
         /// <summary>
+        /// Whether to enable RunAsync flag in Thrift operation
+        /// Default value is false if not specified.
+        /// </summary>
+        public const string EnableRunAsyncInThriftOp = "adbc.databricks.enable_run_async_thrift";
+
+        /// <summary>
         /// Whether to propagate trace parent headers in HTTP requests.
         /// Default value is true if not specified.
         /// When enabled, the driver will add W3C Trace Context headers to all HTTP requests.
@@ -200,6 +206,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// When enabled, the driver will also propagate the tracestate header if available.
         /// </summary>
         public const string TraceStateEnabled = "adbc.databricks.trace_propagation.state_enabled";
+
+        /// <summary>
+        /// The minutes before token expiration when we should start renewing the token.
+        /// Default value is 0 (disabled) if not specified.
+        /// </summary>
+        public const string TokenRenewLimit = "adbc.databricks.token_renew_limit";
     }
 
     /// <summary>

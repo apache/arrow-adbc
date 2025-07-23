@@ -628,3 +628,58 @@ func TestDriverMgrCustomInitFunc(t *testing.T) {
 		assert.Contains(t, exp.Msg, "undefined symbol: ThisSymbolDoesNotExist")
 	}
 }
+
+func (dm *DriverMgrSuite) TestIngestStream() {
+	// 1) Define the Arrow schema
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "col1", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+		{Name: "col2", Type: arrow.BinaryTypes.String, Nullable: true},
+	}, nil)
+
+	// 2) Build two batches via JSON
+	rec1, _, err := array.RecordFromJSON(
+		memory.DefaultAllocator, schema,
+		strings.NewReader(`[
+            {"col1": 1, "col2": "one"},
+            {"col1": 2, "col2": "two"},
+            {"col1": 3, "col2": "three"}
+        ]`),
+	)
+	dm.Require().NoError(err)
+	defer rec1.Release()
+
+	rec2, _, err := array.RecordFromJSON(
+		memory.DefaultAllocator, schema,
+		strings.NewReader(`[
+            {"col1": 4, "col2": "four"},
+            {"col1": 5, "col2": "five"}
+        ]`),
+	)
+	dm.Require().NoError(err)
+	defer rec2.Release()
+
+	rdr, err := array.NewRecordReader(schema, []arrow.Record{rec1, rec2})
+	dm.Require().NoError(err)
+	defer rdr.Release()
+
+	// 3) Use the IngestStream
+	count, err := adbc.IngestStream(dm.ctx, dm.conn, rdr, "ingest_test", adbc.OptionValueIngestModeCreateAppend, adbc.IngestStreamOptions{})
+	dm.NoError(err)
+	dm.Equal(int64(5), count, "should report 5 rows ingested")
+
+	// 4) Verify with a simple COUNT(*) query
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st)
+
+	dm.NoError(st.SetSqlQuery(`SELECT COUNT(*) AS cnt FROM ingest_test`))
+	rdr2, _, err := st.ExecuteQuery(dm.ctx)
+	dm.NoError(err)
+	defer rdr2.Release()
+
+	dm.True(rdr2.Next(), "expected one row with the count")
+	recCount := rdr2.Record()
+	cntArr := recCount.Column(0).(*array.Int64)
+	dm.Equal(int64(5), cntArr.Value(0), "table should contain 5 rows")
+	dm.False(rdr2.Next(), "no more rows expected")
+}
