@@ -27,7 +27,7 @@ using Xunit;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 {
-    public class TokenExchangeDelegatingHandlerTests : IDisposable
+    public class TokenRefreshDelegatingHandlerTests : IDisposable
     {
         private readonly Mock<HttpMessageHandler> _mockInnerHandler;
         private readonly Mock<ITokenExchangeClient> _mockTokenExchangeClient;
@@ -35,7 +35,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         private readonly int _tokenRenewLimitMinutes = 10;
         private readonly DateTime _initialTokenExpiry = DateTime.UtcNow.AddHours(1);
 
-        public TokenExchangeDelegatingHandlerTests()
+        public TokenRefreshDelegatingHandlerTests()
         {
             _mockInnerHandler = new Mock<HttpMessageHandler>();
             _mockTokenExchangeClient = new Mock<ITokenExchangeClient>();
@@ -44,7 +44,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         [Fact]
         public void Constructor_WithValidParameters_InitializesCorrectly()
         {
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -57,7 +57,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         [Fact]
         public void Constructor_WithNullTokenExchangeClient_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new TokenExchangeDelegatingHandler(
+            Assert.Throws<ArgumentNullException>(() => new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 null!,
                 _initialToken,
@@ -68,7 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         [Fact]
         public void Constructor_WithNullInitialToken_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new TokenExchangeDelegatingHandler(
+            Assert.Throws<ArgumentNullException>(() => new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 null!,
@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         public async Task SendAsync_WithValidTokenNotNearExpiry_UsesInitialTokenWithoutRenewal()
         {
             var futureExpiry = DateTime.UtcNow.AddHours(2); // Well beyond renewal limit
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -112,7 +112,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             await Task.Delay(100);
 
             _mockTokenExchangeClient.Verify(
-                x => x.ExchangeTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                x => x.RefreshTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
                 Times.Never);
         }
 
@@ -125,7 +125,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var newExpiry = DateTime.UtcNow.AddHours(1);
             var tokenExchangeDelay = TimeSpan.FromMilliseconds(500);
 
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -144,7 +144,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             };
 
             _mockTokenExchangeClient
-                .Setup(x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
+                .Setup(x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
                 .Returns(async (string token, CancellationToken ct) =>
                 {
                     await Task.Delay(tokenExchangeDelay, ct);
@@ -198,7 +198,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             Assert.Equal(newToken, capturedRequest2.Headers.Authorization?.Parameter); // Second request uses new token
 
             _mockTokenExchangeClient.Verify(
-                x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
+                x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -207,7 +207,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         {
             var nearExpiryTime = DateTime.UtcNow.AddMinutes(5); // Within renewal limit
 
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -219,7 +219,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             // Setup token exchange to fail
             _mockTokenExchangeClient
-                .Setup(x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
+                .Setup(x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Token exchange failed"));
 
             HttpRequestMessage? capturedRequest = null;
@@ -243,9 +243,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             // Wait for background task to complete
             await Task.Delay(100);
 
-            // Verify token exchange was attempted
+            var request2 = new HttpRequestMessage(HttpMethod.Get, "https://example.com/2");
+            HttpRequestMessage? capturedRequest2 = null;
+
+            _mockInnerHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.PathAndQuery == "/2"),
+                    ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((req, ct) => capturedRequest2 = req)
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
+
+            await httpClient.SendAsync(request2);
+
+            Assert.NotNull(capturedRequest2);
+            Assert.Equal("Bearer", capturedRequest2.Headers.Authorization?.Scheme);
+            Assert.Equal(_initialToken, capturedRequest2.Headers.Authorization?.Parameter);
+
             _mockTokenExchangeClient.Verify(
-                x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
+                x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -256,7 +272,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var newToken = "new-renewed-token";
             var newExpiry = DateTime.UtcNow.AddMinutes(3); // New token also near expiry
 
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -272,7 +288,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             };
 
             _mockTokenExchangeClient
-                .Setup(x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
+                .Setup(x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(tokenExchangeResponse);
 
             _mockInnerHandler.Protected()
@@ -295,7 +311,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             // Token exchange should only be called once (renewed tokens cannot be renewed again)
             _mockTokenExchangeClient.Verify(
-                x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
+                x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -306,7 +322,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var newToken = "new-renewed-token";
             var newExpiry = DateTime.UtcNow.AddHours(1);
 
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -323,7 +339,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             // Add a small delay to token exchange to simulate concurrent access
             _mockTokenExchangeClient
-                .Setup(x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
+                .Setup(x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
                 .Returns(async () =>
                 {
                     await Task.Delay(200);
@@ -354,14 +370,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             // Token exchange should only be called once despite concurrent requests
             _mockTokenExchangeClient.Verify(
-                x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
+                x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
         [Fact]
         public async Task SendAsync_WithCancellationToken_PropagatesCancellation()
         {
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -392,7 +408,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         public async Task SendAsync_WithTokenRenewalAndCancellation_HandlesCancellationGracefully()
         {
             var nearExpiryTime = DateTime.UtcNow.AddMinutes(5); // Within renewal limit
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -403,7 +419,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var cts = new CancellationTokenSource();
 
             _mockTokenExchangeClient
-                .Setup(x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
+                .Setup(x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
                 .Returns<string, CancellationToken>((token, ct) =>
                 {
                     ct.ThrowIfCancellationRequested();
@@ -436,7 +452,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         [Fact]
         public void Dispose_ReleasesResources()
         {
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -454,7 +470,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         public async Task SendAsync_WithDifferentRenewalLimits_RenewsTokenAppropriately(int renewalLimitMinutes)
         {
             var tokenExpiryTime = DateTime.UtcNow.AddMinutes(renewalLimitMinutes / 2); // Half the renewal limit
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 _mockInnerHandler.Object,
                 _mockTokenExchangeClient.Object,
                 _initialToken,
@@ -464,7 +480,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
             _mockTokenExchangeClient
-                .Setup(x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
+                .Setup(x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TokenExchangeResponse
                 {
                     AccessToken = "new-token",
@@ -487,7 +503,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             await Task.Delay(100);
 
             _mockTokenExchangeClient.Verify(
-                x => x.ExchangeTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
+                x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 

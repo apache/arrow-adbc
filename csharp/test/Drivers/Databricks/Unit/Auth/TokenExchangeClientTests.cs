@@ -85,7 +85,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
-            var result = await client.ExchangeTokenAsync(testToken, CancellationToken.None);
+            var result = await client.RefreshTokenAsync(testToken, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(expectedAccessToken, result.AccessToken);
@@ -123,7 +123,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
-            await client.ExchangeTokenAsync(testToken, CancellationToken.None);
+            await client.RefreshTokenAsync(testToken, CancellationToken.None);
 
             Assert.NotNull(capturedRequest);
             Assert.Equal(HttpMethod.Post, capturedRequest.Method);
@@ -157,7 +157,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             await Assert.ThrowsAsync<HttpRequestException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
         }
 
         [Fact]
@@ -185,7 +185,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("access_token", exception.Message);
         }
@@ -216,7 +216,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("access_token was null or empty", exception.Message);
         }
@@ -246,7 +246,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("token_type", exception.Message);
         }
@@ -276,7 +276,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("expires_in", exception.Message);
         }
@@ -307,7 +307,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("expires_in value must be positive", exception.Message);
         }
@@ -333,7 +333,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             await Assert.ThrowsAnyAsync<JsonException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
         }
 
         [Fact]
@@ -353,7 +353,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             await Assert.ThrowsAsync<TaskCanceledException>(() =>
-                client.ExchangeTokenAsync(testToken, cts.Token));
+                client.RefreshTokenAsync(testToken, cts.Token));
         }
 
         [Fact]
@@ -384,7 +384,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
-            var result = await client.ExchangeTokenAsync(testToken, CancellationToken.None);
+            var result = await client.RefreshTokenAsync(testToken, CancellationToken.None);
             var afterCall = DateTime.UtcNow;
 
             var expectedMinExpiry = beforeCall.AddSeconds(expiresIn);

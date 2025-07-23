@@ -56,12 +56,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
     internal interface ITokenExchangeClient
     {
         /// <summary>
-        /// Exchanges the provided token for a new token.
+        /// Gets the token exchange endpoint URL.
         /// </summary>
-        /// <param name="token">The token to exchange.</param>
+        string TokenExchangeEndpoint { get; }
+
+        /// <summary>
+        /// Refreshes the provided token to extend the lifetime.
+        /// </summary>
+        /// <param name="token">The token to refresh.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         /// <returns>The response from the token exchange API.</returns>
-        Task<TokenExchangeResponse> ExchangeTokenAsync(string token, CancellationToken cancellationToken);
+        Task<TokenExchangeResponse> RefreshTokenAsync(string token, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Exchanges the provided token for a Databricks OAuth token.
+        /// </summary>
+        /// <param name="token">The token to exchange.</param>
+        /// <param name="identityFederationClientId">Optional identity federation client ID.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns>The response from the token exchange API.</returns>
+        Task<TokenExchangeResponse> ExchangeTokenAsync(string token, string? identityFederationClientId, CancellationToken cancellationToken);
     }
 
     /// <summary>
@@ -71,6 +85,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
     {
         private readonly HttpClient _httpClient;
         private readonly string _tokenExchangeEndpoint;
+
+        public string TokenExchangeEndpoint => _tokenExchangeEndpoint;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TokenExchangeClient"/> class.
@@ -93,18 +109,62 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         }
 
         /// <summary>
-        /// Exchanges the provided token for a new token.
+        /// Refreshes the provided token to extend the lifetime.
         /// </summary>
-        /// <param name="token">The token to exchange.</param>
+        /// <param name="token">The token to refresh.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         /// <returns>The response from the token exchange API.</returns>
-        public async Task<TokenExchangeResponse> ExchangeTokenAsync(string token, CancellationToken cancellationToken)
+        public async Task<TokenExchangeResponse> RefreshTokenAsync(string token, CancellationToken cancellationToken)
         {
             var content = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
                 new KeyValuePair<string, string>("assertion", token)
             });
+
+            var request = new HttpRequestMessage(HttpMethod.Post, _tokenExchangeEndpoint)
+            {
+                Content = content
+            };
+            request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("*/*"));
+
+            HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
+
+            response.EnsureSuccessStatusCode();
+
+            string responseContent = await response.Content.ReadAsStringAsync();
+            return ParseTokenResponse(responseContent);
+        }
+
+        /// <summary>
+        /// Exchanges the provided token for a Databricks OAuth token.
+        /// </summary>
+        /// <param name="token">The token to exchange.</param>
+        /// <param name="identityFederationClientId">Optional identity federation client ID.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns>The response from the token exchange API.</returns>
+        public async Task<TokenExchangeResponse> ExchangeTokenAsync(
+            string token,
+            string? identityFederationClientId,
+            CancellationToken cancellationToken)
+        {
+            var formData = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
+                new KeyValuePair<string, string>("assertion", token),
+                new KeyValuePair<string, string>("scope", "sql")
+            };
+
+            if (!string.IsNullOrEmpty(identityFederationClientId))
+            {
+                formData.Add(new KeyValuePair<string, string>("identity_federation_client_id", identityFederationClientId));
+            }
+            else
+            {
+                formData.Add(new KeyValuePair<string, string>("return_original_token_if_authenticated", "true"));
+            }
+
+            var content = new FormUrlEncodedContent(formData);
 
             var request = new HttpRequestMessage(HttpMethod.Post, _tokenExchangeEndpoint)
             {
