@@ -50,7 +50,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _enablePKFK = true;
         private bool _runAsyncInThrift = false;
 
-
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
             MaxRows = 2000000,
@@ -84,7 +83,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private HttpClient? _authHttpClient;
 
-
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
             //_telemetry = new DatabricksTelemetryExporter(GetType().Assembly.GetName().Name!);
@@ -94,7 +92,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             _hostDetails = new HostDetails();
             _clientContext = new ClientContext();
             ValidateProperties();
-            
         }
 
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
@@ -374,13 +371,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
             HttpMessageHandler baseAuthHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
 
-
             // Add tracing handler to propagate W3C trace context if enabled
             if (_tracePropagationEnabled)
             {
                 baseHandler = new TracingDelegatingHandler(baseHandler, this, _traceParentHeaderName, _traceStateEnabled);
                 baseAuthHandler = new TracingDelegatingHandler(baseAuthHandler, this, _traceParentHeaderName, _traceStateEnabled);
-
             }
 
             if (TemporarilyUnavailableRetry)
@@ -741,7 +736,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
-
         /// <summary>
         /// Gets the host from the connection properties.
         /// </summary>
@@ -769,7 +763,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public override string AssemblyVersion => s_assemblyVersion;
 
-
         internal static string? HandleSparkCatalog(string? CatalogName)
         {
             if (CatalogName != null && CatalogName.Equals("SPARK", StringComparison.OrdinalIgnoreCase))
@@ -779,7 +772,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return CatalogName;
         }
 
-                protected override void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
