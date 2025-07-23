@@ -437,6 +437,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TableName,
                 cancellationToken);
             OperationHandle = resp.OperationHandle;
+            _directResults = resp.DirectResults;
 
             return await GetQueryResult(resp.DirectResults, cancellationToken);
         }
