@@ -22,11 +22,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Moq;
 using Moq.Protected;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
 {
     public class TokenExchangeClientTests : IDisposable
     {

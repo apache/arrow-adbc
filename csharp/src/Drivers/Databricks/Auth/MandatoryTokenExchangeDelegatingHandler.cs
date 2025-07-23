@@ -149,12 +149,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             string? bearerToken = request.Headers.Authorization?.Parameter;
             if (!string.IsNullOrEmpty(bearerToken))
             {
-                StartTokenExchangeIfNeeded(bearerToken, cancellationToken);
+                StartTokenExchangeIfNeeded(bearerToken!, cancellationToken);
 
                 string tokenToUse;
                 lock (_tokenLock)
                 {
-                    tokenToUse = _currentToken ?? bearerToken;
+                    tokenToUse = _currentToken ?? bearerToken!;
                 }
 
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenToUse);

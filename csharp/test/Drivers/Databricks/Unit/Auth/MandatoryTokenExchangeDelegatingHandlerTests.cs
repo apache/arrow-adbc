@@ -27,7 +27,7 @@ using Moq;
 using Moq.Protected;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
 {
     public class MandatoryTokenExchangeDelegatingHandlerTests : IDisposable
     {

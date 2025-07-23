@@ -157,7 +157,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
 
             if (!string.IsNullOrEmpty(identityFederationClientId))
             {
-                formData.Add(new KeyValuePair<string, string>("identity_federation_client_id", identityFederationClientId));
+                formData.Add(new KeyValuePair<string, string>("identity_federation_client_id", identityFederationClientId!));
             }
             else
             {
