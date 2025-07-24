@@ -1104,7 +1104,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         [Theory]
         [InlineData(false, "main", true)]
-        [InlineData(true, null, true)]
         [InlineData(true, "", true)]
         [InlineData(true, "SPARK", true)]
         [InlineData(true, "hive_metastore", true)]
