@@ -1354,5 +1354,71 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             }
             OutputHelper?.WriteLine($"Test passed: {testDescription}");
         }
+
+        // this test fails on dbr < 7.3, because timestamp is returned as string
+        // todo: add more edge cases
+        [SkippableTheory]
+        [InlineData("timestamp('2023-01-15 10:30:45')", "2023-01-15T10:30:45.0000000 +00:00", "Basic timestamp")]
+        [InlineData("timestamp('2023-12-31 23:59:59.999')", "2023-12-31T23:59:59.9990000 +00:00", "Timestamp with milliseconds")]
+        public async Task CanExecuteTimestampQuery(string sqlExpression, string expectedValueString, string testDescription)
+        {
+            DateTime expectedValue = DateTime.Parse(expectedValueString);
+            // This tests timestamp handling across different DBR versions
+            // Older DBR versions might return timestamps as strings when UseArrowNativeTypes is false
+            OutputHelper?.WriteLine($"Testing: {testDescription}");
+            OutputHelper?.WriteLine($"SQL Expression: {sqlExpression}");
+            OutputHelper?.WriteLine($"Expected Value: {expectedValue}");
+
+            using AdbcConnection connection = NewConnection();
+            using var statement = connection.CreateStatement();
+
+            // Use the provided SQL expression
+            statement.SqlQuery = $"SELECT {sqlExpression} as A";
+            QueryResult result = statement.ExecuteQuery();
+
+            Assert.NotNull(result.Stream);
+
+            // Verify the schema
+            var schema = result.Stream.Schema;
+            Assert.Single(schema.FieldsList);
+
+            var field = schema.GetFieldByName("A");
+            Assert.NotNull(field);
+
+            OutputHelper?.WriteLine($"Timestamp field type: {field.DataType.GetType().Name}");
+            OutputHelper?.WriteLine($"Timestamp field type ID: {field.DataType.TypeId}");
+
+            // Read the actual data
+            var batch = await result.Stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            Assert.Equal(1, batch.Length);
+
+            if (field.DataType is TimestampType timestampType)
+            {
+                // For newer DBR versions with UseArrowNativeTypes enabled, timestamp is returned as TimestampType
+                var col0 = batch.Column(0) as TimestampArray;
+                Assert.NotNull(col0);
+                Assert.Equal(1, col0.Length);
+
+                var timestampValue = col0.GetTimestamp(0);
+                Assert.NotNull(timestampValue);
+
+                // Verify the timestamp matches the expected value
+                var actualDateTime = timestampValue.Value;
+                OutputHelper?.WriteLine($"Actual timestamp value: {actualDateTime}");
+
+                // Allow some tolerance for millisecond precision differences
+                var timeDiff = Math.Abs((actualDateTime - expectedValue).TotalMilliseconds);
+                Assert.True(timeDiff < 1000, $"Timestamp difference too large: expected {expectedValue}, got {actualDateTime}");
+
+                OutputHelper?.WriteLine($"Timestamp unit: {timestampType.Unit}");
+                OutputHelper?.WriteLine($"Timestamp timezone: {timestampType.Timezone}");
+            }
+            else
+            {
+                Assert.Fail($"Unexpected field type for timestamp: {field.DataType.GetType().Name}");
+            }
+            OutputHelper?.WriteLine($"Test passed: {testDescription}");
+        }
     }
 }
