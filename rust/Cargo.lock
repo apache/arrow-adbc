@@ -33,6 +33,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "adbc_driver_manager"
+version = "0.20.0"
+dependencies = [
+ "adbc_core",
+ "arrow-array",
+ "arrow-schema",
+ "arrow-select",
+ "libloading",
+ "temp-env",
+ "tempfile",
+ "toml",
+ "windows-registry",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "adbc_dummy"
 version = "0.20.0"
 dependencies = [

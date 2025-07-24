@@ -32,7 +32,7 @@ macro_rules! method {
         #[allow(dead_code)]
         pub(crate) type $type_name = unsafe extern "C" fn($( $arg ),*) -> $return_type;
         #[allow(dead_code)]
-        pub(crate) unsafe extern "C" fn $func_name($(_:$arg),*) -> $return_type {
+        pub unsafe extern "C" fn $func_name($(_:$arg),*) -> $return_type {
             $return_value
         }
     };

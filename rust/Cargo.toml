@@ -16,7 +16,7 @@
 # under the License.
 
 [workspace]
-members = ["core", "driver/*"]
+members = ["core", "driver_manager", "driver/*"]
 resolver = "2"
 
 [workspace.package]
