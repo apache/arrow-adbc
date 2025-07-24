@@ -36,14 +36,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockIPCStreamIterator implements dbsqlrows.IPCStreamIterator for testing
+// mockIPCStreamIterator implements dbsqlrows.ArrowIPCStreamIterator for testing
 type mockIPCStreamIterator struct {
 	streams [][]byte
 	index   int
 	schema  []byte
 }
 
-func (m *mockIPCStreamIterator) NextIPCStream() (io.Reader, error) {
+func (m *mockIPCStreamIterator) Next() (io.Reader, error) {
 	if m.index >= len(m.streams) {
 		return nil, io.EOF
 	}
@@ -60,16 +60,16 @@ func (m *mockIPCStreamIterator) Close() {
 	// Nothing to close
 }
 
-func (m *mockIPCStreamIterator) GetSchemaBytes() ([]byte, error) {
+func (m *mockIPCStreamIterator) SchemaBytes() ([]byte, error) {
 	return m.schema, nil
 }
 
 // mockRows implements the subset of dbsqlrows.Rows needed for testing
 type mockRows struct {
-	iterator dbsqlrows.IPCStreamIterator
+	iterator dbsqlrows.ArrowIPCStreamIterator
 }
 
-func (m *mockRows) GetIPCStreams(ctx context.Context) (dbsqlrows.IPCStreamIterator, error) {
+func (m *mockRows) GetArrowIPCStreams(ctx context.Context) (dbsqlrows.ArrowIPCStreamIterator, error) {
 	return m.iterator, nil
 }
 

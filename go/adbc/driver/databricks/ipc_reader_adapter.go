@@ -30,12 +30,12 @@ import (
 
 // Check if the rows interface supports IPC streams
 type rowsWithIPCStream interface {
-	GetIPCStreams(context.Context) (dbsqlrows.IPCStreamIterator, error)
+	GetArrowIPCStreams(context.Context) (dbsqlrows.ArrowIPCStreamIterator, error)
 }
 
 // ipcReaderAdapter uses the new IPC stream interface for zero-copy Arrow access
 type ipcReaderAdapter struct {
-	ipcIterator   dbsqlrows.IPCStreamIterator
+	ipcIterator   dbsqlrows.ArrowIPCStreamIterator
 	currentReader *ipc.Reader
 	currentRecord arrow.Record
 	closed        bool
@@ -50,7 +50,7 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 	}
 
 	// Get IPC stream iterator
-	ipcIterator, err := ipcRows.GetIPCStreams(ctx)
+	ipcIterator, err := ipcRows.GetArrowIPCStreams(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get IPC streams: %w", err)
 	}
@@ -81,7 +81,7 @@ func (r *ipcReaderAdapter) loadNextReader() error {
 		return io.EOF
 	}
 
-	ipcStream, err := r.ipcIterator.NextIPCStream()
+	ipcStream, err := r.ipcIterator.Next()
 	if err != nil {
 		return err
 	}

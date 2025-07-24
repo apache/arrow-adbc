@@ -157,3 +157,5 @@ exclude (
 	github.com/envoyproxy/go-control-plane v0.13.1
 	github.com/envoyproxy/go-control-plane v0.13.2
 )
+
+replace github.com/databricks/databricks-sql-go => /Users/jade.wang/databricks-sql-go
