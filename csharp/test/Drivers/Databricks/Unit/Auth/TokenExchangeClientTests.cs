@@ -122,13 +122,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             };
 
             HttpRequestMessage? capturedRequest = null;
+            string? capturedFormContent = null;
 
             _mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>((req, ct) => capturedRequest = req)
+                .Callback<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                {
+                    capturedRequest = req;
+                    if (req.Content != null)
+                    {
+                        capturedFormContent = await req.Content.ReadAsStringAsync();
+                    }
+                })
                 .ReturnsAsync(httpResponseMessage);
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
@@ -140,12 +148,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal($"https://{_testHost}/oidc/v1/token", capturedRequest?.RequestUri?.ToString());
             Assert.True(capturedRequest?.Headers.Accept.Contains(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("*/*")));
 
-            var content = capturedRequest?.Content as FormUrlEncodedContent;
-            Assert.NotNull(content);
-
-            var formContent = await content.ReadAsStringAsync();
-            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", formContent);
-            Assert.Contains($"assertion={testToken}", formContent);
+            Assert.NotNull(capturedFormContent);
+            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", capturedFormContent);
+            Assert.Contains($"assertion={testToken}", capturedFormContent);
         }
 
         [Fact]
@@ -421,13 +426,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             };
 
             HttpRequestMessage? capturedRequest = null;
+            string? capturedFormContent = null;
 
             _mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>((req, ct) => capturedRequest = req)
+                .Callback<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                {
+                    capturedRequest = req;
+                    if (req.Content != null)
+                    {
+                        capturedFormContent = await req.Content.ReadAsStringAsync();
+                    }
+                })
                 .ReturnsAsync(httpResponseMessage);
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
@@ -438,13 +451,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal("exchanged-token", result.AccessToken);
 
             Assert.NotNull(capturedRequest);
-            Assert.NotNull(capturedRequest.Content);
-            var formContent = await capturedRequest.Content.ReadAsStringAsync();
-            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", formContent);
-            Assert.Contains($"assertion={testToken}", formContent);
-            Assert.Contains("scope=sql", formContent);
-            Assert.Contains("return_original_token_if_authenticated=true", formContent);
-            Assert.DoesNotContain("identity_federation_client_id", formContent);
+            Assert.NotNull(capturedFormContent);
+            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", capturedFormContent);
+            Assert.Contains($"assertion={testToken}", capturedFormContent);
+            Assert.Contains("scope=sql", capturedFormContent);
+            Assert.Contains("return_original_token_if_authenticated=true", capturedFormContent);
+            Assert.DoesNotContain("identity_federation_client_id", capturedFormContent);
         }
 
         [Fact]
@@ -465,13 +477,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             };
 
             HttpRequestMessage? capturedRequest = null;
+            string? capturedFormContent = null;
 
             _mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>((req, ct) => capturedRequest = req)
+                .Callback<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                {
+                    capturedRequest = req;
+                    if (req.Content != null)
+                    {
+                        capturedFormContent = await req.Content.ReadAsStringAsync();
+                    }
+                })
                 .ReturnsAsync(httpResponseMessage);
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
@@ -482,13 +502,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal("exchanged-token", result.AccessToken);
 
             Assert.NotNull(capturedRequest);
-            Assert.NotNull(capturedRequest.Content);
-            var formContent = await capturedRequest.Content.ReadAsStringAsync();
-            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", formContent);
-            Assert.Contains($"assertion={testToken}", formContent);
-            Assert.Contains("scope=sql", formContent);
-            Assert.Contains($"identity_federation_client_id={clientId}", formContent);
-            Assert.DoesNotContain("return_original_token_if_authenticated", formContent);
+            Assert.NotNull(capturedFormContent);
+            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", capturedFormContent);
+            Assert.Contains($"assertion={testToken}", capturedFormContent);
+            Assert.Contains("scope=sql", capturedFormContent);
+            Assert.Contains($"identity_federation_client_id={clientId}", capturedFormContent);
+            Assert.DoesNotContain("return_original_token_if_authenticated", capturedFormContent);
         }
 
         [Fact]
@@ -509,13 +528,21 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             };
 
             HttpRequestMessage? capturedRequest = null;
+            string? capturedFormContent = null;
 
             _mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>((req, ct) => capturedRequest = req)
+                .Callback<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                {
+                    capturedRequest = req;
+                    if (req.Content != null)
+                    {
+                        capturedFormContent = await req.Content.ReadAsStringAsync();
+                    }
+                })
                 .ReturnsAsync(httpResponseMessage);
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
@@ -524,10 +551,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
 
             Assert.NotNull(result);
             Assert.NotNull(capturedRequest);
-            Assert.NotNull(capturedRequest.Content);
-            var formContent = await capturedRequest.Content.ReadAsStringAsync();
-            Assert.Contains("return_original_token_if_authenticated=true", formContent);
-            Assert.DoesNotContain("identity_federation_client_id", formContent);
+            Assert.NotNull(capturedFormContent);
+            Assert.Contains("return_original_token_if_authenticated=true", capturedFormContent);
+            Assert.DoesNotContain("identity_federation_client_id", capturedFormContent);
         }
 
         [Fact]
