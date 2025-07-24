@@ -546,7 +546,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 // Get data from direct results
                 metadata = resp.DirectResults.ResultSetMetadata;
-                schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+                schema = GetSchemaFromMetadata(metadata);
                 rowSet = resp.DirectResults.ResultSet.Results;
             }
             else
@@ -556,7 +556,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 // Get metadata
                 metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
-                schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+                schema = GetSchemaFromMetadata(metadata);
 
                 // Fetch the results
                 rowSet = await Connection.FetchResultsAsync(OperationHandle!, BatchSize, cancellationToken);
@@ -574,7 +574,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
             TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
-            return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
+            return GetSchemaFromMetadata(response);
         }
 
         private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
@@ -586,7 +586,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             if (Connection.AreResultsAvailableDirectly && directResults?.ResultSet?.Results != null)
             {
                 TGetResultSetMetadataResp resultSetMetadata = directResults.ResultSetMetadata;
-                schema = Connection.SchemaParser.GetArrowSchema(resultSetMetadata.Schema, Connection.DataTypeConversion);
+                schema = GetSchemaFromMetadata(resultSetMetadata);
                 TRowSet rowSet = directResults.ResultSet.Results;
                 int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
                 int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
