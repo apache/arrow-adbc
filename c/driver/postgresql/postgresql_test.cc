@@ -1869,6 +1869,16 @@ TEST_F(PostgresStatementTest, PostgresCompositeTest) {
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
 
+    // Since the composite type is added after we connect the ADBC driver, we
+    // need to reconnect.
+    //
+    // TODO: This could he a helper (disconnect without recreating db)
+    ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
     ASSERT_THAT(
         AdbcStatementSetSqlQuery(&statement, "SELECT mycomps FROM adbc_test;", &error),
         IsOkStatus(&error));
