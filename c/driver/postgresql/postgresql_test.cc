@@ -1831,6 +1831,13 @@ TEST_F(PostgresStatementTest, PostgresCompositeTest) {
   {
     adbc_validation::StreamReader reader;
 
+    // Cleanup first: Drop table before type
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement, "DROP TABLE IF EXISTS adbc_test;", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
     ASSERT_THAT(
         AdbcStatementSetSqlQuery(&statement, "DROP TYPE IF EXISTS mycomp;", &error),
         IsOkStatus(&error));
@@ -1841,13 +1848,6 @@ TEST_F(PostgresStatementTest, PostgresCompositeTest) {
     ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "CREATE TYPE mycomp AS (x integer);",
                                          &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                          &reader.rows_affected, &error),
-                IsOkStatus(&error));
-
-    ASSERT_THAT(
-        AdbcStatementSetSqlQuery(&statement, "DROP TABLE IF EXISTS adbc_test;", &error),
-        IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
