@@ -22,7 +22,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.IO;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
@@ -31,16 +30,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
     {
         private readonly HttpClient _httpClient;
         private readonly string? _telemetryUrl;
+        private readonly string? _accessToken;
 
-        //logging to file
-        private readonly string _logFilePath = Path.Combine(Path.GetTempPath(), $"databricks/{DateTime.Now:yyyyMMdd-HHmmss}.log");
-        private readonly StreamWriter _logWriter;
-
-        public TelemetryClient(string? hostUrl, bool isAuthenticated, HttpMessageHandler httpMessageHandler)
+        public TelemetryClient(string? hostUrl, string? accessToken)
         {
-            _httpClient = new HttpClient(httpMessageHandler);
-            _telemetryUrl = !string.IsNullOrEmpty(hostUrl) ? isAuthenticated ? $"https://{hostUrl}/telemetry" : $"https://{hostUrl}/telemetry-unauth" : null;
-            _logWriter = new StreamWriter(_logFilePath);
+            _httpClient = new HttpClient();
+            _accessToken = accessToken;
+            _telemetryUrl = !string.IsNullOrEmpty(hostUrl) ? accessToken != null ? $"https://{hostUrl}/telemetry" : $"https://{hostUrl}/telemetry-unauth" : null;
         }
 
         /// <summary>
@@ -63,19 +59,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
                 var telemetryRequest = new TelemetryRequest();
                 telemetryRequest.UploadTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 telemetryRequest.ProtoLogs = telemetryBatch.Select(x => JsonSerializer.Serialize(x)).ToList();
-                request.Content = new StringContent(JsonSerializer.Serialize(telemetryRequest).Replace("\\u0022", "\""));
+                request.Content = new StringContent(JsonSerializer.Serialize(telemetryRequest));
                 
                 // Set headers
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                if(_accessToken != null)
+                {
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+                }
 
                 var response = await _httpClient.SendAsync(request);
-                _logWriter.WriteLine($"Telemetry sent: {response.IsSuccessStatusCode}");
-                _logWriter.WriteLine($"Telemetry: {JsonSerializer.Serialize(telemetryRequest).Replace("\\u0022", "\"")}");
-                _logWriter.WriteLine($"Telemetry URL: {_telemetryUrl}");
-                _logWriter.WriteLine($"Response: {response.Content.ReadAsStringAsync().Result}");
-                _logWriter.WriteLine($"Response: {response.RequestMessage}");
-                _logWriter.Flush();
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -106,18 +100,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
                 var telemetryRequest = new TelemetryRequest();
                 telemetryRequest.UploadTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 telemetryRequest.ProtoLogs = new List<string> { JsonSerializer.Serialize(telemetryEvent) };
-                request.Content = new StringContent(JsonSerializer.Serialize(telemetryRequest).Replace("\\u0022", "\""));
+                request.Content = new StringContent(JsonSerializer.Serialize(telemetryRequest));
                 
                 // Set headers
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                if(_accessToken != null)
+                {
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+                }
 
                 var response = await _httpClient.SendAsync(request);
-                _logWriter.WriteLine($"Telemetry sent: {response.IsSuccessStatusCode}");
-                _logWriter.WriteLine($"Telemetry URL: {_telemetryUrl}");
-                _logWriter.WriteLine($"Response: {response.Content}");
-                _logWriter.WriteLine($"Response: {response.RequestMessage}");
-                _logWriter.Flush();
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)

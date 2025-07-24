@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
-        private DatabricksTelemetryExporter _telemetry;
+        private DatabricksActivityListener _listener;
         private DriverConnectionParameters _connectionParams;
         private HostDetails _hostDetails;
         private ClientContext _clientContext;
@@ -83,9 +83,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
-            //_telemetry = new DatabricksTelemetryExporter(GetType().Assembly.GetName().Name!);
-            string propertiesString = string.Join(", ", properties.Select(p => $"{p.Key}: {p.Value}"));
-            _telemetry = new DatabricksTelemetryExporter(propertiesString);
+            _listener = new DatabricksActivityListener();
             _connectionParams = new DriverConnectionParameters();
             _hostDetails = new HostDetails();
             _clientContext = new ClientContext();
@@ -301,7 +299,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _clientContext.UserAgent = userAgent;
             }
-            TelemetryHelper.ExportTelemetry(_connectionParams, _clientContext, CreateHttpHandler());
+
+            string? token = null;
+            if(Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
+            {
+                token = accessToken;
+            }   
+            else if(Properties.TryGetValue(SparkParameters.Token, out string? accesstoken))
+            {
+                token = accesstoken;
+            }
+
+            TelemetryHelper.SetParameters(_connectionParams, _clientContext, token);
         }
 
         /// <summary>
@@ -775,7 +784,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (disposing)
             {
                 _authHttpClient?.Dispose();
-                _telemetry?.Dispose();
+                _listener?.Dispose();
                 
                 // Flush any pending telemetry events
                 try

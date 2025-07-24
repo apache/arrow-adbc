@@ -37,11 +37,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
     {
         private static List<TelemetryFrontendLog> _eventsBatch = new List<TelemetryFrontendLog>();
         private static readonly object _eventsBatchLock = new object();
-        private static readonly int _maxBatchSize = 1;//5;
+        private static readonly int _maxBatchSize = 5;
         private static readonly int _flushIntervalMillis = 10000;
         private static long _lastFlushTimeMillis;
-        private static TelemetryClient? _telemetryClient;
         private static readonly Timer _flushTimer;
+
+        private static ClientContext? _clientContext;
+        private static TelemetryClient? _telemetryClient;
         private static DriverConnectionParameters? _connectionParameters;
         private static readonly DriverSystemConfiguration _systemConfiguration = new DriverSystemConfiguration()
         {
@@ -61,29 +63,30 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
         static TelemetryHelper()
         {
             _lastFlushTimeMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-            // Initialize the timer to flush events periodically
             _flushTimer = new Timer(TimerFlushEvents, null, _flushIntervalMillis, _flushIntervalMillis);
-            
         }
 
-        public static void ExportTelemetry(DriverConnectionParameters connectionParameters, ClientContext clientContext, HttpMessageHandler httpMessageHandler)
+        public static void SetParameters(DriverConnectionParameters connectionParameters, ClientContext clientContext, string? accessToken)
         {
             _connectionParameters = connectionParameters;
-            // Initialize telemetry client if not already done
+            _clientContext = clientContext;
             if (_telemetryClient == null && connectionParameters.HostInfo != null)
             {
-                _telemetryClient = new TelemetryClient(connectionParameters.HostInfo.HostUrl, false, httpMessageHandler);
+                _telemetryClient = new TelemetryClient(connectionParameters.HostInfo.HostUrl, accessToken);
             }
+        }
 
+        public static void AddSqlExecutionEvent(SqlExecutionEvent sqlExecutionEvent)
+        {
             var telemetryEvent = new TelemetryEvent();
             var telemetryFrontendLog = new TelemetryFrontendLog();
             var frontendLogEntry = new FrontendLogEntry();
             var frontendLogContext = new FrontendLogContext();
-            
-            telemetryEvent.DriverConnectionParameters = connectionParameters;
+
+            telemetryEvent.DriverConnectionParameters = _connectionParameters;
             telemetryEvent.SystemConfiguration = _systemConfiguration;
-            frontendLogContext.ClientContext = clientContext;
+            telemetryEvent.SqlExecutionEvent = sqlExecutionEvent;
+            frontendLogContext.ClientContext = _clientContext;
             frontendLogEntry.SqlDriverLog = telemetryEvent;
             telemetryFrontendLog.Entry = frontendLogEntry;
             telemetryFrontendLog.Context = frontendLogContext;
@@ -96,7 +99,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
                     // Start flushing in a background thread
                     Task.Run(() => FlushEvents());
                 }
-            }
+            };
         }
 
         private static void TimerFlushEvents(object? state)
@@ -151,17 +154,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             }
         }
 
-        /// <summary>
-        /// Forces immediate flush of all pending telemetry events
-        /// </summary>
         public static async Task ForceFlushAsync()
         {
             await FlushEvents();
         }
 
-        /// <summary>
-        /// Dispose resources used by TelemetryHelper
-        /// </summary>
         public static void Dispose()
         {
             _flushTimer?.Dispose();

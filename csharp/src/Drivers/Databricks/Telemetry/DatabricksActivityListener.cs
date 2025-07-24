@@ -17,17 +17,19 @@
 
 using System.Diagnostics;
 using Apache.Arrow.Adbc.Tracing;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
 using System.IO;
 using System;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
-    public class DatabricksTelemetryExporter : IDisposable
+    public class DatabricksActivityListener : IDisposable
     {
 
         private ActivityListener _activityListener;
 
-        public DatabricksTelemetryExporter(String sourceName)
+        public DatabricksActivityListener()
         {
             this._activityListener = new ActivityListener
             {
@@ -42,18 +44,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 
         private void OnActivityStarted(Activity activity)
         {
+            
         }
 
         private void OnActivityStopped(Activity activity)
-        {
-            
+        {       
+            // iterate over the tags and create a telemetry event
+            foreach (var tag in activity.Tags)
+            {
+                // example tag and handling
+                if(tag.Key == "sql.query")
+                {
+                    var sqlExecutionEvent = new SqlExecutionEvent();
+                    var operationDetail = new OperationDetail();
+                    operationDetail.OperationType = Util.StringToOperationType(tag.Value);
+                    sqlExecutionEvent.StatementType = StatementType.QUERY;
+                    sqlExecutionEvent.OperationDetail = operationDetail;
+                    TelemetryHelper.AddSqlExecutionEvent(sqlExecutionEvent);
+                }
+            }
         }
-
-        private void SendToDatabricks()
-        {
-            
-        }
-
 
         public void Dispose()
         {   
