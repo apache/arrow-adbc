@@ -212,6 +212,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is 0 (disabled) if not specified.
         /// </summary>
         public const string TokenRenewLimit = "adbc.databricks.token_renew_limit";
+
+        /// <summary>
+        /// The client ID of the service principal when using workload identity federation.
+        /// Default value is empty if not specified.
+        /// </summary>
+        public const string IdentityFederationClientId = "adbc.databricks.identity_federation_client_id";
     }
 
     /// <summary>

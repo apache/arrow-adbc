@@ -27,7 +27,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
     /// HTTP message handler that automatically refreshes OAuth tokens before they expire.
     /// Uses a non-blocking approach to refresh tokens in the background.
     /// </summary>
-    internal class TokenExchangeDelegatingHandler : DelegatingHandler
+    internal class TokenRefreshDelegatingHandler : DelegatingHandler
     {
         private readonly string _initialToken;
         private readonly int _tokenRenewLimitMinutes;
@@ -40,14 +40,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         private Task? _pendingTokenTask = null;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="TokenExchangeDelegatingHandler"/> class.
+        /// Initializes a new instance of the <see cref="TokenRefreshDelegatingHandler"/> class.
         /// </summary>
         /// <param name="innerHandler">The inner handler to delegate to.</param>
         /// <param name="tokenExchangeClient">The client for token exchange operations.</param>
         /// <param name="initialToken">The initial token from the connection string.</param>
         /// <param name="tokenExpiryTime">The expiry time of the initial token.</param>
         /// <param name="tokenRenewLimitMinutes">The minutes before token expiration when we should start renewing the token.</param>
-        public TokenExchangeDelegatingHandler(
+        public TokenRefreshDelegatingHandler(
             HttpMessageHandler innerHandler,
             ITokenExchangeClient tokenExchangeClient,
             string initialToken,
@@ -111,7 +111,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             {
                 try
                 {
-                    TokenExchangeResponse response = await _tokenExchangeClient.ExchangeTokenAsync(_initialToken, cancellationToken);
+                    TokenExchangeResponse response = await _tokenExchangeClient.RefreshTokenAsync(_initialToken, cancellationToken);
 
                     // Update the token atomically when ready
                     lock (_tokenLock)

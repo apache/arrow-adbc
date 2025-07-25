@@ -70,6 +70,41 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         }
 
         /// <summary>
+        /// Tries to extract the issuer (iss) claim from a JWT token.
+        /// </summary>
+        /// <param name="token">The JWT token to parse.</param>
+        /// <param name="issuer">The extracted issuer, if successful.</param>
+        /// <returns>True if the issuer was successfully extracted, false otherwise.</returns>
+        public static bool TryGetIssuer(string token, out string issuer)
+        {
+            issuer = string.Empty;
+
+            try
+            {
+                string[] parts = token.Split('.');
+                if (parts.Length != 3)
+                {
+                    return false;
+                }
+
+                string payload = DecodeBase64Url(parts[1]);
+                using JsonDocument jsonDoc = JsonDocument.Parse(payload);
+
+                if (!jsonDoc.RootElement.TryGetProperty("iss", out JsonElement issElement))
+                {
+                    return false;
+                }
+
+                issuer = issElement.GetString() ?? string.Empty;
+                return !string.IsNullOrEmpty(issuer);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Decodes a base64url encoded string to a regular string.
         /// </summary>
         /// <param name="base64Url">The base64url encoded string.</param>
