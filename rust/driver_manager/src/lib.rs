@@ -1944,7 +1944,7 @@ mod tests {
                 AdbcVersion::V100,
                 LOAD_FLAG_SEARCH_ENV,
             )
-            .map_err(|e| adbc_core::error::Error::from(e))
+            .map_err(adbc_core::error::Error::from)
             .unwrap_err();
             assert_eq!(err.status, Status::NotFound);
         });
@@ -2033,7 +2033,7 @@ mod tests {
                 let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;
                 let err =
                     ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, load_flags)
-                        .map_err(|e| adbc_core::error::Error::from(e))
+                        .map_err(adbc_core::error::Error::from)
                         .unwrap_err();
                 assert_eq!(err.status, Status::NotFound);
             },
@@ -2080,7 +2080,7 @@ mod tests {
             .expect("Failed to write driver manager manifest to file");
 
         let err = ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0)
-            .map_err(|e| adbc_core::error::Error::from(e))
+            .map_err(adbc_core::error::Error::from)
             .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
@@ -2110,7 +2110,7 @@ mod tests {
             AdbcVersion::V100,
             LOAD_FLAG_DEFAULT,
         )
-        .map_err(|e| adbc_core::error::Error::from(e))
+        .map_err(adbc_core::error::Error::from)
         .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
@@ -2142,7 +2142,7 @@ mod tests {
             AdbcVersion::V100,
             LOAD_FLAG_DEFAULT,
         )
-        .map_err(|e| adbc_core::error::Error::from(e))
+        .map_err(adbc_core::error::Error::from)
         .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
@@ -2167,7 +2167,7 @@ mod tests {
             AdbcVersion::V110,
             LOAD_FLAG_DEFAULT,
         )
-        .map_err(|e| adbc_core::error::Error::from(e))
+        .map_err(adbc_core::error::Error::from)
         .unwrap_err();
         assert_eq!(err.status, Status::NotFound);
 
@@ -2190,7 +2190,7 @@ mod tests {
             AdbcVersion::V110,
             LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_USER,
         )
-        .map_err(|e| adbc_core::error::Error::from(e))
+        .map_err(adbc_core::error::Error::from)
         .unwrap_err();
         assert_eq!(err.status, Status::NotFound);
 
