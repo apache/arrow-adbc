@@ -53,6 +53,7 @@ name = "adbc_dummy"
 version = "0.20.0"
 dependencies = [
  "adbc_core",
+ "adbc_driver_manager",
  "arrow-array",
  "arrow-buffer",
  "arrow-schema",
