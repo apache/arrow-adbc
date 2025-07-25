@@ -78,27 +78,20 @@ const (
 	AccessTokenEndpoint   = "https://accounts.google.com/o/oauth2/token"
 	AccessTokenServerName = "google.com"
 
-	// UseAppDefaultCredentials instructs the driver to authenticate using
-	// Application Default Credentials (ADC).
-	OptionValueAuthTypeAppDefaultCredentials = "app_default_credentials"
-)
-
-// option that can be passed to the NewClient method.
-const (
 	// WithAppDefaultCredentials instructs the driver to authenticate using
 	// Application Default Credentials (ADC).
-	WithAppDefaultCredentials = "adbc.google.bigquery.use_application_default_credentials"
+	OptionValueAuthTypeAppDefaultCredentials = "adbc.bigquery.sql.auth_type.app_default_credentials"
 
 	// WithJSONCredentials instructs the driver to authenticate using the
 	// given JSON credentials. The value should be a byte array representing
 	// the JSON credentials.
-	WithJSONCredentials = "adbc.google.bigquery.json_credentials"
+	OptionValueAuthTypeJSONCredentials = "adbc.bigquery.sql.auth_type.json_credentials"
 
 	// WithOAuthClientIDs instructs the driver to authenticate using the given
 	// OAuth client ID and client secret. The value should be a string array
 	// of length 2, where the first element is the client ID and the second
 	// is the client secret.
-	WithOAuthClientIDs = "adbc.google.bigquery.oauth_client_ids"
+	OptionValueAuthTypeOAuthClientIDs = "adbc.bigquery.sql.auth_type.oauth_client_ids"
 
 	// OptionStringImpersonateTargetPrincipal instructs the driver to impersonate the
 	// given service account email.
