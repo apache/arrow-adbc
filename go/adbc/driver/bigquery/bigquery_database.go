@@ -41,9 +41,6 @@ type databaseImpl struct {
 	impersonateScopes          []string
 	impersonateLifetime        time.Duration
 
-	clientFactory      bigqueryClientFactory
-	tokenSourceFactory impersonatedTokenSourceFactory
-
 	// projectID is the catalog
 	projectID string
 	// datasetID is the schema
@@ -63,8 +60,6 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		impersonateDelegates:       d.impersonateDelegates,
 		impersonateScopes:          d.impersonateScopes,
 		impersonateLifetime:        d.impersonateLifetime,
-		clientFactory:              d.clientFactory,
-		tokenSourceFactory:         d.tokenSourceFactory,
 		tableID:                    d.tableID,
 		catalog:                    d.projectID,
 		dbSchema:                   d.datasetID,

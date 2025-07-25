@@ -57,9 +57,6 @@ type connectionImpl struct {
 	impersonateScopes          []string
 	impersonateLifetime        time.Duration
 
-	clientFactory      bigqueryClientFactory
-	tokenSourceFactory impersonatedTokenSourceFactory
-
 	// catalog is the same as the project id in BigQuery
 	catalog string
 	// dbSchema is the same as the dataset id in BigQuery
@@ -256,41 +253,6 @@ type bigQueryTokenResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 	Scope       string `json:"scope"`
 	TokenType   string `json:"token_type"`
-}
-
-// bigqueryClientFactory is an interface for creating BigQuery clients with storage read client enabled.
-// This bundles the client creation with storage client enabling since they're always used together.
-type bigqueryClientFactory interface {
-	newClientWithStorageEnabled(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error)
-}
-
-type defaultBigqueryClientFactory struct{}
-
-func (d *defaultBigqueryClientFactory) newClientWithStorageEnabled(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error) {
-	client, err := bigquery.NewClient(ctx, projectID, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	err = client.EnableStorageReadClient(ctx, opts...)
-	if err != nil {
-		client.Close()
-		return nil, err
-	}
-
-	return client, nil
-}
-
-// impersonatedTokenSourceFactory is an interface for creating impersonated token sources.
-// This is used for mocking in tests.
-type impersonatedTokenSourceFactory interface {
-	NewImpersonatedTokenSource(ctx context.Context, cfg impersonate.CredentialsConfig) (oauth2.TokenSource, error)
-}
-
-type defaultImpersonatedTokenSourceFactory struct{}
-
-func (d *defaultImpersonatedTokenSourceFactory) NewImpersonatedTokenSource(ctx context.Context, cfg impersonate.CredentialsConfig) (oauth2.TokenSource, error) {
-	return impersonate.CredentialsTokenSource(ctx, cfg)
 }
 
 // GetCurrentCatalog implements driverbase.CurrentNamespacer.
@@ -650,7 +612,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			Scopes:          c.impersonateScopes,
 			Lifetime:        lifetime,
 		}
-		tokenSource, err := c.tokenSourceFactory.NewImpersonatedTokenSource(ctx, impCfg)
+		tokenSource, err := impersonate.CredentialsTokenSource(ctx, impCfg)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInvalidArgument,
@@ -661,10 +623,17 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		authOptions = []option.ClientOption{option.WithTokenSource(tokenSource)}
 	}
 
-	client, err := c.clientFactory.newClientWithStorageEnabled(ctx, c.catalog, authOptions...)
+	client, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
 	if err != nil {
 		return err
 	}
+
+	err = client.EnableStorageReadClient(ctx, authOptions...)
+	if err != nil {
+		client.Close()
+		return err
+	}
+
 	c.client = client
 	return nil
 }

@@ -39,7 +39,6 @@ import (
 	"github.com/apache/arrow-go/v18/parquet"
 	"github.com/apache/arrow-go/v18/parquet/pqarrow"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -1552,23 +1551,6 @@ func (suite *BigQueryTests) TestMetadataGetObjectsColumnsXdbc() {
 }
 
 var _ validation.DriverQuirks = (*BigQueryQuirks)(nil)
-
-// TestDriverConstructorWithNilClientFactory tests that the driver constructor
-// handles nil client factory gracefully by using the default factory.
-func TestDriverConstructorWithNilClientFactory(t *testing.T) {
-	mem := memory.NewCheckedAllocator(memory.DefaultAllocator)
-	defer mem.AssertSize(t, 0)
-
-	// Test that NewDriverWithClientFactory with nil doesn't panic
-	drv := driver.NewDriverWithClientFactory(mem, nil)
-	assert.NotNil(t, drv, "Driver should not be nil")
-
-	// Test that we can create a database with the driver
-	db, err := drv.NewDatabase(nil)
-	assert.NoError(t, err, "Failed to create database")
-	assert.NotNil(t, db, "Database should not be nil")
-	defer validation.CheckedClose(t, db)
-}
 
 // TestAuthTypeConsolidation tests that all auth type values are handled
 // correctly in the consolidated switch statement.

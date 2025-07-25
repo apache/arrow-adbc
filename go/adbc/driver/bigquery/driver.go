@@ -128,25 +128,10 @@ func init() {
 
 type driverImpl struct {
 	driverbase.DriverImplBase
-	clientFactory      bigqueryClientFactory
-	tokenSourceFactory impersonatedTokenSourceFactory
 }
 
 // NewDriver creates a new BigQuery driver using the given Arrow allocator.
 func NewDriver(alloc memory.Allocator) adbc.Driver {
-	return NewDriverWithClientFactory(alloc, &defaultBigqueryClientFactory{})
-}
-
-// NewDriverWithClientFactory creates a new BigQuery driver using the given Arrow allocator and client factory.
-func NewDriverWithClientFactory(alloc memory.Allocator, clientFactory bigqueryClientFactory) adbc.Driver {
-	if clientFactory == nil {
-		clientFactory = &defaultBigqueryClientFactory{}
-	}
-	return NewDriverWithClientAndTokenSourceFactory(alloc, clientFactory, &defaultImpersonatedTokenSourceFactory{})
-}
-
-// NewDriverWithClientAndTokenSourceFactory creates a new BigQuery driver using the given Arrow allocator, client factory, and impersonated token source factory.
-func NewDriverWithClientAndTokenSourceFactory(alloc memory.Allocator, clientFactory bigqueryClientFactory, tokenSourceFactory impersonatedTokenSourceFactory) adbc.Driver {
 	info := driverbase.DefaultDriverInfo("BigQuery")
 	if infoVendorVersion != "" {
 		if err := info.RegisterInfoCode(adbc.InfoVendorVersion, infoVendorVersion); err != nil {
@@ -154,9 +139,7 @@ func NewDriverWithClientAndTokenSourceFactory(alloc memory.Allocator, clientFact
 		}
 	}
 	return driverbase.NewDriver(&driverImpl{
-		DriverImplBase:     driverbase.NewDriverImplBase(info, alloc),
-		clientFactory:      clientFactory,
-		tokenSourceFactory: tokenSourceFactory,
+		DriverImplBase: driverbase.NewDriverImplBase(info, alloc),
 	})
 }
 
@@ -170,10 +153,8 @@ func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string
 		return nil, err
 	}
 	db := &databaseImpl{
-		DatabaseImplBase:   dbBase,
-		authType:           OptionValueAuthTypeDefault,
-		clientFactory:      d.clientFactory,
-		tokenSourceFactory: d.tokenSourceFactory,
+		DatabaseImplBase: dbBase,
+		authType:         OptionValueAuthTypeDefault,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err
