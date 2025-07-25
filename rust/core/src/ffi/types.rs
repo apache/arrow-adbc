@@ -201,7 +201,7 @@ unsafe impl Sync for FFI_AdbcDriver {}
 #[macro_export]
 macro_rules! driver_method {
     ($driver:expr, $method:ident) => {
-        $driver.$method.unwrap_or(crate::ffi::methods::$method)
+        $driver.$method.unwrap_or($crate::ffi::methods::$method)
     };
 }
 
