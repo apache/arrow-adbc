@@ -358,7 +358,7 @@ func TestCloudFetchE2E_ErrorHandling(t *testing.T) {
 		},
 		{
 			name:          "syntax_error",
-			query:         "SELCT * FROM range(10)", // Typo in SELECT
+			query:         "SELECT * FROM range(10", // Missing closing parenthesis
 			expectedError: "PARSE_SYNTAX_ERROR",
 		},
 		{
