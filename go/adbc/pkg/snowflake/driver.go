@@ -97,7 +97,7 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 		return
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		err.sqlstate[i] = C.char(adbcError.SqlState[i])
 	}
 
