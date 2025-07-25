@@ -258,21 +258,27 @@ type bigQueryTokenResponse struct {
 	TokenType   string `json:"token_type"`
 }
 
-// bigqueryClientFactory is an interface for creating BigQuery clients.
-// This is used for mocking in tests.
+// bigqueryClientFactory is an interface for creating BigQuery clients with storage read client enabled.
+// This bundles the client creation with storage client enabling since they're always used together.
 type bigqueryClientFactory interface {
-	NewClient(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error)
-	EnableStorageReadClient(ctx context.Context, client *bigquery.Client, opts ...option.ClientOption) error
+	NewClientWithStorageEnabled(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error)
 }
 
 type defaultBigqueryClientFactory struct{}
 
-func (d *defaultBigqueryClientFactory) NewClient(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error) {
-	return bigquery.NewClient(ctx, projectID, opts...)
-}
+func (d *defaultBigqueryClientFactory) NewClientWithStorageEnabled(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error) {
+	client, err := bigquery.NewClient(ctx, projectID, opts...)
+	if err != nil {
+		return nil, err
+	}
 
-func (d *defaultBigqueryClientFactory) EnableStorageReadClient(ctx context.Context, client *bigquery.Client, opts ...option.ClientOption) error {
-	return client.EnableStorageReadClient(ctx, opts...)
+	err = client.EnableStorageReadClient(ctx, opts...)
+	if err != nil {
+		client.Close()
+		return nil, err
+	}
+
+	return client, nil
 }
 
 // impersonatedTokenSourceFactory is an interface for creating impersonated token sources.
@@ -655,12 +661,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		authOptions = []option.ClientOption{option.WithTokenSource(tokenSource)}
 	}
 
-	client, err := c.clientFactory.NewClient(ctx, c.catalog, authOptions...)
-	if err != nil {
-		return err
-	}
-
-	err = c.clientFactory.EnableStorageReadClient(ctx, client, authOptions...)
+	client, err := c.clientFactory.NewClientWithStorageEnabled(ctx, c.catalog, authOptions...)
 	if err != nil {
 		return err
 	}
