@@ -25,7 +25,7 @@ require (
 	cloud.google.com/go/bigquery v1.69.0
 	github.com/apache/arrow-go/v18 v18.3.1
 	github.com/bluele/gcache v0.0.2
-	github.com/databricks/databricks-sql-go v1.7.0
+	github.com/databricks/databricks-sql-go v1.8.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/snowflakedb/gosnowflake v1.15.0
@@ -157,5 +157,3 @@ exclude (
 	github.com/envoyproxy/go-control-plane v0.13.1
 	github.com/envoyproxy/go-control-plane v0.13.2
 )
-
-replace github.com/databricks/databricks-sql-go => /Users/jade.wang/databricks-sql-go
