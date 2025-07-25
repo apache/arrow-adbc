@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
         [JsonPropertyName("system_configuration")]
         public DriverSystemConfiguration? SystemConfiguration { get; set; }
         
-        [JsonPropertyName("driver_connection_parameters")]
+        [JsonPropertyName("driver_connection_params")]
         public DriverConnectionParameters? DriverConnectionParameters { get; set; }
 
         [JsonPropertyName("auth_type")]
