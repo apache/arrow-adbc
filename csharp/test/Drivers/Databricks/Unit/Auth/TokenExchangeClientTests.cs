@@ -129,15 +129,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                .Returns<HttpRequestMessage, CancellationToken>(async (req, ct) =>
                 {
                     capturedRequest = req;
                     if (req.Content != null)
                     {
                         capturedFormContent = await req.Content.ReadAsStringAsync();
                     }
-                })
-                .ReturnsAsync(httpResponseMessage);
+                    return httpResponseMessage;
+                });
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
@@ -433,15 +433,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                .Returns<HttpRequestMessage, CancellationToken>(async (req, ct) =>
                 {
                     capturedRequest = req;
                     if (req.Content != null)
                     {
                         capturedFormContent = await req.Content.ReadAsStringAsync();
                     }
-                })
-                .ReturnsAsync(httpResponseMessage);
+                    return httpResponseMessage;
+                });
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
@@ -484,15 +484,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                .Returns<HttpRequestMessage, CancellationToken>(async (req, ct) =>
                 {
                     capturedRequest = req;
                     if (req.Content != null)
                     {
                         capturedFormContent = await req.Content.ReadAsStringAsync();
                     }
-                })
-                .ReturnsAsync(httpResponseMessage);
+                    return httpResponseMessage;
+                });
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
@@ -535,15 +535,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                .Returns<HttpRequestMessage, CancellationToken>(async (req, ct) =>
                 {
                     capturedRequest = req;
                     if (req.Content != null)
                     {
                         capturedFormContent = await req.Content.ReadAsStringAsync();
                     }
-                })
-                .ReturnsAsync(httpResponseMessage);
+                    return httpResponseMessage;
+                });
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
@@ -601,8 +601,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>((req, ct) => capturedRequest = req)
-                .ReturnsAsync(httpResponseMessage);
+                .Returns<HttpRequestMessage, CancellationToken>((req, ct) =>
+                {
+                    capturedRequest = req;
+                    return Task.FromResult(httpResponseMessage);
+                });
+
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 

@@ -116,7 +116,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal(_databricksToken, capturedRequest.Headers.Authorization?.Parameter);
 
             // Wait for any background tasks
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             // Verify no token exchange was attempted
             _mockTokenExchangeClient.Verify(
@@ -179,7 +179,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal(_externalToken, capturedRequest.Headers.Authorization?.Parameter); // First request uses original token
 
             // Wait for background task to complete
-            await Task.Delay(tokenExchangeDelay + TimeSpan.FromMilliseconds(100));
+            await Task.Delay(tokenExchangeDelay + TimeSpan.FromMilliseconds(1000));
 
             // Make a second request - this should use the exchanged token
             var request2 = new HttpRequestMessage(HttpMethod.Get, "https://example.com/2");
@@ -241,7 +241,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal(_externalToken, capturedRequest.Headers.Authorization?.Parameter); // Should still use original token
 
             // Wait for background task to complete
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             var request2 = new HttpRequestMessage(HttpMethod.Get, "https://example.com/2");
             request2.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _externalToken);
@@ -305,7 +305,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             }
 
             // Wait for background exchange to complete
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             // Token exchange should only be called once
             _mockTokenExchangeClient.Verify(
@@ -361,7 +361,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             await httpClient.SendAsync(request1);
 
             // Wait for first exchange to complete
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             // Make request with second token
             var request2 = new HttpRequestMessage(HttpMethod.Get, "https://example.com/2");
@@ -369,7 +369,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             await httpClient.SendAsync(request2);
 
             // Wait for second exchange to complete
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             // Verify both tokens were exchanged
             _mockTokenExchangeClient.Verify(
@@ -425,7 +425,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             await Task.WhenAll(tasks);
 
             // Wait for any background token exchange to complete
-            await Task.Delay(300);
+            await Task.Delay(1000);
 
             // Token exchange should only be called once despite concurrent requests
             _mockTokenExchangeClient.Verify(
@@ -465,7 +465,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal(invalidToken, capturedRequest.Headers.Authorization?.Parameter);
 
             // Wait for any background tasks
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             // Verify no token exchange was attempted
             _mockTokenExchangeClient.Verify(

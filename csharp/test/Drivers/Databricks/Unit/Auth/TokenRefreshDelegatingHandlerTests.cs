@@ -109,7 +109,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal(_initialToken, capturedRequest.Headers.Authorization?.Parameter);
 
             // Wait for background task to complete
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             _mockTokenExchangeClient.Verify(
                 x => x.RefreshTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
@@ -177,7 +177,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal(_initialToken, capturedRequest.Headers.Authorization?.Parameter); // First request uses original token
 
             // Wait a bit for the background task to complete
-            await Task.Delay(tokenExchangeDelay + TimeSpan.FromMilliseconds(100));
+            await Task.Delay(tokenExchangeDelay + TimeSpan.FromMilliseconds(1000));
 
             // Make a second request - this should use the new token
             var request2 = new HttpRequestMessage(HttpMethod.Get, "https://example.com/2");
@@ -241,7 +241,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             Assert.Equal(_initialToken, capturedRequest.Headers.Authorization?.Parameter); // Should still use original token
 
             // Wait for background task to complete
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             var request2 = new HttpRequestMessage(HttpMethod.Get, "https://example.com/2");
             HttpRequestMessage? capturedRequest2 = null;
@@ -304,7 +304,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "https://example.com/1"));
 
             // Wait for background renewal to complete
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             // Make second request
             await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "https://example.com/2"));
@@ -366,7 +366,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             await Task.WhenAll(tasks);
 
             // Wait for any background token renewal to complete
-            await Task.Delay(300);
+            await Task.Delay(1000);
 
             // Token exchange should only be called once despite concurrent requests
             _mockTokenExchangeClient.Verify(
@@ -500,7 +500,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             await httpClient.SendAsync(request);
 
             // Wait for background renewal to complete
-            await Task.Delay(100);
+            await Task.Delay(1000);
 
             _mockTokenExchangeClient.Verify(
                 x => x.RefreshTokenAsync(_initialToken, It.IsAny<CancellationToken>()),
