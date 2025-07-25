@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         RecordBatch? next = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
                         if (next != null)
                         {
-                            activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, next.Length)]);
+                            activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, next.Length)], isPii: false);
                             return next;
                         }
                         this.reader = null;
@@ -88,12 +88,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     this.batches = response.Results.ArrowBatches;
                     for (int i = 0; i < this.batches.Count; i++)
                     {
-                        activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, this.batches[i].RowCount);
+                        activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, this.batches[i].RowCount, isPii: false);
                     }
 
                     this.hasNoMoreRows = !response.HasMoreRows;
                 }
-            });
+            }, exceptionIsPii: false);
         }
 
         private void ProcessFetchedBatches()
