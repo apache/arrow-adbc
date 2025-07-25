@@ -1813,8 +1813,8 @@ func PanicDummyStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *
 	return C.ADBC_STATUS_OK
 }
 
-//export PanicDummyDriverInit
-func PanicDummyDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export AdbcDriverPanicDummyInit
+func AdbcDriverPanicDummyInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 
 	switch version {

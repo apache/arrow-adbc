@@ -1813,8 +1813,8 @@ func FlightSQLStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C
 	return C.ADBC_STATUS_OK
 }
 
-//export AdbcDriverFlightsqlInit
-func AdbcDriverFlightsqlInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export AdbcDriverFlightSQLInit
+func AdbcDriverFlightSQLInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 
 	switch version {

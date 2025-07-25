@@ -431,15 +431,9 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
-  return AdbcDriverBigqueryInit(version, driver, error);
+  return AdbcDriverBigQueryInit(version, driver, error);
 }
 #endif  // ADBC_NO_COMMON_ENTRYPOINTS
-
-ADBC_EXPORT
-AdbcStatusCode BigQueryDriverInit(int version, void* driver, struct AdbcError* error) {
-  // For backwards compatibility
-  return AdbcDriverBigqueryInit(version, driver, error);
-}
 
 int BigQueryArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
 int BigQueryArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);

@@ -1813,8 +1813,8 @@ func BigQueryStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C.
 	return C.ADBC_STATUS_OK
 }
 
-//export AdbcDriverBigqueryInit
-func AdbcDriverBigqueryInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export AdbcDriverBigQueryInit
+func AdbcDriverBigQueryInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 
 	switch version {
