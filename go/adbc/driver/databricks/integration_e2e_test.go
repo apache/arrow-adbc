@@ -362,7 +362,7 @@ func TestIPCStreamIntegration(t *testing.T) {
 	// Test 1: Simple query with various data types
 	t.Run("SimpleQuery", func(t *testing.T) {
 		err := stmt.SetSqlQuery(`
-			SELECT 
+			SELECT
 				1 as int_col,
 				1.5 as double_col,
 				'hello' as string_col,
@@ -460,7 +460,7 @@ func TestIPCStreamIntegration(t *testing.T) {
 			// Handle potential type variations from Databricks
 			var idValues []int64
 			var doubledValues []int64
-			
+
 			switch col := record.Column(0).(type) {
 			case *array.Int64:
 				idCol := col
@@ -518,7 +518,7 @@ func TestIPCStreamIntegration(t *testing.T) {
 		// Check for data - empty result sets may or may not have schema
 		hasData := reader.Next()
 		assert.False(t, hasData)
-		
+
 		// Schema might be available even for empty results
 		schema := reader.Schema()
 		if schema != nil {
@@ -531,7 +531,7 @@ func TestIPCStreamIntegration(t *testing.T) {
 	// Test 4: Large strings and binary data
 	t.Run("LargeData", func(t *testing.T) {
 		err := stmt.SetSqlQuery(`
-			SELECT 
+			SELECT
 				repeat('x', 10000) as large_string,
 				unhex(repeat('FF', 5000)) as binary_data
 		`)
@@ -637,25 +637,25 @@ func TestE2E_QueryWithTypes(t *testing.T) {
 
 	ctx := context.Background()
 	driver := databricks.NewDriver(nil)
-	
+
 	db, err := driver.NewDatabase(map[string]string{
 		databricks.OptionServerHostname: host,
 		databricks.OptionAccessToken:    token,
 		databricks.OptionHTTPPath:       httpPath,
 	})
 	require.NoError(t, err)
-	
+
 	conn, err := db.Open(ctx)
 	require.NoError(t, err)
 	defer conn.Close()
-	
+
 	stmt, err := conn.NewStatement()
 	require.NoError(t, err)
 	defer stmt.Close()
-	
+
 	// Test various data types
 	err = stmt.SetSqlQuery(`
-		SELECT 
+		SELECT
 			CAST(42 AS TINYINT) as tinyint_col,
 			CAST(1234 AS SMALLINT) as smallint_col,
 			CAST(123456 AS INT) as int_col,
@@ -673,14 +673,14 @@ func TestE2E_QueryWithTypes(t *testing.T) {
 			STRUCT('field1' AS f1, 42 AS f2) as struct_col
 	`)
 	require.NoError(t, err)
-	
+
 	reader, _, err := stmt.ExecuteQuery(ctx)
 	require.NoError(t, err)
 	defer reader.Release()
-	
+
 	assert.True(t, reader.Next())
 	record := reader.Record()
-	
+
 	// Log the schema
 	schema := record.Schema()
 	t.Log("Query returned schema:")
@@ -688,10 +688,10 @@ func TestE2E_QueryWithTypes(t *testing.T) {
 		field := schema.Field(i)
 		t.Logf("  Column %d: %s (%s)", i, field.Name, field.Type.String())
 	}
-	
+
 	// Verify we got all columns
 	assert.Equal(t, 15, len(schema.Fields()), "Expected 15 columns")
-	
+
 	// Verify column names
 	expectedColumns := []string{
 		"tinyint_col", "smallint_col", "int_col", "bigint_col",
@@ -699,10 +699,10 @@ func TestE2E_QueryWithTypes(t *testing.T) {
 		"date_col", "timestamp_col", "bool_col", "binary_col",
 		"array_col", "map_col", "struct_col",
 	}
-	
+
 	for i, expected := range expectedColumns {
 		assert.Equal(t, expected, schema.Field(i).Name, "Column %d name mismatch", i)
 	}
-	
+
 	t.Log("✅ Successfully retrieved all data types")
 }

@@ -176,12 +176,12 @@ func TestMetadataE2E_GetObjects(t *testing.T) {
 
 	// Test different depths
 	testCases := []struct {
-		name     string
-		depth    adbc.ObjectDepth
-		catalog  *string
-		schema   *string
-		table    *string
-		colName  *string
+		name    string
+		depth   adbc.ObjectDepth
+		catalog *string
+		schema  *string
+		table   *string
+		colName *string
 	}{
 		{
 			name:  "depth_all",
@@ -456,8 +456,8 @@ func TestMetadataE2E_ComplexMetadataQueries(t *testing.T) {
 	t.Run("PatternMatching", func(t *testing.T) {
 		// Test with LIKE patterns
 		patterns := []string{
-			"test%",    // Tables starting with 'test'
-			"%_table",  // Tables ending with '_table'
+			"test%",      // Tables starting with 'test'
+			"%_table",    // Tables ending with '_table'
 			"%metadata%", // Tables containing 'metadata'
 		}
 
@@ -509,14 +509,14 @@ func TestMetadataE2E_CurrentCatalogSchema(t *testing.T) {
 		stmt, err := conn.NewStatement()
 		require.NoError(t, err)
 		defer func() { _ = stmt.Close() }()
-		
+
 		err = stmt.SetSqlQuery("SELECT current_catalog()")
 		require.NoError(t, err)
-		
+
 		reader, _, err := stmt.ExecuteQuery(ctx)
 		require.NoError(t, err)
 		defer reader.Release()
-		
+
 		var currentCatalog string
 		if reader.Next() {
 			record := reader.Record()
@@ -539,14 +539,14 @@ func TestMetadataE2E_CurrentCatalogSchema(t *testing.T) {
 		stmt, err := conn.NewStatement()
 		require.NoError(t, err)
 		defer func() { _ = stmt.Close() }()
-		
+
 		err = stmt.SetSqlQuery("SELECT current_schema()")
 		require.NoError(t, err)
-		
+
 		reader, _, err := stmt.ExecuteQuery(ctx)
 		require.NoError(t, err)
 		defer reader.Release()
-		
+
 		var currentSchema string
 		if reader.Next() {
 			record := reader.Record()
@@ -597,7 +597,7 @@ func TestMetadataE2E_CurrentCatalogSchema(t *testing.T) {
 
 		if alternateCatalog != "" {
 			t.Logf("Attempting to switch to catalog: %s", alternateCatalog)
-			
+
 			// Try to set catalog via SQL
 			err = stmt.SetSqlQuery(fmt.Sprintf("USE CATALOG %s", alternateCatalog))
 			require.NoError(t, err)
@@ -611,7 +611,7 @@ func TestMetadataE2E_CurrentCatalogSchema(t *testing.T) {
 				reader2, _, err := stmt.ExecuteQuery(ctx)
 				require.NoError(t, err)
 				defer reader2.Release()
-				
+
 				if reader2.Next() {
 					record := reader2.Record()
 					if record.NumRows() > 0 {
@@ -620,7 +620,7 @@ func TestMetadataE2E_CurrentCatalogSchema(t *testing.T) {
 						assert.Equal(t, alternateCatalog, newCatalog)
 					}
 				}
-				
+
 				// Switch back
 				err = stmt.SetSqlQuery(fmt.Sprintf("USE CATALOG %s", catalog))
 				require.NoError(t, err)

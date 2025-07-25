@@ -158,26 +158,26 @@ func TestCloudFetchE2E_LargeQueries(t *testing.T) {
 
 	// Large query examples - adjust based on your available test data
 	queries := []struct {
-		name     string
-		query    string
-		minRows  int64
+		name       string
+		query      string
+		minRows    int64
 		skipReason string
 	}{
 		{
-			name:     "large_range",
-			query:    "SELECT * FROM range(1000000)",
-			minRows:  1000000,
+			name:    "large_range",
+			query:   "SELECT * FROM range(1000000)",
+			minRows: 1000000,
 		},
 		{
-			name:     "tpcds_catalog_sales",
-			query:    "SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000",
-			minRows:  1000000,
+			name:       "tpcds_catalog_sales",
+			query:      "SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000",
+			minRows:    1000000,
 			skipReason: "Requires TPC-DS dataset",
 		},
 		{
-			name:     "cross_join_large",
-			query:    "SELECT a.id, b.id FROM range(10000) a CROSS JOIN range(100) b",
-			minRows:  1000000,
+			name:    "cross_join_large",
+			query:   "SELECT a.id, b.id FROM range(10000) a CROSS JOIN range(100) b",
+			minRows: 1000000,
 		},
 	}
 
@@ -228,17 +228,17 @@ func TestCloudFetchE2E_LargeQueries(t *testing.T) {
 			totalRows := int64(0)
 			batchCount := 0
 			maxBatchSize := int64(0)
-			
+
 			for reader.Next() {
 				record := reader.Record()
 				batchSize := record.NumRows()
 				totalRows += batchSize
 				batchCount++
-				
+
 				if batchSize > maxBatchSize {
 					maxBatchSize = batchSize
 				}
-				
+
 				// Log progress for large queries
 				if batchCount%100 == 0 {
 					t.Logf("Progress: %d batches, %d rows...", batchCount, totalRows)
@@ -247,7 +247,7 @@ func TestCloudFetchE2E_LargeQueries(t *testing.T) {
 			duration := time.Since(startTime)
 
 			assert.GreaterOrEqual(t, totalRows, q.minRows, "Expected at least %d rows", q.minRows)
-			
+
 			rowsPerSecond := float64(totalRows) / duration.Seconds()
 			t.Logf("Large query '%s' completed: %d rows in %d batches (max batch: %d), duration: %v, throughput: %.0f rows/sec",
 				q.name, totalRows, batchCount, maxBatchSize, duration, rowsPerSecond)
@@ -289,7 +289,7 @@ func TestCloudFetchE2E_DataTypes(t *testing.T) {
 
 	// Test query with various data types
 	query := `
-		SELECT 
+		SELECT
 			id,
 			CAST(id AS TINYINT) as tinyint_col,
 			CAST(id AS SMALLINT) as smallint_col,
@@ -321,13 +321,13 @@ func TestCloudFetchE2E_DataTypes(t *testing.T) {
 	for reader.Next() {
 		record := reader.Record()
 		totalRows += record.NumRows()
-		
+
 		// Verify schema has all expected columns
 		if totalRows == record.NumRows() { // First batch
 			schema := record.Schema()
 			expectedColumns := 17
 			assert.Equal(t, expectedColumns, len(schema.Fields()), "Expected %d columns", expectedColumns)
-			
+
 			// Log column types
 			t.Log("Schema:")
 			for i, field := range schema.Fields() {
@@ -491,6 +491,6 @@ func runPerformanceTest(t *testing.T, host, token, httpPath, query string) time.
 
 	duration := time.Since(startTime)
 	t.Logf("Query completed: %d rows in %v", totalRows, duration)
-	
+
 	return duration
 }

@@ -35,7 +35,7 @@ func TestStatementBasic(t *testing.T) {
 	driver := databricks.NewDriver(nil)
 	db, err := driver.NewDatabase(map[string]string{
 		databricks.OptionServerHostname: "mock-host",
-		databricks.OptionAccessToken:    "mock-token", 
+		databricks.OptionAccessToken:    "mock-token",
 		databricks.OptionHTTPPath:       "mock-path",
 	})
 	assert.NoError(t, err)
@@ -53,4 +53,3 @@ func TestIPCReaderAdapterCompileTime(t *testing.T) {
 	// This is a compile-time check - if it compiles, the test passes
 	t.Log("IPC reader adapter implements required interfaces")
 }
-

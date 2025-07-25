@@ -236,4 +236,3 @@ func TestIPCReaderAdapterMultipleStreams(t *testing.T) {
 	assert.Equal(t, 3, batchCount)
 	assert.Equal(t, 300, rowCount)
 }
-
