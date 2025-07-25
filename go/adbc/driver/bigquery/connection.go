@@ -261,12 +261,12 @@ type bigQueryTokenResponse struct {
 // bigqueryClientFactory is an interface for creating BigQuery clients with storage read client enabled.
 // This bundles the client creation with storage client enabling since they're always used together.
 type bigqueryClientFactory interface {
-	NewClientWithStorageEnabled(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error)
+	newClientWithStorageEnabled(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error)
 }
 
 type defaultBigqueryClientFactory struct{}
 
-func (d *defaultBigqueryClientFactory) NewClientWithStorageEnabled(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error) {
+func (d *defaultBigqueryClientFactory) newClientWithStorageEnabled(ctx context.Context, projectID string, opts ...option.ClientOption) (*bigquery.Client, error) {
 	client, err := bigquery.NewClient(ctx, projectID, opts...)
 	if err != nil {
 		return nil, err
@@ -661,7 +661,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		authOptions = []option.ClientOption{option.WithTokenSource(tokenSource)}
 	}
 
-	client, err := c.clientFactory.NewClientWithStorageEnabled(ctx, c.catalog, authOptions...)
+	client, err := c.clientFactory.newClientWithStorageEnabled(ctx, c.catalog, authOptions...)
 	if err != nil {
 		return err
 	}
