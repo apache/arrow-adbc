@@ -22,7 +22,7 @@ namespace Apache.Arrow.Adbc.Drivers.Interop.FlightSql
     /// </summary>
     public class FlightSqlDriverLoader : AdbcDriverLoader
     {
-        public FlightSqlDriverLoader() : base("libadbc_driver_flightsql", "AdbcDriverFlightsqlInit")
+        public FlightSqlDriverLoader() : base("libadbc_driver_flightsql", "AdbcDriverFlightSQLInit")
         {
         }
 
