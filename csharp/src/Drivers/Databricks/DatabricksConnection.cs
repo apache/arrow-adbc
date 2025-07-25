@@ -28,6 +28,11 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
+using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -66,6 +71,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
+        private DatabricksActivityListener _listener;
+        private DriverConnectionParameters _connectionParams;
+        private HostDetails _hostDetails;
+        private ClientContext _clientContext;
+
         // Default namespace
         private TNamespace? _defaultNamespace;
 
@@ -73,6 +83,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            _listener = new DatabricksActivityListener();
+            _connectionParams = new DriverConnectionParameters();
+            _hostDetails = new HostDetails();
+            _clientContext = new ClientContext();
             ValidateProperties();
         }
 
@@ -264,6 +278,39 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // Default QueryTimeSeconds in Hive2Connection is only 60s, which is too small for lots of long running query
                 QueryTimeoutSeconds = DefaultQueryTimeSeconds;
             }
+
+            //Telemetry
+            if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType))
+            {
+                _connectionParams.AuthMech = Util.StringToAuthMech(authType);
+            }
+
+            if (Properties.TryGetValue(SparkParameters.HostName, out string? host))
+            {
+                _hostDetails.HostUrl = host;
+            }
+            if (Properties.TryGetValue(SparkParameters.Port, out string? port))
+            {
+                _hostDetails.Port = Int32.Parse(port);
+            }
+            _connectionParams.HostInfo = _hostDetails;
+
+            if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string? userAgent))
+            {
+                _clientContext.UserAgent = userAgent;
+            }
+
+            string? token = null;
+            if(Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
+            {
+                token = accessToken;
+            }   
+            else if(Properties.TryGetValue(SparkParameters.Token, out string? accesstoken))
+            {
+                token = accesstoken;
+            }
+
+            TelemetryHelper.SetParameters(_connectionParams, _clientContext, token);
         }
 
         /// <summary>
@@ -737,6 +784,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (disposing)
             {
                 _authHttpClient?.Dispose();
+                _listener?.Dispose();
+                
+                // Flush any pending telemetry events
+                try
+                {
+                    TelemetryHelper.ForceFlushAsync().Wait(TimeSpan.FromSeconds(2));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to flush telemetry on dispose: {ex.Message}");
+                }
             }
             base.Dispose(disposing);
         }
