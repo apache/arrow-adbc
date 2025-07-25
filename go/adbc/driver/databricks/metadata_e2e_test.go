@@ -554,6 +554,7 @@ func TestMetadataE2E_CurrentCatalogSchema(t *testing.T) {
 				col := record.Column(0).(*array.String)
 				currentSchema = col.Value(0)
 			}
+		}
 		require.NoError(t, err)
 		assert.NotEmpty(t, currentSchema)
 		t.Logf("Current schema: %s", currentSchema)
