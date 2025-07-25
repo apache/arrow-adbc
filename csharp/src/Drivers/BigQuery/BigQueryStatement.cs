@@ -485,15 +485,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     activity?.AddBigQueryTag("large_results.dataset.try_create", datasetId);
                     DatasetReference reference = this.Client.GetDatasetReference(datasetId);
+
                     BigQueryDataset bigQueryDataset = new BigQueryDataset(this.Client, new Dataset()
                     {
                         DatasetReference = reference,
-                        DefaultTableExpirationMs = (long)TimeSpan.FromDays(1).TotalMilliseconds,
-                        Labels = new Dictionary<string, string>()
-                        {
-                            // lower case, no spaces or periods per https://cloud.google.com/bigquery/docs/labels-intro
-                            { "created_by", this.bigQueryConnection.DriverName.ToLowerInvariant().Replace(" ","_") + "_v_" + AssemblyVersion.Replace(".","_") }
-                        }
+                        DefaultTableExpirationMs = (long)TimeSpan.FromDays(1).TotalMilliseconds
                     });
 
                     dataset = this.Client.CreateDataset(datasetId, bigQueryDataset.Resource);

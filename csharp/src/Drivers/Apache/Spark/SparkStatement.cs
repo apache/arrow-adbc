@@ -29,28 +29,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
-            // TODO: Ensure this is set dynamically depending on server capabilities.
-            statement.EnforceResultPersistenceMode = false;
-            statement.ResultPersistenceMode = TResultPersistenceMode.ALL_RESULTS;
             // This seems like a good idea to have the server timeout so it doesn't keep processing unnecessarily.
             // Set in combination with a CancellationToken.
             statement.QueryTimeout = QueryTimeoutSeconds;
-            statement.CanReadArrowResult = true;
-
-#pragma warning disable CS0618 // Type or member is obsolete
-            statement.ConfOverlay = SparkConnection.timestampConfig;
-#pragma warning restore CS0618 // Type or member is obsolete
-            statement.UseArrowNativeTypes = new TSparkArrowTypes
-            {
-                TimestampAsArrow = true,
-                DecimalAsArrow = true,
-
-                // set to false so they return as string
-                // otherwise, they return as ARRAY_TYPE but you can't determine
-                // the object type of the items in the array
-                ComplexTypesAsArrow = false,
-                IntervalTypesAsArrow = false,
-            };
         }
 
         public override string AssemblyName => HiveServer2Connection.s_assemblyName;
