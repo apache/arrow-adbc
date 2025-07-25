@@ -28,7 +28,10 @@ endif()
 
 # The Redshift driver requires the AWS SDK
 if(ADBC_REDSHIFT_FLAVOR)
-  find_package(AWSSDK CONFIG COMPONENTS core sts redshift REQUIRED)
+  find_package(ZLIB REQUIRED)
+  find_package(AWSSDK CONFIG
+               COMPONENTS core sts redshift
+               REQUIRED)
 endif()
 
 # Set library name based on flavor
@@ -74,8 +77,7 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
 
   if(ADBC_REDSHIFT_FLAVOR)
     target_compile_definitions(${LIB_TARGET} PUBLIC ADBC_REDSHIFT_FLAVOR)
-    target_include_directories(${LIB_TARGET} SYSTEM
-                               PRIVATE ${AWSSDK_INCLUDE_DIRS})
+    target_include_directories(${LIB_TARGET} SYSTEM PRIVATE ${AWSSDK_INCLUDE_DIRS})
     target_link_libraries(${LIB_TARGET} PRIVATE ${AWSSDK_LIBRARIES})
   endif()
 endforeach()
