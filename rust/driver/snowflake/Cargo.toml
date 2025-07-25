@@ -42,7 +42,8 @@ env = ["dep:regex"]
 dotenv = ["env", "dep:dotenvy"]
 
 [dependencies]
-adbc_core = { workspace = true, features = ["driver_manager"] }
+adbc_core.workspace = true
+adbc_driver_manager.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
 dotenvy = { version = "0.15.7", default-features = false, optional = true }

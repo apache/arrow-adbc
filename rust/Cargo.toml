@@ -35,6 +35,7 @@ categories = ["database"]
 
 [workspace.dependencies]
 adbc_core = { path = "./core", version = "0.20.0" }
+adbc_driver_manager = { path = "./driver_manager", version = "0.20.0" }
 arrow-array = { version = ">=53.1.0, <56", default-features = false, features = [
     "ffi",
 ] }
