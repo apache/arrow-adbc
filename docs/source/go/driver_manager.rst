@@ -15,61 +15,65 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-.. py:currentmodule:: adbc_driver_manager
-
 ==============
 Driver Manager
 ==============
 
-The driver manager is a library that provides bindings to the ADBC C
+The driver manager is a package that provides bindings to the ADBC Go
 API.  It delegates to dynamically-loaded drivers.  This allows
 applications to use multiple drivers simultaneously, and decouple
 themselves from the specific driver.
 
-The Python driver manager provides both low-level bindings that are
-essentially the same as the C API.  If PyArrow is installed, it also
-provides high-level bindings that implement the DBAPI_ (PEP 249)
-standard.
-
-.. _DBAPI: https://peps.python.org/pep-0249/
+TODO: Should we say anything special about the Golang driver manager impl here?
+Such as how it differs from others?
 
 Installation
 ============
 
 .. code-block:: shell
 
-   pip install adbc_driver_manager
+   go get github.com/apache/arrow-adbc/go/adbc/drivermgr
 
 Usage
 =====
 
-.. warning:: This API is for low level usage only.  **You almost certainly
-             should not use this**, instead use the entrypoints provided by
-             driver packages, for example:
-
-             - :func:`adbc_driver_sqlite.dbapi.connect`
-             - :func:`adbc_driver_sqlite.connect`
-
-The Python bindings for each driver abstract the steps here for you behind a
-convenient ``connect`` function.  For example, prefer
-:func:`adbc_driver_sqlite.connect` or :func:`adbc_driver_postgresql.connect`
-to manually constructing the connection as demonstrated here.
-
-To manually create a connection: first, create a :py:class:`AdbcDatabase`,
+To manually create a connection: first, create a `adbc.Database`_,
 passing ``driver`` and (optionally) ``entrypoint``.  ``driver`` must be the
 name of a library to load, or the path to a library to load.  ``entrypoint``,
 if provided, should be the name of the symbol that serves as the ADBC
 entrypoint (see :c:type:`AdbcDriverInitFunc`).  Then, create a
-:py:class:`AdbcConnection`.
+`adbc.Connection`_.
 
-.. code-block:: python
 
-   import adbc_driver_manager
+.. _adbc.Database: https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc#Database
+.. _adbc.Connection: https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc#Connection
 
-   # You must build/locate the driver yourself
-   with adbc_driver_manager.AdbcDatabase(driver="PATH/TO/libadbc_driver_sqlite.so") as db:
-       with adbc_driver_manager.AdbcConnection(db) as conn:
-           pass
+.. code-block:: go
+
+   import (
+       "context"
+       "github.com/apache/arrow-adbc/go/adbc"
+       "github.com/apache/arrow-adbc/go/adbc/drivermgr"
+   )
+
+   ctx := context.Background()
+
+   // Create driver and database
+	var drv drivermgr.Driver
+   db, err := drv.NewDatabase(map[string]string{
+       "driver": "adbc_driver_sqlite",
+   })
+   if err != nil {
+       return err
+   }
+   defer db.Close()
+
+   // Open connection
+   conn, err := db.Open(ctx)
+   if err != nil {
+       return err
+   }
+   defer conn.Close()
 
 API Reference
 =============

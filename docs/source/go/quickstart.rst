@@ -19,160 +19,249 @@
 Quickstart
 ==========
 
-Here we'll briefly tour basic features of ADBC with the SQLite driver.
+Here we'll briefly tour basic features of ADBC with the SQLite driver in Go.
 
 Installation
 ============
 
 .. code-block:: shell
 
-   pip install adbc_driver_manager adbc_driver_sqlite pyarrow
+   go get github.com/apache/arrow-adbc/go/adbc/drivermgr
 
-DBAPI (PEP 249)-style API
-=========================
+Native Go API
+=============
 
-If PyArrow is installed, ADBC provides a high-level API in the style
-of the DBAPI standard.
-
-.. testcleanup:: dbapi
-
-   cursor.close()
-   conn.close()
+ADBC Go provides a native Go API that works directly with Apache Arrow data.
 
 Creating a Connection
 ---------------------
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+.. code-block:: go
 
-   >>> import adbc_driver_sqlite.dbapi
-   >>> conn = adbc_driver_sqlite.dbapi.connect()
+   import (
+       "context"
+       "github.com/apache/arrow-adbc/go/adbc"
+       "github.com/apache/arrow-adbc/go/adbc/drivermgr"
+   )
 
-In application code, the connection must be closed after usage or
-memory may leak.  Connections can be used as context managers to
-accomplish this.
+   ctx := context.Background()
 
-Creating a Cursor
------------------
+   // Create driver and database
+	var drv drivermgr.Driver
+   db, err := drv.NewDatabase(map[string]string{
+       "driver": "adbc_driver_sqlite",
+   })
+   if err != nil {
+       return err
+   }
+   defer db.Close()
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+   // Open connection
+   conn, err := db.Open(ctx)
+   if err != nil {
+       return err
+   }
+   defer conn.Close()
 
-   >>> cursor = conn.cursor()
+In application code, both the database and connection must be closed after usage or
+memory may leak. Use ``defer`` statements to ensure proper cleanup.
 
-In application code, the cursor must be closed after usage or memory
-may leak.  Cursors can be used as context managers to accomplish this.
+Creating a Statement
+--------------------
+
+.. code-block:: go
+
+   stmt, err := conn.NewStatement()
+   if err != nil {
+       return err
+   }
+   defer stmt.Close()
+
+In application code, the statement must be closed after usage or memory
+may leak. Use ``defer`` statements to ensure proper cleanup.
 
 Executing a Query
 -----------------
 
-We can execute a query and get the results via the normal,
-row-oriented DBAPI interface:
+We can execute a query and get the results as Arrow data:
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+.. code-block:: go
 
-   >>> cursor.execute("SELECT 1, 2.0, 'Hello, world!'")
-   >>> cursor.fetchone()
-   (1, 2.0, 'Hello, world!')
-   >>> cursor.fetchone()
+   err = stmt.SetSqlQuery("SELECT 1, 2.0, 'Hello, world!'")
+   if err != nil {
+       return err
+   }
 
-We can also get the results as Arrow data via a non-standard method:
+   reader, _, err := stmt.ExecuteQuery(ctx)
+   if err != nil {
+       return err
+   }
+   defer reader.Release()
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+   for reader.Next() {
+       record := reader.Record()
+       // Access columns by index
+       col0 := record.Column(0) // int64 array
+       col1 := record.Column(1) // float64 array
+       col2 := record.Column(2) // string array
 
-   >>> cursor.execute("SELECT 1, 2.0, 'Hello, world!'")
-   >>> cursor.fetch_arrow_table()
-   pyarrow.Table
-   1: int64
-   2.0: double
-   'Hello, world!': string
-   ----
-   1: [[1]]
-   2.0: [[2]]
-   'Hello, world!': [["Hello, world!"]]
+       // Process the data...
+       for i := 0; i < int(record.NumRows()); i++ {
+           // Access individual values
+           fmt.Printf("Row %d: %v, %v, %v\n", i,
+               col0.ValueStr(i), col1.ValueStr(i), col2.ValueStr(i))
+       }
+   }
 
 Parameterized Queries
 ---------------------
 
-We can bind parameters in our queries:
+We can bind parameters in our queries using Arrow records:
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+.. code-block:: go
 
-   >>> cursor.execute("SELECT ? + 1 AS the_answer", parameters=(41,))
-   >>> cursor.fetch_arrow_table()
-   pyarrow.Table
-   the_answer: int64
-   ----
-   the_answer: [[42]]
+   import (
+       "strings"
+       "github.com/apache/arrow-go/v18/arrow"
+       "github.com/apache/arrow-go/v18/arrow/array"
+       "github.com/apache/arrow-go/v18/arrow/memory"
+   )
+
+   // Create parameter schema and data
+   paramSchema := arrow.NewSchema([]arrow.Field{
+       {Name: "param1", Type: arrow.PrimitiveTypes.Int64},
+   }, nil)
+
+   params, _, err := array.RecordFromJSON(memory.DefaultAllocator, paramSchema,
+       strings.NewReader(`[{"param1": 41}]`))
+   if err != nil {
+       return err
+   }
+   defer params.Release()
+
+   // Set query and bind parameters
+   err = stmt.SetSqlQuery("SELECT ? + 1 AS the_answer")
+   if err != nil {
+       return err
+   }
+
+   err = stmt.Prepare(ctx)
+   if err != nil {
+       return err
+   }
+
+   err = stmt.Bind(ctx, params)
+   if err != nil {
+       return err
+   }
+
+   reader, _, err := stmt.ExecuteQuery(ctx)
+   if err != nil {
+       return err
+   }
+   defer reader.Release()
 
 Ingesting Bulk Data
 -------------------
 
-So far we've mostly demonstrated the usual DBAPI interface.  The ADBC
-APIs also offer additional methods.  For example, we can insert a
-table of Arrow data into a new database table:
+The Go ADBC APIs offer methods for bulk data ingestion. We can insert Arrow data
+into a new database table:
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+.. code-block:: go
 
-   >>> import pyarrow
-   >>> table = pyarrow.table([[1, 2], ["a", None]], names=["ints", "strs"])
-   >>> cursor.adbc_ingest("sample", table)
-   2
-   >>> cursor.execute("SELECT COUNT(DISTINCT ints) FROM sample")
-   >>> cursor.fetchall()
-   [(2,)]
+   // Create Arrow table data
+   schema := arrow.NewSchema([]arrow.Field{
+       {Name: "ints", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
+       {Name: "strs", Type: arrow.BinaryTypes.String, Nullable: true},
+   }, nil)
 
-We can also append to an existing table:
+   table, _, err := array.RecordFromJSON(memory.DefaultAllocator, schema,
+       strings.NewReader(`[{"ints": 1, "strs": "a"}, {"ints": 2, "strs": null}]`))
+   if err != nil {
+       return err
+   }
+   defer table.Release()
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+   reader, err := array.NewRecordReader(schema, []arrow.Record{table})
+   if err != nil {
+       return err
+   }
+   defer reader.Release()
 
-   >>> table = pyarrow.table([[2, 3], [None, "c"]], names=["ints", "strs"])
-   >>> cursor.adbc_ingest("sample", table, mode="append")
-   2
-   >>> cursor.execute("SELECT COUNT(DISTINCT ints) FROM sample")
-   >>> cursor.fetchall()
-   [(3,)]
+   // Ingest the data
+   count, err := adbc.IngestStream(ctx, conn, reader, "sample",
+       adbc.OptionValueIngestModeCreateAppend, adbc.IngestStreamOptions{})
+   if err != nil {
+       return err
+   }
+   fmt.Printf("Ingested %d rows\n", count)
+
+   // Verify the data
+   stmt2, err := conn.NewStatement()
+   if err != nil {
+       return err
+   }
+   defer stmt2.Close()
+
+   err = stmt2.SetSqlQuery("SELECT COUNT(DISTINCT ints) FROM sample")
+   if err != nil {
+       return err
+   }
+
+   reader2, _, err := stmt2.ExecuteQuery(ctx)
+   if err != nil {
+       return err
+   }
+   defer reader2.Release()
+
 
 Getting Database/Driver Metadata
 --------------------------------
 
-We can get information about the driver and the database using another
-extension method, this time on the connection itself:
+We can get information about the driver and the database:
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+.. code-block:: go
 
-   >>> conn.adbc_get_info()["vendor_name"]
-   'SQLite'
-   >>> conn.adbc_get_info()["driver_name"]
-   'ADBC SQLite Driver'
+   // Get driver info
+   infoReader, err := conn.GetInfo(ctx, []adbc.InfoCode{
+       adbc.InfoVendorName,
+       adbc.InfoDriverName,
+   })
+   if err != nil {
+       return err
+   }
+   defer infoReader.Release()
 
-We can also query for tables and columns in the database.  This gives
-a nested structure describing all the catalogs, schemas, tables, and
-columns:
+   // Process the info results...
+   for infoReader.Next() {
+       record := infoReader.Record()
+       // Extract vendor name, driver name, etc. from the record
+   }
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+We can also query for tables and columns in the database:
 
-   >>> info = conn.adbc_get_objects().read_all().to_pylist()
-   >>> main_catalog = info[0]
-   >>> schema = main_catalog["catalog_db_schemas"][0]
-   >>> tables = schema["db_schema_tables"]
-   >>> tables[0]["table_name"]
-   'sample'
-   >>> [column["column_name"] for column in tables[0]["table_columns"]]
-   ['ints', 'strs']
+.. code-block:: go
+
+   objectsReader, err := conn.GetObjects(ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
+   if err != nil {
+       return err
+   }
+   defer objectsReader.Release()
+
+   // Process the objects results to get catalog/schema/table information
+   for objectsReader.Next() {
+       record := objectsReader.Record()
+       // Navigate the nested structure for catalogs, schemas, tables, columns
+   }
 
 We can get the Arrow schema of a table:
 
-.. doctest:: dbapi
-   :skipif: adbc_driver_sqlite is None
+.. code-block:: go
 
-   >>> conn.adbc_get_table_schema("sample")
-   ints: int64
-   strs: string
+   tableSchema, err := conn.GetTableSchema(ctx, nil, nil, "sample")
+   if err != nil {
+       return err
+   }
+
+   // tableSchema is an *arrow.Schema
+   fmt.Printf("Table schema: %s\n", tableSchema.String())
