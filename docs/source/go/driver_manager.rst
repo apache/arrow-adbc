@@ -25,9 +25,6 @@ The driver manager is a package that implements the ADBC Go API by delegating to
 dynamically-loaded drivers. It allows using multiple drivers simultaneously,
 including drivers not written in Go.
 
-TODO: Should we say anything special about the Golang driver manager impl here?
-Such as how it differs from others?
-
 Installation
 ============
 
