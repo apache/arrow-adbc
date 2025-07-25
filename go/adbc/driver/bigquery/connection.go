@@ -630,7 +630,6 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 
 	err = client.EnableStorageReadClient(ctx, authOptions...)
 	if err != nil {
-		client.Close()
 		return err
 	}
 
