@@ -32,5 +32,5 @@ import "C"
 //export FlightSQLDriverInit
 func FlightSQLDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	// For backwards compatibility
-	return AdbcDriverFlightsqlInit(version, rawDriver, err)
+	return AdbcDriverFlightSQLInit(version, rawDriver, err)
 }
