@@ -8,13 +8,6 @@ version = "0.20.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
- "arrow-select",
- "libloading",
- "temp-env",
- "tempfile",
- "toml",
- "windows-registry",
- "windows-sys 0.60.2",
 ]
 
 [[package]]
