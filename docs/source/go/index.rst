@@ -25,5 +25,4 @@ Go
 
    quickstart
    driver_manager
-   `API Reference`_
    Go API Reference <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
