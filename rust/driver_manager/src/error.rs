@@ -19,7 +19,7 @@ use std::fmt;
 
 use adbc_core::error::Status;
 
-/// An Driver Manager error.
+/// A Driver Manager error.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Error {
     Adbc(adbc_core::error::Error),
