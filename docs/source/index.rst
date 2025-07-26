@@ -69,7 +69,8 @@ make it more convenient to build analytical applications.
 
             C/C++
 
-         .. button-link:: https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc
+         .. button-ref:: go/quickstart
+            :ref-type: doc
             :color: secondary
             :expand:
 
@@ -225,7 +226,7 @@ Why ADBC?
 
    C/C++ <cpp/index>
    C#/.NET <csharp/index>
-   Go <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
+   Go <go/index>
    Java <java/index>
    Python <python/index>
    R <r/index>
