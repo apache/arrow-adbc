@@ -22,11 +22,11 @@
 use std::collections::HashSet;
 
 use adbc_core::{
-    driver_manager::ManagedConnection,
     error::Result,
     options::{InfoCode, OptionConnection, OptionValue},
     Optionable,
 };
+use adbc_driver_manager::ManagedConnection;
 use arrow_array::RecordBatchReader;
 use arrow_schema::Schema;
 

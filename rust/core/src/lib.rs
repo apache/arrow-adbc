@@ -61,8 +61,6 @@
 mod driver_exporter;
 #[doc(hidden)]
 pub use driver_exporter::FFIDriver;
-#[cfg(feature = "driver_manager")]
-pub mod driver_manager;
 pub mod error;
 pub mod ffi;
 pub mod options;

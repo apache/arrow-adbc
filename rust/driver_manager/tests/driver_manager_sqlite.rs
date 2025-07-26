@@ -17,10 +17,10 @@
 
 use arrow_schema::{Field, Schema};
 
-use adbc_core::driver_manager::{ManagedDatabase, ManagedDriver};
 use adbc_core::options::{AdbcVersion, OptionConnection, OptionDatabase};
 use adbc_core::{error::Status, Driver, Optionable};
 use adbc_core::{Connection, Database, Statement};
+use adbc_driver_manager::{ManagedDatabase, ManagedDriver};
 
 mod common;
 
