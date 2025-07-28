@@ -19,7 +19,6 @@ using System.Diagnostics;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
-using System.IO;
 using System;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
@@ -44,11 +43,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 
         private void OnActivityStarted(Activity activity)
         {
-            
         }
 
         private void OnActivityStopped(Activity activity)
         {       
+            if(activity.OperationName == "ExecuteStatementAsync")
+            {
+                var sqlExecutionEvent = new SqlExecutionEvent();
+                var operationDetail = new OperationDetail();
+                operationDetail.OperationType = Util.StringToOperationType("EXECUTE_STATEMENT_ASYNC");
+                sqlExecutionEvent.OperationDetail = operationDetail;
+                TelemetryHelper.AddSqlExecutionEvent(sqlExecutionEvent);
+            }
             // iterate over the tags and create a telemetry event
             foreach (var tag in activity.Tags)
             {
