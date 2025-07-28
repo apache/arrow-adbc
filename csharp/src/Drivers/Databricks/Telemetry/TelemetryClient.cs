@@ -32,7 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
         private readonly string? _telemetryUrl;
         private readonly string? _accessToken;
 
-        public TelemetryClient(HttpClient httpClient, string? hostUrl, string? accessToken,)
+        public TelemetryClient(HttpClient httpClient, string? hostUrl, string? accessToken)
         {
             _httpClient = httpClient;
             _accessToken = accessToken;

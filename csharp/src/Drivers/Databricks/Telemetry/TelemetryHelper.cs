@@ -64,7 +64,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
         static TelemetryHelper()
         {
             _lastFlushTimeMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            _flushTimer = new Timer(TimerFlushEvents, null, _flushIntervalMillis, _flushIntervalMillis);
+            _flushTimer = new Timer(TimerFlushEvents, null, DatabricksConnectionConfig.FLUSH_INTERVAL_MILLIS, DatabricksConnectionConfig.FLUSH_INTERVAL_MILLIS);
             _activityListener = new DatabricksActivityListener();
 
         }
@@ -78,7 +78,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 
         public static void InitializeTelemetryClient(HttpClient httpClient)
         {
-            if (_telemetryClient == null && _connectionParameters.HostInfo != null)
+            if (_telemetryClient == null && _connectionParameters?.HostInfo != null)
             {
                 _telemetryClient = new TelemetryClient(httpClient, _connectionParameters.HostInfo.HostUrl, _accessToken);
             }
@@ -166,7 +166,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
         {
             _flushTimer?.Dispose();
             _activityListener?.Dispose();
-            
+
             Task.Run(async () => await FlushEvents()).Wait(TimeSpan.FromSeconds(5));
         }
     }
