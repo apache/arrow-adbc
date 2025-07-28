@@ -37,7 +37,7 @@ arrow-buffer = "55.2.0"
 arrow-schema = "55.2.0"
 datafusion = { version = "48.0.1", default-features = false }
 datafusion-substrait = { version = "48.0.1", default-features = false }
-tokio = { version = "1.46", features = ["rt-multi-thread"] }
+tokio = { version = "1.47", features = ["rt-multi-thread"] }
 prost = "0.13.5"
 
 [dev-dependencies]
