@@ -71,7 +71,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
-        private DatabricksActivityListener _listener;
         private DriverConnectionParameters _connectionParams;
         private HostDetails _hostDetails;
         private ClientContext _clientContext;
@@ -83,7 +82,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
-            _listener = new DatabricksActivityListener();
             _connectionParams = new DriverConnectionParameters();
             _hostDetails = new HostDetails();
             _clientContext = new ClientContext();
@@ -309,7 +307,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 token = accesstoken;
             }
-
             TelemetryHelper.SetParameters(_connectionParams, _clientContext, token);
         }
 
@@ -450,6 +447,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
+            TelemetryHelper.InitializeTelemetryClient(_authHttpClient);
             return baseHandler;
         }
 
@@ -784,16 +782,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (disposing)
             {
                 _authHttpClient?.Dispose();
-                _listener?.Dispose();
                 
-                // Flush any pending telemetry events
                 try
                 {
                     TelemetryHelper.ForceFlushAsync().Wait(TimeSpan.FromSeconds(2));
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Failed to flush telemetry on dispose: {ex.Message}");
+                    Debug.WriteLine($"Failed to flush telemetry on dispose: {ex.Message}");
                 }
             }
             base.Dispose(disposing);

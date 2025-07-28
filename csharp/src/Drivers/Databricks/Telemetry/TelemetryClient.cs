@@ -32,9 +32,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
         private readonly string? _telemetryUrl;
         private readonly string? _accessToken;
 
-        public TelemetryClient(string? hostUrl, string? accessToken)
+        public TelemetryClient(HttpClient httpClient, string? hostUrl, string? accessToken,)
         {
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
             _accessToken = accessToken;
             _telemetryUrl = !string.IsNullOrEmpty(hostUrl) ? accessToken != null ? $"https://{hostUrl}/telemetry" : $"https://{hostUrl}/telemetry-unauth" : null;
         }
