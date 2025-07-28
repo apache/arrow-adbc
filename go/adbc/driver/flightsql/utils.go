@@ -135,7 +135,7 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 
 	return adbc.Error{
 		// People don't read error messages, so backload the context and frontload the server error
-		Msg:        fmt.Sprintf("[FlightSQL] %s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
+		Msg:        fmt.Sprintf("%s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
 		Code:       adbcCode,
 		VendorCode: int32(grpcStatus.Code()),
 		Details:    details,
