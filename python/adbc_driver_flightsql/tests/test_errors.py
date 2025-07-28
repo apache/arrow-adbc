@@ -91,25 +91,25 @@ def test_query_error_fetch(test_dbapi):
             test_dbapi.ProgrammingError,
             match=re.escape(
                 "INVALID_ARGUMENT: [FlightSQL] expected error (DoGet)"
-                " (InvalidArgument; DoGet: endpoint 0: []). Vendor code: 3"
+                " (InvalidArgument; DoGet: endpoint 0: [])"
             ),
         ) as excval:
             cur.fetch_arrow_table()
         assert_detail(excval.value)
 
 
-@pytest.mark.xfail(reason="apache/arrow-adbc#1576")
 def test_query_error_vendor_code(test_dbapi):
     with test_dbapi.cursor() as cur:
         cur.execute("error_do_get")
         with pytest.raises(
             test_dbapi.ProgrammingError,
-            match=re.escape("INVALID_ARGUMENT: [FlightSQL] expected error (DoGet)"),
+            match=re.escape(
+                "INVALID_ARGUMENT: [FlightSQL] expected error (DoGet)"
+                " (InvalidArgument; DoGet: endpoint 0: []). Vendor code: 3"
+            ),
         ) as excval:
             cur.fetch_arrow_table()
 
-        # TODO(https://github.com/apache/arrow-adbc/issues/1576): vendor code
-        # is gRPC status code; 3 is gRPC INVALID_ARGUMENT
         assert excval.value.vendor_code == 3
 
 
@@ -131,7 +131,7 @@ def test_query_error_stream(test_dbapi):
             test_dbapi.ProgrammingError,
             match=re.escape(
                 "INVALID_ARGUMENT: [FlightSQL] expected stream error (DoGet)"
-                " (InvalidArgument; DoGet: endpoint 0: []). Vendor code: 3"
+                " (InvalidArgument; DoGet: endpoint 0: [])"
             ),
         ) as excval:
             cur.fetchone()
@@ -154,8 +154,7 @@ def test_query_error_bind(test_dbapi):
         with pytest.raises(
             test_dbapi.OperationalError,
             match=re.escape(
-                "UNKNOWN: [FlightSQL] expected error (DoPut)"
-                " (Unknown; ExecuteQuery). Vendor code: 2"
+                "UNKNOWN: [FlightSQL] expected error (DoPut)" " (Unknown; ExecuteQuery)"
             ),
         ) as excval:
             cur.execute("error_do_put_detail", parameters=(1, "a"))
@@ -177,7 +176,7 @@ def test_query_error_create_prepared_statement(test_dbapi):
             test_dbapi.ProgrammingError,
             match=re.escape(
                 "INVALID_ARGUMENT: [FlightSQL] expected error (DoAction)"
-                " (InvalidArgument; Prepare). Vendor code: 3"
+                " (InvalidArgument; Prepare)"
             ),
         ) as excval:
             cur.adbc_prepare("error_create_prepared_statement_detail")
@@ -199,7 +198,7 @@ def test_query_error_getflightinfo(test_dbapi):
             Exception,
             match=re.escape(
                 "INVALID_ARGUMENT: [FlightSQL] expected error"
-                " (GetFlightInfo) (InvalidArgument; ExecuteQuery). Vendor code: 3"
+                " (GetFlightInfo) (InvalidArgument; ExecuteQuery)"
             ),
         ) as excval:
             cur.execute("error_get_flight_info_detail")
@@ -210,7 +209,7 @@ def test_query_error_getflightinfo(test_dbapi):
             Exception,
             match=re.escape(
                 "INVALID_ARGUMENT: [FlightSQL] expected error (GetFlightInfo)"
-                " (InvalidArgument; ExecuteQuery). Vendor code: 3"
+                " (InvalidArgument; ExecutePartitions). Vendor code: 3"
             ),
         ):
             cur.adbc_execute_partitions("error_get_flight_info")
