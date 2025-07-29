@@ -41,6 +41,7 @@ namespace Apache.Arrow.Adbc
         {
             RowCount = rowCount;
             Stream = stream;
+            _disposed = false;
         }
 
         /// <summary>
