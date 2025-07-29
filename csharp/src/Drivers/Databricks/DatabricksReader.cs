@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
-        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        protected override async ValueTask<RecordBatch?> ReadNextRecordBatchInternalAsync(CancellationToken cancellationToken = default)
         {
             return await this.TraceActivity(async activity =>
             {
@@ -77,7 +77,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                     if (this.hasNoMoreRows)
                     {
-                        StopOperationStatusPoller();
                         return null;
                     }
 

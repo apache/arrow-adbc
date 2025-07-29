@@ -81,7 +81,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The next record batch, or null if there are no more batches.</returns>
-        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        protected override async ValueTask<RecordBatch?> ReadNextRecordBatchInternalAsync(CancellationToken cancellationToken = default)
         {
             return await this.TraceActivityAsync(async _ =>
             {
@@ -155,7 +155,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                         }
                     }
 
-                    StopOperationStatusPoller();
                     // If we get here, there are no more files
                     return null;
                 }

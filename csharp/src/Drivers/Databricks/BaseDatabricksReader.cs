@@ -16,7 +16,8 @@
 */
 
 using System;
-using Apache.Arrow.Adbc.Drivers.Apache;
+using System.Threading.Tasks;
+using System.Threading;
 using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -94,5 +95,33 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public override string AssemblyName => DatabricksConnection.s_assemblyName;
 
         public override string AssemblyVersion => DatabricksConnection.s_assemblyVersion;
+
+        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var result = await ReadNextRecordBatchInternalAsync(cancellationToken);
+                // Stop the poller when we've reached the end of results
+                if (result == null)
+                {
+                    StopOperationStatusPoller();
+                }
+                return result;
+            }
+            catch
+            {
+                // Stop the poller immediately on any exception to prevent unnecessary polling
+                StopOperationStatusPoller();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Internal method that derived classes implement to read the next record batch.
+        /// This method is called by ReadNextRecordBatchAsync which provides exception handling.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The next record batch, or null if there are no more batches.</returns>
+        protected abstract ValueTask<RecordBatch?> ReadNextRecordBatchInternalAsync(CancellationToken cancellationToken);
     }
 }
