@@ -300,3 +300,9 @@ func main() {
     }
 }
 ```
+
+If you would like to extract all the code above into a `.go` file, you can run,
+
+```sh
+awk '/```go/{flag=1;next}/```/{flag=0}flag' *.md > main.go
+```
