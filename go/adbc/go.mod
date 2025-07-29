@@ -40,7 +40,7 @@ require (
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.16.0
 	golang.org/x/tools v0.35.0
-	google.golang.org/api v0.241.0
+	google.golang.org/api v0.243.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
 	modernc.org/sqlite v1.38.1
@@ -48,7 +48,7 @@ require (
 
 require (
 	cloud.google.com/go v0.121.0 // indirect
-	cloud.google.com/go/auth v0.16.2 // indirect
+	cloud.google.com/go/auth v0.16.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	cloud.google.com/go/iam v1.5.2 // indirect
@@ -97,7 +97,7 @@ require (
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
-	github.com/googleapis/gax-go/v2 v2.14.2 // indirect
+	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/klauspost/asmfmt v1.3.2 // indirect
@@ -129,9 +129,9 @@ require (
 	golang.org/x/text v0.27.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/genproto v0.0.0-20250505200425-f936aa4a68b2 // indirect
+	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250715232539-7130f93afb79 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.66.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
