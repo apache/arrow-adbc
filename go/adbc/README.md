@@ -38,6 +38,8 @@ go get github.com/apache/arrow-adbc/go/adbc/drivermgr
 For imports, all we really need is `github.com/apache/arrow-adbc/go/adbc/drivermgr` to start but we'll import a few more modules now because we'll use them later.
 
 ```go
+package main
+
 import (
     "context"
     "fmt"
@@ -286,6 +288,7 @@ Table schema: schema:
 Finally, we close our GettingStarted, call it from `func main`, and handle any errors we returned:
 
 ```go
+    return nil
 } // func GettingStarted
 
 func main() {
