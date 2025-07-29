@@ -75,7 +75,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                     // end the heartbeat if the command has terminated
                     if (response.OperationState == TOperationState.CANCELED_STATE ||
-                        response.OperationState == TOperationState.ERROR_STATE)
+                        response.OperationState == TOperationState.ERROR_STATE ||
+                        response.OperationState == TOperationState.CLOSED_STATE)
                     {
                         break;
                     }

@@ -296,7 +296,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 var array = builder.Build();
 
                 // Return the result without making an RPC call
-                return new QueryResult(1, new HiveServer2Connection.HiveInfoArrowStream(schema, new[] { array }));
+                return CreateQueryResult(1, new HiveServer2Connection.HiveInfoArrowStream(schema, new[] { array }));
             }
 
             // If EnableMultipleCatalogSupport is true, delegate to base class implementation
@@ -333,7 +333,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 var schemaArray = new StringArray.Builder().Build();
 
                 // Return empty result
-                return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, new[] { catalogArray, schemaArray }));
+                return CreateQueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, new[] { catalogArray, schemaArray }));
             }
 
             // Call the base implementation with the potentially modified catalog name
@@ -389,7 +389,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 };
 
                 // Return empty result
-                return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
+                return CreateQueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
             }
 
             // Call the base implementation with the potentially modified catalog name
@@ -421,7 +421,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 var arrays = CreateColumnMetadataEmptyArray();
 
                 // Return empty result
-                return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
+                return CreateQueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
             }
 
             // Call the base implementation with the potentially modified catalog name
@@ -496,7 +496,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 new StringArray.Builder().Build()  // PK_NAME
             };
 
-            return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
+            return CreateQueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
         }
 
         protected override async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
@@ -554,7 +554,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 new Int32Array.Builder().Build()   // DEFERRABILITY
             };
 
-            return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
+            return CreateQueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(schema, arrays));
         }
 
         protected override async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
@@ -866,7 +866,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 fkColumnKeySeqBuilder.Build()
             };
 
-            return new QueryResult(descResult.Columns.Count, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
+            return CreateQueryResult(descResult.Columns.Count, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
     }
 }

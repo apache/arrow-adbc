@@ -108,5 +108,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             return await _activeReader.ReadNextRecordBatchAsync(cancellationToken);
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _activeReader?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
     }
 }
