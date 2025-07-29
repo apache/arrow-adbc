@@ -236,9 +236,21 @@ We can get information about the driver and the database:
     }
 ```
 
-We can also query for tables and columns in the database:
+We can also query for tables and columns in the database.
+
+Note: `GetObjects` takes an optional set of filters which control which objects are returned. We set them to `nil` here to return all objects.
 
 ```go
+    objectsReader, err := conn.GetObjects(
+        ctx,
+        adbc.ObjectDepthAll,
+        nil, /* catalog *string */
+        nil, /* dbSchema *string */
+        nil, /* tableName *string */
+        nil, /* columnName *string */
+        nil  /* tableType []string */
+    )
+
     objectsReader, err := conn.GetObjects(ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
     if err != nil {
         return err
