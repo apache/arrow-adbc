@@ -35,48 +35,50 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
     public class TelemetryHelper
     {
-        private static List<TelemetryFrontendLog> _eventsBatch = new List<TelemetryFrontendLog>();
-        private static readonly object _eventsBatchLock = new object();
-        private static long _lastFlushTimeMillis;
-        private static readonly Timer _flushTimer;
+        private List<TelemetryFrontendLog> _eventsBatch;
+        private readonly object _eventsBatchLock;
+        private long _lastFlushTimeMillis;
+        private readonly Timer _flushTimer;
 
-        private static TelemetryClient? _telemetryClient;
-        private static DatabricksActivityListener? _activityListener;
+        private TelemetryClient? _telemetryClient;
 
-        private static ClientContext? _clientContext;
-        private static string? _accessToken;
-        private static DriverConnectionParameters? _connectionParameters;
-        private static readonly DriverSystemConfiguration _systemConfiguration = new DriverSystemConfiguration()
+        private ClientContext? _clientContext;
+        private string? _accessToken;
+        private string? _hostUrl;
+        private DriverConnectionParameters? _connectionParameters;
+        private readonly DriverSystemConfiguration _systemConfiguration;
+
+        public TelemetryHelper(string? hostUrl, string? accessToken)
         {
-            DriverVersion = Util.GetDriverVersion(),
-            DriverName = Util.GetDriverName(),
-            OsName = Environment.OSVersion.Platform.ToString(),
-            OsVersion = Environment.OSVersion.Version.ToString(),
-            OsArch = Environment.OSVersion.Platform.ToString(),
-            RuntimeName = Assembly.GetExecutingAssembly().GetName().Name,
-            RuntimeVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
-            RuntimeVendor = RuntimeInformation.FrameworkDescription,
-            ClientAppName = null,
-            LocaleName = CultureInfo.CurrentCulture.Name,
-            ProcessName = Process.GetCurrentProcess().ProcessName
-        };
-
-        static TelemetryHelper()
-        {
+            _hostUrl = hostUrl;
+            _accessToken = accessToken;
             _lastFlushTimeMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _flushTimer = new Timer(TimerFlushEvents, null, DatabricksConnectionConfig.FLUSH_INTERVAL_MILLIS, DatabricksConnectionConfig.FLUSH_INTERVAL_MILLIS);
-            _activityListener = new DatabricksActivityListener();
-
+            _eventsBatch = new List<TelemetryFrontendLog>();
+            _eventsBatchLock = new object();
+            _systemConfiguration = new DriverSystemConfiguration()
+            {
+                DriverVersion = Util.GetDriverVersion(),
+                DriverName = Util.GetDriverName(),
+                OsName = Environment.OSVersion.Platform.ToString(),
+                OsVersion = Environment.OSVersion.Version.ToString(),
+                OsArch = Environment.OSVersion.Platform.ToString(),
+                RuntimeName = Assembly.GetExecutingAssembly().GetName().Name,
+                RuntimeVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                RuntimeVendor = RuntimeInformation.FrameworkDescription,
+                ClientAppName = null,
+                LocaleName = CultureInfo.CurrentCulture.Name,
+                ProcessName = Process.GetCurrentProcess().ProcessName
+            };
         }
 
-        public static void SetParameters(DriverConnectionParameters connectionParameters, ClientContext clientContext, string? accessToken)
+        public void SetParameters(DriverConnectionParameters connectionParameters, ClientContext clientContext)
         {
             _connectionParameters = connectionParameters;
             _clientContext = clientContext;
-            _accessToken = accessToken;
         }
 
-        public static void InitializeTelemetryClient(HttpClient httpClient)
+        public void InitializeTelemetryClient(HttpClient httpClient)
         {
             if (_telemetryClient == null && _connectionParameters?.HostInfo != null)
             {
@@ -84,7 +86,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             }
         }
 
-        public static void AddSqlExecutionEvent(SqlExecutionEvent sqlExecutionEvent)
+        public void AddSqlExecutionEvent(SqlExecutionEvent sqlExecutionEvent, long? latencyMs)
         {
             var telemetryEvent = new TelemetryEvent();
             var telemetryFrontendLog = new TelemetryFrontendLog();
@@ -94,6 +96,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             telemetryEvent.DriverConnectionParameters = _connectionParameters;
             telemetryEvent.SystemConfiguration = _systemConfiguration;
             telemetryEvent.SqlExecutionEvent = sqlExecutionEvent;
+            telemetryEvent.LatencyMs = latencyMs;
             frontendLogContext.ClientContext = _clientContext;
             frontendLogEntry.SqlDriverLog = telemetryEvent;
             telemetryFrontendLog.Entry = frontendLogEntry;
@@ -109,7 +112,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             };
         }
 
-        private static void TimerFlushEvents(object? state)
+        private void TimerFlushEvents(object? state)
         {
             var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             if (currentTime - _lastFlushTimeMillis >= DatabricksConnectionConfig.FLUSH_INTERVAL_MILLIS)
@@ -118,7 +121,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             }
         }
 
-        private static async Task FlushEvents()
+        private async Task FlushEvents()
         {
             if (_telemetryClient == null)
             {
@@ -157,16 +160,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             }
         }
 
-        public static async Task ForceFlushAsync()
+        public async Task ForceFlushAsync()
         {
             await FlushEvents();
         }
 
-        public static void Dispose()
+        public void Dispose()
         {
             _flushTimer?.Dispose();
-            _activityListener?.Dispose();
-
+            
             Task.Run(async () => await FlushEvents()).Wait(TimeSpan.FromSeconds(5));
         }
     }

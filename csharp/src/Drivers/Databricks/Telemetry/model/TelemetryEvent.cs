@@ -46,6 +46,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
         public DriverErrorInfo? ErrorInfo { get; set; }
 
         [JsonPropertyName("operation_latency_ms")]
-        public long LatencyMs { get; set; }
+        public long? LatencyMs { get; set; }
     }
 }

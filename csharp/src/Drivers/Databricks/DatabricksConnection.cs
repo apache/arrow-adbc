@@ -71,9 +71,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
-        private DriverConnectionParameters _connectionParams;
-        private HostDetails _hostDetails;
-        private ClientContext _clientContext;
+        private TelemetryHelper? _telemetryHelper;
+        private DatabricksActivityListener _databricksActivityListener;
 
         // Default namespace
         private TNamespace? _defaultNamespace;
@@ -82,10 +81,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
-            _connectionParams = new DriverConnectionParameters();
-            _hostDetails = new HostDetails();
-            _clientContext = new ClientContext();
             ValidateProperties();
+            _databricksActivityListener = new DatabricksActivityListener(_telemetryHelper);
         }
 
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
@@ -278,27 +275,31 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
             //Telemetry
+            var connectionParams = new DriverConnectionParameters();
+            var hostDetails = new HostDetails();
+            var clientContext = new ClientContext();
+            string? token = null;
+
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType))
             {
-                _connectionParams.AuthMech = Util.StringToAuthMech(authType);
+                connectionParams.AuthMech = Util.StringToAuthMech(authType);
             }
 
             if (Properties.TryGetValue(SparkParameters.HostName, out string? host))
             {
-                _hostDetails.HostUrl = host;
+                hostDetails.HostUrl = host;
             }
             if (Properties.TryGetValue(SparkParameters.Port, out string? port))
             {
-                _hostDetails.Port = Int32.Parse(port);
+                hostDetails.Port = Int32.Parse(port);
             }
-            _connectionParams.HostInfo = _hostDetails;
+            connectionParams.HostInfo = hostDetails;
 
             if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string? userAgent))
             {
-                _clientContext.UserAgent = userAgent;
+                clientContext.UserAgent = userAgent;
             }
-
-            string? token = null;
+            
             if(Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
             {
                 token = accessToken;
@@ -307,7 +308,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 token = accesstoken;
             }
-            TelemetryHelper.SetParameters(_connectionParams, _clientContext, token);
+            _telemetryHelper = new TelemetryHelper(hostDetails.HostUrl, token);
+            _telemetryHelper.SetParameters(connectionParams, clientContext);
         }
 
         /// <summary>
@@ -447,7 +449,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
-            TelemetryHelper.InitializeTelemetryClient(_authHttpClient);
+            _telemetryHelper?.InitializeTelemetryClient(_authHttpClient);
             return baseHandler;
         }
 
@@ -782,15 +784,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (disposing)
             {
                 _authHttpClient?.Dispose();
+                _databricksActivityListener?.Dispose();
                 
                 try
                 {
-                    TelemetryHelper.ForceFlushAsync().Wait(TimeSpan.FromSeconds(2));
+                    _telemetryHelper?.ForceFlushAsync().Wait(TimeSpan.FromSeconds(2));
                 }
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"Failed to flush telemetry on dispose: {ex.Message}");
                 }
+
+                _telemetryHelper?.Dispose();
             }
             base.Dispose(disposing);
         }
