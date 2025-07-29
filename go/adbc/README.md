@@ -248,7 +248,7 @@ Note: `GetObjects` takes an optional set of filters which control which objects 
         nil, /* dbSchema *string */
         nil, /* tableName *string */
         nil, /* columnName *string */
-        nil  /* tableType []string */
+        nil,  /* tableType []string */
     )
     if err != nil {
         return err
