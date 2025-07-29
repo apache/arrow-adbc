@@ -250,8 +250,6 @@ Note: `GetObjects` takes an optional set of filters which control which objects 
         nil, /* columnName *string */
         nil  /* tableType []string */
     )
-
-    objectsReader, err := conn.GetObjects(ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
     if err != nil {
         return err
     }
