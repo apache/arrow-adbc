@@ -50,7 +50,7 @@ import (
     "github.com/apache/arrow-go/v18/arrow/memory"
 )
 
-func main() {
+func GettingStarted() error {
     ctx := context.Background()
 
 ```
@@ -272,7 +272,6 @@ We can get the Arrow schema of a table:
 
     // tableSchema is an *arrow.Schema
     fmt.Printf("Table schema: %s\n", tableSchema.String())
-}
 ```
 
 This prints:
@@ -282,4 +281,19 @@ Table schema: schema:
   fields: 2
     - ints: type=int64, nullable
     - strs: type=utf8, nullable
+```
+
+Finally, we close our GettingStarted, call it from `func main`, and handle any errors we returned:
+
+```go
+} // func GettingStarted
+
+func main() {
+   err := GettingStarted()
+
+    if err != nil {
+        fmt.Printf("Failed with error: %s", err)
+        os.Exit(1)
+    }
+}
 ```
