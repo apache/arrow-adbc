@@ -142,7 +142,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
                 }
                 Schema schema = GetSchemaFromMetadata(metadata);
-                return CreateQueryResult(-1, Connection.NewReader(this, schema, metadata));
+                return new QueryResult(-1, CreateManagedReader(schema, metadata));
             });
         }
 
@@ -358,14 +358,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public TOperationHandle? OperationHandle { get; private set; }
 
-        private QueryResult? _currentQueryResult;
+        private IArrowArrayStream? _currentReader;
 
-        protected QueryResult CreateQueryResult(long rowCount, IArrowArrayStream stream)
+        protected IArrowArrayStream CreateManagedReader(Schema schema, TGetResultSetMetadataResp? metadata = null)
         {
-            // Dispose any existing QueryResult before creating a new one
-            _currentQueryResult?.Dispose();
-            _currentQueryResult = new QueryResult(rowCount, stream);
-            return _currentQueryResult;
+            // Dispose any existing reader before creating a new one
+            _currentReader?.Dispose();
+            _currentReader = Connection.NewReader(this, schema, metadata);
+            return _currentReader;
         }
 
         // Keep the original Client property for internal use
@@ -395,9 +395,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             this.TraceActivity(activity =>
             {
-                // Dispose any active QueryResult first
-                _currentQueryResult?.Dispose();
-                _currentQueryResult = null;
+                // Dispose any active reader first
+                _currentReader?.Dispose();
+                _currentReader = null;
 
                 if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
                 {
@@ -610,13 +610,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
                 IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
 
-                return CreateQueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(schema, data));
+                return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(schema, data));
             }
 
             await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
             schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
 
-            return CreateQueryResult(-1, Connection.NewReader(this, schema));
+            return new QueryResult(-1, CreateManagedReader(schema));
         }
 
         protected internal QueryResult EnhanceGetColumnsResult(Schema originalSchema, IReadOnlyList<IArrowArray> originalData,
@@ -707,7 +707,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             enhancedData[decimalDigitsIndex] = decimalDigitsArray;
             enhancedData.Add(baseTypeNameArray);
 
-            return CreateQueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(enhancedSchema, enhancedData));
+            return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(enhancedSchema, enhancedData));
         }
 
         // Helper method to read all batches from a stream
@@ -828,11 +828,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // 6. Return the combined result
             var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
 
-            return CreateQueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
+            return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
 
         // Helper method to create an empty result with the complete extended columns schema
-        protected QueryResult CreateEmptyExtendedColumnsResult(Schema baseSchema)
+        protected static QueryResult CreateEmptyExtendedColumnsResult(Schema baseSchema)
         {
             // Create the complete schema with all fields
             var allFields = new List<Field>(baseSchema.FieldsList);
@@ -898,7 +898,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
             }
 
-            return CreateQueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
+            return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
 
         /**

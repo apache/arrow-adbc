@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-using System;
 using System.Collections.Generic;
 using Apache.Arrow.Ipc;
 
@@ -24,10 +23,8 @@ namespace Apache.Arrow.Adbc
     /// <summary>
     /// Represents a query result.
     /// </summary>
-    public sealed class QueryResult : IDisposable
+    public sealed class QueryResult
     {
-        private bool _disposed;
-
         /// <summary>
         /// Initializes an AdbcQueryResult
         /// </summary>
@@ -41,7 +38,6 @@ namespace Apache.Arrow.Adbc
         {
             RowCount = rowCount;
             Stream = stream;
-            _disposed = false;
         }
 
         /// <summary>
@@ -53,18 +49,6 @@ namespace Apache.Arrow.Adbc
         /// The <see cref="IArrowArrayStream"/> for reading.
         /// </summary>
         public IArrowArrayStream? Stream { get; set; }
-
-        /// <summary>
-        /// Disposes the query result and its associated stream.
-        /// </summary>
-        public void Dispose()
-        {
-            if (!_disposed)
-            {
-                Stream?.Dispose();
-                _disposed = true;
-            }
-        }
     }
 
     /// <summary>
