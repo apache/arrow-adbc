@@ -35,8 +35,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
     public class TelemetryHelper
     {
-        private List<TelemetryFrontendLog> _eventsBatch;
-        private readonly object _eventsBatchLock;
+        private static readonly ConcurrentQueue<TelemetryFrontendLog> EventsBatch = new ConcurrentQueue<TelemetryFrontendLog>();
         private long _lastFlushTimeMillis;
         private readonly Timer _flushTimer;
 
@@ -54,8 +53,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             _accessToken = accessToken;
             _lastFlushTimeMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _flushTimer = new Timer(TimerFlushEvents, null, DatabricksConnectionConfig.FLUSH_INTERVAL_MILLIS, DatabricksConnectionConfig.FLUSH_INTERVAL_MILLIS);
-            _eventsBatch = new List<TelemetryFrontendLog>();
-            _eventsBatchLock = new object();
             _systemConfiguration = new DriverSystemConfiguration()
             {
                 DriverVersion = Util.GetDriverVersion(),
@@ -102,14 +99,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             telemetryFrontendLog.Entry = frontendLogEntry;
             telemetryFrontendLog.Context = frontendLogContext;
 
-            lock (_eventsBatchLock)
+            EventsBatch.Enqueue(telemetryFrontendLog);
+            
+            if (EventsBatch.Count >= DatabricksConnectionConfig.MAX_BATCH_SIZE)
             {
-                _eventsBatch.Add(telemetryFrontendLog);
-                if (_eventsBatch.Count >= DatabricksConnectionConfig.MAX_BATCH_SIZE)
-                {
-                    Task.Run(() => FlushEvents());
-                }
-            };
+                Task.Run(() => FlushEvents());
+            }
         }
 
         private void TimerFlushEvents(object? state)
@@ -128,35 +123,33 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
                 return;
             }
 
-            List<TelemetryFrontendLog>? eventsToFlush = null;
-
-            lock (_eventsBatchLock)
+            var eventsToFlush = new List<TelemetryFrontendLog>();
+            
+            // Dequeue all current events
+            while (EventsBatch.TryDequeue(out var telemetryEvent))
             {
-                if (_eventsBatch.Count == 0)
-                {
-                    return;
-                }
-
-                eventsToFlush = new List<TelemetryFrontendLog>(_eventsBatch);
-                _eventsBatch.Clear();
-                _lastFlushTimeMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                eventsToFlush.Add(telemetryEvent);
             }
 
-            if (eventsToFlush != null && eventsToFlush.Count > 0)
+            if (eventsToFlush.Count == 0)
             {
-                try
+                return;
+            }
+
+            _lastFlushTimeMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            try
+            {
+                var success = await _telemetryClient.SendTelemetryBatchAsync(eventsToFlush);
+                
+                if (!success)
                 {
-                    var success = await _telemetryClient.SendTelemetryBatchAsync(eventsToFlush);
-                    
-                    if (!success)
-                    {
-                        System.Diagnostics.Debug.WriteLine("Failed to send telemetry batch");
-                    }
+                    System.Diagnostics.Debug.WriteLine("Failed to send telemetry batch");
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Exception while flushing telemetry events: {ex.Message}");
-                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Exception while flushing telemetry events: {ex.Message}");
             }
         }
 
@@ -168,7 +161,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
         public void Dispose()
         {
             _flushTimer?.Dispose();
-            
+
             Task.Run(async () => await FlushEvents()).Wait(TimeSpan.FromSeconds(5));
         }
     }

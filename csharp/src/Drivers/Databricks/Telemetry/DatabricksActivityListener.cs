@@ -17,6 +17,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
@@ -48,7 +49,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             {
                 return;
             }
-
+            
             if(activity.OperationName.EndsWith("ExecuteStatementAsync"))
             {
                 var sqlExecutionEvent = new SqlExecutionEvent();

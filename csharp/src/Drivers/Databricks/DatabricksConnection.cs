@@ -794,8 +794,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     Debug.WriteLine($"Failed to flush telemetry on dispose: {ex.Message}");
                 }
-
-                _telemetryHelper?.Dispose();
             }
             base.Dispose(disposing);
         }
