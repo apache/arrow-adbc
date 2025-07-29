@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Apache.Arrow.Adbc.Tracing;
+using Apache.Arrow.Ipc;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
 using Xunit;
@@ -29,6 +30,10 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 {
     public class TracingTests(ITestOutputHelper? outputHelper) : IDisposable
     {
+        private const string SourceTagName = "sourceTagName";
+        private const string SourceTagValue = "sourceTagValue";
+        private const string TraceParent = "00-3236da27af79882bd317c4d1c3776982-a3cc9bd52ccd58e6-01";
+
         private readonly ITestOutputHelper? _outputHelper = outputHelper;
         private bool _disposed;
 
@@ -143,12 +148,10 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             testClass.MethodWithActivity(eventNameWithoutParent);
             Assert.True(exportedActivities.Count() > 0);
 
-            const string traceParent = "00-3236da27af79882bd317c4d1c3776982-a3cc9bd52ccd58e6-01";
-
             const int withParentCountExpected = 10;
             for (int i = 0; i < withParentCountExpected; i++)
             {
-                testClass.MethodWithActivity(eventNameWithParent, traceParent);
+                testClass.MethodWithActivity(eventNameWithParent, TraceParent);
             }
 
             testClass.MethodWithActivity(eventNameWithoutParent);
@@ -169,11 +172,59 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 else if (exportedActivity.OperationName.Contains(eventNameWithParent))
                 {
                     withParentCount++;
-                    Assert.Equal(traceParent, exportedActivity.ParentId);
+                    Assert.Equal(TraceParent, exportedActivity.ParentId);
                 }
             }
             Assert.Equal(2, withoutParentCount);
             Assert.Equal(withParentCountExpected, withParentCount);
+        }
+
+        [Fact]
+        internal void CanListenAndFilterActivitySourceTagsUsingActivityTrace()
+        {
+            string activitySourceName = NewName();
+            Queue<Activity> exportedActivities = new();
+            using (ActivityListener activityListener = new()
+            {
+                ShouldListenTo = source =>
+                {
+                    return source.Name == activitySourceName
+                        && source.Tags?.Any(t => t.Key == SourceTagName && t.Value?.Equals(SourceTagValue) == true) == true;
+                },
+                Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
+                ActivityStopped = activity => exportedActivities.Enqueue(activity)
+            })
+            {
+                ActivitySource.AddActivityListener(activityListener);
+
+                var testClass = new TraceProducer(activitySourceName);
+                testClass.MethodWithActivity();
+            }
+            Assert.Single(exportedActivities);
+        }
+
+        [Fact]
+        internal void CanListenAndFilterActivitySourceTagsUsingTracingConnection()
+        {
+            string activitySourceName = NewName();
+            Queue<Activity> exportedActivities = new();
+            var testClass = new MyTracingConnection(new Dictionary<string, string>(), activitySourceName);
+            using (ActivityListener activityListener = new()
+            {
+                ShouldListenTo = source =>
+                {
+                    return source.Name == testClass.ActivitySourceName
+                        && source.Tags?.Any(t => t.Key == SourceTagName && t.Value?.Equals(SourceTagValue) == true) == true;
+                },
+                Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
+                ActivityStopped = activity => exportedActivities.Enqueue(activity)
+            })
+            {
+                ActivitySource.AddActivityListener(activityListener);
+
+                testClass.MethodWithActivity();
+            }
+            Assert.Single(exportedActivities);
         }
 
         internal static string NewName() => Guid.NewGuid().ToString().Replace("-", "").ToLower();
@@ -203,7 +254,8 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             internal TraceProducer(string? activitySourceName = default, string? traceParent = default)
             {
-                _trace = new ActivityTrace(activitySourceName, traceParent: traceParent);
+                IEnumerable<KeyValuePair<string, object?>>? tags = [new(SourceTagName, SourceTagValue)];
+                _trace = new ActivityTrace(activitySourceName, traceParent: traceParent, tags: tags);
             }
 
             internal void MethodWithNoInstrumentation()
@@ -271,6 +323,33 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 Dispose(disposing: true);
                 GC.SuppressFinalize(this);
             }
+        }
+
+        private class MyTracingConnection(IReadOnlyDictionary<string, string> properties, string assemblyName) : TracingConnection(properties)
+        {
+            public override string AssemblyVersion => "1.0.0";
+            public override string AssemblyName { get; } = assemblyName;
+
+            public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
+            {
+                return [new KeyValuePair<string, object?>(SourceTagName, SourceTagValue)];
+            }
+
+            public void MethodWithActivity()
+            {
+                this.TraceActivity(activity =>
+                {
+                    activity?.AddTag("exampleTag", "exampleValue")
+                        .AddBaggage("exampleBaggage", "exampleBaggageValue")
+                        .AddEvent("exampleEvent", [new KeyValuePair<string, object?>("eventTag", "eventValue")])
+                        .AddLink(TraceParent, [new KeyValuePair<string, object?>("linkTag", "linkValue")]);
+                });
+            }
+
+            public override AdbcStatement CreateStatement() => throw new NotImplementedException();
+            public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern) => throw new NotImplementedException();
+            public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName) => throw new NotImplementedException();
+            public override IArrowArrayStream GetTableTypes() => throw new NotImplementedException();
         }
 
         internal class ActivityQueueExporter(Queue<Activity> exportedActivities) : BaseExporter<Activity>
