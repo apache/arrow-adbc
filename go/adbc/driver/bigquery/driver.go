@@ -77,6 +77,38 @@ const (
 
 	AccessTokenEndpoint   = "https://accounts.google.com/o/oauth2/token"
 	AccessTokenServerName = "google.com"
+
+	// WithAppDefaultCredentials instructs the driver to authenticate using
+	// Application Default Credentials (ADC).
+	OptionValueAuthTypeAppDefaultCredentials = "adbc.bigquery.sql.auth_type.app_default_credentials"
+
+	// WithJSONCredentials instructs the driver to authenticate using the
+	// given JSON credentials. The value should be a byte array representing
+	// the JSON credentials.
+	OptionValueAuthTypeJSONCredentials = "adbc.bigquery.sql.auth_type.json_credentials"
+
+	// WithOAuthClientIDs instructs the driver to authenticate using the given
+	// OAuth client ID and client secret. The value should be a string array
+	// of length 2, where the first element is the client ID and the second
+	// is the client secret.
+	OptionValueAuthTypeOAuthClientIDs = "adbc.bigquery.sql.auth_type.oauth_client_ids"
+
+	// OptionStringImpersonateTargetPrincipal instructs the driver to impersonate the
+	// given service account email.
+	OptionStringImpersonateTargetPrincipal = "adbc.bigquery.sql.impersonate.target_principal"
+
+	// OptionStringImpersonateDelegates instructs the driver to impersonate using the
+	// given comma-separated list of service account emails in the delegation
+	// chain.
+	OptionStringImpersonateDelegates = "adbc.bigquery.sql.impersonate.delegates"
+
+	// OptionStringImpersonateScopes instructs the driver to impersonate using the
+	// given comma-separated list of OAuth 2.0 scopes.
+	OptionStringImpersonateScopes = "adbc.bigquery.sql.impersonate.scopes"
+
+	// OptionStringImpersonateLifetime instructs the driver to impersonate for the
+	// given duration (e.g. "3600s").
+	OptionStringImpersonateLifetime = "adbc.bigquery.sql.impersonate.lifetime"
 )
 
 var (
