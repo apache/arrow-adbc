@@ -117,8 +117,7 @@ impl Driver {
         #[cfg(any(feature = "bundled", feature = "linked"))]
         {
             let driver_init: FFI_AdbcDriverInitFunc = init;
-            ManagedDriver::load_static(&driver_init, version)
-                .map(Self)
+            ManagedDriver::load_static(&driver_init, version).map(Self)
         }
         // Fallback: attempt to dynamically load the driver.
         #[cfg(not(any(feature = "bundled", feature = "linked")))]
