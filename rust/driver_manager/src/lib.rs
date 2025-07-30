@@ -140,7 +140,7 @@ fn check_status(status: ffi::FFI_AdbcStatusCode, error: ffi::FFI_AdbcError) -> R
         _ => {
             let mut error: Error = error.try_into()?;
             error.status = status.try_into()?;
-            Err(error.into())
+            Err(error)
         }
     }
 }
@@ -868,7 +868,7 @@ impl Optionable for ManagedDatabase {
                         error: *mut ffi::FFI_AdbcError| unsafe {
             method(database.deref_mut(), key, value, length, error)
         };
-        get_option_bytes(key, populate, driver).map_err(|e| e.into())
+        get_option_bytes(key, populate, driver)
     }
 
     fn get_option_double(&self, key: Self::Option) -> Result<f64> {
@@ -905,7 +905,7 @@ impl Optionable for ManagedDatabase {
                         error: *mut ffi::FFI_AdbcError| unsafe {
             method(database.deref_mut(), key, value, length, error)
         };
-        get_option_string(key, populate, driver).map_err(|e| e.into())
+        get_option_string(key, populate, driver)
     }
 
     fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
@@ -918,7 +918,6 @@ impl Optionable for ManagedDatabase {
             key,
             value,
         )
-        .map_err(|e| e.into())
     }
 }
 
@@ -1053,7 +1052,7 @@ impl Optionable for ManagedConnection {
                         error: *mut ffi::FFI_AdbcError| unsafe {
             method(connection.deref_mut(), key, value, length, error)
         };
-        get_option_bytes(key, populate, driver).map_err(|e| e.into())
+        get_option_bytes(key, populate, driver)
     }
 
     fn get_option_double(&self, key: Self::Option) -> Result<f64> {
@@ -1092,7 +1091,7 @@ impl Optionable for ManagedConnection {
                         error: *mut ffi::FFI_AdbcError| unsafe {
             method(connection.deref_mut(), key, value, length, error)
         };
-        get_option_string(key, populate, driver).map_err(|e| e.into())
+        get_option_string(key, populate, driver)
     }
 
     fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
@@ -1105,7 +1104,6 @@ impl Optionable for ManagedConnection {
             key,
             value,
         )
-        .map_err(|e| e.into())
     }
 }
 
@@ -1134,15 +1132,14 @@ impl Connection for ManagedConnection {
             return Err(Error::with_message_and_status(
                 ERR_CANCEL_UNSUPPORTED,
                 Status::NotImplemented,
-            )
-            .into());
+            ));
         }
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionCancel);
         let status = unsafe { method(connection.deref_mut(), &mut error) };
-        check_status(status, error).map_err(|e| e.into())
+        check_status(status, error)
     }
 
     fn commit(&mut self) -> Result<()> {
@@ -1151,7 +1148,7 @@ impl Connection for ManagedConnection {
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionCommit);
         let status = unsafe { method(connection.deref_mut(), &mut error) };
-        check_status(status, error).map_err(|e| e.into())
+        check_status(status, error)
     }
 
     fn rollback(&mut self) -> Result<()> {
@@ -1160,7 +1157,7 @@ impl Connection for ManagedConnection {
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionRollback);
         let status = unsafe { method(connection.deref_mut(), &mut error) };
-        check_status(status, error).map_err(|e| e.into())
+        check_status(status, error)
     }
 
     fn get_info(&self, codes: Option<HashSet<InfoCode>>) -> Result<impl RecordBatchReader> {
@@ -1263,8 +1260,7 @@ impl Connection for ManagedConnection {
             return Err(Error::with_message_and_status(
                 ERR_STATISTICS_UNSUPPORTED,
                 Status::NotImplemented,
-            )
-            .into());
+            ));
         }
 
         let catalog = catalog.map(CString::new).transpose()?;
@@ -1301,8 +1297,7 @@ impl Connection for ManagedConnection {
             return Err(Error::with_message_and_status(
                 ERR_STATISTICS_UNSUPPORTED,
                 Status::NotImplemented,
-            )
-            .into());
+            ));
         }
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
@@ -1475,15 +1470,14 @@ impl Statement for ManagedStatement {
             return Err(Error::with_message_and_status(
                 ERR_CANCEL_UNSUPPORTED,
                 Status::NotImplemented,
-            )
-            .into());
+            ));
         }
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementCancel);
         let status = unsafe { method(statement.deref_mut(), &mut error) };
-        check_status(status, error).map_err(|e| e.into())
+        check_status(status, error)
     }
 
     fn execute(&mut self) -> Result<impl RecordBatchReader> {
@@ -1613,7 +1607,7 @@ impl Optionable for ManagedStatement {
                         error: *mut ffi::FFI_AdbcError| unsafe {
             method(statement.deref_mut(), key, value, length, error)
         };
-        get_option_bytes(key, populate, driver).map_err(|e| e.into())
+        get_option_bytes(key, populate, driver)
     }
 
     fn get_option_double(&self, key: Self::Option) -> Result<f64> {
@@ -1650,7 +1644,7 @@ impl Optionable for ManagedStatement {
                         error: *mut ffi::FFI_AdbcError| unsafe {
             method(statement.deref_mut(), key, value, length, error)
         };
-        get_option_string(key, populate, driver).map_err(|e| e.into())
+        get_option_string(key, populate, driver)
     }
 
     fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
@@ -1663,7 +1657,6 @@ impl Optionable for ManagedStatement {
             key,
             value,
         )
-        .map_err(|e| e.into())
     }
 }
 

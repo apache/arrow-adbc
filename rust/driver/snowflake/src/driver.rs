@@ -42,7 +42,6 @@ static DRIVER: LazyLock<Result<ManagedDriver>> = LazyLock::new(|| {
         Some(b"AdbcDriverSnowflakeInit"),
         Default::default(),
     )
-    .map_err(adbc_core::error::Error::from)
 });
 
 /// Snowflake ADBC Driver.
@@ -120,7 +119,6 @@ impl Driver {
             let driver_init: FFI_AdbcDriverInitFunc = init;
             ManagedDriver::load_static(&driver_init, version)
                 .map(Self)
-                .map_err(adbc_core::error::Error::from)
         }
         // Fallback: attempt to dynamically load the driver.
         #[cfg(not(any(feature = "bundled", feature = "linked")))]
