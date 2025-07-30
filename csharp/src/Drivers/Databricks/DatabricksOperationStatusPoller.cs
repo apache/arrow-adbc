@@ -18,6 +18,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
@@ -32,14 +33,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         private readonly IHiveServer2Statement _statement;
         private readonly int _heartbeatIntervalSeconds;
+        private readonly int _requestTimeoutSeconds;
         // internal cancellation token source - won't affect the external token
         private CancellationTokenSource? _internalCts;
         private Task? _operationStatusPollingTask;
 
-        public DatabricksOperationStatusPoller(IHiveServer2Statement statement, int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds)
+        public DatabricksOperationStatusPoller(IHiveServer2Statement statement, int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds, int requestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _heartbeatIntervalSeconds = heartbeatIntervalSeconds;
+            _requestTimeoutSeconds = requestTimeoutSeconds;
         }
 
         public bool IsStarted => _operationStatusPollingTask != null;
@@ -70,9 +73,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     var operationHandle = _statement.OperationHandle;
                     if (operationHandle == null) break;
 
+                    CancellationToken GetOperationStatusTimeoutToken = ApacheUtility.GetCancellationToken(_requestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+
                     var request = new TGetOperationStatusReq(operationHandle);
-                    var response = await _statement.Client.GetOperationStatus(request, cancellationToken);
-                    await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), cancellationToken);
+                    var response = await _statement.Client.GetOperationStatus(request, GetOperationStatusTimeoutToken);
+                    await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), GetOperationStatusTimeoutToken);
 
                     // end the heartbeat if the command has terminated
                     if (response.OperationState == TOperationState.CANCELED_STATE ||

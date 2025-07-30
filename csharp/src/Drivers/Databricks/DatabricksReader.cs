@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
-        protected override async ValueTask<RecordBatch?> ReadNextRecordBatchInternalAsync(CancellationToken cancellationToken = default)
+        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             return await this.TraceActivity(async activity =>
             {

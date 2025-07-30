@@ -231,6 +231,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const int DefaultOperationStatusPollingIntervalSeconds = 60;
 
         /// <summary>
+        /// Default timeout in seconds for operation status polling requests
+        /// </summary>
+        public const int DefaultOperationStatusRequestTimeoutSeconds = 5;
+
+        /// <summary>
         /// OAuth grant type constants
         /// </summary>
         public static class OAuthGrantTypes

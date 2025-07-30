@@ -335,11 +335,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
 
-        protected internal int QueryTimeoutSeconds
+        public virtual int QueryTimeoutSeconds
         {
             // Coordinate updates with the connection
             get => Connection.QueryTimeoutSeconds;
-            set => Connection.QueryTimeoutSeconds = value;
+            protected internal set => Connection.QueryTimeoutSeconds = value;
         }
 
         protected internal bool IsMetadataCommand { get; set; } = false;
@@ -356,7 +356,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public HiveServer2Connection Connection { get; private set; }
 
-        public TOperationHandle? OperationHandle { get; private set; }
+        public virtual TOperationHandle? OperationHandle { get; private set; }
 
         private IArrowArrayStream? _currentReader;
 
@@ -369,7 +369,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         // Keep the original Client property for internal use
-        public TCLIService.IAsync Client => Connection.Client;
+        public virtual TCLIService.IAsync Client => Connection.Client;
 
         public override string AssemblyName => HiveServer2Connection.s_assemblyName;
 
@@ -395,6 +395,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             this.TraceActivity(activity =>
             {
+                _currentReader?.Dispose();
+                _currentReader = null;
                 if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
                 {
                     CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
@@ -404,11 +406,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
                     OperationHandle = null;
                 }
-                // For DatabricksReader, must be called after CloseOperation, otherwise it may cancel a 
-                // request when the input buffer of Thrift client has not been fully read
-                _currentReader?.Dispose();
-                _currentReader = null;
-
                 base.Dispose();
             });
         }

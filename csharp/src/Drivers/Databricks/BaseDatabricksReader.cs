@@ -23,14 +23,13 @@ using Apache.Arrow.Adbc.Tracing;
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
-    /// Base class for Databricks readers that handles common functionality. Handles the operation status poller.
+    /// Base class for Databricks readers that handles common functionality of DatabricksReader and CloudFetchReader
     /// </summary>
     internal abstract class BaseDatabricksReader : TracingReader
     {
         protected DatabricksStatement statement;
         protected readonly Schema schema;
         protected readonly bool isLz4Compressed;
-        protected DatabricksOperationStatusPoller? operationStatusPoller;
         protected bool hasNoMoreRows = false;
         private bool isDisposed;
 
@@ -40,48 +39,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             this.schema = schema;
             this.isLz4Compressed = isLz4Compressed;
             this.statement = statement;
-            if (statement.DirectResults?.ResultSet != null && !statement.DirectResults.ResultSet.HasMoreRows)
-            {
-                return;
-            }
-            operationStatusPoller = new DatabricksOperationStatusPoller(statement);
-            operationStatusPoller.Start();
         }
 
         public override Schema Schema { get { return schema; } }
 
-        protected virtual void StopOperationStatusPoller()
-        {
-            operationStatusPoller?.Stop();
-        }
-
         protected override void Dispose(bool disposing)
         {
-            if (!isDisposed)
-            {
-                if (disposing)
-                {
-                    DisposeOperationStatusPoller();
-                    DisposeResources();
-                }
-                isDisposed = true;
-            }
+            DisposeResources();
 
             base.Dispose(disposing);
+            isDisposed = true;
         }
 
         protected virtual void DisposeResources()
         {
-        }
-
-        protected void DisposeOperationStatusPoller()
-        {
-            if (operationStatusPoller != null)
-            {
-                StopOperationStatusPoller();
-                operationStatusPoller.Dispose();
-                operationStatusPoller = null;
-            }
         }
 
         protected void ThrowIfDisposed()
@@ -95,33 +66,5 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public override string AssemblyName => DatabricksConnection.s_assemblyName;
 
         public override string AssemblyVersion => DatabricksConnection.s_assemblyVersion;
-
-        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var result = await ReadNextRecordBatchInternalAsync(cancellationToken);
-                // Stop the poller when we've reached the end of results
-                if (result == null)
-                {
-                    StopOperationStatusPoller();
-                }
-                return result;
-            }
-            catch
-            {
-                // Stop the poller immediately on any exception to prevent unnecessary polling
-                StopOperationStatusPoller();
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Internal method that derived classes implement to read the next record batch.
-        /// This method is called by ReadNextRecordBatchAsync which provides exception handling.
-        /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>The next record batch, or null if there are no more batches.</returns>
-        protected abstract ValueTask<RecordBatch?> ReadNextRecordBatchInternalAsync(CancellationToken cancellationToken);
     }
 }

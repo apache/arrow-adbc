@@ -938,30 +938,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             return currentReaderField?.GetValue(statement);
         }
 
-        private static object? GetActualReaderFromComposite(object compositeReader)
-        {
-            if (compositeReader.GetType().Name != "DatabricksCompositeReader")
-                return compositeReader;
-
-            var activeReaderField = compositeReader.GetType().GetField("_activeReader", BindingFlags.NonPublic | BindingFlags.Instance);
-            return activeReaderField?.GetValue(compositeReader) ?? compositeReader;
-        }
-
-        private static object? GetOperationStatusPoller(object reader)
-        {
-            if (reader.GetType().BaseType?.Name != "BaseDatabricksReader")
-                return null;
-
-            var pollerField = reader.GetType().BaseType?.GetField("operationStatusPoller", BindingFlags.NonPublic | BindingFlags.Instance);
-            return pollerField?.GetValue(reader);
-        }
-
-        private static bool IsPollerStarted(object poller)
-        {
-            var isStartedProperty = poller.GetType().GetProperty("IsStarted", BindingFlags.Public | BindingFlags.Instance);
-            return isStartedProperty != null && (bool)isStartedProperty.GetValue(poller)!;
-        }
-
         [SkippableTheory]
         [InlineData(false, "GetCatalogs", null)]
         [InlineData(false, "GetSchemas", null)]
@@ -1010,15 +986,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             var currentReader = GetCurrentReader(statement);
             Assert.NotNull(currentReader);
             OutputHelper?.WriteLine($"Reader type: {currentReader.GetType().Name}");
-
-            // Get the actual reader (unwrap composite if needed)
-            var actualReader = GetActualReaderFromComposite(currentReader);
-
-            Assert.NotNull(actualReader);
-
-            // Check if we have a poller
-            var poller = GetOperationStatusPoller(actualReader);
-            Assert.NotNull(poller);
 
             // Dispose the statement while there are still results to read
             // This should stop the status poller and dispose the reader
