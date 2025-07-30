@@ -247,6 +247,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 _downloadQueue.Add(EndOfResultsGuard.Instance, cancellationToken);
                 _isCompleted = true;
             }
+            catch (OperationCanceledException)
+            {
+                // downloadQueue could be full, would block indefinitely
+            }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Unhandled error in fetcher: {ex.Message}");

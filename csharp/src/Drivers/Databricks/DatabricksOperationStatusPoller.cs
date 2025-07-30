@@ -20,6 +20,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -76,7 +77,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     // end the heartbeat if the command has terminated
                     if (response.OperationState == TOperationState.CANCELED_STATE ||
                         response.OperationState == TOperationState.ERROR_STATE ||
-                        response.OperationState == TOperationState.CLOSED_STATE)
+                        response.OperationState == TOperationState.CLOSED_STATE ||
+                        response.OperationState == TOperationState.TIMEDOUT_STATE ||
+                        response.OperationState == TOperationState.UKNOWN_STATE)
                     {
                         break;
                     }
@@ -98,7 +101,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (_internalCts != null)
             {
                 _internalCts.Cancel();
-                _operationStatusPollingTask?.Wait();
+                try
+                {
+                    if (_operationStatusPollingTask != null)
+                        _operationStatusPollingTask?.GetAwaiter().GetResult();
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected, no-op
+                }
+                catch (TTransportException)
+                {
+                    // ignore
+                }
+
                 _internalCts.Dispose();
             }
         }

@@ -28,6 +28,7 @@ using Xunit.Abstractions;
 using System.Linq;
 using System.IO;
 using System.Text.Json;
+using System.Reflection;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
@@ -927,6 +928,106 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.Equal(30000000, totalRows);
             Assert.True(batchCount > 1, "Should have read multiple batches");
             OutputHelper?.WriteLine($"Successfully read {totalRows} rows in {batchCount} batches after 30 minute delay with {configName}");
+        }
+
+        private static object? GetCurrentReader(AdbcStatement statement)
+        {
+            var statementType = statement.GetType();
+            var baseType = statementType.BaseType?.BaseType; // HiveServer2Statement
+            var currentReaderField = baseType?.GetField("_currentReader", BindingFlags.NonPublic | BindingFlags.Instance);
+            return currentReaderField?.GetValue(statement);
+        }
+
+        private static object? GetActualReaderFromComposite(object compositeReader)
+        {
+            if (compositeReader.GetType().Name != "DatabricksCompositeReader")
+                return compositeReader;
+
+            var activeReaderField = compositeReader.GetType().GetField("_activeReader", BindingFlags.NonPublic | BindingFlags.Instance);
+            return activeReaderField?.GetValue(compositeReader) ?? compositeReader;
+        }
+
+        private static object? GetOperationStatusPoller(object reader)
+        {
+            if (reader.GetType().BaseType?.Name != "BaseDatabricksReader")
+                return null;
+
+            var pollerField = reader.GetType().BaseType?.GetField("operationStatusPoller", BindingFlags.NonPublic | BindingFlags.Instance);
+            return pollerField?.GetValue(reader);
+        }
+
+        private static bool IsPollerStarted(object poller)
+        {
+            var isStartedProperty = poller.GetType().GetProperty("IsStarted", BindingFlags.Public | BindingFlags.Instance);
+            return isStartedProperty != null && (bool)isStartedProperty.GetValue(poller)!;
+        }
+
+        [SkippableTheory]
+        [InlineData(false, "GetCatalogs", null)]
+        [InlineData(false, "GetSchemas", null)]
+        [InlineData(false, "GetTables", null)]
+        [InlineData(false, "GetPrimaryKeys", null)]
+        [InlineData(false, "GetCrossReference", null)]
+        [InlineData(true, "SELECT", "SELECT id FROM RANGE(100000000)")]
+        [InlineData(false, "SELECT", "SELECT id FROM RANGE(10000000)")]
+        public async Task DisposingStatementDuringConsumptionStopsPoller(bool useCloudFetch, string queryType, string? customQuery)
+        {
+            OutputHelper?.WriteLine($"Testing statement disposal during consumption (CloudFetch: {useCloudFetch}, Query: {queryType})");
+
+            // Create a connection with direct results disabled to force non-direct result path
+            var connectionParams = new Dictionary<string, string>
+            {
+                [DatabricksParameters.UseCloudFetch] = useCloudFetch.ToString().ToLower(),
+                [DatabricksParameters.EnableDirectResults] = "false"
+            };
+            
+            using AdbcConnection connection = NewConnection(TestConfiguration, connectionParams);
+            var statement = connection.CreateStatement();
+
+            // Execute query - either metadata or regular SQL
+            QueryResult result;
+            if (queryType == "SELECT")
+            {
+                statement.SqlQuery = customQuery ?? "SELECT id FROM RANGE(10000000)";
+                result = statement.ExecuteQuery();
+            }
+            else
+            {
+                // Set up metadata query
+                statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+                statement.SetOption(ApacheParameters.SchemaName, "default");
+                statement.SetOption(ApacheParameters.TableName, "%");
+                statement.SqlQuery = queryType.ToLowerInvariant();
+                result = statement.ExecuteQuery();
+            }
+
+            Assert.NotNull(result.Stream);
+
+            // Read just the first batch to ensure the reader is started
+            var firstBatch = await result.Stream.ReadNextRecordBatchAsync();
+
+            // Verify we have a reader with a poller after reading first batch
+            var currentReader = GetCurrentReader(statement);
+            Assert.NotNull(currentReader);
+            OutputHelper?.WriteLine($"Reader type: {currentReader.GetType().Name}");
+
+            // Get the actual reader (unwrap composite if needed)
+            var actualReader = GetActualReaderFromComposite(currentReader);
+
+            Assert.NotNull(actualReader);
+
+            // Check if we have a poller
+            var poller = GetOperationStatusPoller(actualReader);
+            Assert.NotNull(poller);
+
+            // Dispose the statement while there are still results to read
+            // This should stop the status poller and dispose the reader
+            statement.Dispose();
+
+            // Verify reader was disposed
+            var readerAfterDispose = GetCurrentReader(statement);
+            Assert.Null(readerAfterDispose); // Reader should be null after disposal
+            OutputHelper?.WriteLine("Test completed - reader was properly disposed");
         }
 
         [SkippableTheory]
