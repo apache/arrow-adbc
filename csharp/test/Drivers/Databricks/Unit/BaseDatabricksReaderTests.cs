@@ -18,7 +18,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Types;
 using Moq;

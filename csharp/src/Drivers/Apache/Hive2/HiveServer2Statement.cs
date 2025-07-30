@@ -395,10 +395,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             this.TraceActivity(activity =>
             {
-                // Dispose any active reader first
-                _currentReader?.Dispose();
-                _currentReader = null;
-
                 if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
                 {
                     CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
@@ -408,6 +404,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
                     OperationHandle = null;
                 }
+                // For DatabricksReader, must be called after CloseOperation, otherwise it may cancel a 
+                // request when the input buffer of Thrift client has not been fully read
+                _currentReader?.Dispose();
+                _currentReader = null;
 
                 base.Dispose();
             });
