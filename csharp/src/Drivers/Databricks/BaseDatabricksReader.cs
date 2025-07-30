@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public override Schema Schema { get { return schema; } }
 
-        protected void StopOperationStatusPoller()
+        protected virtual void StopOperationStatusPoller()
         {
             operationStatusPoller?.Stop();
         }
@@ -78,7 +78,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             if (operationStatusPoller != null)
             {
-                operationStatusPoller.Stop();
+                StopOperationStatusPoller();
                 operationStatusPoller.Dispose();
                 operationStatusPoller = null;
             }

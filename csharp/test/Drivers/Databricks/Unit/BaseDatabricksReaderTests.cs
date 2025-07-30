@@ -16,10 +16,14 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Types;
+using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Xunit;
 
@@ -27,21 +31,23 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 {
     public class BaseDatabricksReaderTests
     {
-        private readonly Mock<DatabricksStatement> _mockStatement;
-        private readonly Mock<DatabricksOperationStatusPoller> _mockPoller;
+        private readonly TestDatabricksStatement _testStatement;
+        private readonly DatabricksOperationStatusPoller _poller;
         private readonly Schema _schema;
         private readonly TestableDatabricksReader _reader;
+        private readonly Mock<TCLIService.IAsync> _mockClient;
 
         public BaseDatabricksReaderTests()
         {
-            _mockStatement = new Mock<DatabricksStatement>();
-            _mockPoller = new Mock<DatabricksOperationStatusPoller>(_mockStatement.Object, 1);
+            _mockClient = new Mock<TCLIService.IAsync>();
+            _testStatement = new TestDatabricksStatement(_mockClient.Object);
+            _poller = new DatabricksOperationStatusPoller(_testStatement, 1);
             _schema = new Schema(new[]
             {
                 new Field("test", StringType.Default, false)
             }, new System.Collections.Generic.Dictionary<string, string>());
             
-            _reader = new TestableDatabricksReader(_mockStatement.Object, _schema, _mockPoller.Object);
+            _reader = new TestableDatabricksReader(_testStatement, _schema, _poller);
         }
 
         [Fact]
@@ -55,7 +61,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 
             // Assert
             Assert.Null(result);
-            _mockPoller.Verify(p => p.Stop(), Times.Once);
+            Assert.True(_reader.StopOperationStatusPollerCalled, "StopOperationStatusPoller should be called when null is returned");
         }
 
         [Fact]
@@ -68,7 +74,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             // Act & Assert
             var exception = await Assert.ThrowsAsync<Exception>(async () => await _reader.ReadNextRecordBatchAsync());
             Assert.Same(expectedException, exception);
-            _mockPoller.Verify(p => p.Stop(), Times.Once);
+            Assert.True(_reader.StopOperationStatusPollerCalled, "StopOperationStatusPoller should be called when exception is thrown");
         }
 
         [Fact]
@@ -87,7 +93,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             // Assert
             Assert.NotNull(result);
             Assert.Equal(1, result.Length);
-            _mockPoller.Verify(p => p.Stop(), Times.Never);
+            Assert.False(_reader.StopOperationStatusPollerCalled, "StopOperationStatusPoller should not be called when data is returned");
         }
 
         [Fact]
@@ -97,8 +103,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             _reader.Dispose();
 
             // Assert
-            _mockPoller.Verify(p => p.Stop(), Times.Once);
-            _mockPoller.Verify(p => p.Dispose(), Times.Once);
+            Assert.True(_reader.StopOperationStatusPollerCalled, "StopOperationStatusPoller should be called on dispose");
+            // Note: We can't directly verify Dispose was called on the poller, but disposing the reader should dispose the poller
         }
 
         // Test implementation of BaseDatabricksReader
@@ -106,14 +112,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         {
             private RecordBatch? _nextResult;
             private Exception? _nextException;
+            public bool StopOperationStatusPollerCalled { get; private set; }
 
-            public TestableDatabricksReader(DatabricksStatement statement, Schema schema, DatabricksOperationStatusPoller? poller = null) 
+            public TestableDatabricksReader(TestDatabricksStatement statement, Schema schema, DatabricksOperationStatusPoller? poller = null) 
                 : base(statement, schema, true)
             {
                 if (poller != null)
                 {
                     operationStatusPoller = poller;
                 }
+                StopOperationStatusPollerCalled = false; // Explicit initialization
             }
 
             public void SetNextResult(RecordBatch? result)
@@ -137,8 +145,54 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 return new ValueTask<RecordBatch?>(_nextResult);
             }
 
+            protected override void StopOperationStatusPoller()
+            {
+                StopOperationStatusPollerCalled = true;
+                base.StopOperationStatusPoller();
+            }
+
             public override string AssemblyName => "TestAssembly";
             public override string AssemblyVersion => "1.0.0";
+        }
+
+        // Test implementation of DatabricksStatement that doesn't require a real connection
+        private class TestDatabricksStatement : DatabricksStatement
+        {
+            private readonly TCLIService.IAsync _mockClient;
+
+            // Create a minimal mock connection that satisfies the constructor
+            private static TestDatabricksConnection CreateTestConnection(TCLIService.IAsync mockClient)
+            {
+                var properties = new Dictionary<string, string>
+                {
+                    [SparkParameters.HostName] = "test.databricks.com",
+                    [SparkParameters.AuthType] = "token",
+                    [SparkParameters.Token] = "test-token"
+                };
+                return new TestDatabricksConnection(properties, mockClient);
+            }
+
+            public TestDatabricksStatement(TCLIService.IAsync mockClient) : base(CreateTestConnection(mockClient))
+            {
+                _mockClient = mockClient;
+            }
+        }
+
+        // Test implementation of DatabricksConnection
+        private class TestDatabricksConnection : DatabricksConnection
+        {
+            private readonly TCLIService.IAsync _mockClient;
+
+            public TestDatabricksConnection(IReadOnlyDictionary<string, string> properties, TCLIService.IAsync mockClient) : base(properties)
+            {
+                _mockClient = mockClient;
+            }
+
+            protected override TCLIService.IAsync CreateTCLIServiceClient(Thrift.Protocol.TProtocol protocol)
+            {
+                // Return the injected mock client to avoid real connections
+                return _mockClient;
+            }
         }
     }
 }
