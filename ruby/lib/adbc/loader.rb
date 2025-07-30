@@ -60,23 +60,3 @@ module ADBC
     end
   end
 end
-
-module ADBCArrow
-  class Loader < GObjectIntrospection::Loader
-    class << self
-      def load
-        super("ADBCArrow", ADBCArrow)
-      end
-    end
-
-    private
-    def post_load(repository, namespace)
-      require_libraries
-    end
-
-    def require_libraries
-      require_relative "arrow-connection"
-      require_relative "arrow-statement"
-    end
-  end
-end
