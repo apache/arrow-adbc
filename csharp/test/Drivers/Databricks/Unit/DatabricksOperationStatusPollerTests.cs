@@ -65,7 +65,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 
             // Act
             poller.Start();
-            await Task.Delay(_heartbeatIntervalSeconds * 2); // Wait for 2 seconds to allow multiple polls
+            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Wait for 3 seconds to allow multiple polls
 
             // Assert
             Assert.True(pollCount > 0, "Should have polled at least once");
@@ -84,13 +84,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 
             // Act
             poller.Start();
-            await Task.Delay(_heartbeatIntervalSeconds * 2); // Let it poll for a bit
+            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Let it poll for a bit
             poller.Dispose();
-            await Task.Delay(_heartbeatIntervalSeconds * 2); // Wait to see if it continues polling
+            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Wait to see if it continues polling
 
             // Assert
             int finalPollCount = pollCount;
-            await Task.Delay(_heartbeatIntervalSeconds * 2); // Wait another second
+            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Wait another second
             Assert.Equal(finalPollCount, pollCount); // Poll count should not increase after disposal
         }
 
@@ -101,7 +101,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             {
                 TOperationState.CANCELED_STATE,
                 TOperationState.ERROR_STATE,
-                TOperationState.CLOSED_STATE
+                TOperationState.CLOSED_STATE,
+                TOperationState.TIMEDOUT_STATE,
+                TOperationState.UKNOWN_STATE
             };
 
             foreach (var terminalState in terminalStates)
@@ -115,7 +117,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 
                 // Act
                 poller.Start();
-                await Task.Delay(_heartbeatIntervalSeconds * 3); // Wait longer than heartbeat interval
+                await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Wait longer than heartbeat interval
 
                 // Assert
                 Assert.Equal(1, pollCount);
@@ -156,11 +158,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 
             // Act
             poller.Start();
-            await Task.Delay(_heartbeatIntervalSeconds * 3); // Wait longer than heartbeat interval
+            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Wait longer than heartbeat interval
 
             // Assert
             // Should stop polling after the exception
-            Assert.True(pollCount >= 1, "Should have attempted at least one poll");
+            Assert.Equal(1, pollCount);
             try
             {
                 poller.Dispose();

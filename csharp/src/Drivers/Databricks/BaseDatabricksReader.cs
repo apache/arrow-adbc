@@ -45,9 +45,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override void Dispose(bool disposing)
         {
+            if (disposing)
+            {
             DisposeResources();
-
             base.Dispose(disposing);
+            }
+            
             isDisposed = true;
         }
 

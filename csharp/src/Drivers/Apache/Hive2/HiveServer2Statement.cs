@@ -335,11 +335,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
 
-        public virtual int QueryTimeoutSeconds
+        protected internal int QueryTimeoutSeconds
         {
             // Coordinate updates with the connection
             get => Connection.QueryTimeoutSeconds;
-            protected internal set => Connection.QueryTimeoutSeconds = value;
+            set => Connection.QueryTimeoutSeconds = value;
         }
 
         protected internal bool IsMetadataCommand { get; set; } = false;
@@ -356,7 +356,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public HiveServer2Connection Connection { get; private set; }
 
-        public virtual TOperationHandle? OperationHandle { get; private set; }
+        public TOperationHandle? OperationHandle { get; private set; }
 
         private IArrowArrayStream? _currentReader;
 
@@ -369,7 +369,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         // Keep the original Client property for internal use
-        public virtual TCLIService.IAsync Client => Connection.Client;
+        public TCLIService.IAsync Client => Connection.Client;
 
         public override string AssemblyName => HiveServer2Connection.s_assemblyName;
 
@@ -406,6 +406,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
                     OperationHandle = null;
                 }
+
                 base.Dispose();
             });
         }

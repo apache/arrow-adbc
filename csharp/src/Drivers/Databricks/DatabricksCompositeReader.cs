@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// A composite reader for Databricks that delegates to either CloudFetchReader or DatabricksReader
     /// based on CloudFetch configuration and result set characteristics.
     /// </summary>
-    internal class DatabricksCompositeReader : TracingReader, IDisposable
+    internal class DatabricksCompositeReader : TracingReader
     {
         public override string AssemblyName => DatabricksConnection.s_assemblyName;
 
