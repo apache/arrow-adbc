@@ -119,7 +119,7 @@ use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 use toml::de::DeTable;
 
 use adbc_core::{
-    error::Status,
+    error::{Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionValue},
     LoadFlags, PartitionedResult, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
     LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
@@ -127,7 +127,7 @@ use adbc_core::{
 use adbc_core::{ffi, ffi::driver_method, Optionable};
 use adbc_core::{Connection, Database, Driver, Statement};
 
-use crate::error::{Error, Result};
+use crate::error::libloading_error_to_adbc_error;
 
 const ERR_ONLY_STRING_OPT: &str = "Only string option value are supported with ADBC 1.0.0";
 const ERR_CANCEL_UNSUPPORTED: &str =
@@ -138,7 +138,7 @@ fn check_status(status: ffi::FFI_AdbcStatusCode, error: ffi::FFI_AdbcError) -> R
     match status {
         ffi::constants::ADBC_STATUS_OK => Ok(()),
         _ => {
-            let mut error: adbc_core::error::Error = error.try_into()?;
+            let mut error: Error = error.try_into()?;
             error.status = status.try_into()?;
             Err(error.into())
         }
@@ -356,11 +356,14 @@ impl ManagedDriver {
         let default_entrypoint = get_default_entrypoint(filename.as_ref());
 
         let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
-        let library = unsafe { libloading::Library::new(filename.as_ref())? };
+        let library = unsafe {
+            libloading::Library::new(filename.as_ref()).map_err(libloading_error_to_adbc_error)?
+        };
         let init: libloading::Symbol<ffi::FFI_AdbcDriverInitFunc> = unsafe {
             library
                 .get(entrypoint)
-                .or_else(|_| library.get(b"AdbcDriverInit"))?
+                .or_else(|_| library.get(b"AdbcDriverInit"))
+                .map_err(libloading_error_to_adbc_error)?
         };
         let driver = Self::load_impl(&init, version)?;
         let inner = Arc::pin(ManagedDriverInner {
@@ -565,7 +568,7 @@ impl ManagedDriver {
 impl Driver for ManagedDriver {
     type DatabaseType = ManagedDatabase;
 
-    fn new_database(&mut self) -> adbc_core::error::Result<Self::DatabaseType> {
+    fn new_database(&mut self) -> Result<Self::DatabaseType> {
         // Construct a new database.
         let database = self.database_new()?;
         // Initialize the database.
@@ -580,7 +583,7 @@ impl Driver for ManagedDriver {
     fn new_database_with_opts(
         &mut self,
         opts: impl IntoIterator<Item = (<Self::DatabaseType as Optionable>::Option, OptionValue)>,
-    ) -> adbc_core::error::Result<Self::DatabaseType> {
+    ) -> Result<Self::DatabaseType> {
         // Construct a new database.
         let mut database = self.database_new()?;
         // Set the options.
@@ -677,11 +680,11 @@ fn set_option_database(
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
-    let key = CString::new(key.as_ref()).map_err(adbc_core::error::Error::from)?;
+    let key = CString::new(key.as_ref()).map_err(Error::from)?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
-            let value = CString::new(value).map_err(adbc_core::error::Error::from)?;
+            let value = CString::new(value).map_err(Error::from)?;
             let method = driver_method!(driver, DatabaseSetOption);
             unsafe { method(database, key.as_ptr(), value.as_ptr(), &mut error) }
         }
@@ -730,7 +733,7 @@ where
     T: Default + Clone,
 {
     const DEFAULT_LENGTH: usize = 128;
-    let key = CString::new(key.as_ref()).map_err(adbc_core::error::Error::from)?;
+    let key = CString::new(key.as_ref()).map_err(Error::from)?;
     let mut run = |length| {
         let mut value = vec![T::default(); length];
         let mut length: usize = core::mem::size_of::<T>() * value.len();
@@ -855,7 +858,7 @@ impl ManagedDatabase {
 impl Optionable for ManagedDatabase {
     type Option = options::OptionDatabase;
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
         let driver = self.ffi_driver();
         let database = &mut self.inner.database.lock().unwrap();
         let method = driver_method!(driver, DatabaseGetOptionBytes);
@@ -868,7 +871,7 @@ impl Optionable for ManagedDatabase {
         get_option_bytes(key, populate, driver).map_err(|e| e.into())
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
         let driver = self.ffi_driver();
         let mut database = self.inner.database.lock().unwrap();
         let key = CString::new(key.as_ref())?;
@@ -880,7 +883,7 @@ impl Optionable for ManagedDatabase {
         Ok(value)
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
         let driver = self.ffi_driver();
         let mut database = self.inner.database.lock().unwrap();
         let key = CString::new(key.as_ref())?;
@@ -892,7 +895,7 @@ impl Optionable for ManagedDatabase {
         Ok(value)
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
         let driver = self.ffi_driver();
         let mut database = self.inner.database.lock().unwrap();
         let method = driver_method!(driver, DatabaseGetOption);
@@ -905,11 +908,7 @@ impl Optionable for ManagedDatabase {
         get_option_string(key, populate, driver).map_err(|e| e.into())
     }
 
-    fn set_option(
-        &mut self,
-        key: Self::Option,
-        value: OptionValue,
-    ) -> adbc_core::error::Result<()> {
+    fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
         let driver = self.ffi_driver();
         let mut database = self.inner.database.lock().unwrap();
         set_option_database(
@@ -926,7 +925,7 @@ impl Optionable for ManagedDatabase {
 impl Database for ManagedDatabase {
     type ConnectionType = ManagedConnection;
 
-    fn new_connection(&self) -> adbc_core::error::Result<Self::ConnectionType> {
+    fn new_connection(&self) -> Result<Self::ConnectionType> {
         // Construct a new connection.
         let connection = self.connection_new()?;
         // Initialize the connection.
@@ -943,7 +942,7 @@ impl Database for ManagedDatabase {
     fn new_connection_with_opts(
         &self,
         opts: impl IntoIterator<Item = (<Self::ConnectionType as Optionable>::Option, OptionValue)>,
-    ) -> adbc_core::error::Result<Self::ConnectionType> {
+    ) -> Result<Self::ConnectionType> {
         // Construct a new connection.
         let mut connection = self.connection_new()?;
         // Set the options.
@@ -972,11 +971,11 @@ fn set_option_connection(
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
-    let key = CString::new(key.as_ref()).map_err(adbc_core::error::Error::from)?;
+    let key = CString::new(key.as_ref()).map_err(Error::from)?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
-            let value = CString::new(value).map_err(adbc_core::error::Error::from)?;
+            let value = CString::new(value).map_err(Error::from)?;
             let method = driver_method!(driver, ConnectionSetOption);
             unsafe { method(connection, key.as_ptr(), value.as_ptr(), &mut error) }
         }
@@ -1044,7 +1043,7 @@ impl ManagedConnection {
 impl Optionable for ManagedConnection {
     type Option = options::OptionConnection;
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
         let method = driver_method!(driver, ConnectionGetOptionBytes);
@@ -1057,7 +1056,7 @@ impl Optionable for ManagedConnection {
         get_option_bytes(key, populate, driver).map_err(|e| e.into())
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
         let key = CString::new(key.as_ref())?;
         let mut value: f64 = f64::default();
         let driver = self.ffi_driver();
@@ -1070,7 +1069,7 @@ impl Optionable for ManagedConnection {
         Ok(value)
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
         let key = CString::new(key.as_ref())?;
         let mut value: i64 = 0;
         let driver = self.ffi_driver();
@@ -1083,7 +1082,7 @@ impl Optionable for ManagedConnection {
         Ok(value)
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
         let method = driver_method!(driver, ConnectionGetOption);
@@ -1096,11 +1095,7 @@ impl Optionable for ManagedConnection {
         get_option_string(key, populate, driver).map_err(|e| e.into())
     }
 
-    fn set_option(
-        &mut self,
-        key: Self::Option,
-        value: OptionValue,
-    ) -> adbc_core::error::Result<()> {
+    fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
         set_option_connection(
@@ -1117,7 +1112,7 @@ impl Optionable for ManagedConnection {
 impl Connection for ManagedConnection {
     type StatementType = ManagedStatement;
 
-    fn new_statement(&mut self) -> adbc_core::error::Result<Self::StatementType> {
+    fn new_statement(&mut self) -> Result<Self::StatementType> {
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
         let mut statement = ffi::FFI_AdbcStatement::default();
@@ -1134,7 +1129,7 @@ impl Connection for ManagedConnection {
         Ok(Self::StatementType { inner })
     }
 
-    fn cancel(&mut self) -> adbc_core::error::Result<()> {
+    fn cancel(&mut self) -> Result<()> {
         if let AdbcVersion::V100 = self.driver_version() {
             return Err(Error::with_message_and_status(
                 ERR_CANCEL_UNSUPPORTED,
@@ -1150,7 +1145,7 @@ impl Connection for ManagedConnection {
         check_status(status, error).map_err(|e| e.into())
     }
 
-    fn commit(&mut self) -> adbc_core::error::Result<()> {
+    fn commit(&mut self) -> Result<()> {
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1159,7 +1154,7 @@ impl Connection for ManagedConnection {
         check_status(status, error).map_err(|e| e.into())
     }
 
-    fn rollback(&mut self) -> adbc_core::error::Result<()> {
+    fn rollback(&mut self) -> Result<()> {
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1168,10 +1163,7 @@ impl Connection for ManagedConnection {
         check_status(status, error).map_err(|e| e.into())
     }
 
-    fn get_info(
-        &self,
-        codes: Option<HashSet<InfoCode>>,
-    ) -> adbc_core::error::Result<impl RecordBatchReader> {
+    fn get_info(&self, codes: Option<HashSet<InfoCode>>) -> Result<impl RecordBatchReader> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let codes: Option<Vec<u32>> =
             codes.map(|codes| codes.iter().map(|code| code.into()).collect());
@@ -1205,7 +1197,7 @@ impl Connection for ManagedConnection {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> adbc_core::error::Result<impl RecordBatchReader> {
+    ) -> Result<impl RecordBatchReader> {
         let catalog = catalog.map(CString::new).transpose()?;
         let db_schema = db_schema.map(CString::new).transpose()?;
         let table_name = table_name.map(CString::new).transpose()?;
@@ -1266,7 +1258,7 @@ impl Connection for ManagedConnection {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> adbc_core::error::Result<impl RecordBatchReader> {
+    ) -> Result<impl RecordBatchReader> {
         if let AdbcVersion::V100 = self.driver_version() {
             return Err(Error::with_message_and_status(
                 ERR_STATISTICS_UNSUPPORTED,
@@ -1304,7 +1296,7 @@ impl Connection for ManagedConnection {
         Ok(reader)
     }
 
-    fn get_statistic_names(&self) -> adbc_core::error::Result<impl RecordBatchReader> {
+    fn get_statistic_names(&self) -> Result<impl RecordBatchReader> {
         if let AdbcVersion::V100 = self.driver_version() {
             return Err(Error::with_message_and_status(
                 ERR_STATISTICS_UNSUPPORTED,
@@ -1328,7 +1320,7 @@ impl Connection for ManagedConnection {
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: &str,
-    ) -> adbc_core::error::Result<arrow_schema::Schema> {
+    ) -> Result<arrow_schema::Schema> {
         let catalog = catalog.map(CString::new).transpose()?;
         let db_schema = db_schema.map(CString::new).transpose()?;
         let table_name = CString::new(table_name)?;
@@ -1356,7 +1348,7 @@ impl Connection for ManagedConnection {
         Ok((&schema).try_into()?)
     }
 
-    fn get_table_types(&self) -> adbc_core::error::Result<impl RecordBatchReader> {
+    fn get_table_types(&self) -> Result<impl RecordBatchReader> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
@@ -1368,10 +1360,7 @@ impl Connection for ManagedConnection {
         Ok(reader)
     }
 
-    fn read_partition(
-        &self,
-        partition: impl AsRef<[u8]>,
-    ) -> adbc_core::error::Result<impl RecordBatchReader> {
+    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
@@ -1400,11 +1389,11 @@ fn set_option_statement(
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
-    let key = CString::new(key.as_ref()).map_err(adbc_core::error::Error::from)?;
+    let key = CString::new(key.as_ref()).map_err(Error::from)?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
-            let value = CString::new(value).map_err(adbc_core::error::Error::from)?;
+            let value = CString::new(value).map_err(Error::from)?;
             let method = driver_method!(driver, StatementSetOption);
             unsafe { method(statement, key.as_ptr(), value.as_ptr(), &mut error) }
         }
@@ -1458,7 +1447,7 @@ impl ManagedStatement {
 }
 
 impl Statement for ManagedStatement {
-    fn bind(&mut self, batch: RecordBatch) -> adbc_core::error::Result<()> {
+    fn bind(&mut self, batch: RecordBatch) -> Result<()> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1470,10 +1459,7 @@ impl Statement for ManagedStatement {
         Ok(())
     }
 
-    fn bind_stream(
-        &mut self,
-        reader: Box<dyn RecordBatchReader + Send>,
-    ) -> adbc_core::error::Result<()> {
+    fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1484,7 +1470,7 @@ impl Statement for ManagedStatement {
         Ok(())
     }
 
-    fn cancel(&mut self) -> adbc_core::error::Result<()> {
+    fn cancel(&mut self) -> Result<()> {
         if let AdbcVersion::V100 = self.driver_version() {
             return Err(Error::with_message_and_status(
                 ERR_CANCEL_UNSUPPORTED,
@@ -1500,7 +1486,7 @@ impl Statement for ManagedStatement {
         check_status(status, error).map_err(|e| e.into())
     }
 
-    fn execute(&mut self) -> adbc_core::error::Result<impl RecordBatchReader> {
+    fn execute(&mut self) -> Result<impl RecordBatchReader> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1512,7 +1498,7 @@ impl Statement for ManagedStatement {
         Ok(reader)
     }
 
-    fn execute_schema(&mut self) -> adbc_core::error::Result<arrow_schema::Schema> {
+    fn execute_schema(&mut self) -> Result<arrow_schema::Schema> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1523,7 +1509,7 @@ impl Statement for ManagedStatement {
         Ok((&schema).try_into()?)
     }
 
-    fn execute_update(&mut self) -> adbc_core::error::Result<Option<i64>> {
+    fn execute_update(&mut self) -> Result<Option<i64>> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1541,7 +1527,7 @@ impl Statement for ManagedStatement {
         Ok((rows_affected != -1).then_some(rows_affected))
     }
 
-    fn execute_partitions(&mut self) -> adbc_core::error::Result<PartitionedResult> {
+    fn execute_partitions(&mut self) -> Result<PartitionedResult> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1569,7 +1555,7 @@ impl Statement for ManagedStatement {
         Ok(result)
     }
 
-    fn get_parameter_schema(&self) -> adbc_core::error::Result<arrow_schema::Schema> {
+    fn get_parameter_schema(&self) -> Result<arrow_schema::Schema> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1580,7 +1566,7 @@ impl Statement for ManagedStatement {
         Ok((&schema).try_into()?)
     }
 
-    fn prepare(&mut self) -> adbc_core::error::Result<()> {
+    fn prepare(&mut self) -> Result<()> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1590,7 +1576,7 @@ impl Statement for ManagedStatement {
         Ok(())
     }
 
-    fn set_sql_query(&mut self, query: impl AsRef<str>) -> adbc_core::error::Result<()> {
+    fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()> {
         let query = CString::new(query.as_ref())?;
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
@@ -1601,7 +1587,7 @@ impl Statement for ManagedStatement {
         Ok(())
     }
 
-    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> adbc_core::error::Result<()> {
+    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1617,7 +1603,7 @@ impl Statement for ManagedStatement {
 impl Optionable for ManagedStatement {
     type Option = options::OptionStatement;
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let method = driver_method!(driver, StatementGetOptionBytes);
@@ -1630,7 +1616,7 @@ impl Optionable for ManagedStatement {
         get_option_bytes(key, populate, driver).map_err(|e| e.into())
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
         let key = CString::new(key.as_ref())?;
         let mut value: f64 = f64::default();
         let driver = self.ffi_driver();
@@ -1642,7 +1628,7 @@ impl Optionable for ManagedStatement {
         Ok(value)
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
         let key = CString::new(key.as_ref())?;
         let mut value: i64 = 0;
         let driver = self.ffi_driver();
@@ -1654,7 +1640,7 @@ impl Optionable for ManagedStatement {
         Ok(value)
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let method = driver_method!(driver, StatementGetOption);
@@ -1667,11 +1653,7 @@ impl Optionable for ManagedStatement {
         get_option_string(key, populate, driver).map_err(|e| e.into())
     }
 
-    fn set_option(
-        &mut self,
-        key: Self::Option,
-        value: OptionValue,
-    ) -> adbc_core::error::Result<()> {
+    fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         set_option_statement(
@@ -1941,7 +1923,7 @@ mod tests {
                 AdbcVersion::V100,
                 LOAD_FLAG_SEARCH_ENV,
             )
-            .map_err(adbc_core::error::Error::from)
+            .map_err(Error::from)
             .unwrap_err();
             assert_eq!(err.status, Status::NotFound);
         });
@@ -2030,7 +2012,7 @@ mod tests {
                 let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;
                 let err =
                     ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, load_flags)
-                        .map_err(adbc_core::error::Error::from)
+                        .map_err(Error::from)
                         .unwrap_err();
                 assert_eq!(err.status, Status::NotFound);
             },
@@ -2077,7 +2059,7 @@ mod tests {
             .expect("Failed to write driver manager manifest to file");
 
         let err = ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0)
-            .map_err(adbc_core::error::Error::from)
+            .map_err(Error::from)
             .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
@@ -2107,7 +2089,7 @@ mod tests {
             AdbcVersion::V100,
             LOAD_FLAG_DEFAULT,
         )
-        .map_err(adbc_core::error::Error::from)
+        .map_err(Error::from)
         .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
@@ -2139,7 +2121,7 @@ mod tests {
             AdbcVersion::V100,
             LOAD_FLAG_DEFAULT,
         )
-        .map_err(adbc_core::error::Error::from)
+        .map_err(Error::from)
         .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
@@ -2164,7 +2146,7 @@ mod tests {
             AdbcVersion::V110,
             LOAD_FLAG_DEFAULT,
         )
-        .map_err(adbc_core::error::Error::from)
+        .map_err(Error::from)
         .unwrap_err();
         assert_eq!(err.status, Status::NotFound);
 
@@ -2187,7 +2169,7 @@ mod tests {
             AdbcVersion::V110,
             LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_USER,
         )
-        .map_err(adbc_core::error::Error::from)
+        .map_err(Error::from)
         .unwrap_err();
         assert_eq!(err.status, Status::NotFound);
 
