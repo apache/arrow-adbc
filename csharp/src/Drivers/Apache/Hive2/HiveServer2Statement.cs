@@ -142,7 +142,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
                 }
                 Schema schema = GetSchemaFromMetadata(metadata);
-                return new QueryResult(-1, CreateManagedReader(schema, metadata));
+                return new QueryResult(-1, CreateNewReader(schema, metadata));
             });
         }
 
@@ -360,7 +360,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private IArrowArrayStream? _currentReader;
 
-        protected IArrowArrayStream CreateManagedReader(Schema schema, TGetResultSetMetadataResp? metadata = null)
+        protected IArrowArrayStream CreateNewReader(Schema schema, TGetResultSetMetadataResp? metadata = null)
         {
             // Dispose any existing reader before creating a new one
             _currentReader?.Dispose();
@@ -614,7 +614,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
             schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
 
-            return new QueryResult(-1, CreateManagedReader(schema));
+            return new QueryResult(-1, CreateNewReader(schema));
         }
 
         protected internal QueryResult EnhanceGetColumnsResult(Schema originalSchema, IReadOnlyList<IArrowArray> originalData,

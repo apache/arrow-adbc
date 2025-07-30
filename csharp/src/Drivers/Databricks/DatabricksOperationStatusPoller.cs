@@ -21,7 +21,6 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
-using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -114,10 +113,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 catch (OperationCanceledException)
                 {
                     // Expected, no-op
-                }
-                catch (TTransportException)
-                {
-                    // ignore
                 }
 
                 _internalCts.Dispose();

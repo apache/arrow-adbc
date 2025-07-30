@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// A composite reader for Databricks that delegates to either CloudFetchReader or DatabricksReader
     /// based on CloudFetch configuration and result set characteristics.
     /// </summary>
-    internal class DatabricksCompositeReader : TracingReader
+    internal sealed class DatabricksCompositeReader : TracingReader
     {
         public override string AssemblyName => DatabricksConnection.s_assemblyName;
 
@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
         /// <param name="httpClient">The HTTP client for CloudFetch operations.</param>
-        internal DatabricksCompositeReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator) : base(statement)
+        internal DatabricksCompositeReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator): base(statement)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
@@ -151,7 +151,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 operationStatusPoller = null;
             }
         }
-        
+
         private void StopOperationStatusPoller()
         {
             operationStatusPoller?.Stop();

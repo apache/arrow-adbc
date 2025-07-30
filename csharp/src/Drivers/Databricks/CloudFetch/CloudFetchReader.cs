@@ -161,7 +161,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             });
         }
 
-        protected override void DisposeResources()
+        protected override void Dispose(bool disposing)
         {
             if (this.currentReader != null)
             {
