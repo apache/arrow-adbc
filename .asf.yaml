@@ -33,6 +33,14 @@ github:
     - database
   protected_branches:
     main: {}
+  environments:
+    databricks-e2e:
+      wait_timer: 0
+      required_reviewers:
+        - alexguo-db
+        - jadewang-db
+      deployment_branch_policy:
+        protected_branches: true
 
 notifications:
   commits:      commits@arrow.apache.org
