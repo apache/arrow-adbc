@@ -76,6 +76,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             ValidateProperties();
         }
 
+        public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
+        {
+            IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
+            // TODO: Add any additional tags specific to Databricks connection
+            //tags ??= [];
+            //tags.Concat([new("key", "value")]);
+            return tags;
+        }
+
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
         {
             return new ThreadSafeClient(new TCLIService.Client(protocol));
