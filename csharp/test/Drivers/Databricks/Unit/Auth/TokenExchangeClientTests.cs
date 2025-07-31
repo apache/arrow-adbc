@@ -22,11 +22,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using Moq;
 using Moq.Protected;
 using Xunit;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
+namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
 {
     public class TokenExchangeClientTests : IDisposable
     {
@@ -45,6 +46,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         {
             var client = new TokenExchangeClient(_httpClient, _testHost);
             Assert.NotNull(client);
+            Assert.Equal($"https://{_testHost}/oidc/v1/token", client.TokenExchangeEndpoint);
+        }
+
+        [Fact]
+        public void Constructor_WithHostTrailingSlash_RemovesTrailingSlash()
+        {
+            var hostWithSlash = "test.databricks.com/";
+            var client = new TokenExchangeClient(_httpClient, hostWithSlash);
+            Assert.Equal("https://test.databricks.com/oidc/v1/token", client.TokenExchangeEndpoint);
         }
 
         [Fact]
@@ -54,7 +64,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_WithValidResponse_ReturnsTokenExchangeResponse()
+        public async Task RefreshTokenAsync_WithValidResponse_ReturnsTokenExchangeResponse()
         {
             var testToken = "test-jwt-token";
             var expectedAccessToken = "new-access-token";
@@ -85,7 +95,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
-            var result = await client.ExchangeTokenAsync(testToken, CancellationToken.None);
+            var result = await client.RefreshTokenAsync(testToken, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(expectedAccessToken, result.AccessToken);
@@ -96,7 +106,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_SendsCorrectRequestFormat()
+        public async Task RefreshTokenAsync_SendsCorrectRequestFormat()
         {
             var testToken = "test-jwt-token";
             var responseJson = JsonSerializer.Serialize(new
@@ -112,34 +122,39 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             };
 
             HttpRequestMessage? capturedRequest = null;
+            string? capturedFormContent = null;
 
             _mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
-                .Callback<HttpRequestMessage, CancellationToken>((req, ct) => capturedRequest = req)
-                .ReturnsAsync(httpResponseMessage);
+                .Returns<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                {
+                    capturedRequest = req;
+                    if (req.Content != null)
+                    {
+                        capturedFormContent = await req.Content.ReadAsStringAsync();
+                    }
+                    return httpResponseMessage;
+                });
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
-            await client.ExchangeTokenAsync(testToken, CancellationToken.None);
+            await client.RefreshTokenAsync(testToken, CancellationToken.None);
 
             Assert.NotNull(capturedRequest);
             Assert.Equal(HttpMethod.Post, capturedRequest.Method);
             Assert.Equal($"https://{_testHost}/oidc/v1/token", capturedRequest?.RequestUri?.ToString());
             Assert.True(capturedRequest?.Headers.Accept.Contains(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("*/*")));
 
-            var content = capturedRequest?.Content as FormUrlEncodedContent;
-            Assert.NotNull(content);
-
-            var formContent = await content.ReadAsStringAsync();
-            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", formContent);
-            Assert.Contains($"assertion={testToken}", formContent);
+            Assert.NotNull(capturedFormContent);
+            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", capturedFormContent);
+            Assert.Contains($"assertion={testToken}", capturedFormContent);
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_WithHttpError_ThrowsHttpRequestException()
+        public async Task RefreshTokenAsync_WithHttpError_ThrowsHttpRequestException()
         {
             var testToken = "test-jwt-token";
             var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.Unauthorized)
@@ -157,11 +172,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             await Assert.ThrowsAsync<HttpRequestException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_WithMissingAccessToken_ThrowsDatabricksException()
+        public async Task RefreshTokenAsync_WithMissingAccessToken_ThrowsDatabricksException()
         {
             var testToken = "test-jwt-token";
             var responseJson = JsonSerializer.Serialize(new
@@ -185,13 +200,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("access_token", exception.Message);
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_WithEmptyAccessToken_ThrowsDatabricksException()
+        public async Task RefreshTokenAsync_WithEmptyAccessToken_ThrowsDatabricksException()
         {
             var testToken = "test-jwt-token";
             var responseJson = JsonSerializer.Serialize(new
@@ -216,13 +231,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("access_token was null or empty", exception.Message);
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_WithMissingTokenType_ThrowsDatabricksException()
+        public async Task RefreshTokenAsync_WithMissingTokenType_ThrowsDatabricksException()
         {
             var testToken = "test-jwt-token";
             var responseJson = JsonSerializer.Serialize(new
@@ -246,13 +261,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("token_type", exception.Message);
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_WithMissingExpiresIn_ThrowsDatabricksException()
+        public async Task RefreshTokenAsync_WithMissingExpiresIn_ThrowsDatabricksException()
         {
             var testToken = "test-jwt-token";
             var responseJson = JsonSerializer.Serialize(new
@@ -276,13 +291,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("expires_in", exception.Message);
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_WithNegativeExpiresIn_ThrowsDatabricksException()
+        public async Task RefreshTokenAsync_WithNegativeExpiresIn_ThrowsDatabricksException()
         {
             var testToken = "test-jwt-token";
             var responseJson = JsonSerializer.Serialize(new
@@ -307,13 +322,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             var exception = await Assert.ThrowsAsync<DatabricksException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
 
             Assert.Contains("expires_in value must be positive", exception.Message);
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_WithInvalidJson_ThrowsJsonException()
+        public async Task RefreshTokenAsync_WithInvalidJson_ThrowsJsonException()
         {
             var testToken = "test-jwt-token";
             var invalidJson = "{ invalid json }";
@@ -333,11 +348,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             await Assert.ThrowsAnyAsync<JsonException>(() =>
-                client.ExchangeTokenAsync(testToken, CancellationToken.None));
+                client.RefreshTokenAsync(testToken, CancellationToken.None));
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_WithCancellationToken_PropagatesCancellation()
+        public async Task RefreshTokenAsync_WithCancellationToken_PropagatesCancellation()
         {
             var testToken = "test-jwt-token";
             var cts = new CancellationTokenSource();
@@ -353,11 +368,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
             await Assert.ThrowsAsync<TaskCanceledException>(() =>
-                client.ExchangeTokenAsync(testToken, cts.Token));
+                client.RefreshTokenAsync(testToken, cts.Token));
         }
 
         [Fact]
-        public async Task ExchangeTokenAsync_CalculatesExpiryTimeCorrectly()
+        public async Task RefreshTokenAsync_CalculatesExpiryTimeCorrectly()
         {
             var testToken = "test-jwt-token";
             var expiresIn = 1800; // 30 minutes
@@ -384,7 +399,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             var client = new TokenExchangeClient(_httpClient, _testHost);
 
-            var result = await client.ExchangeTokenAsync(testToken, CancellationToken.None);
+            var result = await client.RefreshTokenAsync(testToken, CancellationToken.None);
             var afterCall = DateTime.UtcNow;
 
             var expectedMinExpiry = beforeCall.AddSeconds(expiresIn);
@@ -392,6 +407,214 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Tests.Auth
 
             Assert.True(result.ExpiryTime >= expectedMinExpiry);
             Assert.True(result.ExpiryTime <= expectedMaxExpiry);
+        }
+
+        [Fact]
+        public async Task ExchangeTokenAsync_WithoutIdentityFederationClientId_SendsCorrectRequest()
+        {
+            var testToken = "test-jwt-token";
+            var responseJson = JsonSerializer.Serialize(new
+            {
+                access_token = "exchanged-token",
+                token_type = "Bearer",
+                expires_in = 3600
+            });
+
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson)
+            };
+
+            HttpRequestMessage? capturedRequest = null;
+            string? capturedFormContent = null;
+
+            _mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .Returns<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                {
+                    capturedRequest = req;
+                    if (req.Content != null)
+                    {
+                        capturedFormContent = await req.Content.ReadAsStringAsync();
+                    }
+                    return httpResponseMessage;
+                });
+
+            var client = new TokenExchangeClient(_httpClient, _testHost);
+
+            var result = await client.ExchangeTokenAsync(testToken, null, CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("exchanged-token", result.AccessToken);
+
+            Assert.NotNull(capturedRequest);
+            Assert.NotNull(capturedFormContent);
+            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", capturedFormContent);
+            Assert.Contains($"assertion={testToken}", capturedFormContent);
+            Assert.Contains("scope=sql", capturedFormContent);
+            Assert.Contains("return_original_token_if_authenticated=true", capturedFormContent);
+            Assert.DoesNotContain("identity_federation_client_id", capturedFormContent);
+        }
+
+        [Fact]
+        public async Task ExchangeTokenAsync_WithIdentityFederationClientId_SendsCorrectRequest()
+        {
+            var testToken = "test-jwt-token";
+            var clientId = "test-client-id";
+            var responseJson = JsonSerializer.Serialize(new
+            {
+                access_token = "exchanged-token",
+                token_type = "Bearer",
+                expires_in = 3600
+            });
+
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson)
+            };
+
+            HttpRequestMessage? capturedRequest = null;
+            string? capturedFormContent = null;
+
+            _mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .Returns<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                {
+                    capturedRequest = req;
+                    if (req.Content != null)
+                    {
+                        capturedFormContent = await req.Content.ReadAsStringAsync();
+                    }
+                    return httpResponseMessage;
+                });
+
+            var client = new TokenExchangeClient(_httpClient, _testHost);
+
+            var result = await client.ExchangeTokenAsync(testToken, clientId, CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.Equal("exchanged-token", result.AccessToken);
+
+            Assert.NotNull(capturedRequest);
+            Assert.NotNull(capturedFormContent);
+            Assert.Contains("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer", capturedFormContent);
+            Assert.Contains($"assertion={testToken}", capturedFormContent);
+            Assert.Contains("scope=sql", capturedFormContent);
+            Assert.Contains($"identity_federation_client_id={clientId}", capturedFormContent);
+            Assert.DoesNotContain("return_original_token_if_authenticated", capturedFormContent);
+        }
+
+        [Fact]
+        public async Task ExchangeTokenAsync_WithEmptyIdentityFederationClientId_SendsReturnOriginalToken()
+        {
+            var testToken = "test-jwt-token";
+            var clientId = "";
+            var responseJson = JsonSerializer.Serialize(new
+            {
+                access_token = "exchanged-token",
+                token_type = "Bearer",
+                expires_in = 3600
+            });
+
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson)
+            };
+
+            HttpRequestMessage? capturedRequest = null;
+            string? capturedFormContent = null;
+
+            _mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .Returns<HttpRequestMessage, CancellationToken>(async (req, ct) =>
+                {
+                    capturedRequest = req;
+                    if (req.Content != null)
+                    {
+                        capturedFormContent = await req.Content.ReadAsStringAsync();
+                    }
+                    return httpResponseMessage;
+                });
+
+            var client = new TokenExchangeClient(_httpClient, _testHost);
+
+            var result = await client.ExchangeTokenAsync(testToken, clientId, CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.NotNull(capturedRequest);
+            Assert.NotNull(capturedFormContent);
+            Assert.Contains("return_original_token_if_authenticated=true", capturedFormContent);
+            Assert.DoesNotContain("identity_federation_client_id", capturedFormContent);
+        }
+
+        [Fact]
+        public async Task ExchangeTokenAsync_WithHttpError_ThrowsHttpRequestException()
+        {
+            var testToken = "test-jwt-token";
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Content = new StringContent("Unauthorized")
+            };
+
+            _mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(httpResponseMessage);
+
+            var client = new TokenExchangeClient(_httpClient, _testHost);
+
+            await Assert.ThrowsAsync<HttpRequestException>(() =>
+                client.ExchangeTokenAsync(testToken, null, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task ExchangeTokenAsync_UsesCorrectEndpoint()
+        {
+            var testToken = "test-jwt-token";
+            var responseJson = JsonSerializer.Serialize(new
+            {
+                access_token = "token",
+                token_type = "Bearer",
+                expires_in = 3600
+            });
+
+            var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson)
+            };
+
+            HttpRequestMessage? capturedRequest = null;
+
+            _mockHttpMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .Returns<HttpRequestMessage, CancellationToken>((req, ct) =>
+                {
+                    capturedRequest = req;
+                    return Task.FromResult(httpResponseMessage);
+                });
+
+
+            var client = new TokenExchangeClient(_httpClient, _testHost);
+
+            await client.ExchangeTokenAsync(testToken, null, CancellationToken.None);
+
+            Assert.NotNull(capturedRequest);
+            Assert.Equal(HttpMethod.Post, capturedRequest.Method);
+            Assert.Equal($"https://{_testHost}/oidc/v1/token", capturedRequest?.RequestUri?.ToString());
         }
 
         protected virtual void Dispose(bool disposing)
