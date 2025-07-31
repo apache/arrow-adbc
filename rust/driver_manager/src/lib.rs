@@ -680,11 +680,11 @@ fn set_option_database(
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
-    let key = CString::new(key.as_ref()).map_err(Error::from)?;
+    let key = CString::new(key.as_ref())?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
-            let value = CString::new(value).map_err(Error::from)?;
+            let value = CString::new(value)?;
             let method = driver_method!(driver, DatabaseSetOption);
             unsafe { method(database, key.as_ptr(), value.as_ptr(), &mut error) }
         }
@@ -733,7 +733,7 @@ where
     T: Default + Clone,
 {
     const DEFAULT_LENGTH: usize = 128;
-    let key = CString::new(key.as_ref()).map_err(Error::from)?;
+    let key = CString::new(key.as_ref())?;
     let mut run = |length| {
         let mut value = vec![T::default(); length];
         let mut length: usize = core::mem::size_of::<T>() * value.len();
@@ -970,11 +970,11 @@ fn set_option_connection(
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
-    let key = CString::new(key.as_ref()).map_err(Error::from)?;
+    let key = CString::new(key.as_ref())?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
-            let value = CString::new(value).map_err(Error::from)?;
+            let value = CString::new(value)?;
             let method = driver_method!(driver, ConnectionSetOption);
             unsafe { method(connection, key.as_ptr(), value.as_ptr(), &mut error) }
         }
@@ -1384,11 +1384,11 @@ fn set_option_statement(
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
-    let key = CString::new(key.as_ref()).map_err(Error::from)?;
+    let key = CString::new(key.as_ref())?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
-            let value = CString::new(value).map_err(Error::from)?;
+            let value = CString::new(value)?;
             let method = driver_method!(driver, StatementSetOption);
             unsafe { method(statement, key.as_ptr(), value.as_ptr(), &mut error) }
         }
