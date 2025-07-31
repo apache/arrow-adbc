@@ -101,7 +101,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 try
                 {
                     if (_operationStatusPollingTask != null)
-                        _operationStatusPollingTask?.GetAwaiter().GetResult();
+                        _operationStatusPollingTask?.ConfigureAwait(false).GetAwaiter().GetResult();
                 }
                 catch (OperationCanceledException)
                 {

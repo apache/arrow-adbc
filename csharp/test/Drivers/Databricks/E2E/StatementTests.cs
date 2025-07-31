@@ -1007,6 +1007,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.Equal(30000000, totalRows);
             Assert.True(batchCount > 1, "Should have read multiple batches");
             OutputHelper?.WriteLine($"Successfully read {totalRows} rows in {batchCount} batches after 30 minute delay with {configName}");
+            statement.Dispose();
         }
 
         private static object? GetCurrentReader(AdbcStatement statement)
