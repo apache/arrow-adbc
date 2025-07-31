@@ -55,6 +55,8 @@ jobs:
         include:
           - os: ubuntu-latest
             minimal-versions: true # Test can be built with older arrow except adbc_datafusion
+          - os: windows-latest
+            minimal-versions: true # Test can be built with older windows specific deps
     name: Rust ${{ matrix.os }} ${{ matrix.minimal-versions && '(minimal versions for adbc_core)' || '' }}
     runs-on: ${{ matrix.os }}
     env:
@@ -65,7 +67,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Cargo update for minimal (arrow) version
+      - name: Cargo update for minimal versions
         if: ${{ matrix.minimal-versions }}
         working-directory: rust
         run: |

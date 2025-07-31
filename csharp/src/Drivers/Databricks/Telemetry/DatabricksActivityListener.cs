@@ -15,59 +15,48 @@
 * limitations under the License.
 */
 
+using System;
 using System.Diagnostics;
+using System.IO;
 using Apache.Arrow.Adbc.Tracing;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
-using System;
+
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
     public class DatabricksActivityListener : IDisposable
     {
+        private readonly ActivityListener _activityListener;
+        private TelemetryHelper? _telemetryHelper;
 
-        private ActivityListener _activityListener;
-
-        public DatabricksActivityListener()
+        public DatabricksActivityListener(TelemetryHelper? telemetryHelper, string sourceName)
         {
+            this._telemetryHelper = telemetryHelper;
             this._activityListener = new ActivityListener
             {
-                //ShouldListenTo = (activitySource) => activitySource.Name == sourceName,
-                ShouldListenTo = _ => true,
+                ShouldListenTo = (activitySource) => activitySource.Name == sourceName,
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-                ActivityStarted = OnActivityStarted,
                 ActivityStopped = OnActivityStopped,
             };
             ActivitySource.AddActivityListener(_activityListener);
         }
 
-        private void OnActivityStarted(Activity activity)
-        {
-        }
-
         private void OnActivityStopped(Activity activity)
         {       
-            if(activity.OperationName == "ExecuteStatementAsync")
+            if(_telemetryHelper == null)
+            {
+                return;
+            }
+
+            if(activity.OperationName.EndsWith("ExecuteStatementAsync"))
             {
                 var sqlExecutionEvent = new SqlExecutionEvent();
                 var operationDetail = new OperationDetail();
                 operationDetail.OperationType = Util.StringToOperationType("EXECUTE_STATEMENT_ASYNC");
                 sqlExecutionEvent.OperationDetail = operationDetail;
-                TelemetryHelper.AddSqlExecutionEvent(sqlExecutionEvent);
-            }
-            // iterate over the tags and create a telemetry event
-            foreach (var tag in activity.Tags)
-            {
-                // example tag and handling
-                if(tag.Key == "sql.query")
-                {
-                    var sqlExecutionEvent = new SqlExecutionEvent();
-                    var operationDetail = new OperationDetail();
-                    operationDetail.OperationType = Util.StringToOperationType(tag.Value);
-                    sqlExecutionEvent.StatementType = StatementType.QUERY;
-                    sqlExecutionEvent.OperationDetail = operationDetail;
-                    TelemetryHelper.AddSqlExecutionEvent(sqlExecutionEvent);
-                }
+                _telemetryHelper.AddSqlExecutionEvent(sqlExecutionEvent, Convert.ToInt64(activity.Duration.TotalMilliseconds));
             }
         }
 
