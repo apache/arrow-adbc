@@ -76,7 +76,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                     var request = new TGetOperationStatusReq(operationHandle);
                     var response = await _statement.Client.GetOperationStatus(request, GetOperationStatusTimeoutToken);
-                    await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), GetOperationStatusTimeoutToken);
+                    await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), cancellationToken);
 
                     // end the heartbeat if the command has terminated
                     if (response.OperationState == TOperationState.CANCELED_STATE ||
