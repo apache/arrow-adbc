@@ -59,5 +59,7 @@ public class DatabricksLogger
     private void log(string message, LogLevel level)
     {
         var logMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}";
+        string logFilePath = Path.Combine(Path.GetTempPath(), DATABRICKS_LOG_FILE);
+        File.AppendAllText(logFilePath, logMessage + Environment.NewLine);
     }
 }
