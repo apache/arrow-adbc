@@ -114,22 +114,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            try
+            var result = await ReadNextRecordBatchInternalAsync(cancellationToken);
+            // Stop the poller when we've reached the end of results
+            if (result == null)
             {
-                var result = await ReadNextRecordBatchInternalAsync(cancellationToken);
-                // Stop the poller when we've reached the end of results
-                if (result == null)
-                {
-                    StopOperationStatusPoller();
-                }
-                return result;
+                StopOperationStatusPoller(); 
             }
-            catch
-            {
-                // Stop the poller immediately on any exception to prevent unnecessary polling
-                StopOperationStatusPoller();
-                throw;
-            }
+            return result;
         }
 
         protected override void Dispose(bool disposing)

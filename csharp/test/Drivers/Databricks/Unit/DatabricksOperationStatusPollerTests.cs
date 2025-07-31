@@ -127,13 +127,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         }
 
         [Fact]
-        public async Task ContinuesPollingOnRunningState()
+        public async Task ContinuesPollingOnFinishedState()
         {
             // Arrange
             var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
             var pollCount = 0;
             _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new TGetOperationStatusResp { OperationState = TOperationState.RUNNING_STATE })
+                .ReturnsAsync(new TGetOperationStatusResp { OperationState = TOperationState.FINISHED_STATE })
                 .Callback(() => pollCount++);
 
             // Act

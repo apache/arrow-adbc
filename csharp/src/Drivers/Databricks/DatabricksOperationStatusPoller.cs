@@ -65,33 +65,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private async Task PollOperationStatus(CancellationToken cancellationToken)
         {
-            try
+            while (!cancellationToken.IsCancellationRequested)
             {
-                while (!cancellationToken.IsCancellationRequested)
+                var operationHandle = _statement.OperationHandle;
+                if (operationHandle == null) break;
+
+                CancellationToken GetOperationStatusTimeoutToken = ApacheUtility.GetCancellationToken(_requestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+
+                var request = new TGetOperationStatusReq(operationHandle);
+                var response = await _statement.Client.GetOperationStatus(request, GetOperationStatusTimeoutToken);
+                await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), cancellationToken);
+
+                // end the heartbeat if the command has terminated
+                if (response.OperationState == TOperationState.CANCELED_STATE ||
+                    response.OperationState == TOperationState.ERROR_STATE ||
+                    response.OperationState == TOperationState.CLOSED_STATE ||
+                    response.OperationState == TOperationState.TIMEDOUT_STATE ||
+                    response.OperationState == TOperationState.UKNOWN_STATE)
                 {
-                    var operationHandle = _statement.OperationHandle;
-                    if (operationHandle == null) break;
-
-                    CancellationToken GetOperationStatusTimeoutToken = ApacheUtility.GetCancellationToken(_requestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-
-                    var request = new TGetOperationStatusReq(operationHandle);
-                    var response = await _statement.Client.GetOperationStatus(request, GetOperationStatusTimeoutToken);
-                    await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), cancellationToken);
-
-                    // end the heartbeat if the command has terminated
-                    if (response.OperationState == TOperationState.CANCELED_STATE ||
-                        response.OperationState == TOperationState.ERROR_STATE ||
-                        response.OperationState == TOperationState.CLOSED_STATE ||
-                        response.OperationState == TOperationState.TIMEDOUT_STATE ||
-                        response.OperationState == TOperationState.UKNOWN_STATE)
-                    {
-                        break;
-                    }
+                    break;
                 }
-            }
-            catch (TaskCanceledException)
-            {
-                // ignore
             }
         }
 
