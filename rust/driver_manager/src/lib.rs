@@ -682,6 +682,8 @@ fn set_option_database(
 ) -> Result<()> {
     let key = CString::new(key.as_ref())?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
+    #[allow(unknown_lints)]
+    #[warn(non_exhaustive_omitted_patterns)]
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
             let value = CString::new(value)?;
@@ -972,6 +974,8 @@ fn set_option_connection(
 ) -> Result<()> {
     let key = CString::new(key.as_ref())?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
+    #[allow(unknown_lints)]
+    #[warn(non_exhaustive_omitted_patterns)]
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
             let value = CString::new(value)?;
@@ -1386,6 +1390,8 @@ fn set_option_statement(
 ) -> Result<()> {
     let key = CString::new(key.as_ref())?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
+    #[allow(unknown_lints)]
+    #[warn(non_exhaustive_omitted_patterns)]
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
             let value = CString::new(value)?;
