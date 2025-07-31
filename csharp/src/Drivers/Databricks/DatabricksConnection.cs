@@ -71,8 +71,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
+        // Telemetry
         private TelemetryHelper? _telemetryHelper;
         private DatabricksActivityListener _databricksActivityListener;
+        private Guid _guid;
 
         // Default namespace
         private TNamespace? _defaultNamespace;
@@ -81,8 +83,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            _guid = Guid.NewGuid();
             ValidateProperties();
-            _databricksActivityListener = new DatabricksActivityListener(_telemetryHelper);
+            _databricksActivityListener = new DatabricksActivityListener(_telemetryHelper, this.AssemblyName, _guid);
         }
 
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)

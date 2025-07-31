@@ -31,12 +31,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
         private readonly ActivityListener _activityListener;
         private TelemetryHelper? _telemetryHelper;
 
-        public DatabricksActivityListener(TelemetryHelper? telemetryHelper)
+        public DatabricksActivityListener(TelemetryHelper? telemetryHelper, string sourceName)
         {
             this._telemetryHelper = telemetryHelper;
             this._activityListener = new ActivityListener
             {
-                ShouldListenTo = (activitySource) => activitySource.Name == ApacheUtility.GetAssemblyName(typeof(DatabricksConnection)),
+                ShouldListenTo = (activitySource) => activitySource.Name == sourceName,
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
                 ActivityStopped = OnActivityStopped,
             };
@@ -49,7 +49,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             {
                 return;
             }
-            
+
             if(activity.OperationName.EndsWith("ExecuteStatementAsync"))
             {
                 var sqlExecutionEvent = new SqlExecutionEvent();
