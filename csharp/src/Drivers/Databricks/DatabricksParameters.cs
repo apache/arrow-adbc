@@ -236,6 +236,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
 
         /// <summary>
+        /// Default timeout in seconds for CloudFetch requests
+        /// </summary>
+        public const int DefaultCloudFetchRequestTimeoutSeconds = 30;
+
+        /// <summary>
         /// OAuth grant type constants
         /// </summary>
         public static class OAuthGrantTypes

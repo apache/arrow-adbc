@@ -16,8 +16,6 @@
 */
 
 using System;
-using System.Threading.Tasks;
-using System.Threading;
 using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks

@@ -130,6 +130,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 _activeReader?.Dispose();
                 DisposeOperationStatusPoller();
             }
+            _activeReader = null;
             base.Dispose(disposing);
         }
 

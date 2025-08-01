@@ -101,7 +101,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 try
                 {
                     if (_operationStatusPollingTask != null)
-                        _operationStatusPollingTask?.ConfigureAwait(false).GetAwaiter().GetResult();
+                        _operationStatusPollingTask?.GetAwaiter().GetResult();
                 }
                 catch (OperationCanceledException)
                 {
@@ -110,6 +110,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 _internalCts.Dispose();
             }
+            _internalCts = null;
+            _operationStatusPollingTask = null;
         }
     }
 }

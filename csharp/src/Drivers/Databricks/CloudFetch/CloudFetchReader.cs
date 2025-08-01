@@ -180,6 +180,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 this.downloadManager.Dispose();
                 this.downloadManager = null;
             }
+            base.Dispose(disposing);
         }
     }
 }

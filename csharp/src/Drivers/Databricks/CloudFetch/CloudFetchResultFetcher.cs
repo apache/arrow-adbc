@@ -22,6 +22,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
@@ -160,8 +161,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
 
                 request.StartRowOffset = offset;
 
+                // Cancelling mid-request breaks the client; Dispose() should not break the underlying client
+                CancellationToken expiringToken = ApacheUtility.GetCancellationToken(DatabricksConstants.DefaultCloudFetchRequestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+
                 // Fetch results
-                TFetchResultsResp response = await _statement.Client.FetchResults(request, cancellationToken);
+                TFetchResultsResp response = await _statement.Client.FetchResults(request, expiringToken);
 
                 // Process the results
                 if (response.Status.StatusCode == TStatusCode.SUCCESS_STATUS &&
@@ -247,10 +251,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 _downloadQueue.Add(EndOfResultsGuard.Instance, cancellationToken);
                 _isCompleted = true;
             }
-            catch (OperationCanceledException)
-            {
-                // downloadQueue could be full, would block indefinitely
-            }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Unhandled error in fetcher: {ex.Message}");
@@ -261,7 +261,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 // Add the end of results guard to the queue even in case of error
                 try
                 {
-                    _downloadQueue.Add(EndOfResultsGuard.Instance, CancellationToken.None);
+                    _downloadQueue.TryAdd(EndOfResultsGuard.Instance, 0);
                 }
                 catch (Exception)
                 {
@@ -286,7 +286,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             TFetchResultsResp response;
             try
             {
-                response = await _statement.Client.FetchResults(request, cancellationToken).ConfigureAwait(false);
+                CancellationToken expiringToken = ApacheUtility.GetCancellationToken(DatabricksConstants.DefaultCloudFetchRequestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                response = await _statement.Client.FetchResults(request, expiringToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
