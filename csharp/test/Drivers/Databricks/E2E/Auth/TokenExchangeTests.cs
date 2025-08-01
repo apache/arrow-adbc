@@ -92,7 +92,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
             string host = GetHost();
             var tokenExchangeClient = new TokenExchangeClient(_httpClient, host);
 
-            var response = await tokenExchangeClient.ExchangeTokenAsync(TestConfiguration.AccessToken, CancellationToken.None);
+            var response = await tokenExchangeClient.RefreshTokenAsync(TestConfiguration.AccessToken, CancellationToken.None);
 
             Assert.NotNull(response);
             Assert.NotEmpty(response.AccessToken);
@@ -119,7 +119,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
             // Create a token capturing handler to intercept the actual tokens being sent
             var tokenCapturingHandler = new TokenCapturingHandler(new HttpClientHandler());
 
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 tokenCapturingHandler,
                 tokenExchangeClient,
                 TestConfiguration.AccessToken,
@@ -180,7 +180,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Auth
             var tokenCapturingHandler = new TokenCapturingHandler(new HttpClientHandler());
 
             // Create a handler that should not refresh the token (token not near expiry)
-            var handler = new TokenExchangeDelegatingHandler(
+            var handler = new TokenRefreshDelegatingHandler(
                 tokenCapturingHandler,
                 tokenExchangeClient,
                 TestConfiguration.AccessToken,
