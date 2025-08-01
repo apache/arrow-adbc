@@ -70,8 +70,6 @@ public class DatabricksLogger
             }
             catch (Exception)
             {
-                // Silently fail if we can't write to log file
-                // Don't throw exceptions from logging code
             }
         }
     }
