@@ -20,7 +20,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class HostDetails
+    internal class HostDetails
     {
         [JsonPropertyName("host_url")]
         public string? HostUrl { get; set; }

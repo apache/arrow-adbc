@@ -17,7 +17,7 @@
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums
 {
-    public enum AuthFlow
+    internal enum AuthFlow
     {
         TYPE_UNSPECIFIED = 0,
         TOKEN_PASSTHROUGH = 1,

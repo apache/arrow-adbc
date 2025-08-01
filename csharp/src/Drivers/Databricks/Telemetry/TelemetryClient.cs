@@ -26,7 +26,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
-    public class TelemetryClient
+    internal class TelemetryClient
     {
         private readonly HttpClient _httpClient;
         private readonly string? _telemetryUrl;

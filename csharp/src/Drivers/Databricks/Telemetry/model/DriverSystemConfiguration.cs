@@ -19,7 +19,7 @@ using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class DriverSystemConfiguration
+    internal class DriverSystemConfiguration
     {
         [JsonPropertyName("driver_version")]
         public string? DriverVersion { get; set; }

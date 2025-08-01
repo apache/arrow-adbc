@@ -19,7 +19,7 @@ using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class ClientContext
+    internal class ClientContext
     {
         [JsonPropertyName("timestamp_millis")]
         public long TimestampMillis { get; set; }

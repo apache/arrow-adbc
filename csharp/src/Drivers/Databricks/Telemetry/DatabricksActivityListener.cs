@@ -26,7 +26,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
-    public class DatabricksActivityListener : IDisposable
+    internal class DatabricksActivityListener : IDisposable
     {
         private readonly ActivityListener _activityListener;
         private TelemetryHelper? _telemetryHelper;

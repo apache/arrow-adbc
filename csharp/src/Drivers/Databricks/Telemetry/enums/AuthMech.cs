@@ -17,7 +17,7 @@
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums
 {
-    public enum AuthMech
+    internal enum AuthMech
     {
         TYPE_UNSPECIFIED = 0,
         OTHER = 1,

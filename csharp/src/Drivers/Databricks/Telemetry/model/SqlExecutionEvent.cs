@@ -20,7 +20,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class SqlExecutionEvent
+    internal class SqlExecutionEvent
     {
         [JsonPropertyName("statement_type")]
         public StatementType StatementType { get; set; }

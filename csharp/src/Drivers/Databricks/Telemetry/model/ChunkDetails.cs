@@ -19,7 +19,7 @@ using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class ChunkDetails
+    internal class ChunkDetails
     {
         [JsonPropertyName("initial_chunk_latency_millis")]
         public long InitialChunkLatencyMillis { get; set; }

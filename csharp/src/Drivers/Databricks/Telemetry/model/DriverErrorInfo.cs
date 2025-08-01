@@ -18,7 +18,7 @@ using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class DriverErrorInfo
+    internal class DriverErrorInfo
     {
         [JsonPropertyName("error_name")]
         public string? ErrorName { get; set; }
