@@ -142,7 +142,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
                 }
                 Schema schema = GetSchemaFromMetadata(metadata);
-                return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
+                return new QueryResult(-1, CreateNewReader(schema, metadata));
             });
         }
 
@@ -358,6 +358,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public TOperationHandle? OperationHandle { get; private set; }
 
+        private IArrowArrayStream? _currentReader;
+
+        protected IArrowArrayStream CreateNewReader(Schema schema, TGetResultSetMetadataResp? metadata = null)
+        {
+            // Dispose any existing reader before creating a new one
+            _currentReader?.Dispose();
+            _currentReader = Connection.NewReader(this, schema, metadata);
+            return _currentReader;
+        }
+
         // Keep the original Client property for internal use
         public TCLIService.IAsync Client => Connection.Client;
 
@@ -385,6 +395,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             this.TraceActivity(activity =>
             {
+                _currentReader?.Dispose();
+                _currentReader = null;
                 if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
                 {
                     CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
@@ -602,7 +614,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
             schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
 
-            return new QueryResult(-1, Connection.NewReader(this, schema));
+            return new QueryResult(-1, CreateNewReader(schema));
         }
 
         protected internal QueryResult EnhanceGetColumnsResult(Schema originalSchema, IReadOnlyList<IArrowArray> originalData,
@@ -726,7 +738,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected virtual async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
         {
-            // 1. Get all three results at once
+            // 1. Get columns result and read all data immediately
             var columnsResult = await GetColumnsAsync(cancellationToken);
             if (columnsResult.Stream == null)
             {
@@ -734,12 +746,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return columnsResult;
             }
 
-            var pkResult = await GetPrimaryKeysAsync(cancellationToken);
-
-            // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
-            var fkResult = await GetCrossReferenceAsForeignTableAsync(cancellationToken);
-
-            // 2. Read all batches into memory
+            // 2. Read all column data into memory before getting next results
             List<RecordBatch> columnsBatches;
             int totalRows;
             Schema columnsSchema;
@@ -774,6 +781,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
             }
 
+
             // 3. Create combined schema and prepare data
             var allFields = new List<Field>(columnsSchema.FieldsList);
             var combinedData = new List<IArrowArray>();
@@ -800,11 +808,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             // 5. Process PK and FK data using helper methods with selected fields
+            // Get PK result right before we need it
+            var pkResult = await GetPrimaryKeysAsync(cancellationToken);
             await ProcessRelationshipDataSafe(pkResult, PrimaryKeyPrefix, "COLUMN_NAME",
                 PrimaryKeyFields, // Selected PK fields
                 columnNames, totalRows,
                 allFields, combinedData, cancellationToken);
 
+            // Get FK result right before we need it
+            // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
+            var fkResult = await GetCrossReferenceAsForeignTableAsync(cancellationToken);
             await ProcessRelationshipDataSafe(fkResult, ForeignKeyPrefix, "FKCOLUMN_NAME",
                 ForeignKeyFields, // Selected FK fields
                 columnNames, totalRows,

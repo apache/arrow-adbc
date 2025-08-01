@@ -21,13 +21,13 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
-using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Types;
 using Xunit;
 using Xunit.Abstractions;
 using System.Linq;
 using System.IO;
 using System.Text.Json;
+using System.Reflection;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 {
@@ -133,77 +133,157 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         /// <summary>
+        /// Verifies that disposing a statement before execution doesn't throw exceptions.
+        /// </summary>
+        [SkippableFact]
+        public void StatementDisposeBeforeExecutionSucceeds()
+        {
+            using AdbcConnection connection = NewConnection();
+            var statement = connection.CreateStatement();
+
+            // Dispose without executing anything
+            var exception = Record.Exception(() => statement.Dispose());
+            Assert.Null(exception);
+
+            // Test idempotent disposal
+            var secondException = Record.Exception(() => statement.Dispose());
+            Assert.Null(secondException);
+
+            OutputHelper?.WriteLine("✓ Disposal before execution succeeded");
+        }
+
+        /// <summary>
         /// Comprehensive test that verifies disposal works for all statement types without throwing exceptions.
         /// This prevents regressions like the GetColumns disposal bug where _directResults wasn't set properly.
+        /// Also tests that the status poller is properly stopped when statements are disposed during consumption.
         /// </summary>
         [SkippableTheory]
-        [InlineData("ExecuteStatement", "SELECT 1 as test_column")]
-        [InlineData("GetCatalogs", "GetCatalogs")]
-        [InlineData("GetSchemas", "GetSchemas")]
-        [InlineData("GetTables", "GetTables")]
-        [InlineData("GetColumns", "GetColumns")]
-        [InlineData("GetPrimaryKeys", "GetPrimaryKeys")]
-        [InlineData("GetCrossReference", "GetCrossReference")]
-        [InlineData("GetColumnsExtended", "GetColumnsExtended")]
-        public async Task AllStatementTypesDisposeWithoutErrors(string statementType, string sqlCommand)
+        [InlineData("ExecuteStatement", "SELECT id FROM RANGE(100000)", false)]
+        [InlineData("ExecuteStatement", "SELECT id FROM RANGE(10000000)", true)]  // CloudFetch SQL
+        [InlineData("GetCatalogs", "GetCatalogs", false)]
+        [InlineData("GetSchemas", "GetSchemas", false)]
+        [InlineData("GetTables", "GetTables", false)]
+        [InlineData("GetColumns", "GetColumns", false)]
+        [InlineData("GetPrimaryKeys", "GetPrimaryKeys", false)]
+        [InlineData("GetCrossReference", "GetCrossReference", false)]
+        [InlineData("GetColumnsExtended", "GetColumnsExtended", false)]
+        public async Task AllStatementTypesDisposeWithoutErrors(string statementType, string sqlCommand, bool useCloudFetch)
         {
-            var statement = Connection.CreateStatement();
+            OutputHelper?.WriteLine($"Testing disposal for {statementType} (CloudFetch: {useCloudFetch})");
 
-            try
+            // Create connection with directResults disabled to force non-direct result path
+            var connectionParams = new Dictionary<string, string>
             {
-                if (statementType == "ExecuteStatement")
-                {
-                    // Regular SQL statement
-                    statement.SqlQuery = sqlCommand;
-                }
-                else
-                {
-                    // Metadata command
-                    statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
-                    statement.SqlQuery = sqlCommand;
+                [DatabricksParameters.UseCloudFetch] = useCloudFetch.ToString().ToLower(),
+                [DatabricksParameters.EnableDirectResults] = "false"
+            };
 
-                    // Set required parameters for specific metadata commands
-                    if (sqlCommand is "GetColumns" or "GetPrimaryKeys" or "GetCrossReference" or "GetColumnsExtended")
-                    {
-                        statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
-                        statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
-                        statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
-                    }
+            using AdbcConnection connection = NewConnection(TestConfiguration, connectionParams);
 
-                    if (sqlCommand == "GetCrossReference")
-                    {
-                        // GetCrossReference needs foreign table parameters too
-                        statement.SetOption(ApacheParameters.ForeignCatalogName, TestConfiguration.Metadata.Catalog);
-                        statement.SetOption(ApacheParameters.ForeignSchemaName, TestConfiguration.Metadata.Schema);
-                        statement.SetOption(ApacheParameters.ForeignTableName, TestConfiguration.Metadata.Table);
-                    }
-                }
+            // Test 1: Dispose before any results are consumed
+            await TestDisposalAtConsumptionStage(
+                connection.CreateStatement(),
+                statementType,
+                sqlCommand,
+                batchesToConsume: 0,
+                description: "before consuming any results");
 
-                // Execute the statement
-                QueryResult queryResult = await statement.ExecuteQueryAsync();
-                Assert.NotNull(queryResult.Stream);
+            // Test 2: Dispose during consumption (after partial results)
+            await TestDisposalAtConsumptionStage(
+                connection.CreateStatement(),
+                statementType,
+                sqlCommand,
+                batchesToConsume: 1,
+                description: "during consumption (after partial results)");
 
-                // Consume at least one batch to ensure the operation completes
-                var batch = await queryResult.Stream.ReadNextRecordBatchAsync();
-                // Note: batch might be null for empty results, that's OK
+            // Test 3: Dispose after all results are consumed
+            await TestDisposalAtConsumptionStage(
+                connection.CreateStatement(),
+                statementType,
+                sqlCommand,
+                batchesToConsume: int.MaxValue,
+                description: "after consuming all results");
+        }
 
-                // The critical test: disposal should not throw any exceptions
-                // This specifically tests the fix for the GetColumns bug where _directResults wasn't set
-                var exception = Record.Exception(() => statement.Dispose());
-                Assert.Null(exception);
+        private async Task TestDisposalAtConsumptionStage(
+            AdbcStatement statement,
+            string statementType,
+            string sqlCommand,
+            int batchesToConsume,
+            string description)
+        {
+            SetupStatement(statement, statementType, sqlCommand);
+
+            // Execute the query
+            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            Assert.NotNull(queryResult.Stream);
+
+            var currentReader = GetCurrentReader(statement);
+            if (statementType != "GetColumnsExtended" && statementType != "GetColumns")
+            {
+                // Verify we have a reader
+                Assert.NotNull(currentReader);
             }
-            catch (Exception ex)
+
+            // Consume the specified number of batches
+            int batchesConsumed = 0;
+            for (int i = 0; i < batchesToConsume && queryResult.Stream != null; i++)
             {
-                // If execution fails, we still want to test disposal
-                OutputHelper?.WriteLine($"Statement execution failed for {statementType}: {ex.Message}");
+                var batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                if (batch == null)
+                    break;
+                batchesConsumed++;
+                batch.Dispose();
+            }
 
-                // Even if execution failed, disposal should not throw
-                var disposalException = Record.Exception(() => statement.Dispose());
-                Assert.Null(disposalException);
+            if (batchesConsumed > 0)
+            {
+                OutputHelper?.WriteLine($"  Consumed {batchesConsumed} batch(es)");
+            }
 
-                // Re-throw the original exception if we want to investigate execution failures
-                // For now, we'll skip the test if execution fails since disposal is our main concern
-                Skip.If(true, $"Skipping disposal test for {statementType} due to execution failure: {ex.Message}");
+            // Dispose the statement
+            var exception = Record.Exception(() => statement.Dispose());
+            Assert.Null(exception);
+
+            // Verify reader was disposed
+            var readerAfterDispose = GetCurrentReader(statement);
+            Assert.Null(readerAfterDispose);
+            OutputHelper?.WriteLine($"✓ Test {description}: Disposal {description} succeeded");
+
+            // Always test idempotent disposal
+            var secondDisposalException = Record.Exception(() => statement.Dispose());
+            Assert.Null(secondDisposalException);
+            OutputHelper?.WriteLine($"✓ Test {description}: Idempotent disposal succeeded");
+        }
+
+        private void SetupStatement(AdbcStatement statement, string statementType, string sqlCommand)
+        {
+            if (statementType == "ExecuteStatement")
+            {
+                // Regular SQL statement
+                statement.SqlQuery = sqlCommand;
+            }
+            else
+            {
+                // Metadata command
+                statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+                statement.SqlQuery = sqlCommand;
+
+                // Set required parameters for specific metadata commands
+                if (sqlCommand is "GetColumns" or "GetPrimaryKeys" or "GetCrossReference" or "GetColumnsExtended")
+                {
+                    statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
+                    statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
+                    statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+                }
+
+                if (sqlCommand == "GetCrossReference")
+                {
+                    // GetCrossReference needs foreign table parameters too
+                    statement.SetOption(ApacheParameters.ForeignCatalogName, TestConfiguration.Metadata.Catalog);
+                    statement.SetOption(ApacheParameters.ForeignSchemaName, TestConfiguration.Metadata.Schema);
+                    statement.SetOption(ApacheParameters.ForeignTableName, TestConfiguration.Metadata.Table);
+                }
             }
         }
 
@@ -927,7 +1007,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.Equal(30000000, totalRows);
             Assert.True(batchCount > 1, "Should have read multiple batches");
             OutputHelper?.WriteLine($"Successfully read {totalRows} rows in {batchCount} batches after 30 minute delay with {configName}");
+            statement.Dispose();
         }
+
+        private static object? GetCurrentReader(AdbcStatement statement)
+        {
+            var statementType = statement.GetType();
+            var baseType = statementType.BaseType?.BaseType; // HiveServer2Statement
+            var currentReaderField = baseType?.GetField("_currentReader", BindingFlags.NonPublic | BindingFlags.Instance);
+            return currentReaderField?.GetValue(statement);
+        }
+
 
         [SkippableTheory]
         [InlineData("true", true)]  // Should allow multiple catalogs
