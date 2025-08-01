@@ -65,11 +65,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             tlsProperties.DisableServerCertificateValidation = false;
             tlsProperties.AllowHostnameMismatch = properties.TryGetValue(HttpTlsOptions.AllowHostnameMismatch, out string? allowHostnameMismatch) && bool.TryParse(allowHostnameMismatch, out bool allowHostnameMismatchBool) && allowHostnameMismatchBool;
             tlsProperties.AllowSelfSigned = properties.TryGetValue(HttpTlsOptions.AllowSelfSigned, out string? allowSelfSigned) && bool.TryParse(allowSelfSigned, out bool allowSelfSignedBool) && allowSelfSignedBool;
-            if (tlsProperties.AllowSelfSigned)
-            {
-                if (!properties.TryGetValue(HttpTlsOptions.TrustedCertificatePath, out string? trustedCertificatePath)) return tlsProperties;
-                tlsProperties.TrustedCertificatePath = trustedCertificatePath != "" && File.Exists(trustedCertificatePath) ? trustedCertificatePath : throw new FileNotFoundException("Trusted certificate path is invalid or file does not exist.");
-            }
+            if (!properties.TryGetValue(HttpTlsOptions.TrustedCertificatePath, out string? trustedCertificatePath)) return tlsProperties;
+            tlsProperties.TrustedCertificatePath = trustedCertificatePath != "" && File.Exists(trustedCertificatePath) ? trustedCertificatePath : throw new FileNotFoundException("Trusted certificate path is invalid or file does not exist.");
             return tlsProperties;
         }
 
@@ -81,28 +78,60 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
                 {
                     if (policyErrors == SslPolicyErrors.None || tlsProperties.DisableServerCertificateValidation) return true;
+
+                    if (certificate == null || !(certificate is X509Certificate2 cert2))
+                        return false;
+
+                    bool isNameMismatchError = policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) && !tlsProperties.AllowHostnameMismatch;
+
+                    if (isNameMismatchError) return false;
+
                     if (string.IsNullOrEmpty(tlsProperties.TrustedCertificatePath))
                     {
-                        return
-                            (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || tlsProperties.AllowSelfSigned)
-                        && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) || tlsProperties.AllowHostnameMismatch);
+                        return !policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors)|| (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
                     }
-                    if (certificate == null)
-                        return false;
-                    X509Certificate2 customCertificate = new X509Certificate2(tlsProperties.TrustedCertificatePath);
-                    X509Chain chain2 = new X509Chain();
-                    chain2.ChainPolicy.ExtraStore.Add(customCertificate);
 
+                    X509Certificate2 trustedRoot = new X509Certificate2(tlsProperties.TrustedCertificatePath);
+                    X509Chain customChain = new X509Chain();
+                    customChain.ChainPolicy.ExtraStore.Add(trustedRoot);
                     // "tell the X509Chain class that I do trust this root certs and it should check just the certs in the chain and nothing else"
-                    chain2.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+                    customChain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+                    customChain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
 
-                    // Build the chain and verify
-                    return chain2.Build(certificate);
+                    bool chainValid = customChain.Build(cert2);
+
+                    return chainValid || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
                 };
             }
             proxyConfigurator.ConfigureProxy(httpClientHandler);
             httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             return httpClientHandler;
+        }
+
+        static private bool IsSelfSigned(X509Certificate2 cert)
+        {
+            return cert.Subject == cert.Issuer && IsSignedBy(cert, cert);
+        }
+
+        static private bool IsSignedBy(X509Certificate2 cert, X509Certificate2 issuer)
+        {
+            try
+            {
+                using (var chain = new X509Chain())
+                {
+                    chain.ChainPolicy.ExtraStore.Add(issuer);
+                    chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+                    chain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
+
+                    return chain.Build(cert)
+                        && chain.ChainElements.Count == 1
+                        && chain.ChainElements[0].Certificate.Thumbprint == issuer.Thumbprint;
+                }
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         static internal TlsProperties GetStandardTlsOptions(IReadOnlyDictionary<string, string> properties)
@@ -130,11 +159,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             tlsProperties.DisableServerCertificateValidation = false;
             tlsProperties.AllowHostnameMismatch = properties.TryGetValue(StandardTlsOptions.AllowHostnameMismatch, out string? allowHostnameMismatch) && bool.TryParse(allowHostnameMismatch, out bool allowHostnameMismatchBool) && allowHostnameMismatchBool;
             tlsProperties.AllowSelfSigned = properties.TryGetValue(StandardTlsOptions.AllowSelfSigned, out string? allowSelfSigned) && bool.TryParse(allowSelfSigned, out bool allowSelfSignedBool) && allowSelfSignedBool;
-            if (tlsProperties.AllowSelfSigned)
-            {
-                if (!properties.TryGetValue(StandardTlsOptions.TrustedCertificatePath, out string? trustedCertificatePath)) return tlsProperties;
-                tlsProperties.TrustedCertificatePath = trustedCertificatePath != "" && File.Exists(trustedCertificatePath) ? trustedCertificatePath : throw new FileNotFoundException("Trusted certificate path is invalid or file does not exist.");
-            }
+            if (!properties.TryGetValue(StandardTlsOptions.TrustedCertificatePath, out string? trustedCertificatePath)) return tlsProperties;
+            tlsProperties.TrustedCertificatePath = trustedCertificatePath != "" && File.Exists(trustedCertificatePath) ? trustedCertificatePath : throw new FileNotFoundException("Trusted certificate path is invalid or file does not exist.");
             return tlsProperties;
         }
 
