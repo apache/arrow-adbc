@@ -1825,6 +1825,75 @@ TEST_F(PostgresStatementTest, SqlQueryInt2vector) {
   ASSERT_EQ(reader.array->release, nullptr);
 }
 
+TEST_F(PostgresStatementTest, PostgresCompositeTest) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  {
+    adbc_validation::StreamReader reader;
+
+    // Cleanup first: Drop table before type
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement, "DROP TABLE IF EXISTS adbc_test;", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement, "DROP TYPE IF EXISTS mycomp;", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "CREATE TYPE mycomp AS (x integer);",
+                                         &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement, "CREATE TABLE adbc_test (mycomps mycomp);", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement,
+            "INSERT INTO adbc_test (mycomps) VALUES (ROW(1)), (ROW(2)), (ROW(3));",
+            &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+
+    // Since the composite type is added after we connect the ADBC driver, we
+    // need to reconnect.
+    //
+    // TODO: This could he a helper (disconnect without recreating db)
+    ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement, "SELECT mycomps FROM adbc_test;", &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+
+    // TODO: Still working on this
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_EQ(reader.schema->n_children, 1);
+    ASSERT_STREQ(reader.schema->children[0]->name, "mycomps");
+    ASSERT_STREQ(reader.schema->children[0]->format, "i");
+  }
+}
+
 TEST_F(PostgresStatementTest, UnknownOid) {
   // Regression test for https://github.com/apache/arrow-adbc/issues/2448
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
