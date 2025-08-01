@@ -75,33 +75,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             HttpClientHandler httpClientHandler = new();
             if (tlsProperties.IsTlsEnabled)
             {
-                httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
-                {
-                    if (policyErrors == SslPolicyErrors.None || tlsProperties.DisableServerCertificateValidation) return true;
-
-                    if (certificate == null || !(certificate is X509Certificate2 cert2))
-                        return false;
-
-                    bool isNameMismatchError = policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) && !tlsProperties.AllowHostnameMismatch;
-
-                    if (isNameMismatchError) return false;
-
-                    if (string.IsNullOrEmpty(tlsProperties.TrustedCertificatePath))
-                    {
-                        return !policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors)|| (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
-                    }
-
-                    X509Certificate2 trustedRoot = new X509Certificate2(tlsProperties.TrustedCertificatePath);
-                    X509Chain customChain = new X509Chain();
-                    customChain.ChainPolicy.ExtraStore.Add(trustedRoot);
-                    // "tell the X509Chain class that I do trust this root certs and it should check just the certs in the chain and nothing else"
-                    customChain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
-                    customChain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
-
-                    bool chainValid = customChain.Build(cert2);
-
-                    return chainValid || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
-                };
+                httpClientHandler.ServerCertificateCustomValidationCallback = (request, cert, chain, errors) => ValidateCertificate(cert, errors, tlsProperties);
             }
             proxyConfigurator.ConfigureProxy(httpClientHandler);
             httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
@@ -164,20 +138,32 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return tlsProperties;
         }
 
-        static internal RemoteCertificateValidationCallback GetCertificateValidator(TlsProperties tlsProperties)
+        static internal bool ValidateCertificate(X509Certificate? cert, SslPolicyErrors policyErrors, TlsProperties tlsProperties)
         {
-            return (object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors policyErrors) =>
-            {
-                if (policyErrors == SslPolicyErrors.None || tlsProperties.DisableServerCertificateValidation) return true;
-                if (string.IsNullOrEmpty(tlsProperties.TrustedCertificatePath))
-                {
-                    return
-                        (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || tlsProperties.AllowSelfSigned)
-                        && (!policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) || tlsProperties.AllowHostnameMismatch);
-                }
+            if (policyErrors == SslPolicyErrors.None || tlsProperties.DisableServerCertificateValidation)
+                return true;
 
+            if (cert == null || !(cert is X509Certificate2 cert2))
                 return false;
-            };
+
+            bool isNameMismatchError = policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) && !tlsProperties.AllowHostnameMismatch;
+
+            if (isNameMismatchError) return false;
+
+            if (string.IsNullOrEmpty(tlsProperties.TrustedCertificatePath))
+            {
+                return !policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
+            }
+
+            X509Certificate2 trustedRoot = new X509Certificate2(tlsProperties.TrustedCertificatePath);
+            X509Chain customChain = new();
+            customChain.ChainPolicy.ExtraStore.Add(trustedRoot);
+            // "tell the X509Chain class that I do trust this root certs and it should check just the certs in the chain and nothing else"
+            customChain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+            customChain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
+
+            bool chainValid = customChain.Build(cert2);
+            return chainValid || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
         }
     }
 }
