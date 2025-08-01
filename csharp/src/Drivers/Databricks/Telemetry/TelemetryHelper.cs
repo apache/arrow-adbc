@@ -28,6 +28,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
+using static Apache.Arrow.Adbc.Drivers.Databricks.Log.DatabricksLogger;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using System.Text.Json;
 
@@ -80,6 +81,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             if (httpClient == null)
             {
                 // Should not happen, but we should log if it does
+                LOGGER.error("TelemetryHelper.InitializeTelemetryClient: httpClient is null");
                 return;
             }
 

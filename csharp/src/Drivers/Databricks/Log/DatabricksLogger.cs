@@ -15,51 +15,64 @@
  * limitations under the License.
  */
 
-using System.Diagnostics;
-using Microsoft.Extensions.Logging;
+using System;
+using System.IO;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Log;
 
 public class DatabricksLogger
 {
-    public static readonly string DATABRICKS_LOG_FILE = "databricks.log";
-
+    public static readonly string DATABRICKS_LOG_FILE = "databricks_adbc.log";
     public static readonly DatabricksLogger LOGGER = new DatabricksLogger();
+
+    private static readonly object _logLock = new object();
+    private static readonly string _logFilePath = Path.Combine(Path.GetTempPath(), DATABRICKS_LOG_FILE);
 
     public void trace(string message)
     {
-        log(message, LogLevel.Trace);
+        WriteLog("TRACE", message);
     }
 
     public void debug(string message)
     {
-        log(message, LogLevel.Debug);
+        WriteLog("DEBUG", message);
     }
 
     public void info(string message)
     {
-        log(message, LogLevel.Information);
+        WriteLog("INFO", message);
     }
 
     public void warn(string message)
     {
-        log(message, LogLevel.Warning);
+        WriteLog("WARN", message);
     }
 
     public void error(string message)
     {
-        log(message, LogLevel.Error);
+        WriteLog("ERROR", message);
     }
 
     public void fatal(string message)
     {
-        log(message, LogLevel.Critical);
+        WriteLog("FATAL", message);
     }
 
-    private void log(string message, LogLevel level)
+    private static void WriteLog(string level, string message)
     {
         var logMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}";
-        string logFilePath = Path.Combine(Path.GetTempPath(), DATABRICKS_LOG_FILE);
-        File.AppendAllText(logFilePath, logMessage + Environment.NewLine);
+        
+        lock (_logLock)
+        {
+            try
+            {
+                File.AppendAllText(_logFilePath, logMessage + Environment.NewLine);
+            }
+            catch (Exception)
+            {
+                // Silently fail if we can't write to log file
+                // Don't throw exceptions from logging code
+            }
+        }
     }
 }
