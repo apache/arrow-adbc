@@ -17,7 +17,7 @@
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums
 {
-    public enum DriverVolumeOperationType
+    internal enum DriverVolumeOperationType
     {
         TYPE_UNSPECIFIED = 0,
         PUT = 1,

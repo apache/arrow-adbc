@@ -20,7 +20,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class DriverConnectionParameters
+    internal class DriverConnectionParameters
     {
         [JsonPropertyName("http_path")]
         public string? HTTPPath { get; set; }

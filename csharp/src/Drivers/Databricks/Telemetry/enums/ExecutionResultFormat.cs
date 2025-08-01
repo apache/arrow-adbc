@@ -17,7 +17,7 @@
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums
 {
-    public enum ExecutionResultFormat
+    internal enum ExecutionResultFormat
     {
         FORMAT_UNSPECIFIED = 0,
         INLINE_ARROW = 1,

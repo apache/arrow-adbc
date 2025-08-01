@@ -17,7 +17,7 @@
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums
 {
-    public enum OperationType
+    internal enum OperationType
     {
         TYPE_UNSPECIFIED = 0,
         CREATE_SESSION = 1,

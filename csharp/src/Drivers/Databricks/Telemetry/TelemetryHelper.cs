@@ -33,7 +33,7 @@ using System.Text.Json;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
-    public class TelemetryHelper
+    internal class TelemetryHelper
     {
         private static readonly ConcurrentQueue<TelemetryFrontendLog> EventsBatch = new ConcurrentQueue<TelemetryFrontendLog>();
         private long _lastFlushTimeMillis;
@@ -75,8 +75,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             _clientContext = clientContext;
         }
 
-        public void InitializeTelemetryClient(HttpClient httpClient)
+        public void InitializeTelemetryClient(HttpClient? httpClient)
         {
+            if (httpClient == null)
+            {
+                // Should not happen, but we should log if it does
+                return;
+            }
+
             if (_telemetryClient == null && _connectionParameters?.HostInfo != null)
             {
                 _telemetryClient = new TelemetryClient(httpClient, _connectionParameters.HostInfo.HostUrl, _accessToken);

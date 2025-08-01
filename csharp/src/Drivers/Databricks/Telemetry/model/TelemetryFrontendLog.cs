@@ -19,7 +19,7 @@ using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class TelemetryFrontendLog
+    internal class TelemetryFrontendLog
     {
         [JsonPropertyName("workspace_id")]
         public long WorkspaceId { get; set; }

@@ -19,7 +19,7 @@ using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class TelemetryEvent
+    internal class TelemetryEvent
     {
         [JsonPropertyName("session_id")]
         public string? SessionId { get; set; }

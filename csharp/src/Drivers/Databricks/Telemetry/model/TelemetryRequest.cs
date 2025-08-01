@@ -20,7 +20,7 @@ using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model
 {
-    public class TelemetryRequest
+    internal class TelemetryRequest
     {
         [JsonPropertyName("upload_time")]
         public long UploadTime { get; set; }

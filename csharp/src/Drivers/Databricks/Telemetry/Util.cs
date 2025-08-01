@@ -20,7 +20,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
-    public class Util
+    internal class Util
     {
         private static string DRIVER_VERSION = "1.0.0";
 

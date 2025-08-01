@@ -17,7 +17,7 @@
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry;
 
-public class DatabricksConnectionConfig
+internal class DatabricksConnectionConfig
 {
     public static readonly int MAX_BATCH_SIZE = 1;
     public static readonly int FLUSH_INTERVAL_MILLIS = 300000; // 5 minutes
