@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -115,13 +116,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             TTransport transport;
             if (TlsOptions.IsTlsEnabled)
             {
+                RemoteCertificateValidationCallback certValidator = (sender, cert, chain, errors) => HiveServer2TlsImpl.ValidateCertificate(cert, errors, TlsOptions);
                 if (IPAddress.TryParse(hostName!, out var address))
                 {
-                    transport = new TTlsSocketTransport(address!, int.Parse(port!), config: new(), 0, !string.IsNullOrEmpty(TlsOptions.TrustedCertificatePath) ? new X509Certificate2(TlsOptions.TrustedCertificatePath!) : null, certValidator: HiveServer2TlsImpl.GetCertificateValidator(TlsOptions));
+                    transport = new TTlsSocketTransport(address!, int.Parse(port!), config: new(), 0, null, certValidator: certValidator);
                 }
                 else
                 {
-                    transport = new TTlsSocketTransport(hostName!, int.Parse(port!), config: new(), 0, !string.IsNullOrEmpty(TlsOptions.TrustedCertificatePath) ? new X509Certificate2(TlsOptions.TrustedCertificatePath!) : null, certValidator: HiveServer2TlsImpl.GetCertificateValidator(TlsOptions));
+                    transport = new TTlsSocketTransport(hostName!, int.Parse(port!), config: new(), 0, null, certValidator: certValidator);
                 }
             }
             else
