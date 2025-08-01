@@ -118,7 +118,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Stop the poller when we've reached the end of results
             if (result == null)
             {
-                StopOperationStatusPoller(); 
+                StopOperationStatusPoller();
             }
             return result;
         }
