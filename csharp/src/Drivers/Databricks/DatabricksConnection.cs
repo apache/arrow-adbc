@@ -94,9 +94,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
         {
             IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
-            // TODO: Add any additional tags specific to Databricks connection
-            //tags ??= [];
-            //tags.Concat([new("key", "value")]);
+            tags ??= [];
+            tags.Concat([new("guid",_guid)]);
             return tags;
         }
 

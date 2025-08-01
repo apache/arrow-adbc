@@ -18,6 +18,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
@@ -31,12 +32,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
         private readonly ActivityListener _activityListener;
         private TelemetryHelper? _telemetryHelper;
 
-        public DatabricksActivityListener(TelemetryHelper? telemetryHelper, string sourceName)
+        public DatabricksActivityListener(TelemetryHelper? telemetryHelper, string sourceName, Guid guid)
         {
             this._telemetryHelper = telemetryHelper;
             this._activityListener = new ActivityListener
             {
-                ShouldListenTo = (activitySource) => activitySource.Name == sourceName,
+                ShouldListenTo = (activitySource) => activitySource.Tags?.Any(kvp => kvp.Key == "guid" && kvp.Value?.Equals(guid) == true) == true,
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
                 ActivityStopped = OnActivityStopped,
             };
@@ -50,7 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
                 return;
             }
 
-            if(activity.OperationName.EndsWith("ExecuteStatementAsync"))
+            if(activity.OperationName?.EndsWith("ExecuteStatementAsync") == true)
             {
                 var sqlExecutionEvent = new SqlExecutionEvent();
                 var operationDetail = new OperationDetail();
