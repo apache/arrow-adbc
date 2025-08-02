@@ -15,12 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! C-compatible items as defined in [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h)
+use adbc_core::error::Status;
 
-pub mod constants;
-pub mod methods;
-pub(crate) mod types;
-pub use types::{
-    driver_method, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcDriverInitFunc,
-    FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement, FFI_AdbcStatusCode,
-};
+pub(crate) fn libloading_error_to_adbc_error(e: libloading::Error) -> adbc_core::error::Error {
+    adbc_core::error::Error {
+        message: format!("Error with dynamic library: {e}"),
+        status: Status::Internal,
+        vendor_code: 0,
+        sqlstate: [0; 5],
+        details: None,
+    }
+}

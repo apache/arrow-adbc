@@ -26,10 +26,10 @@ use std::{fmt, sync::LazyLock};
 #[cfg(any(feature = "bundled", feature = "linked"))]
 use adbc_core::ffi::{FFI_AdbcDriverInitFunc, FFI_AdbcError, FFI_AdbcStatusCode};
 use adbc_core::{
-    driver_manager::ManagedDriver,
     error::Result,
     options::{AdbcVersion, OptionDatabase, OptionValue},
 };
+use adbc_driver_manager::ManagedDriver;
 
 use crate::Database;
 

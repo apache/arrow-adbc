@@ -8,13 +8,6 @@ version = "0.20.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
- "arrow-select",
- "libloading",
- "temp-env",
- "tempfile",
- "toml",
- "windows-registry",
- "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -33,10 +26,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "adbc_driver_manager"
+version = "0.20.0"
+dependencies = [
+ "adbc_core",
+ "arrow-array",
+ "arrow-schema",
+ "arrow-select",
+ "libloading",
+ "temp-env",
+ "tempfile",
+ "toml",
+ "windows-registry",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "adbc_dummy"
 version = "0.20.0"
 dependencies = [
  "adbc_core",
+ "adbc_driver_manager",
  "arrow-array",
  "arrow-buffer",
  "arrow-schema",
@@ -48,6 +58,7 @@ name = "adbc_snowflake"
 version = "0.20.0"
 dependencies = [
  "adbc_core",
+ "adbc_driver_manager",
  "arrow-array",
  "arrow-schema",
  "dotenvy",

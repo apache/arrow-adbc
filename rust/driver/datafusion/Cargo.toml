@@ -48,4 +48,4 @@ crate-type = ["lib", "cdylib"]
 
 [features]
 default = []
-ffi = ["adbc_core/driver_manager"]
+ffi = []
