@@ -43,7 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
         private bool _enablePKFK = true;
-        private bool _runAsyncInThrift = false;
+        private bool _runAsyncInThrift = true;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
