@@ -77,7 +77,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                     if (this.hasNoMoreRows)
                     {
-                        StopOperationStatusPoller();
                         return null;
                     }
 

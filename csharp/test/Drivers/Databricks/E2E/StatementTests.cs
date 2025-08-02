@@ -187,10 +187,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 var batch = await queryResult.Stream.ReadNextRecordBatchAsync();
                 // Note: batch might be null for empty results, that's OK
 
+                // test disposing the stream does not throw
+                var streamException = Record.Exception(() => queryResult.Stream.Dispose());
+                Assert.Null(streamException);
+
                 // The critical test: disposal should not throw any exceptions
                 // This specifically tests the fix for the GetColumns bug where _directResults wasn't set
-                var exception = Record.Exception(() => statement.Dispose());
-                Assert.Null(exception);
+                var statementException = Record.Exception(() => statement.Dispose());
+                Assert.Null(statementException);
             }
             catch (Exception ex)
             {
