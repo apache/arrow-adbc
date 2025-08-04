@@ -24,7 +24,7 @@ package org.apache.arrow.adbc.core;
  * remote/networked databases, for in-memory databases, this object provides an explicit point of
  * ownership.
  */
-public interface AdbcDatabase extends AutoCloseable, AdbcOptions {
+public interface AdbcDatabase extends AdbcCloseable, AdbcOptions {
   /** Create a new connection to the database. */
   AdbcConnection connect() throws AdbcException;
 }
