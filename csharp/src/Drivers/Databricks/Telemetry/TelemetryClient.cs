@@ -23,6 +23,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
+using static Apache.Arrow.Adbc.Drivers.Databricks.Log.DatabricksLogger;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
@@ -74,8 +75,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             }
             catch (Exception ex)
             {
-                // Log the exception but don't throw to prevent telemetry failures from affecting main functionality
-                System.Diagnostics.Debug.WriteLine($"Failed to send telemetry: {ex.Message}");
+                LOGGER.error($"Failed to send telemetry: {ex.Message}");
                 return false;
             }
         }
@@ -111,12 +111,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
                 }
 
                 var response = await _httpClient.SendAsync(request);
+                LOGGER.info($"Telemetry response: {response.StatusCode}");
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
-                // Log the exception but don't throw to prevent telemetry failures from affecting main functionality
-                System.Diagnostics.Debug.WriteLine($"Failed to send telemetry: {ex.Message}");
+                LOGGER.error($"Failed to send telemetry: {ex.Message}");
                 return false;
             }
         }

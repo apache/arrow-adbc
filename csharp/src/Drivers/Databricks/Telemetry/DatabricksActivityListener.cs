@@ -23,7 +23,7 @@ using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
-
+using static Apache.Arrow.Adbc.Drivers.Databricks.Log.DatabricksLogger;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
@@ -52,7 +52,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             }
 
             if(activity.OperationName?.EndsWith("ExecuteStatementAsync") == true)
-            {
+            {   
+                LOGGER.info("OnActivityStopped: " + activity.OperationName);
                 var sqlExecutionEvent = new SqlExecutionEvent();
                 var operationDetail = new OperationDetail();
                 operationDetail.OperationType = Util.StringToOperationType("EXECUTE_STATEMENT_ASYNC");
