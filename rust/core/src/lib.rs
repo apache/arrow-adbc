@@ -288,15 +288,15 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// | fk_table                 | utf8 not null           |
     /// | fk_column_name           | utf8 not null           |
     ///
-    fn get_objects(
-        &self,
+    fn get_objects<'a>(
+        &'_ self,
         depth: options::ObjectDepth,
-        catalog: Option<&str>,
-        db_schema: Option<&str>,
-        table_name: Option<&str>,
-        table_type: Option<Vec<&str>>,
-        column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send>;
+        catalog: Option<&'_ str>,
+        db_schema: Option<&'_ str>,
+        table_name: Option<&'_ str>,
+        table_type: Option<Vec<&'_ str>>,
+        column_name: Option<&'_ str>,
+    ) -> Result<impl RecordBatchReader + Send + 'a>;
 
     /// Get the Arrow schema of a table.
     ///

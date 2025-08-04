@@ -29,6 +29,7 @@ use arrow_select::concat::concat_batches;
 use adbc_core::driver_manager::{
     ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement,
 };
+use adbc_core::error::Result;
 use adbc_core::options::{
     AdbcVersion, InfoCode, IngestMode, IsolationLevel, ObjectDepth, OptionConnection,
     OptionDatabase, OptionStatement,
@@ -473,6 +474,49 @@ fn test_connection_get_objects() {
         exported_objects.schema(),
         schemas::GET_OBJECTS_SCHEMA.clone(),
     );
+}
+
+struct BoxedReaderConnection(DummyConnection);
+
+impl BoxedReaderConnection {
+    pub fn get_objects<'a>(
+        &'_ self,
+        depth: ObjectDepth,
+        catalog: Option<&'_ str>,
+        db_schema: Option<&'_ str>,
+        table_name: Option<&'_ str>,
+        table_type: Option<Vec<&'_ str>>,
+        column_name: Option<&'_ str>,
+    ) -> Result<Box<dyn RecordBatchReader + Send>> {
+        let reader = self.0.get_objects(
+            depth,
+            catalog,
+            db_schema,
+            table_name,
+            table_type,
+            column_name,
+        )?;
+        let boxed_reader = Box::new(reader);
+        Ok(boxed_reader)
+    }
+}
+
+#[test]
+fn test_connection_get_objects_as_boxed_reader() {
+    let mut driver = DummyDriver {};
+    let mut database = driver.new_database().unwrap();
+    let connection = database.new_connection().unwrap();
+    let boxed_connection = BoxedReaderConnection(connection);
+    let _boxed_reader: Box<dyn RecordBatchReader> = boxed_connection
+        .get_objects(
+            ObjectDepth::All,
+            None,
+            None,
+            None,
+            Some(vec!["table", "view"]),
+            None,
+        )
+        .unwrap();
 }
 
 // Statement
