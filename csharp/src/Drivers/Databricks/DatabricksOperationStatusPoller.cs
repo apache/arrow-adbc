@@ -100,8 +100,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 _internalCts.Cancel();
                 try
                 {
-                    if (_operationStatusPollingTask != null)
-                        _operationStatusPollingTask?.GetAwaiter().GetResult();
+                     _operationStatusPollingTask?.GetAwaiter().GetResult();
                 }
                 catch (OperationCanceledException)
                 {
