@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"go.opentelemetry.io/otel/attribute"
@@ -158,4 +159,136 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 	}
 
 	return count, nil
+}
+
+// VersionInfo contains comprehensive driver and library version information.
+type VersionInfo struct {
+	DriverName    string            `json:"driver_name"`    // e.g., "ADBC PostgreSQL Driver"
+	DriverVersion string            `json:"driver_version"` // e.g., "15.13.0000"
+	LibraryInfo   map[string]string `json:"library_info"`   // Additional library versions, protocol info, etc.
+}
+
+// GetVersionInfo retrieves comprehensive driver version information from a connection.
+// This helper function encapsulates the complex process of querying driver info codes,
+// handling streaming record batches and union arrays, extracting and safely cloning
+// string values, and managing errors with fallback defaults.
+//
+// Returns detailed version information including driver name, version, and additional
+// library information such as Arrow version, vendor details, and ADBC version.
+//
+// This is not part of the ADBC API specification.
+func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) {
+	stream, err := cnxn.GetInfo(ctx, []InfoCode{
+		InfoDriverName,
+		InfoDriverVersion,
+		InfoDriverArrowVersion,
+		InfoDriverADBCVersion,
+		InfoVendorName,
+		InfoVendorVersion,
+		InfoVendorArrowVersion,
+		InfoVendorSql,
+		InfoVendorSubstrait,
+		InfoVendorSubstraitMinVersion,
+		InfoVendorSubstraitMaxVersion,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("GetInfo failed: %w", err)
+	}
+	defer stream.Release()
+
+	var name, version string
+	libInfo := make(map[string]string)
+
+	for stream.Next() {
+		batch := stream.Record()
+		codeArr := batch.Column(0).(*array.Uint32)
+		unionArr := batch.Column(1).(*array.DenseUnion)
+
+		for i := 0; i < int(batch.NumRows()); i++ {
+			code := InfoCode(codeArr.Value(i))
+			child := unionArr.Field(unionArr.ChildID(i))
+			offset := int(unionArr.ValueOffset(i))
+			unionArr.GetOneForMarshal(i)
+
+			if child.IsNull(offset) {
+				continue
+			}
+
+			// Handle different union types based on child ID (similar to validation tests)
+			switch unionArr.ChildID(i) {
+			case 0: // String values
+				if strArray, ok := child.(*array.String); ok {
+					// Create a copy of the string to avoid memory issues
+					val := strings.Clone(strArray.Value(offset))
+
+					switch code {
+					case InfoDriverName:
+						name = val
+					case InfoDriverVersion:
+						version = val
+					case InfoDriverArrowVersion:
+						libInfo["driver_arrow_version"] = val
+					case InfoVendorName:
+						libInfo["vendor_name"] = val
+					case InfoVendorVersion:
+						libInfo["vendor_version"] = val
+					case InfoVendorArrowVersion:
+						libInfo["vendor_arrow_version"] = val
+					case InfoVendorSubstraitMinVersion:
+						libInfo["vendor_substrait_min_version"] = val
+					case InfoVendorSubstraitMaxVersion:
+						libInfo["vendor_substrait_max_version"] = val
+					}
+				}
+
+			case 1: // Boolean values
+				if boolArray, ok := child.(*array.Boolean); ok {
+					val := boolArray.Value(offset)
+
+					switch code {
+					case InfoVendorSql:
+						if val {
+							libInfo["vendor_sql_support"] = "true"
+						} else {
+							libInfo["vendor_sql_support"] = "false"
+						}
+					case InfoVendorSubstrait:
+						if val {
+							libInfo["vendor_substrait_support"] = "true"
+						} else {
+							libInfo["vendor_substrait_support"] = "false"
+						}
+					}
+				}
+
+			case 2: // Int64 values
+				if int64Array, ok := child.(*array.Int64); ok {
+					val := int64Array.Value(offset)
+
+					switch code {
+					case InfoDriverADBCVersion:
+						libInfo["driver_adbc_version"] = fmt.Sprintf("%d", val)
+					}
+				}
+			}
+		}
+	}
+
+	if err := stream.Err(); err != nil {
+		return nil, fmt.Errorf("error reading info stream: %w", err)
+	}
+
+	// Set defaults if not provided
+	if name == "" {
+		name = "ADBC Driver"
+	}
+	if version == "" {
+		version = "unknown"
+	}
+
+	return &VersionInfo{
+		DriverName:    name,
+		DriverVersion: version,
+		LibraryInfo:   libInfo,
+	}, nil
 }
