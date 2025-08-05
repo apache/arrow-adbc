@@ -53,6 +53,8 @@ type connectionImpl struct {
 	accessTokenEndpoint   string
 	accessTokenServerName string
 
+	// the default location to use for all BigQuery requests
+	location string
 	// catalog is the same as the project id in BigQuery
 	catalog string
 	// dbSchema is the same as the dataset id in BigQuery
@@ -572,6 +574,10 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		client, err := bigquery.NewClient(ctx, c.catalog, credentials)
 		if err != nil {
 			return err
+		}
+
+		if c.location != "" {
+			client.Location = c.location
 		}
 
 		err = client.EnableStorageReadClient(ctx, credentials)

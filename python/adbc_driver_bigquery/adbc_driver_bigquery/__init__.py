@@ -52,6 +52,9 @@ class DatabaseOptions(enum.Enum):
     AUTH_CLIENT_SECRET = "adbc.bigquery.sql.auth.client_secret"
     AUTH_REFRESH_TOKEN = "adbc.bigquery.sql.auth.refresh_token"
 
+    #: Specify the location to use for bigquery connection.
+    LOCATION = "adbc.bigquery.sql.location"
+
     #: Specify the project ID to use for bigquery connection.
     PROJECT_ID = "adbc.bigquery.sql.project_id"
 

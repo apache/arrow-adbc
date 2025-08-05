@@ -36,6 +36,7 @@ type databaseImpl struct {
 	refreshToken          string
 	accessTokenEndpoint   string
 	accessTokenServerName string
+	location              string
 	// projectID is the catalog
 	projectID string
 	// datasetID is the schema
@@ -57,6 +58,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		tableID:                d.tableID,
 		catalog:                d.projectID,
 		dbSchema:               d.datasetID,
+		location:               d.location,
 		resultRecordBufferSize: defaultQueryResultBufferSize,
 		prefetchConcurrency:    defaultQueryPrefetchConcurrency,
 	}
@@ -90,6 +92,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.accessToken, nil
 	case OptionStringAuthRefreshToken:
 		return d.refreshToken, nil
+	case OptionStringLocation:
+		return d.location, nil
 	case OptionStringProjectID:
 		return d.projectID, nil
 	case OptionStringDatasetID:
@@ -145,6 +149,8 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.accessTokenEndpoint = value
 	case OptionStringAuthAccessTokenServerName:
 		d.accessTokenServerName = value
+	case OptionStringLocation:
+		d.location = value
 	case OptionStringProjectID:
 		d.projectID = value
 	case OptionStringDatasetID:
