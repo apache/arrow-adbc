@@ -43,6 +43,7 @@ package main
 import (
     "context"
     "fmt"
+    "os"
     "strings"
 
     "github.com/apache/arrow-adbc/go/adbc"
