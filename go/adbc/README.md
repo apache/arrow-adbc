@@ -178,7 +178,7 @@ We can bind Arrow records as parameters in our queries too:
 
 You may have noticed that it took a number of steps to bind Arrow data to a query.
 
-New in `adbc` 1.7.0, IngestStream is a utility that simplifies the five-step boilerplate of `NewStatement`, `SetOption`, `Bind`, `Execute`, and `Close`.
+New in `adbc` v1.7.0, IngestStream is a utility that simplifies the five-step boilerplate of `NewStatement`, `SetOption`, `Bind`, `Execute`, and `Close`.
 Note that IngestStream is not part of the [ADBC Standard](https://arrow.apache.org/adbc/current/format/specification.html).
 
 Here we can use it to create a table from Arrow data.
