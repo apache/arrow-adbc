@@ -182,7 +182,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Whether to enable RunAsync flag in Thrift operation
-        /// Default value is false if not specified.
+        /// Default value is true if not specified.
         /// </summary>
         public const string EnableRunAsyncInThriftOp = "adbc.databricks.enable_run_async_thrift";
 
