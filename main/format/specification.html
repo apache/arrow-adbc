@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/format/specification.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="This document summarizes the general featureset. For C/C++ details, see adbc.h., For Go details, see the source., For Java details, see the source, particularly the package org.apache.arrow.adbc.co..." />
+<meta property="og:description" content="This document summarizes the general featureset of the ADBC API and should be considered informative only. For authoritative definitions of the ADBC API, refer to the following sources: For C/C++ d..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="This document summarizes the general featureset. For C/C++ details, see adbc.h., For Go details, see the source., For Java details, see the source, particularly the package org.apache.arrow.adbc.co..." />
+<meta name="description" content="This document summarizes the general featureset of the ADBC API and should be considered informative only. For authoritative definitions of the ADBC API, refer to the following sources: For C/C++ d..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Versioning and Compatibility" href="versioning.html" /><link rel="prev" title="Writing New Drivers" href="../driver/authoring.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
@@ -397,13 +397,15 @@
         <article role="main" id="furo-main-content">
           <section id="adbc-api-standard">
 <h1>ADBC API Standard<a class="headerlink" href="#adbc-api-standard" title="Link to this heading">¶</a></h1>
-<p>This document summarizes the general featureset.</p>
+<p>This document summarizes the general featureset of the ADBC API and should be considered informative only.</p>
+<p>For authoritative definitions of the ADBC API, refer to the following sources:</p>
 <ul class="simple">
 <li><p>For C/C++ details, see <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc_8h.html" title="(in ADBC C vversion)"><span class="xref std std-doc">adbc.h</span></a>.</p></li>
 <li><p>For Go details, see the <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/go/adbc/adbc.go">source</a>.</p></li>
 <li><p>For Java details, see the <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/java/core">source</a>, particularly
 the package <a class="reference external" href="https://arrow.apache.org/adbc/main/java/api/org/apache/arrow/adbc/core/package-summary.html" title="(in ADBC Java vversion)"><code class="xref std std-jpackage docutils literal notranslate"><span class="pre">org.apache.arrow.adbc.core</span></code></a>.</p></li>
 </ul>
+<p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc_8h.html" title="(in ADBC C vversion)"><span class="xref std std-doc">adbc.h</span></a>. is considered canonical.</p>
 <section id="databases">
 <h2>Databases<a class="headerlink" href="#databases" title="Link to this heading">¶</a></h2>
 <p>Databases hold state shared by multiple connections.  Generally, this
