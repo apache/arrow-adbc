@@ -192,7 +192,7 @@ func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) 
 		InfoVendorSubstraitMaxVersion,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("GetInfo failed: %w", err)
+		return nil, fmt.Errorf("error during GetInfo: %w", err)
 	}
 	defer stream.Release()
 
@@ -201,6 +201,7 @@ func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) 
 
 	for stream.Next() {
 		batch := stream.Record()
+		defer batch.Release()
 		codeArr := batch.Column(0).(*array.Uint32)
 		unionArr := batch.Column(1).(*array.DenseUnion)
 
