@@ -16,39 +16,43 @@
 # under the License.
 
 [package]
-name = "adbc_snowflake"
-description = "Snowflake Arrow Database Connectivity (ADBC) driver"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
 authors.workspace = true
-license.workspace = true
-readme = "README.md"
-documentation = "http://docs.rs/adbc_snowflake/"
-homepage.workspace = true
-repository.workspace = true
-keywords.workspace = true
 categories.workspace = true
+description = "ADBC driver manager"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "adbc_driver_manager"
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [features]
-default = ["bundled", "env", "dotenv"]
-
-# Building/linking Go driver
-bundled = []
-linked = []
-
-# Configuration
-env = ["dep:regex"]
-dotenv = ["env", "dep:dotenvy"]
+driver_manager_test_lib = []
+driver_manager_test_manifest_user = ["driver_manager_test_lib"]
 
 [dependencies]
 adbc_core.workspace = true
-adbc_driver_manager.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
-dotenvy = { version = "0.15.7", default-features = false, optional = true }
-regex = { version = "1.11.1", default-features = false, optional = true }
-url = "2.5.4"
+libloading = "0.8"
+toml = { version = "0.9.2", default-features = false, features = [
+    "parse",
+    "display",
+] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = ">= 0.59.0", features = [
+    "Win32_UI_Shell",
+    "Win32_Globalization",
+    "Win32_System_Com",
+], optional = true }
+windows-registry = { version = ">= 0.5.3", optional = true }
 
 [dev-dependencies]
-test-with = { version = "0.15.3", default-features = false }
+arrow-select.workspace = true
+temp-env = "0.3"
+tempfile = "3.20"
