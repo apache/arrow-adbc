@@ -16,15 +16,21 @@
 */
 
 using System;
+using System.Diagnostics;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
     internal class Util
     {
-        private static string DRIVER_VERSION = "1.0.0";
+        private static string DRIVER_VERSION = GetAssemblyVersion(typeof(DatabricksConnection));
 
-        private static string DRIVER_NAME = "oss-adbc-driver";
+        private static string DRIVER_NAME = GetAssemblyName(typeof(DatabricksConnection));
+
+        private static string GetAssemblyName(Type type) => type.Assembly.GetName().Name!;
+
+        private static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
+
         
         public static string GetDriverVersion()
         {
