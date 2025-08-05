@@ -106,11 +106,12 @@ We can execute a query and get the results as Arrow data:
         return err
     }
 
-    reader, _, err := stmt.ExecuteQuery(ctx)
+    reader, n, err := stmt.ExecuteQuery(ctx)
     if err != nil {
         return err
     }
     defer reader.Release()
+    fmt.Println("Rows affected: ", n)
 
     for reader.Next() {
         record := reader.Record()
