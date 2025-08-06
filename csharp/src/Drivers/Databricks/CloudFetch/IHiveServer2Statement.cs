@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
@@ -44,5 +45,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// </summary>
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
         bool HasDirectResults { get; }
+
+        /// <summary>
+        /// Gets the batch size for fetching results.
+        /// </summary>
+        long BatchSize { get; }
+
+        /// <summary>
+        /// Gets the connection associated with this statement.
+        /// </summary>
+        HiveServer2Connection Connection { get; }
     }
 }

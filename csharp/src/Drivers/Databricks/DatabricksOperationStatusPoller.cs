@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// Service that periodically polls the operation status of a Databricks warehouse query to keep it alive.
     /// This is used to maintain the command results and session when reading results takes a long time.
     /// </summary>
-    internal class DatabricksOperationStatusPoller : IDisposable
+    internal class DatabricksOperationStatusPoller : IOperationStatusPoller
     {
         private readonly IHiveServer2Statement _statement;
         private readonly int _heartbeatIntervalSeconds;

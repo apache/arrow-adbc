@@ -39,13 +39,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public override Schema Schema { get { return _schema; } }
 
         private BaseDatabricksReader? _activeReader;
-        private readonly DatabricksStatement _statement;
+        private readonly IHiveServer2Statement _statement;
+        private readonly DatabricksStatement _databricksStatement;
         private readonly Schema _schema;
         private readonly bool _isLz4Compressed;
-        private readonly TlsProperties _tlsOptions;
-        private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
+        private readonly HttpClient _httpClient;
 
-        private DatabricksOperationStatusPoller? operationStatusPoller;
+        private IOperationStatusPoller? operationStatusPoller;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabricksCompositeReader"/> class.
@@ -54,16 +54,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
         /// <param name="httpClient">The HTTP client for CloudFetch operations.</param>
-        internal DatabricksCompositeReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator): base(statement)
+        /// <param name="operationPoller">Optional operation status poller for testing.</param>
+        internal DatabricksCompositeReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, HttpClient httpClient, IOperationStatusPoller? operationPoller = null): base(statement)
         {
-            _statement = statement ?? throw new ArgumentNullException(nameof(statement));
+            _databricksStatement = statement ?? throw new ArgumentNullException(nameof(statement));
+            _statement = statement;
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
             _isLz4Compressed = isLz4Compressed;
-            _tlsOptions = tlsOptions;
-            _proxyConfigurator = proxyConfigurator;
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 
             // use direct results if available
-            if (_statement.HasDirectResults && _statement.DirectResults != null && _statement.DirectResults.__isset.resultSet && statement.DirectResults?.ResultSet != null)
+            if (_statement.HasDirectResults && _statement.DirectResults != null && _statement.DirectResults.__isset.resultSet && _statement.DirectResults?.ResultSet != null)
             {
                 _activeReader = DetermineReader(_statement.DirectResults.ResultSet);
                 if (!statement.DirectResults.ResultSet.HasMoreRows)
@@ -71,7 +72,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     return;
                 }
             }
-            operationStatusPoller = new DatabricksOperationStatusPoller(statement);
+            
+            // Use injected poller for testing, or create a real one for production
+            operationStatusPoller = operationPoller ?? new DatabricksOperationStatusPoller(_databricksStatement);
             operationStatusPoller.Start();
         }
 
@@ -82,12 +85,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 initialResults.Results.__isset.resultLinks &&
                 initialResults.Results.ResultLinks?.Count > 0)
             {
-                HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(_tlsOptions, _proxyConfigurator));
-                return new CloudFetchReader(_statement, _schema, initialResults, _isLz4Compressed, cloudFetchHttpClient);
+                return new CloudFetchReader(_databricksStatement, _schema, initialResults, _isLz4Compressed, _httpClient);
             }
             else
             {
-                return new DatabricksReader(_statement, _schema, initialResults, _isLz4Compressed);
+                return new DatabricksReader(_databricksStatement, _schema, initialResults, _isLz4Compressed);
             }
         }
 
@@ -105,7 +107,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // Make a FetchResults call to get the initial result set
                 // and determine the reader based on the result set
                 TFetchResultsReq request = new TFetchResultsReq(this._statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
-                TFetchResultsResp response = await this._statement.Connection.Client!.FetchResults(request, cancellationToken);
+                TFetchResultsResp response = await this._statement.Client!.FetchResults(request, cancellationToken);
                 _activeReader = DetermineReader(response);
             }
 

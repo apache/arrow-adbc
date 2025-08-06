@@ -141,6 +141,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Cast the Client to IAsync for CloudFetch compatibility
         TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
 
+        // Expose BatchSize through the interface
+        long IHiveServer2Statement.BatchSize => BatchSize;
+
+        // Expose Connection through the interface
+        HiveServer2Connection IHiveServer2Statement.Connection => Connection;
+
         public override void SetOption(string key, string value)
         {
             switch (key)
