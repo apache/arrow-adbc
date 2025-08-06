@@ -1170,7 +1170,7 @@ func (st *statement) executeAuthorizeViewToDatasets(ctx context.Context) (array.
 	for viewName, datasets := range viewToDataset {
 		view, err := stringToTable(st, viewName)
 		if err != nil {
-			return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("invalid view name: %s", view))
+			return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("invalid view name: %s", viewName))
 		}
 
 		for _, dataset := range datasets {

@@ -766,40 +766,23 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	case bigquery.TimestampFieldType:
 		field.Type = arrow.FixedWidthTypes.Timestamp_ms
 	case bigquery.RecordFieldType:
-		if schema.Repeated {
-			if len(schema.Schema) == 1 {
-				arrayField, err := buildField(schema.Schema[0], level+1)
-				if err != nil {
-					return arrow.Field{}, err
-				}
-				field.Type = arrow.ListOf(arrayField.Type)
-				field.Metadata = arrayField.Metadata
-				field.Nullable = arrayField.Nullable
-			} else {
-				return arrow.Field{}, adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("Cannot create array schema for filed `%s`: len(schema.Schema) != 1", schema.Name),
-				}
+		// create an Arrow struct for BigQuery Record fields
+		nestedFields := make([]arrow.Field, len(schema.Schema))
+		for i, nestedFieldSchema := range schema.Schema {
+			f, err := buildField(nestedFieldSchema, level+1)
+			if err != nil {
+				return arrow.Field{}, err
 			}
-		} else {
-			nestedFields := make([]arrow.Field, len(schema.Schema))
-			for i, nestedSchema := range schema.Schema {
-				f, err := buildField(nestedSchema, level+1)
-				if err != nil {
-					return arrow.Field{}, err
-				}
-				nestedFields[i] = f
-			}
-			structType := arrow.StructOf(nestedFields...)
-			if structType == nil {
-				return arrow.Field{}, adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", schema.Name),
-				}
-			}
-			field.Type = structType
+			nestedFields[i] = f
 		}
-
+		structType := arrow.StructOf(nestedFields...)
+		if structType == nil {
+			return arrow.Field{}, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", schema.Name),
+			}
+		}
+		field.Type = structType
 	case bigquery.DateFieldType:
 		field.Type = arrow.FixedWidthTypes.Date32
 	case bigquery.TimeFieldType:
@@ -829,6 +812,11 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 			Code: adbc.StatusInvalidArgument,
 			Msg:  fmt.Sprintf("Google SQL type `%s` is not supported yet", schema.Type),
 		}
+	}
+
+	// if the field is repeated, then it's a list of the type we just built
+	if schema.Repeated {
+		field.Type = arrow.ListOf(field.Type)
 	}
 
 	if level == 0 {
