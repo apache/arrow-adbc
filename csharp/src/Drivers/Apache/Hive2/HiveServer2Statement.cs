@@ -750,81 +750,91 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
             var fkResult = await GetCrossReferenceAsForeignTableAsync(cancellationToken);
 
-            // 2. Read all batches into memory
-            List<RecordBatch> columnsBatches;
-            int totalRows;
-            Schema columnsSchema;
-            StringArray? columnNames = null;
-            int colNameIndex = -1;
-
-            // Extract column data
-            using (var stream = columnsResult.Stream)
+            try
             {
-                colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
-                if (colNameIndex < 0)
+                // 2. Read all batches into memory
+                List<RecordBatch> columnsBatches;
+                int totalRows;
+                Schema columnsSchema;
+                StringArray? columnNames = null;
+                int colNameIndex = -1;
+
+                // Extract column data
+                using (var stream = columnsResult.Stream)
                 {
-                    // TODO: Add log or throw
-                    return columnsResult; // Can't match without column names
+                    colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
+                    if (colNameIndex < 0)
+                    {
+                        // TODO: Add log or throw
+                        return columnsResult; // Can't match without column names
+                    }
+
+                    var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
+                    columnsBatches = batchResult.Batches;
+                    columnsSchema = batchResult.Schema;
+                    totalRows = batchResult.TotalRows;
+
+                    if (columnsBatches.Count == 0)
+                    {
+                        // Return empty result with complete schema
+                        return CreateEmptyExtendedColumnsResult(columnsSchema);
+                    }
+
+                    // Create column names array from all batches using ArrayDataConcatenator.Concatenate
+                    List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch =>
+                        batch.Column(colNameIndex).Data).ToList();
+                    ArrayData? concatenatedColumnNames = ArrayDataConcatenator.Concatenate(columnNameArrayDataList);
+                    columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
                 }
 
-                var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
-                columnsBatches = batchResult.Batches;
-                columnsSchema = batchResult.Schema;
-                totalRows = batchResult.TotalRows;
+                // 3. Create combined schema and prepare data
+                var allFields = new List<Field>(columnsSchema.FieldsList);
+                var combinedData = new List<IArrowArray>();
 
-                if (columnsBatches.Count == 0)
+                // 4. Add all columns data by combining all batches
+                for (int colIdx = 0; colIdx < columnsSchema.FieldsList.Count; colIdx++)
                 {
-                    // Return empty result with complete schema
-                    return CreateEmptyExtendedColumnsResult(columnsSchema);
+                    if (columnsBatches.Count == 0)
+                        continue;
+
+                    var field = columnsSchema.GetFieldByIndex(colIdx);
+
+                    // Collect arrays for this column from all batches
+                    var columnArrays = new List<IArrowArray>();
+                    foreach (var batch in columnsBatches)
+                    {
+                        columnArrays.Add(batch.Column(colIdx));
+                    }
+
+                    List<ArrayData> arrayDataList = columnArrays.Select(arr => arr.Data).ToList();
+                    ArrayData? concatenatedData = ArrayDataConcatenator.Concatenate(arrayDataList);
+                    IArrowArray array = ArrowArrayFactory.BuildArray(concatenatedData);
+                    combinedData.Add(array);
                 }
 
-                // Create column names array from all batches using ArrayDataConcatenator.Concatenate
-                List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch =>
-                    batch.Column(colNameIndex).Data).ToList();
-                ArrayData? concatenatedColumnNames = ArrayDataConcatenator.Concatenate(columnNameArrayDataList);
-                columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
+                // 5. Process PK and FK data using helper methods with selected fields
+                await ProcessRelationshipDataSafe(pkResult, PrimaryKeyPrefix, "COLUMN_NAME",
+                    PrimaryKeyFields, // Selected PK fields
+                    columnNames, totalRows,
+                    allFields, combinedData, cancellationToken);
+
+                await ProcessRelationshipDataSafe(fkResult, ForeignKeyPrefix, "FKCOLUMN_NAME",
+                    ForeignKeyFields, // Selected FK fields
+                    columnNames, totalRows,
+                    allFields, combinedData, cancellationToken);
+
+                // 6. Return the combined result
+                var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
+
+                return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
             }
-
-            // 3. Create combined schema and prepare data
-            var allFields = new List<Field>(columnsSchema.FieldsList);
-            var combinedData = new List<IArrowArray>();
-
-            // 4. Add all columns data by combining all batches
-            for (int colIdx = 0; colIdx < columnsSchema.FieldsList.Count; colIdx++)
+            finally
             {
-                if (columnsBatches.Count == 0)
-                    continue;
-
-                var field = columnsSchema.GetFieldByIndex(colIdx);
-
-                // Collect arrays for this column from all batches
-                var columnArrays = new List<IArrowArray>();
-                foreach (var batch in columnsBatches)
-                {
-                    columnArrays.Add(batch.Column(colIdx));
-                }
-
-                List<ArrayData> arrayDataList = columnArrays.Select(arr => arr.Data).ToList();
-                ArrayData? concatenatedData = ArrayDataConcatenator.Concatenate(arrayDataList);
-                IArrowArray array = ArrowArrayFactory.BuildArray(concatenatedData);
-                combinedData.Add(array);
+                // Dispose internal query results to ensure proper resource cleanup
+                columnsResult.Stream?.Dispose();
+                pkResult.Stream?.Dispose();
+                fkResult.Stream?.Dispose();
             }
-
-            // 5. Process PK and FK data using helper methods with selected fields
-            await ProcessRelationshipDataSafe(pkResult, PrimaryKeyPrefix, "COLUMN_NAME",
-                PrimaryKeyFields, // Selected PK fields
-                columnNames, totalRows,
-                allFields, combinedData, cancellationToken);
-
-            await ProcessRelationshipDataSafe(fkResult, ForeignKeyPrefix, "FKCOLUMN_NAME",
-                ForeignKeyFields, // Selected FK fields
-                columnNames, totalRows,
-                allFields, combinedData, cancellationToken);
-
-            // 6. Return the combined result
-            var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
-
-            return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
 
         // Helper method to create an empty result with the complete extended columns schema
