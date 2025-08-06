@@ -95,6 +95,31 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         }
 
         [Fact]
+        public async Task StopStopsPolling()
+        {
+            // Arrange
+            var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
+            var pollCount = 0;
+            _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new TGetOperationStatusResp())
+                .Callback(() => pollCount++);
+
+            // Act
+            poller.Start();
+            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Let it poll for a bit
+            poller.Stop();
+            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Wait to see if it continues polling
+
+            // Assert
+            int finalPollCount = pollCount;
+            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Wait another second
+            Assert.Equal(finalPollCount, pollCount); // Poll count should not increase after stopping
+
+            // Clean up
+            poller.Dispose();
+        }
+
+        [Fact]
         public async Task StopsPollingOnAllTerminalOperationStates()
         {
             var terminalStates = new[]
