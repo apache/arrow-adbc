@@ -530,13 +530,14 @@ TEST_F(DriverManifest, ConfigEntrypoint) {
   auto manifest_with_bad_entrypoint = simple_manifest;
   // Override the entrypoint in the manifest
   manifest_with_bad_entrypoint.erase("Driver");
-  manifest_with_bad_entrypoint.insert("Driver", toml::table{
-                                       {"entrypoint", "BadEntrypointSymbolName"},
-                                       {"shared",
-                                        toml::table{
-                                            {adbc::CurrentArch(), driver_path.string()},
-                                        }},
-                                   });
+  manifest_with_bad_entrypoint.insert(
+      "Driver", toml::table{
+                    {"entrypoint", "BadEntrypointSymbolName"},
+                    {"shared",
+                     toml::table{
+                         {adbc::CurrentArch(), driver_path.string()},
+                     }},
+                });
 
   auto filepath = temp_dir / "sqlite.toml";
   std::ofstream test_manifest_file(filepath);
