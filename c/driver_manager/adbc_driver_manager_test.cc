@@ -526,6 +526,25 @@ TEST_F(DriverManifest, DisallowEnvConfig) {
   UnsetConfigPath();
 }
 
+TEST_F(DriverManifest, ConfigEntrypoint) {
+  // Override the entrypoint in the manifest
+  simple_manifest.insert("Driver", toml::table{
+                                       {"entrypoint", "BadEntrypointSymbolName"},
+                                   });
+
+  auto filepath = temp_dir / "sqlite.toml";
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+              Not(IsOkStatus(&error)));
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
 TEST_F(DriverManifest, LoadAbsolutePath) {
   auto filepath = temp_dir / "sqlite.toml";
   std::ofstream test_manifest_file(filepath);

@@ -253,7 +253,7 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 
   info.manifest_file = driver_manifest.string();
   info.driver_name = config["name"].value_or(""s);
-  info.entrypoint = config["entrypoint"].value_or(""s);
+  info.entrypoint = config.at_path("Driver.entrypoint").value_or(""s);
   info.version = config["version"].value_or(""s);
   info.source = config["source"].value_or(""s);
 
