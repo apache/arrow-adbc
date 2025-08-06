@@ -65,7 +65,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             string searchPattern = _fileBaseName + "-trace-*.log";
             if (_currentTraceFileInfo == null)
             {
-                IOrderedEnumerable<FileInfo>? traceFileInfos = GetTracingFiles(_tracingDirectory, searchPattern);
+                IOrderedEnumerable<FileInfo>? traceFileInfos = await GetTracingFilesAsync(_tracingDirectory, searchPattern);
                 FileInfo? mostRecentFile = traceFileInfos?.FirstOrDefault();
                 mostRecentFile?.Refresh();
 
@@ -81,7 +81,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             // Check if we need to remove old files
             if (_tracingDirectory.Exists)
             {
-                FileInfo[] tracingFiles = [.. GetTracingFiles(_tracingDirectory, searchPattern)];
+                FileInfo[] tracingFiles = [.. await GetTracingFilesAsync(_tracingDirectory, searchPattern)];
                 if (tracingFiles != null && tracingFiles.Length > _maxTraceFiles)
                 {
                     for (int i = tracingFiles.Length - 1; i >= _maxTraceFiles; i--)
@@ -130,11 +130,11 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             } while (hasMoreData);
         }
 
-        private static IOrderedEnumerable<FileInfo> GetTracingFiles(DirectoryInfo tracingDirectory, string searchPattern)
+        private static async Task<IOrderedEnumerable<FileInfo>> GetTracingFilesAsync(DirectoryInfo tracingDirectory, string searchPattern)
         {
-            return tracingDirectory
+            return await Task.Run(() => tracingDirectory
                 .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
-                .OrderByDescending(f => f.LastWriteTimeUtc);
+                .OrderByDescending(f => f.LastWriteTimeUtc));
         }
 
         private static async Task ActionWithRetryAsync<T>(

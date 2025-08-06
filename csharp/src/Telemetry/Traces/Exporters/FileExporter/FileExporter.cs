@@ -128,12 +128,20 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private static async Task ProcessActivitiesAsync(FileExporter fileExporter, CancellationToken cancellationToken)
         {
-            TimeSpan delay = TimeSpan.FromMilliseconds(100);
-            // Polls for and then writes any activities in the queue
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                await Task.Delay(delay, cancellationToken);
-                await fileExporter._tracingFile.WriteLinesAsync(GetActivitiesAsync(fileExporter._activityQueue), cancellationToken);
+                TimeSpan delay = TimeSpan.FromMilliseconds(100);
+                // Polls for and then writes any activities in the queue
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    await Task.Delay(delay, cancellationToken);
+                    await fileExporter._tracingFile.WriteLinesAsync(GetActivitiesAsync(fileExporter._activityQueue), cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Since this will be called on an independent thread, we need to avoid uncaught exceptions.
+                Debug.WriteLine(ex);
             }
         }
 
