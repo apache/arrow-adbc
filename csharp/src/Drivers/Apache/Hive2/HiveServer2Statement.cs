@@ -117,9 +117,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             return await this.TraceActivityAsync(async _ =>
             {
+                // Clear any previous query result
+                ClearCurrentQueryResult();
+
                 if (IsMetadataCommand)
                 {
-                    return await ExecuteMetadataCommandQuery(cancellationToken);
+                    _currentQueryResult = await ExecuteMetadataCommandQuery(cancellationToken);
+                    return _currentQueryResult;
                 }
 
                 _directResults = null;
@@ -142,7 +146,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
                 }
                 Schema schema = GetSchemaFromMetadata(metadata);
-                return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
+                _currentQueryResult = new QueryResult(-1, Connection.NewReader(this, schema, metadata));
+                return _currentQueryResult;
             });
         }
 
@@ -354,6 +359,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal bool EscapePatternWildcards { get; set; } = false;
         protected internal TSparkDirectResults? _directResults { get; set; }
 
+        // Store the current query result for disposal
+        private QueryResult? _currentQueryResult;
+
         public HiveServer2Connection Connection { get; private set; }
 
         public TOperationHandle? OperationHandle { get; private set; }
@@ -394,6 +402,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
                     OperationHandle = null;
                 }
+
+                // Dispose the current query result if it exists
+                ClearCurrentQueryResult();
 
                 base.Dispose();
             });
@@ -1055,6 +1066,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     combinedData.Add(builder.Build());
                 }
             }
+        }
+
+        /// <summary>
+        /// Clears the current query result and disposes of it if necessary.
+        /// </summary>
+        private void ClearCurrentQueryResult()
+        {
+            _currentQueryResult?.Stream?.Dispose();
+            _currentQueryResult = null;
         }
     }
 }
