@@ -49,10 +49,10 @@
 //! # use arrow_schema::{Field, Schema, DataType};
 //! # use arrow_select::concat::concat_batches;
 //! # use adbc_core::{
-//! #     driver_manager::ManagedDriver,
 //! #     options::{AdbcVersion, OptionDatabase, OptionStatement},
 //! #     Connection, Database, Driver, Statement, Optionable
 //! # };
+//! # use adbc_driver_manager::ManagedDriver;
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let opts = [(OptionDatabase::Uri, ":memory:".into())];
 //! let mut driver = ManagedDriver::load_dynamic_from_name("adbc_driver_sqlite", None, AdbcVersion::V100)?;
@@ -100,6 +100,8 @@
 // an immutable struct of function pointers. Wrapping the driver in a `Mutex`
 // would prevent any parallelism between driver calls, which is not desirable.
 
+pub mod error;
+
 use std::collections::HashSet;
 use std::env;
 use std::ffi::{CStr, CString, OsStr};
@@ -111,22 +113,21 @@ use std::pin::Pin;
 use std::ptr::{null, null_mut};
 use std::sync::{Arc, Mutex};
 
-#[cfg(target_os = "windows")]
-use windows_registry;
-
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 use toml::de::DeTable;
 
-use crate::{
-    error::{Error, Status},
+use adbc_core::{
+    error::{Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionValue},
-    LoadFlags, PartitionedResult, Result, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
+    LoadFlags, PartitionedResult, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
     LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
 };
-use crate::{ffi, ffi::types::driver_method, Optionable};
-use crate::{Connection, Database, Driver, Statement};
+use adbc_core::{ffi, ffi::driver_method, Optionable};
+use adbc_core::{Connection, Database, Driver, Statement};
+
+use crate::error::libloading_error_to_adbc_error;
 
 const ERR_ONLY_STRING_OPT: &str = "Only string option value are supported with ADBC 1.0.0";
 const ERR_CANCEL_UNSUPPORTED: &str =
@@ -140,18 +141,6 @@ fn check_status(status: ffi::FFI_AdbcStatusCode, error: ffi::FFI_AdbcError) -> R
             let mut error: Error = error.try_into()?;
             error.status = status.try_into()?;
             Err(error)
-        }
-    }
-}
-
-impl From<libloading::Error> for Error {
-    fn from(value: libloading::Error) -> Self {
-        Self {
-            message: format!("Error with dynamic library: {value}"),
-            status: Status::Internal,
-            vendor_code: 0,
-            sqlstate: [0; 5],
-            details: None,
         }
     }
 }
@@ -367,11 +356,14 @@ impl ManagedDriver {
         let default_entrypoint = get_default_entrypoint(filename.as_ref());
 
         let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
-        let library = unsafe { libloading::Library::new(filename.as_ref())? };
+        let library = unsafe {
+            libloading::Library::new(filename.as_ref()).map_err(libloading_error_to_adbc_error)?
+        };
         let init: libloading::Symbol<ffi::FFI_AdbcDriverInitFunc> = unsafe {
             library
                 .get(entrypoint)
-                .or_else(|_| library.get(b"AdbcDriverInit"))?
+                .or_else(|_| library.get(b"AdbcDriverInit"))
+                .map_err(libloading_error_to_adbc_error)?
         };
         let driver = Self::load_impl(&init, version)?;
         let inner = Arc::pin(ManagedDriverInner {
@@ -690,6 +682,8 @@ fn set_option_database(
 ) -> Result<()> {
     let key = CString::new(key.as_ref())?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
+    #[allow(unknown_lints)]
+    #[warn(non_exhaustive_omitted_patterns)]
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
             let value = CString::new(value)?;
@@ -720,6 +714,7 @@ fn set_option_database(
             ERR_ONLY_STRING_OPT,
             Status::NotImplemented,
         ))?,
+        (_, _) => unreachable!(),
     };
     check_status(status, error)
 }
@@ -979,6 +974,8 @@ fn set_option_connection(
 ) -> Result<()> {
     let key = CString::new(key.as_ref())?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
+    #[allow(unknown_lints)]
+    #[warn(non_exhaustive_omitted_patterns)]
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
             let value = CString::new(value)?;
@@ -1009,6 +1006,7 @@ fn set_option_connection(
             ERR_ONLY_STRING_OPT,
             Status::NotImplemented,
         ))?,
+        (_, _) => unreachable!(),
     };
     check_status(status, error)
 }
@@ -1392,6 +1390,8 @@ fn set_option_statement(
 ) -> Result<()> {
     let key = CString::new(key.as_ref())?;
     let mut error = ffi::FFI_AdbcError::with_driver(driver);
+    #[allow(unknown_lints)]
+    #[warn(non_exhaustive_omitted_patterns)]
     let status = match (version, value) {
         (_, OptionValue::String(value)) => {
             let value = CString::new(value)?;
@@ -1422,6 +1422,7 @@ fn set_option_statement(
             ERR_ONLY_STRING_OPT,
             Status::NotImplemented,
         ))?,
+        (_, _) => unreachable!(),
     };
     check_status(status, error)
 }
@@ -1809,7 +1810,7 @@ const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
 mod tests {
     use super::*;
 
-    use crate::LOAD_FLAG_DEFAULT;
+    use adbc_core::LOAD_FLAG_DEFAULT;
     use temp_env::{with_var, with_var_unset};
     use tempfile::Builder;
 
