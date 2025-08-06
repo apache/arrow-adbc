@@ -95,20 +95,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public void Dispose()
         {
-            if (_internalCts != null)
+            _internalCts?.Cancel();
+            try
             {
-                _internalCts.Cancel();
-                try
-                {
-                     _operationStatusPollingTask?.GetAwaiter().GetResult();
-                }
-                catch (OperationCanceledException)
-                {
-                    // Expected, no-op
-                }
-
-                _internalCts.Dispose();
+                _operationStatusPollingTask?.GetAwaiter().GetResult();
             }
+            catch (OperationCanceledException)
+            {
+                // Expected, no-op
+            }
+
+            _internalCts?.Dispose();
             _internalCts = null;
             _operationStatusPollingTask = null;
         }
