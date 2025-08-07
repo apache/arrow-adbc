@@ -25,77 +25,77 @@ namespace Apache.Arrow.Adbc.Tracing
     public static class IActivityTracerExtensions
     {
         /// <summary>
-        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// Invokes the delegate within the context of a new started <see cref="ActivityWithPii"/>.
         /// </summary>
-        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="ActivityWithPii"/></param>
         /// <param name="methodName">The name of the method for the activity.</param>
-        /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
+        /// <returns>Returns a new <see cref="ActivityWithPii"/> object if there is any listener to the Activity, returns null otherwise</returns>
         /// <remarks>
-        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
+        /// Creates and starts a new <see cref="ActivityWithPii"/> object if there is any listener for the ActivitySource.
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/>. If an exception is thrown by the delegate, the Activity
         /// status is set to <see cref="ActivityStatusCode.Error"/> and an Activity <see cref="ActivityEvent"/> is added to the activity
         /// and finally the exception is rethrown.
         /// </remarks>
-        public static void TraceActivity(this IActivityTracer tracer, Action<Activity?> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
+        public static void TraceActivity(this IActivityTracer tracer, Action<ActivityWithPii?> call, [CallerMemberName] string? activityName = default, string? traceParent = default, bool exceptionIsPii = true)
         {
-            tracer.Trace.TraceActivity(call, activityName, traceParent ?? tracer.TraceParent);
+            tracer.Trace.TraceActivity(call, activityName, traceParent ?? tracer.TraceParent, exceptionIsPii);
         }
 
         /// <summary>
-        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// Invokes the delegate within the context of a new started <see cref="ActivityWithPii"/>.
         /// </summary>
         /// <typeparam name="T">The return type for the delegate.</typeparam>
-        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="ActivityWithPii"/></param>
         /// <param name="methodName">The name of the method for the activity.</param>
         /// <returns>The result of the call to the delegate.</returns>
         /// <remarks>
-        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
+        /// Creates and starts a new <see cref="ActivityWithPii"/> object if there is any listener for the ActivitySource.
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
-        public static T TraceActivity<T>(this IActivityTracer tracer, Func<Activity?, T> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
+        public static T TraceActivity<T>(this IActivityTracer tracer, Func<ActivityWithPii?, T> call, [CallerMemberName] string? activityName = null, string? traceParent = null, bool exceptionIsPii = true)
         {
-            return tracer.Trace.TraceActivity(call, activityName, traceParent ?? tracer.TraceParent);
+            return tracer.Trace.TraceActivity(call, activityName, traceParent ?? tracer.TraceParent, exceptionIsPii);
         }
 
         /// <summary>
-        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// Invokes the delegate within the context of a new started <see cref="ActivityWithPii"/>.
         /// </summary>
-        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="ActivityWithPii"/></param>
         /// <param name="methodName">The name of the method for the activity.</param>
         /// <returns></returns>
         /// <remarks>
-        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
+        /// Creates and starts a new <see cref="ActivityWithPii"/> object if there is any listener for the ActivitySource.
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
-        public static Task TraceActivityAsync(this IActivityTracer tracer, Func<Activity?, Task> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
+        public static Task TraceActivityAsync(this IActivityTracer tracer, Func<ActivityWithPii?, Task> call, [CallerMemberName] string? activityName = null, string? traceParent = null, bool exceptionIsPii = true)
         {
-            return tracer.Trace.TraceActivityAsync(call, activityName, traceParent ?? tracer.TraceParent);
+            return tracer.Trace.TraceActivityAsync(call, activityName, traceParent ?? tracer.TraceParent, exceptionIsPii);
         }
 
         /// <summary>
-        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// Invokes the delegate within the context of a new started <see cref="ActivityWithPii"/>.
         /// </summary>
         /// <typeparam name="T">The return type for the delegate.</typeparam>
-        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="ActivityWithPii"/></param>
         /// <param name="methodName">The name of the method for the activity.</param>
         /// <returns>The result of the call to the delegate.</returns>
         /// <remarks>
-        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
+        /// Creates and starts a new <see cref="ActivityWithPii"/> object if there is any listener for the ActivitySource.
         /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
         /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
-        public static Task<T> TraceActivityAsync<T>(this IActivityTracer tracer, Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
+        public static Task<T> TraceActivityAsync<T>(this IActivityTracer tracer, Func<ActivityWithPii?, Task<T>> call, [CallerMemberName] string? activityName = null, string? traceParent = null, bool exceptionIsPii = true)
         {
-            return tracer.Trace.TraceActivityAsync(call, activityName, traceParent ?? tracer.TraceParent);
+            return tracer.Trace.TraceActivityAsync(call, activityName, traceParent ?? tracer.TraceParent, exceptionIsPii);
         }
     }
 }
