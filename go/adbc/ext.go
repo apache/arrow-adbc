@@ -161,14 +161,32 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 	return count, nil
 }
 
+// DriverInfo library info map keys for auxiliary information
+//
+// NOTE: If in the future any of these InfoCodes are promoted to top-level fields
+// in the DriverInfo struct, their values should still also be included in the
+// LibraryInfo map to maintain backward compatibility. This ensures older clients
+// relying on LibraryInfo won't break when new fields are introduced.
+const (
+	DriverInfoKeyDriverArrowVersion        = "driver_arrow_version"
+	DriverInfoKeyVendorArrowVersion        = "vendor_arrow_version"
+	DriverInfoKeyVendorSQLSupport          = "vendor_sql_support"
+	DriverInfoKeyVendorSubstraitSupport    = "vendor_substrait_support"
+	DriverInfoKeyVendorSubstraitMinVersion = "vendor_substrait_min_version"
+	DriverInfoKeyVendorSubstraitMaxVersion = "vendor_substrait_max_version"
+)
+
 // VersionInfo contains comprehensive driver and library version information.
-type VersionInfo struct {
-	DriverName    string            `json:"driver_name"`    // e.g., "ADBC PostgreSQL Driver"
-	DriverVersion string            `json:"driver_version"` // e.g., "15.13.0000"
-	LibraryInfo   map[string]string `json:"library_info"`   // Additional library versions, protocol info, etc.
+type DriverInfo struct {
+	DriverName        string            `json:"driver_name"`         // e.g., "ADBC PostgreSQL Driver"
+	DriverVersion     string            `json:"driver_version"`      // e.g., "15.13.0000"
+	VendorName        string            `json:"vendor_name"`         // e.g., "PostgreSQL"
+	VendorVersion     string            `json:"vendor_version"`      // e.g., "15.3"
+	DriverADBCVersion int64             `json:"driver_adbc_version"` // ADBC API version number
+	LibraryInfo       map[string]string `json:"library_info"`        // Additional library versions, protocol info, etc.
 }
 
-// GetVersionInfo retrieves comprehensive driver version information from a connection.
+// GetDriverInfo retrieves comprehensive driver version information from a connection.
 // This helper function encapsulates the complex process of querying driver info codes,
 // handling streaming record batches and union arrays, extracting and safely cloning
 // string values, and managing errors with fallback defaults.
@@ -177,7 +195,7 @@ type VersionInfo struct {
 // library information such as Arrow version, vendor details, and ADBC version.
 //
 // This is not part of the ADBC API specification.
-func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) {
+func GetDriverInfo(ctx context.Context, cnxn Connection) (DriverInfo, error) {
 	stream, err := cnxn.GetInfo(ctx, []InfoCode{
 		InfoDriverName,
 		InfoDriverVersion,
@@ -192,16 +210,16 @@ func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) 
 		InfoVendorSubstraitMaxVersion,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error during GetInfo: %w", err)
+		return DriverInfo{}, fmt.Errorf("error during GetInfo: %w", err)
 	}
 	defer stream.Release()
 
-	var name, version string
-	libInfo := make(map[string]string)
+	driverInfo := DriverInfo{
+		LibraryInfo: make(map[string]string),
+	}
 
 	for stream.Next() {
 		batch := stream.Record()
-		defer batch.Release()
 		codeArr := batch.Column(0).(*array.Uint32)
 		unionArr := batch.Column(1).(*array.DenseUnion)
 
@@ -209,7 +227,6 @@ func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) 
 			code := InfoCode(codeArr.Value(i))
 			child := unionArr.Field(unionArr.ChildID(i))
 			offset := int(unionArr.ValueOffset(i))
-			unionArr.GetOneForMarshal(i)
 
 			if child.IsNull(offset) {
 				continue
@@ -219,26 +236,30 @@ func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) 
 			switch unionArr.ChildID(i) {
 			case 0: // String values
 				if strArray, ok := child.(*array.String); ok {
-					// Create a copy of the string to avoid memory issues
+					// Create a copy of the string to avoid memory corruption issues.
+					// Arrow strings reference memory owned by the record batch. When the batch
+					// is released, this memory becomes invalid, leading to potential crashes or
+					// data corruption when accessing the string later. Cloning ensures we have
+					// an independent copy that remains valid after batch cleanup.
 					val := strings.Clone(strArray.Value(offset))
 
 					switch code {
 					case InfoDriverName:
-						name = val
+						driverInfo.DriverName = val
 					case InfoDriverVersion:
-						version = val
+						driverInfo.DriverVersion = val
 					case InfoDriverArrowVersion:
-						libInfo["driver_arrow_version"] = val
+						driverInfo.LibraryInfo[DriverInfoKeyDriverArrowVersion] = val
 					case InfoVendorName:
-						libInfo["vendor_name"] = val
+						driverInfo.VendorName = val
 					case InfoVendorVersion:
-						libInfo["vendor_version"] = val
+						driverInfo.VendorVersion = val
 					case InfoVendorArrowVersion:
-						libInfo["vendor_arrow_version"] = val
+						driverInfo.LibraryInfo[DriverInfoKeyVendorArrowVersion] = val
 					case InfoVendorSubstraitMinVersion:
-						libInfo["vendor_substrait_min_version"] = val
+						driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitMinVersion] = val
 					case InfoVendorSubstraitMaxVersion:
-						libInfo["vendor_substrait_max_version"] = val
+						driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitMaxVersion] = val
 					}
 				}
 
@@ -249,15 +270,15 @@ func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) 
 					switch code {
 					case InfoVendorSql:
 						if val {
-							libInfo["vendor_sql_support"] = "true"
+							driverInfo.LibraryInfo[DriverInfoKeyVendorSQLSupport] = "true"
 						} else {
-							libInfo["vendor_sql_support"] = "false"
+							driverInfo.LibraryInfo[DriverInfoKeyVendorSQLSupport] = "false"
 						}
 					case InfoVendorSubstrait:
 						if val {
-							libInfo["vendor_substrait_support"] = "true"
+							driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitSupport] = "true"
 						} else {
-							libInfo["vendor_substrait_support"] = "false"
+							driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitSupport] = "false"
 						}
 					}
 				}
@@ -268,7 +289,7 @@ func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) 
 
 					switch code {
 					case InfoDriverADBCVersion:
-						libInfo["driver_adbc_version"] = fmt.Sprintf("%d", val)
+						driverInfo.DriverADBCVersion = val
 					}
 				}
 			}
@@ -276,20 +297,8 @@ func GetVersionInfo(ctx context.Context, cnxn Connection) (*VersionInfo, error) 
 	}
 
 	if err := stream.Err(); err != nil {
-		return nil, fmt.Errorf("error reading info stream: %w", err)
+		return DriverInfo{}, fmt.Errorf("error reading info stream: %w", err)
 	}
 
-	// Set defaults if not provided
-	if name == "" {
-		name = "ADBC Driver"
-	}
-	if version == "" {
-		version = "unknown"
-	}
-
-	return &VersionInfo{
-		DriverName:    name,
-		DriverVersion: version,
-		LibraryInfo:   libInfo,
-	}, nil
+	return driverInfo, nil
 }
