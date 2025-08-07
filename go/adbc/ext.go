@@ -176,10 +176,10 @@ const (
 	DriverInfoKeyVendorSubstraitMaxVersion = "vendor_substrait_max_version"
 )
 
-// VersionInfo contains comprehensive driver and library version information.
+// DriverInfo contains comprehensive driver and library version information.
 type DriverInfo struct {
 	DriverName        string            `json:"driver_name"`         // e.g., "ADBC PostgreSQL Driver"
-	DriverVersion     string            `json:"driver_version"`      // e.g., "15.13.0000"
+	DriverVersion     string            `json:"driver_version"`      // e.g., "1.7.0"
 	VendorName        string            `json:"vendor_name"`         // e.g., "PostgreSQL"
 	VendorVersion     string            `json:"vendor_version"`      // e.g., "15.3"
 	DriverADBCVersion int64             `json:"driver_adbc_version"` // ADBC API version number
@@ -196,19 +196,7 @@ type DriverInfo struct {
 //
 // This is not part of the ADBC API specification.
 func GetDriverInfo(ctx context.Context, cnxn Connection) (DriverInfo, error) {
-	stream, err := cnxn.GetInfo(ctx, []InfoCode{
-		InfoDriverName,
-		InfoDriverVersion,
-		InfoDriverArrowVersion,
-		InfoDriverADBCVersion,
-		InfoVendorName,
-		InfoVendorVersion,
-		InfoVendorArrowVersion,
-		InfoVendorSql,
-		InfoVendorSubstrait,
-		InfoVendorSubstraitMinVersion,
-		InfoVendorSubstraitMaxVersion,
-	})
+	stream, err := cnxn.GetInfo(ctx, nil)
 	if err != nil {
 		return DriverInfo{}, fmt.Errorf("error during GetInfo: %w", err)
 	}
