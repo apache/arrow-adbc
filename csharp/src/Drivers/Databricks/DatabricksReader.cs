@@ -79,7 +79,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     {
                         return null;
                     }
-
+                    // TODO: use an expiring cancellationtoken
                     TFetchResultsReq request = new TFetchResultsReq(this.statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
                     TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
 

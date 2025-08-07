@@ -162,7 +162,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 request.StartRowOffset = offset;
 
                 // Cancelling mid-request breaks the client; Dispose() should not break the underlying client
-                CancellationToken expiringToken = ApacheUtility.GetCancellationToken(DatabricksConstants.DefaultCloudFetchRequestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                CancellationToken expiringToken = ApacheUtility.GetCancellationToken(_statement.QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
 
                 // Fetch results
                 TFetchResultsResp response = await _statement.Client.FetchResults(request, expiringToken);
@@ -286,8 +286,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             TFetchResultsResp response;
             try
             {
-                // todo: this value should be configurable by user
-                CancellationToken expiringToken = ApacheUtility.GetCancellationToken(DatabricksConstants.DefaultCloudFetchRequestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                // Use the statement's configured query timeout
+                CancellationToken expiringToken = ApacheUtility.GetCancellationToken(_statement.QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 response = await _statement.Client.FetchResults(request, expiringToken).ConfigureAwait(false);
             }
             catch (Exception ex)

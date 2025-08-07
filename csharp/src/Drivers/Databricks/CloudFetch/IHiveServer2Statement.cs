@@ -44,5 +44,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// </summary>
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
         bool HasDirectResults { get; }
+
+        /// <summary>
+        /// Gets the query timeout in seconds.
+        /// </summary>
+        int QueryTimeoutSeconds { get; }
     }
 }
