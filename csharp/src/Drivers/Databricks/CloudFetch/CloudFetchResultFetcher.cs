@@ -286,6 +286,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
             TFetchResultsResp response;
             try
             {
+                // todo: this value should be configurable by user
                 CancellationToken expiringToken = ApacheUtility.GetCancellationToken(DatabricksConstants.DefaultCloudFetchRequestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 response = await _statement.Client.FetchResults(request, expiringToken).ConfigureAwait(false);
             }

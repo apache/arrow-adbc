@@ -66,13 +66,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (_statement.HasDirectResults && _statement.DirectResults != null && _statement.DirectResults.__isset.resultSet && statement.DirectResults?.ResultSet != null)
             {
                 _activeReader = DetermineReader(_statement.DirectResults.ResultSet);
-                if (!statement.DirectResults.ResultSet.HasMoreRows)
-                {
-                    return;
-                }
             }
-            operationStatusPoller = new DatabricksOperationStatusPoller(statement);
-            operationStatusPoller.Start();
+            if (_statement.DirectResults?.ResultSet.HasMoreRows ?? true)
+            {
+                operationStatusPoller = new DatabricksOperationStatusPoller(statement);
+                operationStatusPoller.Start();   
+            }
         }
 
         private BaseDatabricksReader DetermineReader(TFetchResultsResp initialResults)
