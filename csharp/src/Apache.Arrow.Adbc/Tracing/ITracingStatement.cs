@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -19,32 +19,15 @@ using System;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
-    public abstract class TracingStatement : AdbcStatement, ITracingStatement
+    /// <summary>
+    /// Interface for statements that support tracing.
+    /// This allows for testable implementations without requiring
+    /// the full TracingStatement abstract class hierarchy.
+    /// </summary>
+    public interface ITracingStatement : IActivityTracer, IDisposable
     {
-        private readonly ActivityTrace _trace;
-
-        public TracingStatement(TracingConnection connection)
-        {
-            _trace = ((IActivityTracer)connection).Trace;
-        }
-
-        ActivityTrace IActivityTracer.Trace => _trace;
-
-        string? IActivityTracer.TraceParent => _trace.TraceParent;
-
-        public abstract string AssemblyVersion { get; }
-
-        public abstract string AssemblyName { get; }
-
-        protected virtual void Dispose(bool disposing)
-        {
-        }
-
-        public override void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
+        // IActivityTracer provides: Trace, TraceParent, AssemblyVersion, AssemblyName
+        // IDisposable provides: Dispose()
+        // These are all the methods TracingReader actually needs
     }
 }

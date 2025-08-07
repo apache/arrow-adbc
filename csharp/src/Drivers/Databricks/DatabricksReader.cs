@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -32,7 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         int index;
         IArrowReader? reader;
 
-        public DatabricksReader(DatabricksStatement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
+        public DatabricksReader(IHiveServer2Statement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
         {
             // If we have direct results, initialize the batches from them
             if (statement.HasDirectResults)
