@@ -6,8 +6,8 @@
     <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Apache.Arrow" Version="20.0.0" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.6" />
+    <PackageReference Include="Apache.Arrow" Version="21.0.0" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.7" />
   </ItemGroup>
   <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible($(TargetFramework), 'net6.0'))">
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
