@@ -19,7 +19,6 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -101,7 +100,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         /// <param name="initialResults">The initial fetch results.</param>
         /// <returns>A new CloudFetchReader instance.</returns>
-        protected virtual CloudFetchReader CreateCloudFetchReader(TFetchResultsResp initialResults)
+        protected virtual BaseDatabricksReader CreateCloudFetchReader(TFetchResultsResp initialResults)
         {
             return new CloudFetchReader(_statement, _schema, initialResults, _isLz4Compressed, _httpClient);
         }
@@ -111,7 +110,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         /// <param name="initialResults">The initial fetch results.</param>
         /// <returns>A new DatabricksReader instance.</returns>
-        protected virtual DatabricksReader CreateDatabricksReader(TFetchResultsResp initialResults)
+        protected virtual BaseDatabricksReader CreateDatabricksReader(TFetchResultsResp initialResults)
         {
             return new DatabricksReader(_statement, _schema, initialResults, _isLz4Compressed);
         }
