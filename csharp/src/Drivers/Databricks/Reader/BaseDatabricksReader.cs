@@ -16,10 +16,10 @@
 */
 
 using System;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
 using Apache.Arrow.Adbc.Tracing;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
     /// <summary>
     /// Base class for Databricks readers that handles common functionality of DatabricksReader and CloudFetchReader

@@ -19,7 +19,7 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 {
     /// <summary>
     /// Interface for accessing HiveServer2Statement properties needed by CloudFetchResultFetcher.

@@ -25,7 +25,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 {
     /// <summary>
     /// Fetches result chunks from the Thrift server and manages URL caching and refreshing.

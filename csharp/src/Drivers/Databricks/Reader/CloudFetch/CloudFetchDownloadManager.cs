@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 {
     /// <summary>
     /// Manages the CloudFetch download pipeline.

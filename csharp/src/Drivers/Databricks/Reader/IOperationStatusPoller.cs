@@ -18,7 +18,7 @@
 using System;
 using System.Threading;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
     /// <summary>
     /// Interface for operation status polling functionality.

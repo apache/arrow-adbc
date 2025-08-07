@@ -24,7 +24,7 @@ using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 {
     /// <summary>
     /// Reader for CloudFetch results from Databricks Spark Thrift server.

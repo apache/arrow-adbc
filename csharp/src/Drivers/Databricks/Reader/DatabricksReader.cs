@@ -20,12 +20,12 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
     internal sealed class DatabricksReader : BaseDatabricksReader
     {

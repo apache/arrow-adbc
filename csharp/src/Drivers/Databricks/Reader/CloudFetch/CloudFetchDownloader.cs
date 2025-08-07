@@ -24,7 +24,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using K4os.Compression.LZ4.Streams;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 {
     /// <summary>
     /// Downloads files from URLs.
