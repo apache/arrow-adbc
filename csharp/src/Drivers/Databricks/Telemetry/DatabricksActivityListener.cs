@@ -24,7 +24,6 @@ using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
 using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
 
-
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
     internal class DatabricksActivityListener : IDisposable
@@ -55,7 +54,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             {
                 var sqlExecutionEvent = new SqlExecutionEvent();
                 var operationDetail = new OperationDetail();
-                operationDetail.OperationType = Util.StringToOperationType("EXECUTE_STATEMENT_ASYNC");
+                operationDetail.OperationType = OperationType.EXECUTE_STATEMENT_ASYNC;
                 sqlExecutionEvent.OperationDetail = operationDetail;
                 _telemetryHelper.AddSqlExecutionEvent(sqlExecutionEvent, Convert.ToInt64(activity.Duration.TotalMilliseconds));
             }

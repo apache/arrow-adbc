@@ -79,46 +79,5 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
                 return false;
             }
         }
-
-        /// <summary>
-        /// Sends a single telemetry event asynchronously
-        /// </summary>
-        /// <param name="telemetryEvent">Single telemetry event to send</param>
-        /// <returns>Task representing the async operation</returns>
-        public async Task<bool> SendTelemetryAsync(TelemetryFrontendLog telemetryEvent)
-        {
-            if (string.IsNullOrEmpty(_telemetryUrl))
-            {
-                return false;
-            }
-
-            try
-            {
-                var request = new HttpRequestMessage(HttpMethod.Post, _telemetryUrl);
-                
-                // Serialize the event to JSON
-                var telemetryRequest = new TelemetryRequest();
-                telemetryRequest.UploadTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                telemetryRequest.ProtoLogs = new List<string> { JsonSerializer.Serialize(telemetryEvent) };
-                request.Content = new StringContent(JsonSerializer.Serialize(telemetryRequest));
-                
-                // Set headers
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                if(_accessToken != null)
-                {
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
-                }
-
-                var response = await _httpClient.SendAsync(request);
-                return response.IsSuccessStatusCode;
-            }
-            catch (Exception ex)
-            {
-                // Log the exception but don't throw to prevent telemetry failures from affecting main functionality
-                System.Diagnostics.Debug.WriteLine($"Failed to send telemetry: {ex.Message}");
-                return false;
-            }
-        }
     }
 }

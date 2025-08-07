@@ -23,6 +23,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
     internal class Util
     {
+        private static string DATABRICKS_TELEMETRY_GUID = "Databricks.Telemetry.Guid";
+
         private static string DRIVER_VERSION = GetAssemblyVersion(typeof(DatabricksConnection));
 
         private static string DRIVER_NAME = GetAssemblyName(typeof(DatabricksConnection));
@@ -31,7 +33,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 
         private static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
 
-        
+        public static string GetDatabricksTag()
+        {
+            return DATABRICKS_TELEMETRY_GUID;
+        }
+
         public static string GetDriverVersion()
         {
             return DRIVER_VERSION;

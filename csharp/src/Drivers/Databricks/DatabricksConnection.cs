@@ -88,6 +88,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             _guid = Guid.NewGuid();
             ValidateProperties();
+            InitializeTelemetry();
             _databricksActivityListener = new DatabricksActivityListener(_telemetryHelper, this.AssemblyName, _guid);
         }
 
@@ -95,7 +96,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
             tags ??= [];
-            tags.Concat([new("guid",_guid)]);
+            tags = tags.Concat([new(Util.GetDatabricksTag(),_guid)]);
             return tags;
         }
 
@@ -292,8 +293,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _identityFederationClientId = identityFederationClientId;
             }
+        }
 
-            //Telemetry
+        private void InitializeTelemetry()
+        {
             var connectionParams = new DriverConnectionParameters();
             var hostDetails = new HostDetails();
             var clientContext = new ClientContext();
@@ -327,7 +330,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 token = accesstoken;
             }
-            _telemetryHelper = new TelemetryHelper(hostDetails.HostUrl, token);
+            _telemetryHelper = new TelemetryHelper(token);
             _telemetryHelper.SetParameters(connectionParams, clientContext);
         }
 
@@ -805,9 +808,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             if (disposing)
             {
-                _authHttpClient?.Dispose();
                 _databricksActivityListener?.Dispose();
-                
                 try
                 {
                     _telemetryHelper?.ForceFlushAsync().Wait(TimeSpan.FromSeconds(2));
@@ -816,6 +817,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     Debug.WriteLine($"Failed to flush telemetry on dispose: {ex.Message}");
                 }
+                _authHttpClient?.Dispose();
             }
             base.Dispose(disposing);
         }

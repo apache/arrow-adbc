@@ -43,13 +43,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 
         private ClientContext? _clientContext;
         private string? _accessToken;
-        private string? _hostUrl;
         private DriverConnectionParameters? _connectionParameters;
         private readonly DriverSystemConfiguration _systemConfiguration;
 
-        public TelemetryHelper(string? hostUrl, string? accessToken)
+        public TelemetryHelper(string? accessToken)
         {
-            _hostUrl = hostUrl;
             _accessToken = accessToken;
             _lastFlushTimeMillis = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _flushTimer = new Timer(TimerFlushEvents, null, DatabricksConnectionConfig.FLUSH_INTERVAL_MILLIS, DatabricksConnectionConfig.FLUSH_INTERVAL_MILLIS);
