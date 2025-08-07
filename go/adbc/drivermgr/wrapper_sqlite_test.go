@@ -685,10 +685,10 @@ func (dm *DriverMgrSuite) TestIngestStream() {
 }
 
 func (dm *DriverMgrSuite) TestGetDriverInfo() {
-	versionInfo, err := adbc.GetDriverInfo(dm.ctx, dm.conn)
+	driverInfo, err := adbc.GetDriverInfo(dm.ctx, dm.conn)
 	dm.NoError(err)
 
 	// Core driver info should be non-empty
-	dm.NotEmpty(versionInfo.DriverName, "DriverName should not be empty")
-	dm.NotEmpty(versionInfo.DriverVersion, "DriverVersion should not be empty")
+	dm.NotEmpty(driverInfo.DriverName, "DriverName should not be empty")
+	dm.NotEmpty(driverInfo.DriverVersion, "DriverVersion should not be empty")
 }
