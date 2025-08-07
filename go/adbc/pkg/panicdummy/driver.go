@@ -87,7 +87,15 @@ func setErr(err *C.struct_AdbcError, format string, vals ...interface{}) {
 		C.PanicDummyerrRelease(err)
 	}
 
-	msg := errPrefix + fmt.Sprintf(format, vals...)
+	var msg string
+	if strings.HasPrefix(format, errPrefix) {
+		// If the error message already starts with the prefix, we don't
+		// want to add it again.
+		msg = fmt.Sprintf(format, vals...)
+	} else {
+		// Otherwise, we prepend the prefix to the error message.
+		msg = errPrefix + fmt.Sprintf(format, vals...)
+	}
 	err.message = C.CString(msg)
 	err.release = (*[0]byte)(C.PanicDummy_release_error)
 }
@@ -97,7 +105,7 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 		return
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		err.sqlstate[i] = C.char(adbcError.SqlState[i])
 	}
 
