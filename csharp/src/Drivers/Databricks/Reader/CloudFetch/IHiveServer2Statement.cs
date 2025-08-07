@@ -24,7 +24,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
     /// <summary>
     /// Interface for accessing HiveServer2Statement properties needed by CloudFetchResultFetcher.
     /// </summary>
-    internal interface IHiveServer2Statement : ITracingStatement
+    internal interface IHiveServer2Statement : IActivityTracer
     {
         /// <summary>
         /// Gets the operation handle.

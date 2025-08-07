@@ -24,9 +24,9 @@ namespace Apache.Arrow.Adbc.Tracing
 {
     public abstract class TracingReader : IArrowArrayStream, IActivityTracer
     {
-        private readonly ITracingStatement _statement;
+        private readonly IActivityTracer _statement;
 
-        protected TracingReader(ITracingStatement statement)
+        protected TracingReader(IActivityTracer statement)
         {
             _statement = statement;
         }
