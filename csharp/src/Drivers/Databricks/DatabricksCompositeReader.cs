@@ -63,11 +63,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             _proxyConfigurator = proxyConfigurator;
 
             // use direct results if available
-            if (_statement.HasDirectResults && _statement.DirectResults != null && _statement.DirectResults.__isset.resultSet && statement.DirectResults?.ResultSet != null)
+            if (_statement.HasDirectResults && _statement.Response!.DirectResults != null && _statement.Response!.DirectResults.__isset.resultSet && statement.Response!.DirectResults?.ResultSet != null)
             {
-                _activeReader = DetermineReader(_statement.DirectResults.ResultSet);
+                _activeReader = DetermineReader(_statement.Response!.DirectResults.ResultSet);
             }
-            if (_statement.DirectResults?.ResultSet.HasMoreRows ?? true)
+            if (_statement.Response!.DirectResults?.ResultSet.HasMoreRows ?? true)
             {
                 operationStatusPoller = new DatabricksOperationStatusPoller(statement);
                 operationStatusPoller.Start();

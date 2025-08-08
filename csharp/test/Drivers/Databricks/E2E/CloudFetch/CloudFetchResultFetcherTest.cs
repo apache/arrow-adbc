@@ -36,7 +36,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
     {
         private readonly Mock<IHiveServer2Statement> _mockStatement;
         private readonly Mock<TCLIService.IAsync> _mockClient;
-        private readonly TOperationHandle _operationHandle;
+        private readonly IResponse _response;
         private readonly MockClock _mockClock;
         private readonly CloudFetchResultFetcherWithMockClock _resultFetcher;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
@@ -46,15 +46,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
         {
             _mockClient = new Mock<TCLIService.IAsync>();
             _mockStatement = new Mock<IHiveServer2Statement>();
-            _operationHandle = new TOperationHandle
-            {
-                OperationId = new THandleIdentifier { Guid = new byte[] { 1, 2, 3, 4 } },
-                OperationType = TOperationType.EXECUTE_STATEMENT,
-                HasResultSet = true
-            };
+            _response = CreateResponse();
 
             _mockStatement.Setup(s => s.Client).Returns(_mockClient.Object);
-            _mockStatement.Setup(s => s.OperationHandle).Returns(_operationHandle);
+            _mockStatement.Setup(s => s.Response).Returns(_response);
 
             _mockClock = new MockClock();
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
@@ -598,6 +593,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
                 Results = results,
                 __isset = { results = true, hasMoreRows = true }
             };
+        }
+
+        private IResponse CreateResponse()
+        {
+            var mockResponse = new Mock<IResponse>();
+            mockResponse.Setup(r => r.OperationHandle).Returns(new TOperationHandle
+            {
+                OperationId = new THandleIdentifier
+                {
+                    Guid = new byte[16],
+                    Secret = new byte[16]
+                },
+                OperationType = TOperationType.EXECUTE_STATEMENT,
+                HasResultSet = true
+            });
+            return mockResponse.Object;
         }
 
         #endregion
