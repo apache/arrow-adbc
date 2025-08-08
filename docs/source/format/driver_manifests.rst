@@ -364,7 +364,10 @@ the given order:
    * On Linux (and other Unix-like platforms), the ``XDG_CONFIG_HOME`` environment variable is checked first. If it is set, the driver manager
      will search ``$XDG_CONFIG_HOME/adbc``, otherwise it will search ``~/.config/adbc``
 
-#. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search ``/etc/adbc`` if it exists
+#. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, then a system-level configuration directory will be searched
+
+   * On macoS, this will be ``/Library/Application Support/ADBC`` if it exists
+   * On Linux (and other Unix-like platforms), this will be ``/etc/adbc`` if it exists
 
 Windows
 ^^^^^^^
