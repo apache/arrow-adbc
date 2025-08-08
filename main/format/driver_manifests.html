@@ -727,7 +727,12 @@ the given order:</p>
 will search <code class="docutils literal notranslate"><span class="pre">$XDG_CONFIG_HOME/adbc</span></code>, otherwise it will search <code class="docutils literal notranslate"><span class="pre">~/.config/adbc</span></code></p></li>
 </ul>
 </li>
-<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_SYSTEM</span></code> load option is set, the driver manager will search <code class="docutils literal notranslate"><span class="pre">/etc/adbc</span></code> if it exists</p></li>
+<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_SYSTEM</span></code> load option is set, then a system-level configuration directory will be searched</p>
+<ul class="simple">
+<li><p>On macOS, this will be <code class="docutils literal notranslate"><span class="pre">/Library/Application</span> <span class="pre">Support/ADBC</span></code> if it exists</p></li>
+<li><p>On Linux (and other Unix-like platforms), this will be <code class="docutils literal notranslate"><span class="pre">/etc/adbc</span></code> if it exists</p></li>
+</ul>
+</li>
 </ol>
 </section>
 <section id="windows">
