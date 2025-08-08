@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         private readonly TlsProperties _tlsOptions;
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
-        private DatabricksOperationStatusPoller? operationStatusPoller;
+        private IOperationStatusPoller? operationStatusPoller;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabricksCompositeReader"/> class.
