@@ -292,8 +292,15 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
   }
 
   if (levels & ADBC_LOAD_FLAG_SEARCH_SYSTEM) {
-#ifndef _WIN32
-    // system level for windows is to search the registry keys
+    // System level behavior for Windows is to search the registry keys so we
+    // only need to check for macOS and fall back to Unix-like behavior as long
+    // as we're not on Windows
+#if defined(__APPLE__)
+    const std::filesystem::path system_config_dir("/Library/Application Support/ADBC");
+    if (std::filesystem::exists(system_config_dir)) {
+      paths.push_back(system_config_dir);
+    }
+#elif !defined(_WIN32)
     const std::filesystem::path system_config_dir("/etc/adbc");
     if (std::filesystem::exists(system_config_dir)) {
       paths.push_back(system_config_dir);
