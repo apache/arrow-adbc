@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+using Apache.Arrow.Adbc.Tracing;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -22,7 +24,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// <summary>
     /// Interface for accessing HiveServer2Statement properties needed by CloudFetchResultFetcher.
     /// </summary>
-    internal interface IHiveServer2Statement
+    internal interface IHiveServer2Statement : ITracingStatement
     {
         /// <summary>
         /// Gets the operation handle.
@@ -49,5 +51,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the query timeout in seconds.
         /// </summary>
         int QueryTimeoutSeconds { get; }
+
+        /// <summary>
+        /// Gets the batch size for fetching results.
+        /// </summary>
+        long BatchSize { get; }
+
+        /// <summary>
+        /// Gets the connection associated with this statement.
+        /// </summary>
+        HiveServer2Connection Connection { get; }
     }
 }

@@ -33,7 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         int index;
         IArrowReader? reader;
 
-        public DatabricksReader(DatabricksStatement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
+        public DatabricksReader(IHiveServer2Statement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
         {
             // If we have direct results, initialize the batches from them
             if (statement.HasDirectResults)

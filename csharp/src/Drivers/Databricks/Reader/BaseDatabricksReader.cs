@@ -26,13 +26,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
     /// </summary>
     internal abstract class BaseDatabricksReader : TracingReader
     {
-        protected DatabricksStatement statement;
+        protected IHiveServer2Statement statement;
         protected readonly Schema schema;
         protected readonly bool isLz4Compressed;
         protected bool hasNoMoreRows = false;
         private bool isDisposed;
 
-        protected BaseDatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
+        protected BaseDatabricksReader(IHiveServer2Statement statement, Schema schema, bool isLz4Compressed)
             : base(statement)
         {
             this.schema = schema;
