@@ -17,7 +17,7 @@
 
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
     /// Interface for accessing HiveServer2Statement properties needed by CloudFetchResultFetcher.
