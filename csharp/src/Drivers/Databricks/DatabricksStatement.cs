@@ -96,7 +96,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Set Databricks-specific statement properties
             // TODO: Ensure this is set dynamically depending on server capabilities.
             statement.EnforceResultPersistenceMode = false;
-            statement.ResultPersistenceMode = TResultPersistenceMode.ALL_RESULTS;
             statement.CanReadArrowResult = true;
 
 #pragma warning disable CS0618 // Type or member is obsolete
