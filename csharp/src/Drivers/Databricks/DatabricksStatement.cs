@@ -199,6 +199,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public bool UseCloudFetch => useCloudFetch;
 
         /// <summary>
+        /// TEST METHOD: Directly calls CloseOperation on the current operation
+        /// </summary>
+        public async Task<TCloseOperationResp> TestCloseOperationAsync(CancellationToken cancellationToken = default)
+        {
+            if (OperationHandle == null)
+            {
+                throw new InvalidOperationException("No operation handle available to close");
+            }
+
+            var request = new TCloseOperationReq(OperationHandle);
+            var response = await Connection.Client.CloseOperation(request, cancellationToken);
+            
+            // Log the response for testing
+            Console.WriteLine($"CloseOperation Response - StatusCode: {response.Status?.StatusCode}, InfoMessages: {string.Join(", ", response.Status?.InfoMessages ?? new List<string>())}");
+            
+            return response;
+        }
+
+        /// <summary>
         /// Gets the maximum bytes per file for CloudFetch.
         /// </summary>
         public long MaxBytesPerFile => maxBytesPerFile;
