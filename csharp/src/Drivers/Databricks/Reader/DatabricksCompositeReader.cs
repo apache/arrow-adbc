@@ -19,8 +19,6 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -31,7 +29,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
     /// A composite reader for Databricks that delegates to either CloudFetchReader or DatabricksReader
     /// based on CloudFetch configuration and result set characteristics.
     /// </summary>
-    internal sealed class DatabricksCompositeReader : TracingReader
+    internal class DatabricksCompositeReader : TracingReader
     {
         public override string AssemblyName => DatabricksConnection.s_assemblyName;
 
@@ -43,8 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         private readonly IHiveServer2Statement _statement;
         private readonly Schema _schema;
         private readonly bool _isLz4Compressed;
-        private readonly TlsProperties _tlsOptions;
-        private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
+        private readonly HttpClient _httpClient;
 
         private IOperationStatusPoller? operationStatusPoller;
 
@@ -55,40 +52,67 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
         /// <param name="httpClient">The HTTP client for CloudFetch operations.</param>
-        internal DatabricksCompositeReader(IHiveServer2Statement statement, Schema schema, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator): base(statement)
+        /// <param name="operationPoller">Optional operation status poller for testing.</param>
+        internal DatabricksCompositeReader(IHiveServer2Statement statement, Schema schema, bool isLz4Compressed, HttpClient httpClient, IOperationStatusPoller? operationPoller = null) : base(statement)
         {
-            _statement = statement ?? throw new ArgumentNullException(nameof(statement));
+            _statement = statement;
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
             _isLz4Compressed = isLz4Compressed;
-            _tlsOptions = tlsOptions;
-            _proxyConfigurator = proxyConfigurator;
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 
             // use direct results if available
-            if (_statement.HasDirectResults && _statement.DirectResults != null && _statement.DirectResults.__isset.resultSet && statement.DirectResults?.ResultSet != null)
+            if (_statement.HasDirectResults && _statement.DirectResults != null && _statement.DirectResults.__isset.resultSet && _statement.DirectResults?.ResultSet != null)
             {
                 _activeReader = DetermineReader(_statement.DirectResults.ResultSet);
+                if (!_statement.DirectResults.ResultSet.HasMoreRows)
+                {
+                    return;
+                }
             }
-            if (_statement.DirectResults?.ResultSet.HasMoreRows ?? true)
-            {
-                operationStatusPoller = new DatabricksOperationStatusPoller(statement);
-                operationStatusPoller.Start();
-            }
+
+            // Use injected poller for testing, or create a real one for production
+            operationStatusPoller = operationPoller ?? new DatabricksOperationStatusPoller(_statement);
+            operationStatusPoller.Start();
         }
 
-        private BaseDatabricksReader DetermineReader(TFetchResultsResp initialResults)
+        /// <summary>
+        /// Determines which reader to use based on the fetch results.
+        /// </summary>
+        /// <param name="initialResults">The initial fetch results.</param>
+        /// <returns>The appropriate reader for the results.</returns>
+        protected virtual BaseDatabricksReader DetermineReader(TFetchResultsResp initialResults)
         {
             // if it has links, use cloud fetch
             if (initialResults.__isset.results &&
                 initialResults.Results.__isset.resultLinks &&
                 initialResults.Results.ResultLinks?.Count > 0)
             {
-                HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(_tlsOptions, _proxyConfigurator));
-                return new CloudFetchReader(_statement, _schema, initialResults, _isLz4Compressed, cloudFetchHttpClient);
+                return CreateCloudFetchReader(initialResults);
             }
             else
             {
-                return new DatabricksReader(_statement, _schema, initialResults, _isLz4Compressed);
+                return CreateDatabricksReader(initialResults);
             }
+        }
+
+        /// <summary>
+        /// Creates a CloudFetchReader instance. Virtual to allow testing.
+        /// </summary>
+        /// <param name="initialResults">The initial fetch results.</param>
+        /// <returns>A new CloudFetchReader instance.</returns>
+        protected virtual BaseDatabricksReader CreateCloudFetchReader(TFetchResultsResp initialResults)
+        {
+            return new CloudFetchReader(_statement, _schema, initialResults, _isLz4Compressed, _httpClient);
+        }
+
+        /// <summary>
+        /// Creates a DatabricksReader instance. Virtual to allow testing.
+        /// </summary>
+        /// <param name="initialResults">The initial fetch results.</param>
+        /// <returns>A new DatabricksReader instance.</returns>
+        protected virtual BaseDatabricksReader CreateDatabricksReader(TFetchResultsResp initialResults)
+        {
+            return new DatabricksReader(_statement, _schema, initialResults, _isLz4Compressed);
         }
 
         /// <summary>
@@ -105,7 +129,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 // Make a FetchResults call to get the initial result set
                 // and determine the reader based on the result set
                 TFetchResultsReq request = new TFetchResultsReq(this._statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
-                TFetchResultsResp response = await this._statement.Connection.Client!.FetchResults(request, cancellationToken);
+                TFetchResultsResp response = await this._statement.Client!.FetchResults(request, cancellationToken);
                 _activeReader = DetermineReader(response);
             }
 
@@ -128,17 +152,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             if (disposing)
             {
                 _activeReader?.Dispose();
-                StopOperationStatusPoller();
+                DisposeOperationStatusPoller();
             }
             _activeReader = null;
             base.Dispose(disposing);
         }
 
+        private void DisposeOperationStatusPoller()
+        {
+            if (operationStatusPoller != null)
+            {
+                StopOperationStatusPoller();
+                operationStatusPoller.Dispose();
+                operationStatusPoller = null;
+            }
+        }
+
         private void StopOperationStatusPoller()
         {
             operationStatusPoller?.Stop();
-            operationStatusPoller?.Dispose();
-            operationStatusPoller = null;
         }
     }
 }
