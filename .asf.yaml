@@ -21,6 +21,9 @@ github:
   collaborators:
     - krlmlr
     - nbenn
+    - alexguo-db
+    - jadewang-db
+    - eric-wang-1990
   enabled_merge_buttons:
     merge: false
     rebase: false
@@ -39,6 +42,7 @@ github:
       required_reviewers:
         - alexguo-db
         - jadewang-db
+        - eric-wang-1990
       deployment_branch_policy:
         protected_branches: true
 

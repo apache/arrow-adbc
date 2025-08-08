@@ -104,6 +104,9 @@ jobs:
             exit 1
           fi
 
+          # Mask the GitHub OIDC token
+          echo "::add-mask::$GITHUB_TOKEN"
+
           # Exchange OIDC token for Databricks OAuth token
           OAUTH_RESPONSE=$(curl -X POST "https://$DATABRICKS_WORKSPACE_URL/oidc/v1/token" \
             -H "Content-Type: application/x-www-form-urlencoded" \
@@ -120,6 +123,9 @@ jobs:
             echo "$OAUTH_RESPONSE"
             exit 1
           fi
+
+          # Mask the Databricks access token
+          echo "::add-mask::$DATABRICKS_TOKEN"
 
           # Create Databricks configuration file
           mkdir -p "$DATABRICKS_DIR"
