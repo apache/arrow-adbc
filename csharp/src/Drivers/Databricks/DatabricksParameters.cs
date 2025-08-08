@@ -226,9 +226,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     public class DatabricksConstants
     {
         /// <summary>
-        /// Default heartbeat interval in seconds for long-running operations
+        /// Default heartbeat interval in seconds for long-running operations. TODO: make this user-configurable
         /// </summary>
         public const int DefaultOperationStatusPollingIntervalSeconds = 60;
+
+        /// <summary>
+        /// Default timeout in seconds for operation status polling requests. TODO: make this user-configurable
+        /// </summary>
+        public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
 
         /// <summary>
         /// OAuth grant type constants

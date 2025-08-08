@@ -16,17 +16,12 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow;
-using Apache.Arrow.Adbc;
-using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -50,6 +45,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private readonly TlsProperties _tlsOptions;
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
+        private DatabricksOperationStatusPoller? operationStatusPoller;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabricksCompositeReader"/> class.
         /// </summary>
@@ -66,9 +63,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             _proxyConfigurator = proxyConfigurator;
 
             // use direct results if available
-            if (_statement.HasDirectResults && _statement.DirectResults != null && _statement.DirectResults.__isset.resultSet)
+            if (_statement.HasDirectResults && _statement.DirectResults != null && _statement.DirectResults.__isset.resultSet && statement.DirectResults?.ResultSet != null)
             {
                 _activeReader = DetermineReader(_statement.DirectResults.ResultSet);
+            }
+            if (_statement.DirectResults?.ResultSet.HasMoreRows ?? true)
+            {
+                operationStatusPoller = new DatabricksOperationStatusPoller(statement);
+                operationStatusPoller.Start();
             }
         }
 
@@ -93,7 +95,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The next record batch, or null if there are no more batches.</returns>
-        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        private async ValueTask<RecordBatch?> ReadNextRecordBatchInternalAsync(CancellationToken cancellationToken = default)
         {
             // Initialize the active reader if not already done
             if (_activeReader == null)
@@ -107,6 +109,35 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
             return await _activeReader.ReadNextRecordBatchAsync(cancellationToken);
+        }
+
+        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        {
+            var result = await ReadNextRecordBatchInternalAsync(cancellationToken);
+            // Stop the poller when we've reached the end of results
+            if (result == null)
+            {
+                StopOperationStatusPoller();
+            }
+            return result;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _activeReader?.Dispose();
+                StopOperationStatusPoller();
+            }
+            _activeReader = null;
+            base.Dispose(disposing);
+        }
+
+        private void StopOperationStatusPoller()
+        {
+            operationStatusPoller?.Stop();
+            operationStatusPoller?.Dispose();
+            operationStatusPoller = null;
         }
     }
 }

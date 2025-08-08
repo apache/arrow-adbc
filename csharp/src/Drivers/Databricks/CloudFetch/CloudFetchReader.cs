@@ -155,14 +155,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                         }
                     }
 
-                    StopOperationStatusPoller();
                     // If we get here, there are no more files
                     return null;
                 }
             });
         }
 
-        protected override void DisposeResources()
+        protected override void Dispose(bool disposing)
         {
             if (this.currentReader != null)
             {
@@ -181,6 +180,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
                 this.downloadManager.Dispose();
                 this.downloadManager = null;
             }
+            base.Dispose(disposing);
         }
     }
 }

@@ -16,20 +16,18 @@
 */
 
 using System;
-using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
-    /// Base class for Databricks readers that handles common functionality. Handles the operation status poller.
+    /// Base class for Databricks readers that handles common functionality of DatabricksReader and CloudFetchReader
     /// </summary>
     internal abstract class BaseDatabricksReader : TracingReader
     {
         protected DatabricksStatement statement;
         protected readonly Schema schema;
         protected readonly bool isLz4Compressed;
-        protected DatabricksOperationStatusPoller? operationStatusPoller;
         protected bool hasNoMoreRows = false;
         private bool isDisposed;
 
@@ -39,48 +37,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             this.schema = schema;
             this.isLz4Compressed = isLz4Compressed;
             this.statement = statement;
-            if (statement.DirectResults?.ResultSet != null && !statement.DirectResults.ResultSet.HasMoreRows)
-            {
-                return;
-            }
-            operationStatusPoller = new DatabricksOperationStatusPoller(statement);
-            operationStatusPoller.Start();
         }
 
         public override Schema Schema { get { return schema; } }
 
-        protected void StopOperationStatusPoller()
-        {
-            operationStatusPoller?.Stop();
-        }
-
         protected override void Dispose(bool disposing)
         {
-            if (!isDisposed)
-            {
-                if (disposing)
-                {
-                    DisposeOperationStatusPoller();
-                    DisposeResources();
-                }
-                isDisposed = true;
-            }
-
             base.Dispose(disposing);
-        }
-
-        protected virtual void DisposeResources()
-        {
-        }
-
-        protected void DisposeOperationStatusPoller()
-        {
-            if (operationStatusPoller != null)
-            {
-                operationStatusPoller.Stop();
-                operationStatusPoller.Dispose();
-                operationStatusPoller = null;
-            }
+            isDisposed = true;
         }
 
         protected void ThrowIfDisposed()
