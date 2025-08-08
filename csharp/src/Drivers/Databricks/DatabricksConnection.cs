@@ -28,6 +28,11 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
+using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -66,6 +71,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
+        // Telemetry
+        private TelemetryHelper? _telemetryHelper;
+        private DatabricksActivityListener _databricksActivityListener;
+        private Guid _guid;
+
         // Identity federation client ID for token exchange
         private string? _identityFederationClientId;
 
@@ -76,15 +86,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            _guid = Guid.NewGuid();
             ValidateProperties();
+            _databricksActivityListener = new DatabricksActivityListener(_telemetryHelper, this.AssemblyName, _guid);
         }
 
         public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
         {
             IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
-            // TODO: Add any additional tags specific to Databricks connection
-            //tags ??= [];
-            //tags.Concat([new("key", "value")]);
+            tags ??= [];
+            tags.Concat([new("guid",_guid)]);
             return tags;
         }
 
@@ -281,6 +292,43 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _identityFederationClientId = identityFederationClientId;
             }
+
+            //Telemetry
+            var connectionParams = new DriverConnectionParameters();
+            var hostDetails = new HostDetails();
+            var clientContext = new ClientContext();
+            string? token = null;
+
+            if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType))
+            {
+                connectionParams.AuthMech = Util.StringToAuthMech(authType);
+            }
+
+            if (Properties.TryGetValue(SparkParameters.HostName, out string? host))
+            {
+                hostDetails.HostUrl = host;
+            }
+            if (Properties.TryGetValue(SparkParameters.Port, out string? port))
+            {
+                hostDetails.Port = Int32.Parse(port);
+            }
+            connectionParams.HostInfo = hostDetails;
+
+            if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string? userAgent))
+            {
+                clientContext.UserAgent = userAgent;
+            }
+            
+            if(Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
+            {
+                token = accessToken;
+            }   
+            else if(Properties.TryGetValue(SparkParameters.Token, out string? accesstoken))
+            {
+                token = accesstoken;
+            }
+            _telemetryHelper = new TelemetryHelper(hostDetails.HostUrl, token);
+            _telemetryHelper.SetParameters(connectionParams, clientContext);
         }
 
         /// <summary>
@@ -423,6 +471,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
+            _telemetryHelper?.InitializeTelemetryClient(_authHttpClient);
             return baseHandler;
         }
 
@@ -757,6 +806,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (disposing)
             {
                 _authHttpClient?.Dispose();
+                _databricksActivityListener?.Dispose();
+                
+                try
+                {
+                    _telemetryHelper?.ForceFlushAsync().Wait(TimeSpan.FromSeconds(2));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to flush telemetry on dispose: {ex.Message}");
+                }
             }
             base.Dispose(disposing);
         }
