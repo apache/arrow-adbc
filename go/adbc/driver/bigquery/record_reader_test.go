@@ -18,8 +18,10 @@
 package bigquery
 
 import (
+	"bytes"
 	"testing"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 )
 
@@ -53,4 +55,34 @@ func TestEmptyArrowIteratorSerializedArrowSchema(t *testing.T) {
 	if len(rdr.Schema().Fields()) > 0 {
 		t.Errorf("Expected an empty schema, but got %d bytes", len(bytes))
 	}
+}
+
+func TestNonEmptySchemaSerializes(t *testing.T) {
+	schema := bigquery.Schema{
+		&bigquery.FieldSchema{
+			Name: "foo",
+			Type: bigquery.BooleanFieldType,
+		},
+		&bigquery.FieldSchema{
+			Name: "bar",
+			Type: bigquery.IntegerFieldType,
+		},
+		&bigquery.FieldSchema{
+			Name: "baz",
+			Type: bigquery.RecordFieldType,
+			Schema: bigquery.Schema{
+				&bigquery.FieldSchema{
+					Name: "a",
+					Type: bigquery.StringFieldType,
+				},
+			},
+		},
+	}
+	empty := emptyArrowIterator{}
+	nonEmpty := emptyArrowIterator{schema}
+
+	if bytes.Equal(empty.SerializedArrowSchema(), nonEmpty.SerializedArrowSchema()) {
+		t.Errorf("Expected non-empty schema to serialize differently than empty schema")
+	}
+
 }
