@@ -1774,7 +1774,11 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     // system level for windows is to search the registry keys
     #[cfg(not(windows))]
     if lvls & LOAD_FLAG_SEARCH_SYSTEM != 0 {
+        #[cfg(target_os = "macos")]
+        let system_config_dir = PathBuf::from("/Library/Application Support/ADBC");
+        #[cfg(not(target_os = "macos"))]
         let system_config_dir = PathBuf::from("/etc/adbc");
+
         if system_config_dir.exists() {
             result.push(system_config_dir);
         }
@@ -2184,7 +2188,11 @@ mod tests {
     #[test]
     #[cfg_attr(not(windows), ignore)]
     fn test_get_search_paths() {
+        #[cfg(target_os = "macos")]
+        let system_path = PathBuf::from("/Library/Application Support/ADBC");
+        #[cfg(not(target_os = "macos"))]
         let system_path = PathBuf::from("/etc/adbc");
+
         let search_paths = get_search_paths(LOAD_FLAG_SEARCH_SYSTEM);
         if system_path.exists() {
             assert_eq!(search_paths, vec![system_path]);
