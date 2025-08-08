@@ -33,7 +33,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             Milliseconds
         }
 
+        public static CancellationTokenSource GetCancellationTokenSource(int timeout, TimeUnit timeUnit)
+        {
+            TimeSpan timeSpan = CalculateTimeSpan(timeout, timeUnit);
+            return new CancellationTokenSource(timeSpan);
+
+        }
+
         public static CancellationToken GetCancellationToken(int timeout, TimeUnit timeUnit)
+        {
+            TimeSpan timeSpan = CalculateTimeSpan(timeout, timeUnit);
+            var cts = new CancellationTokenSource(timeSpan);
+            return cts.Token;
+        }
+
+        private static TimeSpan CalculateTimeSpan(int timeout, TimeUnit timeUnit)
         {
             TimeSpan span;
 
@@ -55,13 +69,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 }
             }
 
-            return GetCancellationToken(span);
-        }
-
-        private static CancellationToken GetCancellationToken(TimeSpan timeSpan)
-        {
-            var cts = new CancellationTokenSource(timeSpan);
-            return cts.Token;
+            return span;
         }
 
         public static bool QueryTimeoutIsValid(string key, string value, out int queryTimeoutSeconds)

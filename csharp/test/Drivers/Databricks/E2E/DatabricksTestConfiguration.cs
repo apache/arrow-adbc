@@ -51,5 +51,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         [JsonPropertyName("isCITesting"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool IsCITesting { get; set; } = false;
+
+        [JsonPropertyName("enableRunAsyncInThriftOp"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string EnableRunAsyncInThriftOp { get; set; } = string.Empty;
+
+        [JsonPropertyName("enableDirectResults"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string EnableDirectResults { get; set; } = string.Empty;
     }
 }
