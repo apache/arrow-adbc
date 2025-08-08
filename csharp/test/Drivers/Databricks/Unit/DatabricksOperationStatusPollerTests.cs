@@ -22,10 +22,8 @@ using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
-using System.Collections.Generic;
 using Xunit;
 using Xunit.Abstractions;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 {
@@ -57,7 +55,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         public async Task StartPollsOperationStatusAtInterval()
         {
             // Arrange
-            var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
+            using var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
             var pollCount = 0;
             _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TGetOperationStatusResp())
@@ -76,7 +74,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         public async Task DisposeStopsPolling()
         {
             // Arrange
-            var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
+            using var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
             var pollCount = 0;
             _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TGetOperationStatusResp())
@@ -98,7 +96,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         public async Task StopStopsPolling()
         {
             // Arrange
-            var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
+            using var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
             var pollCount = 0;
             _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TGetOperationStatusResp())
@@ -114,9 +112,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             int finalPollCount = pollCount;
             await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 3)); // Wait another second
             Assert.Equal(finalPollCount, pollCount); // Poll count should not increase after stopping
-
-            // Clean up
-            poller.Dispose();
         }
 
         [Fact]
@@ -134,7 +129,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             foreach (var terminalState in terminalStates)
             {
                 // Arrange
-                var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
+                using var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
                 var pollCount = 0;
                 _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(new TGetOperationStatusResp { OperationState = terminalState })
@@ -146,8 +141,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 
                 // Assert
                 Assert.Equal(1, pollCount);
-
-                poller.Dispose();
             }
         }
 
@@ -155,7 +148,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         public async Task ContinuesPollingOnFinishedState()
         {
             // Arrange
-            var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
+            using var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _heartbeatIntervalSeconds);
             var pollCount = 0;
             _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TGetOperationStatusResp { OperationState = TOperationState.FINISHED_STATE })
@@ -168,7 +161,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             // Assert
             // Should continue polling when in running state
             Assert.True(pollCount > 1, $"Expected multiple polls but got {pollCount}");
-            poller.Dispose();
         }
 
         [Fact]
@@ -194,7 +186,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             }
             catch (Exception)
             {
-
             }
         }
     }

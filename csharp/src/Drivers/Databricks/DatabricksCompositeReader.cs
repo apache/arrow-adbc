@@ -70,7 +70,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (_statement.DirectResults?.ResultSet.HasMoreRows ?? true)
             {
                 operationStatusPoller = new DatabricksOperationStatusPoller(statement);
-                operationStatusPoller.Start();   
+                operationStatusPoller.Start();
             }
         }
 
@@ -127,25 +127,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (disposing)
             {
                 _activeReader?.Dispose();
-                DisposeOperationStatusPoller();
+                StopOperationStatusPoller();
             }
             _activeReader = null;
             base.Dispose(disposing);
         }
 
-        private void DisposeOperationStatusPoller()
-        {
-            if (operationStatusPoller != null)
-            {
-                StopOperationStatusPoller();
-                operationStatusPoller.Dispose();
-                operationStatusPoller = null;
-            }
-        }
-
         private void StopOperationStatusPoller()
         {
             operationStatusPoller?.Stop();
+            operationStatusPoller?.Dispose();
+            operationStatusPoller = null;
         }
     }
 }

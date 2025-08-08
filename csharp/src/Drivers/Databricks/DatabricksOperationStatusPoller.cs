@@ -37,7 +37,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private CancellationTokenSource? _internalCts;
         private Task? _operationStatusPollingTask;
 
-        public DatabricksOperationStatusPoller(IHiveServer2Statement statement, int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds, int requestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds)
+        public DatabricksOperationStatusPoller(
+            IHiveServer2Statement statement,
+            int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds,
+            int requestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _heartbeatIntervalSeconds = heartbeatIntervalSeconds;
