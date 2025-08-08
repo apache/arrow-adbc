@@ -35,11 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         TCLIService.IAsync Client { get; }
 
         /// <summary>
-        /// Gets the direct results.
-        /// </summary>
-        TSparkDirectResults? DirectResults { get; }
-
-        /// <summary>
         /// Checks if direct results are available.
         /// </summary>
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
@@ -49,5 +44,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
         /// Gets the query timeout in seconds.
         /// </summary>
         int QueryTimeoutSeconds { get; }
+
+        IResponse? Response { get; }
     }
 }
