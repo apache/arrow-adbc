@@ -366,7 +366,7 @@ the given order:
 
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, then a system-level configuration directory will be searched
 
-   * On macoS, this will be ``/Library/Application Support/ADBC`` if it exists
+   * On macOS, this will be ``/Library/Application Support/ADBC`` if it exists
    * On Linux (and other Unix-like platforms), this will be ``/etc/adbc`` if it exists
 
 Windows
