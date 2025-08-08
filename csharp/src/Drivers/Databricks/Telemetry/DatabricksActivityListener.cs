@@ -36,7 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
             this._telemetryHelper = telemetryHelper;
             this._activityListener = new ActivityListener
             {
-                ShouldListenTo = (activitySource) => activitySource.Tags?.Any(kvp => kvp.Key == "guid" && kvp.Value?.Equals(guid) == true) == true,
+                ShouldListenTo = (activitySource) => activitySource.Tags?.Any(kvp => kvp.Key == Util.GetDatabricksTag() && kvp.Value?.Equals(guid) == true) == true,
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
                 ActivityStopped = OnActivityStopped,
             };
