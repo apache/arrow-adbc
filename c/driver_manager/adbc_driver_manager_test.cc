@@ -418,7 +418,7 @@ class DriverManifest : public ::testing::Test {
     temp_path /= "adbc_driver_manager_test";
 
     if (!std::filesystem::exists(temp_path)) {
-      ASSERT_TRUE(std::filesystem::create_directories(temp_path));
+      std::filesystem::create_directories(temp_path);
     }
     temp_dir = temp_path;
 #endif
