@@ -67,7 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _activeReader = DetermineReader(_statement.DirectResults.ResultSet);
             }
-            if (_statement.DirectResults?.ResultSet.HasMoreRows ?? true)
+            if (_statement.DirectResults?.ResultSet?.HasMoreRows ?? true)
             {
                 operationStatusPoller = new DatabricksOperationStatusPoller(statement);
                 operationStatusPoller.Start();
