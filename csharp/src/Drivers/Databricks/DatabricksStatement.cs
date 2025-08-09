@@ -119,7 +119,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.CanDownloadResult = useCloudFetch;
             statement.CanDecompressLZ4Result = canDecompressLz4;
             statement.MaxBytesPerFile = maxBytesPerFile;
-            statement.RunAsync = runAsyncInThrift;
+            statement.RunAsync = true;
 
             if (Connection.AreResultsAvailableDirectly)
             {
@@ -197,6 +197,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets whether CloudFetch is enabled.
         /// </summary>
         public bool UseCloudFetch => useCloudFetch;
+
+        /// <summary>
+        /// TEST METHOD: Directly calls CloseOperation on the current operation
+        /// </summary>
+        public async Task<TCloseOperationResp> TestCloseOperationAsync(CancellationToken cancellationToken = default)
+        {
+            if (OperationHandle == null)
+            {
+                throw new InvalidOperationException("No operation handle available to close");
+            }
+
+            var request = new TCloseOperationReq(OperationHandle);
+            var response = await Connection.Client.CloseOperation(request, cancellationToken);
+            
+            // Log the response for testing
+            Console.WriteLine($"CloseOperation Response - StatusCode: {response.Status?.StatusCode}, InfoMessages: {string.Join(", ", response.Status?.InfoMessages ?? new List<string>())}");
+            
+            return response;
+        }
 
         /// <summary>
         /// Gets the maximum bytes per file for CloudFetch.
