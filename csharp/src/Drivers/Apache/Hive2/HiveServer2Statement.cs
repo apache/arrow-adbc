@@ -117,9 +117,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             return await this.TraceActivityAsync(async _ =>
             {
+                // Clear any previous query result
+                ClearCurrentQueryResult();
+
                 if (IsMetadataCommand)
                 {
-                    return await ExecuteMetadataCommandQuery(cancellationToken);
+                    _currentQueryResult = await ExecuteMetadataCommandQuery(cancellationToken);
+                    return _currentQueryResult;
                 }
 
                 _directResults = null;
@@ -142,7 +146,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
                 }
                 Schema schema = GetSchemaFromMetadata(metadata);
-                return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
+                _currentQueryResult = new QueryResult(-1, Connection.NewReader(this, schema, metadata));
+                return _currentQueryResult;
             });
         }
 
@@ -354,6 +359,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal bool EscapePatternWildcards { get; set; } = false;
         protected internal TSparkDirectResults? _directResults { get; set; }
 
+        // Store the current query result for disposal
+        private QueryResult? _currentQueryResult;
+
         public HiveServer2Connection Connection { get; private set; }
 
         public TOperationHandle? OperationHandle { get; private set; }
@@ -394,6 +402,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
                     OperationHandle = null;
                 }
+
+                // Dispose the current query result if it exists
+                ClearCurrentQueryResult();
 
                 base.Dispose();
             });
@@ -739,81 +750,91 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
             var fkResult = await GetCrossReferenceAsForeignTableAsync(cancellationToken);
 
-            // 2. Read all batches into memory
-            List<RecordBatch> columnsBatches;
-            int totalRows;
-            Schema columnsSchema;
-            StringArray? columnNames = null;
-            int colNameIndex = -1;
-
-            // Extract column data
-            using (var stream = columnsResult.Stream)
+            try
             {
-                colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
-                if (colNameIndex < 0)
+                // 2. Read all batches into memory
+                List<RecordBatch> columnsBatches;
+                int totalRows;
+                Schema columnsSchema;
+                StringArray? columnNames = null;
+                int colNameIndex = -1;
+
+                // Extract column data
+                using (var stream = columnsResult.Stream)
                 {
-                    // TODO: Add log or throw
-                    return columnsResult; // Can't match without column names
+                    colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
+                    if (colNameIndex < 0)
+                    {
+                        // TODO: Add log or throw
+                        return columnsResult; // Can't match without column names
+                    }
+
+                    var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
+                    columnsBatches = batchResult.Batches;
+                    columnsSchema = batchResult.Schema;
+                    totalRows = batchResult.TotalRows;
+
+                    if (columnsBatches.Count == 0)
+                    {
+                        // Return empty result with complete schema
+                        return CreateEmptyExtendedColumnsResult(columnsSchema);
+                    }
+
+                    // Create column names array from all batches using ArrayDataConcatenator.Concatenate
+                    List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch =>
+                        batch.Column(colNameIndex).Data).ToList();
+                    ArrayData? concatenatedColumnNames = ArrayDataConcatenator.Concatenate(columnNameArrayDataList);
+                    columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
                 }
 
-                var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
-                columnsBatches = batchResult.Batches;
-                columnsSchema = batchResult.Schema;
-                totalRows = batchResult.TotalRows;
+                // 3. Create combined schema and prepare data
+                var allFields = new List<Field>(columnsSchema.FieldsList);
+                var combinedData = new List<IArrowArray>();
 
-                if (columnsBatches.Count == 0)
+                // 4. Add all columns data by combining all batches
+                for (int colIdx = 0; colIdx < columnsSchema.FieldsList.Count; colIdx++)
                 {
-                    // Return empty result with complete schema
-                    return CreateEmptyExtendedColumnsResult(columnsSchema);
+                    if (columnsBatches.Count == 0)
+                        continue;
+
+                    var field = columnsSchema.GetFieldByIndex(colIdx);
+
+                    // Collect arrays for this column from all batches
+                    var columnArrays = new List<IArrowArray>();
+                    foreach (var batch in columnsBatches)
+                    {
+                        columnArrays.Add(batch.Column(colIdx));
+                    }
+
+                    List<ArrayData> arrayDataList = columnArrays.Select(arr => arr.Data).ToList();
+                    ArrayData? concatenatedData = ArrayDataConcatenator.Concatenate(arrayDataList);
+                    IArrowArray array = ArrowArrayFactory.BuildArray(concatenatedData);
+                    combinedData.Add(array);
                 }
 
-                // Create column names array from all batches using ArrayDataConcatenator.Concatenate
-                List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch =>
-                    batch.Column(colNameIndex).Data).ToList();
-                ArrayData? concatenatedColumnNames = ArrayDataConcatenator.Concatenate(columnNameArrayDataList);
-                columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
+                // 5. Process PK and FK data using helper methods with selected fields
+                await ProcessRelationshipDataSafe(pkResult, PrimaryKeyPrefix, "COLUMN_NAME",
+                    PrimaryKeyFields, // Selected PK fields
+                    columnNames, totalRows,
+                    allFields, combinedData, cancellationToken);
+
+                await ProcessRelationshipDataSafe(fkResult, ForeignKeyPrefix, "FKCOLUMN_NAME",
+                    ForeignKeyFields, // Selected FK fields
+                    columnNames, totalRows,
+                    allFields, combinedData, cancellationToken);
+
+                // 6. Return the combined result
+                var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
+
+                return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
             }
-
-            // 3. Create combined schema and prepare data
-            var allFields = new List<Field>(columnsSchema.FieldsList);
-            var combinedData = new List<IArrowArray>();
-
-            // 4. Add all columns data by combining all batches
-            for (int colIdx = 0; colIdx < columnsSchema.FieldsList.Count; colIdx++)
+            finally
             {
-                if (columnsBatches.Count == 0)
-                    continue;
-
-                var field = columnsSchema.GetFieldByIndex(colIdx);
-
-                // Collect arrays for this column from all batches
-                var columnArrays = new List<IArrowArray>();
-                foreach (var batch in columnsBatches)
-                {
-                    columnArrays.Add(batch.Column(colIdx));
-                }
-
-                List<ArrayData> arrayDataList = columnArrays.Select(arr => arr.Data).ToList();
-                ArrayData? concatenatedData = ArrayDataConcatenator.Concatenate(arrayDataList);
-                IArrowArray array = ArrowArrayFactory.BuildArray(concatenatedData);
-                combinedData.Add(array);
+                // Dispose internal query results to ensure proper resource cleanup
+                columnsResult.Stream?.Dispose();
+                pkResult.Stream?.Dispose();
+                fkResult.Stream?.Dispose();
             }
-
-            // 5. Process PK and FK data using helper methods with selected fields
-            await ProcessRelationshipDataSafe(pkResult, PrimaryKeyPrefix, "COLUMN_NAME",
-                PrimaryKeyFields, // Selected PK fields
-                columnNames, totalRows,
-                allFields, combinedData, cancellationToken);
-
-            await ProcessRelationshipDataSafe(fkResult, ForeignKeyPrefix, "FKCOLUMN_NAME",
-                ForeignKeyFields, // Selected FK fields
-                columnNames, totalRows,
-                allFields, combinedData, cancellationToken);
-
-            // 6. Return the combined result
-            var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
-
-            return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
         }
 
         // Helper method to create an empty result with the complete extended columns schema
@@ -1055,6 +1076,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     combinedData.Add(builder.Build());
                 }
             }
+        }
+
+        /// <summary>
+        /// Clears the current query result and disposes of it if necessary.
+        /// </summary>
+        private void ClearCurrentQueryResult()
+        {
+            _currentQueryResult?.Stream?.Dispose();
+            _currentQueryResult = null;
         }
     }
 }
