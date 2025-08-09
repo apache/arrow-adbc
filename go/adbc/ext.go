@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -211,10 +212,10 @@ func GetDriverInfo(ctx context.Context, cnxn Connection) (DriverInfo, error) {
 		codeArr := batch.Column(0).(*array.Uint32)
 		unionArr := batch.Column(1).(*array.DenseUnion)
 
-		for i := 0; i < int(batch.NumRows()); i++ {
-			code := InfoCode(codeArr.Value(i))
+		codes, offsets := codeArr.Values(), unionArr.RawValueOffsets()
+		for i := range int(batch.NumRows()) {
+			code, offset := InfoCode(codes[i]), int(offsets[i])
 			child := unionArr.Field(unionArr.ChildID(i))
-			offset := int(unionArr.ValueOffset(i))
 
 			if child.IsNull(offset) {
 				continue
@@ -223,62 +224,60 @@ func GetDriverInfo(ctx context.Context, cnxn Connection) (DriverInfo, error) {
 			// Handle different union types based on child ID (similar to validation tests)
 			switch unionArr.ChildID(i) {
 			case 0: // String values
-				if strArray, ok := child.(*array.String); ok {
-					// Create a copy of the string to avoid memory corruption issues.
-					// Arrow strings reference memory owned by the record batch. When the batch
-					// is released, this memory becomes invalid, leading to potential crashes or
-					// data corruption when accessing the string later. Cloning ensures we have
-					// an independent copy that remains valid after batch cleanup.
-					val := strings.Clone(strArray.Value(offset))
+				strArray, ok := child.(*array.String)
+				if !ok {
+					continue
+				}
+				// Create a copy of the string to avoid memory corruption issues.
+				// Arrow strings reference memory owned by the record batch. When the batch
+				// is released, this memory becomes invalid, leading to potential crashes or
+				// data corruption when accessing the string later. Cloning ensures we have
+				// an independent copy that remains valid after batch cleanup.
+				val := strings.Clone(strArray.Value(offset))
 
-					switch code {
-					case InfoDriverName:
-						driverInfo.DriverName = val
-					case InfoDriverVersion:
-						driverInfo.DriverVersion = val
-					case InfoDriverArrowVersion:
-						driverInfo.LibraryInfo[DriverInfoKeyDriverArrowVersion] = val
-					case InfoVendorName:
-						driverInfo.VendorName = val
-					case InfoVendorVersion:
-						driverInfo.VendorVersion = val
-					case InfoVendorArrowVersion:
-						driverInfo.LibraryInfo[DriverInfoKeyVendorArrowVersion] = val
-					case InfoVendorSubstraitMinVersion:
-						driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitMinVersion] = val
-					case InfoVendorSubstraitMaxVersion:
-						driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitMaxVersion] = val
-					}
+				switch code {
+				case InfoDriverName:
+					driverInfo.DriverName = val
+				case InfoDriverVersion:
+					driverInfo.DriverVersion = val
+				case InfoDriverArrowVersion:
+					driverInfo.LibraryInfo[DriverInfoKeyDriverArrowVersion] = val
+				case InfoVendorName:
+					driverInfo.VendorName = val
+				case InfoVendorVersion:
+					driverInfo.VendorVersion = val
+				case InfoVendorArrowVersion:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorArrowVersion] = val
+				case InfoVendorSubstraitMinVersion:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitMinVersion] = val
+				case InfoVendorSubstraitMaxVersion:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitMaxVersion] = val
 				}
 
 			case 1: // Boolean values
-				if boolArray, ok := child.(*array.Boolean); ok {
-					val := boolArray.Value(offset)
+				boolArray, ok := child.(*array.Boolean)
+				if !ok {
+					continue
+				}
+				val := boolArray.Value(offset)
 
-					switch code {
-					case InfoVendorSql:
-						if val {
-							driverInfo.LibraryInfo[DriverInfoKeyVendorSQLSupport] = "true"
-						} else {
-							driverInfo.LibraryInfo[DriverInfoKeyVendorSQLSupport] = "false"
-						}
-					case InfoVendorSubstrait:
-						if val {
-							driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitSupport] = "true"
-						} else {
-							driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitSupport] = "false"
-						}
-					}
+				switch code {
+				case InfoVendorSql:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorSQLSupport] = strconv.FormatBool(val)
+				case InfoVendorSubstrait:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitSupport] = strconv.FormatBool(val)
 				}
 
 			case 2: // Int64 values
-				if int64Array, ok := child.(*array.Int64); ok {
-					val := int64Array.Value(offset)
+				int64Array, ok := child.(*array.Int64)
+				if !ok {
+					continue
+				}
+				val := int64Array.Value(offset)
 
-					switch code {
-					case InfoDriverADBCVersion:
-						driverInfo.DriverADBCVersion = val
-					}
+				switch code {
+				case InfoDriverADBCVersion:
+					driverInfo.DriverADBCVersion = val
 				}
 			}
 		}
