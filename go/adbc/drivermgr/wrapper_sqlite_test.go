@@ -683,3 +683,12 @@ func (dm *DriverMgrSuite) TestIngestStream() {
 	dm.Equal(int64(5), cntArr.Value(0), "table should contain 5 rows")
 	dm.False(rdr2.Next(), "no more rows expected")
 }
+
+func (dm *DriverMgrSuite) TestGetDriverInfo() {
+	driverInfo, err := adbc.GetDriverInfo(dm.ctx, dm.conn)
+	dm.NoError(err)
+
+	// Core driver info should be non-empty
+	dm.NotEmpty(driverInfo.DriverName, "DriverName should not be empty")
+	dm.NotEmpty(driverInfo.DriverVersion, "DriverVersion should not be empty")
+}
