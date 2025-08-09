@@ -119,7 +119,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.CanDownloadResult = useCloudFetch;
             statement.CanDecompressLZ4Result = canDecompressLz4;
             statement.MaxBytesPerFile = maxBytesPerFile;
-            statement.RunAsync = runAsyncInThrift;
+            statement.RunAsync = true;
 
             if (Connection.AreResultsAvailableDirectly)
             {

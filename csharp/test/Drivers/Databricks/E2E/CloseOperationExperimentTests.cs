@@ -54,8 +54,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 // 1M x 1M cross join = 1 trillion rows
                 statement.SqlQuery = @"
                     SELECT t1.id AS id1, t2.id AS id2
-                    FROM RANGE(1000000) t1
-                    CROSS JOIN RANGE(1000000) t2";
+                    FROM RANGE(100000000) t1
+                    CROSS JOIN RANGE(100000000) t2";
 
                 OutputHelper?.WriteLine($"Starting query execution at {DateTime.Now:HH:mm:ss.fff}");
 
@@ -63,11 +63,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 var queryTask = statement.ExecuteQueryAsync();
 
                 // Give it a moment to start executing on the server
-                await Task.Delay(2000);
+                await Task.Delay(10000);
 
                 OutputHelper?.WriteLine($"Calling CloseOperation at {DateTime.Now:HH:mm:ss.fff}");
 
-                // Call CloseOperation while it's still executing
+                // Call CloseOperation while it's still executing. Comment this to verify CloseOperation is stopping operation
                 var closeResponse = await statement.TestCloseOperationAsync();
 
                 OutputHelper?.WriteLine($"CloseOperation response: StatusCode={closeResponse.Status?.StatusCode}");
@@ -125,29 +125,38 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                         id,
                         CAST(id AS STRING) as id_str,
                         id * 2 as doubled
-                    FROM RANGE(10000000)"; // 10 million rows
+                    FROM RANGE(100000000)"; // 100 million rows
 
                 OutputHelper?.WriteLine($"Executing query at {DateTime.Now:HH:mm:ss.fff}");
 
                 var result = await statement.ExecuteQueryAsync();
                 Assert.NotNull(result.Stream);
 
-                OutputHelper?.WriteLine($"Query executed, starting to consume results at {DateTime.Now:HH:mm:ss.fff}");
+                OutputHelper?.WriteLine($"Query executed, consuming ALL results at {DateTime.Now:HH:mm:ss.fff}");
 
-                // Read a few batches
+                // Read ALL batches until the end
                 int batchesRead = 0;
                 int totalRows = 0;
 
-                for (int i = 0; i < 3; i++)
+                while (true)
                 {
                     var batch = await result.Stream.ReadNextRecordBatchAsync();
-                    if (batch != null)
+                    if (batch == null)
                     {
-                        batchesRead++;
-                        totalRows += batch.Length;
-                        OutputHelper?.WriteLine($"Batch {batchesRead}: {batch.Length} rows");
-                        batch.Dispose();
+                        OutputHelper?.WriteLine("Reached end of result stream");
+                        break;
                     }
+                    
+                    batchesRead++;
+                    totalRows += batch.Length;
+                    
+                    // Log every 10th batch to avoid too much output
+                    if (batchesRead % 10 == 0 || batchesRead == 1)
+                    {
+                        OutputHelper?.WriteLine($"Batch {batchesRead}: {batch.Length} rows (total so far: {totalRows})");
+                    }
+                    
+                    batch.Dispose();
                 }
 
                 OutputHelper?.WriteLine($"Read {batchesRead} batches with {totalRows} rows total");
