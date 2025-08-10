@@ -28,9 +28,15 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
+using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Enums;
+using Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.Model;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
+using static Apache.Arrow.Adbc.Drivers.Databricks.Log.DatabricksLogger;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -66,6 +72,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
+        // Telemetry
+        private TelemetryHelper? _telemetryHelper;
+        private DatabricksActivityListener _databricksActivityListener;
+        private Guid _guid;
+
         // Identity federation client ID for token exchange
         private string? _identityFederationClientId;
 
@@ -76,15 +87,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            _guid = Guid.NewGuid();
             ValidateProperties();
+            _databricksActivityListener = new DatabricksActivityListener(_telemetryHelper, this.AssemblyName, _guid);
         }
 
         public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
         {
             IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
-            // TODO: Add any additional tags specific to Databricks connection
-            //tags ??= [];
-            //tags.Concat([new("key", "value")]);
+            tags ??= [];
+            tags.Concat([new("guid",_guid)]);
             return tags;
         }
 
@@ -103,6 +115,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.EnablePKFK}' value '{enablePKFKStr}' could not be parsed. Valid values are 'true', 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.EnablePKFK}' value '{enablePKFKStr}' could not be parsed. Valid values are 'true', 'false'.");
                 }
             }
@@ -115,6 +128,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.EnableMultipleCatalogSupport}' value '{enableMultipleCatalogSupportStr}' could not be parsed. Valid values are 'true', 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.EnableMultipleCatalogSupport}' value '{enableMultipleCatalogSupportStr}' could not be parsed. Valid values are 'true', 'false'.");
                 }
             }
@@ -127,6 +141,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.ApplySSPWithQueries}' value '{applySSPWithQueriesStr}' could not be parsed. Valid values are 'true' and 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.ApplySSPWithQueries}' value '{applySSPWithQueriesStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
@@ -139,6 +154,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.EnableDirectResults}' value '{enableDirectResultsStr}' could not be parsed. Valid values are 'true' and 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.EnableDirectResults}' value '{enableDirectResultsStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
@@ -152,6 +168,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.UseCloudFetch}' value '{useCloudFetchStr}' could not be parsed. Valid values are 'true' and 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.UseCloudFetch}' value '{useCloudFetchStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
@@ -164,6 +181,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.CanDecompressLz4}' value '{canDecompressLz4Str}' could not be parsed. Valid values are 'true' and 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.CanDecompressLz4}' value '{canDecompressLz4Str}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
@@ -176,6 +194,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.UseDescTableExtended}' value '{useDescTableExtendedStr}' could not be parsed. Valid values are 'true' and 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.UseDescTableExtended}' value '{useDescTableExtendedStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
@@ -188,6 +207,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.EnableRunAsyncInThriftOp}' value '{enableRunAsyncInThriftStr}' could not be parsed. Valid values are 'true' and 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.EnableRunAsyncInThriftOp}' value '{enableRunAsyncInThriftStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
@@ -196,11 +216,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 if (!long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.MaxBytesPerFile}' value '{maxBytesPerFileStr}' could not be parsed. Valid values are positive integers.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.MaxBytesPerFile}' value '{maxBytesPerFileStr}' could not be parsed. Valid values are positive integers.");
                 }
 
                 if (maxBytesPerFileValue <= 0)
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.MaxBytesPerFile}' value must be a positive integer.");
                     throw new ArgumentOutOfRangeException(
                         nameof(Properties),
                         maxBytesPerFileValue,
@@ -243,6 +265,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.TracePropagationEnabled}' value '{tracePropagationEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.TracePropagationEnabled}' value '{tracePropagationEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
@@ -255,6 +278,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.TraceParentHeaderName}' cannot be empty.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.TraceParentHeaderName}' cannot be empty.");
                 }
             }
@@ -267,6 +291,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.TraceStateEnabled}' value '{traceStateEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
                     throw new ArgumentException($"Parameter '{DatabricksParameters.TraceStateEnabled}' value '{traceStateEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
@@ -281,6 +306,43 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _identityFederationClientId = identityFederationClientId;
             }
+
+            //Telemetry
+            var connectionParams = new DriverConnectionParameters();
+            var hostDetails = new HostDetails();
+            var clientContext = new ClientContext();
+            string? token = null;
+
+            if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType))
+            {
+                connectionParams.AuthMech = Util.StringToAuthMech(authType);
+            }
+
+            if (Properties.TryGetValue(SparkParameters.HostName, out string? host))
+            {
+                hostDetails.HostUrl = host;
+            }
+            if (Properties.TryGetValue(SparkParameters.Port, out string? port))
+            {
+                hostDetails.Port = Int32.Parse(port);
+            }
+            connectionParams.HostInfo = hostDetails;
+
+            if (Properties.TryGetValue(SparkParameters.UserAgentEntry, out string? userAgent))
+            {
+                clientContext.UserAgent = userAgent;
+            }
+            
+            if(Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
+            {
+                token = accessToken;
+            }   
+            else if(Properties.TryGetValue(SparkParameters.Token, out string? accesstoken))
+            {
+                token = accesstoken;
+            }
+            _telemetryHelper = new TelemetryHelper(hostDetails.HostUrl, token);
+            _telemetryHelper.SetParameters(connectionParams, clientContext);
         }
 
         /// <summary>
@@ -407,6 +469,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     if (string.IsNullOrEmpty(accessToken))
                     {
+                        LOGGER.error("Access token is required for OAuth authentication with token renewal");
                         throw new ArgumentException("Access token is required for OAuth authentication with token renewal.");
                     }
 
@@ -423,6 +486,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
+            _telemetryHelper?.InitializeTelemetryClient(_authHttpClient);
             return baseHandler;
         }
 
@@ -506,6 +570,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 var version = session.ServerProtocolVersion;
                 if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version)) {
+                    LOGGER.error($"Attempted to use databricks driver with a non-databricks server");
                     throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
                 }
                 _enablePKFK = _enablePKFK && FeatureVersionNegotiator.SupportsPKFK(version);
@@ -610,6 +675,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 if (!bool.TryParse(tempUnavailableRetryStr, out bool tempUnavailableRetryValue))
                 {
+                    LOGGER.error($"Failed to parse parameter '{DatabricksParameters.TemporarilyUnavailableRetry}' with value '{tempUnavailableRetryStr}'. Must be a value of false (disabled) or true (enabled).");
                     throw new ArgumentOutOfRangeException(DatabricksParameters.TemporarilyUnavailableRetry, tempUnavailableRetryStr,
                         $"must be a value of false (disabled) or true (enabled). Default is true.");
                 }
@@ -623,6 +689,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 if (!int.TryParse(tempUnavailableRetryTimeoutStr, out int tempUnavailableRetryTimeoutValue) ||
                     tempUnavailableRetryTimeoutValue < 0)
                 {
+                    LOGGER.error($"Failed to parse parameter '{DatabricksParameters.TemporarilyUnavailableRetryTimeout}' with value '{tempUnavailableRetryTimeoutStr}'. Must be a value of 0 (retry indefinitely) or a positive integer representing seconds.");
                     throw new ArgumentOutOfRangeException(DatabricksParameters.TemporarilyUnavailableRetryTimeout, tempUnavailableRetryTimeoutStr,
                         $"must be a value of 0 (retry indefinitely) or a positive integer representing seconds. Default is 900 seconds (15 minutes).");
                 }
@@ -683,6 +750,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             if (!DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out grantType))
             {
+                LOGGER.error($"Unsupported {DatabricksParameters.OAuthGrantType} value. Refer to the Databricks documentation for valid values.");
                 throw new ArgumentOutOfRangeException(
                     DatabricksParameters.OAuthGrantType,
                     grantTypeStr,
@@ -698,12 +766,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 if (string.IsNullOrEmpty(clientId))
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientId}' is not set.");
                     throw new ArgumentException(
                         $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientId}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientId}'.",
                         nameof(Properties));
                 }
                 if (string.IsNullOrEmpty(clientSecret))
                 {
+                    LOGGER.error($"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientSecret}' is not set.");
                     throw new ArgumentException(
                         $"Parameter '{DatabricksParameters.OAuthGrantType}' is set to '{DatabricksConstants.OAuthGrantTypes.ClientCredentials}' but parameter '{DatabricksParameters.OAuthClientSecret}' is not set. Please provide a value for '{DatabricksParameters.OAuthClientSecret}'.",
                         nameof(Properties));
@@ -736,6 +806,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
+            LOGGER.error("Host not found in connection properties. Please provide a valid host using either 'HostName' or 'Uri' property.");
             throw new ArgumentException("Host not found in connection properties. Please provide a valid host using either 'HostName' or 'Uri' property.");
         }
 
@@ -757,6 +828,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (disposing)
             {
                 _authHttpClient?.Dispose();
+                _databricksActivityListener?.Dispose();
+                
+                try
+                {
+                    _telemetryHelper?.ForceFlushAsync().Wait(TimeSpan.FromSeconds(2));
+                }
+                catch (Exception ex)
+                {
+                    LOGGER.error($"Failed to flush telemetry on dispose: {ex.Message}");
+                }
             }
             base.Dispose(disposing);
         }
