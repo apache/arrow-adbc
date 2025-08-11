@@ -20,11 +20,12 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Databricks;
+using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
     /// <summary>
     /// A composite reader for Databricks that delegates to either CloudFetchReader or DatabricksReader
@@ -39,13 +40,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public override Schema Schema { get { return _schema; } }
 
         private BaseDatabricksReader? _activeReader;
-        private readonly DatabricksStatement _statement;
+        private readonly IHiveServer2Statement _statement;
         private readonly Schema _schema;
         private readonly bool _isLz4Compressed;
         private readonly TlsProperties _tlsOptions;
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
-        private DatabricksOperationStatusPoller? operationStatusPoller;
+        private IOperationStatusPoller? operationStatusPoller;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabricksCompositeReader"/> class.
@@ -54,7 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
         /// <param name="httpClient">The HTTP client for CloudFetch operations.</param>
-        internal DatabricksCompositeReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator): base(statement)
+        internal DatabricksCompositeReader(IHiveServer2Statement statement, Schema schema, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator): base(statement)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
