@@ -15,26 +15,14 @@
  * limitations under the License.
  */
 
-using System;
-
-namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Tracing
 {
     /// <summary>
-    /// Abstraction for time operations to enable testing with controlled time.
+    /// Interface for statements that support tracing capabilities.
+    /// This interface provides the essential properties needed by TracingReader
+    /// and other tracing-aware components.
     /// </summary>
-    internal interface IClock
+    public interface ITracingStatement : IActivityTracer
     {
-        /// <summary>
-        /// Gets the current UTC time.
-        /// </summary>
-        DateTime UtcNow { get; }
-    }
-
-    /// <summary>
-    /// Default implementation that uses system time.
-    /// </summary>
-    internal class SystemClock : IClock
-    {
-        public DateTime UtcNow => DateTime.UtcNow;
     }
 }
