@@ -52,8 +52,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected const string PrimaryKeyPrefix = "PK_";
         protected const string ForeignKeyPrefix = "FK_";
 
-        private IResponse? _response;
-
         internal HiveServer2Statement(HiveServer2Connection connection)
             : base(connection)
         {
@@ -126,7 +124,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     return await ExecuteMetadataCommandQuery(cancellationToken);
                 }
 
-                _response = null;
+                Response = null;
 
                 // this could either:
                 // take QueryTimeoutSeconds * 3
@@ -135,7 +133,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
 
                 TGetResultSetMetadataResp metadata;
-                if (Response.DirectResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
+                if (Response?.DirectResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
                 {
                     // The initial response has result data so we don't need to poll
                     metadata = Response.DirectResults.ResultSetMetadata;
@@ -316,7 +314,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
                 SetStatementProperties(executeRequest);
-                _response = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
+                Response = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
                 HiveServer2Connection.HandleThriftResponse(Response.Status!, activity);
                 activity?.AddTag(SemanticConventions.Db.Response.OperationId, Response.OperationHandle!.OperationId.Guid, "N");
 
@@ -357,12 +355,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public HiveServer2Connection Connection { get; private set; }
 
-        public IResponse Response
-        {
-            get => _response ?? throw new ApacheNullResponseException();
-        }
+        public IResponse? Response { get; private set; }
 
-        public TOperationHandle? OperationHandle => Response.OperationHandle;
+        public TOperationHandle? OperationHandle => Response?.OperationHandle;
 
         // Keep the original Client property for internal use
         public TCLIService.IAsync Client => Connection.Client;
@@ -391,15 +386,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             this.TraceActivity(activity =>
             {
-                if (_response != null && Response.OperationHandle != null && Response.DirectResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
+                if (Response != null && Response.OperationHandle != null && Response.DirectResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
                 {
                     CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                     activity?.AddTag(SemanticConventions.Db.Operation.OperationId, Response.OperationHandle!.OperationId.Guid, "N");
                     TCloseOperationReq request = new TCloseOperationReq(Response.OperationHandle!);
                     TCloseOperationResp resp = Connection.Client.CloseOperation(request, cancellationToken).Result;
                     HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
-                    _response = null;
                 }
+                Response = null;
 
                 base.Dispose();
             });
@@ -445,7 +440,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfExistingResponse();
-            _response = await Connection.GetCrossReferenceAsync(
+            Response = await Connection.GetCrossReferenceAsync(
                 null,
                 null,
                 null,
@@ -465,7 +460,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfExistingResponse();
-            _response = await Connection.GetCrossReferenceAsync(
+            Response = await Connection.GetCrossReferenceAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
@@ -485,7 +480,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfExistingResponse();
-            _response = await Connection.GetPrimaryKeysAsync(
+            Response = await Connection.GetPrimaryKeysAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
@@ -497,7 +492,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfExistingResponse();
-            _response = await Connection.GetCatalogsAsync(cancellationToken);
+            Response = await Connection.GetCatalogsAsync(cancellationToken);
 
             return await GetQueryResult(cancellationToken);
         }
@@ -505,7 +500,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfExistingResponse();
-            _response = await Connection.GetSchemasAsync(
+            Response = await Connection.GetSchemasAsync(
                 EscapePatternWildcardsInName(CatalogName),
                 EscapePatternWildcardsInName(SchemaName),
                 cancellationToken);
@@ -517,7 +512,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             ThrowIfExistingResponse();
             List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
-            _response = await Connection.GetTablesAsync(
+            Response = await Connection.GetTablesAsync(
                 EscapePatternWildcardsInName(CatalogName),
                 EscapePatternWildcardsInName(SchemaName),
                 EscapePatternWildcardsInName(TableName),
@@ -530,7 +525,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected virtual async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfExistingResponse();
-            _response = await Connection.GetColumnsAsync(
+            Response = await Connection.GetColumnsAsync(
                 EscapePatternWildcardsInName(CatalogName),
                 EscapePatternWildcardsInName(SchemaName),
                 EscapePatternWildcardsInName(TableName),
@@ -568,7 +563,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> GetQueryResult(CancellationToken cancellationToken)
         {
-            if (Connection.TryGetDirectResults(Response.DirectResults, out QueryResult? result))
+            if (Connection.TryGetDirectResults(Response!.DirectResults, out QueryResult? result))
             {
                 return result!;
             }
@@ -837,7 +832,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         combinedData.Add(new FloatArray.Builder().Build());
                         break;
                     case ArrowTypeId.Double:
-                        combinedData.Add(new DoubleArray.Builder().Build());
+                        combinedData.Add(new  DoubleArray.Builder().Build());
                         break;
                     case ArrowTypeId.Date32:
                         combinedData.Add(new Date32Array.Builder().Build());
@@ -1038,7 +1033,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <exception cref="AdbcException"></exception>
         private void ThrowIfExistingResponse()
         {
-            if (_response != null)
+            if (Response != null)
             {
                 throw new InvalidOperationException("Invalid use of this object. It has already been used for another query or update. Call AdbcConnection.CreateStatement for each query or update.");
             }

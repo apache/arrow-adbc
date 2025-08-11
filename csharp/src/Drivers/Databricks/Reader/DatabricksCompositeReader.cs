@@ -64,11 +64,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             _proxyConfigurator = proxyConfigurator;
 
             // use direct results if available
-            if (_statement.HasDirectResults && _statement.Response.DirectResults != null && _statement.Response.DirectResults.__isset.resultSet && statement.Response.DirectResults?.ResultSet != null)
+            if (_statement.HasDirectResults && _statement.Response!.DirectResults != null && _statement.Response!.DirectResults.__isset.resultSet && statement.Response!.DirectResults?.ResultSet != null)
             {
-                _activeReader = DetermineReader(_statement.Response.DirectResults.ResultSet);
+                _activeReader = DetermineReader(_statement.Response!.DirectResults.ResultSet);
             }
-            if (_statement.Response.DirectResults?.ResultSet.HasMoreRows ?? true)
+            if (_statement.Response!.DirectResults?.ResultSet.HasMoreRows ?? true)
             {
                 operationStatusPoller = new DatabricksOperationStatusPoller(statement);
                 operationStatusPoller.Start();
@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 // if no reader, we did not have direct results
                 // Make a FetchResults call to get the initial result set
                 // and determine the reader based on the result set
-                TFetchResultsReq request = new TFetchResultsReq(this._statement.Response.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
+                TFetchResultsReq request = new TFetchResultsReq(this._statement.Response!.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
                 TFetchResultsResp response = await this._statement.Connection.Client!.FetchResults(request, cancellationToken);
                 _activeReader = DetermineReader(response);
             }

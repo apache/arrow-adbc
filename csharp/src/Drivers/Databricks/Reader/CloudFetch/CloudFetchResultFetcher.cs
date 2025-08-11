@@ -156,7 +156,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             {
                 // Create fetch request for the specific offset
                 TFetchResultsReq request = new TFetchResultsReq(
-                    _statement.Response.OperationHandle!,
+                    _statement.Response!.OperationHandle!,
                     TFetchOrientation.FETCH_NEXT,
                     1);
 
@@ -218,7 +218,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             try
             {
                 // Process direct results first, if available
-                if ((_statement.HasDirectResults && _statement.Response.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0) ||
+                if ((_statement.HasDirectResults && _statement.Response!.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0) ||
                     _initialResults?.Results?.ResultLinks?.Count > 0)
                 {
                     // Yield execution so the download queue doesn't get blocked before downloader is started
@@ -274,7 +274,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private async Task FetchNextResultBatchAsync(long? offset, CancellationToken cancellationToken)
         {
             // Create fetch request
-            TFetchResultsReq request = new TFetchResultsReq(_statement.Response.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
+            TFetchResultsReq request = new TFetchResultsReq(_statement.Response!.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
 
             // Set the start row offset
             long startOffset = offset ?? _startOffset;
@@ -340,9 +340,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private void ProcessDirectResultsAsync(CancellationToken cancellationToken)
         {
             TFetchResultsResp fetchResults;
-            if (_statement.HasDirectResults && _statement.Response.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
+            if (_statement.HasDirectResults && _statement.Response!.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
             {
-                fetchResults = _statement.Response.DirectResults!.ResultSet;
+                fetchResults = _statement.Response!.DirectResults!.ResultSet;
             }
             else
             {

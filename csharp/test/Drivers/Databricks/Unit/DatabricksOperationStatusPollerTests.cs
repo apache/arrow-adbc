@@ -48,7 +48,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             };
 
             _mockStatement.Setup(s => s.Client).Returns(_mockClient.Object);
-            _mockStatement.Setup(s => s.Response.OperationHandle).Returns(_operationHandle);
+            _mockStatement.Setup(s => s.Response!.OperationHandle).Returns(_operationHandle);
         }
 
         [Fact]
