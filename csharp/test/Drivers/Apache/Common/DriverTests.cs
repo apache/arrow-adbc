@@ -440,11 +440,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         {
             string catalogName = TestConfiguration.Metadata.Catalog;
             string schemaPrefix = Guid.NewGuid().ToString().Replace("-", "");
-            using TemporarySchema schema = TemporarySchema.NewTemporarySchemaAsync(catalogName, Statement).Result;
+            using TemporarySchema schema = TemporarySchema.NewTemporarySchemaAsync(catalogName, Connection).Result;
             string schemaName = schema.SchemaName;
             string catalogFormatted = string.IsNullOrEmpty(catalogName) ? string.Empty : DelimitIdentifier(catalogName) + ".";
             string fullTableName = $"{catalogFormatted}{DelimitIdentifier(schemaName)}.{DelimitIdentifier(tableName)}";
-            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTableAsync(Statement, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)", OutputHelper).Result;
+            using TemporaryTable temporaryTable = TemporaryTable.NewTemporaryTableAsync(Connection, fullTableName, $"CREATE TABLE IF NOT EXISTS {fullTableName} (INDEX INT)", OutputHelper).Result;
 
             using IArrowArrayStream stream = Connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -579,9 +579,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task CanExecuteUpdateAsync()
         {
             using AdbcConnection adbcConnection = NewConnection();
-            using AdbcStatement statement = adbcConnection.CreateStatement();
-            using TemporaryTable temporaryTable = await NewTemporaryTableAsync(statement, "INDEX INT");
+            using TemporaryTable temporaryTable = await NewTemporaryTableAsync(adbcConnection, "INDEX INT");
 
+            using AdbcStatement statement = adbcConnection.CreateStatement();
             statement.SqlQuery = GetInsertStatement(temporaryTable.TableName, "INDEX", "1");
             UpdateResult updateResult = await statement.ExecuteUpdateAsync();
 

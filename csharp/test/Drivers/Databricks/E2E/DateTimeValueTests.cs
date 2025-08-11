@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         public async Task TestTimestampNoTimezoneDataDatabricks(DateTimeOffset value, string columnType)
         {
             string columnName = "TIMESTAMPTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
+            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, columnType));
 
             string formattedValue = $"{value.ToString(DateFormat, CultureInfo.InvariantCulture)}";
             DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateFormat, CultureInfo.InvariantCulture);

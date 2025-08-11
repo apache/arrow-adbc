@@ -77,6 +77,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override QueryResult ExecuteQuery()
         {
+            ThrowIfExistingResponse();
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
             try
             {
@@ -96,6 +97,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override UpdateResult ExecuteUpdate()
         {
+            ThrowIfExistingResponse();
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
             try
             {
@@ -148,6 +150,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
+            ThrowIfExistingResponse();
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
             try
             {
@@ -223,6 +226,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             return await this.TraceActivityAsync(async _ =>
             {
+                ThrowIfExistingResponse();
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 try
                 {
@@ -382,15 +386,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             this.TraceActivity(activity =>
             {
-                if (Response != null && Response.DirectResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
+                if (Response != null && Response.OperationHandle != null && Response.DirectResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
                 {
                     CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                     activity?.AddTag(SemanticConventions.Db.Operation.OperationId, Response.OperationHandle!.OperationId.Guid, "N");
                     TCloseOperationReq request = new TCloseOperationReq(Response.OperationHandle!);
                     TCloseOperationResp resp = Connection.Client.CloseOperation(request, cancellationToken).Result;
                     HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
-                    Response = null;
                 }
+                Response = null;
 
                 base.Dispose();
             });
@@ -435,6 +439,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// since the backend treats these as exact match queries rather than pattern matches.
         protected virtual async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfExistingResponse();
             Response = await Connection.GetCrossReferenceAsync(
                 null,
                 null,
@@ -454,6 +459,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// </summary>
         protected virtual async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfExistingResponse();
             Response = await Connection.GetCrossReferenceAsync(
                 CatalogName,
                 SchemaName,
@@ -473,6 +479,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// </summary>
         protected virtual async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfExistingResponse();
             Response = await Connection.GetPrimaryKeysAsync(
                 CatalogName,
                 SchemaName,
@@ -484,6 +491,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected virtual async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfExistingResponse();
             Response = await Connection.GetCatalogsAsync(cancellationToken);
 
             return await GetQueryResult(cancellationToken);
@@ -491,6 +499,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected virtual async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfExistingResponse();
             Response = await Connection.GetSchemasAsync(
                 EscapePatternWildcardsInName(CatalogName),
                 EscapePatternWildcardsInName(SchemaName),
@@ -501,6 +510,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected virtual async Task<QueryResult> GetTablesAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfExistingResponse();
             List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
             Response = await Connection.GetTablesAsync(
                 EscapePatternWildcardsInName(CatalogName),
@@ -514,6 +524,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected virtual async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfExistingResponse();
             Response = await Connection.GetColumnsAsync(
                 EscapePatternWildcardsInName(CatalogName),
                 EscapePatternWildcardsInName(SchemaName),
@@ -1012,6 +1023,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     }
                     combinedData.Add(builder.Build());
                 }
+            }
+        }
+
+        /// <summary>
+        /// Throw an exception if the Response property is set as this in indicator of a previous query.
+        /// For safety, disallow re-use of this Statement object so the QueryResult/Stream won't work on the incorrect Response.
+        /// </summary>
+        /// <exception cref="AdbcException"></exception>
+        private void ThrowIfExistingResponse()
+        {
+            if (Response != null)
+            {
+                throw new AdbcException("The statement has already been used for another query.",
+                    new InvalidOperationException("The statement has already been used for another query."));
             }
         }
     }

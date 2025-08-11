@@ -66,7 +66,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 string.IsNullOrEmpty(schemaName) ? string.Empty : DelimitIdentifier(schemaName) + ".",
                 DelimitIdentifier(tableName));
             using TemporaryTable temporaryTable = await TemporaryTable.NewTemporaryTableAsync(
-                Statement,
+                Connection,
                 fullTableName,
                 $"CREATE TABLE IF NOT EXISTS {fullTableName} ();",
                 OutputHelper);
