@@ -1763,6 +1763,11 @@ fn system_config_dir() -> Option<PathBuf> {
     {
         Some(PathBuf::from("/etc/adbc"))
     }
+
+    #[cfg(not(unix))]
+    {
+        None
+    }
 }
 
 fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
