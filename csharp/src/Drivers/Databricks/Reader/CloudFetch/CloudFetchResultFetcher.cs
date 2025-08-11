@@ -156,7 +156,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             {
                 // Create fetch request for the specific offset
                 TFetchResultsReq request = new TFetchResultsReq(
-                    _statement.OperationHandle!,
+                    _statement.Response!.OperationHandle!,
                     TFetchOrientation.FETCH_NEXT,
                     1);
 
@@ -274,7 +274,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private async Task FetchNextResultBatchAsync(long? offset, CancellationToken cancellationToken)
         {
             // Create fetch request
-            TFetchResultsReq request = new TFetchResultsReq(_statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
+            TFetchResultsReq request = new TFetchResultsReq(_statement.Response!.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
 
             // Set the start row offset
             long startOffset = offset ?? _startOffset;

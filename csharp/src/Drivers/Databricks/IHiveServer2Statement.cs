@@ -27,9 +27,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     internal interface IHiveServer2Statement : ITracingStatement
     {
         /// <summary>
-        /// Gets the operation handle.
+        /// Gets the Response.
         /// </summary>
-        TOperationHandle? OperationHandle { get; }
+        IResponse? Response { get; }
 
         /// <summary>
         /// Gets the client.
@@ -46,8 +46,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the query timeout in seconds.
         /// </summary>
         int QueryTimeoutSeconds { get; }
-
-        IResponse? Response { get; }
 
         /// <summary>
         /// Gets the batch size for fetching results.

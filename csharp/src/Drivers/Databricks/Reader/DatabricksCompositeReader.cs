@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 // if no reader, we did not have direct results
                 // Make a FetchResults call to get the initial result set
                 // and determine the reader based on the result set
-                TFetchResultsReq request = new TFetchResultsReq(this._statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
+                TFetchResultsReq request = new TFetchResultsReq(this._statement.Response!.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
                 TFetchResultsResp response = await this._statement.Connection.Client!.FetchResults(request, cancellationToken);
                 _activeReader = DetermineReader(response);
             }
