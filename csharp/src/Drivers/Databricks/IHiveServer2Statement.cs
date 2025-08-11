@@ -61,5 +61,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the connection associated with this statement.
         /// </summary>
         HiveServer2Connection Connection { get; }
+
+        /// <summary>
+        /// Gets the timeout in seconds for FetchResults operations.
+        /// </summary>
+        int FetchResultsTimeoutSeconds { get; }
+
+        /// <summary>
+        /// Gets the interval in seconds between operation status polling requests.
+        /// </summary>
+        int OperationStatusPollingIntervalSeconds { get; }
+
+        /// <summary>
+        /// Gets the timeout in seconds for operation status polling requests.
+        /// </summary>
+        int OperationStatusRequestTimeoutSeconds { get; }
     }
 }

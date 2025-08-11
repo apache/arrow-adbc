@@ -70,7 +70,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             }
             if (_statement.DirectResults?.ResultSet?.HasMoreRows ?? true)
             {
-                operationStatusPoller = new DatabricksOperationStatusPoller(statement);
+                operationStatusPoller = new DatabricksOperationStatusPoller(
+                    statement,
+                    statement.OperationStatusPollingIntervalSeconds,
+                    statement.OperationStatusRequestTimeoutSeconds);
                 operationStatusPoller.Start();
             }
         }

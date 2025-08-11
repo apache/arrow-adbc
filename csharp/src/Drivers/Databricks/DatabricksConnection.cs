@@ -58,6 +58,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
+        private int _fetchResultsTimeoutSeconds = DatabricksConstants.DefaultFetchResultsTimeoutSeconds;
+        private int _operationStatusPollingIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
+        private int _operationStatusRequestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
         private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
         private bool _useDescTableExtended = true;
@@ -278,6 +281,44 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 QueryTimeoutSeconds = DefaultQueryTimeSeconds;
             }
 
+            // Parse FetchResults timeout
+            if (Properties.TryGetValue(DatabricksParameters.FetchResultsTimeoutSeconds, out string? fetchTimeoutStr))
+            {
+                if (int.TryParse(fetchTimeoutStr, out int fetchTimeout) && fetchTimeout > 0)
+                {
+                    _fetchResultsTimeoutSeconds = fetchTimeout;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.FetchResultsTimeoutSeconds}' value '{fetchTimeoutStr}' must be a positive integer.");
+                }
+            }
+
+            // Parse OperationStatusPoller configuration
+            if (Properties.TryGetValue(DatabricksParameters.OperationStatusPollingIntervalSeconds, out string? pollingIntervalStr))
+            {
+                if (int.TryParse(pollingIntervalStr, out int pollingInterval) && pollingInterval > 0)
+                {
+                    _operationStatusPollingIntervalSeconds = pollingInterval;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.OperationStatusPollingIntervalSeconds}' value '{pollingIntervalStr}' must be a positive integer.");
+                }
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.OperationStatusRequestTimeoutSeconds, out string? requestTimeoutStr))
+            {
+                if (int.TryParse(requestTimeoutStr, out int requestTimeout) && requestTimeout > 0)
+                {
+                    _operationStatusRequestTimeoutSeconds = requestTimeout;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.OperationStatusRequestTimeoutSeconds}' value '{requestTimeoutStr}' must be a positive integer.");
+                }
+            }
+
             if (Properties.TryGetValue(DatabricksParameters.IdentityFederationClientId, out string? identityFederationClientId))
             {
                 _identityFederationClientId = identityFederationClientId;
@@ -308,6 +349,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the maximum bytes per file for CloudFetch.
         /// </summary>
         internal long MaxBytesPerFile => _maxBytesPerFile;
+
+        /// <summary>
+        /// Gets the timeout in seconds for FetchResults operations.
+        /// </summary>
+        internal int FetchResultsTimeoutSeconds => _fetchResultsTimeoutSeconds;
+
+        /// <summary>
+        /// Gets the interval in seconds between operation status polling requests.
+        /// </summary>
+        internal int OperationStatusPollingIntervalSeconds => _operationStatusPollingIntervalSeconds;
+
+        /// <summary>
+        /// Gets the timeout in seconds for operation status polling requests.
+        /// </summary>
+        internal int OperationStatusRequestTimeoutSeconds => _operationStatusRequestTimeoutSeconds;
 
         /// <summary>
         /// Gets the default namespace to use for SQL queries.
