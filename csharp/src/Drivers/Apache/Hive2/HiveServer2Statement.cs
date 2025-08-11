@@ -1028,15 +1028,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         /// <summary>
         /// Throw an exception if the Response property is set as this in indicator of a previous query.
-        /// For safety, disallow re-use of this Statement object so the QueryResult/Stream won't work on the incorrect Response.
+        /// For safety, disallow re-use of this Statement object so the QueryResult/Stream can rely on Response not being changed.
         /// </summary>
         /// <exception cref="AdbcException"></exception>
         private void ThrowIfExistingResponse()
         {
             if (Response != null)
             {
-                throw new AdbcException("The statement has already been used for another query.",
-                    new InvalidOperationException("The statement has already been used for another query."));
+                throw new InvalidOperationException("Invalid use of this object. It has already been used for another query or update. Call AdbcConnection.CreateStatement for each query or update.");
             }
         }
     }
