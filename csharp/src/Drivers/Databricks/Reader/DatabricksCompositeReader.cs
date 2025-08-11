@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
     /// A composite reader for Databricks that delegates to either CloudFetchReader or DatabricksReader
     /// based on CloudFetch configuration and result set characteristics.
     /// </summary>
-    internal sealed class DatabricksCompositeReader : TracingReader
+    internal class DatabricksCompositeReader : TracingReader
     {
         public override string AssemblyName => DatabricksConnection.s_assemblyName;
 
@@ -43,11 +43,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         private readonly Schema _schema;
         private readonly IResponse _response;
         private readonly bool _isLz4Compressed;
-        private readonly TlsProperties _tlsOptions;
-        private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
         private IOperationStatusPoller? operationStatusPoller;
         private bool _disposed;
+        private readonly HttpClient _httpClient;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabricksCompositeReader"/> class.
@@ -61,16 +60,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             Schema schema,
             IResponse response,
             bool isLz4Compressed,
-            TlsProperties tlsOptions,
-            HiveServer2ProxyConfigurator proxyConfigurator)
+            HttpClient httpClient, 
+            IOperationStatusPoller? operationPoller = null)
             : base(statement)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
             _response = response;
             _isLz4Compressed = isLz4Compressed;
-            _tlsOptions = tlsOptions;
-            _proxyConfigurator = proxyConfigurator;
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 
             // use direct results if available
             if (_statement.TryGetDirectResults(_response, out TSparkDirectResults? directResults)
@@ -81,24 +79,23 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             }
             if (_response.DirectResults?.ResultSet?.HasMoreRows ?? true)
             {
-                operationStatusPoller = new DatabricksOperationStatusPoller(statement, _response);
+                operationStatusPoller = operationPoller ?? new DatabricksOperationStatusPoller(_statement, response);
                 operationStatusPoller.Start();
             }
         }
 
-        private BaseDatabricksReader DetermineReader(TFetchResultsResp initialResults)
+        protected virtual BaseDatabricksReader DetermineReader(TFetchResultsResp initialResults)
         {
             // if it has links, use cloud fetch
             if (initialResults.__isset.results &&
                 initialResults.Results.__isset.resultLinks &&
                 initialResults.Results.ResultLinks?.Count > 0)
             {
-                HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(_tlsOptions, _proxyConfigurator));
-                return new CloudFetchReader(_statement, _schema, _response, initialResults, _isLz4Compressed, cloudFetchHttpClient);
+                return CreateCloudFetchReader(initialResults);
             }
             else
             {
-                return new DatabricksReader(_statement, _schema, _response, initialResults, _isLz4Compressed);
+                return CreateDatabricksReader(initialResults);
             }
         }
 
@@ -121,6 +118,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             }
 
             return await _activeReader.ReadNextRecordBatchAsync(cancellationToken);
+        }
+
+                /// <summary>
+        /// Creates a CloudFetchReader instance. Virtual to allow testing.
+        /// </summary>
+        /// <param name="initialResults">The initial fetch results.</param>
+        /// <returns>A new CloudFetchReader instance.</returns>
+        protected virtual BaseDatabricksReader CreateCloudFetchReader(TFetchResultsResp initialResults)
+        {
+            return new CloudFetchReader(_statement, _schema, _response, initialResults, _isLz4Compressed, _httpClient);
+        }
+
+        /// <summary>
+        /// Creates a DatabricksReader instance. Virtual to allow testing.
+        /// </summary>
+        /// <param name="initialResults">The initial fetch results.</param>
+        /// <returns>A new DatabricksReader instance.</returns>
+        protected virtual BaseDatabricksReader CreateDatabricksReader(TFetchResultsResp initialResults)
+        {
+            return new DatabricksReader(_statement, _schema, _response, initialResults, _isLz4Compressed);
         }
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)

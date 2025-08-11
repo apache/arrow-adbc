@@ -445,7 +445,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 isLz4Compressed = metadataResp.Lz4Compressed;
             }
 
-            return new DatabricksCompositeReader(databricksStatement, schema, response, isLz4Compressed, TlsOptions, _proxyConfigurator);
+            HttpClient httpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
+            return new DatabricksCompositeReader(databricksStatement, schema, response, isLz4Compressed, httpClient);
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
