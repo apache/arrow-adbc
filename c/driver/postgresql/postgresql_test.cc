@@ -1825,72 +1825,81 @@ TEST_F(PostgresStatementTest, SqlQueryInt2vector) {
   ASSERT_EQ(reader.array->release, nullptr);
 }
 
-TEST_F(PostgresStatementTest, PostgresCompositeTest) {
+TEST_F(PostgresStatementTest, PostgresCompositeTypeTest) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-
   {
     adbc_validation::StreamReader reader;
 
-    // Cleanup first: Drop table before type
-    ASSERT_THAT(
-        AdbcStatementSetSqlQuery(&statement, "DROP TABLE IF EXISTS adbc_test;", &error),
-        IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                          &reader.rows_affected, &error),
-                IsOkStatus(&error));
-    ASSERT_THAT(
-        AdbcStatementSetSqlQuery(&statement, "DROP TYPE IF EXISTS mycomp;", &error),
-        IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                          &reader.rows_affected, &error),
-                IsOkStatus(&error));
+    // Types are cached on the AdbcDatabase so this test has to totally recreate
+    // its AdbcDatabase (see the call to ResetTest in the body here).
 
-    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "CREATE TYPE mycomp AS (x integer);",
-                                         &error),
-                IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                          &reader.rows_affected, &error),
-                IsOkStatus(&error));
-
-    ASSERT_THAT(AdbcStatementSetSqlQuery(
-                    &statement, "CREATE TABLE adbc_test (mycomps mycomp);", &error),
-                IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                          &reader.rows_affected, &error),
-                IsOkStatus(&error));
-
+    // Cleanup. We have to drop the table before we drop the type.
     ASSERT_THAT(
         AdbcStatementSetSqlQuery(
-            &statement,
-            "INSERT INTO adbc_test (mycomps) VALUES (ROW(1)), (ROW(2)), (ROW(3));",
+            &statement, "DROP TABLE IF EXISTS adbc_postgresql_composite_type_test_table;",
             &error),
         IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement, "DROP TYPE IF EXISTS my_composite_type;", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
 
-    // Since the composite type is added after we connect the ADBC driver, we
-    // need to reconnect.
-    //
-    // TODO: This could he a helper (disconnect without recreating db)
-    ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
-    ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
-    ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
-    ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-
+    // Create type and table, fill with data
     ASSERT_THAT(
-        AdbcStatementSetSqlQuery(&statement, "SELECT mycomps FROM adbc_test;", &error),
+        AdbcStatementSetSqlQuery(
+            &statement, "CREATE TYPE my_composite_type AS (x integer, y text);", &error),
         IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                           &reader.rows_affected, &error),
                 IsOkStatus(&error));
 
-    // TODO: Still working on this
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(&statement,
+                                 "CREATE TABLE adbc_postgresql_composite_type_test_table "
+                                 "(a my_composite_type);",
+                                 &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement,
+                    "INSERT INTO adbc_postgresql_composite_type_test_table "
+                    "(a) VALUES (ROW(1, 'a')), (ROW(2,' b')), (ROW(3,' c'));",
+                    &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+
+    // AdbcDatabase currently caches types so we need to recreate it
+    // https://github.com/apache/arrow-adbc/pull/3196#pullrequestreview-3103472826
+    ResetTest();
+
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement,
+                    "SELECT * FROM adbc_postgresql_composite_type_test_table;", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
     ASSERT_EQ(reader.schema->n_children, 1);
-    ASSERT_STREQ(reader.schema->children[0]->name, "mycomps");
-    ASSERT_STREQ(reader.schema->children[0]->format, "i");
+    ASSERT_STREQ(reader.schema->children[0]->name, "a");
+    ASSERT_STREQ(reader.schema->children[0]->format, "+s");
+    ASSERT_EQ(reader.schema->children[0]->n_children, 2);
+    ASSERT_STREQ(reader.schema->children[0]->children[0]->name, "x");
+    ASSERT_STREQ(reader.schema->children[0]->children[0]->format, "i");
+    ASSERT_STREQ(reader.schema->children[0]->children[1]->name, "y");
+    ASSERT_STREQ(reader.schema->children[0]->children[1]->format, "u");
   }
 }
 

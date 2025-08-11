@@ -17,6 +17,7 @@
 
 #include "adbc_validation.h"
 
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -60,6 +61,11 @@ void StatementTest::TearDownTest() {
   if (error.release) {
     error.release(&error);
   }
+}
+
+void StatementTest::ResetTest() {
+  TearDownTest();
+  SetUpTest();
 }
 
 void StatementTest::TestNewInit() {
