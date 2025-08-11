@@ -342,6 +342,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             set => Connection.QueryTimeoutSeconds = value;
         }
 
+        protected internal int FetchResultsTimeoutSeconds => Connection.FetchResultsTimeoutSeconds;
+
         protected internal bool IsMetadataCommand { get; set; } = false;
         protected internal string? CatalogName { get; set; }
         protected internal string? SchemaName { get; set; }

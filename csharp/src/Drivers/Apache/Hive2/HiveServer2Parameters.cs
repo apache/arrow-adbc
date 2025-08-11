@@ -26,6 +26,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string TransportType = "adbc.hive.transport_type";
         public const string DataTypeConv = "adbc.hive.data_type_conv";
         public const string ConnectTimeoutMilliseconds = "adbc.hive.connect_timeout_ms";
+        
+        /// <summary>
+        /// Timeout in seconds for individual FetchResults operations when reading result sets.
+        /// This controls how long each fetch call waits for a response from the server.
+        /// Default value is 60 seconds if not specified.
+        /// </summary>
+        public const string FetchResultsTimeoutSeconds = "adbc.hiveserver2.fetch_results_timeout_s";
     }
 
     public static class HiveServer2AuthTypeConstants

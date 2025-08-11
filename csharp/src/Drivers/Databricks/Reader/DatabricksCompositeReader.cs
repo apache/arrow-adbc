@@ -19,6 +19,7 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
@@ -107,8 +108,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 // if no reader, we did not have direct results
                 // Make a FetchResults call to get the initial result set
                 // and determine the reader based on the result set
+                
+                // Use a standalone timeout token to avoid breaking the connection
+                CancellationToken fetchTimeoutToken = ApacheUtility.GetCancellationToken(_statement.FetchResultsTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                
                 TFetchResultsReq request = new TFetchResultsReq(this._statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
-                TFetchResultsResp response = await this._statement.Connection.Client!.FetchResults(request, cancellationToken);
+                TFetchResultsResp response = await this._statement.Connection.Client!.FetchResults(request, fetchTimeoutToken);
                 _activeReader = DetermineReader(response);
             }
 

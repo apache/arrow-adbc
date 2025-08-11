@@ -42,7 +42,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool enableMultipleCatalogSupport;
         private bool enablePKFK;
         private bool runAsyncInThrift;
-        private int fetchResultsTimeoutSeconds;
         private int operationStatusPollingIntervalSeconds;
         private int operationStatusRequestTimeoutSeconds;
 
@@ -68,7 +67,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             enablePKFK = connection.EnablePKFK;
 
             runAsyncInThrift = connection.RunAsyncInThrift;
-            fetchResultsTimeoutSeconds = connection.FetchResultsTimeoutSeconds;
             operationStatusPollingIntervalSeconds = connection.OperationStatusPollingIntervalSeconds;
             operationStatusRequestTimeoutSeconds = connection.OperationStatusRequestTimeoutSeconds;
         }
@@ -155,8 +153,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Expose Connection through the interface
         HiveServer2Connection IHiveServer2Statement.Connection => Connection;
 
-        // Expose FetchResultsTimeoutSeconds for IHiveServer2Statement
-        int IHiveServer2Statement.FetchResultsTimeoutSeconds => fetchResultsTimeoutSeconds;
+        // Expose FetchResultsTimeoutSeconds for IHiveServer2Statement (from base class)
+        int IHiveServer2Statement.FetchResultsTimeoutSeconds => FetchResultsTimeoutSeconds;
 
         // Expose OperationStatusPoller configuration for IHiveServer2Statement
         int IHiveServer2Statement.OperationStatusPollingIntervalSeconds => operationStatusPollingIntervalSeconds;

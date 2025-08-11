@@ -40,6 +40,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal const bool InfoVendorSql = true;
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
+        internal const int FetchResultsTimeoutSecondsDefault = 60;
         internal static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2Connection));
         internal static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2Connection));
         private const int ConnectTimeoutMillisecondsDefault = 30000;
@@ -291,6 +292,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     QueryTimeoutSeconds = queryTimeoutSeconds;
                 }
             }
+
+            if (properties.TryGetValue(HiveServer2Parameters.FetchResultsTimeoutSeconds, out string? fetchTimeoutStr))
+            {
+                if (int.TryParse(fetchTimeoutStr, out int fetchTimeout) && fetchTimeout > 0)
+                {
+                    FetchResultsTimeoutSeconds = fetchTimeout;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{HiveServer2Parameters.FetchResultsTimeoutSeconds}' value '{fetchTimeoutStr}' must be a positive integer.");
+                }
+            }
         }
 
         internal TCLIService.IAsync Client
@@ -303,6 +316,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal string VendorName => _vendorName.Value;
 
         protected internal int QueryTimeoutSeconds { get; set; } = ApacheUtility.QueryTimeoutSecondsDefault;
+
+        protected internal int FetchResultsTimeoutSeconds { get; set; } = FetchResultsTimeoutSecondsDefault;
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
 
@@ -1370,7 +1385,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
 
-            TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
+            TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, FetchResultsTimeoutSeconds, cancellationToken);
             if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
             {
                 throw new HiveServer2Exception(fetchResp.Status.ErrorMessage)
@@ -1380,10 +1395,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return fetchResp.Results;
         }
 
-        private static async Task<TFetchResultsResp> FetchNextAsync(TOperationHandle operationHandle, TCLIService.IAsync client, long batchSize, CancellationToken cancellationToken = default)
+        private static async Task<TFetchResultsResp> FetchNextAsync(TOperationHandle operationHandle, TCLIService.IAsync client, long batchSize, int fetchTimeoutSeconds, CancellationToken cancellationToken = default)
         {
+            // Use a standalone timeout token to avoid breaking the connection
+            CancellationToken fetchTimeoutToken = ApacheUtility.GetCancellationToken(fetchTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            
             TFetchResultsReq request = new(operationHandle, TFetchOrientation.FETCH_NEXT, batchSize);
-            TFetchResultsResp response = await client.FetchResults(request, cancellationToken);
+            TFetchResultsResp response = await client.FetchResults(request, fetchTimeoutToken);
             return response;
         }
 

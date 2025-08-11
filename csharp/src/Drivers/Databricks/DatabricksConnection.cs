@@ -58,7 +58,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
-        private int _fetchResultsTimeoutSeconds = DatabricksConstants.DefaultFetchResultsTimeoutSeconds;
         private int _operationStatusPollingIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
         private int _operationStatusRequestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
         private const bool DefaultRetryOnUnavailable = true;
@@ -281,19 +280,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 QueryTimeoutSeconds = DefaultQueryTimeSeconds;
             }
 
-            // Parse FetchResults timeout
-            if (Properties.TryGetValue(DatabricksParameters.FetchResultsTimeoutSeconds, out string? fetchTimeoutStr))
-            {
-                if (int.TryParse(fetchTimeoutStr, out int fetchTimeout) && fetchTimeout > 0)
-                {
-                    _fetchResultsTimeoutSeconds = fetchTimeout;
-                }
-                else
-                {
-                    throw new ArgumentException($"Parameter '{DatabricksParameters.FetchResultsTimeoutSeconds}' value '{fetchTimeoutStr}' must be a positive integer.");
-                }
-            }
-
             // Parse OperationStatusPoller configuration
             if (Properties.TryGetValue(DatabricksParameters.OperationStatusPollingIntervalSeconds, out string? pollingIntervalStr))
             {
@@ -349,11 +335,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the maximum bytes per file for CloudFetch.
         /// </summary>
         internal long MaxBytesPerFile => _maxBytesPerFile;
-
-        /// <summary>
-        /// Gets the timeout in seconds for FetchResults operations.
-        /// </summary>
-        internal int FetchResultsTimeoutSeconds => _fetchResultsTimeoutSeconds;
 
         /// <summary>
         /// Gets the interval in seconds between operation status polling requests.

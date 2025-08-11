@@ -161,8 +161,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private static async Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
         {
+            // Use a standalone timeout token to avoid breaking the connection
+            CancellationToken fetchTimeoutToken = ApacheUtility.GetCancellationToken(statement.FetchResultsTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            
             var request = new TFetchResultsReq(statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
-            return await statement.Connection.Client.FetchResults(request, cancellationToken);
+            return await statement.Connection.Client.FetchResults(request, fetchTimeoutToken);
         }
 
         private static IArrowArray GetArray(TColumn column, IArrowType? expectedArrowType = default)

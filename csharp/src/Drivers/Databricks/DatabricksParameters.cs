@@ -220,13 +220,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const string IdentityFederationClientId = "adbc.databricks.identity_federation_client_id";
 
         /// <summary>
-        /// Timeout in seconds for individual FetchResults operations when reading result sets.
-        /// This controls how long each fetch call waits for a response from the server.
-        /// Default value is 30 seconds if not specified.
-        /// </summary>
-        public const string FetchResultsTimeoutSeconds = "adbc.databricks.fetch_results_timeout_s";
-
-        /// <summary>
         /// Interval in seconds between operation status polling heartbeats.
         /// Used to keep long-running operations alive by periodically checking their status.
         /// Default value is 60 seconds if not specified.
@@ -246,11 +239,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     public class DatabricksConstants
     {
-        /// <summary>
-        /// Default timeout in seconds for FetchResults operations.
-        /// </summary>
-        public const int DefaultFetchResultsTimeoutSeconds = 30;
-
         /// <summary>
         /// Default heartbeat interval in seconds for long-running operations.
         /// </summary>
