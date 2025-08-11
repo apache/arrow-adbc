@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Gets the Response.
         /// </summary>
-        IResponse? Response { get; }
+        IResponse Response { get; }
 
         /// <summary>
         /// Gets the client.

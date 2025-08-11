@@ -127,7 +127,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Checks if direct results are available.
         /// </summary>
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        public bool HasDirectResults => Response!.DirectResults?.ResultSet != null && Response!.DirectResults?.ResultSetMetadata != null;
+        public bool HasDirectResults => Response.DirectResults?.ResultSet != null && Response.DirectResults?.ResultSetMetadata != null;
 
         // Cast the Client to IAsync for CloudFetch compatibility
         TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;

@@ -38,8 +38,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             // If we have direct results, initialize the batches from them
             if (statement.HasDirectResults)
             {
-                this.batches = statement.Response!.DirectResults!.ResultSet.Results.ArrowBatches;
-                this.hasNoMoreRows = !statement.Response!.DirectResults.ResultSet.HasMoreRows;
+                this.batches = statement.Response.DirectResults!.ResultSet.Results.ArrowBatches;
+                this.hasNoMoreRows = !statement.Response.DirectResults.ResultSet.HasMoreRows;
             }
             else if (initialResults != null)
             {
@@ -81,7 +81,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                         return null;
                     }
                     // TODO: use an expiring cancellationtoken
-                    TFetchResultsReq request = new TFetchResultsReq(this.statement.Response!.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+                    TFetchResultsReq request = new TFetchResultsReq(this.statement.Response.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
                     TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
 
                     // Make sure we get the arrowBatches

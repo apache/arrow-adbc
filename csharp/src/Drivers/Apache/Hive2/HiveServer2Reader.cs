@@ -161,7 +161,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private static async Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
         {
-            var request = new TFetchResultsReq(statement.Response!.OperationHandle!, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
+            var request = new TFetchResultsReq(statement.Response.OperationHandle!, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
             return await statement.Connection.Client.FetchResults(request, cancellationToken);
         }
 
