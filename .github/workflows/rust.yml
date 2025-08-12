@@ -159,8 +159,13 @@ jobs:
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/bin/adbc_driver_sqlite.dll" >> "$GITHUB_ENV"
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
+      - name: Clippy
+        if: runner.os != 'Linux' && ! matrix.minimal-versions
+        working-directory: rust
+        run: |
+          cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
       - name: Clippy (nightly)
-        if: ${{ ! matrix.minimal-versions }}
+        if: runner.os == 'Linux' && ! matrix.minimal-versions
         working-directory: rust
         run: |
           rustup toolchain install nightly
