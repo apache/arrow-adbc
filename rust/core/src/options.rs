@@ -27,6 +27,7 @@ use crate::{
 ///
 /// Can be created with various implementations of [From].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum OptionValue {
     String(String),
     Bytes(Vec<u8>),
@@ -149,6 +150,7 @@ impl FromStr for AdbcVersion {
 
 /// Info codes for database/driver metadata.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum InfoCode {
     /// The database vendor/product name (type: utf8).
     VendorName,
@@ -274,6 +276,7 @@ impl TryFrom<c_int> for ObjectDepth {
 
 /// Database option key.
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
+#[non_exhaustive]
 pub enum OptionDatabase {
     /// Canonical option key for URIs.
     ///
@@ -321,6 +324,7 @@ impl From<&str> for OptionDatabase {
 
 /// Connection option key.
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
+#[non_exhaustive]
 pub enum OptionConnection {
     /// Whether autocommit is enabled.
     AutoCommit,
@@ -368,6 +372,7 @@ impl From<&str> for OptionConnection {
 
 /// Statement option key.
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
+#[non_exhaustive]
 pub enum OptionStatement {
     /// The ingest mode for a bulk insert. See [IngestMode].
     IngestMode,
