@@ -375,7 +375,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal abstract IArrowArrayStream NewReader<T>(
             T statement,
             Schema schema,
-            TGetResultSetMetadataResp? metadataResp = null) where T : HiveServer2Statement;
+            IResponse response,
+            TGetResultSetMetadataResp? metadataResp = null) where T : IHiveServer2Statement;
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {

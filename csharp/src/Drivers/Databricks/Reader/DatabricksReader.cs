@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
-using Apache.Arrow.Adbc.Drivers.Databricks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -33,13 +33,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         int index;
         IArrowReader? reader;
 
-        public DatabricksReader(IHiveServer2Statement statement, Schema schema, TFetchResultsResp? initialResults, bool isLz4Compressed) : base(statement, schema, isLz4Compressed)
+        public DatabricksReader(IHiveServer2Statement statement, Schema schema, IResponse response, TFetchResultsResp? initialResults, bool isLz4Compressed)
+            : base(statement, schema, response, isLz4Compressed)
         {
             // If we have direct results, initialize the batches from them
-            if (statement.HasDirectResults)
+            if (statement.TryGetDirectResults(this.response, out TSparkDirectResults? directResults))
             {
-                this.batches = statement.Response!.DirectResults!.ResultSet.Results.ArrowBatches;
-                this.hasNoMoreRows = !statement.Response!.DirectResults.ResultSet.HasMoreRows;
+                this.batches = directResults!.ResultSet.Results.ArrowBatches;
+                this.hasNoMoreRows = !directResults.ResultSet.HasMoreRows;
             }
             else if (initialResults != null)
             {
@@ -81,7 +82,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                         return null;
                     }
                     // TODO: use an expiring cancellationtoken
-                    TFetchResultsReq request = new TFetchResultsReq(this.statement.Response!.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
+                    TFetchResultsReq request = new TFetchResultsReq(this.response.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
                     TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
 
                     // Make sure we get the arrowBatches

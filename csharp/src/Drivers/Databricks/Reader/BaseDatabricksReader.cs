@@ -16,8 +16,10 @@
 */
 
 using System;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Adbc.Tracing;
+using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
@@ -28,14 +30,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
     {
         protected IHiveServer2Statement statement;
         protected readonly Schema schema;
+        protected readonly IResponse response;
         protected readonly bool isLz4Compressed;
         protected bool hasNoMoreRows = false;
         private bool isDisposed;
 
-        protected BaseDatabricksReader(IHiveServer2Statement statement, Schema schema, bool isLz4Compressed)
+        protected BaseDatabricksReader(IHiveServer2Statement statement, Schema schema, IResponse response, bool isLz4Compressed)
             : base(statement)
         {
             this.schema = schema;
+            this.response = response;
             this.isLz4Compressed = isLz4Compressed;
             this.statement = statement;
         }
@@ -44,8 +48,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 
         protected override void Dispose(bool disposing)
         {
-            base.Dispose(disposing);
-            isDisposed = true;
+            try
+            {
+                if (disposing)
+                {
+                    TCloseOperationResp resp = HiveServer2Reader.CloseOperation(this.statement, this.response).Result;
+                    HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
+                }
+            }
+            finally
+            {
+                base.Dispose(disposing);
+                isDisposed = true;
+            }
         }
 
         protected void ThrowIfDisposed()

@@ -61,11 +61,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return new HiveServer2Statement(this);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(
-            statement,
-            schema,
-            dataTypeConversion: statement.Connection.DataTypeConversion,
-            enableBatchSizeStopCondition: false);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null) =>
+            new HiveServer2Reader(
+                statement,
+                schema,
+                response,
+                dataTypeConversion: statement.Connection.DataTypeConversion,
+                enableBatchSizeStopCondition: false);
 
         internal override void SetPrecisionScaleAndTypeName(
             short colType,

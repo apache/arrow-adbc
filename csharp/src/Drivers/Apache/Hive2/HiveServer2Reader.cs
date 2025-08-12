@@ -55,7 +55,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const int SecondSubsecondSepIndex = 19;
         private const int SubsecondIndex = 20;
         private const int MillisecondDecimalPlaces = 3;
-        private readonly HiveServer2Statement _statement;
+        private readonly IHiveServer2Statement _statement;
+        private readonly IResponse _response;
+        private bool _disposed;
         private bool _hasNoMoreData = false;
         private readonly DataTypeConversion _dataTypeConversion;
         // Flag to enable/disable stopping reading based on batch size condition
@@ -74,13 +76,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             };
 
         public HiveServer2Reader(
-            HiveServer2Statement statement,
+            IHiveServer2Statement statement,
             Schema schema,
+            IResponse response,
             DataTypeConversion dataTypeConversion,
             bool enableBatchSizeStopCondition = true) : base(statement)
         {
             _statement = statement;
             Schema = schema;
+            _response = response;
             _dataTypeConversion = dataTypeConversion;
             _enableBatchSizeStopCondition = enableBatchSizeStopCondition;
         }
@@ -103,7 +107,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 try
                 {
                     // Await the fetch response
-                    TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
+                    TFetchResultsResp response = await FetchNext(_statement, _response, cancellationToken);
                     HiveServer2Connection.HandleThriftResponse(response.Status, activity);
 
                     int columnCount = GetColumnCount(response.Results);
@@ -159,9 +163,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal static int GetRowCount(TRowSet response, int columnCount) =>
             columnCount > 0 ? GetArray(response.Columns[0]).Length : 0;
 
-        private static async Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
+        private static async Task<TFetchResultsResp> FetchNext(IHiveServer2Statement statement, IResponse response, CancellationToken cancellationToken = default)
         {
-            var request = new TFetchResultsReq(statement.Response!.OperationHandle!, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
+            var request = new TFetchResultsReq(response.OperationHandle!, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
             return await statement.Connection.Client.FetchResults(request, cancellationToken);
         }
 
@@ -396,6 +400,35 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             return true;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                if (!_disposed)
+                {
+                    if (disposing)
+                    {
+                        TCloseOperationResp resp = CloseOperation(_statement, _response).Result;
+                        HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
+                    }
+                }
+            }
+            finally
+            {
+                base.Dispose(disposing);
+                _disposed = true;
+            }
+        }
+
+        internal static async Task<TCloseOperationResp> CloseOperation(IHiveServer2Statement statement, IResponse response)
+        {
+            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(statement.QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            TCloseOperationReq request = new TCloseOperationReq(response.OperationHandle!);
+            TCloseOperationResp resp = await statement.Client.CloseOperation(request, cancellationToken);
+            HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
+            return resp;
         }
     }
 }

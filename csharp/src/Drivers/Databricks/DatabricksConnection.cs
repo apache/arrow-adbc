@@ -429,7 +429,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override bool GetObjectsPatternsRequireLowerCase => true;
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null)
         {
             bool isLz4Compressed = false;
 
@@ -445,7 +445,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 isLz4Compressed = metadataResp.Lz4Compressed;
             }
 
-            return new DatabricksCompositeReader(databricksStatement, schema, isLz4Compressed, TlsOptions, _proxyConfigurator);
+            return new DatabricksCompositeReader(databricksStatement, schema, response, isLz4Compressed, TlsOptions, _proxyConfigurator);
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();

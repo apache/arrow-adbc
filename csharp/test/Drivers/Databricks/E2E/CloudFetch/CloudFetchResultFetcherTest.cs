@@ -18,11 +18,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Databricks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
@@ -36,8 +34,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
     public class CloudFetchResultFetcherTest
     {
         private readonly Mock<IHiveServer2Statement> _mockStatement;
+        private readonly Mock<IResponse> _mockResponse;
         private readonly Mock<TCLIService.IAsync> _mockClient;
-        private readonly IResponse _response;
         private readonly MockClock _mockClock;
         private readonly CloudFetchResultFetcherWithMockClock _resultFetcher;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
@@ -47,10 +45,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
         {
             _mockClient = new Mock<TCLIService.IAsync>();
             _mockStatement = new Mock<IHiveServer2Statement>();
-            _response = CreateResponse();
+            _mockResponse = CreateResponse();
 
             _mockStatement.Setup(s => s.Client).Returns(_mockClient.Object);
-            _mockStatement.Setup(s => s.Response).Returns(_response);
 
             _mockClock = new MockClock();
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
@@ -58,6 +55,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             _resultFetcher = new CloudFetchResultFetcherWithMockClock(
                 _mockStatement.Object,
+                _mockResponse.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
                 100, // batchSize
@@ -538,6 +536,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
         {
             return new CloudFetchResultFetcherWithMockClock(
                 _mockStatement.Object,
+                _mockResponse.Object,
                 initialResults,
                 _mockMemoryManager.Object,
                 _downloadQueue,
@@ -596,7 +595,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             };
         }
 
-        private IResponse CreateResponse()
+        private Mock<IResponse> CreateResponse()
         {
             var mockResponse = new Mock<IResponse>();
             mockResponse.Setup(r => r.OperationHandle).Returns(new TOperationHandle
@@ -609,7 +608,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
                 OperationType = TOperationType.EXECUTE_STATEMENT,
                 HasResultSet = true
             });
-            return mockResponse.Object;
+            return mockResponse;
         }
 
         #endregion
@@ -647,24 +646,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
     {
         public CloudFetchResultFetcherWithMockClock(
             IHiveServer2Statement statement,
+            IResponse response,
             ICloudFetchMemoryBufferManager memoryManager,
             BlockingCollection<IDownloadResult> downloadQueue,
             long batchSize,
             IClock clock,
             int expirationBufferSeconds = 60)
-            : base(statement, null, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
+            : base(statement, response, null, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
         {
         }
 
         public CloudFetchResultFetcherWithMockClock(
             IHiveServer2Statement statement,
+            IResponse response,
             TFetchResultsResp? initialResults,
             ICloudFetchMemoryBufferManager memoryManager,
             BlockingCollection<IDownloadResult> downloadQueue,
             long batchSize,
             IClock clock,
             int expirationBufferSeconds = 60)
-            : base(statement, initialResults, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
+            : base(statement, response, initialResults, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
         {
         }
     }

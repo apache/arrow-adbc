@@ -150,7 +150,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         internal override IArrowArrayStream NewReader<T>(
             T statement,
             Schema schema,
-            TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+            IResponse response,
+            TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, response, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected virtual HttpMessageHandler CreateHttpHandler()
         {

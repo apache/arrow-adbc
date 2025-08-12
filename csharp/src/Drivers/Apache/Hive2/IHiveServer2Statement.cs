@@ -16,21 +16,15 @@
  */
 
 using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     /// <summary>
     /// Interface for accessing HiveServer2Statement properties needed by CloudFetchResultFetcher.
     /// </summary>
     internal interface IHiveServer2Statement : ITracingStatement
     {
-        /// <summary>
-        /// Gets the Response.
-        /// </summary>
-        IResponse? Response { get; }
-
         /// <summary>
         /// Gets the client.
         /// </summary>
@@ -40,7 +34,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Checks if direct results are available.
         /// </summary>
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        bool HasDirectResults { get; }
+        bool HasDirectResults(IResponse response);
+
+        bool TryGetDirectResults(IResponse response, out TSparkDirectResults? directResults);
 
         /// <summary>
         /// Gets the query timeout in seconds.
