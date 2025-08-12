@@ -17,7 +17,6 @@
 
 using System;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -50,10 +49,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         {
             try
             {
-                if (disposing)
+                if (!isDisposed)
                 {
-                    TCloseOperationResp resp = HiveServer2Reader.CloseOperation(this.statement, this.response).Result;
-                    HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
+                    if (disposing)
+                    {
+                        TCloseOperationResp resp = HiveServer2Reader.CloseOperation(this.statement, this.response).Result;
+                        HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
+                    }
                 }
             }
             finally

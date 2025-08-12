@@ -73,7 +73,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                TOperationHandle? operationHandle = _response?.OperationHandle;
+                TOperationHandle? operationHandle = _response.OperationHandle;
                 if (operationHandle == null) break;
 
                 CancellationToken GetOperationStatusTimeoutToken = ApacheUtility.GetCancellationToken(_requestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);

@@ -36,6 +36,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
         bool HasDirectResults(IResponse response);
 
+        /// <summary>
+        /// Tries to get the direct results <see cref="TSparkDirectResults"/> if available.
+        /// </summary>
+        /// <param name="response">The <see cref="IResponse"/> object to check.</param>
+        /// <param name="directResults">The <see cref="TSparkDirectResults"/> object if the respnose has direct results.</param>
+        /// <returns>True if direct results are available, false otherwise.</returns>
         bool TryGetDirectResults(IResponse response, out TSparkDirectResults? directResults);
 
         /// <summary>

@@ -373,11 +373,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return name.Replace("_", "\\_").Replace("%", "\\%");
         }
 
-        public override void Dispose()
-        {
-            base.Dispose();
-        }
-
         protected void ValidateOptions(IReadOnlyDictionary<string, string> properties)
         {
             foreach (KeyValuePair<string, string> kvp in properties)
@@ -997,17 +992,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        /// <summary>
-        /// Checks if direct results are available.
-        /// </summary>
-        /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
+        /// <inheritdoc/>
         public virtual bool HasDirectResults(IResponse response) => response?.DirectResults?.ResultSet != null && response.DirectResults.ResultSetMetadata != null;
 
-        /// <summary>
-        /// Tries to get the direct result, <see cref="TSparkDirectResults"/> if not null.
-        /// </summary>
-        /// <param name="directResults"></param>
-        /// <returns>True if direct result is available, false otherwise.</returns>
+        /// <inheritdoc/>
         public bool TryGetDirectResults(IResponse response, out TSparkDirectResults? directResults)
         {
             if (HasDirectResults(response))
