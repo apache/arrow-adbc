@@ -143,9 +143,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                     if (disposing)
                     {
                         StopOperationStatusPoller();
-                        // Note: This reader calls the CloseOperation on the current operation.
-                        _activeReader?.Dispose();
-                        _activeReader = null;
+                        if (_activeReader == null)
+                        {
+                            _ = HiveServer2Reader.CloseOperationAsync(_statement, _response)
+                                .ConfigureAwait(false).GetAwaiter().GetResult();
+                        }
+                        else
+                        {
+                            // Note: Have the contained reader close the operation to avoid duplicate calls.
+                            _ = _activeReader.CloseOperationAsync()
+                                .ConfigureAwait(false).GetAwaiter().GetResult();
+                            _activeReader = null;
+                        }
                     }
                 }
             }

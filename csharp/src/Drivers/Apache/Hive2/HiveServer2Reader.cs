@@ -410,8 +410,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     if (disposing)
                     {
-                        TCloseOperationResp resp = CloseOperation(_statement, _response).Result;
-                        HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
+                        _ = CloseOperationAsync(_statement, _response)
+                            .ConfigureAwait(false).GetAwaiter().GetResult();
                     }
                 }
             }
@@ -422,7 +422,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        internal static async Task<TCloseOperationResp> CloseOperation(IHiveServer2Statement statement, IResponse response)
+        /// <summary>
+        /// Closes the operation contained in the response.
+        /// </summary>
+        /// <param name="statement">The associated statement used for timeout properties.</param>
+        /// <param name="response">The response for the operation.</param>
+        /// <returns>The server response for the CloseOperation call.</returns>
+        /// <exception cref="HiveServer2Exception" />
+        internal static async Task<TCloseOperationResp> CloseOperationAsync(IHiveServer2Statement statement, IResponse response)
         {
             CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(statement.QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
             TCloseOperationReq request = new TCloseOperationReq(response.OperationHandle!);

@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -33,6 +34,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         protected readonly bool isLz4Compressed;
         protected bool hasNoMoreRows = false;
         private bool isDisposed;
+        private bool isClosed;
 
         protected BaseDatabricksReader(IHiveServer2Statement statement, Schema schema, IResponse response, bool isLz4Compressed)
             : base(statement)
@@ -53,8 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 {
                     if (disposing)
                     {
-                        TCloseOperationResp resp = HiveServer2Reader.CloseOperation(this.statement, this.response).Result;
-                        HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
+                        _ = CloseOperationAsync().Result;
                     }
                 }
             }
@@ -62,6 +63,28 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             {
                 base.Dispose(disposing);
                 isDisposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Closes the current operation.
+        /// </summary>
+        /// <returns>Returns true if the close operation completes successfully, false otherwise.</returns>
+        /// <exception cref="HiveServer2Exception" />
+        public async Task<bool> CloseOperationAsync()
+        {
+            try
+            {
+                if (!isClosed)
+                {
+                    _ = await HiveServer2Reader.CloseOperationAsync(this.statement, this.response);
+                    return true;
+                }
+                return false;
+            }
+            finally
+            {
+                isClosed = true;
             }
         }
 
