@@ -353,7 +353,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -502,7 +502,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -584,7 +584,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -688,7 +688,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
