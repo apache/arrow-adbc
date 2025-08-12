@@ -56,7 +56,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         protected async Task TestStringData(string? value)
         {
             string columnName = "STRINGTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, "STRING"));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "STRING"));
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
@@ -76,7 +76,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         {
             string columnName = "VARCHARTYPE";
             string typeName = "VARCHAR(100)";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, typeName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, typeName));
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
                 columnName,
@@ -92,7 +92,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             string columnName = "CHARTYPE";
             int fieldLength = 100;
             string typeName = $"CHAR({fieldLength})";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, typeName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, typeName));
 
             string? formattedValue = value != null ? $"CAST({QuoteValue(value.PadRight(fieldLength))} as {typeName})" : value;
             string? paddedValue = value != null ? value.PadRight(fieldLength) : value;
@@ -109,7 +109,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         protected virtual async Task TestVarcharExceptionData(string value, string[] expectedTexts, string? expectedSqlState)
         {
             string columnName = "VARCHARTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, "VARCHAR(10)"));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "VARCHAR(10)"));
             AdbcException exception = await Assert.ThrowsAsync<HiveServer2Exception>(async () => await ValidateInsertSelectDeleteSingleValueAsync(
                 GetSelectSingleValueStatement(table.TableName, columnName, value.Substring(0, 10)),
                 table.TableName,

@@ -63,7 +63,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public virtual async Task TestTimestampData(DateTimeOffset value, string columnType)
         {
             string columnName = "TIMESTAMPTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, columnType));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
 
             string format = TestEnvironment.GetValueForProtocolVersion(DateTimeFormat, DateTimeZoneFormat)!;
             string formattedValue = $"{value.ToString(format, CultureInfo.InvariantCulture)}";
@@ -87,7 +87,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestDateData(DateTimeOffset value, string columnType)
         {
             string columnName = "DATETYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, columnType));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
 
             string formattedValue = $"{value.ToString(DateFormat, CultureInfo.InvariantCulture)}";
             DateTimeOffset truncatedValue = DateTimeOffset.ParseExact(formattedValue, DateFormat, CultureInfo.InvariantCulture);

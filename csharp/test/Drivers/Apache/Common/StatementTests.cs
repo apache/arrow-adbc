@@ -178,10 +178,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task CanInteractUsingSetOptions()
         {
             const string columnName = "INDEX";
-            AdbcStatement statement = Connection.CreateStatement();
-            statement.SetOption(ApacheParameters.PollTimeMilliseconds, "100");
-            statement.SetOption(ApacheParameters.BatchSize, "10");
-            using TemporaryTable temporaryTable = await NewTemporaryTableAsync(Connection, $"{columnName} INT");
+            Statement.SetOption(ApacheParameters.PollTimeMilliseconds, "100");
+            Statement.SetOption(ApacheParameters.BatchSize, "10");
+            using TemporaryTable temporaryTable = await NewTemporaryTableAsync(Statement, $"{columnName} INT");
             await ValidateInsertSelectDeleteSingleValueAsync(temporaryTable.TableName, columnName, 1);
         }
 
@@ -312,7 +311,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 out string fullTableName,
                 out IReadOnlyList<string> primaryKeys);
             using TemporaryTable temporaryTable = await TemporaryTable.NewTemporaryTableAsync(
-                    Connection,
+                    Statement,
                     fullTableName,
                     sqlUpdate,
                     OutputHelper);
@@ -339,7 +338,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 out string fullTableNameParent,
                 out IReadOnlyList<string> primaryKeys);
             using TemporaryTable temporaryTableParent = await TemporaryTable.NewTemporaryTableAsync(
-                Connection,
+                Statement,
                 fullTableNameParent,
                 sqlUpdate,
                 OutputHelper);
@@ -351,7 +350,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 out string fullTableNameChild,
                 out IReadOnlyList<string> foreignKeys);
             using TemporaryTable temporaryTableChild = await TemporaryTable.NewTemporaryTableAsync(
-                Connection,
+                Statement,
                 fullTableNameChild,
                 sqlUpdate,
                 OutputHelper);
@@ -379,7 +378,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 out string fullTableNameParent,
                 out IReadOnlyList<string> primaryKeys);
             using TemporaryTable temporaryTableParent = await TemporaryTable.NewTemporaryTableAsync(
-                Connection,
+                Statement,
                 fullTableNameParent,
                 sqlUpdate,
                 OutputHelper);
@@ -391,7 +390,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 out string fullTableNameChild,
                 out IReadOnlyList<string> foreignKeys);
             using TemporaryTable temporaryTableChild = await TemporaryTable.NewTemporaryTableAsync(
-                Connection,
+                Statement,
                 fullTableNameChild,
                 sqlUpdate,
                 OutputHelper);

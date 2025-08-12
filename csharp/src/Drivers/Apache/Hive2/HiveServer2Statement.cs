@@ -1004,7 +1004,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public virtual bool HasDirectResults(IResponse response) => response?.DirectResults?.ResultSet != null && response.DirectResults.ResultSetMetadata != null;
 
         /// <summary>
-        /// Trys to get the direct result, <see cref="TSparkDirectResults"/> if not null.
+        /// Tries to get the direct result, <see cref="TSparkDirectResults"/> if not null.
         /// </summary>
         /// <param name="directResults"></param>
         /// <returns>True if direct result is available, false otherwise.</returns>

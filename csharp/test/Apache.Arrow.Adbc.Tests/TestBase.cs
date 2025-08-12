@@ -78,14 +78,14 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Creates a temporary table (if possible) using the native SQL dialect.
         /// </summary>
-        /// <param name="connection">The ADBC statement to apply the update.</param>
+        /// <param name="statement">The ADBC statement to apply the update.</param>
         /// <param name="columns">The columns definition in the native SQL dialect.</param>
         /// <returns>A disposable temporary table object that will drop the table when disposed.</returns>
-        protected async Task<TemporaryTable> NewTemporaryTableAsync(AdbcConnection connection, string columns)
+        protected async Task<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string columns)
         {
             string tableName = NewTableName();
             string sqlUpdate = TestEnvironment.GetCreateTemporaryTableStatement(tableName, columns);
-            return await TemporaryTable.NewTemporaryTableAsync(connection, tableName, sqlUpdate, OutputHelper);
+            return await TemporaryTable.NewTemporaryTableAsync(statement, tableName, sqlUpdate, OutputHelper);
         }
 
         /// <summary>
@@ -128,6 +128,11 @@ namespace Apache.Arrow.Adbc.Tests
         /// Gets a single ADBC Connection for the object.
         /// </summary>
         protected AdbcConnection Connection => _connection.Value;
+
+        /// <summary>
+        /// Gets as single ADBC Statement for the object.
+        /// </summary>
+        protected AdbcStatement Statement => _statement.Value;
 
         /// <summary>
         /// Gets the test configuration file.
@@ -266,9 +271,8 @@ namespace Apache.Arrow.Adbc.Tests
         {
             string insertStatement = GetInsertStatementWithIndexColumn(tableName, columnName, indexColumnName, values, formattedValues);
             OutputHelper?.WriteLine(insertStatement);
-            AdbcStatement statement = Connection.CreateStatement();
-            statement.SqlQuery = insertStatement;
-            UpdateResult updateResult = await statement.ExecuteUpdateAsync();
+            Statement.SqlQuery = insertStatement;
+            UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
             if (ValidateAffectedRows) Assert.Equal(values.Length, updateResult.AffectedRows);
         }
 
@@ -294,9 +298,8 @@ namespace Apache.Arrow.Adbc.Tests
         {
             string insertStatement = GetInsertStatement(tableName, columnName, value);
             OutputHelper?.WriteLine(insertStatement);
-            AdbcStatement statement = Connection.CreateStatement();
-            statement.SqlQuery = insertStatement;
-            UpdateResult updateResult = await statement.ExecuteUpdateAsync();
+            Statement.SqlQuery = insertStatement;
+            UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
             if (ValidateAffectedRows) Assert.Equal(1, updateResult.AffectedRows);
         }
 
@@ -320,9 +323,8 @@ namespace Apache.Arrow.Adbc.Tests
         {
             string deleteNumberStatement = GetDeleteValueStatement(tableName, whereClause);
             OutputHelper?.WriteLine(deleteNumberStatement);
-            AdbcStatement statement = Connection.CreateStatement();
-            statement.SqlQuery = deleteNumberStatement;
-            UpdateResult updateResult = await statement.ExecuteUpdateAsync();
+            Statement.SqlQuery = deleteNumberStatement;
+            UpdateResult updateResult = await Statement.ExecuteUpdateAsync();
             if (ValidateAffectedRows) Assert.Equal(expectedRowsAffected, updateResult.AffectedRows);
         }
 
@@ -393,10 +395,9 @@ namespace Apache.Arrow.Adbc.Tests
         /// <returns></returns>
         protected async Task SelectAndValidateValuesAsync(string selectStatement, object?[] values, int expectedLength, bool hasIndexColumn = false)
         {
-            AdbcStatement statement = Connection.CreateStatement();
-            statement.SqlQuery = selectStatement;
+            Statement.SqlQuery = selectStatement;
             OutputHelper?.WriteLine(selectStatement);
-            QueryResult queryResult = await statement.ExecuteQueryAsync();
+            QueryResult queryResult = await Statement.ExecuteQueryAsync();
             int actualLength = 0;
             using (IArrowArrayStream stream = queryResult.Stream ?? throw new InvalidOperationException("stream is null"))
             {
@@ -672,33 +673,32 @@ namespace Apache.Arrow.Adbc.Tests
         public class TemporaryTable : IDisposable
         {
             private bool _disposedValue;
-            private readonly AdbcConnection _connection;
+            private readonly AdbcStatement _statement;
 
             /// <summary>
             /// Gets the name of the table.
             /// </summary>
             public string TableName { get; }
 
-            private TemporaryTable(AdbcConnection connection, string tableName)
+            private TemporaryTable(AdbcStatement statement, string tableName)
             {
                 TableName = tableName;
-                _connection = connection;
+                _statement = statement;
             }
 
             /// <summary>
             /// Creates a new instance of a temporary table.
             /// </summary>
-            /// <param name="connection">The ADBC statement to run the create table query.</param>
+            /// <param name="statement">The ADBC statement to run the create table query.</param>
             /// <param name="tableName">The name of temporary table to create.</param>
             /// <param name="sqlUpdate">The SQL query to create the table in the native SQL dialect.</param>
             /// <returns></returns>
-            public static async Task<TemporaryTable> NewTemporaryTableAsync(AdbcConnection connection, string tableName, string sqlUpdate, ITestOutputHelper? outputHelper = default)
+            public static async Task<TemporaryTable> NewTemporaryTableAsync(AdbcStatement statement, string tableName, string sqlUpdate, ITestOutputHelper? outputHelper = default)
             {
-                AdbcStatement statement = connection.CreateStatement();
                 statement.SqlQuery = sqlUpdate;
                 outputHelper?.WriteLine(sqlUpdate);
                 await statement.ExecuteUpdateAsync();
-                return new TemporaryTable(connection, tableName);
+                return new TemporaryTable(statement, tableName);
             }
 
             /// <summary>
@@ -706,9 +706,8 @@ namespace Apache.Arrow.Adbc.Tests
             /// </summary>
             protected virtual async Task DropAsync()
             {
-                AdbcStatement statement = _connection.CreateStatement();
-                statement.SqlQuery = $"DROP TABLE {TableName}";
-                await statement.ExecuteUpdateAsync();
+                _statement.SqlQuery = $"DROP TABLE {TableName}";
+                await _statement.ExecuteUpdateAsync();
             }
 
             protected virtual void Dispose(bool disposing)
@@ -735,20 +734,19 @@ namespace Apache.Arrow.Adbc.Tests
         protected class TemporarySchema : IDisposable
         {
             private bool _disposedValue;
-            private readonly AdbcConnection _connection;
+            private readonly AdbcStatement _statement;
 
-            private TemporarySchema(string catalogName, AdbcConnection connection)
+            private TemporarySchema(string catalogName, AdbcStatement statement)
             {
                 CatalogName = catalogName;
                 SchemaName = Guid.NewGuid().ToString("N");
-                _connection = connection;
+                _statement = statement;
             }
 
-            public static async ValueTask<TemporarySchema> NewTemporarySchemaAsync(string catalogName, AdbcConnection connection)
+            public static async ValueTask<TemporarySchema> NewTemporarySchemaAsync(string catalogName, AdbcStatement statement)
             {
-                TemporarySchema schema = new TemporarySchema(catalogName, connection);
+                TemporarySchema schema = new TemporarySchema(catalogName, statement);
                 string catalog = string.IsNullOrEmpty(schema.CatalogName) ? string.Empty : schema.CatalogName + ".";
-                AdbcStatement statement = connection.CreateStatement();
                 statement.SqlQuery = $"CREATE SCHEMA IF NOT EXISTS {catalog}{schema.SchemaName}";
                 await statement.ExecuteUpdateAsync();
                 return schema;
@@ -765,9 +763,8 @@ namespace Apache.Arrow.Adbc.Tests
                     if (disposing)
                     {
                         string catalog = string.IsNullOrEmpty(CatalogName) ? string.Empty : CatalogName + ".";
-                        AdbcStatement statement = _connection.CreateStatement();
-                        statement.SqlQuery = $"DROP SCHEMA IF EXISTS {catalog}{SchemaName}";
-                        statement.ExecuteUpdate();
+                        _statement.SqlQuery = $"DROP SCHEMA IF EXISTS {catalog}{SchemaName}";
+                        _statement.ExecuteUpdate();
                     }
 
                     _disposedValue = true;

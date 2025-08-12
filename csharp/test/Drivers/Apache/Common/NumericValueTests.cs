@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestIntegerSanity(int value)
         {
             string columnName = "INTTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} INT", columnName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} INT", columnName));
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
         }
 
@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestIntegerMinMax(int value)
         {
             string columnName = "INTTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} INT", columnName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} INT", columnName));
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
         }
 
@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestLongMinMax(long value)
         {
             string columnName = "BIGINTTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} BIGINT", columnName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} BIGINT", columnName));
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
         }
 
@@ -85,7 +85,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestSmallIntMinMax(short value)
         {
             string columnName = "SMALLINTTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} SMALLINT", columnName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} SMALLINT", columnName));
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
         }
 
@@ -98,7 +98,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestTinyIntMinMax(sbyte value)
         {
             string columnName = "TINYINTTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} TINYINT", columnName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} TINYINT", columnName));
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, value);
         }
 
@@ -115,7 +115,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         {
             string columnName = "SMALLNUMBER";
             string columnType = "DECIMAL(2,0)";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, columnType));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
             object? expectedValue = TestEnvironment.GetValueForProtocolVersion(value, SqlDecimal.Parse(value));
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, expectedValue, $"CAST({expectedValue} as {columnType})");
         }
@@ -150,7 +150,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestLargeScaleNumberRange(string value)
         {
             string columnName = "LARGESCALENUMBER";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} DECIMAL(38,37)", columnName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,37)", columnName));
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, TestEnvironment.GetValueForProtocolVersion(value, new SqlDecimal(double.Parse(value))));
         }
 
@@ -180,7 +180,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestSmallScaleNumberRange(string value)
         {
             string columnName = "SMALLSCALENUMBER";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} DECIMAL(38,2)", columnName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DECIMAL(38,2)", columnName));
             await ValidateInsertSelectDeleteSingleValueAsync(table.TableName, columnName, TestEnvironment.GetValueForProtocolVersion(value, SqlDecimal.Parse(value)));
         }
 
@@ -208,7 +208,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         {
             string columnName = "SMALLSCALENUMBER";
             string columnType = "DECIMAL(38,2)";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, columnType));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, columnType));
             SqlDecimal value = new SqlDecimal(input);
             SqlDecimal returned = new SqlDecimal(output);
             await InsertSingleValueAsync(table.TableName, columnName, $"CAST({value} as {columnType})");
@@ -223,7 +223,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public virtual async Task TestDoubleValuesInsertSelectDelete(double value)
         {
             string columnName = "DOUBLETYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} DOUBLE", columnName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} DOUBLE", columnName));
             string valueString = ConvertDoubleToString(value);
             await InsertSingleValueAsync(table.TableName, columnName, valueString);
             await SelectAndValidateValuesAsync(table.TableName, columnName, value, 1);
@@ -237,7 +237,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public virtual async Task TestFloatValuesInsertSelectDelete(float value)
         {
             string columnName = "FLOATTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} FLOAT", columnName));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} FLOAT", columnName));
             string valueString = ConvertFloatToString(value);
             await InsertSingleValueAsync(table.TableName, columnName, valueString);
             object doubleValue = (double)value;

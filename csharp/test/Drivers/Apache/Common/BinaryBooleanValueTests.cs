@@ -65,7 +65,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public virtual async Task TestBinaryData(byte[]? value)
         {
             string columnName = "BINARYTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, "BINARY"));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BINARY"));
             string? formattedValue = GetFormattedBinaryValue(value);
             await ValidateInsertSelectDeleteSingleValueAsync(
                 table.TableName,
@@ -91,7 +91,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public async Task TestBooleanData(bool? value)
         {
             string columnName = "BOOLEANTYPE";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}", columnName, "BOOLEAN"));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}", columnName, "BOOLEAN"));
             string? formattedValue = value == null ? null : $"{value?.ToString(CultureInfo.InvariantCulture)}";
             await ValidateInsertSelectDeleteTwoValuesAsync(
                 table.TableName,
@@ -145,7 +145,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             }
             string columnName = "BOOLEANTYPE";
             string indexColumnName = "INDEXCOL";
-            using TemporaryTable table = await NewTemporaryTableAsync(Connection, string.Format("{0} {1}, {2} {3}", indexColumnName, "INT", columnName, "BOOLEAN"));
+            using TemporaryTable table = await NewTemporaryTableAsync(Statement, string.Format("{0} {1}, {2} {3}", indexColumnName, "INT", columnName, "BOOLEAN"));
             await ValidateInsertSelectDeleteMultipleValuesAsync(table.TableName, columnName, indexColumnName, values);
         }
     }
