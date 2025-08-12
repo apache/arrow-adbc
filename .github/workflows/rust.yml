@@ -168,7 +168,7 @@ jobs:
         if: runner.os == 'Linux' && ! matrix.minimal-versions
         working-directory: rust
         run: |
-          rustup toolchain install nightly
+          rustup toolchain install nightly --component clippy
           cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)'
       - name: Test
         working-directory: rust
