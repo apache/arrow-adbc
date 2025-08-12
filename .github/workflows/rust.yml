@@ -159,11 +159,12 @@ jobs:
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/bin/adbc_driver_sqlite.dll" >> "$GITHUB_ENV"
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
-      - name: Clippy
+      - name: Clippy (nightly)
         if: ${{ ! matrix.minimal-versions }}
         working-directory: rust
         run: |
-          cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
+          rustup toolchain install nightly
+          cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)'
       - name: Test
         working-directory: rust
         # TODO: enable snowflake tests on windows

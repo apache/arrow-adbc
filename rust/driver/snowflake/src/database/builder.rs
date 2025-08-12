@@ -40,7 +40,6 @@ use crate::{
 
 /// Authentication types.
 #[derive(Copy, Clone, Debug, Default)]
-#[non_exhaustive]
 pub enum AuthType {
     /// General username password authentication
     #[default]
@@ -103,7 +102,6 @@ impl str::FromStr for AuthType {
 
 /// Protocol types.
 #[derive(Copy, Clone, Debug, Default)]
-#[non_exhaustive]
 pub enum Protocol {
     /// Use `https`.
     #[default]
@@ -146,7 +144,6 @@ impl str::FromStr for Protocol {
 
 /// Log levels.
 #[derive(Copy, Clone, Debug, Default)]
-#[non_exhaustive]
 pub enum LogLevel {
     /// Trace level
     Trace,
