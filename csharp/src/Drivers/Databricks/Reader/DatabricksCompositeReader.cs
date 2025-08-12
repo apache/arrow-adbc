@@ -56,7 +56,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
         /// <param name="httpClient">The HTTP client for CloudFetch operations.</param>
-        internal DatabricksCompositeReader(IHiveServer2Statement statement, Schema schema, IResponse response, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator)
+        internal DatabricksCompositeReader(
+            IHiveServer2Statement statement,
+            Schema schema,
+            IResponse response,
+            bool isLz4Compressed,
+            TlsProperties tlsOptions,
+            HiveServer2ProxyConfigurator proxyConfigurator)
             : base(statement)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));

@@ -221,8 +221,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             try
             {
                 // Process direct results first, if available
-                if ((_statement.TryGetDirectResults(_response, out TSparkDirectResults? directResults) && directResults!.ResultSet?.Results?.ResultLinks?.Count > 0) ||
-                    _initialResults?.Results?.ResultLinks?.Count > 0)
+                if ((_statement.TryGetDirectResults(_response, out TSparkDirectResults? directResults)
+                    && directResults!.ResultSet?.Results?.ResultLinks?.Count > 0)
+                    || _initialResults?.Results?.ResultLinks?.Count > 0)
                 {
                     // Yield execution so the download queue doesn't get blocked before downloader is started
                     await Task.Yield();
@@ -343,7 +344,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private void ProcessDirectResultsAsync(CancellationToken cancellationToken)
         {
             TFetchResultsResp fetchResults;
-            if (_statement.TryGetDirectResults(_response, out TSparkDirectResults? directResults) && directResults!.ResultSet?.Results?.ResultLinks?.Count > 0)
+            if (_statement.TryGetDirectResults(_response, out TSparkDirectResults? directResults)
+                && directResults!.ResultSet?.Results?.ResultLinks?.Count > 0)
             {
                 fetchResults = directResults.ResultSet;
             }

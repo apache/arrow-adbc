@@ -59,7 +59,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="statement">The HiveServer2 statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        public CloudFetchDownloadManager(IHiveServer2Statement statement, Schema schema, IResponse response, TFetchResultsResp? initialResults, bool isLz4Compressed, HttpClient httpClient)
+        public CloudFetchDownloadManager(
+            IHiveServer2Statement statement,
+            Schema schema,
+            IResponse response,
+            TFetchResultsResp? initialResults,
+            bool isLz4Compressed,
+            HttpClient httpClient)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
