@@ -750,7 +750,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
             var fkResult = await GetCrossReferenceAsForeignTableAsync(cancellationToken);
 
-            try
+            using (columnsResult.Stream)
+            using (pkResult.Stream)
+            using (fkResult.Stream)
             {
                 // 2. Read all batches into memory
                 List<RecordBatch> columnsBatches;
@@ -760,32 +762,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 int colNameIndex = -1;
 
                 // Extract column data
-                using (var stream = columnsResult.Stream)
+                colNameIndex = columnsResult.Stream.Schema.GetFieldIndex("COLUMN_NAME");
+                if (colNameIndex < 0)
                 {
-                    colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
-                    if (colNameIndex < 0)
-                    {
-                        // TODO: Add log or throw
-                        return columnsResult; // Can't match without column names
-                    }
-
-                    var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
-                    columnsBatches = batchResult.Batches;
-                    columnsSchema = batchResult.Schema;
-                    totalRows = batchResult.TotalRows;
-
-                    if (columnsBatches.Count == 0)
-                    {
-                        // Return empty result with complete schema
-                        return CreateEmptyExtendedColumnsResult(columnsSchema);
-                    }
-
-                    // Create column names array from all batches using ArrayDataConcatenator.Concatenate
-                    List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch =>
-                        batch.Column(colNameIndex).Data).ToList();
-                    ArrayData? concatenatedColumnNames = ArrayDataConcatenator.Concatenate(columnNameArrayDataList);
-                    columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
+                    // TODO: Add log or throw
+                    return columnsResult; // Can't match without column names
                 }
+
+                var batchResult = await ReadAllBatchesAsync(columnsResult.Stream, cancellationToken);
+                columnsBatches = batchResult.Batches;
+                columnsSchema = batchResult.Schema;
+                totalRows = batchResult.TotalRows;
+
+                if (columnsBatches.Count == 0)
+                {
+                    // Return empty result with complete schema
+                    return CreateEmptyExtendedColumnsResult(columnsSchema);
+                }
+
+                // Create column names array from all batches using ArrayDataConcatenator.Concatenate
+                List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch =>
+                    batch.Column(colNameIndex).Data).ToList();
+                ArrayData? concatenatedColumnNames = ArrayDataConcatenator.Concatenate(columnNameArrayDataList);
+                columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
 
                 // 3. Create combined schema and prepare data
                 var allFields = new List<Field>(columnsSchema.FieldsList);
@@ -827,13 +826,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
 
                 return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
-            }
-            finally
-            {
-                // Dispose internal query results to ensure proper resource cleanup
-                columnsResult.Stream?.Dispose();
-                pkResult.Stream?.Dispose();
-                fkResult.Stream?.Dispose();
             }
         }
 
