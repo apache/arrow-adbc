@@ -142,12 +142,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 {
                     if (disposing)
                     {
-                        _activeReader?.Dispose();
                         StopOperationStatusPoller();
+                        // Note: This reader calls the CloseOperation on the current operation.
+                        _activeReader?.Dispose();
                         _activeReader = null;
-
-                        TCloseOperationResp resp = HiveServer2Reader.CloseOperation(_statement, _response).Result;
-                        HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
                     }
                 }
             }
