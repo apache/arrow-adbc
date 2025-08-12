@@ -17,7 +17,6 @@
 
 #include "adbc_validation.h"
 
-#include <cstdio>
 #include <cstring>
 #include <string>
 #include <utility>
