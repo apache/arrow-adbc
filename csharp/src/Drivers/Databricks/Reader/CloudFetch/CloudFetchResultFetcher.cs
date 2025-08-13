@@ -288,8 +288,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             try
             {
                 // Use the statement's configured query timeout
-                CancellationToken expiringToken = ApacheUtility.GetCancellationToken(_statement.QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                response = await _statement.Client.FetchResults(request, expiringToken).ConfigureAwait(false);
+
+                using var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(_statement.QueryTimeoutSeconds));
+                using var combinedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutTokenSource.Token);
+
+                response = await _statement.Client.FetchResults(request, combinedTokenSource.Token).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

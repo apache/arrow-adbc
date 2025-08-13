@@ -56,6 +56,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             _mockStatement.Setup(s => s.Client).Returns(_mockClient.Object);
             _mockStatement.Setup(s => s.OperationHandle).Returns(_operationHandle);
+            // Set a mock querytimeout as 30s
+            _mockStatement.Setup(s => s.QueryTimeoutSeconds).Returns(30); // 30 seconds
 
             _mockClock = new MockClock();
             _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
@@ -424,6 +426,60 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             // Verify the fetcher state
             Assert.True(_resultFetcher.IsCompleted);
+        }
+
+        [Fact]
+        public async Task StopAsync_Timeout()
+        {
+            // Arrange
+            var fetchStarted = new TaskCompletionSource<bool>();
+            var fetchTimedOut = new TaskCompletionSource<bool>();
+
+            // Temporarily override the QueryTimeoutSeconds for this test only
+            _mockStatement.Setup(s => s.QueryTimeoutSeconds).Returns(2); // 2 second timeout
+
+            _mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
+                .Returns(async (TFetchResultsReq req, CancellationToken token) =>
+                {
+                    fetchStarted.TrySetResult(true);
+
+                    try
+                    {
+                        // Wait longer than the timeout (5 seconds), but DO respond to the timeout token
+                        // The timeout token should cancel this after 2 seconds
+                        await Task.Delay(5000, token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        fetchTimedOut.TrySetResult(true);
+                        throw;
+                    }
+
+                    // This should never be reached due to timeout
+                    return CreateFetchResultsResponse(new List<TSparkArrowResultLink>(), false);
+                });
+
+            // Act
+            await _resultFetcher.StartAsync(CancellationToken.None);
+
+            // Wait for the fetch to start
+            await fetchStarted.Task;
+
+            // Don't call StopAsync - let the timeout mechanism work
+
+            // Assert
+            // Wait for timeout to occur (should be within 3-4 seconds)
+            var timedOut = await Task.WhenAny(fetchTimedOut.Task, Task.Delay(4000)) == fetchTimedOut.Task;
+            Assert.True(timedOut, "Fetch operation should have timed out due to QueryTimeoutSeconds setting");
+
+            // Wait a bit for the fetcher to complete its error handling
+            //await Task.Delay(100);
+
+            // Verify the fetcher state
+            Assert.True(_resultFetcher.IsCompleted);
+
+            // Clean up
+            await _resultFetcher.StopAsync();
         }
 
         #endregion
