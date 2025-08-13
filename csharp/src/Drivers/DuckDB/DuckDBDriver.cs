@@ -1,0 +1,72 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+using System;
+using System.Collections.Generic;
+
+namespace Apache.Arrow.Adbc.Drivers.DuckDB
+{
+    /// <summary>
+    /// DuckDB ADBC driver implementation.
+    /// </summary>
+    public class DuckDBDriver : AdbcDriver
+    {
+        private readonly Dictionary<string, string> _properties;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuckDBDriver"/> class.
+        /// </summary>
+        public DuckDBDriver()
+        {
+            _properties = new Dictionary<string, string>();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuckDBDriver"/> class with the specified properties.
+        /// </summary>
+        /// <param name="properties">The driver properties.</param>
+        public DuckDBDriver(Dictionary<string, string> properties) : this()
+        {
+            if (properties != null)
+            {
+                foreach (var kvp in properties)
+                {
+                    _properties[kvp.Key] = kvp.Value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Opens a database with the specified parameters.
+        /// </summary>
+        /// <param name="parameters">The database parameters.</param>
+        /// <returns>A new ADBC database instance.</returns>
+        public override AdbcDatabase Open(IReadOnlyDictionary<string, string>? parameters)
+        {
+            if (parameters != null)
+            {
+                var mergedProperties = new Dictionary<string, string>(_properties);
+                foreach (var kvp in parameters)
+                {
+                    mergedProperties[kvp.Key] = kvp.Value;
+                }
+                return new DuckDBDatabase(mergedProperties);
+            }
+            return new DuckDBDatabase(_properties);
+        }
+    }
+}
