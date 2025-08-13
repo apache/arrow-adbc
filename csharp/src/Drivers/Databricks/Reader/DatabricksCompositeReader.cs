@@ -20,7 +20,6 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Drivers.Databricks;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -42,11 +41,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         private BaseDatabricksReader? _activeReader;
         private readonly IHiveServer2Statement _statement;
         private readonly Schema _schema;
+        private readonly IResponse _response;
         private readonly bool _isLz4Compressed;
         private readonly TlsProperties _tlsOptions;
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
         private IOperationStatusPoller? operationStatusPoller;
+        private bool _disposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabricksCompositeReader"/> class.
@@ -55,22 +56,32 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
         /// <param name="httpClient">The HTTP client for CloudFetch operations.</param>
-        internal DatabricksCompositeReader(IHiveServer2Statement statement, Schema schema, bool isLz4Compressed, TlsProperties tlsOptions, HiveServer2ProxyConfigurator proxyConfigurator): base(statement)
+        internal DatabricksCompositeReader(
+            IHiveServer2Statement statement,
+            Schema schema,
+            IResponse response,
+            bool isLz4Compressed,
+            TlsProperties tlsOptions,
+            HiveServer2ProxyConfigurator proxyConfigurator)
+            : base(statement)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
+            _response = response;
             _isLz4Compressed = isLz4Compressed;
             _tlsOptions = tlsOptions;
             _proxyConfigurator = proxyConfigurator;
 
             // use direct results if available
-            if (_statement.HasDirectResults && _statement.DirectResults != null && _statement.DirectResults.__isset.resultSet && statement.DirectResults?.ResultSet != null)
+            if (_statement.TryGetDirectResults(_response, out TSparkDirectResults? directResults)
+                && directResults!.__isset.resultSet
+                && directResults.ResultSet != null)
             {
-                _activeReader = DetermineReader(_statement.DirectResults.ResultSet);
+                _activeReader = DetermineReader(directResults.ResultSet);
             }
-            if (_statement.DirectResults?.ResultSet?.HasMoreRows ?? true)
+            if (_response.DirectResults?.ResultSet?.HasMoreRows ?? true)
             {
-                operationStatusPoller = new DatabricksOperationStatusPoller(statement);
+                operationStatusPoller = new DatabricksOperationStatusPoller(statement, _response);
                 operationStatusPoller.Start();
             }
         }
@@ -83,11 +94,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 initialResults.Results.ResultLinks?.Count > 0)
             {
                 HttpClient cloudFetchHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(_tlsOptions, _proxyConfigurator));
-                return new CloudFetchReader(_statement, _schema, initialResults, _isLz4Compressed, cloudFetchHttpClient);
+                return new CloudFetchReader(_statement, _schema, _response, initialResults, _isLz4Compressed, cloudFetchHttpClient);
             }
             else
             {
-                return new DatabricksReader(_statement, _schema, initialResults, _isLz4Compressed);
+                return new DatabricksReader(_statement, _schema, _response, initialResults, _isLz4Compressed);
             }
         }
 
@@ -104,7 +115,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 // if no reader, we did not have direct results
                 // Make a FetchResults call to get the initial result set
                 // and determine the reader based on the result set
-                TFetchResultsReq request = new TFetchResultsReq(this._statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
+                TFetchResultsReq request = new TFetchResultsReq(_response.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
                 TFetchResultsResp response = await this._statement.Connection.Client!.FetchResults(request, cancellationToken);
                 _activeReader = DetermineReader(response);
             }
@@ -125,13 +136,33 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            try
             {
-                _activeReader?.Dispose();
-                StopOperationStatusPoller();
+                if (!_disposed)
+                {
+                    if (disposing)
+                    {
+                        StopOperationStatusPoller();
+                        if (_activeReader == null)
+                        {
+                            _ = HiveServer2Reader.CloseOperationAsync(_statement, _response)
+                                .ConfigureAwait(false).GetAwaiter().GetResult();
+                        }
+                        else
+                        {
+                            // Note: Have the contained reader close the operation to avoid duplicate calls.
+                            _ = _activeReader.CloseOperationAsync()
+                                .ConfigureAwait(false).GetAwaiter().GetResult();
+                            _activeReader = null;
+                        }
+                    }
+                }
             }
-            _activeReader = null;
-            base.Dispose(disposing);
+            finally
+            {
+                base.Dispose(disposing);
+                _disposed = true;
+            }
         }
 
         private void StopOperationStatusPoller()

@@ -28,7 +28,7 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Statement : TracingStatement
+    internal class HiveServer2Statement : TracingStatement, IHiveServer2Statement
     {
         private const string GetPrimaryKeysCommandName = "getprimarykeys";
         private const string GetCrossReferenceCommandName = "getcrossreference";
@@ -122,27 +122,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     return await ExecuteMetadataCommandQuery(cancellationToken);
                 }
 
-                _directResults = null;
-
                 // this could either:
                 // take QueryTimeoutSeconds * 3
                 // OR
                 // take QueryTimeoutSeconds (but this could be restricting)
-                await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
+                IResponse response = await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
 
                 TGetResultSetMetadataResp metadata;
-                if (_directResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
+                if (response.DirectResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
                 {
                     // The initial response has result data so we don't need to poll
-                    metadata = _directResults.ResultSetMetadata;
+                    metadata = response.DirectResults.ResultSetMetadata;
                 }
                 else
                 {
-                    await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-                    metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
+                    await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
+                    metadata = await HiveServer2Connection.GetResultSetMetadataAsync(response.OperationHandle!, Connection.Client, cancellationToken);
                 }
                 Schema schema = GetSchemaFromMetadata(metadata);
-                return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
+                return new QueryResult(-1, Connection.NewReader(this, schema, response, metadata));
             });
         }
 
@@ -298,9 +296,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        protected async Task ExecuteStatementAsync(CancellationToken cancellationToken = default)
+        protected async Task<IResponse> ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
-            await this.TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 if (Connection.SessionHandle == null)
                 {
@@ -310,32 +308,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
                 SetStatementProperties(executeRequest);
-                TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
-                HiveServer2Connection.HandleThriftResponse(executeResponse.Status, activity);
-                activity?.AddTag(SemanticConventions.Db.Response.OperationId, executeResponse.OperationHandle.OperationId.Guid, "N");
-
-                OperationHandle = executeResponse.OperationHandle;
+                IResponse response = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
+                HiveServer2Connection.HandleThriftResponse(response.Status!, activity);
+                activity?.AddTag(SemanticConventions.Db.Response.OperationId, response.OperationHandle!.OperationId.Guid, "N");
 
                 // Capture direct results if they're available
-                if (executeResponse.DirectResults != null)
+                if (response.DirectResults != null)
                 {
-                    _directResults = executeResponse.DirectResults;
-
-                    if (!string.IsNullOrEmpty(_directResults.OperationStatus?.DisplayMessage))
+                    if (!string.IsNullOrEmpty(response.DirectResults.OperationStatus.DisplayMessage))
                     {
-                        throw new HiveServer2Exception(_directResults.OperationStatus!.DisplayMessage)
-                            .SetSqlState(_directResults.OperationStatus.SqlState)
-                            .SetNativeError(_directResults.OperationStatus.ErrorCode);
+                        throw new HiveServer2Exception(response.DirectResults.OperationStatus.DisplayMessage)
+                            .SetSqlState(response.DirectResults.OperationStatus.SqlState)
+                            .SetNativeError(response.DirectResults.OperationStatus.ErrorCode);
                     }
                 }
+                return response;
             });
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
 
-        protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
+        public long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
 
-        protected internal int QueryTimeoutSeconds
+        public int QueryTimeoutSeconds
         {
             // Coordinate updates with the connection
             get => Connection.QueryTimeoutSeconds;
@@ -352,11 +347,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal string? ForeignSchemaName { get; set; }
         protected internal string? ForeignTableName { get; set; }
         protected internal bool EscapePatternWildcards { get; set; } = false;
-        protected internal TSparkDirectResults? _directResults { get; set; }
 
         public HiveServer2Connection Connection { get; private set; }
-
-        public TOperationHandle? OperationHandle { get; private set; }
 
         // Keep the original Client property for internal use
         public TCLIService.IAsync Client => Connection.Client;
@@ -379,24 +371,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return name;
             // Escape both _ and %
             return name.Replace("_", "\\_").Replace("%", "\\%");
-        }
-
-        public override void Dispose()
-        {
-            this.TraceActivity(activity =>
-            {
-                if (OperationHandle != null && _directResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
-                {
-                    CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                    activity?.AddTag(SemanticConventions.Db.Operation.OperationId, OperationHandle.OperationId.Guid, "N");
-                    TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
-                    TCloseOperationResp resp = Connection.Client.CloseOperation(request, cancellationToken).Result;
-                    HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
-                    OperationHandle = null;
-                }
-
-                base.Dispose();
-            });
         }
 
         protected void ValidateOptions(IReadOnlyDictionary<string, string> properties)
@@ -438,7 +412,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// since the backend treats these as exact match queries rather than pattern matches.
         protected virtual async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
         {
-            TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
+            IResponse response = await Connection.GetCrossReferenceAsync(
                 null,
                 null,
                 null,
@@ -446,10 +420,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 SchemaName,
                 TableName,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
-            _directResults = resp.DirectResults;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
         /// <summary>
@@ -459,7 +431,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// </summary>
         protected virtual async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
         {
-            TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
+            IResponse response = await Connection.GetCrossReferenceAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
@@ -467,10 +439,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ForeignSchemaName,
                 ForeignTableName,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
-            _directResults = resp.DirectResults;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
         /// <summary>
@@ -480,93 +450,69 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// </summary>
         protected virtual async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
-            TGetPrimaryKeysResp resp = await Connection.GetPrimaryKeysAsync(
+            IResponse response = await Connection.GetPrimaryKeysAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
-            _directResults = resp.DirectResults;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
         protected virtual async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
         {
-            TGetCatalogsResp resp = await Connection.GetCatalogsAsync(cancellationToken);
-            OperationHandle = resp.OperationHandle;
-            _directResults = resp.DirectResults;
+            IResponse response = await Connection.GetCatalogsAsync(cancellationToken);
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
         protected virtual async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
         {
-            TGetSchemasResp resp = await Connection.GetSchemasAsync(
+            IResponse response = await Connection.GetSchemasAsync(
                 EscapePatternWildcardsInName(CatalogName),
                 EscapePatternWildcardsInName(SchemaName),
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
-            _directResults = resp.DirectResults;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
         protected virtual async Task<QueryResult> GetTablesAsync(CancellationToken cancellationToken = default)
         {
             List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
-            TGetTablesResp resp = await Connection.GetTablesAsync(
+            IResponse response = await Connection.GetTablesAsync(
                 EscapePatternWildcardsInName(CatalogName),
                 EscapePatternWildcardsInName(SchemaName),
                 EscapePatternWildcardsInName(TableName),
                 tableTypesList,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
-            _directResults = resp.DirectResults;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
         protected virtual async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
         {
-            TGetColumnsResp resp = await Connection.GetColumnsAsync(
+            IResponse response = await Connection.GetColumnsAsync(
                 EscapePatternWildcardsInName(CatalogName),
                 EscapePatternWildcardsInName(SchemaName),
                 EscapePatternWildcardsInName(TableName),
                 EscapePatternWildcardsInName(ColumnName),
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
-
-            // Set _directResults so that dispose logic can check if operation was already closed
-            _directResults = resp.DirectResults;
-
-            // Common variables declared upfront
-            TGetResultSetMetadataResp metadata;
-            Schema schema;
-            TRowSet rowSet;
 
             // For GetColumns, we need to enhance the result with BASE_TYPE_NAME
-            if (Connection.AreResultsAvailableDirectly && resp.DirectResults?.ResultSet?.Results != null)
-            {
-                // Get data from direct results
-                metadata = resp.DirectResults.ResultSetMetadata;
-                schema = GetSchemaFromMetadata(metadata);
-                rowSet = resp.DirectResults.ResultSet.Results;
-            }
-            else
+            if (!Connection.TryGetDirectResults(response.DirectResults, out TGetResultSetMetadataResp? metadata, out TRowSet? rowSet))
             {
                 // Poll and fetch results
-                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
+                await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
 
                 // Get metadata
-                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
-                schema = GetSchemaFromMetadata(metadata);
+                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(response.OperationHandle!, Connection.Client, cancellationToken);
 
                 // Fetch the results
-                rowSet = await Connection.FetchResultsAsync(OperationHandle!, BatchSize, cancellationToken);
+                rowSet = await Connection.FetchResultsAsync(response.OperationHandle!, BatchSize, cancellationToken);
             }
 
             // Common processing for both paths
+            Schema schema = Connection.SchemaParser.GetArrowSchema(metadata!.Schema, Connection.DataTypeConversion);
             int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
             int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
             IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
@@ -581,28 +527,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return GetSchemaFromMetadata(response);
         }
 
-        private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
+        private async Task<QueryResult> GetQueryResult(IResponse response, CancellationToken cancellationToken)
         {
-            // Set _directResults so that dispose logic can check if operation was already closed
-            _directResults = directResults;
-
-            Schema schema;
-            if (Connection.AreResultsAvailableDirectly && directResults?.ResultSet?.Results != null)
+            if (Connection.TryGetDirectResults(response.DirectResults, out QueryResult? result))
             {
-                TGetResultSetMetadataResp resultSetMetadata = directResults.ResultSetMetadata;
-                schema = GetSchemaFromMetadata(resultSetMetadata);
-                TRowSet rowSet = directResults.ResultSet.Results;
-                int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
-                int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
-                IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
-
-                return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(schema, data));
+                return result!;
             }
 
-            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
-            schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
+            await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
+            Schema schema = await GetResultSetSchemaAsync(response.OperationHandle!, Connection.Client, cancellationToken);
 
-            return new QueryResult(-1, Connection.NewReader(this, schema));
+            return new QueryResult(-1, Connection.NewReader(this, schema, response));
         }
 
         protected internal QueryResult EnhanceGetColumnsResult(Schema originalSchema, IReadOnlyList<IArrowArray> originalData,
@@ -863,7 +798,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         combinedData.Add(new FloatArray.Builder().Build());
                         break;
                     case ArrowTypeId.Double:
-                        combinedData.Add(new  DoubleArray.Builder().Build());
+                        combinedData.Add(new DoubleArray.Builder().Build());
                         break;
                     case ArrowTypeId.Date32:
                         combinedData.Add(new Date32Array.Builder().Build());
@@ -1055,6 +990,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     combinedData.Add(builder.Build());
                 }
             }
+        }
+
+        /// <inheritdoc/>
+        public virtual bool HasDirectResults(IResponse response) => response?.DirectResults?.ResultSet != null && response.DirectResults.ResultSetMetadata != null;
+
+        /// <inheritdoc/>
+        public bool TryGetDirectResults(IResponse response, out TSparkDirectResults? directResults)
+        {
+            if (HasDirectResults(response))
+            {
+                directResults = response!.DirectResults;
+                return true;
+            }
+            directResults = null;
+            return false;
         }
     }
 }

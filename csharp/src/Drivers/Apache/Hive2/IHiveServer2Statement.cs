@@ -16,10 +16,9 @@
  */
 
 using Apache.Arrow.Adbc.Tracing;
-using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     /// <summary>
     /// Interface for accessing HiveServer2Statement properties needed by CloudFetchResultFetcher.
@@ -27,25 +26,23 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     internal interface IHiveServer2Statement : ITracingStatement
     {
         /// <summary>
-        /// Gets the operation handle.
-        /// </summary>
-        TOperationHandle? OperationHandle { get; }
-
-        /// <summary>
         /// Gets the client.
         /// </summary>
         TCLIService.IAsync Client { get; }
 
         /// <summary>
-        /// Gets the direct results.
-        /// </summary>
-        TSparkDirectResults? DirectResults { get; }
-
-        /// <summary>
         /// Checks if direct results are available.
         /// </summary>
         /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        bool HasDirectResults { get; }
+        bool HasDirectResults(IResponse response);
+
+        /// <summary>
+        /// Tries to get the direct results <see cref="TSparkDirectResults"/> if available.
+        /// </summary>
+        /// <param name="response">The <see cref="IResponse"/> object to check.</param>
+        /// <param name="directResults">The <see cref="TSparkDirectResults"/> object if the respnose has direct results.</param>
+        /// <returns>True if direct results are available, false otherwise.</returns>
+        bool TryGetDirectResults(IResponse response, out TSparkDirectResults? directResults);
 
         /// <summary>
         /// Gets the query timeout in seconds.
