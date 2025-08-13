@@ -131,6 +131,7 @@ jobs:
             -DADBC_DRIVER_SNOWFLAKE=ON \
             -DADBC_USE_ASAN=OFF \
             -DADBC_USE_UBSAN=OFF \
+            -DADBC_SQLITE_COMPILE_DEFINES=-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=../local \
             ../c

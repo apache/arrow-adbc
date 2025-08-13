@@ -16,70 +16,75 @@
 */
 
 using System;
-using Apache.Arrow.Adbc.Drivers.Apache;
+using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tracing;
+using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
     /// <summary>
-    /// Base class for Databricks readers that handles common functionality. Handles the operation status poller.
+    /// Base class for Databricks readers that handles common functionality of DatabricksReader and CloudFetchReader
     /// </summary>
     internal abstract class BaseDatabricksReader : TracingReader
     {
-        protected DatabricksStatement statement;
+        protected IHiveServer2Statement statement;
         protected readonly Schema schema;
+        protected readonly IResponse response;
         protected readonly bool isLz4Compressed;
-        protected DatabricksOperationStatusPoller? operationStatusPoller;
         protected bool hasNoMoreRows = false;
         private bool isDisposed;
+        private bool isClosed;
 
-        protected BaseDatabricksReader(DatabricksStatement statement, Schema schema, bool isLz4Compressed)
+        protected BaseDatabricksReader(IHiveServer2Statement statement, Schema schema, IResponse response, bool isLz4Compressed)
             : base(statement)
         {
             this.schema = schema;
+            this.response = response;
             this.isLz4Compressed = isLz4Compressed;
             this.statement = statement;
-            if (statement.DirectResults?.ResultSet != null && !statement.DirectResults.ResultSet.HasMoreRows)
-            {
-                return;
-            }
-            operationStatusPoller = new DatabricksOperationStatusPoller(statement);
-            operationStatusPoller.Start();
         }
 
         public override Schema Schema { get { return schema; } }
 
-        protected void StopOperationStatusPoller()
-        {
-            operationStatusPoller?.Stop();
-        }
-
         protected override void Dispose(bool disposing)
         {
-            if (!isDisposed)
+            try
             {
-                if (disposing)
+                if (!isDisposed)
                 {
-                    DisposeOperationStatusPoller();
-                    DisposeResources();
+                    if (disposing)
+                    {
+                        _ = CloseOperationAsync().Result;
+                    }
                 }
+            }
+            finally
+            {
+                base.Dispose(disposing);
                 isDisposed = true;
             }
-
-            base.Dispose(disposing);
         }
 
-        protected virtual void DisposeResources()
+        /// <summary>
+        /// Closes the current operation.
+        /// </summary>
+        /// <returns>Returns true if the close operation completes successfully, false otherwise.</returns>
+        /// <exception cref="HiveServer2Exception" />
+        public async Task<bool> CloseOperationAsync()
         {
-        }
-
-        protected void DisposeOperationStatusPoller()
-        {
-            if (operationStatusPoller != null)
+            try
             {
-                operationStatusPoller.Stop();
-                operationStatusPoller.Dispose();
-                operationStatusPoller = null;
+                if (!isClosed)
+                {
+                    _ = await HiveServer2Reader.CloseOperationAsync(this.statement, this.response);
+                    return true;
+                }
+                return false;
+            }
+            finally
+            {
+                isClosed = true;
             }
         }
 

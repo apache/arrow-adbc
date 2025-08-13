@@ -24,7 +24,6 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Drivers.Databricks.Result;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -121,25 +120,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.MaxBytesPerFile = maxBytesPerFile;
             statement.RunAsync = runAsyncInThrift;
 
-            if (Connection.AreResultsAvailableDirectly)
-            {
-                statement.GetDirectResults = DatabricksConnection.defaultGetDirectResults;
-            }
-        }
-
-        /// <summary>
-        /// Checks if direct results are available.
-        /// </summary>
-        /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        public bool HasDirectResults => DirectResults?.ResultSet != null && DirectResults?.ResultSetMetadata != null;
-
-        public TSparkDirectResults? DirectResults
-        {
-            get { return _directResults; }
+            Connection.TrySetGetDirectResults(statement);
         }
 
         // Cast the Client to IAsync for CloudFetch compatibility
         TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
+
+        // Expose QueryTimeoutSeconds for IHiveServer2Statement
+        int IHiveServer2Statement.QueryTimeoutSeconds => base.QueryTimeoutSeconds;
+
+        // Expose BatchSize through the interface
+        long IHiveServer2Statement.BatchSize => BatchSize;
+
+        // Expose Connection through the interface
+        HiveServer2Connection IHiveServer2Statement.Connection => Connection;
 
         public override void SetOption(string key, string value)
         {

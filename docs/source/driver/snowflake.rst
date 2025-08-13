@@ -312,7 +312,7 @@ Client Options
 --------------
 
 The options used for creating a Snowflake Database connection can be customized.
-These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/github.com/snowflakedb/gosnowflake#Config>`.
+These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/github.com/snowflakedb/gosnowflake#Config>`_.
 
 ``adbc.snowflake.sql.db``
     The database this session should default to using.
