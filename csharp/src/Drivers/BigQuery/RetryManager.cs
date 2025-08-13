@@ -62,11 +62,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                             if (tokenProtectedResource?.TokenRequiresUpdate(ex) == true)
                             {
                                 activity?.AddBigQueryTag("update_token.status", "Expired");
-                                throw new AdbcException($"Cannot update access token after {maxRetries} tries", AdbcStatusCode.Unauthenticated, ex);
+                                throw new AdbcException($"Cannot update access token after {maxRetries} tries. Last exception: {ex.Message}", AdbcStatusCode.Unauthenticated, ex);
                             }
                         }
 
-                        throw new AdbcException($"Cannot execute {action.Method.Name} after {maxRetries} tries", AdbcStatusCode.UnknownError, ex);
+                        throw new AdbcException($"Cannot execute {action.Method.Name} after {maxRetries} tries. Last exception: {ex.Message}", AdbcStatusCode.UnknownError, ex);
                     }
 
                     if ((tokenProtectedResource?.UpdateToken != null))

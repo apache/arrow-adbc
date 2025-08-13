@@ -15,12 +15,21 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! C-compatible items as defined in [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h)
+//go:build driverlib
 
-pub mod constants;
-pub mod methods;
-pub(crate) mod types;
-pub use types::{
-    driver_method, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcDriverInitFunc,
-    FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement, FFI_AdbcStatusCode,
-};
+// Handwritten. Not regenerated.
+
+package main
+
+// #cgo CFLAGS: -DADBC_EXPORTING
+// #cgo CXXFLAGS: -std=c++17 -DADBC_EXPORTING
+// #include "../../drivermgr/arrow-adbc/adbc.h"
+import "C"
+
+//export AdbcDriverBigqueryInit
+func AdbcDriverBigqueryInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+	// The driver manager expects the spelling Bigquery and not BigQuery
+	// as it derives the init symbol name from the filename
+	// (adbc_driver_bigquery -> AdbcDriverBigquery)
+	return AdbcDriverBigQueryInit(version, rawDriver, err)
+}
