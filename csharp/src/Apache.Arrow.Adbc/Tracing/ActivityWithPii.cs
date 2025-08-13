@@ -157,7 +157,7 @@ namespace Apache.Arrow.Adbc.Tracing
             {
                 return AddTag(key, value, isPii);
             }
-            if (value.Length == 16)
+            if (value.Length == 16 && guidFormat != null)
             {
                 return AddTag(key, new Guid(value).ToString(guidFormat), isPii);
             }
