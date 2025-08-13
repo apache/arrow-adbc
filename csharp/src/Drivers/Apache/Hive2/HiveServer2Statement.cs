@@ -141,7 +141,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 // OR
                 // take QueryTimeoutSeconds (but this could be restricting)
                 IResponse response = await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
-                SetOperationHandle(response);
+                // Set the operation handle in case we need to cancel the operation
+                SetOperationHandle(response.OperationHandle!);
 
                 TGetResultSetMetadataResp metadata;
                 try
@@ -159,6 +160,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 finally
                 {
+                    // Clear the operation handle after polling for the completion of the operation
                     UnsetOperationHandle();
                 }
                 Schema schema = GetSchemaFromMetadata(metadata);
@@ -1106,11 +1108,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        private void SetOperationHandle(IResponse response)
+        private void SetOperationHandle(TOperationHandle operationHandle)
         {
             lock (_operationHandleLock)
             {
-                _executeOperationHandle = response.OperationHandle;
+                _executeOperationHandle = operationHandle;
             }
         }
 
