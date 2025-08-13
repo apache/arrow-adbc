@@ -131,6 +131,7 @@ jobs:
             -DADBC_DRIVER_SNOWFLAKE=ON \
             -DADBC_USE_ASAN=OFF \
             -DADBC_USE_UBSAN=OFF \
+            -DADBC_SQLITE_COMPILE_DEFINES=-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=../local \
             ../c
@@ -208,3 +209,19 @@ jobs:
             echo "Checking package '$dir'"
             cargo msrv verify --manifest-path "$dir" || exit 1
           done
+
+      - name: Verify supports the latest arrow
+        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
+        working-directory: rust
+        run: |
+          # Update arrow to the latest version in the lock file
+          cargo update \
+            -p arrow-array \
+            -p arrow-buffer \
+            -p arrow-schema \
+            -p arrow-select
+
+          # If the lock file was updated, run the tests except for adbc_datafusion
+          if ! git diff --quiet Cargo.lock; then
+            cargo test --all-targets --all-features --workspace --exclude adbc_datafusion
+          fi

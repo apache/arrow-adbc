@@ -28,6 +28,7 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
+using Apache.Arrow.Adbc.Drivers.Databricks.Reader;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -43,7 +44,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
         private bool _enablePKFK = true;
-        private bool _runAsyncInThrift = false;
+        private bool _runAsyncInThrift = true;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
@@ -66,6 +67,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
+        // Identity federation client ID for token exchange
+        private string? _identityFederationClientId;
+
         // Default namespace
         private TNamespace? _defaultNamespace;
 
@@ -74,6 +78,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
             ValidateProperties();
+        }
+
+        public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
+        {
+            IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
+            // TODO: Add any additional tags specific to Databricks connection
+            //tags ??= [];
+            //tags.Concat([new("key", "value")]);
+            return tags;
         }
 
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
@@ -264,6 +277,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // Default QueryTimeSeconds in Hive2Connection is only 60s, which is too small for lots of long running query
                 QueryTimeoutSeconds = DefaultQueryTimeSeconds;
             }
+
+            if (Properties.TryGetValue(DatabricksParameters.IdentityFederationClientId, out string? identityFederationClientId))
+            {
+                _identityFederationClientId = identityFederationClientId;
+            }
         }
 
         /// <summary>
@@ -345,86 +363,73 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout);
             }
 
-            Debug.Assert(_authHttpClient == null, "Auth HttpClient should not be initialized yet.");
-            _authHttpClient = new HttpClient(baseAuthHandler);
-
-            // Add OAuth client credentials handler if OAuth M2M authentication is being used
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
                 SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue) &&
-                authTypeValue == SparkAuthType.OAuth &&
-                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr) &&
-                DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
-                grantType == DatabricksOAuthGrantType.ClientCredentials)
+                authTypeValue == SparkAuthType.OAuth)
             {
+                Debug.Assert(_authHttpClient == null, "Auth HttpClient should not be initialized yet.");
+                _authHttpClient = new HttpClient(baseAuthHandler);
+
                 string host = GetHost();
+                ITokenExchangeClient tokenExchangeClient = new TokenExchangeClient(_authHttpClient, host);
 
-                Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
-                Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
-                Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
+                // Mandatory token exchange should be the inner handler so that it happens
+                // AFTER the OAuth handlers (e.g. after M2M sets the access token)
+                baseHandler = new MandatoryTokenExchangeDelegatingHandler(
+                    baseHandler,
+                    tokenExchangeClient,
+                    _identityFederationClientId);
 
-                var tokenProvider = new OAuthClientCredentialsProvider(
-                    _authHttpClient,
-                    clientId!,
-                    clientSecret!,
-                    host!,
-                    scope: scope ?? "sql",
-                    timeoutMinutes: 1
-                );
-
-                baseHandler = new OAuthDelegatingHandler(baseHandler, tokenProvider);
-            }
-            // Add token exchange handler if token renewal is enabled and the auth type is OAuth access token
-            else if (Properties.TryGetValue(DatabricksParameters.TokenRenewLimit, out string? tokenRenewLimitStr) &&
-                int.TryParse(tokenRenewLimitStr, out int tokenRenewLimit) &&
-                tokenRenewLimit > 0 &&
-                Properties.TryGetValue(SparkParameters.AuthType, out string? authTypeForToken) &&
-                SparkAuthTypeParser.TryParse(authTypeForToken, out SparkAuthType authTypeValueForToken) &&
-                authTypeValueForToken == SparkAuthType.OAuth &&
-                Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
-            {
-                if (string.IsNullOrEmpty(accessToken))
+                // Add OAuth client credentials handler if OAuth M2M authentication is being used
+                if (Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr) &&
+                    DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
+                    grantType == DatabricksOAuthGrantType.ClientCredentials)
                 {
-                    throw new ArgumentException("Access token is required for OAuth authentication with token renewal.");
+                    Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
+                    Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
+                    Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
+
+                    var tokenProvider = new OAuthClientCredentialsProvider(
+                        _authHttpClient,
+                        clientId!,
+                        clientSecret!,
+                        host!,
+                        scope: scope ?? "sql",
+                        timeoutMinutes: 1
+                    );
+
+                    baseHandler = new OAuthDelegatingHandler(baseHandler, tokenProvider);
                 }
-
-                // Check if token is a JWT token by trying to decode it
-                if (JwtTokenDecoder.TryGetExpirationTime(accessToken, out DateTime expiryTime))
+                // Add token renewal handler for OAuth access token
+                else if (Properties.TryGetValue(DatabricksParameters.TokenRenewLimit, out string? tokenRenewLimitStr) &&
+                    int.TryParse(tokenRenewLimitStr, out int tokenRenewLimit) &&
+                    tokenRenewLimit > 0 &&
+                    Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
                 {
-                    string host = GetHost();
+                    if (string.IsNullOrEmpty(accessToken))
+                    {
+                        throw new ArgumentException("Access token is required for OAuth authentication with token renewal.");
+                    }
 
-                    var tokenExchangeClient = new TokenExchangeClient(_authHttpClient, host);
-
-                    baseHandler = new TokenExchangeDelegatingHandler(
-                        baseHandler,
-                        tokenExchangeClient,
-                        accessToken,
-                        expiryTime,
-                        tokenRenewLimit);
+                    // Check if token is a JWT token by trying to decode it
+                    if (JwtTokenDecoder.TryGetExpirationTime(accessToken, out DateTime expiryTime))
+                    {
+                        baseHandler = new TokenRefreshDelegatingHandler(
+                            baseHandler,
+                            tokenExchangeClient,
+                            accessToken,
+                            expiryTime,
+                            tokenRenewLimit);
+                    }
                 }
             }
 
             return baseHandler;
         }
 
-        protected internal override bool AreResultsAvailableDirectly => _enableDirectResults;
-
         protected override bool GetObjectsPatternsRequireLowerCase => true;
 
-        protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetCatalogsReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetSchemasReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null)
         {
             bool isLz4Compressed = false;
 
@@ -440,7 +445,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 isLz4Compressed = metadataResp.Lz4Compressed;
             }
 
-            return new DatabricksCompositeReader(databricksStatement, schema, isLz4Compressed, TlsOptions, _proxyConfigurator);
+            return new DatabricksCompositeReader(databricksStatement, schema, response, isLz4Compressed, TlsOptions, _proxyConfigurator);
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
@@ -485,7 +490,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (session != null)
             {
                 var version = session.ServerProtocolVersion;
-                if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version)) {
+                if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version))
+                {
                     throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
                 }
                 _enablePKFK = _enablePKFK && FeatureVersionNegotiator.SupportsPKFK(version);
@@ -617,29 +623,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults!.ResultSetMetadata);
 
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults!.ResultSet.Results);
 
         protected override AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
         {

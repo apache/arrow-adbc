@@ -18,27 +18,36 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
     /// <summary>
     /// Service that periodically polls the operation status of a Databricks warehouse query to keep it alive.
     /// This is used to maintain the command results and session when reading results takes a long time.
     /// </summary>
-    internal class DatabricksOperationStatusPoller : IDisposable
+    internal class DatabricksOperationStatusPoller : IOperationStatusPoller
     {
         private readonly IHiveServer2Statement _statement;
         private readonly int _heartbeatIntervalSeconds;
+        private readonly int _requestTimeoutSeconds;
+        private readonly IResponse _response;
         // internal cancellation token source - won't affect the external token
         private CancellationTokenSource? _internalCts;
         private Task? _operationStatusPollingTask;
 
-        public DatabricksOperationStatusPoller(IHiveServer2Statement statement, int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds)
+        public DatabricksOperationStatusPoller(
+            IHiveServer2Statement statement,
+            IResponse response,
+            int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds,
+            int requestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
+            _response = response;
             _heartbeatIntervalSeconds = heartbeatIntervalSeconds;
+            _requestTimeoutSeconds = requestTimeoutSeconds;
         }
 
         public bool IsStarted => _operationStatusPollingTask != null;
@@ -62,28 +71,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private async Task PollOperationStatus(CancellationToken cancellationToken)
         {
-            try
+            while (!cancellationToken.IsCancellationRequested)
             {
-                while (!cancellationToken.IsCancellationRequested)
+                TOperationHandle? operationHandle = _response.OperationHandle;
+                if (operationHandle == null) break;
+
+                CancellationToken GetOperationStatusTimeoutToken = ApacheUtility.GetCancellationToken(_requestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+
+                var request = new TGetOperationStatusReq(operationHandle);
+                var response = await _statement.Client.GetOperationStatus(request, GetOperationStatusTimeoutToken);
+                await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), cancellationToken);
+
+                // end the heartbeat if the command has terminated
+                if (response.OperationState == TOperationState.CANCELED_STATE ||
+                    response.OperationState == TOperationState.ERROR_STATE ||
+                    response.OperationState == TOperationState.CLOSED_STATE ||
+                    response.OperationState == TOperationState.TIMEDOUT_STATE ||
+                    response.OperationState == TOperationState.UKNOWN_STATE)
                 {
-                    var operationHandle = _statement.OperationHandle;
-                    if (operationHandle == null) break;
-
-                    var request = new TGetOperationStatusReq(operationHandle);
-                    var response = await _statement.Client.GetOperationStatus(request, cancellationToken);
-                    await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds), cancellationToken);
-
-                    // end the heartbeat if the command has terminated
-                    if (response.OperationState == TOperationState.CANCELED_STATE ||
-                        response.OperationState == TOperationState.ERROR_STATE)
-                    {
-                        break;
-                    }
+                    break;
                 }
-            }
-            catch (TaskCanceledException)
-            {
-                // ignore
             }
         }
 
@@ -94,12 +101,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public void Dispose()
         {
-            if (_internalCts != null)
+            _internalCts?.Cancel();
+            try
             {
-                _internalCts.Cancel();
-                _operationStatusPollingTask?.Wait();
-                _internalCts.Dispose();
+                _operationStatusPollingTask?.GetAwaiter().GetResult();
             }
+            catch (OperationCanceledException)
+            {
+                // Expected, no-op
+            }
+
+            _internalCts?.Dispose();
+            _internalCts = null;
+            _operationStatusPollingTask = null;
         }
     }
 }

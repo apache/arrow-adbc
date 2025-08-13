@@ -19,7 +19,7 @@ using System;
 
 namespace Apache.Arrow.Adbc.Tracing
 {
-    public abstract class TracingStatement : AdbcStatement, IActivityTracer
+    public abstract class TracingStatement : AdbcStatement, ITracingStatement
     {
         private readonly ActivityTrace _trace;
 

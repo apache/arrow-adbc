@@ -15,34 +15,30 @@
  * limitations under the License.
  */
 
-using Apache.Hive.Service.Rpc.Thrift;
+using System;
+using System.Threading;
 
-namespace Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
     /// <summary>
-    /// Interface for accessing HiveServer2Statement properties needed by CloudFetchResultFetcher.
+    /// Interface for operation status polling functionality.
     /// </summary>
-    internal interface IHiveServer2Statement
+    internal interface IOperationStatusPoller : IDisposable
     {
         /// <summary>
-        /// Gets the operation handle.
+        /// Gets a value indicating whether the poller has been started.
         /// </summary>
-        TOperationHandle? OperationHandle { get; }
+        bool IsStarted { get; }
 
         /// <summary>
-        /// Gets the client.
+        /// Starts the operation status poller.
         /// </summary>
-        TCLIService.IAsync Client { get; }
+        /// <param name="externalToken">The external cancellation token.</param>
+        void Start(CancellationToken externalToken = default);
 
         /// <summary>
-        /// Gets the direct results.
+        /// Stops the operation status poller.
         /// </summary>
-        TSparkDirectResults? DirectResults { get; }
-
-        /// <summary>
-        /// Checks if direct results are available.
-        /// </summary>
-        /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        bool HasDirectResults { get; }
+        void Stop();
     }
 }
