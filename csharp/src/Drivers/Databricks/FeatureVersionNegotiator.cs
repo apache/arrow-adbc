@@ -81,9 +81,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /**
         * V5 introduced the following features:
         * - ArrowNativeTypes (used to prompt server to send arrow-native types)
-        * - ArrowMetadata (field is not used)
+        * - ArrowMetadata (used to determine advanced arrow types in metadata response schema)
         */
-
 
         #endregion
 
@@ -97,8 +96,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         * V7 introduced the following features:
         * - isStagingOperation
         * - resultPersistenceMode: server will determine if this can be enabled
+        * - DESC TABLE EXTENDED support
 
         */
+
+        /// <summary>
+        /// Gets whether DESC TABLE EXTENDED queries are supported.
+        /// </summary>
+        /// <param name="protocolVersion">The current protocol version.</param>
+        /// <returns>True if DESC TABLE EXTENDED is supported; otherwise, false.</returns>
+        public static bool SupportsDESCTableExtended(TProtocolVersion protocolVersion) =>
+            SupportsProtocolVersion(protocolVersion, TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7);
 
         #endregion
 

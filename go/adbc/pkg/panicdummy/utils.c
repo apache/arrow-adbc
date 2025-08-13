@@ -85,6 +85,7 @@ struct AdbcErrorDetail PanicDummyErrorGetDetail(const struct AdbcError* error,
   };
 }
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return PanicDummyErrorGetDetailCount(error);
 }
@@ -430,8 +431,9 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
-  return PanicDummyDriverInit(version, driver, error);
+  return AdbcDriverPanicDummyInit(version, driver, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 int PanicDummyArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
 int PanicDummyArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);

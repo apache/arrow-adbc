@@ -61,8 +61,6 @@
 mod driver_exporter;
 #[doc(hidden)]
 pub use driver_exporter::FFIDriver;
-#[cfg(feature = "driver_manager")]
-pub mod driver_manager;
 pub mod error;
 pub mod ffi;
 pub mod options;
@@ -75,6 +73,17 @@ use arrow_schema::Schema;
 
 use error::Result;
 use options::{OptionConnection, OptionDatabase, OptionStatement, OptionValue};
+
+pub type LoadFlags = u32;
+
+pub const LOAD_FLAG_SEARCH_ENV: LoadFlags = 1 << 1;
+pub const LOAD_FLAG_SEARCH_USER: LoadFlags = 1 << 2;
+pub const LOAD_FLAG_SEARCH_SYSTEM: LoadFlags = 1 << 3;
+pub const LOAD_FLAG_ALLOW_RELATIVE_PATHS: LoadFlags = 1 << 4;
+pub const LOAD_FLAG_DEFAULT: LoadFlags = LOAD_FLAG_SEARCH_ENV
+    | LOAD_FLAG_SEARCH_USER
+    | LOAD_FLAG_SEARCH_SYSTEM
+    | LOAD_FLAG_ALLOW_RELATIVE_PATHS;
 
 /// Ability to configure an object by setting/getting options.
 pub trait Optionable {

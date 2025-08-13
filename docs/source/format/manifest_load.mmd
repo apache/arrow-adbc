@@ -1,0 +1,43 @@
+%% Licensed to the Apache Software Foundation (ASF) under one
+%% or more contributor license agreements.  See the NOTICE file
+%% distributed with this work for additional information
+%% regarding copyright ownership.  The ASF licenses this file
+%% to you under the Apache License, Version 2.0 (the
+%% "License"); you may not use this file except in compliance
+%% with the License.  You may obtain a copy of the License at
+%%
+%%   http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing,
+%% software distributed under the License is distributed on an
+%% "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+%% KIND, either express or implied.  See the License for the
+%% specific language governing permissions and limitations
+%% under the License.
+
+---
+// [MermaidChart: 9800b551-3a02-4ce5-af92-c6d25d464d2b]
+config:
+  theme: neo-dark
+  layout: dagre
+---
+flowchart TD
+    Start["Driver name"] -- Has Extension --> R{"Is Relative Path?"}
+    Start -- No Extension --> Abs{{"Is Absolute Path?"}}
+    R -- Yes --> DR{{"Disallow Relative Path?"}}
+    DR -- Yes --> Err("fa:fa-exclamation-triangle Error")
+    DR -- No --> Ext{"Extension"}
+    R -- No --> Ext
+    Ext -- ".toml" --> LM[["fa:fa-file-text Load Manifest"]]
+    Ext -- Other --> LD("fa:fa-file Attempt to Load Driver")
+    LM -- "Driver.shared" --> LD
+    Abs -- No --> S[["Search for Manifest"]]
+    Abs -- Yes --> L{{"Check for {name}.toml"}}
+    S -- Found --> LM
+    L -- exists --> LM
+    L -- does not exist --> LD
+    Start@{ shape: manual-input}
+    style Start color:#FFFFFF, fill:#AA00FF, stroke:#AA00FF
+    style Err fill:#FFCDD2, stroke:#B71C1C, color:#B71C1C
+    style LD color:#FFFFFF, stroke:#00C853, fill:#00C853
+    style S color:#FFFFFF, stroke:#FFFFFF, fill:#2962FF

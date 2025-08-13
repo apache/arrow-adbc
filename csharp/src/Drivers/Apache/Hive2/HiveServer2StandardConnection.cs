@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,9 +31,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
     internal class HiveServer2StandardConnection : HiveServer2ExtendedConnection
     {
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2StandardConnection));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2StandardConnection));
-
         public HiveServer2StandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }
@@ -118,7 +116,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     ? new X509Certificate2(TlsOptions.TrustedCertificatePath!)
                     : null;
 
-                var certValidator = HiveServer2TlsImpl.GetCertificateValidator(TlsOptions);
+                RemoteCertificateValidationCallback certValidator = (sender, cert, chain, errors) => HiveServer2TlsImpl.ValidateCertificate(cert, errors, TlsOptions);
 
                 if (IPAddress.TryParse(hostName!, out var ipAddress))
                 {

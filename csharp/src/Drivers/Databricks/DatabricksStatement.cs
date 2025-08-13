@@ -21,9 +21,9 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Drivers.Databricks.Result;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -41,6 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long maxBytesPerFile;
         private bool enableMultipleCatalogSupport;
         private bool enablePKFK;
+        private bool runAsyncInThrift;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -62,36 +63,77 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             maxBytesPerFile = connection.MaxBytesPerFile;
             enableMultipleCatalogSupport = connection.EnableMultipleCatalogSupport;
             enablePKFK = connection.EnablePKFK;
+
+            runAsyncInThrift = connection.RunAsyncInThrift;
+        }
+
+        /// <summary>
+        /// Gets the schema from metadata response. Handles both Arrow schema (Protocol V5+) and traditional Thrift schema.
+        /// </summary>
+        /// <param name="metadata">The metadata response containing schema information</param>
+        /// <returns>The Arrow schema</returns>
+        protected override Schema GetSchemaFromMetadata(TGetResultSetMetadataResp metadata)
+        {
+            // For Protocol V5+, prefer Arrow schema if available
+            if (metadata.__isset.arrowSchema)
+            {
+                Schema? arrowSchema = ((DatabricksSchemaParser)Connection.SchemaParser).ParseArrowSchema(metadata.ArrowSchema);
+                if (arrowSchema != null)
+                {
+                    return arrowSchema;
+                }
+            }
+
+            // Fallback to traditional Thrift schema
+            return Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
         }
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
             base.SetStatementProperties(statement);
 
+            // Set Databricks-specific statement properties
+            // TODO: Ensure this is set dynamically depending on server capabilities.
+            statement.EnforceResultPersistenceMode = false;
+            statement.ResultPersistenceMode = TResultPersistenceMode.ALL_RESULTS;
+            statement.CanReadArrowResult = true;
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            statement.ConfOverlay = SparkConnection.timestampConfig;
+#pragma warning restore CS0618 // Type or member is obsolete
+
+            statement.UseArrowNativeTypes = new TSparkArrowTypes
+            {
+                TimestampAsArrow = true,
+                DecimalAsArrow = true,
+
+                // set to false so they return as string
+                // otherwise, they return as ARRAY_TYPE but you can't determine
+                // the object type of the items in the array
+                ComplexTypesAsArrow = false,
+                IntervalTypesAsArrow = false,
+            };
+
             // Set CloudFetch capabilities
             statement.CanDownloadResult = useCloudFetch;
             statement.CanDecompressLZ4Result = canDecompressLz4;
             statement.MaxBytesPerFile = maxBytesPerFile;
+            statement.RunAsync = runAsyncInThrift;
 
-            if (Connection.AreResultsAvailableDirectly)
-            {
-                statement.GetDirectResults = DatabricksConnection.defaultGetDirectResults;
-            }
-        }
-
-        /// <summary>
-        /// Checks if direct results are available.
-        /// </summary>
-        /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        public bool HasDirectResults => DirectResults?.ResultSet != null && DirectResults?.ResultSetMetadata != null;
-
-        public TSparkDirectResults? DirectResults
-        {
-            get { return _directResults; }
+            Connection.TrySetGetDirectResults(statement);
         }
 
         // Cast the Client to IAsync for CloudFetch compatibility
         TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
+
+        // Expose QueryTimeoutSeconds for IHiveServer2Statement
+        int IHiveServer2Statement.QueryTimeoutSeconds => base.QueryTimeoutSeconds;
+
+        // Expose BatchSize through the interface
+        long IHiveServer2Statement.BatchSize => BatchSize;
+
+        // Expose Connection through the interface
+        HiveServer2Connection IHiveServer2Statement.Connection => Connection;
 
         public override void SetOption(string key, string value)
         {
@@ -530,9 +572,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 descResult = await descStmt.ExecuteQueryAsync();
             }
-            catch (HiveServer2Exception ex) when (ex.SqlState == "42601")
+            catch (HiveServer2Exception ex) when (ex.SqlState == "42601" || ex.SqlState == "20000")
             {
                 // 42601 is error code of syntax error, which this command (DESC TABLE EXTENDED ... AS JSON) is not supported by current DBR
+                // Sometimes server may also return 20000 (internal error) if it fails to convert some data types of the table columns
                 // So we should fallback to base implementation
                 Debug.WriteLine($"[WARN] Failed to run {query} (reason={ex.Message}). Fallback to base::GetColumnsExtendedAsync.");
                 return await base.GetColumnsExtendedAsync(cancellationToken);
@@ -566,6 +609,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
             return CreateExtendedColumnsResult(columnMetadataSchema,result);
         }
+
+        public override string AssemblyName => DatabricksConnection.s_assemblyName;
+
+        public override string AssemblyVersion => DatabricksConnection.s_assemblyVersion;
 
         /// <summary>
         /// Creates the schema for the column metadata result set.

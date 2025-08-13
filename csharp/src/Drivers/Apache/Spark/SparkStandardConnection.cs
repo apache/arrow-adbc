@@ -29,9 +29,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
     internal class SparkStandardConnection : SparkHttpConnection
     {
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(SparkStandardConnection));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(SparkStandardConnection));
-
         public SparkStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
         }

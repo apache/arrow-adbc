@@ -16,8 +16,8 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -35,8 +35,11 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Constructs a new <see cref="ActivityTrace"/> object. If <paramref name="activitySourceName"/> is set, it provides the
         /// activity source name, otherwise the current assembly name is used as the activity source name.
         /// </summary>
-        /// <param name="activitySourceName"></param>
-        public ActivityTrace(string? activitySourceName = default, string? activitySourceVersion = default, string? traceParent = default)
+        /// <param name="activitySourceName">The name of the ActivitySource object</param>
+        /// <param name="activitySourceVersion">The version of the component publishing the tracing info.</param>
+        /// <param name="traceParent">The trace parent context, which is used to link the activity to a distributed trace.</param>
+        /// <param name="tags">The tags associated with the activity.</param>
+        public ActivityTrace(string? activitySourceName = default, string? activitySourceVersion = default, string? traceParent = default, IEnumerable<KeyValuePair<string, object?>>? tags = default)
         {
             activitySourceName ??= GetType().Assembly.GetName().Name!;
             // It's okay to have a null version.
@@ -48,7 +51,7 @@ namespace Apache.Arrow.Adbc.Tracing
 
             TraceParent = traceParent;
             // This is required to be disposed
-            ActivitySource = new(activitySourceName, activitySourceVersion);
+            ActivitySource = new(activitySourceName, activitySourceVersion, tags);
         }
 
         /// <summary>

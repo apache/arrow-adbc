@@ -29,6 +29,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -37,6 +38,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"golang.org/x/oauth2"
+	"google.golang.org/api/impersonate"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -49,6 +51,11 @@ type connectionImpl struct {
 	clientID     string
 	clientSecret string
 	refreshToken string
+
+	impersonateTargetPrincipal string
+	impersonateDelegates       []string
+	impersonateScopes          []string
+	impersonateLifetime        time.Duration
 
 	// catalog is the same as the project id in BigQuery
 	catalog string
@@ -465,9 +472,51 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.dbSchema, nil
 	case OptionStringTableID:
 		return c.tableID, nil
+	case OptionStringImpersonateLifetime:
+		if c.impersonateLifetime == 0 {
+			// If no lifetime is set but impersonation is enabled, return the default
+			if c.hasImpersonationOptions() {
+				return (3600 * time.Second).String(), nil
+			}
+			return "", nil
+		}
+		return c.impersonateLifetime.String(), nil
 	default:
 		return c.ConnectionImplBase.GetOption(key)
 	}
+}
+
+func (c *connectionImpl) SetOption(key string, value string) error {
+	switch key {
+	case OptionStringAuthType:
+		c.authType = value
+	case OptionStringAuthCredentials:
+		c.credentials = value
+	case OptionStringAuthClientID:
+		c.clientID = value
+	case OptionStringAuthClientSecret:
+		c.clientSecret = value
+	case OptionStringAuthRefreshToken:
+		c.refreshToken = value
+	case OptionStringImpersonateTargetPrincipal:
+		c.impersonateTargetPrincipal = value
+	case OptionStringImpersonateDelegates:
+		c.impersonateDelegates = strings.Split(value, ",")
+	case OptionStringImpersonateScopes:
+		c.impersonateScopes = strings.Split(value, ",")
+	case OptionStringImpersonateLifetime:
+		dur, err := time.ParseDuration(value)
+		if err != nil {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("Invalid duration string for %s: %s", OptionStringImpersonateLifetime, err.Error()),
+			}
+		}
+		c.impersonateLifetime = dur
+	default:
+		return c.ConnectionImplBase.SetOption(key, value)
+	}
+	return nil
 }
 
 func (c *connectionImpl) GetOptionInt(key string) (int64, error) {
@@ -501,61 +550,97 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			Msg:  "ProjectID is empty",
 		}
 	}
+
+	authOptions := []option.ClientOption{}
+
+	// First, establish base authentication
 	switch c.authType {
-	case OptionValueAuthTypeJSONCredentialFile, OptionValueAuthTypeJSONCredentialString, OptionValueAuthTypeUserAuthentication:
-		var credentials option.ClientOption
-		switch c.authType {
-		case OptionValueAuthTypeJSONCredentialFile:
-			credentials = option.WithCredentialsFile(c.credentials)
-		case OptionValueAuthTypeJSONCredentialString:
-			credentials = option.WithCredentialsJSON([]byte(c.credentials))
-		default:
-			if c.clientID == "" {
-				return adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientID),
-				}
+	case OptionValueAuthTypeJSONCredentialFile:
+		authOptions = append(authOptions, option.WithCredentialsFile(c.credentials))
+	case OptionValueAuthTypeJSONCredentialString:
+		authOptions = append(authOptions, option.WithCredentialsJSON([]byte(c.credentials)))
+	case OptionValueAuthTypeUserAuthentication:
+		if c.clientID == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientID),
 			}
-			if c.clientSecret == "" {
-				return adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientSecret),
-				}
+		}
+		if c.clientSecret == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientSecret),
 			}
-			if c.refreshToken == "" {
-				return adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthRefreshToken),
-				}
+		}
+		if c.refreshToken == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthRefreshToken),
 			}
-			credentials = option.WithTokenSource(c)
 		}
-
-		client, err := bigquery.NewClient(ctx, c.catalog, credentials)
-		if err != nil {
-			return err
-		}
-
-		err = client.EnableStorageReadClient(ctx, credentials)
-		if err != nil {
-			return err
-		}
-
-		c.client = client
+		authOptions = append(authOptions, option.WithTokenSource(c))
+	case OptionValueAuthTypeAppDefaultCredentials, "":
+		// Use Application Default Credentials (default behavior)
+		// No additional options needed - ADC is used by default
 	default:
-		client, err := bigquery.NewClient(ctx, c.catalog)
-		if err != nil {
-			return err
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("Unknown auth type: %s", c.authType),
 		}
-
-		err = client.EnableStorageReadClient(ctx)
-		if err != nil {
-			return err
-		}
-
-		c.client = client
 	}
+
+	// Then, apply impersonation if configured (as a credential transformation layer)
+	if c.hasImpersonationOptions() {
+		if c.impersonateTargetPrincipal == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("The `%s` parameter is empty for impersonation", OptionStringImpersonateTargetPrincipal),
+			}
+		}
+
+		var lifetime time.Duration
+		if c.impersonateLifetime != 0 {
+			lifetime = c.impersonateLifetime
+		} else {
+			// Use default lifetime of 1 hour when impersonation is enabled but no lifetime is specified
+			lifetime = 3600 * time.Second
+		}
+
+		impCfg := impersonate.CredentialsConfig{
+			TargetPrincipal: c.impersonateTargetPrincipal,
+			Delegates:       c.impersonateDelegates,
+			Scopes:          c.impersonateScopes,
+			Lifetime:        lifetime,
+		}
+		tokenSource, err := impersonate.CredentialsTokenSource(ctx, impCfg)
+		if err != nil {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("failed to create impersonated token source: %s", err.Error()),
+			}
+		}
+		// Replace any existing token source with the impersonated one
+		authOptions = []option.ClientOption{option.WithTokenSource(tokenSource)}
+	}
+
+	client, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
+	if err != nil {
+		return err
+	}
+
+	err = client.EnableStorageReadClient(ctx, authOptions...)
+	if err != nil {
+		return err
+	}
+
+	c.client = client
 	return nil
+}
+
+func (c *connectionImpl) hasImpersonationOptions() bool {
+	return c.impersonateTargetPrincipal != "" ||
+		len(c.impersonateDelegates) > 0 ||
+		len(c.impersonateScopes) > 0
 }
 
 var (
@@ -720,40 +805,23 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	case bigquery.TimestampFieldType:
 		field.Type = arrow.FixedWidthTypes.Timestamp_ms
 	case bigquery.RecordFieldType:
-		if schema.Repeated {
-			if len(schema.Schema) == 1 {
-				arrayField, err := buildField(schema.Schema[0], level+1)
-				if err != nil {
-					return arrow.Field{}, err
-				}
-				field.Type = arrow.ListOf(arrayField.Type)
-				field.Metadata = arrayField.Metadata
-				field.Nullable = arrayField.Nullable
-			} else {
-				return arrow.Field{}, adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("Cannot create array schema for filed `%s`: len(schema.Schema) != 1", schema.Name),
-				}
+		// create an Arrow struct for BigQuery Record fields
+		nestedFields := make([]arrow.Field, len(schema.Schema))
+		for i, nestedFieldSchema := range schema.Schema {
+			f, err := buildField(nestedFieldSchema, level+1)
+			if err != nil {
+				return arrow.Field{}, err
 			}
-		} else {
-			nestedFields := make([]arrow.Field, len(schema.Schema))
-			for i, nestedSchema := range schema.Schema {
-				f, err := buildField(nestedSchema, level+1)
-				if err != nil {
-					return arrow.Field{}, err
-				}
-				nestedFields[i] = f
-			}
-			structType := arrow.StructOf(nestedFields...)
-			if structType == nil {
-				return arrow.Field{}, adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", schema.Name),
-				}
-			}
-			field.Type = structType
+			nestedFields[i] = f
 		}
-
+		structType := arrow.StructOf(nestedFields...)
+		if structType == nil {
+			return arrow.Field{}, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", schema.Name),
+			}
+		}
+		field.Type = structType
 	case bigquery.DateFieldType:
 		field.Type = arrow.FixedWidthTypes.Date32
 	case bigquery.TimeFieldType:
@@ -783,6 +851,11 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 			Code: adbc.StatusInvalidArgument,
 			Msg:  fmt.Sprintf("Google SQL type `%s` is not supported yet", schema.Type),
 		}
+	}
+
+	// if the field is repeated, then it's a list of the type we just built
+	if schema.Repeated {
+		field.Type = arrow.ListOf(field.Type)
 	}
 
 	if level == 0 {

@@ -35,8 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     internal class HiveServer2HttpConnection : HiveServer2ExtendedConnection
     {
         private const string BasicAuthenticationScheme = "Basic";
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2HttpConnection));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2HttpConnection));
 
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
