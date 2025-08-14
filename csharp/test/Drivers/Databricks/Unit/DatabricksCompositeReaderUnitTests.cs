@@ -39,7 +39,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         public bool CloudFetchReaderCreated { get; private set; }
         public bool DatabricksReaderCreated { get; private set; }
         public BaseDatabricksReader? MockReader { get; set; }
-        public TFetchResultsResp? LastInitialResults { get; private set; }
 
         public TestableDatabricksCompositeReader(
             IHiveServer2Statement statement,
@@ -55,14 +54,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         protected override BaseDatabricksReader CreateCloudFetchReader(TFetchResultsResp initialResults)
         {
             CloudFetchReaderCreated = true;
-            LastInitialResults = initialResults;
             return MockReader!;
         }
 
         protected override BaseDatabricksReader CreateDatabricksReader(TFetchResultsResp initialResults)
         {
             DatabricksReaderCreated = true;
-            LastInitialResults = initialResults;
             return MockReader!;
         }
     }
@@ -292,6 +289,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             mockClient.Verify(c => c.FetchResults(
                 It.IsAny<TFetchResultsReq>(),
                 It.IsAny<CancellationToken>()), Times.Once);
+            // verify that the reader was created
+            Assert.True(reader.DatabricksReaderCreated);
         }
 
         [Fact]
