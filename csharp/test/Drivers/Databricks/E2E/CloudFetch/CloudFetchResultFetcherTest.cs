@@ -18,11 +18,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Databricks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
@@ -36,8 +34,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
     public class CloudFetchResultFetcherTest
     {
         private readonly Mock<IHiveServer2Statement> _mockStatement;
+        private readonly Mock<IResponse> _mockResponse;
         private readonly Mock<TCLIService.IAsync> _mockClient;
-        private readonly TOperationHandle _operationHandle;
         private readonly MockClock _mockClock;
         private readonly CloudFetchResultFetcherWithMockClock _resultFetcher;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
@@ -47,15 +45,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
         {
             _mockClient = new Mock<TCLIService.IAsync>();
             _mockStatement = new Mock<IHiveServer2Statement>();
-            _operationHandle = new TOperationHandle
-            {
-                OperationId = new THandleIdentifier { Guid = new byte[] { 1, 2, 3, 4 } },
-                OperationType = TOperationType.EXECUTE_STATEMENT,
-                HasResultSet = true
-            };
+            _mockResponse = CreateResponse();
 
             _mockStatement.Setup(s => s.Client).Returns(_mockClient.Object);
-            _mockStatement.Setup(s => s.OperationHandle).Returns(_operationHandle);
+
             // Set a mock querytimeout as 30s
             _mockStatement.Setup(s => s.QueryTimeoutSeconds).Returns(30); // 30 seconds
 
@@ -65,6 +58,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             _resultFetcher = new CloudFetchResultFetcherWithMockClock(
                 _mockStatement.Object,
+                _mockResponse.Object,
                 _mockMemoryManager.Object,
                 _downloadQueue,
                 100, // batchSize
@@ -599,6 +593,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
         {
             return new CloudFetchResultFetcherWithMockClock(
                 _mockStatement.Object,
+                _mockResponse.Object,
                 initialResults,
                 _mockMemoryManager.Object,
                 _downloadQueue,
@@ -657,6 +652,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             };
         }
 
+        private Mock<IResponse> CreateResponse()
+        {
+            var mockResponse = new Mock<IResponse>();
+            mockResponse.Setup(r => r.OperationHandle).Returns(new TOperationHandle
+            {
+                OperationId = new THandleIdentifier
+                {
+                    Guid = new byte[16],
+                    Secret = new byte[16]
+                },
+                OperationType = TOperationType.EXECUTE_STATEMENT,
+                HasResultSet = true
+            });
+            return mockResponse;
+        }
+
         #endregion
     }
 
@@ -692,24 +703,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
     {
         public CloudFetchResultFetcherWithMockClock(
             IHiveServer2Statement statement,
+            IResponse response,
             ICloudFetchMemoryBufferManager memoryManager,
             BlockingCollection<IDownloadResult> downloadQueue,
             long batchSize,
             IClock clock,
             int expirationBufferSeconds = 60)
-            : base(statement, null, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
+            : base(statement, response, null, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
         {
         }
 
         public CloudFetchResultFetcherWithMockClock(
             IHiveServer2Statement statement,
+            IResponse response,
             TFetchResultsResp? initialResults,
             ICloudFetchMemoryBufferManager memoryManager,
             BlockingCollection<IDownloadResult> downloadQueue,
             long batchSize,
             IClock clock,
             int expirationBufferSeconds = 60)
-            : base(statement, initialResults, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
+            : base(statement, response, initialResults, memoryManager, downloadQueue, batchSize, expirationBufferSeconds, clock)
         {
         }
     }

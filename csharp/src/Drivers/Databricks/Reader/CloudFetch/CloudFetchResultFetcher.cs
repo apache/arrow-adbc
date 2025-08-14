@@ -23,7 +23,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
-using Apache.Arrow.Adbc.Drivers.Databricks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
@@ -34,6 +34,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
     internal class CloudFetchResultFetcher : ICloudFetchResultFetcher
     {
         private readonly IHiveServer2Statement _statement;
+        private readonly IResponse _response;
         private readonly TFetchResultsResp? _initialResults;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
@@ -60,6 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="clock">Clock implementation for time operations. If null, uses system clock.</param>
         public CloudFetchResultFetcher(
             IHiveServer2Statement statement,
+            IResponse response,
             TFetchResultsResp? initialResults,
             ICloudFetchMemoryBufferManager memoryManager,
             BlockingCollection<IDownloadResult> downloadQueue,
@@ -68,6 +70,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             IClock? clock = null)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
+            _response = response;
             _initialResults = initialResults;
             _memoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
             _downloadQueue = downloadQueue ?? throw new ArgumentNullException(nameof(downloadQueue));
@@ -156,7 +159,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             {
                 // Create fetch request for the specific offset
                 TFetchResultsReq request = new TFetchResultsReq(
-                    _statement.OperationHandle!,
+                    _response.OperationHandle!,
                     TFetchOrientation.FETCH_NEXT,
                     1);
 
@@ -218,8 +221,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             try
             {
                 // Process direct results first, if available
-                if ((_statement.HasDirectResults && _statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0) ||
-                    _initialResults?.Results?.ResultLinks?.Count > 0)
+                if ((_statement.TryGetDirectResults(_response, out TSparkDirectResults? directResults)
+                    && directResults!.ResultSet?.Results?.ResultLinks?.Count > 0)
+                    || _initialResults?.Results?.ResultLinks?.Count > 0)
                 {
                     // Yield execution so the download queue doesn't get blocked before downloader is started
                     await Task.Yield();
@@ -274,7 +278,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private async Task FetchNextResultBatchAsync(long? offset, CancellationToken cancellationToken)
         {
             // Create fetch request
-            TFetchResultsReq request = new TFetchResultsReq(_statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
+            TFetchResultsReq request = new TFetchResultsReq(_response.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
 
             // Set the start row offset
             long startOffset = offset ?? _startOffset;
@@ -343,9 +347,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private void ProcessDirectResultsAsync(CancellationToken cancellationToken)
         {
             TFetchResultsResp fetchResults;
-            if (_statement.HasDirectResults && _statement.DirectResults?.ResultSet?.Results?.ResultLinks?.Count > 0)
+            if (_statement.TryGetDirectResults(_response, out TSparkDirectResults? directResults)
+                && directResults!.ResultSet?.Results?.ResultLinks?.Count > 0)
             {
-                fetchResults = _statement.DirectResults!.ResultSet;
+                fetchResults = directResults.ResultSet;
             }
             else
             {

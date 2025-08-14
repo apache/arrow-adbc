@@ -61,11 +61,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return new HiveServer2Statement(this);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(
-            statement,
-            schema,
-            dataTypeConversion: statement.Connection.DataTypeConversion,
-            enableBatchSizeStopCondition: false);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null) =>
+            new HiveServer2Reader(
+                statement,
+                schema,
+                response,
+                dataTypeConversion: statement.Connection.DataTypeConversion,
+                enableBatchSizeStopCondition: false);
 
         internal override void SetPrecisionScaleAndTypeName(
             short colType,
@@ -135,28 +137,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             };
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle!, Client, cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle!, cancellationToken: cancellationToken);
 
         protected internal override int PositionRequiredOffset => 0;
 

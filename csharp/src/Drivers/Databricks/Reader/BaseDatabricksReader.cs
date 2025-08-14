@@ -16,8 +16,10 @@
 */
 
 using System;
-using Apache.Arrow.Adbc.Drivers.Databricks;
+using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tracing;
+using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
@@ -28,14 +30,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
     {
         protected IHiveServer2Statement statement;
         protected readonly Schema schema;
+        protected readonly IResponse response;
         protected readonly bool isLz4Compressed;
         protected bool hasNoMoreRows = false;
         private bool isDisposed;
+        private bool isClosed;
 
-        protected BaseDatabricksReader(IHiveServer2Statement statement, Schema schema, bool isLz4Compressed)
+        protected BaseDatabricksReader(IHiveServer2Statement statement, Schema schema, IResponse response, bool isLz4Compressed)
             : base(statement)
         {
             this.schema = schema;
+            this.response = response;
             this.isLz4Compressed = isLz4Compressed;
             this.statement = statement;
         }
@@ -44,8 +49,43 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 
         protected override void Dispose(bool disposing)
         {
-            base.Dispose(disposing);
-            isDisposed = true;
+            try
+            {
+                if (!isDisposed)
+                {
+                    if (disposing)
+                    {
+                        _ = CloseOperationAsync().Result;
+                    }
+                }
+            }
+            finally
+            {
+                base.Dispose(disposing);
+                isDisposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Closes the current operation.
+        /// </summary>
+        /// <returns>Returns true if the close operation completes successfully, false otherwise.</returns>
+        /// <exception cref="HiveServer2Exception" />
+        public async Task<bool> CloseOperationAsync()
+        {
+            try
+            {
+                if (!isClosed)
+                {
+                    _ = await HiveServer2Reader.CloseOperationAsync(this.statement, this.response);
+                    return true;
+                }
+                return false;
+            }
+            finally
+            {
+                isClosed = true;
+            }
         }
 
         protected void ThrowIfDisposed()

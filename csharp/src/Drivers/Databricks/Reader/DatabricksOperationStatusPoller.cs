@@ -19,6 +19,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
@@ -32,16 +33,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         private readonly IHiveServer2Statement _statement;
         private readonly int _heartbeatIntervalSeconds;
         private readonly int _requestTimeoutSeconds;
+        private readonly IResponse _response;
         // internal cancellation token source - won't affect the external token
         private CancellationTokenSource? _internalCts;
         private Task? _operationStatusPollingTask;
 
         public DatabricksOperationStatusPoller(
             IHiveServer2Statement statement,
+            IResponse response,
             int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds,
             int requestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
+            _response = response;
             _heartbeatIntervalSeconds = heartbeatIntervalSeconds;
             _requestTimeoutSeconds = requestTimeoutSeconds;
         }
@@ -69,7 +73,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                var operationHandle = _statement.OperationHandle;
+                TOperationHandle? operationHandle = _response.OperationHandle;
                 if (operationHandle == null) break;
 
                 CancellationToken GetOperationStatusTimeoutToken = ApacheUtility.GetCancellationToken(_requestTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
