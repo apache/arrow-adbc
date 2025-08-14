@@ -28,7 +28,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 {
     /// <summary>
     /// A composite reader for Databricks that delegates to either CloudFetchReader or DatabricksReader
-    /// based on CloudFetch configuration and result set characteristics.
+    /// based on CloudFetch configuration and result set characteristics. This was introduced because some
+    /// older DBR do not accurately report the result set characteristics in the MetadataResponse
     /// </summary>
     internal class DatabricksCompositeReader : TracingReader
     {
@@ -60,7 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             Schema schema,
             IResponse response,
             bool isLz4Compressed,
-            HttpClient httpClient, 
+            HttpClient httpClient,
             IOperationStatusPoller? operationPoller = null)
             : base(statement)
         {
@@ -84,12 +85,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             }
         }
 
-        protected virtual BaseDatabricksReader DetermineReader(TFetchResultsResp initialResults)
+        /// <summary>
+        /// Determines whether CloudFetch should be used based on the fetch results.
+        /// </summary>
+        /// <param name="initialResults">The initial fetch results.</param>
+        /// <returns>True if CloudFetch should be used, false otherwise.</returns>
+        internal static bool ShouldUseCloudFetch(TFetchResultsResp initialResults)
         {
-            // if it has links, use cloud fetch
-            if (initialResults.__isset.results &&
-                initialResults.Results.__isset.resultLinks &&
-                initialResults.Results.ResultLinks?.Count > 0)
+            return initialResults.__isset.results &&
+                   initialResults.Results.__isset.resultLinks &&
+                   initialResults.Results.ResultLinks?.Count > 0;
+        }
+
+        private BaseDatabricksReader DetermineReader(TFetchResultsResp initialResults)
+        {
+            if (ShouldUseCloudFetch(initialResults))
             {
                 return CreateCloudFetchReader(initialResults);
             }

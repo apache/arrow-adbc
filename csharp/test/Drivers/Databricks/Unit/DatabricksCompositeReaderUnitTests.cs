@@ -65,11 +65,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             LastInitialResults = initialResults;
             return MockReader!;
         }
-
-        public new BaseDatabricksReader DetermineReader(TFetchResultsResp initialResults)
-        {
-            return base.DetermineReader(initialResults);
-        }
     }
 
     public class DatabricksCompositeReaderTests : IDisposable
@@ -91,12 +86,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         {
             var mockStatement = new Mock<IHiveServer2Statement>();
             mockStatement.Setup(s => s.QueryTimeoutSeconds).Returns(10);
-            
+
             if (mockClient != null)
             {
                 mockStatement.Setup(s => s.Client).Returns(mockClient.Object);
             }
-            
+
             if (directResults != null)
             {
                 mockStatement
@@ -113,7 +108,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 mockStatement.Setup(s => s.TryGetDirectResults(It.IsAny<IResponse>(), out nullDirectResults))
                     .Returns(false);
             }
-            
+
             return mockStatement;
         }
 
@@ -133,12 +128,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         {
             var mockResponse = new Mock<IResponse>();
             mockResponse.Setup(r => r.OperationHandle).Returns(operationHandle ?? new TOperationHandle());
-            
+
             if (directResults != null)
             {
                 mockResponse.Setup(r => r.DirectResults).Returns(directResults);
             }
-            
+
             return mockResponse;
         }
 
@@ -181,7 +176,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 {},
                 __isset = new TSparkDirectResults.Isset { resultSet = true }
             };
-            
+
             var mockClient = CreateMockClient();
             var mockStatement = CreateMockStatement(mockClient, directResults: directResults);
             var mockResponse = CreateMockResponse(directResults: directResults);
@@ -201,26 +196,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         }
 
         [Fact]
-        public void DetermineReader_WithResultLinks_CreatesCloudFetchReader()
+        public void ShouldUseCloudFetch_WithResultLinks_ReturnsTrue()
         {
             // Arrange
-            var mockClient = CreateMockClient();
-            var mockStatement = CreateMockStatement(mockClient);
-            var mockPoller = new Mock<IOperationStatusPoller>();
-            var mockResponse = CreateMockResponse();
-            var mockReader = new Mock<BaseDatabricksReader>(mockStatement.Object, _testSchema, mockResponse.Object, false);
-
-            using var reader = new TestableDatabricksCompositeReader(
-                mockStatement.Object,
-                _testSchema,
-                mockResponse.Object,
-                false,
-                _httpClient,
-                mockPoller.Object)
-            {
-                MockReader = mockReader.Object
-            };
-
             var fetchResults = new TFetchResultsResp
             {
                 Results = new TRowSet
@@ -233,72 +211,32 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             };
 
             // Act
-            var result = reader.DetermineReader(fetchResults);
+            var result = DatabricksCompositeReader.ShouldUseCloudFetch(fetchResults);
 
             // Assert
-            Assert.True(reader.CloudFetchReaderCreated);
-            Assert.False(reader.DatabricksReaderCreated);
-            Assert.Equal(fetchResults, reader.LastInitialResults);
-            Assert.Equal(mockReader.Object, result);
+            Assert.True(result);
         }
 
         [Fact]
-        public void DetermineReader_WithoutResultLinks_CreatesDatabricksReader()
+        public void ShouldUseCloudFetch_WithoutResultLinks_ReturnsFalse()
         {
             // Arrange
-            var mockClient = CreateMockClient();
-            var mockStatement = CreateMockStatement(mockClient);
-            var mockPoller = new Mock<IOperationStatusPoller>();
-            var mockResponse = CreateMockResponse();
-            var mockReader = new Mock<BaseDatabricksReader>(mockStatement.Object, _testSchema, mockResponse.Object, false);
-
-            using var reader = new TestableDatabricksCompositeReader(
-                mockStatement.Object,
-                _testSchema,
-                mockResponse.Object,
-                false,
-                _httpClient,
-                mockPoller.Object)
-            {
-                MockReader = mockReader.Object
-            };
-
             var fetchResults = new TFetchResultsResp
             {
                 Results = new TRowSet()
             };
 
             // Act
-            var result = reader.DetermineReader(fetchResults);
+            var result = DatabricksCompositeReader.ShouldUseCloudFetch(fetchResults);
 
             // Assert
-            Assert.False(reader.CloudFetchReaderCreated);
-            Assert.True(reader.DatabricksReaderCreated);
-            Assert.Equal(fetchResults, reader.LastInitialResults);
-            Assert.Equal(mockReader.Object, result);
+            Assert.False(result);
         }
 
         [Fact]
-        public void DetermineReader_WithEmptyResultLinks_CreatesDatabricksReader()
+        public void ShouldUseCloudFetch_WithEmptyResultLinks_ReturnsFalse()
         {
             // Arrange
-            var mockClient = CreateMockClient();
-            var mockStatement = CreateMockStatement(mockClient);
-            var mockPoller = new Mock<IOperationStatusPoller>();
-            var mockResponse = CreateMockResponse();
-            var mockReader = new Mock<BaseDatabricksReader>(mockStatement.Object, _testSchema, mockResponse.Object, false);
-
-            using var reader = new TestableDatabricksCompositeReader(
-                mockStatement.Object,
-                _testSchema,
-                mockResponse.Object,
-                false,
-                _httpClient,
-                mockPoller.Object)
-            {
-                MockReader = mockReader.Object
-            };
-
             var fetchResults = new TFetchResultsResp
             {
                 Results = new TRowSet
@@ -308,11 +246,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             };
 
             // Act
-            var result = reader.DetermineReader(fetchResults);
+            var result = DatabricksCompositeReader.ShouldUseCloudFetch(fetchResults);
 
             // Assert
-            Assert.False(reader.CloudFetchReaderCreated);
-            Assert.True(reader.DatabricksReaderCreated);
+            Assert.False(result);
         }
 
         [Fact]
@@ -328,7 +265,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(fetchResponse);
             var mockStatement = CreateMockStatement(mockClient);
-            
             var mockPoller = new Mock<IOperationStatusPoller>();
             var mockResponse = CreateMockResponse();
             var expectedBatch = new RecordBatch(_testSchema, new IArrowArray[] { }, 0);
@@ -371,10 +307,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             mockClient.Setup(c => c.FetchResults(It.IsAny<TFetchResultsReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(fetchResponse);
             var mockStatement = CreateMockStatement(mockClient);
-
             var mockPoller = new Mock<IOperationStatusPoller>();
             mockPoller.Setup(p => p.IsStarted).Returns(true);
-            
             var mockResponse = CreateMockResponse();
             var mockReader = new Mock<BaseDatabricksReader>(mockStatement.Object, _testSchema, mockResponse.Object, false);
             mockReader.Setup(r => r.ReadNextRecordBatchAsync(It.IsAny<CancellationToken>()))
@@ -412,7 +346,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 },
                 __isset = new TSparkDirectResults.Isset { resultSet = true }
             };
-            
+
             var mockClient = CreateMockClient();
             var mockStatement = CreateMockStatement(mockClient, directResults: directResults);
             var mockResponse = CreateMockResponse(directResults: directResults);
@@ -442,7 +376,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             // Arrange
             var mockClient = CreateMockClient();
             var mockStatement = CreateMockStatement(mockClient);
-            
+
             var mockPoller = new Mock<IOperationStatusPoller>();
             var operationHandle = new TOperationHandle();
             var mockResponse = CreateMockResponse(directResults: null, operationHandle: operationHandle);
