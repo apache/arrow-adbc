@@ -79,7 +79,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -160,7 +160,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -215,7 +215,7 @@ jobs:
       matrix:
         os: ["ubuntu-latest"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -278,7 +278,7 @@ jobs:
     name: "clang-tidy"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -324,7 +324,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -396,7 +396,7 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -458,7 +458,7 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -546,7 +546,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -659,7 +659,7 @@ jobs:
         os: ["ubuntu-latest"]
         python: ["3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
