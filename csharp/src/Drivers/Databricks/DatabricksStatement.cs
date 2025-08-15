@@ -128,6 +128,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Expose QueryTimeoutSeconds for IHiveServer2Statement
         int IHiveServer2Statement.QueryTimeoutSeconds => base.QueryTimeoutSeconds;
 
+        // Expose FetchResultsTimeoutSeconds for IHiveServer2Statement
+        int IHiveServer2Statement.FetchResultsTimeoutSeconds => base.FetchResultsTimeoutSeconds;
+
         // Expose BatchSize through the interface
         long IHiveServer2Statement.BatchSize => BatchSize;
 

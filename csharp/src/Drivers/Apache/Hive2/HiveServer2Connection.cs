@@ -41,6 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal const bool InfoVendorSql = true;
         internal const long BatchSizeDefault = 50000;
         internal const int PollTimeMillisecondsDefault = 500;
+        internal const int FetchResultsTimeoutSecondsDefault = 60;
         internal static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2Connection));
         internal static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2Connection));
         private const int ConnectTimeoutMillisecondsDefault = 30000;
@@ -292,6 +293,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     QueryTimeoutSeconds = queryTimeoutSeconds;
                 }
             }
+
+            if (properties.TryGetValue(HiveServer2Parameters.FetchResultsTimeoutSeconds, out string? fetchResultsTimeoutSecondsSettingValue))
+            {
+                if (ApacheUtility.QueryTimeoutIsValid(HiveServer2Parameters.FetchResultsTimeoutSeconds, fetchResultsTimeoutSecondsSettingValue, out int fetchResultsTimeoutSeconds))
+                {
+                    FetchResultsTimeoutSeconds = fetchResultsTimeoutSeconds;
+                }
+            }
         }
 
         internal TCLIService.IAsync Client
@@ -304,6 +313,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal string VendorName => _vendorName.Value;
 
         protected internal int QueryTimeoutSeconds { get; set; } = ApacheUtility.QueryTimeoutSecondsDefault;
+
+        protected internal int FetchResultsTimeoutSeconds { get; set; } = FetchResultsTimeoutSecondsDefault;
 
         internal IReadOnlyDictionary<string, string> Properties { get; }
 

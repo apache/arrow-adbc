@@ -56,6 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             : base(connection)
         {
             Connection = connection;
+            FetchResultsTimeoutSeconds = connection.FetchResultsTimeoutSeconds;
             ValidateOptions(connection.Properties);
         }
 
@@ -336,6 +337,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             get => Connection.QueryTimeoutSeconds;
             set => Connection.QueryTimeoutSeconds = value;
         }
+
+        public int FetchResultsTimeoutSeconds { get; set; }
 
         protected internal bool IsMetadataCommand { get; set; } = false;
         protected internal string? CatalogName { get; set; }

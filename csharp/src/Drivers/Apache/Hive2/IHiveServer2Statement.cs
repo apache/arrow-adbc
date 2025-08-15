@@ -50,6 +50,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         int QueryTimeoutSeconds { get; }
 
         /// <summary>
+        /// Gets the fetch results timeout in seconds.
+        /// </summary>
+        int FetchResultsTimeoutSeconds { get; }
+
+        /// <summary>
         /// Gets the batch size for fetching results.
         /// </summary>
         long BatchSize { get; }
