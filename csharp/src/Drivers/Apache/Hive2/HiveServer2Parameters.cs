@@ -26,7 +26,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string TransportType = "adbc.hive.transport_type";
         public const string DataTypeConv = "adbc.hive.data_type_conv";
         public const string ConnectTimeoutMilliseconds = "adbc.hive.connect_timeout_ms";
-        public const string FetchResultsTimeoutSeconds = "adbc.hive.fetch_results_timeout_s";
+        public const string FetchResultsTimeoutSeconds = "adbc.hive.fetch_results_timeout_s"; // TODO: we may want to make this a ThriftTimeout for all thrift requests
     }
 
     public static class HiveServer2AuthTypeConstants

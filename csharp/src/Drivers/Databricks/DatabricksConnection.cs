@@ -70,6 +70,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Identity federation client ID for token exchange
         private string? _identityFederationClientId;
 
+        // Operation status polling configuration
+        private int _operationStatusPollingIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
+        private int _operationStatusPollingTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
+
         // Default namespace
         private TNamespace? _defaultNamespace;
 
@@ -282,6 +286,31 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _identityFederationClientId = identityFederationClientId;
             }
+
+            // Parse operation status polling parameters
+            if (Properties.TryGetValue(DatabricksParameters.OperationStatusPollingIntervalSeconds, out string? pollingIntervalStr))
+            {
+                if (int.TryParse(pollingIntervalStr, out int pollingInterval) && pollingInterval > 0)
+                {
+                    _operationStatusPollingIntervalSeconds = pollingInterval;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.OperationStatusPollingIntervalSeconds}' value '{pollingIntervalStr}' could not be parsed. Must be a positive integer.");
+                }
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.OperationStatusPollingTimeoutSeconds, out string? pollingTimeoutStr))
+            {
+                if (int.TryParse(pollingTimeoutStr, out int pollingTimeout) && pollingTimeout > 0)
+                {
+                    _operationStatusPollingTimeoutSeconds = pollingTimeout;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.OperationStatusPollingTimeoutSeconds}' value '{pollingTimeoutStr}' could not be parsed. Must be a positive integer.");
+                }
+            }
         }
 
         /// <summary>
@@ -333,6 +362,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Enable RunAsync flag in Thrift Operation
         /// </summary>
         public bool RunAsyncInThrift => _runAsyncInThrift;
+
+        /// <summary>
+        /// Gets the interval in seconds between operation status polling requests.
+        /// </summary>
+        public int OperationStatusPollingIntervalSeconds => _operationStatusPollingIntervalSeconds;
+
+        /// <summary>
+        /// Gets the timeout in seconds for operation status polling requests.
+        /// </summary>
+        public int OperationStatusPollingTimeoutSeconds => _operationStatusPollingTimeoutSeconds;
 
         /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.

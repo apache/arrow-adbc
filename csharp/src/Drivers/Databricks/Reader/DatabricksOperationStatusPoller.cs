@@ -40,16 +40,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 
         public DatabricksOperationStatusPoller(
             IHiveServer2Statement statement,
-            IResponse response,
-            int? heartbeatIntervalSeconds = null,
-            int? requestTimeoutSeconds = null)
+            IResponse response)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _response = response;
             
             // Get heartbeat interval from connection properties or use default
-            _heartbeatIntervalSeconds = heartbeatIntervalSeconds ?? DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
-            if (_statement.Connection.Properties.TryGetValue(DatabricksParameters.OperationStatusPollingIntervalSeconds, out string? intervalStr))
+            _heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
+            if (_statement.Properties.TryGetValue(DatabricksParameters.OperationStatusPollingIntervalSeconds, out string? intervalStr))
             {
                 if (int.TryParse(intervalStr, out int parsedInterval) && parsedInterval > 0)
                 {
@@ -58,8 +56,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             }
             
             // Get request timeout from connection properties or use default
-            _requestTimeoutSeconds = requestTimeoutSeconds ?? DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
-            if (_statement.Connection.Properties.TryGetValue(DatabricksParameters.OperationStatusPollingTimeoutSeconds, out string? timeoutStr))
+            _requestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
+            if (_statement.Properties.TryGetValue(DatabricksParameters.OperationStatusPollingTimeoutSeconds, out string? timeoutStr))
             {
                 if (int.TryParse(timeoutStr, out int parsedTimeout) && parsedTimeout > 0)
                 {

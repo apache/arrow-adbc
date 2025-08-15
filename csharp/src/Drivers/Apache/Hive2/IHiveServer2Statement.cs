@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using System.Collections.Generic;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -63,5 +64,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// Gets the connection associated with this statement.
         /// </summary>
         HiveServer2Connection Connection { get; }
+
+        /// <summary>
+        /// Gets the connection properties.
+        /// </summary>
+        IReadOnlyDictionary<string, string> Properties { get; }
     }
 }

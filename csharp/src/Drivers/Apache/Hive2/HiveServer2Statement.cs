@@ -356,6 +356,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         // Keep the original Client property for internal use
         public TCLIService.IAsync Client => Connection.Client;
 
+        // Expose connection properties through the interface
+        IReadOnlyDictionary<string, string> IHiveServer2Statement.Properties => Connection.Properties;
+
         public override string AssemblyName => HiveServer2Connection.s_assemblyName;
 
         public override string AssemblyVersion => HiveServer2Connection.s_assemblyVersion;
