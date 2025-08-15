@@ -35,7 +35,6 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         internal const string ApacheArrowAdbcNamespace = "Apache.Arrow.Adbc";
         private const string TracesFolderName = "Traces";
 
-        private static readonly string s_tracingLocationDefault = TracingLocationDefault;
         private static readonly ConcurrentDictionary<string, Lazy<FileExporterInstance>> s_fileExporters = new();
         private static readonly byte[] s_newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
 
@@ -66,7 +65,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         {
             ValidateParameters(fileBaseName, traceLocation, maxTraceFileSizeKb, maxTraceFiles);
 
-            DirectoryInfo tracesDirectory = new(traceLocation ?? s_tracingLocationDefault);
+            DirectoryInfo tracesDirectory = new(traceLocation ?? TracingLocationDefault);
             string tracesDirectoryFullName = tracesDirectory.FullName;
 
             // In case we don't need to create this object, we'll lazy load the object only if added to the collection.
@@ -165,12 +164,15 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private static async IAsyncEnumerable<Stream> GetActivitiesAsync(ConcurrentQueue<Activity> activityQueue)
         {
-            MemoryStream stream = new MemoryStream();
+            using MemoryStream stream = new MemoryStream();
             while (activityQueue.TryDequeue(out Activity? activity))
             {
                 stream.SetLength(0);
                 SerializableActivity serializableActivity = new(activity);
-                await JsonSerializer.SerializeAsync(stream, serializableActivity);
+                await JsonSerializer.SerializeAsync(
+                    stream,
+                    serializableActivity,
+                    SerializableActivityJsonContext.Default.SerializableActivity);
                 stream.Write(s_newLine, 0, s_newLine.Length);
                 stream.Position = 0;
 
@@ -187,13 +189,12 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             _cancellationTokenSource = new CancellationTokenSource();
         }
 
-        internal static string TracingLocationDefault =>
+        internal static string TracingLocationDefault { get; } = 
             new DirectoryInfo(
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     ApacheArrowAdbcNamespace,
-                    TracesFolderName)
-                ).FullName;
+                    TracesFolderName)).FullName;
 
         private async Task FlushAsync(CancellationToken cancellationToken = default)
         {

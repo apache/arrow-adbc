@@ -19,14 +19,36 @@
 
 # Traces Exporters
 
-## File Exporter
+## FileExporter
 
 Provides an OpenTelemetry (OTel) exporter to write telemetry traces to
-rotating files in folder.
+rotating files in folder. File names are created with the following pattern:
+`<trace-source>-<YYYY-MM-DD-HH-mm-ss-fff>-<process-id>.log`.
+For example: `apache.arrow.adbc.drivers.databricks-2025-08-15-10-35-56-012345-99999.log`.
+The default folder used is:
+
+| Platform | Folder |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%/Apache.Arrow.Adbc/Traces` |
+| macOS   | `$HOME/Library/Application Support/Apache.Arrow.Adbc/Traces` |
+| Linux   | `$HOME/.local/share/Apache.Arrow.Adbc/Traces` |
 
 By default, up to 100 files of maximum size 1024 KB are written to
-%LOCALAPPDATA%/Apache.Arrow.Adbc/Traces folder.
+the trace folder.
 
 ## ExportersBuilder
 
 Helps activate one of a dictionary of supported exporters.
+
+The environment variable `OTEL_TRACES_EXPORTER` can be used to select one of the
+available exporters. Or the database parameter `adbc.traces.exporter` can be used,
+which has precedence over the environment variable.
+
+The following exporters are supported:
+
+| Exporter | Description |
+| --- | --- |
+| `otlp` | Exports traces to an OpenTelemetry Collector or directly to an Open Telemetry Line Protocol (OTLP) endpoint. |
+| `file` | Exports traces to rotating files in a folder. |
+| `console` | Exports traces to the console output. |
+| `none` | Disables trace exporting. |

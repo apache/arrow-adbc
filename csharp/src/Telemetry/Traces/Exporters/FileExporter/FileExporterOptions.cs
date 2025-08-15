@@ -18,7 +18,7 @@
 namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 {
     /// <summary>
-    /// The options an <see cref="FileExporter"/> uses to trace active to files.
+    /// The options a <see cref="FileExporter"/> uses to trace activity to files.
     /// </summary>
     public class FileExporterOptions
     {
@@ -30,7 +30,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         /// <summary>
         /// The full or partial path to a folder where the trace files will be written.
-        /// If the folder doesn not exist, it will be created.
+        /// If the folder does not exist, it will be created.
         /// </summary>
         public string? TraceLocation { get; set; } = FileExporter.TracingLocationDefault;
 

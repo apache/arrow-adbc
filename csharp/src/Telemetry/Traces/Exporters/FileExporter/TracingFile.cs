@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -31,12 +32,14 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
     internal class TracingFile
     {
         private static readonly string s_defaultTracePath = FileExporter.TracingLocationDefault;
-        private static readonly Random s_random = new Random();
+        private static readonly Random s_globalRandom = new();
+        private static readonly ThreadLocal<Random> s_threadLocalRandom = new(NewRandom);
+        private static readonly Lazy<string> s_processId = new(() => Process.GetCurrentProcess().Id.ToString(), isThreadSafe: true);
         private readonly string _fileBaseName;
         private readonly DirectoryInfo _tracingDirectory;
         private FileInfo? _currentTraceFileInfo;
-        private readonly long _maxFileSizeKb = FileExporter.MaxFileSizeKbDefault;
-        private readonly int _maxTraceFiles = FileExporter.MaxTraceFilesDefault;
+        private readonly long _maxFileSizeKb;
+        private readonly int _maxTraceFiles;
 
         internal TracingFile(string fileBaseName, string? traceDirectoryPath = default, long maxFileSizeKb = FileExporter.MaxFileSizeKbDefault, int maxTraceFiles = FileExporter.MaxTraceFilesDefault) :
             this(fileBaseName, ResolveTraceDirectory(traceDirectoryPath), maxFileSizeKb, maxTraceFiles)
@@ -62,10 +65,10 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         {
             if (cancellationToken.IsCancellationRequested) return;
 
-            string searchPattern = _fileBaseName + "-trace-*.log";
+            string findSearchPattern = _fileBaseName + $"-trace-*-{ProcessId}.log";
             if (_currentTraceFileInfo == null)
             {
-                IOrderedEnumerable<FileInfo>? traceFileInfos = await GetTracingFilesAsync(_tracingDirectory, searchPattern);
+                IOrderedEnumerable<FileInfo>? traceFileInfos = await GetTracingFilesAsync(_tracingDirectory, findSearchPattern);
                 FileInfo? mostRecentFile = traceFileInfos?.FirstOrDefault();
                 mostRecentFile?.Refresh();
 
@@ -81,7 +84,9 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             // Check if we need to remove old files
             if (_tracingDirectory.Exists)
             {
-                FileInfo[] tracingFiles = [.. await GetTracingFilesAsync(_tracingDirectory, searchPattern)];
+                // This will clean-up files for all processes in the same directory.
+                string deleteSearchPattern = _fileBaseName + $"-trace-*.log";
+                FileInfo[] tracingFiles = [.. await GetTracingFilesAsync(_tracingDirectory, deleteSearchPattern)];
                 if (tracingFiles != null && tracingFiles.Length > _maxTraceFiles)
                 {
                     for (int i = tracingFiles.Length - 1; i >= _maxTraceFiles; i--)
@@ -143,7 +148,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             CancellationToken cancellationToken = default) where T : Exception
         {
             int retryCount = 0;
-            int delayTime = s_random.Next(50, 500); // Introduce a small random delay to avoid contention.
+            int delayTime = ThreadLocalRandom.Next(50, 500); // Introduce a small random delay to avoid contention.
             TimeSpan pauseTime = TimeSpan.FromMilliseconds(delayTime);
             bool completed = false;
 
@@ -173,7 +178,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         private string NewFileName()
         {
             string dateTimeSortable = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd-HH-mm-ss-fff");
-            return Path.Combine(_tracingDirectory.FullName, $"{_fileBaseName}-trace-{dateTimeSortable}.log");
+            return Path.Combine(_tracingDirectory.FullName, $"{_fileBaseName}-trace-{dateTimeSortable}-{ProcessId}.log");
         }
 
         private void EnsureTraceDirectory()
@@ -186,5 +191,21 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private static DirectoryInfo ResolveTraceDirectory(string? traceDirectoryPath) =>
             traceDirectoryPath == null ? new DirectoryInfo(s_defaultTracePath) : new DirectoryInfo(traceDirectoryPath);
+
+        private static string ProcessId => s_processId.Value;
+
+        private static Random ThreadLocalRandom => s_threadLocalRandom.Value!;
+
+        private static Random NewRandom()
+        {
+            int seed;
+            lock (s_globalRandom)
+            {
+                seed = s_globalRandom.Next();
+            }
+            // Create a new random instance based on the global random seed.
+            // This ensures that each thread gets a different seed.
+            return new Random(seed);
+        }
     }
 }
