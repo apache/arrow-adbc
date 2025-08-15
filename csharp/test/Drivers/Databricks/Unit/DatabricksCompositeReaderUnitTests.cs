@@ -27,6 +27,7 @@ using Apache.Arrow.Adbc.Drivers.Databricks.Reader;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
+using Moq.Protected;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
@@ -400,7 +401,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         }
 
         [Fact]
-        public async Task Dispose_WithActiveReader_CallsReaderCloseOperation()
+        public async Task Dispose_WithActiveReader_CallsReaderDispose()
         {
             // Arrange
             var mockClient = CreateMockClient();
@@ -418,7 +419,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             var mockReader = new Mock<BaseDatabricksReader>(mockStatement.Object, _testSchema, mockResponse.Object, false);
             mockReader.Setup(r => r.ReadNextRecordBatchAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((RecordBatch?)null);
-            mockReader.Setup(r => r.Dispose());
+
+            mockReader.Protected()
+                .Setup("Dispose", ItExpr.IsAny<bool>())
+                .CallBase()
+                .Verifiable();
 
             var reader = new TestableDatabricksCompositeReader(
                 mockStatement.Object,
@@ -437,8 +442,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             // Act
             reader.Dispose();
 
-            // Assert
-            mockReader.Verify(r => r.Dispose(), Times.Once);
+            mockReader.Protected().Verify("Dispose", Times.Once(), ItExpr.IsAny<bool>());
             mockPoller.Verify(p => p.Stop(), Times.Once);
             mockPoller.Verify(p => p.Dispose(), Times.Once);
         }
