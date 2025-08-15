@@ -189,7 +189,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             _cancellationTokenSource = new CancellationTokenSource();
         }
 
-        internal static string TracingLocationDefault { get; } = 
+        internal static string TracingLocationDefault { get; } =
             new DirectoryInfo(
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
