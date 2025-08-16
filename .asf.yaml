@@ -21,6 +21,9 @@ github:
   collaborators:
     - krlmlr
     - nbenn
+    - alexguo-db
+    - jadewang-db
+    - eric-wang-1990
   enabled_merge_buttons:
     merge: false
     rebase: false
@@ -33,6 +36,15 @@ github:
     - database
   protected_branches:
     main: {}
+  environments:
+    databricks-e2e:
+      wait_timer: 0
+      required_reviewers:
+        - alexguo-db
+        - jadewang-db
+        - eric-wang-1990
+      deployment_branch_policy:
+        protected_branches: true
 
 notifications:
   commits:      commits@arrow.apache.org
