@@ -212,7 +212,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 finally
                 {
-                    activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1);
+                    activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1, isPii: false);
                 }
             });
         }
@@ -305,12 +305,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new InvalidOperationException("Invalid session");
                 }
 
-                activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
+                activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N", isPii: false);
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
                 SetStatementProperties(executeRequest);
                 IResponse response = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
                 HiveServer2Connection.HandleThriftResponse(response.Status!, activity);
-                activity?.AddTag(SemanticConventions.Db.Response.OperationId, response.OperationHandle!.OperationId.Guid, "N");
+                activity?.AddTag(SemanticConventions.Db.Response.OperationId, response.OperationHandle!.OperationId.Guid, "N", isPii: false);
 
                 // Capture direct results if they're available
                 if (response.DirectResults != null)
@@ -798,7 +798,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         combinedData.Add(new FloatArray.Builder().Build());
                         break;
                     case ArrowTypeId.Double:
-                        combinedData.Add(new DoubleArray.Builder().Build());
+                        combinedData.Add(new  DoubleArray.Builder().Build());
                         break;
                     case ArrowTypeId.Date32:
                         combinedData.Add(new Date32Array.Builder().Build());
@@ -1002,9 +1002,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 directResults = response!.DirectResults;
                 return true;
-            }
+    }
             directResults = null;
             return false;
-        }
+}
     }
 }
