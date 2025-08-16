@@ -232,7 +232,6 @@ impl TryFrom<u32> for InfoCode {
 
 /// Depth parameter for [get_objects][crate::Connection::get_objects] method.
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum ObjectDepth {
     /// Catalogs, schemas, tables, and columns.
     All,
@@ -462,7 +461,6 @@ impl From<&str> for OptionStatement {
 
 /// Isolation level value for key [OptionConnection::IsolationLevel].
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum IsolationLevel {
     /// Use database or driver default isolation level.
     Default,
@@ -538,7 +536,6 @@ impl From<IsolationLevel> for OptionValue {
 
 /// Ingestion mode value for key [OptionStatement::IngestMode].
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum IngestMode {
     /// Create the table and insert data; error if the table exists.
     Create,
@@ -581,7 +578,6 @@ impl From<IngestMode> for OptionValue {
 
 /// Statistics about the data distribution.
 #[derive(Debug, Clone)]
-#[non_exhaustive]
 pub enum Statistics {
     /// The average byte width statistic. The average size in bytes of a row in
     /// the column. Value type is `float64`. For example, this is roughly the
