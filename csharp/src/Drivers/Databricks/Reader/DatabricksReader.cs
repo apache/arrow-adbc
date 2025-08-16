@@ -81,9 +81,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                     {
                         return null;
                     }
-                    // TODO: use an expiring cancellationtoken
+                    
+                    // Use an expiring cancellation token for the fetch request
+                    CancellationToken fetchToken = ApacheUtility.GetCancellationToken(this.statement.FetchResultsTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                     TFetchResultsReq request = new TFetchResultsReq(this.response.OperationHandle!, TFetchOrientation.FETCH_NEXT, this.statement.BatchSize);
-                    TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, cancellationToken);
+                    TFetchResultsResp response = await this.statement.Connection.Client!.FetchResults(request, fetchToken);
 
                     // Make sure we get the arrowBatches
                     this.batches = response.Results.ArrowBatches;

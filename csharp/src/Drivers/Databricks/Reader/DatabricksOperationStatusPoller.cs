@@ -40,14 +40,30 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 
         public DatabricksOperationStatusPoller(
             IHiveServer2Statement statement,
-            IResponse response,
-            int heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds,
-            int requestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds)
+            IResponse response)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _response = response;
-            _heartbeatIntervalSeconds = heartbeatIntervalSeconds;
-            _requestTimeoutSeconds = requestTimeoutSeconds;
+            
+            // Get heartbeat interval from connection properties or use default
+            _heartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
+            if (_statement.Properties.TryGetValue(DatabricksParameters.OperationStatusPollingIntervalSeconds, out string? intervalStr))
+            {
+                if (int.TryParse(intervalStr, out int parsedInterval) && parsedInterval > 0)
+                {
+                    _heartbeatIntervalSeconds = parsedInterval;
+                }
+            }
+            
+            // Get request timeout from connection properties or use default
+            _requestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
+            if (_statement.Properties.TryGetValue(DatabricksParameters.OperationStatusPollingTimeoutSeconds, out string? timeoutStr))
+            {
+                if (int.TryParse(timeoutStr, out int parsedTimeout) && parsedTimeout > 0)
+                {
+                    _requestTimeoutSeconds = parsedTimeout;
+                }
+            }
         }
 
         public bool IsStarted => _operationStatusPollingTask != null;

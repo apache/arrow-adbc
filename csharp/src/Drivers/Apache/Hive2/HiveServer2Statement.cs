@@ -56,6 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             : base(connection)
         {
             Connection = connection;
+            FetchResultsTimeoutSeconds = connection.FetchResultsTimeoutSeconds;
             ValidateOptions(connection.Properties);
         }
 
@@ -337,6 +338,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             set => Connection.QueryTimeoutSeconds = value;
         }
 
+        public int FetchResultsTimeoutSeconds { get; set; }
+
         protected internal bool IsMetadataCommand { get; set; } = false;
         protected internal string? CatalogName { get; set; }
         protected internal string? SchemaName { get; set; }
@@ -352,6 +355,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         // Keep the original Client property for internal use
         public TCLIService.IAsync Client => Connection.Client;
+
+        // Expose connection properties through the interface
+        IReadOnlyDictionary<string, string> IHiveServer2Statement.Properties => Connection.Properties;
 
         public override string AssemblyName => HiveServer2Connection.s_assemblyName;
 

@@ -218,6 +218,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is empty if not specified.
         /// </summary>
         public const string IdentityFederationClientId = "adbc.databricks.identity_federation_client_id";
+
+        /// <summary>
+        /// Interval in seconds between operation status polling requests for long-running operations.
+        /// Default value is 60 seconds if not specified.
+        /// This determines how often the driver checks if a long-running query is still active.
+        /// </summary>
+        public const string OperationStatusPollingIntervalSeconds = "adbc.databricks.operation_status_polling_interval_seconds";
+
+        /// <summary>
+        /// Timeout in seconds for individual operation status polling requests.
+        /// Default value is 30 seconds if not specified.
+        /// This timeout applies to each GetOperationStatus RPC call made during polling.
+        /// </summary>
+        public const string OperationStatusPollingTimeoutSeconds = "adbc.databricks.operation_status_polling_timeout_seconds";
     }
 
     /// <summary>
@@ -226,12 +240,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     public class DatabricksConstants
     {
         /// <summary>
-        /// Default heartbeat interval in seconds for long-running operations. TODO: make this user-configurable
+        /// Default heartbeat interval in seconds for long-running operations.
         /// </summary>
         public const int DefaultOperationStatusPollingIntervalSeconds = 60;
 
         /// <summary>
-        /// Default timeout in seconds for operation status polling requests. TODO: make this user-configurable
+        /// Default timeout in seconds for operation status polling requests.
         /// </summary>
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
 

@@ -42,6 +42,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool enableMultipleCatalogSupport;
         private bool enablePKFK;
         private bool runAsyncInThrift;
+        private int operationStatusPollingIntervalSeconds;
+        private int operationStatusPollingTimeoutSeconds;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -65,6 +67,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             enablePKFK = connection.EnablePKFK;
 
             runAsyncInThrift = connection.RunAsyncInThrift;
+            
+            // Inherit operation status polling settings from connection
+            operationStatusPollingIntervalSeconds = connection.OperationStatusPollingIntervalSeconds;
+            operationStatusPollingTimeoutSeconds = connection.OperationStatusPollingTimeoutSeconds;
         }
 
         /// <summary>
@@ -128,11 +134,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Expose QueryTimeoutSeconds for IHiveServer2Statement
         int IHiveServer2Statement.QueryTimeoutSeconds => base.QueryTimeoutSeconds;
 
+        // Expose FetchResultsTimeoutSeconds for IHiveServer2Statement
+        int IHiveServer2Statement.FetchResultsTimeoutSeconds => base.FetchResultsTimeoutSeconds;
+
         // Expose BatchSize through the interface
         long IHiveServer2Statement.BatchSize => BatchSize;
 
         // Expose Connection through the interface
         HiveServer2Connection IHiveServer2Statement.Connection => Connection;
+
+        // Expose Properties through the interface
+        IReadOnlyDictionary<string, string> IHiveServer2Statement.Properties => Connection.Properties;
 
         public override void SetOption(string key, string value)
         {
