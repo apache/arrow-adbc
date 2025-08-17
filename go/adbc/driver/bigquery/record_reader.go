@@ -73,6 +73,12 @@ func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool) (b
 	// If there is no schema in the row iterator, then arrow
 	// iterator should be empty (#2173)
 	if iter.TotalRows > 0 {
+		if !iter.IsAccelerated() {
+			return nil, -1, adbc.Error{
+				Code: adbc.StatusUnauthorized,
+				Msg:  "[bigquery] Arrow reader requires roles/bigquery.readSessionUser, see https://github.com/apache/arrow-adbc/issues/3282",
+			}
+		}
 		if arrowIterator, err = iter.ArrowIterator(); err != nil {
 			return nil, -1, err
 		}
