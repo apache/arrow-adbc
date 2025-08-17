@@ -1093,11 +1093,33 @@ jobs:
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
 
+  # This takes a while due to sleeping to avoid rate limits, so run it first
+  # and in parallel with the builds
+  clean-gemfury:
+    name: "Remove old Gemfury packages"
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Clean
+        run: |
+          pip install requests
+          ./ci/scripts/gemfury_clean.py
+        env:
+          GEMFURY_API_TOKEN: ${{ secrets.GEMFURY_API_TOKEN }}
+
   upload-gemfury:
     name: "Upload packages to Gemfury"
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
     needs:
+      - clean-gemfury
       - java
       - python-manylinux
       - python-macos
