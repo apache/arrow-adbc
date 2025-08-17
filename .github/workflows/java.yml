@@ -191,7 +191,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: artifacts
           pattern: jni-artifacts-*
