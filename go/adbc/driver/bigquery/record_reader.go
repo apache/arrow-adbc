@@ -73,6 +73,12 @@ func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool) (b
 	// If there is no schema in the row iterator, then arrow
 	// iterator should be empty (#2173)
 	if iter.TotalRows > 0 {
+		// !IsAccelerated() -> failed to get Arrow stream -> we are
+		// probably lacking permissions.  readSessionUser may sound
+		// unrelated but creating a "read session" is the first step
+		// of using the Storage API.  Note that Google swallows the
+		// real error, so this is the best we can do.
+		// https://cloud.google.com/bigquery/docs/reference/storage#create_a_session
 		if !iter.IsAccelerated() {
 			return nil, -1, adbc.Error{
 				Code: adbc.StatusUnauthorized,
