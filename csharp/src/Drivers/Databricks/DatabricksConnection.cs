@@ -87,59 +87,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             ValidateProperties();
         }
 
-        /// <summary>
-        /// Creates a DatabricksConnection from a configuration loaded from an environment variable.
-        /// </summary>
-        /// <param name="environmentVariable">Name of the environment variable containing the path to a JSON configuration file.</param>
-        /// <exception cref="InvalidOperationException">Thrown when the environment variable is not set or the file doesn't exist.</exception>
-        public static DatabricksConnection FromEnvironmentVariable(string environmentVariable)
-        {
-            var config = DatabricksConfiguration.FromEnvironmentVariable(environmentVariable);
-            return new DatabricksConnection(config.Properties);
-        }
-
-        /// <summary>
-        /// Creates a DatabricksConnection from a JSON configuration file with optional additional properties.
-        /// Additional properties will override file configuration properties.
-        /// </summary>
-        /// <param name="configFilePath">Path to the JSON configuration file.</param>
-        /// <param name="additionalProperties">Additional properties to merge with file configuration. These take precedence.</param>
-        /// <exception cref="FileNotFoundException">Thrown when the configuration file doesn't exist.</exception>
-        /// <exception cref="JsonException">Thrown when the JSON is invalid.</exception>
-        public static DatabricksConnection FromConfigFile(string configFilePath, IReadOnlyDictionary<string, string>? additionalProperties = null)
-        {
-            var config = DatabricksConfiguration.FromFile(configFilePath);
-            var mergedProperties = MergeProperties(config.Properties, additionalProperties);
-            return new DatabricksConnection(mergedProperties);
-        }
-
-        /// <summary>
-        /// Tries to load and merge properties from an environment variable with optional additional properties.
-        /// Returns null if the environment variable is not set or the file doesn't exist.
-        /// Additional properties will override environment configuration properties.
-        /// </summary>
-        /// <param name="environmentVariable">Name of the environment variable.</param>
-        /// <param name="additionalProperties">Additional properties to merge with environment configuration. These take precedence.</param>
-        /// <returns>Merged properties if successful, null otherwise.</returns>
-        public static IReadOnlyDictionary<string, string>? TryFromEnvironmentVariable(string environmentVariable, IReadOnlyDictionary<string, string>? additionalProperties = null)
-        {
-            if (!DatabricksConfiguration.CanLoadFromEnvironment(environmentVariable, out string? filePath))
-            {
-                return null;
-            }
-
-            try
-            {
-                var config = DatabricksConfiguration.FromFile(filePath!);
-                var mergedProperties = MergeProperties(config.Properties, additionalProperties);
-                return mergedProperties;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
         public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
         {
             IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
