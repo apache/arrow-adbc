@@ -1098,7 +1098,7 @@ jobs:
   clean-gemfury:
     name: "Remove old Gemfury packages"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
+    if: github.ref_name == 'main' && (github.event.schedule || inputs.upload_artifacts)
     steps:
       - uses: actions/checkout@v5
       - name: Install Python
