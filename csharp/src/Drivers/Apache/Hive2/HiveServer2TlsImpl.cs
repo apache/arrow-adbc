@@ -22,6 +22,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.RegularExpressions;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
@@ -138,6 +139,30 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return tlsProperties;
         }
 
+        public static List<X509Certificate2> LoadPemCertificates(string pemPath)
+        {
+            List<X509Certificate2> certs = new();
+            string pemContent = File.ReadAllText(pemPath);
+
+            MatchCollection matches = Regex.Matches(
+                pemContent,
+                "-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----",
+                RegexOptions.Singleline);
+
+            foreach (Match match in matches)
+            {
+                string base64 = match.Groups[1].Value
+                    .Replace("\r", "")
+                    .Replace("\n", "")
+                    .Trim();
+
+                byte[] rawData = Convert.FromBase64String(base64);
+                certs.Add(new X509Certificate2(rawData));
+            }
+
+            return certs;
+        }
+
         static internal bool ValidateCertificate(X509Certificate? cert, SslPolicyErrors policyErrors, TlsProperties tlsProperties)
         {
             if (policyErrors == SslPolicyErrors.None || tlsProperties.DisableServerCertificateValidation)
@@ -155,11 +180,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 return !policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
             }
 
-            X509Certificate2 trustedRoot = new X509Certificate2(tlsProperties.TrustedCertificatePath);
             X509Chain customChain = new();
-            customChain.ChainPolicy.ExtraStore.Add(trustedRoot);
-            // "tell the X509Chain class that I do trust this root certs and it should check just the certs in the chain and nothing else"
-            customChain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+            var collection = LoadPemCertificates(tlsProperties.TrustedCertificatePath!);
+
+            foreach (var trustedCert in collection)
+            {
+                customChain.ChainPolicy.ExtraStore.Add(trustedCert);
+            }
             customChain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
 
             bool chainValid = customChain.Build(cert2);
