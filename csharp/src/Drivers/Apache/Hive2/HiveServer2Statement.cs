@@ -142,7 +142,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 // take QueryTimeoutSeconds (but this could be restricting)
                 IResponse response = await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
                 // Set the operation handle in case we need to cancel the operation
-                SetOperationHandle(response.OperationHandle!);
+                SetOperationHandle(response);
 
                 TGetResultSetMetadataResp metadata;
                 try
@@ -1044,31 +1044,29 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             this.TraceActivity(activity =>
             {
-                using CancellationTokenSource cancellationTokenSource = ApacheUtility.GetCancellationTokenSource(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 try
                 {
-                    // This will cancel any operation using the current token source
-                    CancelTokenSource();
-
-                    // Clone the operation handle so it doesn't get changed while we make our call
-                    TOperationHandle? operationHandle = CloneOperationHandle();
+                    using CancellationTokenSource cancellationTokenSource = ApacheUtility.GetCancellationTokenSource(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                    TOperationHandle? operationHandle = GetOperationHandle();
                     if (operationHandle != null)
                     {
                         TCancelOperationReq req = new TCancelOperationReq(operationHandle);
                         TCancelOperationResp resp = Client.CancelOperation(req, cancellationTokenSource.Token)
                             .ConfigureAwait(false).GetAwaiter().GetResult();
                         HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
+                        activity?.AddEvent(
+                            "db.operation.cancel_operation.completed",
+                            [new(SemanticConventions.Db.Response.StatusCode, resp.Status.StatusCode.ToString())]);
                     }
                 }
                 catch (Exception ex)
-                    when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                         (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationTokenSource.IsCancellationRequested))
                 {
-                    throw new TimeoutException("The cancel operation timed out. Consider increasing the query timeout value.", ex);
+                    activity?.AddException(ex);
                 }
-                catch (Exception ex) when (ex is not HiveServer2Exception)
+                finally
                 {
-                    throw new HiveServer2Exception($"An unexpected error occurred while executing cancel operation. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+                    // This will cancel any operation using the current token source
+                    CancelTokenSource();
                 }
             });
         }
@@ -1109,26 +1107,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        private void SetOperationHandle(TOperationHandle operationHandle)
+        private void SetOperationHandle(IResponse response)
         {
             lock (_operationHandleLock)
             {
-                _executeOperationHandle = operationHandle;
+                _executeOperationHandle = response.DirectResults == null ? response.OperationHandle : null;
             }
         }
 
-        private TOperationHandle? CloneOperationHandle()
+        private TOperationHandle? GetOperationHandle()
         {
-            TOperationHandle? operationHandle = null;
             lock (_operationHandleLock)
             {
-                if (_executeOperationHandle != null)
-                {
-                    operationHandle = new TOperationHandle(_executeOperationHandle.OperationId, _executeOperationHandle.OperationType, _executeOperationHandle.HasResultSet);
-                }
+                return _executeOperationHandle;
             }
 
-            return operationHandle;
         }
     }
 }
