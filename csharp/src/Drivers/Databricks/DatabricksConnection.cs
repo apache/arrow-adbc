@@ -301,7 +301,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 return base.TrySetGetDirectResults(request);
             }
-            return true;
+            return false;
         }
 
         /// <summary>
