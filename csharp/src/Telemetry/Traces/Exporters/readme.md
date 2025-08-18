@@ -49,6 +49,6 @@ The following exporters are supported:
 | Exporter | Description |
 | --- | --- |
 | `otlp` | Exports traces to an OpenTelemetry Collector or directly to an Open Telemetry Line Protocol (OTLP) endpoint. |
-| `file` | Exports traces to rotating files in a folder. |
+| `adbcfile` | Exports traces to rotating files in a folder. |
 | `console` | Exports traces to the console output. |
 | `none` | Disables trace exporting. |

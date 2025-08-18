@@ -25,6 +25,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Adbc.Telemetry.Traces.Exporters;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
@@ -32,6 +33,7 @@ using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.V2;
+using OpenTelemetry.Trace;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
@@ -45,6 +47,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         bool includePublicProjectIds = false;
         const string infoDriverName = "ADBC BigQuery Driver";
         const string infoVendorName = "BigQuery";
+        private static object s_tracerProviderLock = new object();
+        private static TracerProvider? s_tracerProvider;
+        private static bool s_isFileExporterEnabled;
 
         private readonly string infoDriverArrowVersion = BigQueryUtils.GetAssemblyVersion(typeof(IArrowArray));
 
@@ -66,6 +71,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.properties = properties.ToDictionary(k => k.Key, v => v.Value);
             }
 
+            InitTracerProvider();
+
             // add the default value for now and set to true until C# has a BigDecimal
             this.properties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
             this.httpClient = new HttpClient();
@@ -84,6 +91,37 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 RetryDelayMs = delay;
             }
         }
+
+        private void InitTracerProvider()
+        {
+            lock (s_tracerProviderLock)
+            {
+                if (s_tracerProvider != null)
+                {
+                    return;
+                }
+
+                // Activates the exporter specified in the connection properties (if exists) or environment variable (if is set).
+                this.properties.TryGetValue(ExportersOptions.Exporter, out string? driverName);
+                TracerProvider? tracerProvider = ExportersBuilder.Build(this.ActivitySourceName, addDefaultExporters: true)
+                    .Build()
+                    .Activate(driverName, out string? exporterName, ExportersOptions.Environment.Exporter);
+                if (tracerProvider != null)
+                {
+                    s_tracerProvider = tracerProvider;
+                    s_isFileExporterEnabled = ExportersOptions.Exporters.AdbcFile.Equals(exporterName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Conditional used to determines if it is safe to trace
+        /// </summary>
+        /// <remarks>
+        /// It is safe to write to some output types (ie, files) but not others (ie, a shared resource).
+        /// </remarks>
+        /// <returns></returns>
+        internal static bool IsSafeToTrace => s_isFileExporterEnabled;
 
         /// <summary>
         /// The function to call when updating the token.
@@ -470,7 +508,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             return this.TraceActivity(activity =>
             {
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, BigQueryUtils.IsSafeToTrace());
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, BigQueryConnection.IsSafeToTrace);
 
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
                 BigQueryResults? result = ExecuteWithRetriesAsync<BigQueryResults?>(func, activity).GetAwaiter().GetResult();
