@@ -429,13 +429,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <param name="response">The response for the operation.</param>
         /// <returns>The server response for the CloseOperation call.</returns>
         /// <exception cref="HiveServer2Exception" />
-        internal static async Task<TCloseOperationResp> CloseOperationAsync(IHiveServer2Statement statement, IResponse response)
+        internal static async Task<TCloseOperationResp?> CloseOperationAsync(IHiveServer2Statement statement, IResponse response)
         {
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(statement.QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            TCloseOperationReq request = new TCloseOperationReq(response.OperationHandle!);
-            TCloseOperationResp resp = await statement.Client.CloseOperation(request, cancellationToken);
-            HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
-            return resp;
+            if (response.DirectResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(statement.QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                TCloseOperationReq request = new TCloseOperationReq(response.OperationHandle!);
+                TCloseOperationResp resp = await statement.Client.CloseOperation(request, cancellationToken);
+                HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
+                return resp;
+            }
+            return null;
         }
     }
 }
