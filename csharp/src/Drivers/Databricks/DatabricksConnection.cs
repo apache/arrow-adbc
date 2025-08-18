@@ -18,9 +18,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
@@ -39,6 +41,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         internal static new readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksConnection));
         internal static new readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksConnection));
+
+        /// <summary>
+        /// The environment variable name that contains the path to the default Databricks configuration file.
+        /// </summary>
+        public const string DefaultConfigEnvironmentVariable = "DATABRICKS_CONFIG_FILE";
 
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
@@ -75,9 +82,62 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private HttpClient? _authHttpClient;
 
-        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(MergeWithDefaultEnvironmentConfig(properties))
         {
             ValidateProperties();
+        }
+
+        /// <summary>
+        /// Creates a DatabricksConnection from a configuration loaded from an environment variable.
+        /// </summary>
+        /// <param name="environmentVariable">Name of the environment variable containing the path to a JSON configuration file.</param>
+        /// <exception cref="InvalidOperationException">Thrown when the environment variable is not set or the file doesn't exist.</exception>
+        public static DatabricksConnection FromEnvironmentVariable(string environmentVariable)
+        {
+            var config = DatabricksConfiguration.FromEnvironmentVariable(environmentVariable);
+            return new DatabricksConnection(config.Properties);
+        }
+
+        /// <summary>
+        /// Creates a DatabricksConnection from a JSON configuration file with optional additional properties.
+        /// Additional properties will override file configuration properties.
+        /// </summary>
+        /// <param name="configFilePath">Path to the JSON configuration file.</param>
+        /// <param name="additionalProperties">Additional properties to merge with file configuration. These take precedence.</param>
+        /// <exception cref="FileNotFoundException">Thrown when the configuration file doesn't exist.</exception>
+        /// <exception cref="JsonException">Thrown when the JSON is invalid.</exception>
+        public static DatabricksConnection FromConfigFile(string configFilePath, IReadOnlyDictionary<string, string>? additionalProperties = null)
+        {
+            var config = DatabricksConfiguration.FromFile(configFilePath);
+            var mergedProperties = MergeProperties(config.Properties, additionalProperties);
+            return new DatabricksConnection(mergedProperties);
+        }
+
+        /// <summary>
+        /// Tries to load and merge properties from an environment variable with optional additional properties.
+        /// Returns null if the environment variable is not set or the file doesn't exist.
+        /// Additional properties will override environment configuration properties.
+        /// </summary>
+        /// <param name="environmentVariable">Name of the environment variable.</param>
+        /// <param name="additionalProperties">Additional properties to merge with environment configuration. These take precedence.</param>
+        /// <returns>Merged properties if successful, null otherwise.</returns>
+        public static IReadOnlyDictionary<string, string>? TryFromEnvironmentVariable(string environmentVariable, IReadOnlyDictionary<string, string>? additionalProperties = null)
+        {
+            if (!DatabricksConfiguration.CanLoadFromEnvironment(environmentVariable, out string? filePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var config = DatabricksConfiguration.FromFile(filePath!);
+                var mergedProperties = MergeProperties(config.Properties, additionalProperties);
+                return mergedProperties;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
@@ -92,6 +152,100 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
         {
             return new ThreadSafeClient(new TCLIService.Client(protocol));
+        }
+
+        /// <summary>
+        /// Automatically merges properties from the default DATABRICKS_CONFIG_FILE environment variable with passed-in properties.
+        /// The merge priority is controlled by the "adbc.databricks.driver_config_take_precedence" property.
+        /// If DATABRICKS_CONFIG_FILE is not set or invalid, only passed-in properties are used.
+        /// </summary>
+        /// <param name="properties">Properties passed to constructor.</param>
+        /// <returns>Merged properties dictionary.</returns>
+        private static IReadOnlyDictionary<string, string> MergeWithDefaultEnvironmentConfig(IReadOnlyDictionary<string, string> properties)
+        {
+            // Try to load configuration from the default environment variable
+            var environmentConfig = DatabricksConfiguration.TryFromEnvironmentVariable(DefaultConfigEnvironmentVariable);
+
+            if (environmentConfig != null)
+            {
+                // Determine precedence setting - check passed-in properties first, then environment config
+                bool driverConfigTakesPrecedence = DetermineDriverConfigPrecedence(properties, environmentConfig.Properties);
+
+                if (driverConfigTakesPrecedence)
+                {
+                    // Environment config properties override passed-in properties
+                    return MergeProperties(properties, environmentConfig.Properties);
+                }
+                else
+                {
+                    // Passed-in properties override environment config properties (default behavior)
+                    return MergeProperties(environmentConfig.Properties, properties);
+                }
+            }
+
+            // No environment config available, use only passed-in properties
+            return properties;
+        }
+
+        /// <summary>
+        /// Determines whether driver configuration should take precedence based on the precedence property.
+        /// Checks passed-in properties first, then environment properties, defaulting to false.
+        /// </summary>
+        /// <param name="passedInProperties">Properties passed to constructor.</param>
+        /// <param name="environmentProperties">Properties loaded from environment configuration.</param>
+        /// <returns>True if driver config should take precedence, false otherwise.</returns>
+        private static bool DetermineDriverConfigPrecedence(IReadOnlyDictionary<string, string> passedInProperties, IReadOnlyDictionary<string, string> environmentProperties)
+        {
+            // Priority 1: Check passed-in properties for precedence setting
+            if (passedInProperties.TryGetValue(DatabricksParameters.DriverConfigTakePrecedence, out string? passedInValue))
+            {
+                if (bool.TryParse(passedInValue, out bool passedInPrecedence))
+                {
+                    return passedInPrecedence;
+                }
+            }
+
+            // Priority 2: Check environment config for precedence setting
+            if (environmentProperties.TryGetValue(DatabricksParameters.DriverConfigTakePrecedence, out string? environmentValue))
+            {
+                if (bool.TryParse(environmentValue, out bool environmentPrecedence))
+                {
+                    return environmentPrecedence;
+                }
+            }
+
+            // Default: Passed-in properties override environment config (current behavior)
+            return false;
+        }
+
+        /// <summary>
+        /// Merges two property dictionaries, with additional properties taking precedence.
+        /// </summary>
+        /// <param name="baseProperties">Base properties dictionary.</param>
+        /// <param name="additionalProperties">Additional properties to merge. These take precedence over base properties.</param>
+        /// <returns>Merged properties dictionary.</returns>
+        private static IReadOnlyDictionary<string, string> MergeProperties(IReadOnlyDictionary<string, string> baseProperties, IReadOnlyDictionary<string, string>? additionalProperties)
+        {
+            if (additionalProperties == null || additionalProperties.Count == 0)
+            {
+                return baseProperties;
+            }
+
+            var merged = new Dictionary<string, string>();
+
+            // Add base properties first
+            foreach (var kvp in baseProperties)
+            {
+                merged[kvp.Key] = kvp.Value;
+            }
+
+            // Additional properties override base properties
+            foreach (var kvp in additionalProperties)
+            {
+                merged[kvp.Key] = kvp.Value;
+            }
+
+            return merged;
         }
 
         private void ValidateProperties()
