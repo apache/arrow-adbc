@@ -41,7 +41,7 @@ jobs:
     name: Process
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
 
@@ -52,7 +52,7 @@ jobs:
         run: |
           ./.github/workflows/dev_pr/milestone.sh "${GITHUB_REPOSITORY}" ${{github.event.number}}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           path: pr_checkout
