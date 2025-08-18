@@ -47,7 +47,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         bool includePublicProjectIds = false;
         const string infoDriverName = "ADBC BigQuery Driver";
         const string infoVendorName = "BigQuery";
-        private static object s_tracerProviderLock = new object();
+        private static readonly object s_tracerProviderLock = new();
         private static TracerProvider? s_tracerProvider;
         private static bool s_isFileExporterEnabled;
 
