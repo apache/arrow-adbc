@@ -1047,6 +1047,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 using CancellationTokenSource cancellationTokenSource = ApacheUtility.GetCancellationTokenSource(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 try
                 {
+                    // This will cancel any operation using the current token source
+                    CancelTokenSource();
+
                     // Clone the operation handle so it doesn't get changed while we make our call
                     TOperationHandle? operationHandle = CloneOperationHandle();
                     if (operationHandle != null)
@@ -1056,8 +1059,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             .ConfigureAwait(false).GetAwaiter().GetResult();
                         HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
                     }
-                    // This will cancel any operation using the current token source
-                    CancelTokenSource();
                 }
                 catch (Exception ex)
                     when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
