@@ -181,6 +181,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             X509Chain customChain = new();
+            // "tell the X509Chain class that I do trust this root certs and it should check just the certs in the chain and nothing else"
+            customChain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
             var collection = LoadPemCertificates(tlsProperties.TrustedCertificatePath!);
 
             foreach (var trustedCert in collection)
@@ -190,6 +192,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             customChain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
 
             bool chainValid = customChain.Build(cert2);
+            if (chainValid)
+            {
+                bool trustedBy = false;
+                foreach (X509ChainElement element in customChain.ChainElements)
+                {
+                    foreach (X509Certificate2 ca in collection)
+                    {
+                        if (element.Certificate.Thumbprint == ca.Thumbprint)
+                        {
+                            trustedBy = true;
+                            break;
+                        }
+                    }
+                    if (trustedBy)
+                    {
+                        break;
+                    }
+                }
+                chainValid = chainValid && trustedBy;
+            }
+
             return chainValid || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
         }
     }
