@@ -1812,7 +1812,11 @@ const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
     const ARCH: &str = "powerpc64le";
     #[cfg(all(target_arch = "powerpc64", target_endian = "big"))]
     const ARCH: &str = "powerpc64";
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "powerpc64")))]
+    #[cfg(not(any(
+        target_arch = "x86_64",
+        target_arch = "aarch64",
+        target_arch = "powerpc64"
+    )))]
     const ARCH: &str = std::env::consts::ARCH;
 
     const OS: &str = std::env::consts::OS;
