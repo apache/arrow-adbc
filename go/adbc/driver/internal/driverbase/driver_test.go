@@ -28,6 +28,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -62,7 +63,7 @@ func TestDefaultDriver(t *testing.T) {
 
 	db, err := drv.NewDatabase(nil)
 	require.NoError(t, err)
-	defer db.Close()
+	defer validation.CheckedClose(t, db)
 
 	require.NoError(t, db.SetOptions(map[string]string{OptionKeyRecognized: "should-pass"}))
 
@@ -193,7 +194,7 @@ func TestCustomizedDriver(t *testing.T) {
 
 	db, err := drv.NewDatabase(nil)
 	require.NoError(t, err)
-	defer db.Close()
+	defer validation.CheckedClose(t, db)
 
 	require.NoError(t, db.SetOptions(map[string]string{OptionKeyRecognized: "should-pass"}))
 
@@ -203,7 +204,7 @@ func TestCustomizedDriver(t *testing.T) {
 
 	cnxn, err := db.Open(ctx)
 	require.NoError(t, err)
-	defer cnxn.Close()
+	defer validation.CheckedClose(t, cnxn)
 
 	err = cnxn.Commit(ctx)
 	require.Error(t, err)
@@ -444,10 +445,19 @@ type driverImpl struct {
 }
 
 func (drv *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return drv.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (drv *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &drv.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
 	db := driverbase.NewDatabase(
-		&databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&drv.DriverImplBase),
-			drv:        drv,
-			useHelpers: drv.useHelpers,
+		&databaseImpl{
+			DatabaseImplBase: dbBase,
+			drv:              drv,
+			useHelpers:       drv.useHelpers,
 		})
 	db.SetLogger(slog.New(drv.handler))
 	return db, nil
@@ -482,7 +492,7 @@ func (d *databaseImpl) SetOption(key, value string) error {
 }
 
 func (db *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
-	db.DatabaseImplBase.Logger.Info("Opening a new connection", "withHelpers", db.useHelpers)
+	db.Logger.Info("Opening a new connection", "withHelpers", db.useHelpers)
 	cnxn := &connectionImpl{ConnectionImplBase: driverbase.NewConnectionImplBase(&db.DatabaseImplBase), db: db}
 	bldr := driverbase.NewConnectionBuilder(cnxn)
 	if db.useHelpers { // this toggles between the NewDefaultDriver and NewCustomizedDriver scenarios
@@ -504,6 +514,67 @@ type connectionImpl struct {
 
 	currentCatalog  string
 	currentDbSchema string
+}
+
+func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
+	stmt := &statement{
+		StatementImplBase: driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper),
+		cnxn:              c,
+	}
+	return driverbase.NewStatement(stmt), nil
+}
+
+type statement struct {
+	driverbase.StatementImplBase
+	cnxn *connectionImpl
+}
+
+func (base *statement) Base() *driverbase.StatementImplBase {
+	return &base.StatementImplBase
+}
+
+func (base *statement) Bind(ctx context.Context, values arrow.Record) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Bind")
+}
+
+func (base *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "BindStream")
+}
+
+func (base *statement) Close() error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Close")
+}
+
+func (base *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
+	return nil, adbc.Partitions{}, 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecutePartitions")
+}
+
+func (base *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	return nil, 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteQuery")
+}
+
+func (base *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	return nil, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteSchema")
+}
+
+func (base *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
+	return 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteUpdate")
+}
+
+func (base *statement) GetParameterSchema() (*arrow.Schema, error) {
+	return nil, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetParameterSchema")
+}
+
+func (base *statement) Prepare(ctx context.Context) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Prepare")
+}
+
+func (base *statement) SetSqlQuery(query string) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetSqlQuery")
+}
+
+func (base statement) SetSubstraitPlan(plan []byte) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetSubstraitPlan")
 }
 
 var dbObjects = map[string]map[string][]driverbase.TableInfo{
@@ -637,13 +708,13 @@ func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 }
 
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) error {
-	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
+	if err := c.DriverInfo.RegisterInfoCode(adbc.InfoVendorSql, true); err != nil {
 		return err
 	}
-	if err := c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoVendorSubstrait, false); err != nil {
+	if err := c.DriverInfo.RegisterInfoCode(adbc.InfoVendorSubstrait, false); err != nil {
 		return err
 	}
-	return c.ConnectionImplBase.DriverInfo.RegisterInfoCode(adbc.InfoCode(10_002), "this was fetched dynamically")
+	return c.DriverInfo.RegisterInfoCode(adbc.InfoCode(10_002), "this was fetched dynamically")
 }
 
 // MockedHandler is a mock.Mock that implements the slog.Handler interface.

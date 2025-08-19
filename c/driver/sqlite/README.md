@@ -19,6 +19,15 @@
 
 # ADBC SQLite Driver
 
+![Vendor: SQLite](https://img.shields.io/badge/vendor-SQLite-blue?style=flat-square)
+![Implementation: C/C++](https://img.shields.io/badge/implementation-C%2FC%2B%2B-violet?style=flat-square)
+![Status: Stable](https://img.shields.io/badge/status-stable-green?style=flat-square)
+
+[![conda-forge: adbc-driver-sqlite](https://img.shields.io/conda/vn/conda-forge/adbc-driver-sqlite?label=conda-forge%3A%20adbc-driver-sqlite&style=flat-square)](https://anaconda.org/conda-forge/adbc-driver-sqlite)
+[![conda-forge: libadbc-driver-sqlite](https://img.shields.io/conda/vn/conda-forge/libadbc-driver-sqlite?label=conda-forge%3A%20libadbc-driver-sqlite&style=flat-square)](https://anaconda.org/conda-forge/libadbc-driver-sqlite)
+[![CRAN: adbcsqlite](https://img.shields.io/cran/v/adbcsqlite?style=flat-square)](https://cran.r-project.org/web/packages/adbcsqlite/index.html)
+[![PyPI: adbc-driver-sqlite](https://img.shields.io/pypi/v/adbc-driver-sqlite?style=flat-square)](https://pypi.org/project/adbc-driver-sqlite/)
+
 This driver provides an interface to
 [SQLite](https://sqlite.org/index.html) using ADBC.
 

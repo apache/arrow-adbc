@@ -30,6 +30,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -56,12 +57,12 @@ int TupleReader::GetSchema(struct ArrowSchema* out) {
 
   int na_res = copy_reader_->GetSchema(out);
   if (out->release == nullptr) {
-    SetError(&error_, "[libpq] Result set was already consumed or freed");
+    InternalAdbcSetError(&error_, "[libpq] Result set was already consumed or freed");
     status_ = ADBC_STATUS_INVALID_STATE;
-    return AdbcStatusCodeToErrno(status_);
+    return InternalAdbcStatusCodeToErrno(status_);
   } else if (na_res != NANOARROW_OK) {
     // e.g., Can't allocate memory
-    SetError(&error_, "[libpq] Error copying schema");
+    InternalAdbcSetError(&error_, "[libpq] Error copying schema");
     status_ = ADBC_STATUS_INTERNAL;
   }
 
@@ -79,9 +80,10 @@ int TupleReader::GetCopyData() {
 
   int get_copy_res = PQgetCopyData(conn_, &pgbuf_, /*async=*/0);
   if (get_copy_res == -2) {
-    SetError(&error_, "[libpq] PQgetCopyData() failed: %s", PQerrorMessage(conn_));
+    InternalAdbcSetError(&error_, "[libpq] PQgetCopyData() failed: %s",
+                         PQerrorMessage(conn_));
     status_ = ADBC_STATUS_IO;
-    return AdbcStatusCodeToErrno(status_);
+    return InternalAdbcStatusCodeToErrno(status_);
   }
 
   if (get_copy_res == -1) {
@@ -92,7 +94,7 @@ int TupleReader::GetCopyData() {
     if (pq_status != PGRES_COMMAND_OK) {
       status_ = SetError(&error_, result_, "[libpq] Execution error [%s]: %s",
                          PQresStatus(pq_status), PQresultErrorMessage(result_));
-      return AdbcStatusCodeToErrno(status_);
+      return InternalAdbcStatusCodeToErrno(status_);
     } else {
       return ENODATA;
     }
@@ -108,8 +110,8 @@ int TupleReader::AppendRowAndFetchNext() {
   // call to PQgetCopyData())
   int na_res = copy_reader_->ReadRecord(&data_, &na_error_);
   if (na_res != NANOARROW_OK && na_res != ENODATA) {
-    SetError(&error_, "[libpq] ReadRecord failed at row %" PRId64 ": %s", row_id_,
-             na_error_.message);
+    InternalAdbcSetError(&error_, "[libpq] ReadRecord failed at row %" PRId64 ": %s",
+                         row_id_, na_error_.message);
     status_ = ADBC_STATUS_IO;
     return na_res;
   }
@@ -135,7 +137,8 @@ int TupleReader::BuildOutput(struct ArrowArray* out) {
 
   int na_res = copy_reader_->GetArray(out, &na_error_);
   if (na_res != NANOARROW_OK) {
-    SetError(&error_, "[libpq] Failed to build result array: %s", na_error_.message);
+    InternalAdbcSetError(&error_, "[libpq] Failed to build result array: %s",
+                         na_error_.message);
     status_ = ADBC_STATUS_INTERNAL;
     return na_res;
   }
@@ -164,7 +167,7 @@ int TupleReader::GetNext(struct ArrowArray* out) {
 
     na_res = copy_reader_->ReadHeader(&data_, &na_error_);
     if (na_res != NANOARROW_OK) {
-      SetError(&error_, "[libpq] ReadHeader() failed: %s", na_error_.message);
+      InternalAdbcSetError(&error_, "[libpq] ReadHeader() failed: %s", na_error_.message);
       return na_res;
     }
 
@@ -219,55 +222,89 @@ void TupleReader::Release() {
   row_id_ = -1;
 }
 
+// Instead of directly exporting the TupleReader, which is tied to the
+// lifetime of the Statement, we export a weak_ptr reference instead.  That
+// way if the user accidentally closes the Statement before the
+// ArrowArrayStream, we can avoid a crash.
+// See https://github.com/apache/arrow-adbc/issues/2629
+struct ExportedTupleReader {
+  std::weak_ptr<TupleReader> self;
+};
+
 void TupleReader::ExportTo(struct ArrowArrayStream* stream) {
   stream->get_schema = &GetSchemaTrampoline;
   stream->get_next = &GetNextTrampoline;
   stream->get_last_error = &GetLastErrorTrampoline;
   stream->release = &ReleaseTrampoline;
-  stream->private_data = this;
+  stream->private_data = new ExportedTupleReader{weak_from_this()};
 }
 
-const struct AdbcError* TupleReader::ErrorFromArrayStream(struct ArrowArrayStream* stream,
+const struct AdbcError* TupleReader::ErrorFromArrayStream(struct ArrowArrayStream* self,
                                                           AdbcStatusCode* status) {
-  if (!stream->private_data || stream->release != &ReleaseTrampoline) {
+  if (!self->private_data || self->release != &ReleaseTrampoline) {
     return nullptr;
   }
 
-  TupleReader* reader = static_cast<TupleReader*>(stream->private_data);
-  if (status) {
-    *status = reader->status_;
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    if (status) {
+      *status = maybe_reader->status_;
+    }
+    return &maybe_reader->error_;
   }
-  return &reader->error_;
+  return nullptr;
 }
 
 int TupleReader::GetSchemaTrampoline(struct ArrowArrayStream* self,
                                      struct ArrowSchema* out) {
   if (!self || !self->private_data) return EINVAL;
 
-  TupleReader* reader = static_cast<TupleReader*>(self->private_data);
-  return reader->GetSchema(out);
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    return maybe_reader->GetSchema(out);
+  }
+  // statement was closed or reader was otherwise invalidated
+  return EINVAL;
 }
 
 int TupleReader::GetNextTrampoline(struct ArrowArrayStream* self,
                                    struct ArrowArray* out) {
   if (!self || !self->private_data) return EINVAL;
 
-  TupleReader* reader = static_cast<TupleReader*>(self->private_data);
-  return reader->GetNext(out);
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    return maybe_reader->GetNext(out);
+  }
+  // statement was closed or reader was otherwise invalidated
+  return EINVAL;
 }
 
 const char* TupleReader::GetLastErrorTrampoline(struct ArrowArrayStream* self) {
   if (!self || !self->private_data) return nullptr;
+  constexpr std::string_view kReaderInvalidated =
+      "[libpq] Reader invalidated (statement or reader was closed)";
 
-  TupleReader* reader = static_cast<TupleReader*>(self->private_data);
-  return reader->last_error();
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    return maybe_reader->last_error();
+  }
+  // statement was closed or reader was otherwise invalidated
+  return kReaderInvalidated.data();
 }
 
 void TupleReader::ReleaseTrampoline(struct ArrowArrayStream* self) {
   if (!self || !self->private_data) return;
 
-  TupleReader* reader = static_cast<TupleReader*>(self->private_data);
-  reader->Release();
+  auto* wrapper = static_cast<ExportedTupleReader*>(self->private_data);
+  auto maybe_reader = wrapper->self.lock();
+  if (maybe_reader) {
+    maybe_reader->Release();
+  }
+  delete wrapper;
   self->private_data = nullptr;
   self->release = nullptr;
 }
@@ -275,13 +312,14 @@ void TupleReader::ReleaseTrampoline(struct ArrowArrayStream* self) {
 AdbcStatusCode PostgresStatement::New(struct AdbcConnection* connection,
                                       struct AdbcError* error) {
   if (!connection || !connection->private_data) {
-    SetError(error, "%s", "[libpq] Must provide an initialized AdbcConnection");
+    InternalAdbcSetError(error, "%s",
+                         "[libpq] Must provide an initialized AdbcConnection");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   connection_ =
       *reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
   type_resolver_ = connection_->type_resolver();
-  reader_.conn_ = connection_->conn();
+  ClearResult();
   return ADBC_STATUS_OK;
 }
 
@@ -289,10 +327,10 @@ AdbcStatusCode PostgresStatement::Bind(struct ArrowArray* values,
                                        struct ArrowSchema* schema,
                                        struct AdbcError* error) {
   if (!values || !values->release) {
-    SetError(error, "%s", "[libpq] Must provide non-NULL array");
+    InternalAdbcSetError(error, "%s", "[libpq] Must provide non-NULL array");
     return ADBC_STATUS_INVALID_ARGUMENT;
   } else if (!schema || !schema->release) {
-    SetError(error, "%s", "[libpq] Must provide non-NULL schema");
+    InternalAdbcSetError(error, "%s", "[libpq] Must provide non-NULL schema");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
@@ -305,7 +343,7 @@ AdbcStatusCode PostgresStatement::Bind(struct ArrowArray* values,
 AdbcStatusCode PostgresStatement::Bind(struct ArrowArrayStream* stream,
                                        struct AdbcError* error) {
   if (!stream || !stream->release) {
-    SetError(error, "%s", "[libpq] Must provide non-NULL stream");
+    InternalAdbcSetError(error, "%s", "[libpq] Must provide non-NULL stream");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   // Move stream
@@ -328,8 +366,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
   PGconn* conn = connection_->conn();
 
   if (!ingest_.db_schema.empty() && ingest_.temporary) {
-    SetError(error, "[libpq] Cannot set both %s and %s",
-             ADBC_INGEST_OPTION_TARGET_DB_SCHEMA, ADBC_INGEST_OPTION_TEMPORARY);
+    InternalAdbcSetError(error, "[libpq] Cannot set both %s and %s",
+                         ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                         ADBC_INGEST_OPTION_TEMPORARY);
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -338,8 +377,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
       char* escaped =
           PQescapeIdentifier(conn, ingest_.db_schema.c_str(), ingest_.db_schema.size());
       if (escaped == nullptr) {
-        SetError(error, "[libpq] Failed to escape target schema %s for ingestion: %s",
-                 ingest_.db_schema.c_str(), PQerrorMessage(conn));
+        InternalAdbcSetError(
+            error, "[libpq] Failed to escape target schema %s for ingestion: %s",
+            ingest_.db_schema.c_str(), PQerrorMessage(conn));
         return ADBC_STATUS_INTERNAL;
       }
       *escaped_table += escaped;
@@ -362,8 +402,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
       char* escaped =
           PQescapeIdentifier(conn, ingest_.target.c_str(), ingest_.target.size());
       if (escaped == nullptr) {
-        SetError(error, "[libpq] Failed to escape target table %s for ingestion: %s",
-                 ingest_.target.c_str(), PQerrorMessage(conn));
+        InternalAdbcSetError(error,
+                             "[libpq] Failed to escape target table %s for ingestion: %s",
+                             ingest_.target.c_str(), PQerrorMessage(conn));
         return ADBC_STATUS_INTERNAL;
       }
       *escaped_table += escaped;
@@ -416,8 +457,8 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
     const char* unescaped = source_schema.children[i]->name;
     char* escaped = PQescapeIdentifier(conn, unescaped, std::strlen(unescaped));
     if (escaped == nullptr) {
-      SetError(error, "[libpq] Failed to escape column %s for ingestion: %s", unescaped,
-               PQerrorMessage(conn));
+      InternalAdbcSetError(error, "[libpq] Failed to escape column %s for ingestion: %s",
+                           unescaped, PQerrorMessage(conn));
       return ADBC_STATUS_INTERNAL;
     }
     create += escaped;
@@ -438,7 +479,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
   }
 
   create += ")";
-  SetError(error, "%s%s", "[libpq] ", create.c_str());
+  InternalAdbcSetError(error, "%s%s", "[libpq] ", create.c_str());
   PGresult* result = PQexecParams(conn, create.c_str(), /*nParams=*/0,
                                   /*paramTypes=*/nullptr, /*paramValues=*/nullptr,
                                   /*paramLengths=*/nullptr, /*paramFormats=*/nullptr,
@@ -476,7 +517,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   }
 
   if (query_.empty()) {
-    SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
+    InternalAdbcSetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -514,24 +555,24 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
   }
 
   struct ArrowError na_error;
-  reader_.copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
-  CHECK_NA(INTERNAL, reader_.copy_reader_->Init(root_type), error);
+  reader_->copy_reader_ = std::make_unique<PostgresCopyStreamReader>();
+  CHECK_NA(INTERNAL, reader_->copy_reader_->Init(root_type), error);
   CHECK_NA_DETAIL(INTERNAL,
-                  reader_.copy_reader_->InferOutputSchema(
+                  reader_->copy_reader_->InferOutputSchema(
                       std::string(connection_->VendorName()), &na_error),
                   &na_error, error);
 
-  CHECK_NA_DETAIL(INTERNAL, reader_.copy_reader_->InitFieldReaders(&na_error), &na_error,
+  CHECK_NA_DETAIL(INTERNAL, reader_->copy_reader_->InitFieldReaders(&na_error), &na_error,
                   error);
 
   // Execute the COPY query
   RAISE_STATUS(error, helper.ExecuteCopy());
 
   // We need the PQresult back for the reader
-  reader_.result_ = helper.ReleaseResult();
+  reader_->result_ = helper.ReleaseResult();
 
   // Export to stream
-  reader_.ExportTo(stream);
+  reader_->ExportTo(stream);
   if (rows_affected) *rows_affected = -1;
   return ADBC_STATUS_OK;
 }
@@ -540,7 +581,7 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
                                                 struct AdbcError* error) {
   ClearResult();
   if (query_.empty()) {
-    SetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
+    InternalAdbcSetError(error, "%s", "[libpq] Must SetSqlQuery before ExecuteQuery");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -555,7 +596,7 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
                     &na_error, error);
 
     if (std::string(param_schema->format) != "+s") {
-      SetError(error, "%s", "[libpq] Bind parameters must have type STRUCT");
+      InternalAdbcSetError(error, "%s", "[libpq] Bind parameters must have type STRUCT");
       return ADBC_STATUS_INVALID_STATE;
     }
 
@@ -593,12 +634,14 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
                                                 int64_t* rows_affected,
                                                 struct AdbcError* error) {
   if (!bind_.release) {
-    SetError(error, "%s", "[libpq] Must Bind() before Execute() for bulk ingestion");
+    InternalAdbcSetError(error, "%s",
+                         "[libpq] Must Bind() before Execute() for bulk ingestion");
     return ADBC_STATUS_INVALID_STATE;
   }
 
   if (stream != nullptr) {
-    SetError(error, "%s", "[libpq] Bulk ingest with result set is not supported");
+    InternalAdbcSetError(error, "%s",
+                         "[libpq] Bulk ingest with result set is not supported");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
@@ -610,8 +653,8 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
     RAISE_STATUS(error, result_helper.Execute());
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
-      SetError(error,
-               "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA()'");
+      InternalAdbcSetError(
+          error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA()'");
       return ADBC_STATUS_INTERNAL;
     }
     current_schema = (*it)[0].data;
@@ -674,7 +717,7 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
         break;
     }
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
-    result = std::to_string(reader_.batch_size_hint_bytes_);
+    result = std::to_string(reader_->batch_size_hint_bytes_);
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
     if (UseCopy()) {
       result = "true";
@@ -682,7 +725,7 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
       result = "false";
     }
   } else {
-    SetError(error, "[libpq] Unknown statement option '%s'", key);
+    InternalAdbcSetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_FOUND;
   }
 
@@ -696,13 +739,13 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
 AdbcStatusCode PostgresStatement::GetOptionBytes(const char* key, uint8_t* value,
                                                  size_t* length,
                                                  struct AdbcError* error) {
-  SetError(error, "[libpq] Unknown statement option '%s'", key);
+  InternalAdbcSetError(error, "[libpq] Unknown statement option '%s'", key);
   return ADBC_STATUS_NOT_FOUND;
 }
 
 AdbcStatusCode PostgresStatement::GetOptionDouble(const char* key, double* value,
                                                   struct AdbcError* error) {
-  SetError(error, "[libpq] Unknown statement option '%s'", key);
+  InternalAdbcSetError(error, "[libpq] Unknown statement option '%s'", key);
   return ADBC_STATUS_NOT_FOUND;
 }
 
@@ -710,10 +753,10 @@ AdbcStatusCode PostgresStatement::GetOptionInt(const char* key, int64_t* value,
                                                struct AdbcError* error) {
   std::string result;
   if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
-    *value = reader_.batch_size_hint_bytes_;
+    *value = reader_->batch_size_hint_bytes_;
     return ADBC_STATUS_OK;
   }
-  SetError(error, "[libpq] Unknown statement option '%s'", key);
+  InternalAdbcSetError(error, "[libpq] Unknown statement option '%s'", key);
   return ADBC_STATUS_NOT_FOUND;
 }
 
@@ -724,7 +767,7 @@ AdbcStatusCode PostgresStatement::GetParameterSchema(struct ArrowSchema* schema,
 
 AdbcStatusCode PostgresStatement::Prepare(struct AdbcError* error) {
   if (query_.empty()) {
-    SetError(error, "%s", "[libpq] Must SetSqlQuery() before Prepare()");
+    InternalAdbcSetError(error, "%s", "[libpq] Must SetSqlQuery() before Prepare()");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -775,7 +818,8 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
     } else if (std::strcmp(value, ADBC_INGEST_OPTION_MODE_CREATE_APPEND) == 0) {
       ingest_.mode = IngestMode::kCreateAppend;
     } else {
-      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
+      InternalAdbcSetError(error, "[libpq] Invalid value '%s' for option '%s'", value,
+                           key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     prepared_ = false;
@@ -788,29 +832,32 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
     } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
       ingest_.temporary = false;
     } else {
-      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
+      InternalAdbcSetError(error, "[libpq] Invalid value '%s' for option '%s'", value,
+                           key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     prepared_ = false;
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     int64_t int_value = std::atol(value);
     if (int_value <= 0) {
-      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
+      InternalAdbcSetError(error, "[libpq] Invalid value '%s' for option '%s'", value,
+                           key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    this->reader_.batch_size_hint_bytes_ = int_value;
+    this->batch_size_hint_bytes_ = this->reader_->batch_size_hint_bytes_ = int_value;
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
     if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
       use_copy_ = true;
     } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
       use_copy_ = false;
     } else {
-      SetError(error, "[libpq] Invalid value '%s' for option '%s'", value, key);
+      InternalAdbcSetError(error, "[libpq] Invalid value '%s' for option '%s'", value,
+                           key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
   } else {
-    SetError(error, "[libpq] Unknown statement option '%s'", key);
+    InternalAdbcSetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   return ADBC_STATUS_OK;
@@ -818,13 +865,13 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
 
 AdbcStatusCode PostgresStatement::SetOptionBytes(const char* key, const uint8_t* value,
                                                  size_t length, struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown statement option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown statement option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresStatement::SetOptionDouble(const char* key, double value,
                                                   struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown statement option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown statement option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -832,20 +879,23 @@ AdbcStatusCode PostgresStatement::SetOptionInt(const char* key, int64_t value,
                                                struct AdbcError* error) {
   if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     if (value <= 0) {
-      SetError(error, "[libpq] Invalid value '%" PRIi64 "' for option '%s'", value, key);
+      InternalAdbcSetError(error, "[libpq] Invalid value '%" PRIi64 "' for option '%s'",
+                           value, key);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    this->reader_.batch_size_hint_bytes_ = value;
+    this->batch_size_hint_bytes_ = this->reader_->batch_size_hint_bytes_ = value;
     return ADBC_STATUS_OK;
   }
-  SetError(error, "[libpq] Unknown statement option '%s'", key);
+  InternalAdbcSetError(error, "[libpq] Unknown statement option '%s'", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 void PostgresStatement::ClearResult() {
   // TODO: we may want to synchronize here for safety
-  reader_.Release();
+  if (reader_) reader_->Release();
+  reader_ = std::make_shared<TupleReader>(connection_->conn());
+  reader_->batch_size_hint_bytes_ = batch_size_hint_bytes_;
 }
 
 int PostgresStatement::UseCopy() {

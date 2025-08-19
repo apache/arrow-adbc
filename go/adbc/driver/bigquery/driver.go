@@ -18,6 +18,7 @@
 package bigquery
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"strings"
@@ -85,8 +86,8 @@ var (
 func init() {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, dep := range info.Deps {
-			switch {
-			case dep.Path == "cloud.google.com/go/bigquery":
+			switch dep.Path {
+			case "cloud.google.com/go/bigquery":
 				infoVendorVersion = dep.Version
 			}
 		}
@@ -111,8 +112,16 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
 	db := &databaseImpl{
-		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
+		DatabaseImplBase: dbBase,
 		authType:         OptionValueAuthTypeDefault,
 	}
 	if err := db.SetOptions(opts); err != nil {

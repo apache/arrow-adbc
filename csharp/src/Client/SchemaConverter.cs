@@ -89,7 +89,7 @@ namespace Apache.Arrow.Adbc.Client
                     row[SchemaTableColumn.NumericPrecision] = decimal32Type.Precision;
                     row[SchemaTableColumn.NumericScale] = decimal32Type.Scale;
                 }
-                else if (f.DataType is Decimal128Type decimal64Type)
+                else if (f.DataType is Decimal64Type decimal64Type)
                 {
                     row[SchemaTableColumn.NumericPrecision] = decimal64Type.Precision;
                     row[SchemaTableColumn.NumericScale] = decimal64Type.Scale;
@@ -194,7 +194,7 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(string);
 
                 case ArrowTypeId.Struct:
-                    return  structBehavior == StructBehavior.JsonString ? typeof(string) : typeof(Dictionary<string, object?>);
+                    return structBehavior == StructBehavior.JsonString ? typeof(string) : typeof(Dictionary<string, object?>);
 
                 case ArrowTypeId.Timestamp:
                     return typeof(DateTimeOffset);
@@ -203,7 +203,8 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(DBNull);
 
                 case ArrowTypeId.Interval:
-                    switch (((IntervalType)f.DataType).Unit) {
+                    switch (((IntervalType)f.DataType).Unit)
+                    {
                         case IntervalUnit.MonthDayNanosecond:
                             return typeof(MonthDayNanosecondInterval);
                         case IntervalUnit.DayTime:
@@ -227,7 +228,7 @@ namespace Apache.Arrow.Adbc.Client
                 case ArrowTypeId.Boolean:
                     return typeof(BooleanArray);
                 case ArrowTypeId.Decimal128:
-                        return typeof(Decimal128Array);
+                    return typeof(Decimal128Array);
                 case ArrowTypeId.Decimal256:
                     return typeof(Decimal256Array);
                 case ArrowTypeId.Time32:

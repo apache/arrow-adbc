@@ -1010,7 +1010,7 @@ namespace Apache.Arrow.Adbc.C
 #else
                             Marshal.GetDelegateForFunctionPointer<StatementGetParameterSchema>(Driver.StatementGetParameterSchema)
 #endif
-                            (statement, caller.CreateSchema(), & caller._error));
+                            (statement, caller.CreateSchema(), &caller._error));
                     }
                     return caller.ImportSchema();
                 }

@@ -299,6 +299,36 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        [SkippableFact, Order(6)]
+        public void CanExecuteParallelQueries()
+        {
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
+
+                Parallel.For(0, environment.NumberOfParallelRuns, (i) =>
+                {
+                    Parallel.ForEach(environment.ParallelQueries, pq =>
+                    {
+                        using (AdbcStatement statement = adbcConnection.CreateStatement())
+                        {
+                            statement.SqlQuery = pq.Query;
+
+                            QueryResult queryResult = statement.ExecuteQuery();
+
+                            _outputHelper?.WriteLine($"({i}) {DateTime.Now.Ticks} - {queryResult.RowCount} results for {pq.Query}");
+
+                            Tests.DriverTests.CanExecuteQuery(queryResult, pq.ExpectedResultsCount, environment.Name);
+                        }
+                    });
+                });
+            }
+        }
+
         private AdbcConnection GetAdbcConnection(string? environmentName)
         {
             if (string.IsNullOrEmpty(environmentName))
@@ -344,6 +374,29 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     statement.SqlQuery = environment.Query;
                     Assert.Throws<TimeoutException>(() => { statement.ExecuteQuery(); });
                 }
+            }
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results of multi-statements.
+        /// </summary>
+        [SkippableFact, Order(9)]
+        public void CanExecuteMultiStatementQuery()
+        {
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
+                AdbcStatement statement = adbcConnection.CreateStatement();
+                string query1 = "SELECT * FROM bigquery-public-data.covid19_ecdc.covid_19_geographic_distribution_worldwide";
+                string query2 = "SELECT " +
+                          "CAST(1.7976931348623157e+308 as FLOAT64) as number, " +
+                          "PARSE_NUMERIC(\"9.99999999999999999999999999999999E+28\") as decimal, " +
+                          "PARSE_BIGNUMERIC(\"5.7896044618658097711785492504343953926634992332820282019728792003956564819968E+37\") as big_decimal";
+                string combinedQuery = query1 + ";" + query2 + ";";
+                statement.SqlQuery = combinedQuery;
+                QueryResult queryResult = statement.ExecuteQuery();
+                Tests.DriverTests.CanExecuteQuery(queryResult, 61900, environment.Name);
             }
         }
     }

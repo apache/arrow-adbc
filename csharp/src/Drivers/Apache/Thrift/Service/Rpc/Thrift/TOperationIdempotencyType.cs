@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TOperationIdempotencyType
+  internal enum TOperationIdempotencyType
   {
     UNKNOWN = 0,
     NON_IDEMPOTENT = 1,

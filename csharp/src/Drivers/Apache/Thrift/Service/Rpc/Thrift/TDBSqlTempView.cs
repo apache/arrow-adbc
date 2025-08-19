@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TDBSqlTempView : TBase
+  internal partial class TDBSqlTempView : TBase
   {
     private string _name;
     private string _sqlStatement;

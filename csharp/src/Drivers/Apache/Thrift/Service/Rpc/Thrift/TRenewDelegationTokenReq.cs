@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TRenewDelegationTokenReq : TBase
+  internal partial class TRenewDelegationTokenReq : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf _sessionConf;
 

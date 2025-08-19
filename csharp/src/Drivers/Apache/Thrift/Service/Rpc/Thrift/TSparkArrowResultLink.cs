@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TSparkArrowResultLink : TBase
+  internal partial class TSparkArrowResultLink : TBase
   {
     private Dictionary<string, string> _httpHeaders;
 

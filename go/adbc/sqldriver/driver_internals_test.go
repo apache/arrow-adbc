@@ -136,8 +136,21 @@ func TestColumnTypeDatabaseTypeName(t *testing.T) {
 }
 
 var (
-	tz       = time.FixedZone("North Idaho", -int((8 * time.Hour).Seconds()))
-	testTime = time.Date(2023, time.January, 26, 15, 40, 39, 123456789, tz)
+	tz          = time.FixedZone("North Idaho", -int((8 * time.Hour).Seconds()))
+	testTime    = time.Date(2023, time.January, 26, 15, 40, 39, 123456789, tz)
+	stringField = arrow.Field{
+		Name: "str",
+		Type: arrow.BinaryTypes.String,
+	}
+	int32Field = arrow.Field{
+		Name: "int",
+		Type: arrow.PrimitiveTypes.Int32,
+	}
+
+	tstampSec, _   = arrow.TimestampFromTime(testTime, arrow.Second)
+	tstampMilli, _ = arrow.TimestampFromTime(testTime, arrow.Millisecond)
+	tstampMicro, _ = arrow.TimestampFromTime(testTime, arrow.Microsecond)
+	tstampNano, _  = arrow.TimestampFromTime(testTime, arrow.Nanosecond)
 )
 
 func TestNextRowTypes(t *testing.T) {
@@ -254,6 +267,48 @@ func TestNextRowTypes(t *testing.T) {
 			},
 			golangValue: decimal256.FromU64(10),
 		},
+		{
+			arrowType: arrow.SparseUnionOf([]arrow.Field{stringField, int32Field}, []arrow.UnionTypeCode{0, 1}),
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				ub := b.(array.UnionBuilder)
+				ub.Append(0)
+				ub.Child(0).(*array.StringBuilder).Append("my-string")
+				ub.Child(1).AppendEmptyValue()
+			},
+			golangValue: "my-string",
+		},
+		{
+			arrowType: arrow.SparseUnionOf([]arrow.Field{stringField, int32Field}, []arrow.UnionTypeCode{0, 1}),
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				ub := b.(array.UnionBuilder)
+				ub.Append(1)
+				ub.Child(1).(*array.Int32Builder).Append(100)
+				ub.Child(0).AppendEmptyValue()
+
+			},
+			golangValue: int32(100),
+		},
+		{
+			arrowType: arrow.DenseUnionOf([]arrow.Field{int32Field, stringField}, []arrow.UnionTypeCode{10, 20}),
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				ub := b.(array.UnionBuilder)
+				ub.Append(20)
+				ub.Child(1).(*array.StringBuilder).Append("my-string")
+			},
+			golangValue: "my-string",
+		},
+		{
+			arrowType: arrow.DenseUnionOf([]arrow.Field{int32Field, stringField}, []arrow.UnionTypeCode{10, 20}),
+			arrowValueFunc: func(t *testing.T, b array.Builder) {
+				t.Helper()
+				b.(array.UnionBuilder).Append(10)
+				b.(array.UnionBuilder).Child(0).(*array.Int32Builder).Append(100)
+			},
+			golangValue: int32(100),
+		},
 	}
 
 	for i, test := range tests {
@@ -278,6 +333,7 @@ func TestNextRowTypes(t *testing.T) {
 func TestArrFromVal(t *testing.T) {
 	tests := []struct {
 		value               any
+		inputDataType       arrow.DataType
 		expectedDataType    arrow.DataType
 		expectedStringValue string
 	}{
@@ -352,14 +408,75 @@ func TestArrFromVal(t *testing.T) {
 			expectedStringValue: base64.StdEncoding.EncodeToString([]byte("my-string")),
 		},
 		{
+			value:               []byte("my-string"),
+			inputDataType:       arrow.BinaryTypes.LargeBinary,
+			expectedDataType:    arrow.BinaryTypes.LargeBinary,
+			expectedStringValue: base64.StdEncoding.EncodeToString([]byte("my-string")),
+		},
+		{
 			value:               "my-string",
 			expectedDataType:    arrow.BinaryTypes.String,
 			expectedStringValue: "my-string",
 		},
+		{
+			value:               "my-string",
+			inputDataType:       arrow.BinaryTypes.LargeString,
+			expectedDataType:    arrow.BinaryTypes.LargeString,
+			expectedStringValue: "my-string",
+		},
+		{
+			value:               tstampSec,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Second},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Second},
+			expectedStringValue: testTime.UTC().Truncate(time.Second).Format("2006-01-02 15:04:05Z"),
+		},
+		{
+			value:               tstampMilli,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Millisecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Millisecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Millisecond).Format("2006-01-02 15:04:05.000Z"),
+		},
+		{
+			value:               tstampMicro,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Microsecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Microsecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Microsecond).Format("2006-01-02 15:04:05.000000Z"),
+		},
+		{
+			value:               tstampNano,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Nanosecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Nanosecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Nanosecond).Format("2006-01-02 15:04:05.000000000Z"),
+		},
+		{
+			value:               testTime,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Second},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Second},
+			expectedStringValue: testTime.UTC().Truncate(time.Second).Format("2006-01-02 15:04:05Z"),
+		},
+		{
+			value:               testTime,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Millisecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Millisecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Millisecond).Format("2006-01-02 15:04:05.000Z"),
+		},
+		{
+			value:               testTime,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Microsecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Microsecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Microsecond).Format("2006-01-02 15:04:05.000000Z"),
+		},
+		{
+			value:               testTime,
+			inputDataType:       &arrow.TimestampType{Unit: arrow.Nanosecond},
+			expectedDataType:    &arrow.TimestampType{Unit: arrow.Nanosecond},
+			expectedStringValue: testTime.UTC().Truncate(time.Nanosecond).Format("2006-01-02 15:04:05.000000000Z"),
+		},
 	}
 	for i, test := range tests {
 		t.Run(fmt.Sprintf("%d-%T", i, test.value), func(t *testing.T) {
-			arr := arrFromVal(test.value)
+			arr, err := arrFromVal(test.value, test.inputDataType)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.expectedDataType, arr.DataType())
 			require.Equal(t, 1, arr.Len())

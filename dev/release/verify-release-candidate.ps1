@@ -114,7 +114,7 @@ echo "Using $($ArrowSourceDir)"
 
 Show-Header "Create Conda Environment"
 
-mamba create -c conda-forge -f -y -p $(Join-Path $ArrowTempDir conda-env) `
+mamba create -c conda-forge --yes --prefix $(Join-Path $ArrowTempDir conda-env) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_cpp.txt) `
   --file $(Join-Path $ArrowSourceDir ci\conda_env_python.txt) `
   go `

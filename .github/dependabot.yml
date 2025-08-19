@@ -29,6 +29,12 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore(go/adbc): "
+    groups:
+      opentelemetry:
+        applies-to: version-updates
+        patterns:
+          - "go.opentelemetry.io/otel"
+          - "go.opentelemetry.io/otel/*"
   - package-ecosystem: "maven"
     directory: "/java/"
     schedule:
@@ -58,11 +64,8 @@ updates:
     commit-message:
       prefix: "chore(rust): "
     groups:
-      arrow:
+      arrow-datafusion:
         applies-to: version-updates
         patterns:
           - "arrow-*"
-      datafusion:
-        applies-to: version-updates
-        patterns:
           - "datafusion*"

@@ -250,6 +250,19 @@ const (
 	OptionKeyURI                      = "uri"
 	OptionKeyUsername                 = "username"
 	OptionKeyPassword                 = "password"
+	// EXPERIMENTAL. Sets/Gets the trace parent on OpenTelemetry traces
+	OptionKeyTelemetryTraceParent = "adbc.telemetry.trace_parent"
+)
+
+// EXPERIMENTAL. Traces Telemetry exporter option type
+type OptionTelemetryExporter string
+
+// EXPERIMENTAL. Traces Telemetry exporter options
+const (
+	TelemetryExporterNone     OptionTelemetryExporter = "none"
+	TelemetryExporterOtlp     OptionTelemetryExporter = "otlp"
+	TelemetryExporterConsole  OptionTelemetryExporter = "console"
+	TelemetryExporterAdbcFile OptionTelemetryExporter = "adbcfile"
 )
 
 type OptionIsolationLevel string
@@ -631,7 +644,7 @@ type Statement interface {
 	SetSqlQuery(query string) error
 
 	// ExecuteQuery executes the current query or prepared statement
-	// and returnes a RecordReader for the results along with the number
+	// and returns a RecordReader for the results along with the number
 	// of rows affected if known, otherwise it will be -1.
 	//
 	// This invalidates any prior result sets on this statement.

@@ -33,5 +33,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
             // options specific to Impala go here
         }
+
+        public override string AssemblyName => HiveServer2Connection.s_assemblyName;
+
+        public override string AssemblyVersion => HiveServer2Connection.s_assemblyVersion;
     }
 }

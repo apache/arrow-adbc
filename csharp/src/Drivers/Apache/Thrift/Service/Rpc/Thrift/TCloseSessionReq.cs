@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TCloseSessionReq : TBase
+  internal partial class TCloseSessionReq : TBase
   {
 
     public global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle SessionHandle { get; set; }

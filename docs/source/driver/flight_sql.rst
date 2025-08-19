@@ -19,7 +19,7 @@
 Flight SQL Driver
 =================
 
-**Available for:** C/C++, GLib/Ruby, Go, Java, Python, R
+.. adbc_driver_status:: ../../../c/driver/flightsql/README.md
 
 The Flight SQL Driver provides access to any database implementing a
 :doc:`arrow:format/FlightSql` compatible endpoint.
@@ -27,56 +27,7 @@ The Flight SQL Driver provides access to any database implementing a
 Installation
 ============
 
-.. tab-set::
-
-   .. tab-item:: C/C++
-      :sync: cpp
-
-      For conda-forge users:
-
-      .. code-block:: shell
-
-         mamba install libadbc-driver-flightsql
-
-   .. tab-item:: Go
-      :sync: go
-
-      .. code-block:: shell
-
-         go get github.com/apache/arrow-adbc/go/adbc
-
-   .. tab-item:: Java
-      :sync: java
-
-      Add a dependency on ``org.apache.arrow.adbc:adbc-driver-flight-sql``.
-
-      For Maven users:
-
-      .. code-block:: xml
-
-         <dependency>
-           <groupId>org.apache.arrow.adbc</groupId>
-           <artifactId>adbc-driver-flight-sql</artifactId>
-         </dependency>
-
-   .. tab-item:: Python
-      :sync: python
-
-      .. code-block:: shell
-
-         # For conda-forge
-         mamba install adbc-driver-flightsql
-
-         # For pip
-         pip install adbc_driver_flightsql
-
-   .. tab-item:: R
-      :sync: r
-
-      .. code-block:: r
-
-         # install.packages("pak")
-         pak::pak("apache/arrow-adbc/r/adbcflightsql")
+.. adbc_driver_installation:: ../../../c/driver/flightsql/README.md
 
 Usage
 =====
@@ -159,6 +110,12 @@ few optional authentication schemes:
   header will then be sent back as the ``authorization`` header on all
   future requests.
 
+- OAuth 2.0 authentication flows.
+
+  The client provides :ref:`configurations <oauth-configurations>` to allow client application to obtain access
+  tokens from an authorization server. The obtained token is then used
+  on the ``authorization`` header on all future requests.
+
 Bulk Ingestion
 --------------
 
@@ -217,7 +174,7 @@ The options used for creating the Flight RPC client can be customized.
 ``adbc.flight.sql.client_option.with_max_msg_size``
     The maximum message size to accept from the server.  The driver
     defaults to 16 MiB since Flight services tend to return larger
-    reponse payloads.  Should be a positive integer number of bytes.
+    response payloads.  Should be a positive integer number of bytes.
 
     Python: :attr:`adbc_driver_flightsql.DatabaseOptions.WITH_MAX_MSG_SIZE`
 
@@ -246,9 +203,66 @@ to :c:struct:`AdbcDatabase`, :c:struct:`AdbcConnection`, and
   Add the header ``<HEADER NAME>`` to outgoing requests with the given
   value.
 
-    Python: :attr:`adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX`
+  Python: :attr:`adbc_driver_flightsql.ConnectionOptions.RPC_CALL_HEADER_PREFIX`
 
   .. warning:: Header names must be in all lowercase.
+
+
+OAuth 2.0 Options
+-----------------------
+.. _oauth-configurations:
+
+Supported configurations to obtain tokens using OAuth 2.0 authentication flows.
+
+``adbc.flight.sql.oauth.flow``
+  Specifies the OAuth 2.0 flow type to use. Possible values: ``client_credentials``, ``token_exchange``
+
+``adbc.flight.sql.oauth.client_id``
+  Unique identifier issued to the client application by the authorization server
+
+``adbc.flight.sql.oauth.client_secret``
+  Secret associated to the client_id. Used to authenticate the client application to the authorization server
+
+``adbc.flight.sql.oauth.token_uri``
+  The endpoint URL where the client application requests tokens from the authorization server
+
+``adbc.flight.sql.oauth.scope``
+  Space-separated list of permissions that the client is requesting access to (e.g ``"read.all offline_access"``)
+
+``adbc.flight.sql.oauth.exchange.subject_token``
+  The security token that the client application wants to exchange
+
+``adbc.flight.sql.oauth.exchange.subject_token_type``
+  Identifier for the type of the subject token.
+  Check list below for supported token types.
+
+``adbc.flight.sql.oauth.exchange.actor_token``
+  A security token that represents the identity of the acting party
+
+``adbc.flight.sql.oauth.exchange.actor_token_type``
+  Identifier for the type of the actor token.
+  Check list below for supported token types.
+``adbc.flight.sql.oauth.exchange.aud``
+  The intended audience for the requested security token
+
+``adbc.flight.sql.oauth.exchange.resource``
+  The resource server where the client intends to use the requested security token
+
+``adbc.flight.sql.oauth.exchange.scope``
+  Specific permissions requested for the new token
+
+``adbc.flight.sql.oauth.exchange.requested_token_type``
+  The type of token the client wants to receive in exchange.
+  Check list below for supported token types.
+
+
+Supported token types:
+  - ``urn:ietf:params:oauth:token-type:access_token``
+  - ``urn:ietf:params:oauth:token-type:refresh_token``
+  - ``urn:ietf:params:oauth:token-type:id_token``
+  - ``urn:ietf:params:oauth:token-type:saml1``
+  - ``urn:ietf:params:oauth:token-type:saml2``
+  - ``urn:ietf:params:oauth:token-type:jwt``
 
 Distributed Result Sets
 -----------------------

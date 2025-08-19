@@ -39,7 +39,7 @@ namespace Apache.Arrow.Adbc.Tests
                     {
                         // use a JSON file for the various settings
                         string json = File.ReadAllText(environmentValue);
-                        testConfiguration = JsonSerializer.Deserialize<T>(json)!;
+                        testConfiguration = JsonSerializer.Deserialize<T>(json);
                     }
                 }
             }

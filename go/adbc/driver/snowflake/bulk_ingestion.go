@@ -85,7 +85,7 @@ type ingestOptions struct {
 	// Number of Parquet files to upload in parallel.
 	//
 	// Greater concurrency can smooth out TCP congestion and help make use of
-	// available network bandwith, but will increase memory utilization.
+	// available network bandwidth, but will increase memory utilization.
 	// Default is 8. If set to 0, default value is used. Cannot be negative.
 	uploadConcurrency uint
 	// Maximum number of COPY operations to run concurrently.
@@ -158,9 +158,10 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	schema := st.bound.Schema()
 	r, w := io.Pipe()
 	bw := bufio.NewWriter(w)
-	g.Go(func() error {
-		defer w.Close()
-		defer bw.Flush()
+	g.Go(func() (err error) {
+		defer func() {
+			err = errors.Join(err, bw.Flush(), w.Close())
+		}()
 
 		err = writeParquet(schema, bw, recordCh, 0, parquetProps, arrowProps)
 		if err != io.EOF {
@@ -346,12 +347,21 @@ func writeParquet(
 	targetSize int,
 	parquetProps *parquet.WriterProperties,
 	arrowProps pqarrow.ArrowWriterProperties,
-) error {
+) (err error) {
 	pqWriter, err := pqarrow.NewFileWriter(schema, w, parquetProps, arrowProps)
 	if err != nil {
 		return err
 	}
-	defer pqWriter.Close()
+	defer func() {
+		writerErr := pqWriter.Close()
+		if writerErr != nil {
+			if err == io.EOF {
+				err = writerErr
+			} else {
+				err = errors.Join(err, writerErr)
+			}
+		}
+	}()
 
 	var bytesWritten int64
 	for rec := range in {
@@ -478,7 +488,7 @@ func uploadAllStreams(
 		select {
 		case <-ctx.Done():
 			// The context is canceled on error, so we wait for graceful shutdown of in-progress uploads.
-			// The gosnowflake.snowflakeFileTransferAgent does not currently propogate context, so we
+			// The gosnowflake.snowflakeFileTransferAgent does not currently propagate context, so we
 			// have to wait for uploads to finish for proper shutdown. (https://github.com/snowflakedb/gosnowflake/issues/1028)
 			return g.Wait()
 		default:
@@ -497,12 +507,14 @@ func uploadAllStreams(
 	return g.Wait()
 }
 
-func executeCopyQuery(ctx context.Context, cn snowflakeConn, tableName string, filesToCopy *fileSet) error {
+func executeCopyQuery(ctx context.Context, cn snowflakeConn, tableName string, filesToCopy *fileSet) (err error) {
 	rows, err := cn.QueryContext(ctx, copyQuery, []driver.NamedValue{{Value: tableName}})
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
 
 	fileColIdx := slices.Index(rows.Columns(), "file")
 	if fileColIdx < 0 {
@@ -534,6 +546,9 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 
 	ctx, cancel := context.WithCancel(ctx)
 	g, ctx := errgroup.WithContext(ctx)
+	if concurrency == 0 {
+		concurrency = -1 // if concurrency is 0, then treat it as unlimited
+	}
 	g.SetLimit(concurrency)
 
 	done := make(chan struct{})
@@ -546,7 +561,7 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 		// keep track of each file uploaded to the stage, until it has been copied into the table successfully
 		filesToCopy.Add(filename)
 
-		// readyFn is a no-op if the shutdown signal has already been recieved
+		// readyFn is a no-op if the shutdown signal has already been received
 		select {
 		case _, ok := <-stopCh:
 			if !ok {
@@ -638,12 +653,14 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 	return readyFn, stopFn, cancelFn
 }
 
-func countRowsInTable(ctx context.Context, db snowflakeConn, tableName string) (int64, error) {
+func countRowsInTable(ctx context.Context, db snowflakeConn, tableName string) (rowCount int64, err error) {
 	rows, err := db.QueryContext(ctx, countQuery, []driver.NamedValue{{Value: tableName}})
 	if err != nil {
 		return 0, errToAdbcErr(adbc.StatusIO, err)
 	}
-	defer rows.Close()
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
 
 	dest := make([]driver.Value, 1)
 	if err := rows.Next(dest); err != nil {
@@ -673,12 +690,12 @@ type bufferPool struct {
 }
 
 func (bp *bufferPool) GetBuffer() *bytes.Buffer {
-	return bp.Pool.Get().(*bytes.Buffer)
+	return bp.Get().(*bytes.Buffer)
 }
 
 func (bp *bufferPool) PutBuffer(buf *bytes.Buffer) {
 	buf.Reset()
-	bp.Pool.Put(buf)
+	bp.Put(buf)
 }
 
 type fileSet sync.Map

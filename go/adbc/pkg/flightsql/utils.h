@@ -154,6 +154,10 @@ AdbcStatusCode FlightSQLStatementSetSubstraitPlan(struct AdbcStatement* stmt,
                                                   const uint8_t* plan, size_t length,
                                                   struct AdbcError* err);
 
+AdbcStatusCode AdbcDriverFlightsqlInit(int version, void* rawDriver,
+                                       struct AdbcError* err);
+AdbcStatusCode FlightSqlDriverInit(int version, void* rawDriver, struct AdbcError* err);
+
 AdbcStatusCode FlightSQLDriverInit(int version, void* rawDriver, struct AdbcError* err);
 
 static inline void FlightSQLerrRelease(struct AdbcError* error) {

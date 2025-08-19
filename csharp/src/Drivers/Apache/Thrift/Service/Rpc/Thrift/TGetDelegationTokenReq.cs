@@ -40,34 +40,17 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetDelegationTokenReq : TBase
+  internal partial class TGetDelegationTokenReq : TBase
   {
-    private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf _sessionConf;
-
     public global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle SessionHandle { get; set; }
 
     public string Owner { get; set; }
 
     public string Renewer { get; set; }
 
-    public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf SessionConf
-    {
-      get
-      {
-        return _sessionConf;
-      }
-      set
-      {
-        __isset.sessionConf = true;
-        this._sessionConf = value;
-      }
-    }
-
-
     public Isset __isset;
     public struct Isset
     {
-      public bool sessionConf;
     }
 
     public TGetDelegationTokenReq()
@@ -129,17 +112,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
               {
                 Renewer = await iprot.ReadStringAsync(cancellationToken);
                 isset_renewer = true;
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3329:
-              if (field.Type == TType.Struct)
-              {
-                SessionConf = new global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf();
-                await SessionConf.ReadAsync(iprot, cancellationToken);
               }
               else
               {
@@ -209,15 +181,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(Renewer, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SessionConf != null) && __isset.sessionConf)
-        {
-          tmp568.Name = "sessionConf";
-          tmp568.Type = TType.Struct;
-          tmp568.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp568, cancellationToken);
-          await SessionConf.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -233,8 +196,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       if (ReferenceEquals(this, other)) return true;
       return global::System.Object.Equals(SessionHandle, other.SessionHandle)
         && global::System.Object.Equals(Owner, other.Owner)
-        && global::System.Object.Equals(Renewer, other.Renewer)
-        && ((__isset.sessionConf == other.__isset.sessionConf) && ((!__isset.sessionConf) || (global::System.Object.Equals(SessionConf, other.SessionConf))));
+        && global::System.Object.Equals(Renewer, other.Renewer);
     }
 
     public override int GetHashCode() {
@@ -251,10 +213,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((Renewer != null))
         {
           hashcode = (hashcode * 397) + Renewer.GetHashCode();
-        }
-        if((SessionConf != null) && __isset.sessionConf)
-        {
-          hashcode = (hashcode * 397) + SessionConf.GetHashCode();
         }
       }
       return hashcode;
@@ -277,11 +235,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp569.Append(", Renewer: ");
         Renewer.ToString(tmp569);
-      }
-      if((SessionConf != null) && __isset.sessionConf)
-      {
-        tmp569.Append(", SessionConf: ");
-        SessionConf.ToString(tmp569);
       }
       tmp569.Append(')');
       return tmp569.ToString();

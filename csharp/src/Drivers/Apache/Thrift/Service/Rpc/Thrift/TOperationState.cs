@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TOperationState
+  internal enum TOperationState
   {
     INITIALIZED_STATE = 0,
     RUNNING_STATE = 1,

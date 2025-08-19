@@ -40,12 +40,11 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetTypeInfoReq : TBase
+  internal partial class TGetTypeInfoReq : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TSparkGetDirectResults _getDirectResults;
     private bool _runAsync;
     private global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier _operationId;
-    private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf _sessionConf;
 
     public global::Apache.Hive.Service.Rpc.Thrift.TSessionHandle SessionHandle { get; set; }
 
@@ -88,19 +87,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf SessionConf
-    {
-      get
-      {
-        return _sessionConf;
-      }
-      set
-      {
-        __isset.sessionConf = true;
-        this._sessionConf = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
@@ -108,7 +94,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public bool getDirectResults;
       public bool runAsync;
       public bool operationId;
-      public bool sessionConf;
     }
 
     public TGetTypeInfoReq()
@@ -184,17 +169,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            case 3330:
-              if (field.Type == TType.Struct)
-              {
-                SessionConf = new global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf();
-                await SessionConf.ReadAsync(iprot, cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
             default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
@@ -259,15 +233,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationId.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SessionConf != null) && __isset.sessionConf)
-        {
-          tmp443.Name = "sessionConf";
-          tmp443.Type = TType.Struct;
-          tmp443.ID = 3330;
-          await oprot.WriteFieldBeginAsync(tmp443, cancellationToken);
-          await SessionConf.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -284,8 +249,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       return global::System.Object.Equals(SessionHandle, other.SessionHandle)
         && ((__isset.getDirectResults == other.__isset.getDirectResults) && ((!__isset.getDirectResults) || (global::System.Object.Equals(GetDirectResults, other.GetDirectResults))))
         && ((__isset.runAsync == other.__isset.runAsync) && ((!__isset.runAsync) || (global::System.Object.Equals(RunAsync, other.RunAsync))))
-        && ((__isset.operationId == other.__isset.operationId) && ((!__isset.operationId) || (global::System.Object.Equals(OperationId, other.OperationId))))
-        && ((__isset.sessionConf == other.__isset.sessionConf) && ((!__isset.sessionConf) || (global::System.Object.Equals(SessionConf, other.SessionConf))));
+        && ((__isset.operationId == other.__isset.operationId) && ((!__isset.operationId) || (global::System.Object.Equals(OperationId, other.OperationId))));
     }
 
     public override int GetHashCode() {
@@ -306,10 +270,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((OperationId != null) && __isset.operationId)
         {
           hashcode = (hashcode * 397) + OperationId.GetHashCode();
-        }
-        if((SessionConf != null) && __isset.sessionConf)
-        {
-          hashcode = (hashcode * 397) + SessionConf.GetHashCode();
         }
       }
       return hashcode;
@@ -337,11 +297,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp444.Append(", OperationId: ");
         OperationId.ToString(tmp444);
-      }
-      if((SessionConf != null) && __isset.sessionConf)
-      {
-        tmp444.Append(", SessionConf: ");
-        SessionConf.ToString(tmp444);
       }
       tmp444.Append(')');
       return tmp444.ToString();

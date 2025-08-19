@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TOperationHandle : TBase
+  internal partial class TOperationHandle : TBase
   {
     private double _modifiedRowCount;
 

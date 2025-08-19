@@ -50,17 +50,17 @@ repos:
     - id: cmake-format
       args: [--in-place]
   - repo: https://github.com/cpplint/cpplint
-    rev: f4363d7fc0d5f38c4fd41b658e069e96583da0d5  # 2.0.0
+    rev: 350702a4d39395571bd118c9a3cff0a573488d61  # 2.0.2
     hooks:
     - id: cpplint
       types_or: [c++]
       args:
         # From Arrow's config
-        - "--filter=-whitespace/comments,-whitespace/indent,-readability/braces,-readability/casting,-readability/todo,-readability/alt_tokens,-build/header_guard,-build/c++11,-build/include_order,-build/include_subdir,-runtime/references"
+        - "--filter=-whitespace/comments,-whitespace/indent,-readability/braces,-readability/casting,-readability/todo,-readability/alt_tokens,-build/header_guard,-build/c++11,-build/include_order,-build/include_subdir,-runtime/references,-build/c++17"
         - "--linelength=90"
         - "--verbose=2"
   - repo: https://github.com/golangci/golangci-lint
-    rev: 0a603e49e5e9870f5f9f2035bcbe42cd9620a9d5  # v1.64.5
+    rev: 2b224c2cf4c9f261c22a16af7f8ca6408467f338  # v2.0.2
     hooks:
     - id: golangci-lint
       entry: bash -c 'cd go/adbc && golangci-lint run --fix --timeout 5m'
@@ -97,6 +97,12 @@ repos:
     rev: 8ae2bb65fe66458263d94711ae4ddd978faece00
     hooks:
     - id: vala-lint
+  - repo: https://github.com/trim21/pre-commit-mirror-meson
+    rev: 3fcd193f7ae6a5ae62cfcd21a1ac66347db7cb6b # v1.7.2
+    hooks:
+    - id: meson-fmt
+      files: 'meson.build'
+      args: ['--inplace']
   - repo: local
     hooks:
     - id: apache-rat
@@ -108,7 +114,7 @@ repos:
       name: Ensure CGO adbc.h is syncd
       language: script
       pass_filenames: true
-      files: '^c/include/arrow-adbc/.*\.h$'
+      files: '^c/include/arrow-adbc/[^/]*\.h$'
       entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
     # https://infra.apache.org/github-actions-policy.html
     - id: check-pin
@@ -125,5 +131,9 @@ repos:
     - id: fmt
       name: rustfmt
       args: ["--all", "--manifest-path", "rust/Cargo.toml", "--"]
+  - repo: https://github.com/codespell-project/codespell
+    rev: 63c8f8312b7559622c0d82815639671ae42132ac  # v2.4.1
+    hooks:
+    - id: codespell
 
-exclude: "^c/vendor/.*"
+exclude: "^(c/vendor/.*)|(go/adbc/drivermgr/vendored/.*)"

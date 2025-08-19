@@ -43,9 +43,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Get required Go version
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - uses: actions/setup-go@v5
         with:
-          go-version-file: 'go/adbc/go.mod'
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
       - uses: actions/setup-python@v5
         with:

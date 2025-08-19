@@ -245,7 +245,7 @@ new canonical options.
 :ref:`specification-rich-error-metadata` has been added, allowing clients to
 get additional error metadata.
 
-The ability to retrive table/column :ref:`statistics
+The ability to retrieve table/column :ref:`statistics
 <specification-statistics>` was added.  The goal here is to make ADBC work
 better in federation scenarios, where one query engine wants to read Arrow
 data from another database.

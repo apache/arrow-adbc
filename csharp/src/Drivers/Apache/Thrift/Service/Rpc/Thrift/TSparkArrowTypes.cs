@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TSparkArrowTypes : TBase
+  internal partial class TSparkArrowTypes : TBase
   {
     private bool _timestampAsArrow;
     private bool _decimalAsArrow;

@@ -21,6 +21,7 @@
 package driverbase
 
 import (
+	"context"
 	"runtime/debug"
 	"strings"
 
@@ -35,12 +36,19 @@ var (
 
 func init() {
 	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, s := range info.Settings {
+			switch s.Key {
+			case "vcs.modified":
+				if s.Value == "true" {
+					infoDriverVersion += "-dev"
+				}
+			}
+		}
 		for _, dep := range info.Deps {
 			switch {
-			case dep.Path == "github.com/apache/arrow-adbc/go/adbc":
-				infoDriverVersion = dep.Version
-			case strings.HasPrefix(dep.Path, "github.com/apache/arrow/go/"):
+			case strings.HasPrefix(dep.Path, "github.com/apache/arrow-go/"):
 				infoDriverArrowVersion = dep.Version
+				return
 			}
 		}
 	}
@@ -50,6 +58,7 @@ func init() {
 // vendor-specific functionality.
 type DriverImpl interface {
 	adbc.Driver
+	adbc.DriverWithContext
 	Base() *DriverImplBase
 }
 
@@ -70,6 +79,10 @@ type DriverImplBase struct {
 
 func (base *DriverImplBase) NewDatabase(opts map[string]string) (adbc.Database, error) {
 	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewDatabase")
+}
+
+func (base *DriverImplBase) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	return nil, base.ErrorHelper.Errorf(adbc.StatusNotImplemented, "NewDatabaseWithContext")
 }
 
 // NewDriverImplBase instantiates DriverImplBase.

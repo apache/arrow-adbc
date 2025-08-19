@@ -62,7 +62,7 @@ pub struct FFI_AdbcErrorDetail {
 #[derive(Debug)]
 pub struct FFI_AdbcDatabase {
     /// Opaque implementation-defined state.
-    /// This field is NULLPTR iff the connection is unintialized/freed.
+    /// This field is NULLPTR iff the connection is uninitialized/freed.
     pub(crate) private_data: *mut c_void,
     /// The associated driver (used by the driver manager to help track state).
     pub(crate) private_driver: *const FFI_AdbcDriver,
@@ -74,7 +74,7 @@ unsafe impl Send for FFI_AdbcDatabase {}
 #[derive(Debug)]
 pub struct FFI_AdbcConnection {
     /// Opaque implementation-defined state.
-    /// This field is NULLPTR iff the connection is unintialized/freed.
+    /// This field is NULLPTR iff the connection is uninitialized/freed.
     pub(crate) private_data: *mut c_void,
     /// The associated driver (used by the driver manager to help track state).
     pub(crate) private_driver: *const FFI_AdbcDriver,
@@ -86,7 +86,7 @@ unsafe impl Send for FFI_AdbcConnection {}
 #[derive(Debug)]
 pub struct FFI_AdbcStatement {
     /// Opaque implementation-defined state.
-    /// This field is NULLPTR iff the connection is unintialized/freed.
+    /// This field is NULLPTR iff the connection is uninitialized/freed.
     pub(crate) private_data: *mut c_void,
     /// The associated driver (used by the driver manager to help track state).
     pub(crate) private_driver: *const FFI_AdbcDriver,
@@ -113,7 +113,7 @@ pub struct FFI_AdbcPartitions {
     partition_lengths: *mut usize,
 
     /// Opaque implementation-defined state.
-    /// This field is NULLPTR iff the connection is unintialized/freed.
+    /// This field is NULLPTR iff the connection is uninitialized/freed.
     pub(crate) private_data: *mut c_void,
 
     /// Release the contained partitions.
@@ -126,11 +126,11 @@ pub struct FFI_AdbcPartitions {
 #[derive(Debug)]
 pub struct FFI_AdbcDriver {
     /// Opaque driver-defined state.
-    /// This field is NULL if the driver is unintialized/freed (but
+    /// This field is NULL if the driver is uninitialized/freed (but
     /// it need not have a value even if the driver is initialized).
     pub(crate) private_data: *mut c_void,
     /// Opaque driver manager-defined state.
-    /// This field is NULL if the driver is unintialized/freed (but
+    /// This field is NULL if the driver is uninitialized/freed (but
     /// it need not have a value even if the driver is initialized).
     pub(crate) private_manager: *const c_void,
     pub(crate) release: Option<
@@ -193,7 +193,10 @@ pub struct FFI_AdbcDriver {
     pub(crate) StatementSetOptionInt: Option<methods::FuncStatementSetOptionInt>,
 }
 
+/// The [FFI_AdbcDriver] carries raw C pointers to the driver manager and private data that rustc
+/// can not treat as [Send] and [Sync] but we trust drivers access them in a thread-safe way.
 unsafe impl Send for FFI_AdbcDriver {}
+unsafe impl Sync for FFI_AdbcDriver {}
 
 macro_rules! driver_method {
     ($driver:expr, $method:ident) => {
@@ -667,7 +670,7 @@ mod tests {
             status: Status::Unknown,
             vendor_code: constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA,
             sqlstate: [1, 2, 3, 4, 5],
-            details: None, // Details are not transfered here because there is no driver
+            details: None, // Details are not transferred here because there is no driver
         };
         let error_ffi: FFI_AdbcError = error_expected.clone().try_into().unwrap();
         let error_actual: Error = error_ffi.try_into().unwrap();

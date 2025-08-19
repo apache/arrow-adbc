@@ -38,15 +38,28 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  check-c:
     strategy:
       matrix:
         os: [ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
 
     uses: ./.github/workflows/r-check.yml
     with:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
+
+  check-go:
+    strategy:
+      matrix:
+        os: [ubuntu]
+        pkg: [adbcflightsql, adbcsnowflake, adbcbigquery]
+
+    uses: ./.github/workflows/r-check.yml
+    with:
+      os: ${{ matrix.os }}
+      pkg: ${{ matrix.pkg }}
+      # If update this to `error`, warnings will not fail the job
+      error-on: warning
     secrets:
       SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}

@@ -22,7 +22,7 @@ Writing New Drivers
 Currently, new drivers can be written in C#, C/C++, Go, and Java.  A driver
 written in C/C++ or Go can be used from either of those languages, as well as
 C#, Python, R, and Ruby.  (C# can experimentally export drivers to the same
-set of languges as well.)  The Rust API definitions for ADBC are still under
+set of languages as well.)  The Rust API definitions for ADBC are still under
 development, but we plan for them to be on par with C#, C/C++, and Go in this
 respect.
 

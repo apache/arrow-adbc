@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TTypeQualifierValue : TBase
+  internal partial class TTypeQualifierValue : TBase
   {
     private int _i32Value;
     private string _stringValue;

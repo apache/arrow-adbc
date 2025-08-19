@@ -183,7 +183,7 @@ impl Optionable for DataFusionDatabase {
 impl Database for DataFusionDatabase {
     type ConnectionType = DataFusionConnection;
 
-    fn new_connection(&mut self) -> Result<Self::ConnectionType> {
+    fn new_connection(&self) -> Result<Self::ConnectionType> {
         let ctx = SessionContext::new();
 
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -198,7 +198,7 @@ impl Database for DataFusionDatabase {
     }
 
     fn new_connection_with_opts(
-        &mut self,
+        &self,
         opts: impl IntoIterator<
             Item = (
                 adbc_core::options::OptionConnection,
@@ -954,4 +954,5 @@ impl Statement for DataFusionStatement {
     }
 }
 
+#[cfg(feature = "ffi")]
 adbc_core::export_driver!(DataFusionDriverInit, DataFusionDriver);

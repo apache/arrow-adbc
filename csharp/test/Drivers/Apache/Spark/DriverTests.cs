@@ -112,7 +112,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         protected override IReadOnlyList<int> GetUpdateExpectedResults()
         {
             int affectedRows = ValidateAffectedRows ? 1 : -1;
-            return ClientTests.GetUpdateExpectedResults(affectedRows, TestEnvironment.ServerType == SparkServerType.Databricks);
+            return ClientTests.GetUpdateExpectedResults(affectedRows, false);
         }
 
         public static IEnumerable<object[]> CatalogNamePatternData()

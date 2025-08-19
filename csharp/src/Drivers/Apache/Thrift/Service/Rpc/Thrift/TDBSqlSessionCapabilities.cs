@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TDBSqlSessionCapabilities : TBase
+  internal partial class TDBSqlSessionCapabilities : TBase
   {
     private bool _supportsMultipleCatalogs;
 

@@ -43,7 +43,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         readonly Dictionary<string, AdbcConnection> _configuredConnections = new Dictionary<string, AdbcConnection>();
         readonly ITestOutputHelper _outputHelper;
 
-        private List<string> GetPatterns(string? namePattern, bool caseSenstive)
+        private List<string> GetPatterns(string? namePattern, bool caseSensitive)
         {
             List<string> patterns = new List<string>();
 
@@ -52,7 +52,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
             patterns.Add($"{GetPartialNameForPatternMatch(name)}%");
             patterns.Add($"_{GetNameWithoutFirstChatacter(name)}");
 
-            if (!caseSenstive)
+            if (!caseSensitive)
             {
                 patterns.Add($"{GetPartialNameForPatternMatch(name).ToLower()}%");
                 patterns.Add($"{GetPartialNameForPatternMatch(name).ToUpper()}%");

@@ -23,6 +23,7 @@ package validation
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -173,7 +175,8 @@ func (c *ConnectionTests) TestCloseConnTwice() {
 }
 
 func (c *ConnectionTests) TestConcurrent() {
-	cnxn, _ := c.DB.Open(context.Background())
+	cnxn, err := c.DB.Open(context.Background())
+	c.Require().NoError(err)
 	cnxn2, err := c.DB.Open(context.Background())
 	c.Require().NoError(err)
 
@@ -186,8 +189,9 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 	// even if not supported, drivers should act as if autocommit
 	// is enabled, and return INVALID_STATE if the client tries to
 	// commit or rollback
-	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
+	defer CheckedClose(c.T(), cnxn)
 
 	if getset, ok := cnxn.(adbc.GetSetOptions); ok {
 		value, err := getset.GetOption(adbc.OptionKeyAutoCommit)
@@ -197,7 +201,7 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 
 	expectedCode := adbc.StatusInvalidState
 	var adbcError adbc.Error
-	err := cnxn.Commit(ctx)
+	err = cnxn.Commit(ctx)
 	c.ErrorAs(err, &adbcError)
 	c.Equal(expectedCode, adbcError.Code)
 	err = cnxn.Rollback(ctx)
@@ -213,8 +217,9 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 
 func (c *ConnectionTests) TestAutocommitToggle() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
+	defer CheckedClose(c.T(), cnxn)
 
 	if !c.Quirks.SupportsTransactions() {
 		return
@@ -249,8 +254,9 @@ func (c *ConnectionTests) TestAutocommitToggle() {
 
 func (c *ConnectionTests) TestMetadataCurrentCatalog() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
+	defer CheckedClose(c.T(), cnxn)
 	getset, ok := cnxn.(adbc.GetSetOptions)
 
 	if !c.Quirks.SupportsGetSetOptions() {
@@ -269,8 +275,9 @@ func (c *ConnectionTests) TestMetadataCurrentCatalog() {
 
 func (c *ConnectionTests) TestMetadataCurrentDbSchema() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
+	defer CheckedClose(c.T(), cnxn)
 	getset, ok := cnxn.(adbc.GetSetOptions)
 
 	if !c.Quirks.SupportsGetSetOptions() {
@@ -289,8 +296,9 @@ func (c *ConnectionTests) TestMetadataCurrentDbSchema() {
 
 func (c *ConnectionTests) TestMetadataGetInfo() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
+	defer CheckedClose(c.T(), cnxn)
 
 	info := []adbc.InfoCode{
 		adbc.InfoDriverName,
@@ -347,8 +355,9 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 
 func (c *ConnectionTests) TestMetadataGetStatistics() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
+	defer CheckedClose(c.T(), cnxn)
 
 	if c.Quirks.SupportsStatistics() {
 		stats, ok := cnxn.(adbc.ConnectionGetStatistics)
@@ -381,8 +390,9 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 	defer rec.Release()
 
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	cnxn, err := c.DB.Open(ctx)
+	c.Require().NoError(err)
+	defer CheckedClose(c.T(), cnxn)
 
 	c.Require().NoError(c.Quirks.CreateSampleTable("sample_test", rec))
 
@@ -401,8 +411,9 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 
 func (c *ConnectionTests) TestMetadataGetTableTypes() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
+	defer CheckedClose(c.T(), cnxn)
 
 	rdr, err := cnxn.GetTableTypes(ctx)
 	c.Require().NoError(err)
@@ -414,8 +425,9 @@ func (c *ConnectionTests) TestMetadataGetTableTypes() {
 
 func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
-	defer cnxn.Close()
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
+	defer CheckedClose(c.T(), cnxn)
 
 	ingestCatalogName := c.Quirks.Catalog()
 	ingestSchemaName := c.Quirks.DBSchema()
@@ -667,7 +679,7 @@ func (s *StatementTests) TestSqlExecuteSchema() {
 
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	es, ok := stmt.(adbc.StatementExecuteSchema)
 	s.Require().True(ok, "%#v does not support ExecuteSchema", es)
@@ -706,7 +718,7 @@ func (s *StatementTests) TestSqlExecuteSchema() {
 func (s *StatementTests) TestSqlPartitionedInts() {
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	s.NoError(stmt.SetSqlQuery("SELECT 42"))
 
@@ -731,7 +743,7 @@ func (s *StatementTests) TestSqlPartitionedInts() {
 
 	cxn, err := s.DB.Open(s.ctx)
 	s.Require().NoError(err)
-	defer cxn.Close()
+	defer CheckedClose(s.T(), cxn)
 
 	rdr, err := cxn.ReadPartition(s.ctx, part.PartitionIDs[0])
 	s.Require().NoError(err)
@@ -759,7 +771,7 @@ func (s *StatementTests) TestSqlPartitionedInts() {
 func (s *StatementTests) TestSQLPrepareGetParameterSchema() {
 	stmt, err := s.Cnxn.NewStatement()
 	s.NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
 	s.NoError(stmt.SetSqlQuery(query))
@@ -787,7 +799,7 @@ func (s *StatementTests) TestSQLPrepareSelectParams() {
 
 	stmt, err := s.Cnxn.NewStatement()
 	s.NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
 	s.Require().NoError(stmt.SetSqlQuery(query))
@@ -836,7 +848,7 @@ func (s *StatementTests) TestSQLPrepareSelectParams() {
 func (s *StatementTests) TestSQLPrepareSelectNoParams() {
 	stmt, err := s.Cnxn.NewStatement()
 	s.NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	s.NoError(stmt.SetSqlQuery("SELECT 1"))
 	s.NoError(stmt.Prepare(s.ctx))
@@ -873,7 +885,7 @@ func (s *StatementTests) TestSqlPrepareErrorParamCountMismatch() {
 	query := "SELECT " + s.Quirks.BindParameter(0) + ", " + s.Quirks.BindParameter(1)
 	stmt, err := s.Cnxn.NewStatement()
 	s.NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	s.NoError(stmt.SetSqlQuery(query))
 	s.NoError(stmt.Prepare(s.ctx))
@@ -910,7 +922,7 @@ func (s *StatementTests) TestSqlIngestInts() {
 
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
 	s.Require().NoError(stmt.Bind(s.ctx, batch))
@@ -962,7 +974,7 @@ func (s *StatementTests) TestSqlIngestAppend() {
 	// ingest and create table
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
 	s.Require().NoError(stmt.Bind(s.ctx, batch))
@@ -1036,7 +1048,7 @@ func (s *StatementTests) TestSqlIngestReplace() {
 	// ingest and create table
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
 	s.Require().NoError(stmt.Bind(s.ctx, batch))
@@ -1108,7 +1120,7 @@ func (s *StatementTests) TestSqlIngestCreateAppend() {
 	// ingest and create table
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreateAppend))
@@ -1163,7 +1175,7 @@ func (s *StatementTests) TestSqlIngestErrors() {
 
 	stmt, err := s.Cnxn.NewStatement()
 	s.Require().NoError(err)
-	defer stmt.Close()
+	defer CheckedClose(s.T(), stmt)
 
 	s.Run("ingest without bind", func() {
 		var e adbc.Error
@@ -1255,4 +1267,16 @@ func (s *StatementTests) TestSqlIngestErrors() {
 		s.ErrorAs(err, &e)
 		s.NotEqual(adbc.StatusOK, e.Code)
 	})
+}
+
+// CheckedClose is a helper for deferring Close() with a potential error in a test.
+// For example: `defer CheckedClose(suite.T(), stmt)`
+func CheckedClose(t *testing.T, c io.Closer) {
+	assert.NoError(t, c.Close())
+}
+
+// CheckedClose is a helper for deferring a function with a potential error in a test.
+// For example: `defer CheckedCleanup(suite.T(), func() error { return os.Remove(path) })`
+func CheckedCleanup(t *testing.T, c func() error) {
+	assert.NoError(t, c())
 }

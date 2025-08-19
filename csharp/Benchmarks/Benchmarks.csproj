@@ -9,8 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
-    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="1.2.1" GeneratePathProperty="true" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.2" />
+    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="1.3.0" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>

@@ -95,7 +95,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -173,7 +173,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -194,6 +194,7 @@ jobs:
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_POSTGRESQL: "1"
           BUILD_DRIVER_SQLITE: "1"
+          ADBC_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test
@@ -250,16 +251,23 @@ jobs:
       - name: Build
         run: |
           meson setup \
-            -Db_sanitize=address,undefined \
-            -Ddriver_manager=true \
-            -Dflightsql=true \
-            -Dpostgresql=true \
-            -Dsnowflake=true \
-            -Dsqlite=true \
-            -Dtests=true \
+            -Dauto_features=enabled \
             c c/build
           meson compile -C c/build
       - name: Test
+        run: |
+          meson test -C c/build --print-errorlogs
+      - name: Build with sanitizers
+        run: |
+          # skip bigquery and flightsql for now; see GH-2744
+          meson setup \
+            -Db_sanitize=address,undefined \
+            -Dauto_features=enabled \
+            -Dbigquery=disabled \
+            -Dflightsql=disabled \
+            c c/build
+          meson compile -C c/build
+      - name: Test with sanitizers
         run: |
           meson test -C c/build --print-errorlogs
       - name: Stop SQLite server, Dremio, and postgresql
@@ -283,7 +291,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -329,7 +337,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -392,13 +400,18 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935  # v2.1.8
+      - uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193  # v2.1.10
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      # XXX: https://github.com/actions/setup-go/issues/457
+      # We can't use go-version-file for setup-go because it doesn't understand
+      # the 'toolchain' parameter and staticcheck tends to need the latest Go
+      - id: toolchain
+        run: echo "GO_VERSION=$(sed -n 's/^toolchain go//p' go/adbc/go.mod)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@v5
         with:
-          go-version-file: "go/adbc/go.mod"
+          go-version: ${{ steps.toolchain.outputs.GO_VERSION }}
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
@@ -449,7 +462,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935  # v2.1.8
+      - uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193  # v2.1.10
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -465,7 +478,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -527,7 +540,7 @@ jobs:
     strategy:
       matrix:
         os: ["macos-13", "macos-latest", "ubuntu-latest"]
-        python: ["3.9", "3.12"]
+        python: ["3.9", "3.13"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -549,7 +562,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -644,7 +657,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest"]
-        python: ["3.12"]
+        python: ["3.13"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -659,7 +672,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false

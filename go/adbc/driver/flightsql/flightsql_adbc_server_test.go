@@ -20,11 +20,21 @@
 package flightsql_test
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/textproto"
 	"os"
 	"strconv"
@@ -38,6 +48,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -50,6 +61,7 @@ import (
 	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
@@ -69,16 +81,14 @@ type ServerBasedTests struct {
 }
 
 func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware []flight.ServerMiddleware, dbArgs map[string]string, dialOpts ...grpc.DialOption) {
-	suite.s = flight.NewServerWithMiddleware(srvMiddleware)
-	suite.s.RegisterFlightService(flightsql.NewFlightServer(srv))
-	suite.Require().NoError(suite.s.Init("localhost:0"))
-	suite.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
-	go func() {
-		_ = suite.s.Serve()
-	}()
+	suite.setupFlightServer(srv, srvMiddleware)
 
-	uri := "grpc+tcp://" + suite.s.Addr().String()
+	suite.setupDatabase(dbArgs, dialOpts...)
+}
+
+func (suite *ServerBasedTests) setupDatabase(dbArgs map[string]string, dialOpts ...grpc.DialOption) {
 	var err error
+	uri := "grpc+tcp://" + suite.s.Addr().String()
 
 	args := map[string]string{
 		"uri": uri,
@@ -86,6 +96,16 @@ func (suite *ServerBasedTests) DoSetupSuite(srv flightsql.Server, srvMiddleware 
 	maps.Copy(args, dbArgs)
 	suite.db, err = (driver.NewDriver(memory.DefaultAllocator)).NewDatabaseWithOptions(args, dialOpts...)
 	suite.Require().NoError(err)
+}
+
+func (suite *ServerBasedTests) setupFlightServer(srv flightsql.Server, srvMiddleware []flight.ServerMiddleware, srvOpts ...grpc.ServerOption) {
+	suite.s = flight.NewServerWithMiddleware(srvMiddleware, srvOpts...)
+	suite.s.RegisterFlightService(flightsql.NewFlightServer(srv))
+	suite.Require().NoError(suite.s.Init("localhost:0"))
+	suite.s.SetShutdownOnSignals(os.Interrupt, os.Kill)
+	go func() {
+		_ = suite.s.Serve()
+	}()
 }
 
 func (suite *ServerBasedTests) SetupTest() {
@@ -102,6 +122,57 @@ func (suite *ServerBasedTests) TearDownSuite() {
 	suite.NoError(suite.db.Close())
 	suite.db = nil
 	suite.s.Shutdown()
+}
+
+func (suite *ServerBasedTests) generateCertOption() (*tls.Config, string) {
+	// Generate a self-signed certificate in-process for testing
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	suite.Require().NoError(err)
+	certTemplate := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"Unit Tests Incorporated"},
+		},
+		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+	certDer, err := x509.CreateCertificate(rand.Reader, &certTemplate, &certTemplate, &privKey.PublicKey, privKey)
+	suite.Require().NoError(err)
+	buffer := &bytes.Buffer{}
+	suite.Require().NoError(pem.Encode(buffer, &pem.Block{Type: "CERTIFICATE", Bytes: certDer}))
+	certBytes := make([]byte, buffer.Len())
+	copy(certBytes, buffer.Bytes())
+	buffer.Reset()
+	suite.Require().NoError(pem.Encode(buffer, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privKey)}))
+	keyBytes := make([]byte, buffer.Len())
+	copy(keyBytes, buffer.Bytes())
+
+	cert, err := tls.X509KeyPair(certBytes, keyBytes)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(err)
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
+	return tlsConfig, string(certBytes)
+}
+
+func (suite *ServerBasedTests) openAndExecuteQuery(query string) {
+	var err error
+	suite.cnxn, err = suite.db.Open(context.Background())
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), suite.cnxn)
+
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), stmt)
+
+	suite.Require().NoError(stmt.SetSqlQuery(query))
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	suite.NoError(err)
+	defer reader.Release()
 }
 
 // ---- Tests --------------------
@@ -148,6 +219,10 @@ func TestSessionOptions(t *testing.T) {
 
 func TestGetObjects(t *testing.T) {
 	suite.Run(t, &GetObjectsTests{})
+}
+
+func TestOauth(t *testing.T) {
+	suite.Run(t, &OAuthTests{})
 }
 
 // ---- AuthN Tests --------------------
@@ -230,23 +305,295 @@ type AuthnTests struct {
 }
 
 func (suite *AuthnTests) SetupSuite() {
-	suite.DoSetupSuite(&AuthnTestServer{}, []flight.ServerMiddleware{
+	suite.setupFlightServer(&AuthnTestServer{}, []flight.ServerMiddleware{
 		{Stream: authnTestStream, Unary: authnTestUnary},
-	}, map[string]string{
-		driver.OptionAuthorizationHeader: "Bearer initial",
 	})
 }
 
-func (suite *AuthnTests) TestBearerTokenUpdated() {
-	// apache/arrow-adbc#584: when setting the auth header directly, the client should use any updated token value from the server if given
-	stmt, err := suite.cnxn.NewStatement()
-	suite.Require().NoError(err)
-	defer stmt.Close()
+func (suite *AuthnTests) SetupTest() {
+	suite.setupDatabase(map[string]string{
+		"uri": "grpc+tcp://" + suite.s.Addr().String(),
+	})
+}
 
-	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
-	reader, _, err := stmt.ExecuteQuery(context.Background())
-	suite.NoError(err)
-	defer reader.Release()
+func (suite *AuthnTests) TearDownTest() {
+	suite.NoError(suite.db.Close())
+	suite.db = nil
+}
+
+func (suite *AuthnTests) TearDownSuite() {
+	suite.s.Shutdown()
+}
+
+func (suite *AuthnTests) TestBearerTokenUpdated() {
+	err := suite.db.SetOptions(map[string]string{
+		driver.OptionAuthorizationHeader: "Bearer initial",
+	})
+	suite.Require().NoError(err)
+
+	// apache/arrow-adbc#584: when setting the auth header directly, the client should use any updated token value from the server if given
+
+	suite.openAndExecuteQuery("a-query")
+}
+
+type OAuthTests struct {
+	ServerBasedTests
+
+	oauthServer     *httptest.Server
+	mockOAuthServer *MockOAuthServer
+	pemCert         string
+}
+
+// MockOAuthServer simulates an OAuth 2.0 server for testing
+type MockOAuthServer struct {
+	// Track calls to validate server behavior
+	clientCredentialsCalls int
+	tokenExchangeCalls     int
+}
+
+func (m *MockOAuthServer) handleTokenRequest(w http.ResponseWriter, r *http.Request) {
+	// Parse the form to get the request parameters
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	grantType := r.FormValue("grant_type")
+
+	switch grantType {
+	case "client_credentials":
+		m.clientCredentialsCalls++
+		// Validate client credentials
+		clientID := r.FormValue("client_id")
+		clientSecret := r.FormValue("client_secret")
+
+		if clientID == "test-client" && clientSecret == "test-secret" {
+			// Return a valid token response
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{
+				"access_token": "test-client-token",
+				"token_type": "bearer",
+				"expires_in": 3600
+			}`))
+
+			return
+		}
+
+	case "urn:ietf:params:oauth:grant-type:token-exchange":
+		m.tokenExchangeCalls++
+		// Validate token exchange parameters
+		subjectToken := r.FormValue("subject_token")
+		subjectTokenType := r.FormValue("subject_token_type")
+
+		if subjectToken == "test-subject-token" &&
+			subjectTokenType == "urn:ietf:params:oauth:token-type:jwt" {
+			// Return a valid token response
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{
+				"access_token": "test-exchanged-token",
+				"token_type": "bearer",
+				"expires_in": 3600
+			}`))
+			return
+		}
+	}
+
+	// Default: return error for invalid request
+	http.Error(w, "Invalid request", http.StatusBadRequest)
+}
+
+func oauthTestUnary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "Could not get metadata")
+	}
+	auth := md.Get("authorization")
+	if len(auth) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "No token")
+	} else if auth[0] != "Bearer test-exchanged-token" && auth[0] != "Bearer test-client-token" {
+		return nil, status.Error(codes.Unauthenticated, "Invalid token for unary call: "+auth[0])
+	}
+
+	md.Set("authorization", "Bearer final")
+	ctx = metadata.NewOutgoingContext(ctx, md)
+	return handler(ctx, req)
+}
+
+func (suite *OAuthTests) SetupSuite() {
+
+	tlsConfig, pemCertString := suite.generateCertOption()
+	suite.pemCert = pemCertString
+
+	suite.mockOAuthServer = &MockOAuthServer{}
+	suite.oauthServer = httptest.NewUnstartedServer(http.HandlerFunc(suite.mockOAuthServer.handleTokenRequest))
+	suite.oauthServer.TLS = tlsConfig
+	suite.oauthServer.StartTLS()
+
+	suite.setupFlightServer(&AuthnTestServer{}, []flight.ServerMiddleware{
+		{Unary: oauthTestUnary},
+	}, grpc.Creds(credentials.NewTLS(tlsConfig)))
+}
+
+func (suite *OAuthTests) TearDownSuite() {
+	suite.oauthServer.Close()
+	suite.s.Shutdown()
+}
+
+func (suite *OAuthTests) SetupTest() {
+	suite.setupDatabase(map[string]string{
+		"uri": "grpc+tls://" + suite.s.Addr().String(),
+	})
+}
+
+func (suite *OAuthTests) TearDownTest() {
+	suite.NoError(suite.db.Close())
+	suite.db = nil
+}
+
+func (suite *OAuthTests) TestTokenExchangeFlow() {
+	err := suite.db.SetOptions(map[string]string{
+		driver.OptionKeyOauthFlow:        driver.TokenExchange,
+		driver.OptionKeySubjectToken:     "test-subject-token",
+		driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
+		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
+		driver.OptionSSLRootCerts:        suite.pemCert,
+	})
+	suite.Require().NoError(err)
+
+	suite.openAndExecuteQuery("a-query")
+	suite.Equal(1, suite.mockOAuthServer.tokenExchangeCalls, "Token exchange flow should be called once")
+}
+
+func (suite *OAuthTests) TestClientCredentialsFlow() {
+	err := suite.db.SetOptions(map[string]string{
+		driver.OptionKeyOauthFlow:    driver.ClientCredentials,
+		driver.OptionKeyClientId:     "test-client",
+		driver.OptionKeyClientSecret: "test-secret",
+		driver.OptionKeyTokenURI:     suite.oauthServer.URL,
+		driver.OptionSSLRootCerts:    suite.pemCert,
+	})
+	suite.Require().NoError(err)
+
+	suite.cnxn, err = suite.db.Open(context.Background())
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), suite.cnxn)
+
+	suite.openAndExecuteQuery("a-query")
+	// golang/oauth2 tries to call the token endpoint sending the client credentials in the authentication header,
+	// if it fails, it retries sending the client credentials in the request body.
+	// See https://code.google.com/p/goauth2/issues/detail?id=31 for background.
+	suite.Equal(2, suite.mockOAuthServer.clientCredentialsCalls, "Client credentials flow should be called once")
+}
+
+func (suite *OAuthTests) TestFailOauthWithTokenSet() {
+	err := suite.db.SetOptions(map[string]string{
+		driver.OptionAuthorizationHeader: "Bearer test-client-token",
+		driver.OptionKeyOauthFlow:        driver.ClientCredentials,
+		driver.OptionKeyClientId:         "test-client",
+		driver.OptionKeyClientSecret:     "test-secret",
+		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
+	})
+	suite.Error(err, "Expected error for missing parameters")
+	suite.Contains(err.Error(), "Authentication conflict: Use either Authorization header OR username/password parameter")
+}
+
+func (suite *OAuthTests) TestMissingRequiredParamsTokenExchange() {
+	testCases := []struct {
+		name             string
+		options          map[string]string
+		expectedErrorMsg string
+	}{
+		{
+			name: "Missing token",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow:        driver.TokenExchange,
+				driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
+				driver.OptionKeyTokenURI:         suite.oauthServer.URL,
+			},
+			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.exchange.subject_token",
+		},
+		{
+			name: "Missing subject token type",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow:    driver.TokenExchange,
+				driver.OptionKeySubjectToken: "test-subject-token",
+				driver.OptionKeyTokenURI:     suite.oauthServer.URL,
+			},
+			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.exchange.subject_token_type",
+		},
+		{
+			name: "Missing token URI",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow:        driver.TokenExchange,
+				driver.OptionKeySubjectToken:     "test-subject-token",
+				driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
+			},
+			expectedErrorMsg: "token exchange grant requires adbc.flight.sql.oauth.token_uri",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// We need to set options with the driver's SetOptions method
+			err := suite.db.SetOptions(tc.options)
+			suite.Error(err, "Expected error for missing parameters")
+			suite.Contains(err.Error(), tc.expectedErrorMsg)
+		})
+	}
+}
+func (suite *OAuthTests) TestMissingRequiredParamsClientCredentials() {
+	testCases := []struct {
+		name             string
+		options          map[string]string
+		expectedErrorMsg string
+	}{
+		{
+			name: "Missing client ID",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow:    driver.ClientCredentials,
+				driver.OptionKeyClientSecret: "test-secret",
+				driver.OptionKeyTokenURI:     suite.oauthServer.URL,
+			},
+			expectedErrorMsg: "client credentials grant requires adbc.flight.sql.oauth.client_id",
+		},
+		{
+			name: "Missing client secret",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow: driver.ClientCredentials,
+				driver.OptionKeyClientId:  "test-client",
+				driver.OptionKeyTokenURI:  suite.oauthServer.URL,
+			},
+			expectedErrorMsg: "client credentials grant requires adbc.flight.sql.oauth.client_secret",
+		},
+		{
+			name: "Missing token URI",
+			options: map[string]string{
+				driver.OptionKeyOauthFlow:    driver.ClientCredentials,
+				driver.OptionKeyClientId:     "test-client",
+				driver.OptionKeyClientSecret: "test-secret",
+			},
+			expectedErrorMsg: "client credentials grant requires adbc.flight.sql.oauth.token_uri",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// We need to set options with the driver's SetOptions method
+			err := suite.db.SetOptions(tc.options)
+			suite.Error(err, "Expected error for missing parameters")
+			suite.Contains(err.Error(), tc.expectedErrorMsg)
+		})
+	}
+}
+
+func (suite *OAuthTests) TestInvalidOAuthFlow() {
+	err := suite.db.SetOptions(map[string]string{
+		driver.OptionKeyOauthFlow:    "invalid-flow",
+		driver.OptionKeySubjectToken: "test-token",
+	})
+
+	suite.Error(err, "Expected error for invalid OAuth flow")
+	suite.Contains(err.Error(), "Not Implemented: oauth flow not implemented: invalid-flow")
 }
 
 // ---- Grpc Dialer Options Tests --------------
@@ -287,7 +634,7 @@ func (suite *DialerOptionsTests) SetupSuite() {
 func (suite *DialerOptionsTests) TestGrpcObserved() {
 	stmt, err := suite.cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
 	reader, _, err := stmt.ExecuteQuery(context.Background())
@@ -367,7 +714,7 @@ func (suite *ErrorDetailsTests) SetupSuite() {
 func (ts *ErrorDetailsTests) TestBinaryDetails() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("binaryheader"))
 
@@ -404,7 +751,7 @@ func (ts *ErrorDetailsTests) TestBinaryDetails() {
 func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("details"))
 
@@ -431,7 +778,7 @@ func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 func (ts *ErrorDetailsTests) TestDoGet() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("query"))
 
@@ -466,7 +813,7 @@ func (ts *ErrorDetailsTests) TestDoGet() {
 func (ts *ErrorDetailsTests) TestVendorCode() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("vendorcode"))
 
@@ -505,6 +852,10 @@ func (srv *ExecuteSchemaTestServer) CreatePreparedStatement(ctx context.Context,
 	return flightsql.ActionCreatePreparedStatementResult{}, status.Error(codes.Unimplemented, "CreatePreparedStatement not implemented")
 }
 
+func (srv *ExecuteSchemaTestServer) ClosePreparedStatement(ctx context.Context, req flightsql.ActionClosePreparedStatementRequest) error {
+	return nil
+}
+
 type ExecuteSchemaTests struct {
 	ServerBasedTests
 }
@@ -518,7 +869,7 @@ func (suite *ExecuteSchemaTests) SetupSuite() {
 func (ts *ExecuteSchemaTests) TestNoQuery() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	es := stmt.(adbc.StatementExecuteSchema)
 	_, err = es.ExecuteSchema(context.Background())
@@ -531,7 +882,7 @@ func (ts *ExecuteSchemaTests) TestNoQuery() {
 func (ts *ExecuteSchemaTests) TestPreparedQuery() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("sample query"))
 	ts.NoError(stmt.Prepare(context.Background()))
@@ -551,7 +902,7 @@ func (ts *ExecuteSchemaTests) TestPreparedQuery() {
 func (ts *ExecuteSchemaTests) TestQuery() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetSqlQuery("sample query"))
 
@@ -880,7 +1231,7 @@ func (suite *IncrementalPollTests) SetupSuite() {
 func (ts *IncrementalPollTests) TestMaxProgress() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 	opts := stmt.(adbc.GetSetOptions)
 
 	val, err := opts.GetOptionDouble(adbc.OptionKeyMaxProgress)
@@ -891,7 +1242,7 @@ func (ts *IncrementalPollTests) TestMaxProgress() {
 func (ts *IncrementalPollTests) TestOptionValue() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 	opts := stmt.(adbc.GetSetOptions)
 
 	val, err := opts.GetOption(adbc.OptionKeyIncremental)
@@ -913,7 +1264,7 @@ func (ts *IncrementalPollTests) TestAppMetadata() {
 	ctx, cancel := context.WithCancel(context.Background())
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -957,7 +1308,7 @@ func (ts *IncrementalPollTests) TestUnavailable() {
 	ctx := context.Background()
 	stmt, err := ts.cnxn.NewStatement()
 	ts.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1011,7 +1362,7 @@ func (ts *IncrementalPollTests) TestQuery() {
 		ts.Run(name, func() {
 			stmt, err := ts.cnxn.NewStatement()
 			ts.NoError(err)
-			defer stmt.Close()
+			defer validation.CheckedClose(ts.T(), stmt)
 
 			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1030,7 +1381,7 @@ func (ts *IncrementalPollTests) TestQueryPrepared() {
 		ts.Run(name, func() {
 			stmt, err := ts.cnxn.NewStatement()
 			ts.NoError(err)
-			defer stmt.Close()
+			defer validation.CheckedClose(ts.T(), stmt)
 
 			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1051,7 +1402,7 @@ func (ts *IncrementalPollTests) TestQueryPreparedTransaction() {
 			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
 			stmt, err := ts.cnxn.NewStatement()
 			ts.NoError(err)
-			defer stmt.Close()
+			defer validation.CheckedClose(ts.T(), stmt)
 
 			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1072,7 +1423,7 @@ func (ts *IncrementalPollTests) TestQueryTransaction() {
 			ts.NoError(ts.cnxn.(adbc.PostInitOptions).SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
 			stmt, err := ts.cnxn.NewStatement()
 			ts.NoError(err)
-			defer stmt.Close()
+			defer validation.CheckedClose(ts.T(), stmt)
 
 			ts.NoError(stmt.SetOption(adbc.OptionKeyIncremental, adbc.OptionValueEnabled))
 
@@ -1249,7 +1600,7 @@ func (ts *TimeoutTests) TestGetSet() {
 	}
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	for _, v := range []interface{}{ts.db, ts.cnxn, stmt} {
 		getset := v.(adbc.GetSetOptions)
@@ -1308,14 +1659,13 @@ func (ts *TimeoutTests) TestDoActionTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
 	var adbcErr adbc.Error
 	ts.ErrorAs(stmt.Prepare(context.Background()), &adbcErr)
 	ts.Equal(adbc.StatusTimeout, adbcErr.Code, adbcErr.Error())
-	// Exact match - we don't want extra fluff in the message
-	ts.Equal("[FlightSQL] context deadline exceeded (DeadlineExceeded; Prepare)", adbcErr.Msg)
+	// It seems gRPC isn't stable about the error message, unfortunately
 }
 
 func (ts *TimeoutTests) TestDoGetTimeout() {
@@ -1324,7 +1674,7 @@ func (ts *TimeoutTests) TestDoGetTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("fetch"))
 	var adbcErr adbc.Error
@@ -1339,7 +1689,7 @@ func (ts *TimeoutTests) TestDoPutTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("timeout"))
 	var adbcErr adbc.Error
@@ -1354,7 +1704,7 @@ func (ts *TimeoutTests) TestGetFlightInfoTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("timeout"))
 	var adbcErr adbc.Error
@@ -1371,7 +1721,7 @@ func (ts *TimeoutTests) TestDontTimeout() {
 
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 
 	ts.Require().NoError(stmt.SetSqlQuery("notimeout"))
 	// GetFlightInfo will sleep for one second and DoGet will also
@@ -1394,7 +1744,7 @@ func (ts *TimeoutTests) TestDontTimeout() {
 func (ts *TimeoutTests) TestBadAddress() {
 	stmt, err := ts.cnxn.NewStatement()
 	ts.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(ts.T(), stmt)
 	ts.Require().NoError(stmt.SetSqlQuery("bad endpoint"))
 
 	ts.Require().NoError(ts.db.(adbc.GetSetOptions).SetOptionDouble(driver.OptionTimeoutConnect, 5))
@@ -1528,7 +1878,7 @@ func (suite *CookieTests) SetupSuite() {
 func (suite *CookieTests) TestCookieUsage() {
 	stmt, err := suite.cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
 	reader, _, err := stmt.ExecuteQuery(context.Background())
@@ -1610,7 +1960,7 @@ func (suite *DataTypeTests) SetupSuite() {
 func (suite *DataTypeTests) DoTestCase(name string, schema *arrow.Schema) {
 	stmt, err := suite.cnxn.NewStatement()
 	suite.NoError(err)
-	defer stmt.Close()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.NoError(stmt.SetSqlQuery(name))
 	reader, _, err := stmt.ExecuteQuery(context.Background())

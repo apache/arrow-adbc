@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TDBSqlCompressionCodec
+  internal enum TDBSqlCompressionCodec
   {
     NONE = 0,
     LZ4_FRAME = 1,

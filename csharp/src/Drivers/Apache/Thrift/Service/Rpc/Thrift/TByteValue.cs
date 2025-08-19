@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TByteValue : TBase
+  internal partial class TByteValue : TBase
   {
     private sbyte _value;
 

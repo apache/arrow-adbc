@@ -42,7 +42,11 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	colNames, err := rows.Columns()
 	if err != nil {

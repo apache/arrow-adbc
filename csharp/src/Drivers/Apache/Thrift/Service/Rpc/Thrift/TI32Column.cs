@@ -11,7 +11,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using Apache.Arrow;
-using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Thrift.Protocol;
 using Thrift.Protocol.Entities;
@@ -30,7 +29,7 @@ using Thrift.Protocol.Utilities;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TI32Column : TBase
+  internal partial class TI32Column : TBase
   {
 
     public Int32Array Values { get; set; }
@@ -55,7 +54,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         byte[] nulls = null;
         byte[] buffer = null;
-        Stream transport = ((IPeekableTransport)iprot.Transport).Input;
         int length = -1;
 
         await iprot.ReadStructBeginAsync(cancellationToken);
@@ -78,7 +76,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                   buffer = new byte[length * sizeof(int)];
                   var memory = buffer.AsMemory();
                   iprot.Transport.CheckReadBytesAvailable(buffer.Length);
-                  await transport.ReadExactlyAsync(memory, cancellationToken);
+                  await iprot.Transport.ReadExactlyAsync(memory, cancellationToken);
                   for (int _i161 = 0; _i161 < length; ++_i161)
                   {
                     StreamExtensions.ReverseEndianI32AtOffset(memory.Span, _i161 * sizeof(int));

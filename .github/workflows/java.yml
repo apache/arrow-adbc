@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['11', '17', '21', '22']
+        java: ['11', '17', '21', '24']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -102,3 +102,118 @@ jobs:
           HERE
           # Our linters are compile-time, no point re-running tests
           mvn -P errorprone install -DskipTests
+
+  java-jni-artifacts:
+    name: "JNI Libraries/${{ matrix.os }} ${{ matrix.arch }}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - { os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
+    env:
+      VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          cache: "maven"
+          distribution: "temurin"
+          java-version: 11
+      - name: Retrieve Go, VCPKG version from .env
+        run: |
+          (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
+          (. .env && echo "VCPKG_VERSION=${VCPKG}") >> $GITHUB_ENV
+      - name: Install vcpkg
+        run: |
+          ./ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "${{ env.GO_VERSION }}"
+          check-latest: true
+          cache: true
+          cache-dependency-path: adbc/go/adbc/go.sum
+      - name: Install Homebrew dependencies
+        if: matrix.os == 'macOS'
+        run: brew install autoconf bash pkg-config ninja
+      - name: Build artifacts
+        if: matrix.os != 'macOS'
+        run: |
+          docker compose run python-wheel-manylinux-build
+      - name: Build artifacts (macOS)
+        if: matrix.os == 'macOS'
+        run: |
+          export ADBC_BUILD_STATIC=ON
+          export ADBC_BUILD_TESTS=OFF
+          export ADBC_USE_ASAN=OFF
+          export ADBC_USE_UBSAN=OFF
+          ./ci/scripts/python_wheel_unix_build.sh ${{ matrix.arch }} $(pwd) $(pwd)/build
+      - name: Build JNI artifacts
+        run: |
+          export ADBC_BUILD_STATIC=ON
+          export ADBC_BUILD_TESTS=OFF
+          export ADBC_USE_ASAN=OFF
+          export ADBC_USE_UBSAN=OFF
+          ./ci/scripts/java_build.sh $(pwd)
+          ./ci/scripts/java_jni_build.sh $(pwd) $(pwd)/build_jni $(pwd)/build/${{ matrix.vcpkg_arch }}
+      - name: Assemble artifacts
+        run: |
+          mkdir artifacts
+          cp -r java/driver/jni/src/main/resources/ artifacts/jni
+          cp -r build/${{ matrix.vcpkg_arch }}/lib artifacts/driver
+          ls -laR artifacts
+          mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: |
+            artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz
+
+  java-jni:
+    name: "Java ${{ matrix.java }} JNI/${{ matrix.os }} ${{ matrix.arch }}"
+    runs-on: ${{ matrix.runner }}
+    needs:
+      - java-jni-artifacts
+    strategy:
+      matrix:
+        java: ['11', '24']
+        include:
+          - { os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: jni-artifacts-*
+          merge-multiple: true
+      - uses: actions/setup-java@v4
+        with:
+          cache: "maven"
+          distribution: "temurin"
+          java-version: 11
+      - name: Build/Test
+        run: |
+          set -x
+          pushd artifacts
+          for archive in artifacts*.tgz; do
+            tar xvf $archive
+          done
+          popd
+          cp -r artifacts/*/jni/adbc_driver_jni java/driver/jni/src/main/resources
+          for driver in artifacts/*/driver; do
+            export LD_LIBRARY_PATH=$(pwd)/$driver:${LD_LIBRARY_PATH:-}
+            export DYLD_LIBRARY_PATH=$(pwd)/$driver:${DYLD_LIBRARY_PATH:-}
+          done
+          env BUILD_JNI=ON ./ci/scripts/java_build.sh $(pwd)
+          cd java
+          mvn -B -Pjni test -pl :adbc-driver-jni

@@ -67,12 +67,6 @@ function(add_thirdparty_lib LIB_NAME LIB_TYPE LIB)
   endif()
 endfunction()
 
-function(REUSE_PRECOMPILED_HEADER_LIB TARGET_NAME LIB_NAME)
-  if(ADBC_USE_PRECOMPILED_HEADERS)
-    target_precompile_headers(${TARGET_NAME} REUSE_FROM ${LIB_NAME})
-  endif()
-endfunction()
-
 function(arrow_install_cmake_package PACKAGE_NAME EXPORT_NAME)
   set(CONFIG_CMAKE "${PACKAGE_NAME}Config.cmake")
   set(BUILT_CONFIG_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_CMAKE}")
@@ -102,11 +96,9 @@ function(ADD_ARROW_LIB LIB_NAME)
       BUILD_STATIC
       CMAKE_PACKAGE_NAME
       PKG_CONFIG_NAME
-      SHARED_LINK_FLAGS
-      PRECOMPILED_HEADER_LIB)
+      SHARED_LINK_FLAGS)
   set(multi_value_args
       SOURCES
-      PRECOMPILED_HEADERS
       OUTPUTS
       STATIC_LINK_LIBS
       SHARED_LINK_LIBS
@@ -172,12 +164,6 @@ function(ADD_ARROW_LIB LIB_NAME)
     if(ARG_DEPENDENCIES)
       add_dependencies(${LIB_NAME}_objlib ${ARG_DEPENDENCIES})
     endif()
-    if(ARG_PRECOMPILED_HEADER_LIB)
-      reuse_precompiled_header_lib(${LIB_NAME}_objlib ${ARG_PRECOMPILED_HEADER_LIB})
-    endif()
-    if(ARG_PRECOMPILED_HEADERS AND ADBC_USE_PRECOMPILED_HEADERS)
-      target_precompile_headers(${LIB_NAME}_objlib PRIVATE ${ARG_PRECOMPILED_HEADERS})
-    endif()
     set(LIB_DEPS $<TARGET_OBJECTS:${LIB_NAME}_objlib>)
     set(LIB_INCLUDES)
     set(EXTRA_DEPS)
@@ -213,15 +199,11 @@ function(ADD_ARROW_LIB LIB_NAME)
 
   if(BUILD_SHARED)
     add_library(${LIB_NAME}_shared SHARED ${LIB_DEPS})
-    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_11)
+    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_17)
     set_property(TARGET ${LIB_NAME}_shared PROPERTY CXX_STANDARD_REQUIRED ON)
     adbc_configure_target(${LIB_NAME}_shared)
     if(EXTRA_DEPS)
       add_dependencies(${LIB_NAME}_shared ${EXTRA_DEPS})
-    endif()
-
-    if(ARG_PRECOMPILED_HEADER_LIB)
-      reuse_precompiled_header_lib(${LIB_NAME}_shared ${ARG_PRECOMPILED_HEADER_LIB})
     endif()
 
     if(ARG_OUTPUTS)
@@ -316,10 +298,6 @@ function(ADD_ARROW_LIB LIB_NAME)
     adbc_configure_target(${LIB_NAME}_static)
     if(EXTRA_DEPS)
       add_dependencies(${LIB_NAME}_static ${EXTRA_DEPS})
-    endif()
-
-    if(ARG_PRECOMPILED_HEADER_LIB)
-      reuse_precompiled_header_lib(${LIB_NAME}_static ${ARG_PRECOMPILED_HEADER_LIB})
     endif()
 
     if(ARG_OUTPUTS)
@@ -550,10 +528,8 @@ endfunction()
 # names must exist
 function(ADD_TEST_CASE REL_TEST_NAME)
   set(options NO_VALGRIND ENABLED)
-  set(one_value_args PRECOMPILED_HEADER_LIB)
   set(multi_value_args
       SOURCES
-      PRECOMPILED_HEADERS
       STATIC_LINK_LIBS
       EXTRA_LINK_LIBS
       EXTRA_INCLUDES
@@ -611,14 +587,6 @@ function(ADD_TEST_CASE REL_TEST_NAME)
     target_link_libraries(${TEST_NAME} PRIVATE ${ARG_STATIC_LINK_LIBS})
   else()
     target_link_libraries(${TEST_NAME} PRIVATE ${ADBC_TEST_LINK_LIBS})
-  endif()
-
-  if(ARG_PRECOMPILED_HEADER_LIB)
-    reuse_precompiled_header_lib(${TEST_NAME} ${ARG_PRECOMPILED_HEADER_LIB})
-  endif()
-
-  if(ARG_PRECOMPILED_HEADERS AND ADBC_USE_PRECOMPILED_HEADERS)
-    target_precompile_headers(${TEST_NAME} PRIVATE ${ARG_PRECOMPILED_HEADERS})
   endif()
 
   if(ARG_EXTRA_LINK_LIBS)

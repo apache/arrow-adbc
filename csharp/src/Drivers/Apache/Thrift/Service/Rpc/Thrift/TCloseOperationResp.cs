@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TCloseOperationResp : TBase
+  internal partial class TCloseOperationResp : TBase
   {
 
     public global::Apache.Hive.Service.Rpc.Thrift.TStatus Status { get; set; }

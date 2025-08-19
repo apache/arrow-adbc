@@ -543,10 +543,16 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
 
       int32_t lower_bound;
       NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &lower_bound, error));
-      if (lower_bound != 1) {
-        ArrowErrorSet(error, "Array value with lower bound != 1 is not supported");
+      if (lower_bound != 0 && lower_bound != 1) {
+        ArrowErrorSet(error,
+                      "Array value with lower bound not in {0, 1} is not supported");
         return EINVAL;
       }
+      // In theory, for other lower bounds, we could insert NULLs
+      // appropriately.  We could treat lower_bound == 1 as an array with a
+      // NULL at index 0 but since the default is 1, it makes more sense to
+      // treat it as a 1-indexed array.  However, lower_bound == 0 is also
+      // possible (e.g. for int2vector).
     }
 
     for (int64_t i = 0; i < n_items; i++) {
@@ -855,6 +861,19 @@ static inline ArrowErrorCode MakeCopyFieldReader(
           *out = std::move(array_reader);
           return NANOARROW_OK;
         }
+        case PostgresTypeId::kInt2vector: {
+          PostgresType int2type(PostgresTypeId::kInt2);
+          auto array_reader = std::make_unique<PostgresCopyArrayFieldReader>();
+          array_reader->Init(int2type.Array(0, "int2vector"));
+
+          std::unique_ptr<PostgresCopyFieldReader> child_reader;
+          NANOARROW_RETURN_NOT_OK(
+              MakeCopyFieldReader(int2type, schema->children[0], &child_reader, error));
+          array_reader->InitChild(std::move(child_reader));
+
+          *out = std::move(array_reader);
+          return NANOARROW_OK;
+        }
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
       }
@@ -864,7 +883,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(
         case PostgresTypeId::kRecord: {
           if (pg_type.n_children() != schema->n_children) {
             ArrowErrorSet(error,
-                          "Can't convert Postgres record type with %ld chlidren to Arrow "
+                          "Can't convert Postgres record type with %ld children to Arrow "
                           "struct type with %ld children",
                           static_cast<long>(pg_type.n_children()),  // NOLINT(runtime/int)
                           static_cast<long>(schema->n_children));   // NOLINT(runtime/int)

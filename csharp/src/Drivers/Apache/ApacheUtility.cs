@@ -16,6 +16,9 @@
 */
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache
@@ -71,6 +74,18 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             else
             {
                 throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value of 0 (infinite) or greater.");
+            }
+        }
+
+        public static bool BooleanIsValid(string key, string value, out bool booleanValue)
+        {
+            if (bool.TryParse(value, out booleanValue))
+            {
+                return true;
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(key, nameof(value), $"Invalid value for {key}: {value}. Expected a boolean value.");
             }
         }
 
@@ -137,5 +152,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             containedException = null;
             return false;
         }
+
+        internal static string FormatExceptionMessage(Exception exception)
+        {
+            if (exception is AggregateException aEx)
+            {
+                AggregateException flattenedEx = aEx.Flatten();
+                IEnumerable<string> messages = flattenedEx.InnerExceptions.Select((ex, index) => $"({index + 1}) {ex.Message}");
+                string fullMessage = $"{flattenedEx.Message}: {string.Join(", ", messages)}";
+                return fullMessage;
+            }
+
+            return exception.Message;
+        }
+
+        internal static string GetAssemblyName(Type type) => type.Assembly.GetName().Name!;
+
+        internal static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
     }
 }

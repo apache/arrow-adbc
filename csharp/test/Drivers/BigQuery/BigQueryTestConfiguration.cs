@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
@@ -35,10 +36,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             AllowLargeResults = false;
             IncludeTableConstraints = true;
+            ParallelQueries = new List<ParallelQuery>();
         }
 
         [JsonPropertyName("projectId")]
         public string? ProjectId { get; set; }
+
+        [JsonPropertyName("authenticationType")]
+        public string AuthenticationType { get; set; } = string.Empty;
+
+        [JsonPropertyName("accessToken")]
+        public string AccessToken { get; set; } = string.Empty;
+
+        [JsonPropertyName("audience")]
+        public string Audience { get; set; } = string.Empty;
 
         [JsonPropertyName("billingProjectId")]
         public string? BillingProjectId { get; set; }
@@ -60,6 +71,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("allowLargeResults")]
         public bool AllowLargeResults { get; set; }
+
+        [JsonPropertyName("largeResultsDataset")]
+        public string LargeResultsDataset { get; set; } = string.Empty;
 
         [JsonPropertyName("largeResultsDestinationTable")]
         public string LargeResultsDestinationTable { get; set; } = string.Empty;
@@ -97,6 +111,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("maxStreamCount")]
         public int? MaxStreamCount { get; set; }
 
+        [JsonPropertyName("statementType")]
+        public string StatementType { get; set; } = string.Empty;
+
+        [JsonPropertyName("statementIndex")]
+        public int? StatementIndex { get; set; }
+
+        [JsonPropertyName("evaluationKind")]
+        public string EvaluationKind { get; set; } = string.Empty;
+
         /// <summary>
         /// How structs should be handled by the ADO.NET client for this environment.
         /// </summary>
@@ -105,5 +128,41 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// </remarks>
         [JsonPropertyName("structBehavior")]
         public string? StructBehavior { get; set; }
+
+        [JsonPropertyName("entraConfiguration")]
+        public EntraConfiguration? EntraConfiguration { get; set; }
+
+        /// <summary>
+        /// The number of times to repeat the parallel runs.
+        /// </summary>
+        [JsonPropertyName("numberOfParallelRuns")]
+        public int NumberOfParallelRuns { get; set; }
+
+        [JsonPropertyName("queries")]
+        public List<ParallelQuery> ParallelQueries { get; set; }
+    }
+
+    class ParallelQuery
+    {
+        /// <summary>
+        /// The query to run.
+        /// </summary>
+        [JsonPropertyName("query")]
+        public string Query { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The number of expected results from the query.
+        /// </summary>
+        [JsonPropertyName("expectedResults")]
+        public long ExpectedResultsCount { get; set; }
+    }
+
+    class EntraConfiguration
+    {
+        [JsonPropertyName("scopes")]
+        public string[]? Scopes { get; set; }
+
+        [JsonPropertyName("claims")]
+        public Dictionary<string, string>? Claims { get; set; }
     }
 }

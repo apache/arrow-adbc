@@ -40,34 +40,13 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TSessionHandle : TBase
+  internal partial class TSessionHandle : TBase
   {
-    private global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion _serverProtocolVersion;
-
     public global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier SessionId { get; set; }
-
-    /// <summary>
-    ///
-    /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion"/>
-    /// </summary>
-    public global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion ServerProtocolVersion
-    {
-      get
-      {
-        return _serverProtocolVersion;
-      }
-      set
-      {
-        __isset.serverProtocolVersion = true;
-        this._serverProtocolVersion = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
     {
-      public bool serverProtocolVersion;
     }
 
     public TSessionHandle()
@@ -103,16 +82,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 SessionId = new global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier();
                 await SessionId.ReadAsync(iprot, cancellationToken);
                 isset_sessionId = true;
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3329:
-              if (field.Type == TType.I32)
-              {
-                ServerProtocolVersion = (global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion)await iprot.ReadI32Async(cancellationToken);
               }
               else
               {
@@ -156,15 +125,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await SessionId.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.serverProtocolVersion)
-        {
-          tmp309.Name = "serverProtocolVersion";
-          tmp309.Type = TType.I32;
-          tmp309.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp309, cancellationToken);
-          await oprot.WriteI32Async((int)ServerProtocolVersion, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -178,8 +138,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       if (!(that is TSessionHandle other)) return false;
       if (ReferenceEquals(this, other)) return true;
-      return global::System.Object.Equals(SessionId, other.SessionId)
-        && ((__isset.serverProtocolVersion == other.__isset.serverProtocolVersion) && ((!__isset.serverProtocolVersion) || (global::System.Object.Equals(ServerProtocolVersion, other.ServerProtocolVersion))));
+      return global::System.Object.Equals(SessionId, other.SessionId);
     }
 
     public override int GetHashCode() {
@@ -188,10 +147,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((SessionId != null))
         {
           hashcode = (hashcode * 397) + SessionId.GetHashCode();
-        }
-        if(__isset.serverProtocolVersion)
-        {
-          hashcode = (hashcode * 397) + ServerProtocolVersion.GetHashCode();
         }
       }
       return hashcode;
@@ -204,11 +159,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp310.Append(", SessionId: ");
         SessionId.ToString(tmp310);
-      }
-      if(__isset.serverProtocolVersion)
-      {
-        tmp310.Append(", ServerProtocolVersion: ");
-        ServerProtocolVersion.ToString(tmp310);
       }
       tmp310.Append(')');
       return tmp310.ToString();

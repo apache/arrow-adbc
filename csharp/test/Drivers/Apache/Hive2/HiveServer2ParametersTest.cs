@@ -34,16 +34,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
                 Assert.Throws(exceptionType, () => DataTypeConversionParser.Parse(dataTypeConversion));
         }
 
-        [SkippableTheory]
-        [MemberData(nameof(GetParametersTlsOptionTestData))]
-        internal void TestParametersTlsOptionParse(string? tlsOptions, HiveServer2TlsOption expected, Type? exceptionType = default)
-        {
-            if (exceptionType == default)
-                Assert.Equal(expected, TlsOptionsParser.Parse(tlsOptions));
-            else
-                Assert.Throws(exceptionType, () => TlsOptionsParser.Parse(tlsOptions));
-        }
-
         public static IEnumerable<object?[]> GetParametersDataTypeConvTestData()
         {
             // Default
@@ -62,32 +52,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             // Combined - conflicting
             yield return new object?[] { $"none,scalar", DataTypeConversion.None | DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException) };
             yield return new object?[] { $" nOnE, scAlAr ", DataTypeConversion.None | DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException) };
-            yield return new object?[] { $", none, scalar, ", DataTypeConversion.None | DataTypeConversion.Scalar , typeof(ArgumentOutOfRangeException) };
-            yield return new object?[] { $"scalar,none", DataTypeConversion.None | DataTypeConversion.Scalar , typeof(ArgumentOutOfRangeException) };
+            yield return new object?[] { $", none, scalar, ", DataTypeConversion.None | DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException) };
+            yield return new object?[] { $"scalar,none", DataTypeConversion.None | DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException) };
             // Invalid options
             yield return new object?[] { $"xxx", DataTypeConversion.Empty, typeof(ArgumentOutOfRangeException) };
-            yield return new object?[] { $"none,scalar,xxx", DataTypeConversion.None | DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException)  };
-        }
-
-        public static IEnumerable<object?[]> GetParametersTlsOptionTestData()
-        {
-            // Default
-            yield return new object?[] { null, HiveServer2TlsOption.Empty };
-            yield return new object?[] { "", HiveServer2TlsOption.Empty};
-            yield return new object?[] { " ", HiveServer2TlsOption.Empty };
-            // Explicit
-            yield return new object?[] { $"{TlsOptions.AllowSelfSigned}", HiveServer2TlsOption.AllowSelfSigned };
-            yield return new object?[] { $"{TlsOptions.AllowHostnameMismatch}", HiveServer2TlsOption.AllowHostnameMismatch };
-            // Ignore empty
-            yield return new object?[] { $",{TlsOptions.AllowSelfSigned}", HiveServer2TlsOption.AllowSelfSigned };
-            yield return new object?[] { $",{TlsOptions.AllowHostnameMismatch},", HiveServer2TlsOption.AllowHostnameMismatch };
-            // Combined, embedded space, mixed-case
-            yield return new object?[] { $"{TlsOptions.AllowSelfSigned},{TlsOptions.AllowHostnameMismatch}", HiveServer2TlsOption.AllowSelfSigned | HiveServer2TlsOption.AllowHostnameMismatch };
-            yield return new object?[] { $"{TlsOptions.AllowHostnameMismatch},{TlsOptions.AllowSelfSigned}", HiveServer2TlsOption.AllowSelfSigned  | HiveServer2TlsOption.AllowHostnameMismatch };
-            yield return new object?[] { $" {TlsOptions.AllowHostnameMismatch} , {TlsOptions.AllowSelfSigned} ", HiveServer2TlsOption.AllowSelfSigned | HiveServer2TlsOption.AllowHostnameMismatch };
-            yield return new object?[] { $"{TlsOptions.AllowSelfSigned.ToUpperInvariant()},{TlsOptions.AllowHostnameMismatch.ToUpperInvariant()}", HiveServer2TlsOption.AllowSelfSigned | HiveServer2TlsOption.AllowHostnameMismatch };
-            // Invalid
-            yield return new object?[] { $"xxx,{TlsOptions.AllowSelfSigned.ToUpperInvariant()},{TlsOptions.AllowHostnameMismatch.ToUpperInvariant()}", HiveServer2TlsOption.Empty, typeof(ArgumentOutOfRangeException) };
+            yield return new object?[] { $"none,scalar,xxx", DataTypeConversion.None | DataTypeConversion.Scalar, typeof(ArgumentOutOfRangeException) };
         }
     }
 }

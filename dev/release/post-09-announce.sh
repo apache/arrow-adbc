@@ -68,7 +68,7 @@ The Apache Arrow Community
 
 [1]: https://github.com/apache/arrow-adbc/issues?q=is%3Aissue+milestone%3A%22ADBC+Libraries+${RELEASE}%22+is%3Aclosed
 [2]: https://arrow.apache.org/adbc/current/driver/installation.html
-[3]: https://apache.jfrog.io/ui/native/arrow
+[3]: https://packages.apache.org/ui/native/arrow
 [4]: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
 [5]: https://lists.apache.org/list.html?user@arrow.apache.org
 [6]: https://lists.apache.org/list.html?dev@arrow.apache.org

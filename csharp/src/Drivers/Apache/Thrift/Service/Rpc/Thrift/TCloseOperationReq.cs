@@ -40,40 +40,17 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TCloseOperationReq : TBase
+  internal partial class TCloseOperationReq : TBase
   {
-    private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloseOperationReason _closeReason;
-
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle OperationHandle { get; set; }
-
-    /// <summary>
-    ///
-    /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloseOperationReason"/>
-    /// </summary>
-    public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloseOperationReason CloseReason
-    {
-      get
-      {
-        return _closeReason;
-      }
-      set
-      {
-        __isset.closeReason = true;
-        this._closeReason = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
     {
-      public bool closeReason;
     }
 
     public TCloseOperationReq()
     {
-      this._closeReason = global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloseOperationReason.NONE;
-      this.__isset.closeReason = true;
     }
 
     public TCloseOperationReq(global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle operationHandle) : this()
@@ -105,16 +82,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 OperationHandle = new global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle();
                 await OperationHandle.ReadAsync(iprot, cancellationToken);
                 isset_operationHandle = true;
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3329:
-              if (field.Type == TType.I32)
-              {
-                CloseReason = (global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloseOperationReason)await iprot.ReadI32Async(cancellationToken);
               }
               else
               {
@@ -158,15 +125,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.closeReason)
-        {
-          tmp540.Name = "closeReason";
-          tmp540.Type = TType.I32;
-          tmp540.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp540, cancellationToken);
-          await oprot.WriteI32Async((int)CloseReason, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -180,8 +138,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       if (!(that is TCloseOperationReq other)) return false;
       if (ReferenceEquals(this, other)) return true;
-      return global::System.Object.Equals(OperationHandle, other.OperationHandle)
-        && ((__isset.closeReason == other.__isset.closeReason) && ((!__isset.closeReason) || (global::System.Object.Equals(CloseReason, other.CloseReason))));
+      return global::System.Object.Equals(OperationHandle, other.OperationHandle);
     }
 
     public override int GetHashCode() {
@@ -190,10 +147,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((OperationHandle != null))
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
-        }
-        if(__isset.closeReason)
-        {
-          hashcode = (hashcode * 397) + CloseReason.GetHashCode();
         }
       }
       return hashcode;
@@ -206,11 +159,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp541.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp541);
-      }
-      if(__isset.closeReason)
-      {
-        tmp541.Append(", CloseReason: ");
-        CloseReason.ToString(tmp541);
       }
       tmp541.Append(')');
       return tmp541.ToString();

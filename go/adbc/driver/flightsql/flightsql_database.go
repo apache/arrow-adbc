@@ -68,6 +68,7 @@ type databaseImpl struct {
 	enableCookies bool
 	options       map[string]string
 	userDialOpts  []grpc.DialOption
+	oauthToken    credentials.PerRPCCredentials
 }
 
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
@@ -114,11 +115,12 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	}
 
 	if val, ok := cnOptions[OptionSSLSkipVerify]; ok {
-		if val == adbc.OptionValueEnabled {
+		switch val {
+		case adbc.OptionValueEnabled:
 			tlsConfig.InsecureSkipVerify = true
-		} else if val == adbc.OptionValueDisabled {
+		case adbc.OptionValueDisabled:
 			tlsConfig.InsecureSkipVerify = false
-		} else {
+		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionSSLSkipVerify, val),
 				Code: adbc.StatusInvalidArgument,
@@ -146,10 +148,12 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		delete(cnOptions, OptionAuthorizationHeader)
 	}
 
+	const authConflictError = "Authentication conflict: Use either Authorization header OR username/password parameter"
+
 	if u, ok := cnOptions[adbc.OptionKeyUsername]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authorization header already provided, do not provide user/pass also",
+				Msg:  authConflictError,
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
@@ -160,12 +164,39 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	if p, ok := cnOptions[adbc.OptionKeyPassword]; ok {
 		if d.hdrs.Len() > 0 {
 			return adbc.Error{
-				Msg:  "Authorization header already provided, do not provide user/pass also",
+				Msg:  authConflictError,
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
 		d.pass = p
 		delete(cnOptions, adbc.OptionKeyPassword)
+	}
+
+	if flow, ok := cnOptions[OptionKeyOauthFlow]; ok {
+		if d.hdrs.Len() > 0 {
+			return adbc.Error{
+				Msg:  authConflictError,
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+
+		var err error
+		switch flow {
+		case ClientCredentials:
+			d.oauthToken, err = newClientCredentials(cnOptions, &tlsConfig)
+		case TokenExchange:
+			d.oauthToken, err = newTokenExchangeFlow(cnOptions, &tlsConfig)
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("oauth flow not implemented: %s", flow),
+				Code: adbc.StatusNotImplemented,
+			}
+		}
+
+		if err != nil {
+			return err
+		}
+		delete(cnOptions, OptionKeyOauthFlow)
 	}
 
 	var err error
@@ -220,11 +251,12 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	d.dialOpts.rebuild()
 
 	if val, ok := cnOptions[OptionCookieMiddleware]; ok {
-		if val == adbc.OptionValueEnabled {
+		switch val {
+		case adbc.OptionValueEnabled:
 			d.enableCookies = true
-		} else if val == adbc.OptionValueDisabled {
+		case adbc.OptionValueDisabled:
 			d.enableCookies = false
-		} else {
+		default:
 			return d.ErrorHelper.Errorf(adbc.StatusInvalidArgument, "Invalid value for database option '%s': '%s'", OptionCookieMiddleware, val)
 		}
 		delete(cnOptions, OptionCookieMiddleware)
@@ -362,17 +394,22 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	creds := d.creds
 
 	target := uri.Host
-	if uri.Scheme == "grpc" || uri.Scheme == "grpc+tcp" {
+	switch uri.Scheme {
+	case "grpc", "grpc+tcp":
 		creds = insecure.NewCredentials()
-	} else if uri.Scheme == "grpc+unix" {
+	case "grpc+unix":
 		creds = insecure.NewCredentials()
 		target = "unix:" + uri.Path
 	}
 
-	dv, _ := d.DatabaseImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	dv, _ := d.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	driverVersion := dv.(string)
 	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
 	dialOpts = append(dialOpts, d.userDialOpts...)
+
+	if d.oauthToken != nil {
+		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(d.oauthToken))
+	}
 
 	d.Logger.DebugContext(ctx, "new client", "location", loc)
 	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)
@@ -384,22 +421,28 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	}
 
 	cl.Alloc = d.Alloc
+	// Authorization header is already set, continue
 	if len(authMiddle.hdrs.Get("authorization")) > 0 {
 		d.Logger.DebugContext(ctx, "reusing auth token", "location", loc)
-	} else {
-		if d.user != "" || d.pass != "" {
-			var header, trailer metadata.MD
-			ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
-			if err != nil {
-				return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
-			}
+		return cl, nil
+	}
 
-			if md, ok := metadata.FromOutgoingContext(ctx); ok {
-				authMiddle.mutex.Lock()
-				defer authMiddle.mutex.Unlock()
-				authMiddle.hdrs.Set("authorization", md.Get("Authorization")[0])
-			}
+	var authValue string
+
+	if d.user != "" || d.pass != "" {
+		var header, trailer metadata.MD
+		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
+		if err != nil {
+			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
 		}
+
+		if md, ok := metadata.FromOutgoingContext(ctx); ok {
+			authValue = md.Get("Authorization")[0]
+		}
+	}
+
+	if authValue != "" {
+		authMiddle.SetHeader(authValue)
 	}
 
 	return cl, nil
@@ -447,7 +490,10 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		}).
 		EvictedFunc(func(_, client interface{}) {
 			conn := client.(*flightsql.Client)
-			conn.Close()
+			err := conn.Close()
+			if err != nil {
+				d.Logger.Debug("failed to close client", "error", err.Error())
+			}
 		}).Build()
 
 	var cnxnSupport support
@@ -525,4 +571,10 @@ func (b *bearerAuthMiddleware) HeadersReceived(ctx context.Context, md metadata.
 		defer b.mutex.Unlock()
 		b.hdrs.Set("authorization", headers...)
 	}
+}
+
+func (b *bearerAuthMiddleware) SetHeader(authValue string) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	b.hdrs.Set("authorization", authValue)
 }

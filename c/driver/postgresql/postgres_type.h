@@ -211,7 +211,7 @@ class PostgresType {
   // initialize and set the appropriate number of children). Returns NANOARROW_OK
   // on success and perhaps ENOMEM if memory cannot be allocated. Types that
   // do not have a corresponding Arrow type are returned as Binary with field
-  // metadata ADBC:posgresql:typname. These types can be represented as their
+  // metadata ADBC:postgresql:typname. These types can be represented as their
   // binary COPY representation in the output.
   ArrowErrorCode SetSchema(ArrowSchema* schema,
                            const std::string& vendor_name = "PostgreSQL") const {
@@ -310,6 +310,14 @@ class PostgresType {
         NANOARROW_RETURN_NOT_OK(children_[0].SetSchema(schema->children[0], vendor_name));
         break;
 
+      case PostgresTypeId::kInt2vector:
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
+        // Postgres conceives of this as a single type, so no child is
+        // given. We need to allocate it ourselves.
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT16));
+        break;
+
       case PostgresTypeId::kUserDefined:
       default:
         // For user-defined types or types we don't explicitly know how to deal with, we
@@ -349,7 +357,7 @@ class PostgresType {
         !typname_.empty() ? typname_.c_str() : PostgresTypname(type_id_);
     nanoarrow::UniqueBuffer buffer;
 
-    ArrowMetadataBuilderInit(buffer.get(), nullptr);
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), nullptr));
     // TODO(lidavidm): we have deprecated this in favor of arrow.opaque,
     // remove once we feel enough time has passed
     NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
@@ -607,10 +615,10 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kInterval), out, error);
     case NANOARROW_TYPE_TIMESTAMP:
-      if (strcmp("", schema_view.timezone) == 0) {
-        return resolver.Find(resolver.GetOID(PostgresTypeId::kTimestamptz), out, error);
-      } else {
+      if (std::string_view(schema_view.timezone).empty()) {
         return resolver.Find(resolver.GetOID(PostgresTypeId::kTimestamp), out, error);
+      } else {
+        return resolver.Find(resolver.GetOID(PostgresTypeId::kTimestamptz), out, error);
       }
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:

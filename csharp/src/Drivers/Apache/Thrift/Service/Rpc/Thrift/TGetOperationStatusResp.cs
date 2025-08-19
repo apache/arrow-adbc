@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetOperationStatusResp : TBase
+  internal partial class TGetOperationStatusResp : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TOperationState _operationState;
     private string _sqlState;
@@ -55,16 +55,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private string _displayMessage;
     private string _diagnosticInfo;
     private string _errorDetailsJson;
-    private byte[] _responseValidation;
-    private global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType _idempotencyType;
-    private long _statementTimeout;
-    private global::Apache.Hive.Service.Rpc.Thrift.TOperationTimeoutLevel _statementTimeoutLevel;
-    private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloseOperationReason _closeReason;
-    private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf _sessionConfSnapshotOnComplete;
-    private bool _executionRejected;
-    private Dictionary<string, double> _queryStats;
-    private global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp _resultSetMetadata;
-    private global::Apache.Hive.Service.Rpc.Thrift.TFetchResultsResp _inlineResultSet;
 
     public global::Apache.Hive.Service.Rpc.Thrift.TStatus Status { get; set; }
 
@@ -249,144 +239,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public byte[] ResponseValidation
-    {
-      get
-      {
-        return _responseValidation;
-      }
-      set
-      {
-        __isset.responseValidation = true;
-        this._responseValidation = value;
-      }
-    }
-
-    /// <summary>
-    ///
-    /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType"/>
-    /// </summary>
-    public global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType IdempotencyType
-    {
-      get
-      {
-        return _idempotencyType;
-      }
-      set
-      {
-        __isset.idempotencyType = true;
-        this._idempotencyType = value;
-      }
-    }
-
-    public long StatementTimeout
-    {
-      get
-      {
-        return _statementTimeout;
-      }
-      set
-      {
-        __isset.statementTimeout = true;
-        this._statementTimeout = value;
-      }
-    }
-
-    /// <summary>
-    ///
-    /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TOperationTimeoutLevel"/>
-    /// </summary>
-    public global::Apache.Hive.Service.Rpc.Thrift.TOperationTimeoutLevel StatementTimeoutLevel
-    {
-      get
-      {
-        return _statementTimeoutLevel;
-      }
-      set
-      {
-        __isset.statementTimeoutLevel = true;
-        this._statementTimeoutLevel = value;
-      }
-    }
-
-    public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloseOperationReason CloseReason
-    {
-      get
-      {
-        return _closeReason;
-      }
-      set
-      {
-        __isset.closeReason = true;
-        this._closeReason = value;
-      }
-    }
-
-    public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf SessionConfSnapshotOnComplete
-    {
-      get
-      {
-        return _sessionConfSnapshotOnComplete;
-      }
-      set
-      {
-        __isset.sessionConfSnapshotOnComplete = true;
-        this._sessionConfSnapshotOnComplete = value;
-      }
-    }
-
-    public bool ExecutionRejected
-    {
-      get
-      {
-        return _executionRejected;
-      }
-      set
-      {
-        __isset.executionRejected = true;
-        this._executionRejected = value;
-      }
-    }
-
-    public Dictionary<string, double> QueryStats
-    {
-      get
-      {
-        return _queryStats;
-      }
-      set
-      {
-        __isset.queryStats = true;
-        this._queryStats = value;
-      }
-    }
-
-    public global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp ResultSetMetadata
-    {
-      get
-      {
-        return _resultSetMetadata;
-      }
-      set
-      {
-        __isset.resultSetMetadata = true;
-        this._resultSetMetadata = value;
-      }
-    }
-
-    public global::Apache.Hive.Service.Rpc.Thrift.TFetchResultsResp InlineResultSet
-    {
-      get
-      {
-        return _inlineResultSet;
-      }
-      set
-      {
-        __isset.inlineResultSet = true;
-        this._inlineResultSet = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
@@ -404,16 +256,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public bool displayMessage;
       public bool diagnosticInfo;
       public bool errorDetailsJson;
-      public bool responseValidation;
-      public bool idempotencyType;
-      public bool statementTimeout;
-      public bool statementTimeoutLevel;
-      public bool closeReason;
-      public bool sessionConfSnapshotOnComplete;
-      public bool executionRejected;
-      public bool queryStats;
-      public bool resultSetMetadata;
-      public bool inlineResultSet;
     }
 
     public TGetOperationStatusResp()
@@ -586,121 +428,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            case 3329:
-              if (field.Type == TType.String)
-              {
-                ResponseValidation = await iprot.ReadBinaryAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3330:
-              if (field.Type == TType.I32)
-              {
-                IdempotencyType = (global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType)await iprot.ReadI32Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3331:
-              if (field.Type == TType.I64)
-              {
-                StatementTimeout = await iprot.ReadI64Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3332:
-              if (field.Type == TType.I32)
-              {
-                StatementTimeoutLevel = (global::Apache.Hive.Service.Rpc.Thrift.TOperationTimeoutLevel)await iprot.ReadI32Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3333:
-              if (field.Type == TType.I32)
-              {
-                CloseReason = (global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCloseOperationReason)await iprot.ReadI32Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3334:
-              if (field.Type == TType.Struct)
-              {
-                SessionConfSnapshotOnComplete = new global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf();
-                await SessionConfSnapshotOnComplete.ReadAsync(iprot, cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3335:
-              if (field.Type == TType.Bool)
-              {
-                ExecutionRejected = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3336:
-              if (field.Type == TType.Map)
-              {
-                {
-                  var _map522 = await iprot.ReadMapBeginAsync(cancellationToken);
-                  QueryStats = new Dictionary<string, double>(_map522.Count);
-                  for(int _i523 = 0; _i523 < _map522.Count; ++_i523)
-                  {
-                    string _key524;
-                    double _val525;
-                    _key524 = await iprot.ReadStringAsync(cancellationToken);
-                    _val525 = await iprot.ReadDoubleAsync(cancellationToken);
-                    QueryStats[_key524] = _val525;
-                  }
-                  await iprot.ReadMapEndAsync(cancellationToken);
-                }
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3337:
-              if (field.Type == TType.Struct)
-              {
-                ResultSetMetadata = new global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp();
-                await ResultSetMetadata.ReadAsync(iprot, cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3344:
-              if (field.Type == TType.Struct)
-              {
-                InlineResultSet = new global::Apache.Hive.Service.Rpc.Thrift.TFetchResultsResp();
-                await InlineResultSet.ReadAsync(iprot, cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
             default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
@@ -855,102 +582,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(ErrorDetailsJson, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResponseValidation != null) && __isset.responseValidation)
-        {
-          tmp527.Name = "responseValidation";
-          tmp527.Type = TType.String;
-          tmp527.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await oprot.WriteBinaryAsync(ResponseValidation, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.idempotencyType)
-        {
-          tmp527.Name = "idempotencyType";
-          tmp527.Type = TType.I32;
-          tmp527.ID = 3330;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await oprot.WriteI32Async((int)IdempotencyType, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.statementTimeout)
-        {
-          tmp527.Name = "statementTimeout";
-          tmp527.Type = TType.I64;
-          tmp527.ID = 3331;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await oprot.WriteI64Async(StatementTimeout, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.statementTimeoutLevel)
-        {
-          tmp527.Name = "statementTimeoutLevel";
-          tmp527.Type = TType.I32;
-          tmp527.ID = 3332;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await oprot.WriteI32Async((int)StatementTimeoutLevel, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.closeReason)
-        {
-          tmp527.Name = "closeReason";
-          tmp527.Type = TType.I32;
-          tmp527.ID = 3333;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await oprot.WriteI32Async((int)CloseReason, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((SessionConfSnapshotOnComplete != null) && __isset.sessionConfSnapshotOnComplete)
-        {
-          tmp527.Name = "sessionConfSnapshotOnComplete";
-          tmp527.Type = TType.Struct;
-          tmp527.ID = 3334;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await SessionConfSnapshotOnComplete.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.executionRejected)
-        {
-          tmp527.Name = "executionRejected";
-          tmp527.Type = TType.Bool;
-          tmp527.ID = 3335;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await oprot.WriteBoolAsync(ExecutionRejected, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((QueryStats != null) && __isset.queryStats)
-        {
-          tmp527.Name = "queryStats";
-          tmp527.Type = TType.Map;
-          tmp527.ID = 3336;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await oprot.WriteMapBeginAsync(new TMap(TType.String, TType.Double, QueryStats.Count), cancellationToken);
-          foreach (string _iter528 in QueryStats.Keys)
-          {
-            await oprot.WriteStringAsync(_iter528, cancellationToken);
-            await oprot.WriteDoubleAsync(QueryStats[_iter528], cancellationToken);
-          }
-          await oprot.WriteMapEndAsync(cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((ResultSetMetadata != null) && __isset.resultSetMetadata)
-        {
-          tmp527.Name = "resultSetMetadata";
-          tmp527.Type = TType.Struct;
-          tmp527.ID = 3337;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await ResultSetMetadata.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((InlineResultSet != null) && __isset.inlineResultSet)
-        {
-          tmp527.Name = "inlineResultSet";
-          tmp527.Type = TType.Struct;
-          tmp527.ID = 3344;
-          await oprot.WriteFieldBeginAsync(tmp527, cancellationToken);
-          await InlineResultSet.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -977,17 +608,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         && ((__isset.numModifiedRows == other.__isset.numModifiedRows) && ((!__isset.numModifiedRows) || (global::System.Object.Equals(NumModifiedRows, other.NumModifiedRows))))
         && ((__isset.displayMessage == other.__isset.displayMessage) && ((!__isset.displayMessage) || (global::System.Object.Equals(DisplayMessage, other.DisplayMessage))))
         && ((__isset.diagnosticInfo == other.__isset.diagnosticInfo) && ((!__isset.diagnosticInfo) || (global::System.Object.Equals(DiagnosticInfo, other.DiagnosticInfo))))
-        && ((__isset.errorDetailsJson == other.__isset.errorDetailsJson) && ((!__isset.errorDetailsJson) || (global::System.Object.Equals(ErrorDetailsJson, other.ErrorDetailsJson))))
-        && ((__isset.responseValidation == other.__isset.responseValidation) && ((!__isset.responseValidation) || (TCollections.Equals(ResponseValidation, other.ResponseValidation))))
-        && ((__isset.idempotencyType == other.__isset.idempotencyType) && ((!__isset.idempotencyType) || (global::System.Object.Equals(IdempotencyType, other.IdempotencyType))))
-        && ((__isset.statementTimeout == other.__isset.statementTimeout) && ((!__isset.statementTimeout) || (global::System.Object.Equals(StatementTimeout, other.StatementTimeout))))
-        && ((__isset.statementTimeoutLevel == other.__isset.statementTimeoutLevel) && ((!__isset.statementTimeoutLevel) || (global::System.Object.Equals(StatementTimeoutLevel, other.StatementTimeoutLevel))))
-        && ((__isset.closeReason == other.__isset.closeReason) && ((!__isset.closeReason) || (global::System.Object.Equals(CloseReason, other.CloseReason))))
-        && ((__isset.sessionConfSnapshotOnComplete == other.__isset.sessionConfSnapshotOnComplete) && ((!__isset.sessionConfSnapshotOnComplete) || (global::System.Object.Equals(SessionConfSnapshotOnComplete, other.SessionConfSnapshotOnComplete))))
-        && ((__isset.executionRejected == other.__isset.executionRejected) && ((!__isset.executionRejected) || (global::System.Object.Equals(ExecutionRejected, other.ExecutionRejected))))
-        && ((__isset.queryStats == other.__isset.queryStats) && ((!__isset.queryStats) || (TCollections.Equals(QueryStats, other.QueryStats))))
-        && ((__isset.resultSetMetadata == other.__isset.resultSetMetadata) && ((!__isset.resultSetMetadata) || (global::System.Object.Equals(ResultSetMetadata, other.ResultSetMetadata))))
-        && ((__isset.inlineResultSet == other.__isset.inlineResultSet) && ((!__isset.inlineResultSet) || (global::System.Object.Equals(InlineResultSet, other.InlineResultSet))));
+        && ((__isset.errorDetailsJson == other.__isset.errorDetailsJson) && ((!__isset.errorDetailsJson) || (global::System.Object.Equals(ErrorDetailsJson, other.ErrorDetailsJson))));
     }
 
     public override int GetHashCode() {
@@ -1048,46 +669,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((ErrorDetailsJson != null) && __isset.errorDetailsJson)
         {
           hashcode = (hashcode * 397) + ErrorDetailsJson.GetHashCode();
-        }
-        if((ResponseValidation != null) && __isset.responseValidation)
-        {
-          hashcode = (hashcode * 397) + ResponseValidation.GetHashCode();
-        }
-        if(__isset.idempotencyType)
-        {
-          hashcode = (hashcode * 397) + IdempotencyType.GetHashCode();
-        }
-        if(__isset.statementTimeout)
-        {
-          hashcode = (hashcode * 397) + StatementTimeout.GetHashCode();
-        }
-        if(__isset.statementTimeoutLevel)
-        {
-          hashcode = (hashcode * 397) + StatementTimeoutLevel.GetHashCode();
-        }
-        if(__isset.closeReason)
-        {
-          hashcode = (hashcode * 397) + CloseReason.GetHashCode();
-        }
-        if((SessionConfSnapshotOnComplete != null) && __isset.sessionConfSnapshotOnComplete)
-        {
-          hashcode = (hashcode * 397) + SessionConfSnapshotOnComplete.GetHashCode();
-        }
-        if(__isset.executionRejected)
-        {
-          hashcode = (hashcode * 397) + ExecutionRejected.GetHashCode();
-        }
-        if((QueryStats != null) && __isset.queryStats)
-        {
-          hashcode = (hashcode * 397) + TCollections.GetHashCode(QueryStats);
-        }
-        if((ResultSetMetadata != null) && __isset.resultSetMetadata)
-        {
-          hashcode = (hashcode * 397) + ResultSetMetadata.GetHashCode();
-        }
-        if((InlineResultSet != null) && __isset.inlineResultSet)
-        {
-          hashcode = (hashcode * 397) + InlineResultSet.GetHashCode();
         }
       }
       return hashcode;
@@ -1165,56 +746,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp529.Append(", ErrorDetailsJson: ");
         ErrorDetailsJson.ToString(tmp529);
-      }
-      if((ResponseValidation != null) && __isset.responseValidation)
-      {
-        tmp529.Append(", ResponseValidation: ");
-        ResponseValidation.ToString(tmp529);
-      }
-      if(__isset.idempotencyType)
-      {
-        tmp529.Append(", IdempotencyType: ");
-        IdempotencyType.ToString(tmp529);
-      }
-      if(__isset.statementTimeout)
-      {
-        tmp529.Append(", StatementTimeout: ");
-        StatementTimeout.ToString(tmp529);
-      }
-      if(__isset.statementTimeoutLevel)
-      {
-        tmp529.Append(", StatementTimeoutLevel: ");
-        StatementTimeoutLevel.ToString(tmp529);
-      }
-      if(__isset.closeReason)
-      {
-        tmp529.Append(", CloseReason: ");
-        CloseReason.ToString(tmp529);
-      }
-      if((SessionConfSnapshotOnComplete != null) && __isset.sessionConfSnapshotOnComplete)
-      {
-        tmp529.Append(", SessionConfSnapshotOnComplete: ");
-        SessionConfSnapshotOnComplete.ToString(tmp529);
-      }
-      if(__isset.executionRejected)
-      {
-        tmp529.Append(", ExecutionRejected: ");
-        ExecutionRejected.ToString(tmp529);
-      }
-      if((QueryStats != null) && __isset.queryStats)
-      {
-        tmp529.Append(", QueryStats: ");
-        QueryStats.ToString(tmp529);
-      }
-      if((ResultSetMetadata != null) && __isset.resultSetMetadata)
-      {
-        tmp529.Append(", ResultSetMetadata: ");
-        ResultSetMetadata.ToString(tmp529);
-      }
-      if((InlineResultSet != null) && __isset.inlineResultSet)
-      {
-        tmp529.Append(", InlineResultSet: ");
-        InlineResultSet.ToString(tmp529);
       }
       tmp529.Append(')');
       return tmp529.ToString();

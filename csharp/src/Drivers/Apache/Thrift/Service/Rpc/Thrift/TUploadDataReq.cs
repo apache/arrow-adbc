@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TUploadDataReq : TBase
+  internal partial class TUploadDataReq : TBase
   {
     private string _tableName;
     private string _path;

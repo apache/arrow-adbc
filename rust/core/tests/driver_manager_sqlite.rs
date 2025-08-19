@@ -46,8 +46,8 @@ fn test_driver() {
 #[test]
 fn test_database() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
-    common::test_database(&mut database);
+    let database = get_database(&mut driver);
+    common::test_database(&database);
 }
 
 #[test]
@@ -79,7 +79,7 @@ fn test_database_get_option() {
 #[test]
 fn test_connection() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     common::test_connection(&mut connection);
 }
@@ -87,7 +87,7 @@ fn test_connection() {
 #[test]
 fn test_connection_get_option() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let connection = database.new_connection().unwrap();
 
     let error = connection
@@ -114,7 +114,7 @@ fn test_connection_get_option() {
 #[test]
 fn test_connection_cancel() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
 
     let error = connection.cancel().unwrap_err();
@@ -124,7 +124,7 @@ fn test_connection_cancel() {
 #[test]
 fn test_connection_commit_rollback() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     common::test_connection_commit_rollback(&mut connection);
 }
@@ -132,7 +132,7 @@ fn test_connection_commit_rollback() {
 #[test]
 fn test_connection_read_partition() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let connection = database.new_connection().unwrap();
     common::test_connection_read_partition(&connection);
 }
@@ -140,7 +140,7 @@ fn test_connection_read_partition() {
 #[test]
 fn test_connection_get_table_types() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let connection = database.new_connection().unwrap();
     common::test_connection_get_table_types(&connection, &["table", "view"]);
 }
@@ -148,7 +148,7 @@ fn test_connection_get_table_types() {
 #[test]
 fn test_connection_get_info() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let connection = database.new_connection().unwrap();
     common::test_connection_get_info(&connection, 5);
 }
@@ -156,7 +156,7 @@ fn test_connection_get_info() {
 #[test]
 fn test_connection_get_objects() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let connection = database.new_connection().unwrap();
     common::test_connection_get_objects(&connection, 1, 1);
 }
@@ -164,7 +164,7 @@ fn test_connection_get_objects() {
 #[test]
 fn test_connection_get_table_schema() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     common::test_connection_get_table_schema(&mut connection);
 }
@@ -172,7 +172,7 @@ fn test_connection_get_table_schema() {
 #[test]
 fn test_connection_get_statistic_names() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let connection = database.new_connection().unwrap();
     assert!(connection.get_statistic_names().is_err());
 }
@@ -180,7 +180,7 @@ fn test_connection_get_statistic_names() {
 #[test]
 fn test_connection_get_statistics() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let connection = database.new_connection().unwrap();
     assert!(connection.get_statistics(None, None, None, false).is_err());
 }
@@ -188,7 +188,7 @@ fn test_connection_get_statistics() {
 #[test]
 fn test_statement() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
     common::test_statement(&mut statement);
@@ -197,7 +197,7 @@ fn test_statement() {
 #[test]
 fn test_statement_prepare() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
     common::test_statement_prepare(&mut statement);
@@ -206,7 +206,7 @@ fn test_statement_prepare() {
 #[test]
 fn test_statement_set_substrait_plan() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
     common::test_statement_set_substrait_plan(&mut statement);
@@ -215,7 +215,7 @@ fn test_statement_set_substrait_plan() {
 #[test]
 fn test_statement_get_parameter_schema() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
 
@@ -233,7 +233,7 @@ fn test_statement_get_parameter_schema() {
 #[test]
 fn test_statement_execute() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
     common::test_statement_execute(&mut statement);
@@ -242,7 +242,7 @@ fn test_statement_execute() {
 #[test]
 fn test_statement_execute_update() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     common::test_statement_execute_update(&mut connection);
 }
@@ -250,7 +250,7 @@ fn test_statement_execute_update() {
 #[test]
 fn test_statement_execute_schema() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
 
@@ -261,7 +261,7 @@ fn test_statement_execute_schema() {
 #[test]
 fn test_statement_execute_partitions() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
     common::test_statement_execute_partitions(&mut statement);
@@ -270,7 +270,7 @@ fn test_statement_execute_partitions() {
 #[test]
 fn test_statement_cancel() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
 
@@ -281,7 +281,7 @@ fn test_statement_cancel() {
 #[test]
 fn test_statement_bind() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
     common::test_statement_bind(&mut statement);
@@ -290,7 +290,7 @@ fn test_statement_bind() {
 #[test]
 fn test_statement_bind_stream() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     let mut statement = connection.new_statement().unwrap();
     common::test_statement_bind_stream(&mut statement);
@@ -299,7 +299,7 @@ fn test_statement_bind_stream() {
 #[test]
 fn test_ingestion_roundtrip() {
     let mut driver = get_driver();
-    let mut database = get_database(&mut driver);
+    let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
     common::test_ingestion_roundtrip(&mut connection);
 }

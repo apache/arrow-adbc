@@ -21,45 +21,29 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
+using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2HttpConnection : HiveServer2Connection
+    internal class HiveServer2HttpConnection : HiveServer2ExtendedConnection
     {
-        private const string ProductVersionDefault = "1.0.0";
-        private const string DriverName = "ADBC Hive Driver";
-        private const string ArrowVersion = "1.0.0";
         private const string BasicAuthenticationScheme = "Basic";
-        private readonly Lazy<string> _productVersion;
-        private static readonly string s_userAgent = $"{DriverName.Replace(" ", "")}/{ProductVersionDefault}";
 
-        protected override string GetProductVersionDefault() => ProductVersionDefault;
-
-        protected override string ProductVersion => _productVersion.Value;
+        private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
         public HiveServer2HttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
-            ValidateProperties();
-            _productVersion = new Lazy<string>(() => GetProductVersion(), LazyThreadSafetyMode.PublicationOnly);
+            _proxyConfigurator = HiveServer2ProxyConfigurator.FromProperties(properties);
         }
 
-        private void ValidateProperties()
-        {
-            ValidateAuthentication();
-            ValidateConnection();
-            ValidateOptions();
-        }
-
-        private void ValidateAuthentication()
+        protected override void ValidateAuthentication()
         {
             // Validate authentication parameters
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
@@ -96,7 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        private void ValidateConnection()
+        protected override void ValidateConnection()
         {
             // HostName or Uri is required parameter
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
@@ -121,16 +105,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(HiveServer2Parameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName, TlsOptions.IsTlsEnabled)
             };
         }
 
-        private void ValidateOptions()
+        protected override void ValidateOptions()
         {
             Properties.TryGetValue(HiveServer2Parameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
-            Properties.TryGetValue(HiveServer2Parameters.TLSOptions, out string? tlsOptions);
-            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
             Properties.TryGetValue(HiveServer2Parameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
             if (connectTimeoutMs != null)
             {
@@ -138,18 +120,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(HiveServer2Parameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
+            TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
-
-        public override AdbcStatement CreateStatement()
-        {
-            return new HiveServer2Statement(this);
-        }
-
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(
-            statement,
-            schema,
-            dataTypeConversion: statement.Connection.DataTypeConversion,
-            enableBatchSizeStopCondition: false);
 
         protected override TTransport CreateTransport()
         {
@@ -166,11 +138,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, HiveServer2Parameters.HostName, TlsOptions.IsTlsEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
-            HttpClientHandler httpClientHandler = NewHttpClientHandler();
-            httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
@@ -180,7 +151,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
 
             TConfiguration config = new();
-            ThriftHttpTransport transport = new(httpClient, config)
+            THttpTransport transport = new(httpClient, config)
             {
                 // This value can only be set before the first call/request. So if a new value for query timeout
                 // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
@@ -188,23 +159,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ConnectTimeout = int.MaxValue,
             };
             return transport;
-        }
-
-        private HttpClientHandler NewHttpClientHandler()
-        {
-            HttpClientHandler httpClientHandler = new();
-            if (TlsOptions != HiveServer2TlsOption.Empty)
-            {
-                httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
-                {
-                    if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowSelfSigned)) return false;
-                    if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowHostnameMismatch)) return false;
-
-                    return true;
-                };
-            }
-
-            return httpClientHandler;
         }
 
         private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(HiveServer2AuthType authType, string? username, string? password)
@@ -243,107 +197,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return req;
         }
 
-        protected override void SetPrecisionScaleAndTypeName(
-            short colType,
-            string typeName,
-            TableInfo? tableInfo,
-            int columnSize,
-            int decimalDigits)
-        {
-            // Keep the original type name
-            tableInfo?.TypeName.Add(typeName);
-            switch (colType)
-            {
-                case (short)ColumnTypeId.DECIMAL:
-                case (short)ColumnTypeId.NUMERIC:
-                    {
-                        // Precision/scale is provide in the API call.
-                        SqlDecimalParserResult result = SqlTypeNameParser<SqlDecimalParserResult>.Parse(typeName, colType);
-                        tableInfo?.Precision.Add(columnSize);
-                        tableInfo?.Scale.Add((short)decimalDigits);
-                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
-                        break;
-                    }
+        protected override HiveServer2TransportType Type => HiveServer2TransportType.Http;
 
-                case (short)ColumnTypeId.CHAR:
-                case (short)ColumnTypeId.NCHAR:
-                case (short)ColumnTypeId.VARCHAR:
-                case (short)ColumnTypeId.LONGVARCHAR:
-                case (short)ColumnTypeId.LONGNVARCHAR:
-                case (short)ColumnTypeId.NVARCHAR:
-                    {
-                        // Precision is provide in the API call.
-                        SqlCharVarcharParserResult result = SqlTypeNameParser<SqlCharVarcharParserResult>.Parse(typeName, colType);
-                        tableInfo?.Precision.Add(columnSize);
-                        tableInfo?.Scale.Add(null);
-                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
-                        break;
-                    }
+        public override string AssemblyName => s_assemblyName;
 
-                default:
-                    {
-                        SqlTypeNameParserResult result = SqlTypeNameParser<SqlTypeNameParserResult>.Parse(typeName, colType);
-                        tableInfo?.Precision.Add(null);
-                        tableInfo?.Scale.Add(null);
-                        tableInfo?.BaseTypeName.Add(result.BaseTypeName);
-                        break;
-                    }
-            }
-        }
-
-        protected override ColumnsMetadataColumnNames GetColumnsMetadataColumnNames()
-        {
-            return new ColumnsMetadataColumnNames()
-            {
-                TableCatalog = TableCat,
-                TableSchema = TableSchem,
-                TableName = TableName,
-                ColumnName = ColumnName,
-                DataType = DataType,
-                TypeName = TypeName,
-                Nullable = Nullable,
-                ColumnDef = ColumnDef,
-                OrdinalPosition = OrdinalPosition,
-                IsNullable = IsNullable,
-                IsAutoIncrement = IsAutoIncrement,
-                ColumnSize = ColumnSize,
-                DecimalDigits = DecimalDigits,
-            };
-        }
-
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-
-        protected internal override int PositionRequiredOffset => 0;
-
-        protected override string InfoDriverName => DriverName;
-
-        protected override string InfoDriverArrowVersion => ArrowVersion;
-
-        protected override bool IsColumnSizeValidForDecimal => false;
-
-        protected override bool GetObjectsPatternsRequireLowerCase => false;
-
-        internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
-
-        internal HiveServer2TransportType Type => HiveServer2TransportType.Http;
-
-        protected override int ColumnMapIndexOffset => 1;
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

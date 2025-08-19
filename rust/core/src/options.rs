@@ -621,7 +621,7 @@ impl TryFrom<i16> for Statistics {
             constants::ADBC_STATISTIC_NULL_COUNT_KEY => Ok(Self::NullCount),
             constants::ADBC_STATISTIC_ROW_COUNT_KEY => Ok(Self::RowCount),
             _ => Err(Error::with_message_and_status(
-                format!("Unknown standard statistic key: {}", value),
+                format!("Unknown standard statistic key: {value}"),
                 Status::InvalidArguments,
             )),
         }

@@ -72,12 +72,12 @@ func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool) (b
 	var arrowIterator bigquery.ArrowIterator
 	// If there is no schema in the row iterator, then arrow
 	// iterator should be empty (#2173)
-	if len(iter.Schema) > 0 {
+	if iter.TotalRows > 0 {
 		if arrowIterator, err = iter.ArrowIterator(); err != nil {
 			return nil, -1, err
 		}
 	} else {
-		arrowIterator = emptyArrowIterator{}
+		arrowIterator = emptyArrowIterator{iter.Schema}
 	}
 	totalRows := int64(iter.TotalRows)
 	return arrowIterator, totalRows, nil
@@ -158,7 +158,7 @@ func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, q
 			return -1, err
 		}
 		if parameters != nil {
-			query.QueryConfig.Parameters = parameters
+			query.Parameters = parameters
 		}
 
 		arrowIterator, rows, err := runQuery(ctx, query, false)
@@ -286,14 +286,16 @@ func (r *reader) Record() arrow.Record {
 	return r.rec
 }
 
-type emptyArrowIterator struct{}
+type emptyArrowIterator struct {
+	schema bigquery.Schema
+}
 
 func (e emptyArrowIterator) Next() (*bigquery.ArrowRecordBatch, error) {
 	return nil, errors.New("Next should never be invoked on an empty iterator")
 }
 
 func (e emptyArrowIterator) Schema() bigquery.Schema {
-	return bigquery.Schema{}
+	return e.schema
 }
 
 func (e emptyArrowIterator) SerializedArrowSchema() []byte {

@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TOperationTimeoutLevel
+  internal enum TOperationTimeoutLevel
   {
     CLUSTER = 0,
     SESSION = 1,

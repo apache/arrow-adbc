@@ -18,32 +18,29 @@
 # under the License.
 
 if build_example and generate_vapi
-  vala_example_executable_kwargs = {
-    'c_args': [
-      '-I' + meson.build_root(),
-      '-I' + meson.source_root(),
-    ],
-    'dependencies': [
-      adbc_glib_vapi,
-      adbc_arrow_glib_vapi,
-      arrow_glib,
-      dependency('gobject-2.0'),
-    ],
-    'vala_args': [
-      '--pkg', 'posix',
-      '--vapidir', arrow_glib.get_variable('vapidir'),
-    ],
-  }
-  executable('sqlite', 'sqlite.vala',
-             kwargs: vala_example_executable_kwargs)
+    vala_example_executable_kwargs = {
+        'c_args': [
+            '-I' + meson.project_build_root(),
+            '-I' + meson.project_source_root(),
+        ],
+        'dependencies': [
+            adbc_glib_vapi,
+            adbc_arrow_glib_vapi,
+            arrow_glib,
+            dependency('gobject-2.0'),
+        ],
+        'vala_args': [
+            '--pkg',
+            'posix',
+            '--vapidir',
+            arrow_glib.get_variable('vapidir'),
+        ],
+    }
+    executable('sqlite', 'sqlite.vala', kwargs: vala_example_executable_kwargs)
 endif
 
-files = [
-  'README.md',
-  'sqlite.vala',
-]
-install_data(files,
-             install_dir: join_paths(data_dir,
-                                     'adbc-arrow-glib',
-                                     'example',
-                                     'vala'))
+files = ['README.md', 'sqlite.vala']
+install_data(
+    files,
+    install_dir: join_paths(data_dir, 'adbc-arrow-glib', 'example', 'vala'),
+)

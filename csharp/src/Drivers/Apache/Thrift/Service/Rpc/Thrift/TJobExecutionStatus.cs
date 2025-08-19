@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TJobExecutionStatus
+  internal enum TJobExecutionStatus
   {
     IN_PROGRESS = 0,
     COMPLETE = 1,

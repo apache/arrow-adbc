@@ -15,41 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-option('tests', type: 'boolean', description: 'Build tests', value: false)
-option('benchmarks', type: 'boolean', description: 'Build benchmarks', value: false)
-option(
-  'bigquery',
-  type: 'boolean',
-  description: 'Build ADBC BigQuery driver',
-  value: false
-)
-option(
-  'flightsql',
-  type: 'boolean',
-  description: 'Build ADBC FlightSQL driver',
-  value: false
-)
-option(
-  'driver_manager',
-  type: 'boolean',
-  description: 'Build ADBC Driver Manager',
-  value: false
-)
-option(
-  'postgresql',
-  type: 'boolean',
-  description: 'Build ADBC PostgreSQL Driver',
-  value: false
-)
-option(
-  'sqlite',
-  type: 'boolean',
-  description: 'Build ADBC SQLite Driver',
-  value: false
-)
-option(
-  'snowflake',
-  type: 'boolean',
-  description: 'Build ADBC Snowflake Driver',
-  value: false
-)
+option('tests', type: 'feature', description: 'Build tests')
+option('benchmarks', type: 'feature', description: 'Build benchmarks')
+option('bigquery', type: 'feature', description: 'Build ADBC BigQuery driver')
+option('flightsql', type: 'feature', description: 'Build ADBC FlightSQL driver')
+option('driver_manager', type: 'feature', description: 'Build ADBC Driver Manager')
+option('postgresql', type: 'feature', description: 'Build ADBC PostgreSQL Driver')
+option('sqlite', type: 'feature', description: 'Build ADBC SQLite Driver')
+option('snowflake', type: 'feature', description: 'Build ADBC Snowflake Driver')

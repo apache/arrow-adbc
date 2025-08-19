@@ -17,11 +17,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
@@ -73,6 +71,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
         protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
             GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
+        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
@@ -83,8 +83,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
         protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
             FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
+        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
 
-        protected override void SetPrecisionScaleAndTypeName(
+        internal override void SetPrecisionScaleAndTypeName(
             short colType,
             string typeName,
             TableInfo? tableInfo,

@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetResultSetMetadataResp : TBase
+  internal partial class TGetResultSetMetadataResp : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TTableSchema _schema;
     private global::Apache.Hive.Service.Rpc.Thrift.TSparkRowSetType _resultFormat;

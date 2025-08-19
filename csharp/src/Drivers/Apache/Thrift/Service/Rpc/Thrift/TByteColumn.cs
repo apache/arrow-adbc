@@ -11,7 +11,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using Apache.Arrow;
-using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Thrift.Protocol;
 using Thrift.Protocol.Entities;
@@ -30,7 +29,7 @@ using Thrift.Protocol.Utilities;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TByteColumn : TBase
+  internal partial class TByteColumn : TBase
   {
 
     public Int8Array Values { get; set; }
@@ -55,7 +54,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
         byte[] nulls = null;
         byte[] buffer = null;
-        Stream transport = ((IPeekableTransport)iprot.Transport).Input;
         int length = -1;
 
         await iprot.ReadStructBeginAsync(cancellationToken);
@@ -79,7 +77,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                   buffer = new byte[length];
                   var memory = buffer.AsMemory();
                   iprot.Transport.CheckReadBytesAvailable(buffer.Length);
-                  await transport.ReadExactlyAsync(memory, cancellationToken);
+                  await iprot.Transport.ReadExactlyAsync(memory, cancellationToken);
 
                   await iprot.ReadListEndAsync(cancellationToken);
                 }

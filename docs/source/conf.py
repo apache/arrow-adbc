@@ -31,7 +31,7 @@ Apache, the Apache feather logo, and the Apache Arrow project logo are either
 registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "18 (dev)"
+release = "20 (dev)"
 # Needed to generate version switcher
 version = release
 
@@ -40,6 +40,8 @@ version = release
 
 exclude_patterns = []
 extensions = [
+    # misc directives
+    "adbc_misc",
     # recipe directive
     "sphinx_recipe",
     # generic directives to enable intersphinx for java
@@ -53,6 +55,26 @@ extensions = [
     "sphinxext.opengraph",
 ]
 templates_path = ["_templates"]
+
+
+def on_missing_reference(app, env, node, contnode):
+    if str(contnode) in {
+        # Polars does something odd with Sphinx such that polars.DataFrame
+        # isn't xrefable; suppress the warning.
+        "polars.DataFrame",
+        # CapsuleType is only in 3.13+
+        "CapsuleType",
+        # Internal API
+        "DbapiBackend",
+    }:
+        return contnode
+
+    return None
+
+
+def setup(app):
+    app.connect("missing-reference", on_missing_reference)
+
 
 # -- Options for autodoc ----------------------------------------------------
 
@@ -127,6 +149,7 @@ intersphinx_mapping = {
     "arrow": ("https://arrow.apache.org/docs/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "polars": ("https://docs.pola.rs/api/python/stable/", None),
+    "python": ("https://docs.python.org/3", None),
 }
 
 # Add env vars like ADBC_INTERSPHINX_MAPPING_adbc_java = url;path

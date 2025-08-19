@@ -26,11 +26,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
     internal class ChunkStream : Stream
     {
         ReadOnlyMemory<byte> currentBuffer;
-        byte[] data;
+        ReadOnlyMemory<byte> data;
         bool first;
         int position;
 
         public ChunkStream(Schema schema, byte[] data)
+            : this(schema, new ReadOnlyMemory<byte>(data))
+        {
+            // Call the other constructor to avoid duplication
+        }
+
+        public ChunkStream(Schema schema, ReadOnlyMemory<byte> data)
         {
             MemoryStream buffer = new MemoryStream();
             ArrowStreamWriter writer = new ArrowStreamWriter(buffer, schema, leaveOpen: true);
@@ -70,7 +76,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 {
                     return 0;
                 }
-                this.currentBuffer = new ReadOnlyMemory<byte>(this.data);
+                this.currentBuffer = this.data;
                 this.position = 0;
                 remaining = this.currentBuffer.Length - this.position;
             }

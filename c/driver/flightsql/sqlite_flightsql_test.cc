@@ -23,6 +23,7 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
+#include <arrow-adbc/driver/flightsql.h>
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest-matchers.h>
 #include <gtest/gtest-param-test.h>
@@ -34,10 +35,6 @@
 
 using adbc_validation::IsOkErrno;
 using adbc_validation::IsOkStatus;
-
-extern "C" {
-AdbcStatusCode FlightSQLDriverInit(int, void*, struct AdbcError*);
-}
 
 #define CHECK_OK(EXPR)                                              \
   do {                                                              \
@@ -106,8 +103,7 @@ class SqliteFlightSqlQuirks : public adbc_validation::DriverQuirks {
     switch (info_code) {
       case ADBC_INFO_DRIVER_NAME:
         return "ADBC Flight SQL Driver - Go";
-      case ADBC_INFO_DRIVER_VERSION:
-        return "(unknown or development build)";
+      // Do not test ADBC_INFO_DRIVER_VERSION; it differs in different parts of CI
       case ADBC_INFO_DRIVER_ADBC_VERSION:
         return ADBC_VERSION_1_1_0;
       case ADBC_INFO_VENDOR_NAME:
@@ -244,12 +240,12 @@ TEST_F(SqliteFlightSqlTest, AdbcDriverBackwardsCompatibility) {
   std::memset(&driver, 0, ADBC_DRIVER_1_1_0_SIZE);
   driver.ErrorGetDetailCount = Canary;
 
-  ASSERT_THAT(::FlightSQLDriverInit(ADBC_VERSION_1_0_0, &driver, &error),
+  ASSERT_THAT(::AdbcDriverFlightsqlInit(ADBC_VERSION_1_0_0, &driver, &error),
               IsOkStatus(&error));
 
   ASSERT_EQ(Canary, driver.ErrorGetDetailCount);
 
-  ASSERT_THAT(::FlightSQLDriverInit(424242, &driver, &error),
+  ASSERT_THAT(::AdbcDriverFlightsqlInit(424242, &driver, &error),
               adbc_validation::IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
 }
 

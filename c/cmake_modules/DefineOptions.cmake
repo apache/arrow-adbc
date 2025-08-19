@@ -98,33 +98,12 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
 
   define_option(ADBC_BUILD_SHARED "Build shared libraries" ON)
 
-  define_option_string(ADBC_PACKAGE_KIND
-                       "Arbitrary string that identifies the kind of package;\
-(for informational purposes)" "")
-
   define_option_string(ADBC_GIT_ID "The Arrow git commit id (if any)" "")
 
   define_option_string(ADBC_GIT_DESCRIPTION "The Arrow git commit description (if any)"
                        "")
 
-  define_option(ADBC_NO_DEPRECATED_API "Exclude deprecated APIs from build" OFF)
-
   define_option(ADBC_USE_CCACHE "Use ccache when compiling (if available)" ON)
-
-  define_option(ADBC_USE_PRECOMPILED_HEADERS "Use precompiled headers when compiling" OFF)
-
-  # Arm64 architectures and extensions can lead to exploding combinations.
-  # So set it directly through cmake command line.
-  #
-  # If you change this, you need to change the definition in
-  # python/CMakeLists.txt too.
-  define_option_string(ADBC_ARMV8_ARCH
-                       "Arm64 arch and extensions"
-                       "armv8-a" # Default
-                       "armv8-a"
-                       "armv8-a+crc+crypto")
-
-  define_option(ADBC_ALTIVEC "Build with Altivec if compiler has support" ON)
 
   define_option(ADBC_RPATH_ORIGIN "Build Arrow libraries with RATH set to \$ORIGIN" OFF)
 
@@ -159,6 +138,12 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
                        "${ADBC_TEST_LINKAGE_DEFAULT}"
                        "shared"
                        "static")
+
+  define_option(ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL
+                "Build driver manager manifest user-level tests" OFF)
+
+  define_option(ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL
+                "Build driver manager manifest system-level tests" OFF)
 
   #----------------------------------------------------------------------
   set_option_category("Lint")
@@ -230,7 +215,11 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   #----------------------------------------------------------------------
   set_option_category("Advanced developer")
 
-  option(ADBC_BUILD_CONFIG_SUMMARY_JSON "Summarize build configuration in a JSON file" ON)
+  define_option(ADBC_BUILD_CONFIG_SUMMARY_JSON
+                "Summarize build configuration in a JSON file" ON)
+
+  define_option(ADBC_DEFINE_COMMON_ENTRYPOINTS
+                "Define the Adbc functions in static/shared driver libraries" ON)
 
   #----------------------------------------------------------------------
   set_option_category("Project components")

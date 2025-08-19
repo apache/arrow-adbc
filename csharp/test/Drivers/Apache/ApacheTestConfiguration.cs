@@ -60,7 +60,64 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("data_type_conv"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string DataTypeConversion { get; set; } = string.Empty;
 
-        [JsonPropertyName("tls_options"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string TlsOptions { get; set; } = string.Empty;
+        [JsonPropertyName("http_options"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public HttpTestConfiguration? HttpOptions { get; set; }
+
+        [JsonPropertyName("catalog"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string Catalog { get; set; } = string.Empty;
+
+        [JsonPropertyName("db_schema"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string DbSchema { get; set; } = string.Empty;
+    }
+
+    public class HttpTestConfiguration
+    {
+        [JsonPropertyName("tls"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public TlsTestConfiguration? Tls { get; set; }
+
+        [JsonPropertyName("proxy"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public ProxyTestConfiguration? Proxy { get; set; }
+    }
+
+    public class ProxyTestConfiguration
+    {
+        [JsonPropertyName("use_proxy"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string? UseProxy { get; set; }
+
+        [JsonPropertyName("proxy_host"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string? ProxyHost { get; set; }
+
+        [JsonPropertyName("proxy_port"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int? ProxyPort { get; set; }
+
+        [JsonPropertyName("proxy_auth"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string? ProxyAuth { get; set; }
+
+        [JsonPropertyName("proxy_uid"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string? ProxyUid { get; set; }
+
+        [JsonPropertyName("proxy_pwd"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string? ProxyPwd { get; set; }
+
+        [JsonPropertyName("proxy_ignore_list"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string? ProxyIgnoreList { get; set; }
+    }
+
+    public class TlsTestConfiguration
+    {
+        [JsonPropertyName("enabled"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool? Enabled { get; set; }
+
+        [JsonPropertyName("disable_server_certificate_validation"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool? DisableServerCertificateValidation { get; set; }
+
+        [JsonPropertyName("allow_self_signed"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool? AllowSelfSigned { get; set; }
+
+        [JsonPropertyName("allow_hostname_mismatch"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool? AllowHostnameMismatch { get; set; }
+
+        [JsonPropertyName("trusted_certificate_path"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string? TrustedCertificatePath { get; set; }
     }
 }

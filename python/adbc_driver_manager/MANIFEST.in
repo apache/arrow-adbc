@@ -21,8 +21,10 @@ include LICENSE.txt
 include NOTICE.txt
 include adbc_driver_manager/arrow-adbc/adbc.h
 include adbc_driver_manager/adbc_driver_manager.cc
+include adbc_driver_manager/current_arch.h
 include adbc_driver_manager/arrow-adbc/adbc_driver_manager.h
 include adbc_driver_manager/backward.hpp
+include adbc_driver_manager/toml++/toml.hpp
 include adbc_driver_manager/_blocking_impl.cc
 include adbc_driver_manager/_blocking_impl.h
 include adbc_driver_manager/_lib.pxd

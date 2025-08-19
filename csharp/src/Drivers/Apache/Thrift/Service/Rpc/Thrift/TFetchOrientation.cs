@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TFetchOrientation
+  internal enum TFetchOrientation
   {
     FETCH_NEXT = 0,
     FETCH_PRIOR = 1,

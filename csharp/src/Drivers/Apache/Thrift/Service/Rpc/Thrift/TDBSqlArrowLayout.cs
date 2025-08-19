@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TDBSqlArrowLayout
+  internal enum TDBSqlArrowLayout
   {
     ARROW_BATCH = 0,
     ARROW_STREAMING = 1,

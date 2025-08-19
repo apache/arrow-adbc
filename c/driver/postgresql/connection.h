@@ -20,6 +20,9 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
@@ -83,5 +86,6 @@ class PostgresConnection {
   PGconn* conn_;
   PGcancel* cancel_;
   bool autocommit_;
+  std::vector<std::pair<std::string, std::string>> post_init_options_;
 };
 }  // namespace adbcpq

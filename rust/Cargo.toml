@@ -20,10 +20,10 @@ members = ["core", "driver/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.18.0"
+version = "0.20.0"
 description = "Rust implementation of Arrow Database Connectivity (ADBC)"
 edition = "2021"
-rust-version = "1.80.1"
+rust-version = "1.81"
 authors = ["Apache Arrow <dev@arrow.apache.org>"]
 license = "Apache-2.0"
 documentation = "https://docs.rs/adbc_core/"
@@ -34,10 +34,10 @@ keywords = ["arrow"]
 categories = ["database"]
 
 [workspace.dependencies]
-adbc_core = { path = "./core", version = "0.18.0" }
-arrow-array = { version = "54.2.1", default-features = false, features = [
+adbc_core = { path = "./core", version = "0.20.0" }
+arrow-array = { version = ">=53.1.0, <56", default-features = false, features = [
     "ffi",
 ] }
-arrow-buffer = { version = "54.1.0", default-features = false }
-arrow-schema = { version = "54.1.0", default-features = false }
-arrow-select = { version = "54.2.1", default-features = false }
+arrow-buffer = { version = ">=53.1.0, <56", default-features = false }
+arrow-schema = { version = ">=53.1.0, <56", default-features = false }
+arrow-select = { version = ">=53.1.0, <56", default-features = false }

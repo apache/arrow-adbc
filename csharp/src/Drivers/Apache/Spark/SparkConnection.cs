@@ -17,15 +17,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
-using Apache.Arrow.Adbc.Extensions;
-using Apache.Arrow.Ipc;
-using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
-using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -63,12 +57,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override AdbcStatement CreateStatement()
         {
-            return new SparkStatement(this);
+            SparkStatement statement = new SparkStatement(this);
+            return statement;
         }
 
         protected internal override int PositionRequiredOffset => 1;
 
-        protected override void SetPrecisionScaleAndTypeName(
+        internal override void SetPrecisionScaleAndTypeName(
             short colType,
             string typeName,
             TableInfo? tableInfo,
@@ -122,7 +117,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override bool IsColumnSizeValidForDecimal => false;
 
-        protected override bool AreResultsAvailableDirectly() => true;
+        protected internal override bool AreResultsAvailableDirectly => true;
 
         protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = sparkGetDirectResults;
 
@@ -133,6 +128,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = sparkGetDirectResults;
 
         protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = sparkGetDirectResults;
+
+        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = sparkGetDirectResults;
+
+        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = sparkGetDirectResults;
 
         protected abstract void ValidateConnection();
         protected abstract void ValidateAuthentication();

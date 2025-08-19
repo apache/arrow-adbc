@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TTypeId
+  internal enum TTypeId
   {
     BOOLEAN_TYPE = 0,
     TINYINT_TYPE = 1,

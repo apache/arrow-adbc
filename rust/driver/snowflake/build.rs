@@ -18,7 +18,7 @@
 use std::error::Error;
 
 /// Build and link the Go driver statically.
-#[cfg(feature = "bundled")]
+#[cfg(all(not(target_os = "windows"), feature = "bundled"))]
 fn bundled() -> Result<(), Box<dyn Error>> {
     use std::{env, path::PathBuf, process::Command};
 
@@ -33,6 +33,7 @@ fn bundled() -> Result<(), Box<dyn Error>> {
     let status = Command::new("go")
         .current_dir(go_pkg.as_path())
         .arg("build")
+        .arg("-a")
         .arg("-tags")
         .arg("driverlib")
         .arg("-buildmode=c-archive")
@@ -50,7 +51,10 @@ fn bundled() -> Result<(), Box<dyn Error>> {
     println!("cargo:rustc-link-lib=static=snowflake");
 
     // Link other dependencies.
+    #[cfg(not(target_os = "windows"))]
     println!("cargo:rustc-link-lib=resolv");
+    #[cfg(target_os = "windows")]
+    println!("cargo:rustc-link-lib=legacy_stdio_definitions");
     #[cfg(target_os = "macos")]
     {
         println!("cargo:rustc-link-lib=framework=CoreFoundation");
@@ -70,7 +74,8 @@ fn linked() -> Result<(), Box<dyn Error>> {
     if let Some(path) = option_env!("ADBC_SNOWFLAKE_GO_LIB_DIR") {
         println!("cargo:rustc-link-search={path}");
     }
-
+    #[cfg(target_os = "windows")]
+    println!("cargo:rustc-link-lib=legacy_stdio_definitions");
     // Link the driver.
     println!("cargo:rustc-link-lib=adbc_driver_snowflake");
 
@@ -79,7 +84,7 @@ fn linked() -> Result<(), Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Bundle the Go driver.
-    #[cfg(feature = "bundled")]
+    #[cfg(all(not(target_os = "windows"), feature = "bundled"))]
     bundled()?;
 
     // Link the Go driver.

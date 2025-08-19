@@ -54,7 +54,7 @@ The Imapala classes are under development, have limited functionality, and may p
 
 # Spark
 
-The Spark classes are intended for use against native Spark and Spark on Databricks.
+The Spark classes are intended for use against native Spark.
 
 For more details, see [Spark Driver](Spark/README.md)
 

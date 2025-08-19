@@ -29,7 +29,9 @@ use super::{
 
 macro_rules! method {
     ($func_name:ident ; $type_name:ident ; $return_type:ty ; $return_value:expr ; $( $arg:ty ),*) => {
+        #[allow(dead_code)]
         pub(crate) type $type_name = unsafe extern "C" fn($( $arg ),*) -> $return_type;
+        #[allow(dead_code)]
         pub(crate) unsafe extern "C" fn $func_name($(_:$arg),*) -> $return_type {
             $return_value
         }

@@ -23,6 +23,7 @@ using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
+using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
@@ -97,7 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             // Delay the open connection until later.
             bool connectClient = false;
-            ThriftSocketTransport transport = new(hostName!, int.Parse(port!), connectClient, config: new());
+            TSocketTransport transport = new(hostName!, int.Parse(port!), connectClient, config: new());
             return transport;
         }
 
@@ -139,5 +140,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         }
 
         internal override SparkServerType ServerType => SparkServerType.Standard;
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

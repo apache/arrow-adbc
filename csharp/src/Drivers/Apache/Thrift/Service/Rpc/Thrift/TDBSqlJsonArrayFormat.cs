@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TDBSqlJsonArrayFormat : TBase
+  internal partial class TDBSqlJsonArrayFormat : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCompressionCodec _compressionCodec;
 

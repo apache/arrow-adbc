@@ -51,8 +51,12 @@ void StatementTest::TearDownTest() {
   if (statement.private_data) {
     EXPECT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
   }
-  EXPECT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
-  EXPECT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+  if (connection.private_data) {
+    EXPECT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+  }
+  if (database.private_data) {
+    EXPECT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+  }
   if (error.release) {
     error.release(&error);
   }
@@ -2673,6 +2677,9 @@ void StatementTest::TestTransactions() {
               })(),
               ::testing::Not(IsOkStatus(&error)));
 
+  // Rollback
+  ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
+
   // Commit
   ASSERT_THAT(quirks()->CreateSampleTable(&connection, "bulk_ingest", &error),
               IsOkStatus(&error));
@@ -2839,6 +2846,35 @@ void StatementTest::TestErrorCompatibility() {
   error.release(&error);
 }
 
+void StatementTest::TestResultIndependence() {
+  // If we have a result reader, and we close the statement (and other
+  // resources), either the statement should error, or the reader should be
+  // closeable and should error on other operations
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error),
+              IsOkStatus(&error));
+
+  StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+
+  auto status = AdbcStatementRelease(&statement, &error);
+  if (status != ADBC_STATUS_OK) {
+    // That's ok, this driver prevents closing the statement while readers are open
+    return;
+  }
+  ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+
+  // Must not crash (but it's up to the driver whether it errors or succeeds)
+  std::ignore = reader.MaybeNext();
+  // Implicitly StreamReader calls release() on destruction, that should not
+  // crash either
+}
+
 void StatementTest::TestResultInvalidation() {
   // Start reading from a statement, then overwrite it
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
@@ -2860,4 +2896,5 @@ void StatementTest::TestResultInvalidation() {
   // First reader may fail, or may succeed but give no data
   reader1.MaybeNext();
 }
+
 }  // namespace adbc_validation

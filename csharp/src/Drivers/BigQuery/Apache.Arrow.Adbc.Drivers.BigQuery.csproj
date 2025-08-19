@@ -1,12 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net472;net6.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net472;net8.0</TargetFrameworks>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="System.Net.Http.WinHttpHandler" Version="8.0.2" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
+    <PackageReference Include="System.Net.Http.WinHttpHandler" Version="8.0.3" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
     <PackageReference Include="Google.Cloud.BigQuery.Storage.V1" Version="3.17.0" />
     <PackageReference Include="Google.Cloud.BigQuery.V2" Version="3.11.0" />
+  </ItemGroup>
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible($(TargetFramework), 'net6.0'))">
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
   <ItemGroup>

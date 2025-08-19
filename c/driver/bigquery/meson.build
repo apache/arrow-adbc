@@ -19,21 +19,21 @@
 golang = find_program('go')
 
 if build_machine.system() == 'windows'
-  prefix = ''
-  suffix = '.lib'
+    prefix = ''
+    suffix = '.lib'
 elif build_machine.system() == 'darwin'
-  prefix = 'lib'
-  suffix = '.dylib'
+    prefix = 'lib'
+    suffix = '.dylib'
 else
-  prefix = 'lib'
-  suffix = '.so'
+    prefix = 'lib'
+    suffix = '.so'
 endif
 
 adbc_driver_bigquery_name = prefix + 'adbc_driver_bigquery' + suffix
 adbc_driver_bigquery_lib = custom_target(
     'adbc_driver_bigquery',
     output: adbc_driver_bigquery_name,
-    command : [
+    command: [
         golang,
         'build',
         '-C',
@@ -43,8 +43,8 @@ adbc_driver_bigquery_lib = custom_target(
         '-o',
         meson.current_build_dir() + '/' + adbc_driver_bigquery_name,
     ],
-    install : true,
-    install_dir : '.',
+    install: true,
+    install_dir: '.',
 )
 
 pkg.generate(
@@ -55,16 +55,16 @@ pkg.generate(
     filebase: 'adbc-driver-bigquery',
 )
 
-if get_option('tests')
-    exc = executable(
-        'adbc-driver-bigquery-test',
-        'bigquery_test.cc',
-        include_directories: [root_dir, driver_dir],
-        link_with: [
-            adbc_common_lib,
-            adbc_driver_bigquery_lib
-        ],
-        dependencies: [adbc_validation_dep],
-    )
-    test('adbc-driver-bigquery', exc)
-endif
+adbc_driver_bigquery_dep = declare_dependency(
+    include_directories: include_dir,
+    link_with: adbc_driver_bigquery_lib,
+)
+
+exc = executable(
+    'adbc-driver-bigquery-test',
+    'bigquery_test.cc',
+    include_directories: [c_dir, driver_dir],
+    link_with: [adbc_common_lib, adbc_driver_bigquery_lib],
+    dependencies: [adbc_validation_dep],
+)
+test('adbc-driver-bigquery', exc)

@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TDBSqlArrowFormat : TBase
+  internal partial class TDBSqlArrowFormat : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlArrowLayout _arrowLayout;
     private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCompressionCodec _compressionCodec;

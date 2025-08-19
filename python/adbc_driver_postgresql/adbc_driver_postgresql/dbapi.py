@@ -98,7 +98,7 @@ def connect(
     uri: str,
     db_kwargs: typing.Optional[typing.Dict[str, str]] = None,
     conn_kwargs: typing.Optional[typing.Dict[str, str]] = None,
-    **kwargs
+    **kwargs,
 ) -> "Connection":
     """
     Connect to PostgreSQL via ADBC.
@@ -118,9 +118,11 @@ def connect(
     conn = None
 
     try:
-        db = adbc_driver_postgresql.connect(uri)
-        conn = adbc_driver_manager.AdbcConnection(db)
-        return adbc_driver_manager.dbapi.Connection(db, conn, **kwargs)
+        db = adbc_driver_postgresql.connect(uri, db_kwargs=db_kwargs)
+        conn = adbc_driver_manager.AdbcConnection(db, **(conn_kwargs or {}))
+        return adbc_driver_manager.dbapi.Connection(
+            db, conn, conn_kwargs=conn_kwargs, **kwargs
+        )
     except Exception:
         if conn:
             conn.close()

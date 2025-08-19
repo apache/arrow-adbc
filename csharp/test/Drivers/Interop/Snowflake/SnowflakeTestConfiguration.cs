@@ -73,10 +73,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         public string Warehouse { get; set; } = string.Empty;
 
         /// <summary>
-        /// The Snowflake use high precision
+        /// The Snowflake setting to use high precision
         /// </summary>
         [JsonPropertyName("useHighPrecision")]
         public bool UseHighPrecision { get; set; } = true;
+
+        /// <summary>
+        /// The Snowflake setting indicate the maximum timestamp precision.
+        /// </summary>
+        [JsonPropertyName("maxTimestampPrecision")]
+        public string MaxTimestampPrecision { get; set; } = "nanoseconds";
 
         /// <summary>
         /// The snowflake Authentication

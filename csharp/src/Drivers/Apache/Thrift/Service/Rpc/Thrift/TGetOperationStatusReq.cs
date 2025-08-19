@@ -40,11 +40,9 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetOperationStatusReq : TBase
+  internal partial class TGetOperationStatusReq : TBase
   {
     private bool _getProgressUpdate;
-    private bool _getResultSetMetadataOnCompletion;
-    private bool _getInlineResultSetOnCompletion;
 
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle OperationHandle { get; set; }
 
@@ -61,39 +59,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public bool GetResultSetMetadataOnCompletion
-    {
-      get
-      {
-        return _getResultSetMetadataOnCompletion;
-      }
-      set
-      {
-        __isset.getResultSetMetadataOnCompletion = true;
-        this._getResultSetMetadataOnCompletion = value;
-      }
-    }
-
-    public bool GetInlineResultSetOnCompletion
-    {
-      get
-      {
-        return _getInlineResultSetOnCompletion;
-      }
-      set
-      {
-        __isset.getInlineResultSetOnCompletion = true;
-        this._getInlineResultSetOnCompletion = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
     {
       public bool getProgressUpdate;
-      public bool getResultSetMetadataOnCompletion;
-      public bool getInlineResultSetOnCompletion;
     }
 
     public TGetOperationStatusReq()
@@ -139,26 +109,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
               if (field.Type == TType.Bool)
               {
                 GetProgressUpdate = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3329:
-              if (field.Type == TType.Bool)
-              {
-                GetResultSetMetadataOnCompletion = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3330:
-              if (field.Type == TType.Bool)
-              {
-                GetInlineResultSetOnCompletion = await iprot.ReadBoolAsync(cancellationToken);
               }
               else
               {
@@ -211,24 +161,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(GetProgressUpdate, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.getResultSetMetadataOnCompletion)
-        {
-          tmp519.Name = "getResultSetMetadataOnCompletion";
-          tmp519.Type = TType.Bool;
-          tmp519.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp519, cancellationToken);
-          await oprot.WriteBoolAsync(GetResultSetMetadataOnCompletion, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.getInlineResultSetOnCompletion)
-        {
-          tmp519.Name = "getInlineResultSetOnCompletion";
-          tmp519.Type = TType.Bool;
-          tmp519.ID = 3330;
-          await oprot.WriteFieldBeginAsync(tmp519, cancellationToken);
-          await oprot.WriteBoolAsync(GetInlineResultSetOnCompletion, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -243,9 +175,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       if (!(that is TGetOperationStatusReq other)) return false;
       if (ReferenceEquals(this, other)) return true;
       return global::System.Object.Equals(OperationHandle, other.OperationHandle)
-        && ((__isset.getProgressUpdate == other.__isset.getProgressUpdate) && ((!__isset.getProgressUpdate) || (global::System.Object.Equals(GetProgressUpdate, other.GetProgressUpdate))))
-        && ((__isset.getResultSetMetadataOnCompletion == other.__isset.getResultSetMetadataOnCompletion) && ((!__isset.getResultSetMetadataOnCompletion) || (global::System.Object.Equals(GetResultSetMetadataOnCompletion, other.GetResultSetMetadataOnCompletion))))
-        && ((__isset.getInlineResultSetOnCompletion == other.__isset.getInlineResultSetOnCompletion) && ((!__isset.getInlineResultSetOnCompletion) || (global::System.Object.Equals(GetInlineResultSetOnCompletion, other.GetInlineResultSetOnCompletion))));
+        && ((__isset.getProgressUpdate == other.__isset.getProgressUpdate) && ((!__isset.getProgressUpdate) || (global::System.Object.Equals(GetProgressUpdate, other.GetProgressUpdate))));
     }
 
     public override int GetHashCode() {
@@ -258,14 +188,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if(__isset.getProgressUpdate)
         {
           hashcode = (hashcode * 397) + GetProgressUpdate.GetHashCode();
-        }
-        if(__isset.getResultSetMetadataOnCompletion)
-        {
-          hashcode = (hashcode * 397) + GetResultSetMetadataOnCompletion.GetHashCode();
-        }
-        if(__isset.getInlineResultSetOnCompletion)
-        {
-          hashcode = (hashcode * 397) + GetInlineResultSetOnCompletion.GetHashCode();
         }
       }
       return hashcode;
@@ -283,16 +205,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp520.Append(", GetProgressUpdate: ");
         GetProgressUpdate.ToString(tmp520);
-      }
-      if(__isset.getResultSetMetadataOnCompletion)
-      {
-        tmp520.Append(", GetResultSetMetadataOnCompletion: ");
-        GetResultSetMetadataOnCompletion.ToString(tmp520);
-      }
-      if(__isset.getInlineResultSetOnCompletion)
-      {
-        tmp520.Append(", GetInlineResultSetOnCompletion: ");
-        GetInlineResultSetOnCompletion.ToString(tmp520);
       }
       tmp520.Append(')');
       return tmp520.ToString();

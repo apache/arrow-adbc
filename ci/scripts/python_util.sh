@@ -94,7 +94,7 @@ function build_drivers {
     pushd ${build_dir}
     cmake \
         -DADBC_BUILD_SHARED=ON \
-        -DADBC_BUILD_STATIC=OFF \
+        -DADBC_BUILD_STATIC=ON \
         -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_INSTALL_PREFIX=${build_dir} \
@@ -105,6 +105,7 @@ function build_drivers {
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
         -DADBC_DRIVER_BIGQUERY=ON \
         -DADBC_DRIVER_FLIGHTSQL=ON \
+        -DADBC_DRIVER_MANAGER=ON \
         -DADBC_DRIVER_POSTGRESQL=ON \
         -DADBC_DRIVER_SQLITE=ON \
         -DADBC_DRIVER_SNOWFLAKE=ON \
@@ -148,6 +149,10 @@ function setup_build_vars {
     fi
     # No PyPy, no Python 3.8
     export CIBW_SKIP="pp* cp38-* ${CIBW_SKIP}"
+    # Make sure our manylinux version doesn't creep up (this only matters for
+    # the driver manager)
+    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014"
+    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux2014"
 }
 
 function test_packages {
@@ -161,10 +166,34 @@ import $component.dbapi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
         if [[ "${component}" = "adbc_driver_manager" ]]; then
-            export PYTEST_ADDOPTS="-k 'not duckdb and not sqlite'"
-        elif [[ "${component}" = "adbc_driver_postgresql" ]]; then
-            export PYTEST_ADDOPTS="-k 'not polars'"
+            export PYTEST_ADDOPTS="${PYTEST_ADDOPTS} -k 'not duckdb and not sqlite'"
         fi
         python -m pytest -vvx --import-mode append ${source_dir}/python/$component/tests
+    done
+}
+
+function test_packages_pyarrowless {
+    local -r driver_path=$(python -c "import os; import adbc_driver_sqlite; print(os.path.dirname(adbc_driver_sqlite._driver_path()))")
+    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${driver_path}"
+    export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${driver_path}"
+    # For macOS (because we name the file ".so" on every platform regardless of the actual type)
+    ln -s "${driver_path}/libadbc_driver_sqlite.so" "${driver_path}/libadbc_driver_sqlite.dylib"
+    for component in ${COMPONENTS}; do
+        echo "=== Testing $component (no PyArrow) ==="
+
+        python -c "
+import $component
+import $component.dbapi
+"
+
+        local test_files=$(find ${source_dir}/python/$component/tests -type f |
+                               grep -e 'nopyarrow\.py$')
+        if [[ -z "${test_files}" ]]; then
+            continue
+        fi
+
+        # --import-mode required, else tries to import from the source dir instead of installed package
+        # set env var so that we don't skip tests if we somehow accidentally installed pyarrow
+        env ADBC_NO_SKIP_TESTS=1 python -m pytest -vvx --import-mode append "${test_files[@]}"
     done
 }

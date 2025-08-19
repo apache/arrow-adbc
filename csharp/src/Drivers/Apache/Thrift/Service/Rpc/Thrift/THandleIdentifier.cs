@@ -40,32 +40,15 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class THandleIdentifier : TBase
+  internal partial class THandleIdentifier : TBase
   {
-    private short _executionVersion;
-
     public byte[] Guid { get; set; }
 
     public byte[] Secret { get; set; }
 
-    public short ExecutionVersion
-    {
-      get
-      {
-        return _executionVersion;
-      }
-      set
-      {
-        __isset.executionVersion = true;
-        this._executionVersion = value;
-      }
-    }
-
-
     public Isset __isset;
     public struct Isset
     {
-      public bool executionVersion;
     }
 
     public THandleIdentifier()
@@ -113,16 +96,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
               {
                 Secret = await iprot.ReadBinaryAsync(cancellationToken);
                 isset_secret = true;
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3329:
-              if (field.Type == TType.I16)
-              {
-                ExecutionVersion = await iprot.ReadI16Async(cancellationToken);
               }
               else
               {
@@ -179,15 +152,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBinaryAsync(Secret, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.executionVersion)
-        {
-          tmp305.Name = "executionVersion";
-          tmp305.Type = TType.I16;
-          tmp305.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp305, cancellationToken);
-          await oprot.WriteI16Async(ExecutionVersion, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -202,8 +166,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       if (!(that is THandleIdentifier other)) return false;
       if (ReferenceEquals(this, other)) return true;
       return TCollections.Equals(Guid, other.Guid)
-        && TCollections.Equals(Secret, other.Secret)
-        && ((__isset.executionVersion == other.__isset.executionVersion) && ((!__isset.executionVersion) || (global::System.Object.Equals(ExecutionVersion, other.ExecutionVersion))));
+        && TCollections.Equals(Secret, other.Secret);
     }
 
     public override int GetHashCode() {
@@ -216,10 +179,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((Secret != null))
         {
           hashcode = (hashcode * 397) + Secret.GetHashCode();
-        }
-        if(__isset.executionVersion)
-        {
-          hashcode = (hashcode * 397) + ExecutionVersion.GetHashCode();
         }
       }
       return hashcode;
@@ -237,11 +196,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp306.Append(", Secret: ");
         Secret.ToString(tmp306);
-      }
-      if(__isset.executionVersion)
-      {
-        tmp306.Append(", ExecutionVersion: ");
-        ExecutionVersion.ToString(tmp306);
       }
       tmp306.Append(')');
       return tmp306.ToString();

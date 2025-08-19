@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TStatus : TBase
+  internal partial class TStatus : TBase
   {
     private List<string> _infoMessages;
     private string _sqlState;
@@ -48,7 +48,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private string _errorMessage;
     private string _displayMessage;
     private string _errorDetailsJson;
-    private byte[] _responseValidation;
 
     /// <summary>
     ///
@@ -134,19 +133,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public byte[] ResponseValidation
-    {
-      get
-      {
-        return _responseValidation;
-      }
-      set
-      {
-        __isset.responseValidation = true;
-        this._responseValidation = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
@@ -157,7 +143,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public bool errorMessage;
       public bool displayMessage;
       public bool errorDetailsJson;
-      public bool responseValidation;
     }
 
     public TStatus()
@@ -268,16 +253,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            case 3329:
-              if (field.Type == TType.String)
-              {
-                ResponseValidation = await iprot.ReadBinaryAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
             default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
@@ -371,15 +346,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteStringAsync(ErrorDetailsJson, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResponseValidation != null) && __isset.responseValidation)
-        {
-          tmp296.Name = "responseValidation";
-          tmp296.Type = TType.String;
-          tmp296.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp296, cancellationToken);
-          await oprot.WriteBinaryAsync(ResponseValidation, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -399,8 +365,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         && ((__isset.errorCode == other.__isset.errorCode) && ((!__isset.errorCode) || (global::System.Object.Equals(ErrorCode, other.ErrorCode))))
         && ((__isset.errorMessage == other.__isset.errorMessage) && ((!__isset.errorMessage) || (global::System.Object.Equals(ErrorMessage, other.ErrorMessage))))
         && ((__isset.displayMessage == other.__isset.displayMessage) && ((!__isset.displayMessage) || (global::System.Object.Equals(DisplayMessage, other.DisplayMessage))))
-        && ((__isset.errorDetailsJson == other.__isset.errorDetailsJson) && ((!__isset.errorDetailsJson) || (global::System.Object.Equals(ErrorDetailsJson, other.ErrorDetailsJson))))
-        && ((__isset.responseValidation == other.__isset.responseValidation) && ((!__isset.responseValidation) || (TCollections.Equals(ResponseValidation, other.ResponseValidation))));
+        && ((__isset.errorDetailsJson == other.__isset.errorDetailsJson) && ((!__isset.errorDetailsJson) || (global::System.Object.Equals(ErrorDetailsJson, other.ErrorDetailsJson))));
     }
 
     public override int GetHashCode() {
@@ -430,10 +395,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((ErrorDetailsJson != null) && __isset.errorDetailsJson)
         {
           hashcode = (hashcode * 397) + ErrorDetailsJson.GetHashCode();
-        }
-        if((ResponseValidation != null) && __isset.responseValidation)
-        {
-          hashcode = (hashcode * 397) + ResponseValidation.GetHashCode();
         }
       }
       return hashcode;
@@ -473,11 +434,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp298.Append(", ErrorDetailsJson: ");
         ErrorDetailsJson.ToString(tmp298);
-      }
-      if((ResponseValidation != null) && __isset.responseValidation)
-      {
-        tmp298.Append(", ResponseValidation: ");
-        ResponseValidation.ToString(tmp298);
       }
       tmp298.Append(')');
       return tmp298.ToString();

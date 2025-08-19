@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TRow : TBase
+  internal partial class TRow : TBase
   {
 
     public List<global::Apache.Hive.Service.Rpc.Thrift.TColumnValue> ColVals { get; set; }

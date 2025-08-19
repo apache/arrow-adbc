@@ -107,7 +107,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
                         new ColumnNetTypeArrowTypeValue("TIMESTAMPNTZTYPE", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023,7,28, 12,34,56), TimeSpan.Zero)),
                         new ColumnNetTypeArrowTypeValue("TIMESTAMPTZTYPE", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2023,7,28, 19,34,56), TimeSpan.Zero)),
                     }
-            });
+                });
 
             // null data
             sampleDataBuilder.Samples.Add(

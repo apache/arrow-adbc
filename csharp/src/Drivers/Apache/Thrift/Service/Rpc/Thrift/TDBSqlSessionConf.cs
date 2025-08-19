@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TDBSqlSessionConf : TBase
+  internal partial class TDBSqlSessionConf : TBase
   {
     private Dictionary<string, string> _confs;
     private List<global::Apache.Hive.Service.Rpc.Thrift.TDBSqlTempView> _tempViews;

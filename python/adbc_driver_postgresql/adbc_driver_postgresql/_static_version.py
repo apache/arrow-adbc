@@ -20,7 +20,7 @@
 
 # This file is part of 'miniver': https://github.com/jbweston/miniver
 
-version = "1.6.0dev"
+version = "1.8.0dev"
 
 # These values are only set if the distribution was created with 'git archive'
 # NOTE: must add an export-subst to .gitattributes!

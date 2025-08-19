@@ -25,6 +25,8 @@ on:
       - ".env"
       - "c/**"
       - "ci/**"
+      - "dev/release/verify-apt.sh"
+      - "dev/release/verify-yum.sh"
       - "glib/**"
       - "python/**"
       - "ruby/**"
@@ -99,7 +101,6 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-13"]
-        go-version: [1.21.8] # Customize Go versions as needed
 
     steps:
       - uses: actions/download-artifact@v4
@@ -116,10 +117,13 @@ jobs:
           tar xf apache-arrow-adbc-${VERSION}.tar.gz
           mv apache-arrow-adbc-${VERSION} adbc
 
+      - name: Get required Go version
+        run: |
+          (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
@@ -342,7 +346,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@922ebc4c5262cd14e07bb0e1db020984b6c064fe  # v1.226.0
+        uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651  # v1.245.0
         with:
           ruby-version: ruby
 
@@ -519,7 +523,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -721,9 +725,13 @@ jobs:
           ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
           popd
 
+      - name: Get required Go version
+        run: |
+          (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
+
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21.8
+          go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
@@ -892,13 +900,14 @@ jobs:
       - name: Install Python ${{ matrix.python_version }}
         uses: actions/setup-python@v5
         with:
+          check-latest: true
           python-version: ${{ matrix.python_version }}
 
       - name: Build wheel
         shell: cmd
         run: |
           where python.exe
-          CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+          CALL "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
           pushd adbc
           set SETUPTOOLS_SCM_PRETEND_VERSION=%VERSION%
           .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build
@@ -1061,7 +1070,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: conda-packages
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false

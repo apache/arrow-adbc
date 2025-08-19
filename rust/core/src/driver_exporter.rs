@@ -247,9 +247,9 @@ macro_rules! check_err {
 macro_rules! check_not_null {
     ($ptr:ident, $err_out:expr) => {
         let res = if $ptr.is_null() {
-            Err(Error::with_message_and_status(
+            Err($crate::error::Error::with_message_and_status(
                 format!("Passed null pointer for argument {:?}", stringify!($ptr)),
-                Status::InvalidArguments,
+                $crate::error::Status::InvalidArguments,
             ))
         } else {
             Ok(())
@@ -1632,9 +1632,9 @@ unsafe extern "C" fn error_get_detail(
             }
             let private_data = error.private_data as *const ErrorPrivateData;
 
-            let key = (*private_data).keys[index].as_ptr();
-            let value = (*private_data).values[index].as_ptr();
-            let value_length = (*private_data).values[index].len();
+            let key = (&(*private_data).keys)[index].as_ptr();
+            let value = (&(*private_data).values)[index].as_ptr();
+            let value_length = (&(*private_data).values)[index].len();
 
             FFI_AdbcErrorDetail {
                 key,

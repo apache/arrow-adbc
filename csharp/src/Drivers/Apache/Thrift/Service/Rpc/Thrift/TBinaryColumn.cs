@@ -9,7 +9,6 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using Apache.Arrow;
-using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Apache.Arrow.Types;
 using Thrift.Collections;
@@ -30,7 +29,7 @@ using Thrift.Protocol.Utilities;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-    public partial class TBinaryColumn : TBase
+    internal partial class TBinaryColumn : TBase
   {
     public BinaryArray Values { get; set; }
 
@@ -55,7 +54,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         ArrowBuffer.Builder<byte> values = null;
         byte[] nulls = null;
         byte[] offsetBuffer = null;
-        Stream transport = ((IPeekableTransport)iprot.Transport).Input;
         int length = -1;
         byte[] preAllocatedBuffer = new byte[65536];
 
@@ -100,7 +98,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
                       tmp = new byte[size];
                     }
 
-                    await transport.ReadExactlyAsync(tmp.AsMemory(0, size), cancellationToken);
+                    await iprot.Transport.ReadExactlyAsync(tmp.AsMemory(0, size), cancellationToken);
                     values.Append(tmp.AsMemory(0, size).Span);
                   }
                   StreamExtensions.WriteInt32LittleEndian(offset, memory.Span, length * sizeof(int));

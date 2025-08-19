@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TStatementConf : TBase
+  internal partial class TStatementConf : TBase
   {
     private bool _sessionless;
     private global::Apache.Hive.Service.Rpc.Thrift.TNamespace _initialNamespace;

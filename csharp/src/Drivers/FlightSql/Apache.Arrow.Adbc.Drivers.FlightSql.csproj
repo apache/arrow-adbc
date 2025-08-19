@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="System.Net.Http.WinHttpHandler" Version="8.0.2" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
-    <PackageReference Include="Apache.Arrow.Flight" Version="19.0.1" />
+    <PackageReference Include="System.Net.Http.WinHttpHandler" Version="8.0.3" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
+    <PackageReference Include="Apache.Arrow.Flight" Version="20.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />

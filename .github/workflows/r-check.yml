@@ -31,6 +31,10 @@ on:
         required: false
         default: release
         type: string
+      error-on:
+        required: false
+        default: warning
+        type: string
     secrets:
       SNOWFLAKE_URI:
         required: false
@@ -47,7 +51,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "${{ env.GO_VERSION }}"
-      - uses: r-lib/actions/setup-r@14a7e741c1cb130261263aa1593718ba42cf443b  # v2
+      - uses: r-lib/actions/setup-r@bd49c52ffe281809afa6f0fecbf37483c5dd0b93  # v2
         with:
           r-version: release
           use-public-rspm: true
@@ -72,7 +76,7 @@ jobs:
           popd
         shell: bash
 
-      - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
+      - uses: r-lib/actions/setup-r-dependencies@bd49c52ffe281809afa6f0fecbf37483c5dd0b93
         with:
           extra-packages: any::rcmdcheck
           needs: check
@@ -94,12 +98,13 @@ jobs:
           ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
           echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
 
-      - uses: r-lib/actions/check-r-package@14a7e741c1cb130261263aa1593718ba42cf443b  # v2
+      - uses: r-lib/actions/check-r-package@bd49c52ffe281809afa6f0fecbf37483c5dd0b93  # v2
         env:
           ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }}
           R_KEEP_PKG_SOURCE: yes
         with:
           working-directory: r/${{ inputs.pkg }}
+          error-on: '"${{ inputs.error-on }}"'
 
       - name: Shutdown docker compose services
         if: runner.os == 'Linux'

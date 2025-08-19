@@ -230,12 +230,12 @@ impl Optionable for DummyDatabase {
 impl Database for DummyDatabase {
     type ConnectionType = DummyConnection;
 
-    fn new_connection(&mut self) -> Result<Self::ConnectionType> {
+    fn new_connection(&self) -> Result<Self::ConnectionType> {
         Ok(Self::ConnectionType::default())
     }
 
     fn new_connection_with_opts(
-        &mut self,
+        &self,
         opts: impl IntoIterator<Item = (<Self::ConnectionType as Optionable>::Option, OptionValue)>,
     ) -> Result<Self::ConnectionType> {
         let mut connection = Self::ConnectionType::default();

@@ -52,7 +52,7 @@ type BigQueryQuirks struct {
 	schemaName string
 }
 
-func (q *BigQueryQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
+func (q *BigQueryQuirks) CreateSampleTable(tableName string, r arrow.Record) (err error) {
 	var buf bytes.Buffer
 
 	w, err := pqarrow.NewFileWriter(
@@ -64,7 +64,9 @@ func (q *BigQueryQuirks) CreateSampleTable(tableName string, r arrow.Record) err
 	if err != nil {
 		return err
 	}
-	defer w.Close()
+	defer func() {
+		err = errors.Join(err, w.Close())
+	}()
 
 	if err = w.Write(r); err != nil {
 		return err
@@ -170,19 +172,34 @@ func (q *BigQueryQuirks) CreateSampleTableWithRecords(tableName string, r arrow.
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	cnxn, err := db.Open(ctx)
 	if err != nil {
 		panic(err)
 	}
-	defer cnxn.Close()
+	defer func() {
+		err := cnxn.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	stmt, err := cnxn.NewStatement()
 	if err != nil {
 		panic(err)
 	}
-	defer stmt.Close()
+	defer func() {
+		err := stmt.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	err = stmt.SetOption(driver.OptionBoolQueryUseLegacySQL, "false")
 	if err != nil {
@@ -248,19 +265,34 @@ func (q *BigQueryQuirks) CreateSampleTableWithStreams(tableName string, rdr arra
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	cnxn, err := db.Open(ctx)
 	if err != nil {
 		panic(err)
 	}
-	defer cnxn.Close()
+	defer func() {
+		err := cnxn.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	stmt, err := cnxn.NewStatement()
 	if err != nil {
 		panic(err)
 	}
-	defer stmt.Close()
+	defer func() {
+		err := stmt.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	err = stmt.SetOption(driver.OptionBoolQueryUseLegacySQL, "false")
 	if err != nil {
@@ -307,7 +339,11 @@ func (q *BigQueryQuirks) DropTable(cnxn adbc.Connection, tblname string) error {
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() {
+		if err = stmt.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	if err = stmt.SetSqlQuery(`DROP TABLE IF EXISTS ` + q.quoteTblName(tblname)); err != nil {
 		return err
@@ -611,8 +647,21 @@ func (suite *BigQueryTests) TestDropSchema() {
 	suite.Require().NoError(err)
 	rdr.Release()
 
-	// We expect at error as the schema should not exist
+	// We expect an error as the schema should not exist
 	suite.Require().Error(suite.Quirks.client.Dataset(schema).DeleteWithContents(suite.Quirks.ctx))
+}
+
+func (suite *BigQueryTests) TestCreateView() {
+	// Create unique schema to drop via a query
+	suite.Require().NoError(suite.stmt.SetSqlQuery("CREATE TABLE IF NOT EXISTS a (id int)"))
+	rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	rdr.Release()
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery("CREATE VIEW IF NOT EXISTS a_view AS SELECT * FROM a"))
+	rdr, _, err = suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	rdr.Release()
 }
 
 func (suite *BigQueryTests) TestNewDatabaseGetSetOptions() {
@@ -625,7 +674,7 @@ func (suite *BigQueryTests) TestNewDatabaseGetSetOptions() {
 	})
 	suite.NoError(err)
 	suite.NotNil(db)
-	defer suite.NoError(db.Close())
+	defer validation.CheckedClose(suite.T(), db)
 
 	getSetDB, ok := db.(adbc.GetSetOptions)
 	suite.True(ok)

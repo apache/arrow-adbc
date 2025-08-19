@@ -15,7 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pathlib
+
 import pandas
+import polars
+import polars.testing
 import pyarrow
 import pyarrow.dataset
 import pytest
@@ -165,6 +169,9 @@ class StreamWrapper:
         lambda: StreamWrapper(
             pyarrow.table([[1, 2], ["foo", ""]], names=["ints", "strs"])
         ),
+        lambda: pyarrow.table(
+            [[1, 2], ["foo", ""]], names=["ints", "strs"]
+        ).__arrow_c_stream__(),
     ],
 )
 @pytest.mark.sqlite
@@ -227,6 +234,27 @@ def test_query_fetch_py(sqlite):
 @pytest.mark.sqlite
 def test_query_fetch_arrow(sqlite):
     with sqlite.cursor() as cur:
+        with pytest.raises(sqlite.ProgrammingError):
+            cur.fetch_arrow()
+
+        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
+        capsule = cur.fetch_arrow().__arrow_c_stream__()
+        reader = pyarrow.RecordBatchReader._import_from_c_capsule(capsule)
+        assert reader.read_all() == pyarrow.table(
+            {
+                "1": [1],
+                "foo": ["foo"],
+                "2.0": [2.0],
+            }
+        )
+
+        with pytest.raises(sqlite.ProgrammingError):
+            cur.fetch_arrow()
+
+
+@pytest.mark.sqlite
+def test_query_fetch_arrow_table(sqlite):
+    with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
         assert cur.fetch_arrow_table() == pyarrow.table(
             {
@@ -244,6 +272,22 @@ def test_query_fetch_df(sqlite):
         assert_frame_equal(
             cur.fetch_df(),
             pandas.DataFrame(
+                {
+                    "1": [1],
+                    "foo": ["foo"],
+                    "2.0": [2.0],
+                }
+            ),
+        )
+
+
+@pytest.mark.sqlite
+def test_query_fetch_polars(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
+        polars.testing.assert_frame_equal(
+            cur.fetch_polars(),
+            polars.DataFrame(
                 {
                     "1": [1],
                     "foo": ["foo"],
@@ -389,3 +433,57 @@ def test_close_warning(sqlite):
     ):
         conn = dbapi.connect(driver="adbc_driver_sqlite")
         del conn
+
+
+def _execute_schema(cursor):
+    try:
+        cursor.adbc_execute_schema("select 1")
+    except dbapi.NotSupportedError:
+        pass
+
+
+@pytest.mark.sqlite
+@pytest.mark.parametrize(
+    "op",
+    [
+        pytest.param(lambda cursor: cursor.execute("SELECT 1"), id="execute"),
+        pytest.param(
+            lambda cursor: cursor.executemany("SELECT ?", [[1]]), id="executemany"
+        ),
+        pytest.param(
+            lambda cursor: cursor.adbc_ingest(
+                "test_release",
+                pyarrow.table([[1]], names=["ints"]),
+                mode="create_append",
+            ),
+            id="ingest",
+        ),
+        pytest.param(_execute_schema, id="execute_schema"),
+        pytest.param(lambda cursor: cursor.adbc_prepare("select 1"), id="prepare"),
+        pytest.param(
+            lambda cursor: cursor.executescript("select 1"), id="executescript"
+        ),
+    ],
+)
+def test_release(sqlite, op) -> None:
+    # Regression test. Ensure that subsequent operations free results of
+    # earlier operations.
+    with sqlite.cursor() as cur:
+        cur.execute("select 1")
+        # Do _not_ fetch the data so it is never imported.
+        assert cur._results._handle.is_valid
+        handle = cur._results._handle
+
+        op(cur)
+        if handle:
+            # The original handle (if it exists) should have been released
+            assert not handle.is_valid
+
+
+def test_driver_path():
+    with pytest.raises(
+        dbapi.InternalError,
+        match="(dlopen|LoadLibraryExW).*failed:",
+    ):
+        with dbapi.connect(driver=pathlib.Path("/tmp/thisdriverdoesnotexist")):
+            pass

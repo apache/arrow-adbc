@@ -50,7 +50,6 @@ Gem::Specification.new do |spec|
     spec.files += [file]
   end
   spec.files += Dir.glob("lib/**/*.rb")
-  spec.extensions = ["dependency-check/Rakefile"]
 
   # For CI: sometimes we can't use the latest red-arrow due to
   # conda-forge arrow-c-glib lagging behind
@@ -60,5 +59,16 @@ Gem::Specification.new do |spec|
     spec.add_runtime_dependency("red-arrow")
   end
 
-  # spec.metadata["msys2_mingw_dependencies"] = "adbc>=#{spec.version}"
+  required_adbc_arrow_glib_version = version_components[0, 3].join(".")
+  [
+    ["debian", "libadbc-arrow-glib-dev"],
+    ["rhel", "adbc-arrow-glib-devel"],
+  ].each do |platform, package|
+    spec.requirements <<
+      "system: adbc-arrow-glib>=#{required_adbc_arrow_glib_version}: " +
+      "#{platform}: #{package}"
+  end
+
+  # spec.metadata["msys2_mingw_dependencies"] = \
+  #   "adbc>=#{required_adbc_arrow_glib_version}"
 end

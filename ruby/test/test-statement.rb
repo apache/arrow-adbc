@@ -32,6 +32,13 @@ class StatementTest < Test::Unit::TestCase
     end
   end
 
+  test("#parameter_schema") do
+    @statement.sql_query = "SELECT ?"
+    @statement.prepare
+    assert_equal(Arrow::Schema.new("0" => :null),
+                 @statement.parameter_schema)
+  end
+
   sub_test_case("#ingest") do
     test("Arrow::RecordBatch") do
       numbers = Arrow::Int64Array.new([10, 20, 30])

@@ -498,9 +498,9 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
       NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, lb, error));
     }
 
-    ArrowBufferAppend(buffer, tmp->data, tmp->size_bytes);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(buffer, tmp->data, tmp->size_bytes));
 
-    return ADBC_STATUS_OK;
+    return NANOARROW_OK;
   }
 
  private:
@@ -726,7 +726,7 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST: {
       // For now our implementation only supports primitive children types
-      // See PostgresCopyListFieldWriter::Write for limtiations
+      // See PostgresCopyListFieldWriter::Write for limitations
       struct ArrowSchemaView child_schema_view;
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaViewInit(&child_schema_view, schema->children[0], error));

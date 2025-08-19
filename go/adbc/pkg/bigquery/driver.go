@@ -25,7 +25,7 @@ package main
 // won't be accessible to the driver manager
 
 // #cgo CFLAGS: -DADBC_EXPORTING
-// #cgo CXXFLAGS: -std=c++11 -DADBC_EXPORTING
+// #cgo CXXFLAGS: -std=c++17 -DADBC_EXPORTING
 // #include "../../drivermgr/arrow-adbc/adbc.h"
 // #include "utils.h"
 // #include <errno.h>
@@ -1813,8 +1813,8 @@ func BigQueryStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *C.
 	return C.ADBC_STATUS_OK
 }
 
-//export BigQueryDriverInit
-func BigQueryDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export AdbcDriverBigqueryInit
+func AdbcDriverBigqueryInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 
 	switch version {

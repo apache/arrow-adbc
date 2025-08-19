@@ -91,10 +91,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
             {
                 parameters.Add(ImpalaParameters.DataTypeConv, testConfiguration.DataTypeConversion!);
             }
-            if (!string.IsNullOrEmpty(testConfiguration.TlsOptions))
-            {
-                parameters.Add(ImpalaParameters.TLSOptions, testConfiguration.TlsOptions!);
-            }
             if (!string.IsNullOrEmpty(testConfiguration.BatchSize))
             {
                 parameters.Add(ApacheParameters.BatchSize, testConfiguration.BatchSize!);
@@ -111,6 +107,34 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
             {
                 parameters.Add(ApacheParameters.QueryTimeoutSeconds, testConfiguration.QueryTimeoutSeconds!);
             }
+            if (testConfiguration.HttpOptions != null)
+            {
+                if (testConfiguration.HttpOptions.Tls != null)
+                {
+                    TlsTestConfiguration tlsOptions = testConfiguration.HttpOptions.Tls;
+                    if (tlsOptions.Enabled.HasValue)
+                    {
+                        parameters.Add(HttpTlsOptions.IsTlsEnabled, tlsOptions.Enabled.Value.ToString());
+                    }
+                    if (tlsOptions.AllowSelfSigned.HasValue)
+                    {
+                        parameters.Add(HttpTlsOptions.AllowSelfSigned, tlsOptions.AllowSelfSigned.Value.ToString());
+                    }
+                    if (tlsOptions.AllowHostnameMismatch.HasValue)
+                    {
+                        parameters.Add(HttpTlsOptions.AllowHostnameMismatch, tlsOptions.AllowHostnameMismatch.Value.ToString());
+                    }
+                    if (tlsOptions.DisableServerCertificateValidation.HasValue)
+                    {
+                        parameters.Add(HttpTlsOptions.DisableServerCertificateValidation, tlsOptions.DisableServerCertificateValidation.Value.ToString());
+                    }
+                    if (!string.IsNullOrEmpty(tlsOptions.TrustedCertificatePath))
+                    {
+                        parameters.Add(HttpTlsOptions.TrustedCertificatePath, tlsOptions.TrustedCertificatePath!);
+                    }
+                }
+            }
+
             return parameters;
         }
 

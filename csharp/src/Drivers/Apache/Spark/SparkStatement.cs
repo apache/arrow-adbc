@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using System.Collections.Generic;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -30,36 +29,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override void SetStatementProperties(TExecuteStatementReq statement)
         {
-            // TODO: Ensure this is set dynamically depending on server capabilities.
-            statement.EnforceResultPersistenceMode = false;
-            statement.ResultPersistenceMode = TResultPersistenceMode.ALL_RESULTS;
             // This seems like a good idea to have the server timeout so it doesn't keep processing unnecessarily.
             // Set in combination with a CancellationToken.
             statement.QueryTimeout = QueryTimeoutSeconds;
-            statement.CanReadArrowResult = true;
-            statement.CanDownloadResult = true;
-#pragma warning disable CS0618 // Type or member is obsolete
-            statement.ConfOverlay = SparkConnection.timestampConfig;
-#pragma warning restore CS0618 // Type or member is obsolete
-            statement.UseArrowNativeTypes = new TSparkArrowTypes
-            {
-                TimestampAsArrow = true,
-                DecimalAsArrow = true,
-
-                // set to false so they return as string
-                // otherwise, they return as ARRAY_TYPE but you can't determine
-                // the object type of the items in the array
-                ComplexTypesAsArrow = false,
-                IntervalTypesAsArrow = false,
-            };
         }
 
-        /// <summary>
-        /// Provides the constant string key values to the <see cref="AdbcStatement.SetOption(string, string)" /> method.
-        /// </summary>
-        public sealed class Options : ApacheParameters
-        {
-            // options specific to Spark go here
-        }
+        public override string AssemblyName => HiveServer2Connection.s_assemblyName;
+
+        public override string AssemblyVersion => HiveServer2Connection.s_assemblyVersion;
     }
 }

@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-version: '3.9'
-
 services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
@@ -34,6 +32,7 @@ services:
 
   # Build/test with latest Clang
   cpp-clang-latest:
+    image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
     build:
       context: .
       dockerfile: ci/docker/cpp-clang-latest.dockerfile
@@ -44,6 +43,7 @@ services:
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/clang-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/clang-latest'"
 
   cpp-gcc-latest:
+    image: ${REPO}:${ARCH}-cpp-gcc-latest-adbc
     build:
       context: .
       dockerfile: ci/docker/cpp-gcc-latest.dockerfile
@@ -53,6 +53,21 @@ services:
     volumes:
       - .:/adbc:delegated
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/gcc-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/gcc-latest'"
+
+  # Build and dynamically load shared drivers missing the common entrypoints
+  cpp-shared-no-common-entrypoints-test:
+    image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
+    volumes:
+      - .:/adbc:delegated
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_shared_no_common_entrypoints_test.sh /adbc /adbc/build/shared-test/build /adbc/build/shared-test/local'"
+
+  # Test building and installing the static libraries, then try linking to them.
+  cpp-static-test:
+    image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
+    volumes:
+      - .:/adbc:delegated
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_static_test.sh /adbc /adbc/build/static-test/build /adbc/build/static-test/local'"
+
 
   ############################ Documentation ###################################
 
@@ -67,13 +82,20 @@ services:
     command: |
       /bin/bash -c 'git config --global --add safe.directory /adbc && source /opt/conda/etc/profile.d/conda.sh && mamba create -y -n adbc -c conda-forge go --file /adbc/ci/conda_env_cpp.txt --file /adbc/ci/conda_env_docs.txt --file /adbc/ci/conda_env_java.txt --file /adbc/ci/conda_env_python.txt && conda activate adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build && /adbc/ci/scripts/go_build.sh /adbc /adbc/build && /adbc/ci/scripts/python_build.sh /adbc /adbc/build && /adbc/ci/scripts/r_build.sh /adbc && /adbc/ci/scripts/docs_build.sh /adbc'
 
-  ############################ Java JARs ######################################
+  ################################### Java ###################################
 
   java-dist:
-    image: ${ARCH}/maven:${MAVEN}-jdk-${JDK}
+    image: ${ARCH}/maven:${MAVEN}-eclipse-temurin-${JDK}
     volumes:
       - .:/adbc:delegated
     command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
+
+  # Build the JNI and driver libraries
+  java-jni:
+    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c 'env CMAKE_BUILD_TYPE=Release /adbc/ci/scripts/java_jni_build.sh /adbc /adbc/dist /adbc/local'"
 
   ############################ Python conda ##################################
 
@@ -91,11 +113,11 @@ services:
     command: "/bin/bash -c '/adbc/ci/scripts/python_conda_test.sh /adbc /adbc/build'"
 
   python-debug:
-    image: ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+    image: ${REPO}:${ARCH}-python-debug-adbc
     build:
       context: .
       cache_from:
-        - ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+        - ${REPO}:${ARCH}-python-debug-adbc
       dockerfile: ci/docker/python-debug.dockerfile
       args:
         ARCH: ${ARCH}
@@ -268,3 +290,26 @@ services:
       retries: 5
     ports:
       - "5432:5432"
+
+  spiceai-test:
+    container_name: adbc-spiceai
+    build:
+      context: .
+      dockerfile: ci/docker/spiceai-init.dockerfile
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8090/v1/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "50051:50051"
+      - "8090:8090"
+
+  ################################ Verification ################################
+
+  verify-all-ubuntu:
+    image: ubuntu:${UBUNTU}
+    volumes:
+      - .:/adbc:delegated
+    command: |
+      /adbc/ci/scripts/verify_ubuntu.sh /adbc

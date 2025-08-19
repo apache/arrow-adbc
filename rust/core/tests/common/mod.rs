@@ -95,7 +95,7 @@ pub fn test_driver(driver: &mut ManagedDriver, uri: &str) {
     assert!(driver.new_database_with_opts(opts).is_err());
 }
 
-pub fn test_database(database: &mut ManagedDatabase) {
+pub fn test_database(database: &ManagedDatabase) {
     assert!(database.new_connection().is_ok());
 
     let opts = [(OptionConnection::AutoCommit, "true".into())];

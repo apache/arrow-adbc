@@ -17,12 +17,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,6 +30,7 @@ using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
+using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 {
@@ -39,8 +38,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     {
         private const string BasicAuthenticationScheme = "Basic";
 
+        private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
+
         public ImpalaHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            _proxyConfigurator = HiveServer2ProxyConfigurator.FromProperties(properties);
         }
 
         protected override void ValidateAuthentication()
@@ -105,7 +107,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(ImpalaParameters.Path, out string? path);
             _ = new HttpClient()
             {
-                BaseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName)
+                BaseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName, TlsOptions.IsTlsEnabled)
             };
         }
 
@@ -113,8 +115,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
             Properties.TryGetValue(ImpalaParameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
-            Properties.TryGetValue(ImpalaParameters.TLSOptions, out string? tlsOptions);
-            TlsOptions = TlsOptionsParser.Parse(tlsOptions);
             Properties.TryGetValue(ImpalaParameters.ConnectTimeoutMilliseconds, out string? connectTimeoutMs);
             if (connectTimeoutMs != null)
             {
@@ -122,9 +122,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                     ? connectTimeoutMsValue
                     : throw new ArgumentOutOfRangeException(ImpalaParameters.ConnectTimeoutMilliseconds, connectTimeoutMs, $"must be a value of 0 (infinite) or between 1 .. {int.MaxValue}. default is 30000 milliseconds.");
             }
+            TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected override TTransport CreateTransport()
         {
@@ -141,10 +142,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
-            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName);
+            Uri baseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName, TlsOptions.IsTlsEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
-            HttpClientHandler httpClientHandler = NewHttpClientHandler();
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
@@ -154,7 +155,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
 
             TConfiguration config = new();
-            ThriftHttpTransport transport = new(httpClient, config)
+            THttpTransport transport = new(httpClient, config)
             {
                 // This value can only be set before the first call/request. So if a new value for query timeout
                 // is set, we won't be able to update the value. Setting to ~infinite and relying on cancellation token
@@ -162,24 +163,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                 ConnectTimeout = int.MaxValue,
             };
             return transport;
-        }
-
-        private HttpClientHandler NewHttpClientHandler()
-        {
-            HttpClientHandler httpClientHandler = new();
-            if (TlsOptions != HiveServer2TlsOption.Empty)
-            {
-                httpClientHandler.ServerCertificateCustomValidationCallback = (request, certificate, chain, policyErrors) =>
-                {
-
-                    if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowSelfSigned)) return false;
-                    if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch) && !TlsOptions.HasFlag(HiveServer2TlsOption.AllowHostnameMismatch)) return false;
-
-                    return true;
-                };
-            }
-
-            return httpClientHandler;
         }
 
         private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(ImpalaAuthType authType, string? username, string? password)
@@ -222,5 +205,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override ImpalaServerType ServerType => ImpalaServerType.Http;
 
         protected override int ColumnMapIndexOffset => 0;
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

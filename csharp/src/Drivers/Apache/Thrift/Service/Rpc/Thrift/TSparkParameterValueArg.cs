@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TSparkParameterValueArg : TBase
+  internal partial class TSparkParameterValueArg : TBase
   {
     private string _type;
     private string _value;

@@ -15,12 +15,20 @@
 # specific language governing permissions and limitations
 # under the License.
 
+if host_machine.system() != 'windows'
+    dl_dep = dependency('dl')
+    deps = [dl_dep]
+else
+    dl_dep = declare_dependency()
+    deps = [dependency('uuid'), dependency('shell32'), dependency('advapi32')]
+endif
 
 adbc_driver_manager_lib = library(
     'adbc_driver_manager',
     'adbc_driver_manager.cc',
-    include_directories: [include_dir],
+    include_directories: [include_dir, vendor_dir],
     install: true,
+    dependencies: deps,
 )
 
 pkg.generate(
@@ -29,4 +37,9 @@ pkg.generate(
     url: 'https://github.com/apache/arrow-adbc',
     libraries: [adbc_driver_manager_lib],
     filebase: 'adbc-driver-manager',
+)
+
+adbc_driver_manager_dep = declare_dependency(
+    include_directories: include_dir,
+    link_with: adbc_driver_manager_lib,
 )

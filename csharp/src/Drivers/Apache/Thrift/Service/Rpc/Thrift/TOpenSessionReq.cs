@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TOpenSessionReq : TBase
+  internal partial class TOpenSessionReq : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TProtocolVersion _client_protocol;
     private string _username;
@@ -51,7 +51,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private Dictionary<string, string> _connectionProperties;
     private global::Apache.Hive.Service.Rpc.Thrift.TNamespace _initialNamespace;
     private bool _canUseMultipleCatalogs;
-    private global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier _sessionId;
 
     /// <summary>
     ///
@@ -174,19 +173,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier SessionId
-    {
-      get
-      {
-        return _sessionId;
-      }
-      set
-      {
-        __isset.sessionId = true;
-        this._sessionId = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
@@ -200,7 +186,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public bool connectionProperties;
       public bool initialNamespace;
       public bool canUseMultipleCatalogs;
-      public bool sessionId;
     }
 
     public TOpenSessionReq()
@@ -351,17 +336,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            case 3329:
-              if (field.Type == TType.Struct)
-              {
-                SessionId = new global::Apache.Hive.Service.Rpc.Thrift.THandleIdentifier();
-                await SessionId.ReadAsync(iprot, cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
             default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
@@ -484,15 +458,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await oprot.WriteBoolAsync(CanUseMultipleCatalogs, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((SessionId != null) && __isset.sessionId)
-        {
-          tmp328.Name = "sessionId";
-          tmp328.Type = TType.Struct;
-          tmp328.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp328, cancellationToken);
-          await SessionId.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -514,8 +479,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
         && ((__isset.client_protocol_i64 == other.__isset.client_protocol_i64) && ((!__isset.client_protocol_i64) || (global::System.Object.Equals(Client_protocol_i64, other.Client_protocol_i64))))
         && ((__isset.connectionProperties == other.__isset.connectionProperties) && ((!__isset.connectionProperties) || (TCollections.Equals(ConnectionProperties, other.ConnectionProperties))))
         && ((__isset.initialNamespace == other.__isset.initialNamespace) && ((!__isset.initialNamespace) || (global::System.Object.Equals(InitialNamespace, other.InitialNamespace))))
-        && ((__isset.canUseMultipleCatalogs == other.__isset.canUseMultipleCatalogs) && ((!__isset.canUseMultipleCatalogs) || (global::System.Object.Equals(CanUseMultipleCatalogs, other.CanUseMultipleCatalogs))))
-        && ((__isset.sessionId == other.__isset.sessionId) && ((!__isset.sessionId) || (global::System.Object.Equals(SessionId, other.SessionId))));
+        && ((__isset.canUseMultipleCatalogs == other.__isset.canUseMultipleCatalogs) && ((!__isset.canUseMultipleCatalogs) || (global::System.Object.Equals(CanUseMultipleCatalogs, other.CanUseMultipleCatalogs))));
     }
 
     public override int GetHashCode() {
@@ -556,10 +520,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if(__isset.canUseMultipleCatalogs)
         {
           hashcode = (hashcode * 397) + CanUseMultipleCatalogs.GetHashCode();
-        }
-        if((SessionId != null) && __isset.sessionId)
-        {
-          hashcode = (hashcode * 397) + SessionId.GetHashCode();
         }
       }
       return hashcode;
@@ -622,12 +582,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if(0 < tmp333++) { tmp332.Append(", "); }
         tmp332.Append("CanUseMultipleCatalogs: ");
         CanUseMultipleCatalogs.ToString(tmp332);
-      }
-      if((SessionId != null) && __isset.sessionId)
-      {
-        if(0 < tmp333++) { tmp332.Append(", "); }
-        tmp332.Append("SessionId: ");
-        SessionId.ToString(tmp332);
       }
       tmp332.Append(')');
       return tmp332.ToString();

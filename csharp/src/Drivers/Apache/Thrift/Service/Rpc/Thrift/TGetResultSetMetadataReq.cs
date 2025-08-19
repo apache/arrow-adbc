@@ -40,30 +40,13 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TGetResultSetMetadataReq : TBase
+  internal partial class TGetResultSetMetadataReq : TBase
   {
-    private bool _includeCloudResultFiles;
-
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle OperationHandle { get; set; }
-
-    public bool IncludeCloudResultFiles
-    {
-      get
-      {
-        return _includeCloudResultFiles;
-      }
-      set
-      {
-        __isset.includeCloudResultFiles = true;
-        this._includeCloudResultFiles = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
     {
-      public bool includeCloudResultFiles;
     }
 
     public TGetResultSetMetadataReq()
@@ -99,16 +82,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 OperationHandle = new global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle();
                 await OperationHandle.ReadAsync(iprot, cancellationToken);
                 isset_operationHandle = true;
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3329:
-              if (field.Type == TType.Bool)
-              {
-                IncludeCloudResultFiles = await iprot.ReadBoolAsync(cancellationToken);
               }
               else
               {
@@ -152,15 +125,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.includeCloudResultFiles)
-        {
-          tmp548.Name = "includeCloudResultFiles";
-          tmp548.Type = TType.Bool;
-          tmp548.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp548, cancellationToken);
-          await oprot.WriteBoolAsync(IncludeCloudResultFiles, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -174,8 +138,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       if (!(that is TGetResultSetMetadataReq other)) return false;
       if (ReferenceEquals(this, other)) return true;
-      return global::System.Object.Equals(OperationHandle, other.OperationHandle)
-        && ((__isset.includeCloudResultFiles == other.__isset.includeCloudResultFiles) && ((!__isset.includeCloudResultFiles) || (global::System.Object.Equals(IncludeCloudResultFiles, other.IncludeCloudResultFiles))));
+      return global::System.Object.Equals(OperationHandle, other.OperationHandle);
     }
 
     public override int GetHashCode() {
@@ -184,10 +147,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((OperationHandle != null))
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
-        }
-        if(__isset.includeCloudResultFiles)
-        {
-          hashcode = (hashcode * 397) + IncludeCloudResultFiles.GetHashCode();
         }
       }
       return hashcode;
@@ -200,11 +159,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp549.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp549);
-      }
-      if(__isset.includeCloudResultFiles)
-      {
-        tmp549.Append(", IncludeCloudResultFiles: ");
-        IncludeCloudResultFiles.ToString(tmp549);
       }
       tmp549.Append(')');
       return tmp549.ToString();

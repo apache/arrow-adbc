@@ -23,6 +23,7 @@ import enum
 import functools
 import threading
 import os
+import pathlib
 import typing
 import sys
 import warnings
@@ -31,7 +32,7 @@ from typing import List, Optional, Tuple
 import cython
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport (
-    PyCapsule_GetPointer, PyCapsule_New, PyCapsule_CheckExact
+    PyCapsule_GetPointer, PyCapsule_IsValid, PyCapsule_New
 )
 from libc.stdint cimport int64_t, uint8_t, uint32_t, uintptr_t
 from libc.stdlib cimport malloc, free
@@ -337,6 +338,12 @@ cdef class _AdbcHandle:
                     f"with open {self._child_type}")
 
 
+def is_pycapsule(obj, bytes name) -> bool:
+    """Check if an object is a PyCapsule of a specific type."""
+    # Taken from nanoarrow
+    return PyCapsule_IsValid(obj, name) == 1
+
+
 cdef void pycapsule_schema_deleter(object capsule) noexcept:
     cdef CArrowSchema* allocated = <CArrowSchema*>PyCapsule_GetPointer(
         capsule, "arrow_schema"
@@ -364,10 +371,29 @@ cdef class ArrowSchemaHandle:
     cdef:
         CArrowSchema schema
 
+    def __del__(self):
+        self.release()
+
     @property
     def address(self) -> int:
         """The address of the ArrowSchema."""
         return <uintptr_t> &self.schema
+
+    @property
+    def is_valid(self) -> bool:
+        """Check validility (object has non-NULL release pointer)."""
+        return self.schema.release != NULL
+
+    def release(self):
+        """Release this schema without having to import it.
+
+        No-op if already released (if ``not self.is_valid``).
+
+        Postcondition: ``not self.is_valid``.
+        """
+        if self.schema.release != NULL:
+            self.schema.release(&self.schema)
+            self.schema.release = NULL
 
     def __arrow_c_schema__(self) -> object:
         """Consume this object to get a PyCapsule."""
@@ -392,6 +418,25 @@ cdef class ArrowArrayHandle:
     cdef:
         CArrowArray array
 
+    def __del__(self):
+        self.release()
+
+    @property
+    def is_valid(self) -> bool:
+        """Check validility (object has non-NULL release pointer)."""
+        return self.array.release != NULL
+
+    def release(self):
+        """Release this array without having to import it.
+
+        No-op if already released (if ``not self.is_valid``).
+
+        Postcondition: ``not self.is_valid``.
+        """
+        if self.array.release != NULL:
+            self.array.release(&self.array)
+            self.array.release = NULL
+
     @property
     def address(self) -> int:
         """
@@ -409,10 +454,29 @@ cdef class ArrowArrayStreamHandle:
     cdef:
         CArrowArrayStream stream
 
+    def __del__(self):
+        self.release()
+
     @property
     def address(self) -> int:
         """The address of the ArrowArrayStream."""
         return <uintptr_t> &self.stream
+
+    @property
+    def is_valid(self) -> bool:
+        """Check validility (object has non-NULL release pointer)."""
+        return self.stream.release != NULL
+
+    def release(self):
+        """Release this stream without having to import it.
+
+        No-op if already released (if ``not self.is_valid``).
+
+        Postcondition: ``not self.is_valid``.
+        """
+        if self.stream.release != NULL:
+            self.stream.release(&self.stream)
+            self.stream.release = NULL
 
     def __arrow_c_stream__(self, requested_schema=None) -> object:
         """Consume this object to get a PyCapsule."""
@@ -473,16 +537,26 @@ cdef class AdbcDatabase(_AdbcHandle):
             status = AdbcDatabaseNew(&self.database, &c_error)
         check_error(status, &c_error)
 
+        # by default, allow searching for manifests and relative paths
+        status = AdbcDriverManagerDatabaseSetLoadFlags(
+            &self.database, CAdbcLoadFlagDefault, &c_error)
+        check_error(status, &c_error)
+
         for key, value in kwargs.items():
             if key == "init_func":
                 status = AdbcDriverManagerDatabaseSetInitFunc(
                     &self.database, <CAdbcDriverInitFunc> (<uintptr_t> value), &c_error)
+            elif key == "load_flags":
+                status = AdbcDriverManagerDatabaseSetLoadFlags(
+                    &self.database, <CAdbcLoadFlags> (value), &c_error)
             elif key is None:
                 raise ValueError("key cannot be None")
             elif value is None:
                 raise ValueError(f"value for key '{key}' cannot be None")
             else:
                 key = _to_bytes(key, "key")
+                if isinstance(value, pathlib.Path):
+                    value = str(value)
                 value = _to_bytes(value, "value")
                 c_key = key
                 c_value = value
@@ -1125,7 +1199,7 @@ cdef class AdbcStatement(_AdbcHandle):
                 )
             schema, data = data.__arrow_c_array__()
 
-        if PyCapsule_CheckExact(data):
+        if is_pycapsule(data, b"arrow_array"):
             c_array = <CArrowArray*> PyCapsule_GetPointer(data, "arrow_array")
         elif isinstance(data, ArrowArrayHandle):
             c_array = &(<ArrowArrayHandle> data).array
@@ -1137,7 +1211,7 @@ cdef class AdbcStatement(_AdbcHandle):
                 f"Protocol), a PyCapsule, int or ArrowArrayHandle, not {type(data)}"
             )
 
-        if PyCapsule_CheckExact(schema):
+        if is_pycapsule(schema, b"arrow_schema"):
             c_schema = <CArrowSchema*> PyCapsule_GetPointer(schema, "arrow_schema")
         elif isinstance(schema, ArrowSchemaHandle):
             c_schema = &(<ArrowSchemaHandle> schema).schema
@@ -1172,7 +1246,7 @@ cdef class AdbcStatement(_AdbcHandle):
         ):
             stream = stream.__arrow_c_stream__()
 
-        if PyCapsule_CheckExact(stream):
+        if is_pycapsule(stream, b"arrow_array_stream"):
             c_stream = <CArrowArrayStream*> PyCapsule_GetPointer(
                 stream, "arrow_array_stream"
             )

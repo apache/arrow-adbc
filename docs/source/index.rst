@@ -96,6 +96,13 @@ make it more convenient to build analytical applications.
 
             R
 
+         .. button-ref:: rust/quickstart
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            Rust
+
       .. grid-item-card::
          :columns: 12 4 4 4
 
@@ -190,7 +197,7 @@ Why ADBC?
 
    .. grid-item-card:: Cross-language
 
-      Work in C/C++, C#, Go, Java, Python, R, Ruby, and more.
+      Work in C/C++, C#, Go, Java, Python, R, Ruby, Rust, and more.
 
    .. grid-item-card:: Full-featured
 
@@ -222,6 +229,7 @@ Why ADBC?
    Java <java/index>
    Python <python/index>
    R <r/index>
+   Rust <rust/index>
 
 .. toctree::
    :maxdepth: 1
@@ -247,6 +255,7 @@ Why ADBC?
    format/versioning
    format/comparison
    format/how_manager
+   format/driver_manifests
    format/related_work
 
 .. toctree::

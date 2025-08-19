@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TDBSqlResultFormat : TBase
+  internal partial class TDBSqlResultFormat : TBase
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlArrowFormat _arrowFormat;
     private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlCsvFormat _csvFormat;

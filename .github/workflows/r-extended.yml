@@ -39,12 +39,12 @@ permissions:
 jobs:
 
   # Runs R CMD check on the same platforms/R versions CRAN does
-  cran:
+  cran-c:
     strategy:
       matrix:
         rversion: [oldrel, release, devel]
         os: [macOS, windows, ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake, adbcbigquery]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
       fail-fast: false
 
     uses: ./.github/workflows/r-check.yml
@@ -52,16 +52,35 @@ jobs:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
       rversion: ${{ matrix.rversion }}
+
+  # Go-based drivers are not distributed on CRAN and are checked with error-on error only
+  cran-go:
+    strategy:
+      matrix:
+        rversion: [oldrel, release, devel]
+        os: [macOS, windows, ubuntu]
+        pkg: [adbcflightsql, adbcsnowflake, adbcbigquery]
+      fail-fast: false
+
+    uses: ./.github/workflows/r-check.yml
+    with:
+      os: ${{ matrix.os }}
+      pkg: ${{ matrix.pkg }}
+      rversion: ${{ matrix.rversion }}
+      # Go based drivers generate WARNINGs because some symbols
+      # are linked in that R CMD check does not allow.
+      error-on: error
     secrets:
       SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
 
   # Check older versions of R on Linux. This catches accidental use of newer R functions.
+  # We don't check Go drivers here because they don't have much R API surface area.
   rversions:
     strategy:
       matrix:
         rversion: ["3.6", "4.0", "4.1"]
         os: [ubuntu]
-        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql, adbcflightsql, adbcsnowflake, adbcbigquery]
+        pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
       fail-fast: false
 
     uses: ./.github/workflows/r-check.yml
@@ -69,18 +88,16 @@ jobs:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
       rversion: ${{ matrix.rversion }}
-    secrets:
-      SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
 
-  # Checks on older verions of R on Windows. The Windows build system changed
+  # Checks on older versions of R on Windows. The Windows build system changed
   # several times so we need to check packages on every version. Go-based
   # drivers aren't supported before 4.2, so we don't check them here.
-  # We don't need to check R 4.1 because the build system for R 4.0 and R 4.1
-  # are the same.
+  # The test dependencies support the released version and the four previous
+  # versions (e.g., 4.1 is the minimum supported version as of R 4.5).
   winrversions:
     strategy:
       matrix:
-        rversion: ["3.6", "4.0"]
+        rversion: ["4.1"]
         os: [windows]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
       fail-fast: false
@@ -90,8 +107,6 @@ jobs:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
       rversion: ${{ matrix.rversion }}
-    secrets:
-      SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
 
   # Runs tests with valgrind. Go does not support valgrind, so we don't run
   # those tests here.
@@ -108,7 +123,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: r-lib/actions/setup-r@14a7e741c1cb130261263aa1593718ba42cf443b  # v2
+      - uses: r-lib/actions/setup-r@bd49c52ffe281809afa6f0fecbf37483c5dd0b93  # v2
         with:
           rversion: ${{ matrix.rversion }}
           use-public-rspm: true
@@ -131,7 +146,7 @@ jobs:
           popd
         shell: bash
 
-      - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
+      - uses: r-lib/actions/setup-r-dependencies@bd49c52ffe281809afa6f0fecbf37483c5dd0b93
         with:
           working-directory: r/${{ matrix.pkg }}
 

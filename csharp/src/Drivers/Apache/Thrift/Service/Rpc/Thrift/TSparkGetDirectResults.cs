@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TSparkGetDirectResults : TBase
+  internal partial class TSparkGetDirectResults : TBase
   {
     private long _maxBytes;
 

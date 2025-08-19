@@ -21,7 +21,7 @@ using System;
 
 namespace Apache.Hive.Service.Rpc.Thrift
 {
-  public enum TDBSqlManifestFileFormat
+  internal enum TDBSqlManifestFileFormat
   {
     THRIFT_GET_RESULT_SET_METADATA_RESP = 0,
   }

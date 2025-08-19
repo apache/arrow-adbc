@@ -15,11 +15,15 @@
 * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
+using Azure.Core;
+using Azure.Identity;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
@@ -44,6 +48,26 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             return connection;
         }
 
+        internal static AdbcConnection GetEntraProtectedBigQueryAdbcConnection(
+            BigQueryTestEnvironment testEnvironment,
+            string accessToken,
+            int? maxRetries = null
+           )
+        {
+            testEnvironment.AccessToken = accessToken;
+            Dictionary<string, string> parameters = GetBigQueryParameters(testEnvironment);
+
+            if (maxRetries.HasValue)
+            {
+                parameters.Add(BigQueryParameters.MaximumRetryAttempts, maxRetries.Value.ToString());
+            }
+
+            AdbcDatabase database = new BigQueryDriver().Open(parameters);
+            AdbcConnection connection = database.Connect(new Dictionary<string, string>());
+
+            return connection;
+        }
+
         /// <summary>
         /// Gets the parameters for connecting to BigQuery.
         /// </summary>
@@ -51,7 +75,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         /// <returns></returns>
         internal static Dictionary<string, string> GetBigQueryParameters(BigQueryTestEnvironment testEnvironment)
         {
-            Dictionary<string, string> parameters = new Dictionary<string, string>{};
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
 
             if (!string.IsNullOrEmpty(testEnvironment.ProjectId))
             {
@@ -63,12 +87,43 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.BillingProjectId, testEnvironment.BillingProjectId!);
             }
 
+            if (testEnvironment.AuthenticationType != null)
+            {
+                if (testEnvironment.AuthenticationType.Equals(BigQueryConstants.ServiceAccountAuthenticationType, StringComparison.OrdinalIgnoreCase))
+                {
+                    parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.ServiceAccountAuthenticationType);
+                    parameters.Add(BigQueryParameters.JsonCredential, testEnvironment.JsonCredential);
+                }
+                else if (testEnvironment.AuthenticationType.Equals(BigQueryConstants.EntraIdAuthenticationType, StringComparison.OrdinalIgnoreCase))
+                {
+                    parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.EntraIdAuthenticationType);
+
+                    if (string.IsNullOrEmpty(testEnvironment.AccessToken))
+                    {
+                        parameters.Add(BigQueryParameters.AccessToken, GetAccessToken(testEnvironment));
+                    }
+                    else
+                    {
+                        parameters.Add(BigQueryParameters.AccessToken, testEnvironment.AccessToken);
+                    }
+
+                    parameters.Add(BigQueryParameters.AudienceUri, testEnvironment.Audience);
+                }
+                else
+                {
+                    parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.UserAuthenticationType);
+                    parameters.Add(BigQueryParameters.ClientId, testEnvironment.ClientId);
+                    parameters.Add(BigQueryParameters.ClientSecret, testEnvironment.ClientSecret);
+                    parameters.Add(BigQueryParameters.RefreshToken, testEnvironment.RefreshToken);
+                }
+            }
+
             if (!string.IsNullOrEmpty(testEnvironment.JsonCredential))
             {
                 parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.ServiceAccountAuthenticationType);
                 parameters.Add(BigQueryParameters.JsonCredential, testEnvironment.JsonCredential);
             }
-            else
+            else if ((testEnvironment.AuthenticationType != null) && (testEnvironment.AuthenticationType.Equals(BigQueryConstants.UserAuthenticationType, StringComparison.OrdinalIgnoreCase)))
             {
                 parameters.Add(BigQueryParameters.AuthenticationType, BigQueryConstants.UserAuthenticationType);
                 parameters.Add(BigQueryParameters.ClientId, testEnvironment.ClientId);
@@ -89,6 +144,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             parameters.Add(BigQueryParameters.IncludeConstraintsWithGetObjects, testEnvironment.IncludeTableConstraints.ToString());
 
             parameters.Add(BigQueryParameters.IncludePublicProjectId, testEnvironment.IncludePublicProjectId.ToString());
+
+            if (!string.IsNullOrEmpty(testEnvironment.LargeResultsDataset))
+            {
+                parameters.Add(BigQueryParameters.LargeResultsDataset, testEnvironment.LargeResultsDataset);
+            }
 
             if (!string.IsNullOrEmpty(testEnvironment.LargeResultsDestinationTable))
             {
@@ -115,7 +175,46 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.MaxFetchConcurrency, testEnvironment.MaxStreamCount.Value.ToString());
             }
 
+            if (!string.IsNullOrEmpty(testEnvironment.StatementType))
+            {
+                parameters.Add(BigQueryParameters.StatementType, testEnvironment.StatementType);
+            }
+
+            if (testEnvironment.StatementIndex.HasValue)
+            {
+                parameters.Add(BigQueryParameters.StatementIndex, testEnvironment.StatementIndex.Value.ToString());
+            }
+
+            if (!string.IsNullOrEmpty(testEnvironment.EvaluationKind))
+            {
+                parameters.Add(BigQueryParameters.EvaluationKind, testEnvironment.EvaluationKind);
+            }
+
             return parameters;
+        }
+
+        /// <summary>
+        /// Logs in to Entra using the currently logged in user found in DefaultAzureCredential.
+        /// </summary>
+        /// <param name="environment"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException">A test environment is not configured correctly.</exception>
+        internal static string GetAccessToken(BigQueryTestEnvironment environment)
+        {
+            if (environment?.EntraConfiguration?.Scopes == null || environment?.EntraConfiguration?.Claims == null)
+            {
+                throw new InvalidOperationException("The test environment is not configured correctly");
+            }
+
+            // the easiest way is to log in to Visual Studio using Tools > Options > Azure Service Authentication
+            DefaultAzureCredential credential = new DefaultAzureCredential();
+
+            // Request the token
+            string claimJson = JsonSerializer.Serialize(environment.EntraConfiguration.Claims);
+            TokenRequestContext requestContext = new TokenRequestContext(environment.EntraConfiguration.Scopes, claims: claimJson);
+            AccessToken accessToken = credential.GetToken(requestContext);
+
+            return accessToken.Token;
         }
 
         /// <summary>

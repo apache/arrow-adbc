@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TMapTypeEntry : TBase
+  internal partial class TMapTypeEntry : TBase
   {
 
     public int KeyTypePtr { get; set; }

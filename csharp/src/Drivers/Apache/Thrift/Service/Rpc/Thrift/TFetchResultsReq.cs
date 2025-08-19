@@ -40,7 +40,7 @@ using Thrift.Processor;
 namespace Apache.Hive.Service.Rpc.Thrift
 {
 
-  public partial class TFetchResultsReq : TBase
+  internal partial class TFetchResultsReq : TBase
   {
     private short _fetchType;
     private long _maxBytes;

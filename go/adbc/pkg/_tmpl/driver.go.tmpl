@@ -23,7 +23,7 @@ package main
 // won't be accessible to the driver manager
 
 // #cgo CFLAGS: -DADBC_EXPORTING
-// #cgo CXXFLAGS: -std=c++11 -DADBC_EXPORTING
+// #cgo CXXFLAGS: -std=c++17 -DADBC_EXPORTING
 // #include "../../drivermgr/arrow-adbc/adbc.h"
 // #include "utils.h"
 // #include <errno.h>
@@ -59,10 +59,10 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow/go/v18/arrow/array"
-	"github.com/apache/arrow/go/v18/arrow/cdata"
-	"github.com/apache/arrow/go/v18/arrow/memory"
-	"github.com/apache/arrow/go/v18/arrow/memory/mallocator"
+	"github.com/apache/arrow-go/v18/arrow/array"
+	"github.com/apache/arrow-go/v18/arrow/cdata"
+	"github.com/apache/arrow-go/v18/arrow/memory"
+	"github.com/apache/arrow-go/v18/arrow/memory/mallocator"
 )
 
 // Must use malloc() to respect CGO rules
@@ -1810,8 +1810,8 @@ func {{.Prefix}}StatementExecutePartitions(stmt *C.struct_AdbcStatement, schema 
 	return C.ADBC_STATUS_OK
 }
 
-//export {{.Prefix}}DriverInit
-func {{.Prefix}}DriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export AdbcDriver{{.Prefix}}Init
+func AdbcDriver{{.Prefix}}Init(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 
 	switch version {

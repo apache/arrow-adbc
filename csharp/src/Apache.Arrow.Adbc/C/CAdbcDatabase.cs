@@ -36,7 +36,7 @@ namespace Apache.Arrow.Adbc.C
     {
         /// <summary>
         /// Opaque implementation-defined state.
-        /// This field is NULLPTR iff the connection is unintialized/freed.
+        /// This field is NULLPTR iff the connection is uninitialized/freed.
         /// </summary>
         public void* private_data;
 
