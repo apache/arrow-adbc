@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -53,10 +54,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected const string ForeignKeyPrefix = "FK_";
 
         // Lock to ensure consistent access to TokenSource and OperationHandle
-        private readonly object _operationHandleLock = new();
         private readonly object _tokenSourceLock = new();
         private CancellationTokenSource? _executeTokenSource;
-        private TOperationHandle? _executeOperationHandle;
 
         internal HiveServer2Statement(HiveServer2Connection connection)
             : base(connection)
@@ -88,9 +87,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 return ExecuteQueryAsyncInternal(ts.Token).Result;
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && ts.IsCancellationRequested))
+            catch (Exception ex) when (IsCancellation(ex, ts.Token))
             {
                 throw new TimeoutException("The query execution timed out or was cancelled. Consider increasing the query timeout value.", ex);
             }
@@ -111,9 +108,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 return ExecuteUpdateAsyncInternal(ts.Token).Result;
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && ts.IsCancellationRequested))
+            catch (Exception ex) when (IsCancellation(ex, ts.Token))
             {
                 throw new TimeoutException("The query execution timed out or was cancelled. Consider increasing the query timeout value.", ex);
             }
@@ -129,7 +124,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivityAsync(async _ =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 if (IsMetadataCommand)
                 {
@@ -141,27 +136,26 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 // OR
                 // take QueryTimeoutSeconds (but this could be restricting)
                 IResponse response = await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
-                // Set the operation handle in case we need to cancel the operation
-                SetOperationHandle(response);
 
                 TGetResultSetMetadataResp metadata;
-                try
+                if (response.DirectResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
                 {
-                    if (response.DirectResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
-                    {
-                        // The initial response has result data so we don't need to poll
-                        metadata = response.DirectResults.ResultSetMetadata;
-                    }
-                    else
+                    // The initial response has result data so we don't need to poll
+                    metadata = response.DirectResults.ResultSetMetadata;
+                }
+                else
+                {
+                    try
                     {
                         await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
                         metadata = await HiveServer2Connection.GetResultSetMetadataAsync(response.OperationHandle!, Connection.Client, cancellationToken);
                     }
-                }
-                finally
-                {
-                    // Clear the operation handle after polling for the completion of the operation
-                    UnsetOperationHandle();
+                    catch (Exception ex) when (IsCancellation(ex, cancellationToken))
+                    {
+                        // If the operation was cancelled, we need to cancel the operation on the server
+                        await CancelOperationAsync(activity, response.OperationHandle);
+                        throw;
+                    }
                 }
                 Schema schema = GetSchemaFromMetadata(metadata);
                 return new QueryResult(-1, Connection.NewReader(this, schema, response, metadata));
@@ -175,9 +169,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 return await ExecuteQueryAsyncInternal(ts.Token);
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && ts.IsCancellationRequested))
+            catch (Exception ex) when (IsCancellation(ex, ts.Token))
             {
                 throw new TimeoutException("The query execution timed out or was cancelled. Consider increasing the query timeout value.", ex);
             }
@@ -254,9 +246,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     return await ExecuteUpdateAsyncInternal(ts.Token);
                 }
-                catch (Exception ex)
-                    when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                         (ApacheUtility.ContainsException(ex, out TTransportException? _) && ts.IsCancellationRequested))
+                catch (Exception ex) when (IsCancellation(ex, ts.Token))
                 {
                     throw new TimeoutException("The query execution timed out or was cancelled. Consider increasing the query timeout value.", ex);
                 }
@@ -1042,33 +1032,36 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <inheritdoc/>
         public override void Cancel()
         {
-            this.TraceActivity(activity =>
+            this.TraceActivity(_ =>
             {
-                try
-                {
-                    using CancellationTokenSource cancellationTokenSource = ApacheUtility.GetCancellationTokenSource(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                    TOperationHandle? operationHandle = GetOperationHandle();
-                    if (operationHandle != null)
-                    {
-                        TCancelOperationReq req = new TCancelOperationReq(operationHandle);
-                        TCancelOperationResp resp = Client.CancelOperation(req, cancellationTokenSource.Token)
-                            .ConfigureAwait(false).GetAwaiter().GetResult();
-                        HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
-                        activity?.AddEvent(
-                            "db.operation.cancel_operation.completed",
-                            [new(SemanticConventions.Db.Response.StatusCode, resp.Status.StatusCode.ToString())]);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    activity?.AddException(ex);
-                }
-                finally
-                {
-                    // This will cancel any operation using the current token source
-                    CancelTokenSource();
-                }
+                // This will cancel any operation using the current token source
+                CancelTokenSource();
             });
+        }
+
+        private async Task CancelOperationAsync(Activity? activity, TOperationHandle? operationHandle)
+        {
+            if (operationHandle == null)
+            {
+                return;
+            }
+            using CancellationTokenSource cancellationTokenSource = ApacheUtility.GetCancellationTokenSource(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            try
+            {
+                activity?.AddEvent(
+                    "db.operation.cancel_operation.starting",
+                    [new(SemanticConventions.Db.Operation.OperationId, new Guid(operationHandle.OperationId.Guid).ToString("N"))]);
+                TCancelOperationReq req = new(operationHandle);
+                TCancelOperationResp resp = await Client.CancelOperation(req, cancellationTokenSource.Token);
+                HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
+                activity?.AddEvent(
+                    "db.operation.cancel_operation.completed",
+                    [new(SemanticConventions.Db.Response.StatusCode, resp.Status.StatusCode.ToString())]);
+            }
+            catch (Exception ex)
+            {
+                activity?.AddException(ex);
+            }
         }
 
         private CancellationTokenSource SetTokenSource()
@@ -1099,29 +1092,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        private void UnsetOperationHandle()
-        {
-            lock (_operationHandleLock)
-            {
-                _executeOperationHandle = null;
-            }
-        }
-
-        private void SetOperationHandle(IResponse response)
-        {
-            lock (_operationHandleLock)
-            {
-                _executeOperationHandle = response.DirectResults == null ? response.OperationHandle : null;
-            }
-        }
-
-        private TOperationHandle? GetOperationHandle()
-        {
-            lock (_operationHandleLock)
-            {
-                return _executeOperationHandle;
-            }
-
-        }
+        private static bool IsCancellation(Exception ex, CancellationToken cancellationToken) =>
+            ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+            (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested);
     }
 }
