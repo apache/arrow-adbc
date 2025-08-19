@@ -172,6 +172,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return request;
         }
 
+        protected override IEnumerable<TProtocolVersion> FallbackProtocolVersions => new[]
+        {
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V10,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V8
+        };
+
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Standard;
 
         public override string AssemblyName => s_assemblyName;

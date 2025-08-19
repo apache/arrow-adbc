@@ -256,6 +256,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override string AssemblyName => s_assemblyName;
 
+        protected override IEnumerable<TProtocolVersion> FallbackProtocolVersions => new[]
+        {
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V8
+        };
+
         private string GetUserAgent()
         {
             // Build the base user agent string with Thrift version

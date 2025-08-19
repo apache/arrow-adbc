@@ -319,8 +319,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     _transport = protocol.Transport;
                     _client = CreateTCLIServiceClient(protocol);
                     TOpenSessionReq request = CreateSessionRequest();
-
-                    TOpenSessionResp? session = await Client.OpenSession(request, cancellationToken);
+                    TOpenSessionResp? session = null;
+                    try
+                    {
+                        session = await Client.OpenSession(request, cancellationToken);
+                    }
+                    catch (Exception ex) when (ex.Message.Contains("client_protocol"))
+                    {
+                        if (FallbackProtocolVersions.Any())
+                        {
+                            session = await TryOpenSessionWithFallbackAsync(request, cancellationToken);
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
                     await HandleOpenSessionResponse(session, activity);
                 }
                 catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
@@ -333,6 +347,54 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
             });
+        }
+
+        private async Task<TOpenSessionResp?> TryOpenSessionWithFallbackAsync(TOpenSessionReq originalRequest, CancellationToken cancellationToken)
+        {
+            Exception? lastException = null;
+
+            foreach (var fallbackVersion in FallbackProtocolVersions)
+            {
+                try
+                {
+                    ResetConnection();
+                    // Recreate transport + client
+                    var retryTransport = CreateTransport();
+                    var retryProtocol = await CreateProtocolAsync(retryTransport, cancellationToken);
+                    _transport = retryProtocol.Transport;
+                    _client = CreateTCLIServiceClient(retryProtocol);
+                    // New request with fallback version
+                    var retryReq = CreateSessionRequest();
+                    retryReq.Client_protocol = fallbackVersion;
+
+                    return await Client.OpenSession(retryReq, cancellationToken);
+                }
+                catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
+                {
+                    throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                }
+            }
+
+            throw lastException ?? new HiveServer2Exception("Error occurred while opening the session. All protocol fallback attempts failed.");
+        }
+
+        private void ResetConnection()
+        {
+            try
+            {
+                _transport?.Close();
+            }
+            catch
+            {
+                // Ignore cleanup failure
+            }
+
+            _transport = null;
+            _client = null;
         }
 
         protected virtual Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
@@ -353,6 +415,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             return new TCLIService.Client(protocol);
         }
+
+        protected virtual IEnumerable<TProtocolVersion> FallbackProtocolVersions => Enumerable.Empty<TProtocolVersion>();
 
         internal TSessionHandle? SessionHandle { get; private set; }
 
