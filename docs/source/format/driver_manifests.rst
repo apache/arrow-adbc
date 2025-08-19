@@ -239,13 +239,13 @@ a string (single path) or a table of platform-specific paths.  The ``Driver.shar
 needed to successfully load a driver manifest.  The other keys are optional, but provide useful metadata
 about the driver.
 
-Platform-Tuples
+Platform Tuples
 ^^^^^^^^^^^^^^^
 
-Since the manifests will utilize platform tuples to specify the different systems
+Since the manifests use platform tuples to specify the different systems
 that drivers might be built for, it is important to create a consistent way to name
-these tuples. Specifically, consistent naming for OS and Architecture combinations
-that can be used by all systems that read/write manifest files.
+these tuples. Specifically, consistent naming for operating system (OS) and architecture combinations
+that can be used by all systems that read and/or write manifest files.
 
 As such, the following table should be considered the authoritative list:
 
@@ -253,8 +253,7 @@ As such, the following table should be considered the authoritative list:
 | OS            | Tuple Name    |
 +---------------+---------------+
 | Linux         | linux         |
-| MacOS         | macos         |
-| Apple         | macos         |
+| macOS         | macos         |
 | Windows       | windows       |
 | FreeBSD       | freebsd       |
 | OpenBSD       | openbsd       |
@@ -284,10 +283,10 @@ As such, the following table should be considered the authoritative list:
 | wasm          | wasm          |
 +---------------+---------------+
 
-The construction of the platform tuple is: ``<os>_<arch>``, for example: ``linux_amd64``.
+The construction of the platform tuple is: ``<OS>_<Architecture>``, for example: ``linux_amd64``.
 
 .. note::
-   For alternative scenarios such as using MUSL instead of glibc or MINGw, the tuple should
+   For alternative scenarios such as using musl instead of the GNU C Library (glibc) or MinGW, the tuple should
    have the appropriate suffix for that environment. i.e. ``linux_amd64_musl`` or
    ``windows_amd64_mingw``.
 
