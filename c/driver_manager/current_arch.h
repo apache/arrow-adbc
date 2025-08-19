@@ -95,8 +95,10 @@ const std::string& CurrentArch() {
 #else
   static const std::string arch = "sparc";
 #endif
-#elif defined(__wasm__)
-  static const std::string arch = "wasm";
+#elif defined(__wasm32__)
+  static const std::string arch = "wasm32";
+#elif defined(__wasm64__)
+  static const std::string arch = "wasm64";
 #else
   static const std::string arch = "unknown";
 #endif

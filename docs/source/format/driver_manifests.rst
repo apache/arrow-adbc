@@ -280,7 +280,8 @@ As such, the following table should be considered the authoritative list:
 | riscv64       | riscv64       |
 | sparc         | sparc         |
 | sparc64       | sparc64       |
-| wasm          | wasm          |
+| WASM (32-bit) | wasm32        |
+| WASM (64-bit) | wasm64        |
 +---------------+---------------+
 
 The construction of the platform tuple is: ``<OS>_<Architecture>``, for example: ``linux_amd64``.
