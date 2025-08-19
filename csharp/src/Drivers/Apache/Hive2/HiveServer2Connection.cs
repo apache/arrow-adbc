@@ -324,7 +324,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     {
                         session = await Client.OpenSession(request, cancellationToken);
                     }
-                    catch (Exception ex) when (ex.Message.Contains("client_protocol"))
+                    catch (Exception)
                     {
                         if (FallbackProtocolVersions.Any())
                         {

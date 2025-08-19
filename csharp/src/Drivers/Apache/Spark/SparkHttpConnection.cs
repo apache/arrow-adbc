@@ -259,7 +259,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override IEnumerable<TProtocolVersion> FallbackProtocolVersions => new[]
         {
             TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9,
-            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V8
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V8,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7
         };
 
         private string GetUserAgent()
