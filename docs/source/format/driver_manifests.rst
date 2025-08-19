@@ -239,6 +239,58 @@ a string (single path) or a table of platform-specific paths.  The ``Driver.shar
 needed to successfully load a driver manifest.  The other keys are optional, but provide useful metadata
 about the driver.
 
+Platform-Tuples
+^^^^^^^^^^^^^^^
+
+Since the manifests will utilize platform tuples to specify the different systems
+that drivers might be built for, it is important to create a consistent way to name
+these tuples. Specifically, consistent naming for OS and Architecture combinations
+that can be used by all systems that read/write manifest files.
+
+As such, the following table should be considered the authoritative list:
+
++---------------+---------------+
+| OS            | Tuple Name    |
++---------------+---------------+
+| Linux         | linux         |
+| MacOS         | macos         |
+| Apple         | macos         |
+| Windows       | windows       |
+| FreeBSD       | freebsd       |
+| OpenBSD       | openbsd       |
++---------------+---------------+
+
++---------------+---------------+
+| Architecture  | Tuple Name    |
++---------------+---------------+
+| i386          | x86           |
+| x86           | x86           |
+| x86-64        | amd64         |
+| x64           | amd64         |
+| amd64         | amd64         |
+| arm (32-bit)  | arm           |
+| armbe (32-bit)| armbe         |
+| arm64be       | arm64be       |
+| aarch64       | arm64         |
+| arm64         | arm64         |
+| s390x         | s390x         |
+| ppc           | powerpc       |
+| ppc64         | powerpc64     |
+| ppc64le       | powerpc64le   |
+| riscv         | riscv         |
+| riscv64       | riscv64       |
+| sparc         | sparc         |
+| sparc64       | sparc64       |
+| wasm          | wasm          |
++---------------+---------------+
+
+The construction of the platform tuple is: ``<os>_<arch>``, for example: ``linux_amd64``.
+
+.. note::
+   For alternative scenarios such as using MUSL instead of glibc or MINGw, the tuple should
+   have the appropriate suffix for that environment. i.e. ``linux_amd64_musl`` or
+   ``windows_amd64_mingw``.
+
 Manifest Location and Discovery
 -------------------------------
 

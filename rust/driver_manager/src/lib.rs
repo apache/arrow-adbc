@@ -1804,14 +1804,17 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
 const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
     #[cfg(target_arch = "x86_64")]
     const ARCH: &str = "amd64";
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(all(target_arch = "aarch64", target_endian = "big"))]
+    const ARCH: &str = "arm64be";
+    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
     const ARCH: &str = "arm64";
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    #[cfg(all(target_arch = "powerpc64", target_endian = "little"))]
+    const ARCH: &str = "powerpc64le";
+    #[cfg(all(target_arch = "powerpc64", target_endian = "big"))]
+    const ARCH: &str = "powerpc64";
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "powerpc64")))]
     const ARCH: &str = std::env::consts::ARCH;
 
-    #[cfg(target_os = "macos")]
-    const OS: &str = "osx";
-    #[cfg(not(target_os = "macos"))]
     const OS: &str = std::env::consts::OS;
 
     #[cfg(target_env = "musl")]
