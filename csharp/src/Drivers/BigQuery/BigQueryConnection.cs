@@ -71,7 +71,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.properties = properties.ToDictionary(k => k.Key, v => v.Value);
             }
 
-            InitTracerProvider();
+            TryInitTracerProvider();
 
             // add the default value for now and set to true until C# has a BigDecimal
             this.properties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
@@ -92,21 +92,32 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
-        private void InitTracerProvider()
+        private void TryInitTracerProvider()
         {
+            // Avoid locking if the tracer provider is already set.
+            if (s_tracerProvider != null)
+            {
+                return;
+            }
+            // Avoid locking if the exporter option would not activate.
+            this.properties.TryGetValue(ExportersOptions.Exporter, out string? exporterOption);
+            ExportersBuilder exportersBuilder = ExportersBuilder.Build(this.ActivitySourceName, addDefaultExporters: true).Build();
+            if (!exportersBuilder.WouldActivate(exporterOption))
+            {
+                return;
+            }
+
+            // Will likely activate the exporter, so we need to lock to ensure thread safety.
             lock (s_tracerProviderLock)
             {
+                // Due to race conditions, we need to check again if the tracer provider is already set.
                 if (s_tracerProvider != null)
                 {
                     return;
                 }
 
-                // Activates the exporter specified in the connection properties (if exists) or environment variable (if is set).
-                this.properties.TryGetValue(ExportersOptions.Exporter, out string? driverName);
-                TracerProvider? tracerProvider = ExportersBuilder.Build(this.ActivitySourceName, addDefaultExporters: true)
-                    .Build()
-                    .Activate(driverName, out string? exporterName, ExportersOptions.Environment.Exporter);
-                if (tracerProvider != null)
+                // Activates the exporter specified in the connection property (if exists) or environment variable (if is set).
+                if (exportersBuilder.TryActivate(exporterOption, out string? exporterName, out TracerProvider? tracerProvider, ExportersOptions.Environment.Exporter) && tracerProvider != null)
                 {
                     s_tracerProvider = tracerProvider;
                     s_isFileExporterEnabled = ExportersOptions.Exporters.AdbcFile.Equals(exporterName);
