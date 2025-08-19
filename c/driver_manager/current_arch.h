@@ -18,7 +18,22 @@
 #pragma once
 
 #include <string>
+#if __has_include(<bit>)
 #include <bit>
+#ifdef __cpp_lib_endian
+#define HAS_ENDIAN 1
+#endif
+#endif
+
+#ifndef HAS_ENDIAN
+#if defined(__APPLE__) || defined(__FreeBSD__)
+#include <machine/endian.h>
+#elif defined(sun) || defined(__sun)
+#include <sys/byteorder.h>
+#elif !defined(_AIX)
+#include <endian.h>
+#endif
+#endif
 
 namespace adbc {
 
@@ -37,10 +52,24 @@ const std::string& CurrentArch() {
   static const std::string platform = "unknown";
 #endif
 
+#ifdef HAS_ENDIAN
+  constexpr bool is_little_endian = (std::endian::native == std::endian::little);
+#else
+#if !defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__)
+  constexpr bool is_little_endian = true;
+#else
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+  constexpr bool is_little_endian = true;
+#else
+  constexpr bool is_little_endian = false;
+#endif
+#endif
+#endif
+
 #if defined(__x86_64__) || defined(__amd64__) || defined(_M_X64) || defined(_M_AMD64)
   static const std::string arch = "amd64";
 #elif defined(__aarch64__) || defined(_M_ARM64) || defined(__ARM_ARCH_ISA_A64)
-  if constexpr (std::endian::native == std::endian::big) {
+  if constexpr (!is_little_endian) {
     static const std::string arch = "arm64be";
   } else {
     static const std::string arch = "arm64";
@@ -48,8 +77,8 @@ const std::string& CurrentArch() {
 #elif defined(__i386__) || defined(_M_IX86) || defined(_M_X86)
   static const std::string arch = "x86";
 #elif defined(__arm__) || defined(_M_ARM)
-  if constexpr (std::endian::native == std::endian::big) {
-    static const std::string arch = "arm64";
+  if constexpr (!is_little_endian) {
+    static const std::string arch = "armbe";
   } else {
     static const std::string arch = "arm";
   }
@@ -60,7 +89,7 @@ const std::string& CurrentArch() {
   static const std::string arch = "riscv";
 #endif
 #elif defined(__ppc64__) || defined(__powerpc64__)
-  if constexpr (std::endian::native == std::endian::little) {
+  if constexpr (is_little_endian) {
     static const std::string arch = "powerpc64le";
   } else {
     static const std::string arch = "powerpc64";
