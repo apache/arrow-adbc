@@ -20,7 +20,7 @@
 #include <string>
 
 #if defined(_WIN32)
-#define LITTLE_ENDIAN 1
+#define ADBC_LITTLE_ENDIAN 1
 #else
 #if defined(__APPLE__) || defined(__FreeBSD__)
 #include <machine/endian.h>
@@ -30,12 +30,12 @@
 #include <endian.h>
 #endif
 #if !defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__)
-#define LITTLE_ENDIAN 1
+#define ADBC_LITTLE_ENDIAN 1
 #else
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define LITTLE_ENDIAN 1
+#define ADBC_LITTLE_ENDIAN 1
 #else
-#define LITTLE_ENDIAN 0
+#define ADBC_LITTLE_ENDIAN 0
 #endif
 #endif
 #endif
@@ -60,7 +60,7 @@ const std::string& CurrentArch() {
 #if defined(__x86_64__) || defined(__amd64__) || defined(_M_X64) || defined(_M_AMD64)
   static const std::string arch = "amd64";
 #elif defined(__aarch64__) || defined(_M_ARM64) || defined(__ARM_ARCH_ISA_A64)
-#ifdef LITTLE_ENDIAN
+#ifdef ADBC_LITTLE_ENDIAN
   static const std::string arch = "arm64";
 #else
   static const std::string arch = "arm64be";
@@ -68,7 +68,7 @@ const std::string& CurrentArch() {
 #elif defined(__i386__) || defined(_M_IX86) || defined(_M_X86)
   static const std::string arch = "x86";
 #elif defined(__arm__) || defined(_M_ARM)
-#ifdef LITTLE_ENDIAN
+#ifdef ADBC_LITTLE_ENDIAN
   static const std::string arch = "arm";
 #else
   static const std::string arch = "armbe";
@@ -80,7 +80,7 @@ const std::string& CurrentArch() {
   static const std::string arch = "riscv";
 #endif
 #elif defined(__ppc64__) || defined(__powerpc64__)
-#ifdef LITTLE_ENDIAN
+#ifdef ADBC_LITTLE_ENDIAN
   static const std::string arch = "powerpc64le";
 #else
   static const std::string arch = "powerpc64";
