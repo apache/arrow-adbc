@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -115,7 +116,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     ? new X509Certificate2(TlsOptions.TrustedCertificatePath!)
                     : null;
 
-                var certValidator = HiveServer2TlsImpl.GetCertificateValidator(TlsOptions);
+                RemoteCertificateValidationCallback certValidator = (sender, cert, chain, errors) => HiveServer2TlsImpl.ValidateCertificate(cert, errors, TlsOptions);
 
                 if (IPAddress.TryParse(hostName!, out var ipAddress))
                 {
@@ -170,6 +171,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             };
             return request;
         }
+
+        protected override IEnumerable<TProtocolVersion> FallbackProtocolVersions => new[]
+        {
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V10,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V8,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7
+        };
 
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Standard;
 
