@@ -431,9 +431,14 @@ Unix-like Platforms
 For Unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
 the given order:
 
-#. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
+#. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then environment variables will be searched in this order
 
    * ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``
+   * ``VIRTUAL_ENV`` is used by `venv <https://docs.python.org/3/library/venv.html>`__ and if set
+     ``$VIRTUAL_ENV/etc/adbc`` will be searched for ``${name}.toml``
+   * ``CONDA_PREFIX`` is used by `conda <https://anaconda.org/anaconda/conda>`__ when using a ``conda``
+     environment (by using ``conda activate env-name``), and if set then ``$CONDA_PREFIX/etc/adbc``
+     will be searched for ``${name}.toml``
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration directory will be searched
 
@@ -452,9 +457,15 @@ Windows
 Things are slightly different on Windows, where the driver manager will also search for driver information in the registry just as
 would happen for ODBC drivers. The search for a manifest on Windows would be the following:
 
-#. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variable ``ADBC_CONFIG_PATH`` will be searched
+#. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variables will be searched in this order
 
    * ``ADBC_CONFIG_PATH`` is a semicolon-separated list of directories to search for ``${name}.toml``
+   * ``VIRTUAL_ENV`` is used by `venv <https://docs.python.org/3/library/venv.html>`__ and if set
+     ``$VIRTUAL_ENV/etc/adbc`` will be searched for ``${name}.toml``
+   * ``CONDA_PREFIX`` is used by `conda <https://anaconda.org/anaconda/conda>`__ when using a ``conda``
+     environment (by using ``conda activate env-name``), and if set then ``$CONDA_PREFIX/etc/adbc``
+     will be searched for ``${name}.toml``
+
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration is searched for
 

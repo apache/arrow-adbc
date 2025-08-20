@@ -273,6 +273,31 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   return ADBC_STATUS_OK;
 }
 
+std::filesystem::path GetEnvAsPath(const char* env_var) {
+#ifdef _WIN32
+  size_t required_size;
+
+  _wgetenv_s(&required_size, NULL, 0, env_var);
+  if (required_size == 0) {
+    return {};
+  }
+
+  std::wstring path_var;
+  path_var.resize(required_size);
+  _wgetenv_s(&required_size, path_var.data(), required_size, env_var);
+  return std::filesystem::path(path_var);
+#else
+  const char* path = std::getenv(env_var);
+  if (path) {
+    std::string_view venv(path);
+    if (!venv.empty()) {
+      return std::filesystem::path(venv);
+    }
+  }
+  return {};
+#endif
+}
+
 std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
   std::vector<std::filesystem::path> paths;
   if (levels & ADBC_LOAD_FLAG_SEARCH_ENV) {
@@ -280,6 +305,16 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
     const char* env_path = std::getenv("ADBC_CONFIG_PATH");
     if (env_path) {
       paths = InternalAdbcParsePath(env_path);
+    }
+
+    std::filesystem::path venv = GetEnvAsPath("VIRTUAL_ENV");
+    if (!venv.empty()) {
+      paths.push_back(venv / "etc" / "adbc");
+    }
+
+    venv = GetEnvAsPath("CONDA_PREFIX");
+    if (!venv.empty()) {
+      paths.push_back(venv / "etc" / "adbc");
     }
   }
 

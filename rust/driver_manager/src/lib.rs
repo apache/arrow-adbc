@@ -1778,6 +1778,14 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
                 result.push(p);
             }
         }
+
+        if let Some(path) = env::var_os("VIRTUAL_ENV") {
+            result.push(PathBuf::from(path).join("etc").join("adbc"));
+        }
+
+        if let Some(path) = env::var_os("CONDA_PREFIX") {
+            result.push(PathBuf::from(path).join("etc").join("adbc"));
+        }
     }
 
     if lvls & LOAD_FLAG_SEARCH_USER != 0 {
@@ -2222,6 +2230,46 @@ mod tests {
             assert_eq!(search_paths, vec![system_path]);
         } else {
             assert_eq!(search_paths, Vec::<PathBuf>::new());
+        }
+    }
+
+    #[test]
+    fn test_get_search_paths_env() {
+        let path_list = vec![
+            Path::new("/foo/bar/baz"),
+            Path::new("/majestik/møøse"),
+            Path::new("/super/duper"),
+        ];
+        unsafe {
+            std::env::set_var(
+                "ADBC_CONFIG_PATH",
+                std::env::join_paths(&path_list).unwrap().as_os_str(),
+            );
+            std::env::set_var("VIRTUAL_ENV", Path::new("/home/foo/.venv").as_os_str());
+            std::env::set_var(
+                "CONDA_PREFIX",
+                Path::new("/home/foo/.conda/envs/hi").as_os_str(),
+            );
+        }
+
+        let search_paths = get_search_paths(LOAD_FLAG_SEARCH_ENV);
+        assert_eq!(
+            search_paths,
+            [
+                path_list,
+                [
+                    Path::new("/home/foo/.venv/etc/adbc"),
+                    Path::new("/home/foo/.conda/envs/hi/etc/adbc")
+                ]
+                .to_vec()
+            ]
+            .concat()
+        );
+
+        unsafe {
+            std::env::remove_var("ADBC_CONFIG_PATH");
+            std::env::remove_var("VIRTUAL_ENV");
+            std::env::remove_var("CONDA_PREFIX");
         }
     }
 }
