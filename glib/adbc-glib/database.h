@@ -27,7 +27,8 @@ G_BEGIN_DECLS
 
 /**
  * GADBCLoadFlags:
- * @GADBC_LOAD_SEARCH_ENV: Check the ADBC_CONFIG_PATH environment variable.
+ * @GADBC_LOAD_SEARCH_ENV: Check the ADBC_CONFIG_PATH, VIRTUAL_ENV, and CONDA_PREFIX
+ * environment variables.
  * @GADBC_LOAD_SEARCH_USER: Check the user configuration directory.
  * @GADBC_LOAD_SEARCH_SYSTEM: Check the system configuration directory.
  * @GADBC_LOAD_ALLOW_RELATIVE_PATHS: Allow relative driver paths.

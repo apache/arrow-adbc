@@ -1847,7 +1847,7 @@ mod tests {
     use super::*;
 
     use adbc_core::LOAD_FLAG_DEFAULT;
-    use temp_env::{with_var, with_var_unset};
+    use temp_env::{with_var, with_vars, with_var_unset};
     use tempfile::Builder;
 
     fn manifest_without_driver() -> &'static str {
@@ -2240,36 +2240,28 @@ mod tests {
             Path::new("/majestik/møøse"),
             Path::new("/super/duper"),
         ];
-        unsafe {
-            std::env::set_var(
-                "ADBC_CONFIG_PATH",
-                std::env::join_paths(&path_list).unwrap().as_os_str(),
-            );
-            std::env::set_var("VIRTUAL_ENV", Path::new("/home/foo/.venv").as_os_str());
-            std::env::set_var(
-                "CONDA_PREFIX",
-                Path::new("/home/foo/.conda/envs/hi").as_os_str(),
-            );
-        }
 
-        let search_paths = get_search_paths(LOAD_FLAG_SEARCH_ENV);
-        assert_eq!(
-            search_paths,
+        with_vars(
             [
-                path_list,
-                [
-                    Path::new("/home/foo/.venv/etc/adbc"),
-                    Path::new("/home/foo/.conda/envs/hi/etc/adbc")
-                ]
-                .to_vec()
-            ]
-            .concat()
+                ("ADBC_CONFIG_PATH", Some(env::join_paths(&path_list).unwrap().as_os_str())),
+                ("VIRTUAL_ENV", Some(Path::new("/home/foo/.venv").as_os_str())),
+                ("CONDA_PREFIX", Some(Path::new("/home/foo/.conda/envs/hi").as_os_str())),
+            ],
+            || {
+                let search_paths = get_search_paths(LOAD_FLAG_SEARCH_ENV);
+                assert_eq!(
+                    search_paths,
+                    [
+                        path_list,
+                        [
+                            Path::new("/home/foo/.venv/etc/adbc"),
+                            Path::new("/home/foo/.conda/envs/hi/etc/adbc")
+                        ]
+                        .to_vec()
+                    ]
+                    .concat()
+                );
+            },
         );
-
-        unsafe {
-            std::env::remove_var("ADBC_CONFIG_PATH");
-            std::env::remove_var("VIRTUAL_ENV");
-            std::env::remove_var("CONDA_PREFIX");
-        }
     }
 }

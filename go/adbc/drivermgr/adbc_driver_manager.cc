@@ -309,13 +309,13 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
       paths = InternalAdbcParsePath(env_path);
     }
 
-  #ifdef _WIN32
+#ifdef _WIN32
     const wchar_t* venv_name = L"VIRTUAL_ENV";
     const wchar_t* conda_name = L"CONDA_PREFIX";
-  #else
+#else
     const char* venv_name = "VIRTUAL_ENV";
     const char* conda_name = "CONDA_PREFIX";
-  #endif
+#endif
 
     std::filesystem::path venv = GetEnvAsPath(venv_name);
     if (!venv.empty()) {

@@ -81,9 +81,9 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 ///
 /// If the passed in driver_name does not have an extension and is not an absolute path:
 /// - The load_options parameter will control whether the driver manager will search
-///   the ADBC_CONFIG_PATH environment variable, the user configuration directory, and/or
-///   the system level directory of /etc/adbc for either a manifest file or a shared
-///   library.
+///   the ADBC_CONFIG_PATH, VIRTUAL_ENV and CONDA_PREFIX environment variables, the user
+///   configuration directory, and/or the system level directory of /etc/adbc for either
+///   a manifest file or a shared library.
 /// - For each path to be searched, it will first look for <path>/<driver_name>.toml. If
 ///   that file exists, it will attempt to parse the manifest and load the driver
 ///   specified within it, erroring if this fails.
