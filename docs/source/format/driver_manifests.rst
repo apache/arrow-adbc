@@ -436,7 +436,7 @@ the given order:
    * ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``
    * ``VIRTUAL_ENV`` is used by `venv <https://docs.python.org/3/library/venv.html>`__ and if set
      ``$VIRTUAL_ENV/etc/adbc`` will be searched for ``${name}.toml``
-   * ``CONDA_PREFIX`` is used by `conda <https://anaconda.org/anaconda/conda>`__ and if set then
+   * ``CONDA_PREFIX`` is used by `conda <https://anaconda.org/anaconda/conda>`__ and if set
      ``$CONDA_PREFIX/etc/adbc`` will be searched for ``${name}.toml``
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration directory will be searched
