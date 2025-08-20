@@ -273,8 +273,8 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   return ADBC_STATUS_OK;
 }
 
-std::filesystem::path GetEnvAsPath(const char* env_var) {
 #ifdef _WIN32
+std::filesystem::path GetEnvAsPath(const wchar_t* env_var) {
   size_t required_size;
 
   _wgetenv_s(&required_size, NULL, 0, env_var);
@@ -286,7 +286,9 @@ std::filesystem::path GetEnvAsPath(const char* env_var) {
   path_var.resize(required_size);
   _wgetenv_s(&required_size, path_var.data(), required_size, env_var);
   return std::filesystem::path(path_var);
+}
 #else
+std::filesystem::path GetEnvAsPath(const char* env_var) {
   const char* path = std::getenv(env_var);
   if (path) {
     std::string_view venv(path);
@@ -295,8 +297,8 @@ std::filesystem::path GetEnvAsPath(const char* env_var) {
     }
   }
   return {};
-#endif
 }
+#endif
 
 std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
   std::vector<std::filesystem::path> paths;
@@ -307,12 +309,20 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
       paths = InternalAdbcParsePath(env_path);
     }
 
-    std::filesystem::path venv = GetEnvAsPath("VIRTUAL_ENV");
+  #ifdef _WIN32
+    const wchar_t* venv_name = L"VIRTUAL_ENV";
+    const wchar_t* conda_name = L"CONDA_PREFIX";
+  #else
+    const char* venv_name = "VIRTUAL_ENV";
+    const char* conda_name = "CONDA_PREFIX";
+  #endif
+
+    std::filesystem::path venv = GetEnvAsPath(venv_name);
     if (!venv.empty()) {
       paths.push_back(venv / "etc" / "adbc");
     }
 
-    venv = GetEnvAsPath("CONDA_PREFIX");
+    venv = GetEnvAsPath(conda_name);
     if (!venv.empty()) {
       paths.push_back(venv / "etc" / "adbc");
     }
