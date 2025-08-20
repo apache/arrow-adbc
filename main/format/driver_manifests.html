@@ -600,6 +600,120 @@ by tools that may be written to manage driver installations.</p>
 a string (single path) or a table of platform-specific paths.  The <code class="docutils literal notranslate"><span class="pre">Driver.shared</span></code> key is the only key
 needed to successfully load a driver manifest.  The other keys are optional, but provide useful metadata
 about the driver.</p>
+<section id="platform-tuples">
+<h4>Platform Tuples<a class="headerlink" href="#platform-tuples" title="Link to this heading">¶</a></h4>
+<p>Since the manifests use platform tuples to specify the different systems that
+drivers might be built for, it is important to create a consistent way to name
+these tuples. Specifically, consistent naming for operating system (OS) and
+architecture combinations that can be used by all systems that read and/or write
+manifest files.</p>
+<p>As such, the following table should be considered the authoritative list:</p>
+<div class="table-wrapper docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>OS</p></th>
+<th class="head"><p>Tuple Name</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Linux</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">linux</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>macOS</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">macos</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Windows</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">windows</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>FreeBSD</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">freebsd</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>OpenBSD</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">openbsd</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Architecture</p></th>
+<th class="head"><p>Tuple Name</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>i386</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">x86</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>x86</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">x86</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>x86-64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">amd64</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>x64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">amd64</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>amd64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">amd64</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>arm (32-bit)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">arm</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>armbe (32-bit)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">armbe</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>arm64be</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">arm64be</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>aarch64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">arm64</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>arm64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">arm64</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>s390x</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">s390x</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>ppc</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">powerpc</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>ppc64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">powerpc64</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>ppc64le</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">powerpc64le</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>riscv</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">riscv</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>riscv64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">riscv64</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>sparc</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sparc</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>sparc64</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sparc64</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Wasm (32-bit)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wasm32</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Wasm (64-bit)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wasm64</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The construction of the platform tuple is: <code class="docutils literal notranslate"><span class="pre">&lt;OS&gt;_&lt;Architecture&gt;</span></code>, for example:
+<code class="docutils literal notranslate"><span class="pre">linux_amd64</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For alternative scenarios such as using musl instead of the GNU C Library
+(glibc) or MinGW, the tuple should have the appropriate suffix for that
+environment. i.e. <code class="docutils literal notranslate"><span class="pre">linux_amd64_musl</span></code> or <code class="docutils literal notranslate"><span class="pre">windows_amd64_mingw</span></code>.</p>
+</div>
+</section>
 </section>
 <section id="manifest-location-and-discovery">
 <h3>Manifest Location and Discovery<a class="headerlink" href="#manifest-location-and-discovery" title="Link to this heading">¶</a></h3>
@@ -833,7 +947,10 @@ United States and other countries.
 <li><a class="reference internal" href="#">ADBC Driver Manager and Manifests</a><ul>
 <li><a class="reference internal" href="#directly-loading-a-driver">Directly Loading a Driver</a></li>
 <li><a class="reference internal" href="#driver-manifests">Driver Manifests</a><ul>
-<li><a class="reference internal" href="#manifest-structure">Manifest Structure</a></li>
+<li><a class="reference internal" href="#manifest-structure">Manifest Structure</a><ul>
+<li><a class="reference internal" href="#platform-tuples">Platform Tuples</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#manifest-location-and-discovery">Manifest Location and Discovery</a><ul>
 <li><a class="reference internal" href="#unix-like-platforms">Unix-like Platforms</a></li>
 <li><a class="reference internal" href="#windows">Windows</a></li>
