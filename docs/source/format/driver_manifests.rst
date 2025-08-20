@@ -305,7 +305,7 @@ As such, the following table should be considered the authoritative list:
 +---------------+-----------------+
 | WASM (32-bit) | ``wasm32``      |
 +---------------+-----------------+
-| WASM (64-bit) | ``wasm64``      |
+| Wasm (64-bit) | ``wasm64``      |
 +---------------+-----------------+
 
 The construction of the platform tuple is: ``<OS>_<Architecture>``, for example:
