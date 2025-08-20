@@ -10,10 +10,13 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.15.2" />
-    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="1.3.0" GeneratePathProperty="true" />
+    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="1.3.2" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Apache.Arrow" Version="21.0.0" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.8" />
+  <PackageReference Include="System.Text.Json" Version="8.0.6" />
     <ProjectReference Include="..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
     <ProjectReference Include="..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
     <ProjectReference Include="..\test\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />

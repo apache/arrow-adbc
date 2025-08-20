@@ -61,6 +61,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
     <ProjectReference Include="..\..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
   </ItemGroup>
 </Project>
