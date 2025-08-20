@@ -40,27 +40,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         /// <summary>
-        /// Note: It is critical that the AdbcFile case occurs last. Once the AdbcFile exporter is enabled, it will
-        /// "stick" until the assembly context is unloaded.
+        /// Note: Once an exporter is loaded, it is "sticky". So we can't reliably test the difference between loaded and unloaded
+        /// in a single (or even multiople) test. This just tests the ability to load the file exporter and that it produces at least one file.
         /// </summary>
         /// <param name="exporterName"></param>
         [SkippableTheory]
-        [InlineData(null)]
-        [InlineData(ExportersOptions.Exporters.None)]
         [InlineData(ExportersOptions.Exporters.AdbcFile)]
+        //[InlineData(null)]
+        //[InlineData(ExportersOptions.Exporters.None)]
         public void CanEnableDisableFileTracingExporterViaEnvVariable(string? exporterName)
         {
+            Environment.SetEnvironmentVariable(ExportersOptions.Environment.Exporter, exporterName);
 
             foreach (BigQueryTestEnvironment environment in _environments)
             {
-                Environment.SetEnvironmentVariable(ExportersOptions.Environment.Exporter, exporterName);
-
                 DirectoryInfo directoryInfo = GetTracesDirectoryInfo();
                 ResetTraceDirectory(directoryInfo);
 
                 directoryInfo.Refresh();
                 IEnumerable<FileInfo> files = directoryInfo.EnumerateFiles();
-
                 Assert.Empty(files);
 
                 try
@@ -81,29 +79,33 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                     directoryInfo.Refresh();
                     files = directoryInfo.EnumerateFiles();
-                    if (exporterName == ExportersOptions.Exporters.AdbcFile)
+                    switch (exporterName)
                     {
-                        Assert.NotEmpty(files);
-                    }
-                    else
-                    {
-                        Assert.Empty(files);
+                        case ExportersOptions.Exporters.AdbcFile:
+                            Assert.NotEmpty(files);
+                            break;
+                        default:
+                            Assert.Empty(files);
+                            break;
                     }
                 }
                 finally
                 {
-                    ResetTraceDirectory(directoryInfo);
+                    ResetTraceDirectory(directoryInfo, create: false);
                 }
             }
         }
 
-        private static void ResetTraceDirectory(DirectoryInfo directoryInfo)
+        private static void ResetTraceDirectory(DirectoryInfo directoryInfo, bool create = true)
         {
             if (directoryInfo.Exists)
             {
                 directoryInfo.Delete(recursive: true);
             }
-            directoryInfo.Create();
+            if (create)
+            {
+                directoryInfo.Create();
+            }
         }
 
         private static DirectoryInfo GetTracesDirectoryInfo() =>
