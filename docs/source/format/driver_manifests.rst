@@ -303,7 +303,7 @@ As such, the following table should be considered the authoritative list:
 +---------------+-----------------+
 | sparc64       | ``sparc64``     |
 +---------------+-----------------+
-| WASM (32-bit) | ``wasm32``      |
+| Wasm (32-bit) | ``wasm32``      |
 +---------------+-----------------+
 | Wasm (64-bit) | ``wasm64``      |
 +---------------+-----------------+
