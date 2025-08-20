@@ -59,7 +59,7 @@ type connectionImpl struct {
 	oauthRefreshToken string
 
 	// Database connection
-	db *sql.DB
+	conn *sql.Conn
 
 	// Current autocommit state
 	autocommit bool
@@ -87,7 +87,16 @@ func (c *connectionImpl) connect(ctx context.Context) error {
 		}
 	}
 
-	c.db = db
+	c.conn, err = db.Conn(ctx)
+
+	// Close pool and retain raw connection
+	db.Close()
+	if err != nil {
+		return adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to open connection: %v", err),
+		}
+	}
 	c.autocommit = true // Databricks defaults to autocommit
 
 	return nil
@@ -135,10 +144,13 @@ func (c *connectionImpl) buildConnectionString() string {
 }
 
 func (c *connectionImpl) Close() error {
-	if c.db != nil {
-		return c.db.Close()
+	if c.conn == nil {
+		return adbc.Error{Code: adbc.StatusInvalidState}
 	}
-	return nil
+	defer func() {
+		c.conn = nil
+	}()
+	return c.conn.Close()
 }
 
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
@@ -171,8 +183,8 @@ func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
 
 func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 	// Use the database to execute USE CATALOG
-	if c.db != nil && catalog != "" {
-		_, err := c.db.Exec(fmt.Sprintf("USE CATALOG %s", catalog))
+	if c.conn != nil && catalog != "" {
+		_, err := c.conn.ExecContext(context.TODO(), "USE CATALOG %s", catalog)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
@@ -186,8 +198,8 @@ func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 
 func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 	// Use the database to execute USE SCHEMA
-	if c.db != nil && schema != "" {
-		_, err := c.db.Exec(fmt.Sprintf("USE SCHEMA %s", schema))
+	if c.conn != nil && schema != "" {
+		_, err := c.conn.ExecContext(context.TODO(), "USE SCHEMA %s", schema)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
@@ -253,7 +265,7 @@ func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string)
 		query += fmt.Sprintf(" LIKE '%s'", *catalogFilter)
 	}
 
-	rows, err := c.db.QueryContext(ctx, query)
+	rows, err := c.conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
@@ -283,7 +295,7 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 		query += fmt.Sprintf(" LIKE '%s'", *schemaFilter)
 	}
 
-	rows, err := c.db.QueryContext(ctx, query)
+	rows, err := c.conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
@@ -313,7 +325,7 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 		query += fmt.Sprintf(" LIKE '%s'", *tableFilter)
 	}
 
-	rows, err := c.db.QueryContext(ctx, query)
+	rows, err := c.conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,

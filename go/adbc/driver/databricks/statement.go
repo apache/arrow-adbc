@@ -71,7 +71,7 @@ func (s *statementImpl) Prepare(ctx context.Context) error {
 		}
 	}
 
-	stmt, err := s.conn.db.PrepareContext(ctx, s.query)
+	stmt, err := s.conn.conn.PrepareContext(ctx, s.query)
 	if err != nil {
 		return adbc.Error{
 			Code: adbc.StatusInvalidState,
@@ -91,19 +91,10 @@ func (s *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, i
 		}
 	}
 
-	// Get raw connection to access Arrow batches directly
-	conn, err := s.conn.db.Conn(ctx)
-	if err != nil {
-		return nil, -1, adbc.Error{
-			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("failed to get raw connection: %v", err),
-		}
-	}
-	defer func() { _ = conn.Close() }()
-
 	// Execute query using raw driver interface to get Arrow batches
 	var driverRows driver.Rows
-	err = conn.Raw(func(driverConn interface{}) error {
+	var err error
+	err = s.conn.conn.Raw(func(driverConn interface{}) error {
 		// Use raw driver interface for direct Arrow access
 		if queryerCtx, ok := driverConn.(driver.QueryerContext); ok {
 			// Convert parameters to driver.NamedValue slice
@@ -158,7 +149,7 @@ func (s *statementImpl) ExecuteUpdate(ctx context.Context) (int64, error) {
 	if s.prepared != nil {
 		result, err = s.prepared.ExecContext(ctx, s.parameters...)
 	} else if s.query != "" {
-		result, err = s.conn.db.ExecContext(ctx, s.query, s.parameters...)
+		result, err = s.conn.conn.ExecContext(ctx, s.query, s.parameters...)
 	} else {
 		return -1, adbc.Error{
 			Code: adbc.StatusInvalidState,
