@@ -43,7 +43,8 @@ type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
 	// Connection Pool
-	db *sql.DB
+	db           *sql.DB
+	needsRefresh bool // Whether we need to re-initialize
 
 	// Connection parameters
 	serverHostname string
@@ -193,7 +194,7 @@ func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
 	return opts, nil
 }
 
-func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+func (d *databaseImpl) initializeConnectionPool(ctx context.Context) (*sql.DB, error) {
 	opts, err := d.resolveConnectionOptions()
 
 	if err != nil {
@@ -217,8 +218,28 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		}
 	}
 
-	d.db = db
-	c, err := db.Conn(ctx)
+	return db, nil
+}
+
+func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+	// Re-initialize the connection pool and settings if anything
+	// has changed, or we have not initialized yet
+	if d.needsRefresh || d.db == nil {
+		db, err := d.initializeConnectionPool(ctx)
+
+		if err != nil {
+			return nil, err
+		}
+
+		// Close the existing connection pool
+		if d.db != nil {
+			d.db.Close()
+		}
+
+		d.db = db
+	}
+
+	c, err := d.db.Conn(ctx)
 
 	if err != nil {
 		return nil, err
@@ -240,8 +261,11 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 }
 
 func (d *databaseImpl) Close() error {
-	d.db.Close()
-	return nil
+	defer func() {
+		d.needsRefresh = true
+		d.db = nil
+	}()
+	return d.db.Close()
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -294,6 +318,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 }
 
 func (d *databaseImpl) SetOptions(options map[string]string) error {
+	// We need to re-initialize the db/connection pool if options change
+	d.needsRefresh = true
 	for k, v := range options {
 		err := d.SetOption(k, v)
 		if err != nil {
@@ -304,6 +330,8 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 }
 
 func (d *databaseImpl) SetOption(key, value string) error {
+	// We need to re-initialize the db/connection pool if options change
+	d.needsRefresh = true
 	switch key {
 	case OptionServerHostname:
 		d.serverHostname = value
