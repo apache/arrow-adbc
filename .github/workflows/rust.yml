@@ -160,10 +160,16 @@ jobs:
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy
-        if: ${{ ! matrix.minimal-versions }}
+        if: runner.os != 'Linux' && ! matrix.minimal-versions
         working-directory: rust
         run: |
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
+      - name: Clippy (nightly)
+        if: runner.os == 'Linux' && ! matrix.minimal-versions
+        working-directory: rust
+        run: |
+          rustup toolchain install nightly --component clippy
+          cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)'
       - name: Test
         working-directory: rust
         # TODO: enable snowflake tests on windows
