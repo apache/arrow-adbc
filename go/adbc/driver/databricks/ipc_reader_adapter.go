@@ -38,7 +38,9 @@ type ipcReaderAdapter struct {
 	ipcIterator   dbsqlrows.ArrowIPCStreamIterator
 	currentReader *ipc.Reader
 	currentRecord arrow.Record
+	schema        *arrow.Schema
 	closed        bool
+	refCount      int64
 }
 
 // newIPCReaderAdapter creates a RecordReader using direct IPC stream access
@@ -56,6 +58,7 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 	}
 
 	adapter := &ipcReaderAdapter{
+		refCount:    1,
 		ipcIterator: ipcIterator,
 	}
 
@@ -93,15 +96,18 @@ func (r *ipcReaderAdapter) loadNextReader() error {
 	}
 
 	r.currentReader = reader
+
+	// Cache schema from first reader
+	if r.schema == nil {
+		r.schema = reader.Schema()
+	}
+
 	return nil
 }
 
 // Implement array.RecordReader interface
 func (r *ipcReaderAdapter) Schema() *arrow.Schema {
-	if r.currentReader != nil {
-		return r.currentReader.Schema()
-	}
-	return nil
+	return r.schema
 }
 
 func (r *ipcReaderAdapter) Next() bool {
@@ -143,7 +149,8 @@ func (r *ipcReaderAdapter) Record() arrow.Record {
 }
 
 func (r *ipcReaderAdapter) Release() {
-	if !r.closed {
+	r.refCount -= 1
+	if !r.closed && r.refCount <= 0 {
 		r.closed = true
 
 		if r.currentRecord != nil {
@@ -156,12 +163,16 @@ func (r *ipcReaderAdapter) Release() {
 			r.currentReader = nil
 		}
 
+		if r.schema != nil {
+			r.schema = nil
+		}
+
 		r.ipcIterator.Close()
 	}
 }
 
 func (r *ipcReaderAdapter) Retain() {
-	// RecordReader doesn't typically implement reference counting
+	r.refCount += 1
 }
 
 func (r *ipcReaderAdapter) Err() error {
