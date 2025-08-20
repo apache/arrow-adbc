@@ -21,8 +21,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
@@ -35,112 +33,15 @@ import (
 type connectionImpl struct {
 	driverbase.ConnectionImplBase
 
-	// Connection parameters
-	serverHostname string
-	httpPath       string
-	accessToken    string
-	port           string
-	catalog        string
-	dbSchema       string
-
-	// Query options
-	queryTimeout        time.Duration
-	maxRows             int64
-	queryRetryCount     int
-	downloadThreadCount int
-
-	// TLS/SSL options
-	sslMode     string
-	sslRootCert string
-
-	// OAuth options
-	oauthClientID     string
-	oauthClientSecret string
-	oauthRefreshToken string
+	// Connection settings
+	catalog  string
+	dbSchema string
 
 	// Database connection
 	conn *sql.Conn
 
 	// Current autocommit state
 	autocommit bool
-}
-
-func (c *connectionImpl) connect(ctx context.Context) error {
-	// Build connection string
-	dsn := c.buildConnectionString()
-
-	// Open connection using databricks-sql-go
-	db, err := sql.Open("databricks", dsn)
-	if err != nil {
-		return adbc.Error{
-			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("failed to open connection: %v", err),
-		}
-	}
-
-	// Test the connection
-	if err := db.PingContext(ctx); err != nil {
-		_ = db.Close() // Ignore error on cleanup
-		return adbc.Error{
-			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("failed to ping database: %v", err),
-		}
-	}
-
-	c.conn, err = db.Conn(ctx)
-
-	// Close pool and retain raw connection
-	db.Close()
-	if err != nil {
-		return adbc.Error{
-			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("failed to open connection: %v", err),
-		}
-	}
-	c.autocommit = true // Databricks defaults to autocommit
-
-	return nil
-}
-
-func (c *connectionImpl) buildConnectionString() string {
-	// DSN format: token:access_token@hostname:port/httpPath?params
-
-	// Get port or use default
-	port := c.port
-	if port == "" {
-		port = "443" // Default HTTPS port for Databricks
-	}
-
-	// Build base DSN
-	dsn := fmt.Sprintf("token:%s@%s:%s%s", c.accessToken, c.serverHostname, port, c.httpPath)
-
-	// Build query parameters
-	var params []string
-
-	if c.catalog != "" {
-		params = append(params, fmt.Sprintf("catalog=%s", c.catalog))
-	}
-	if c.dbSchema != "" {
-		params = append(params, fmt.Sprintf("schema=%s", c.dbSchema))
-	}
-	if c.queryTimeout > 0 {
-		// Convert duration to seconds for databricks-sql-go
-		timeoutSeconds := int(c.queryTimeout.Seconds())
-		params = append(params, fmt.Sprintf("timeout=%d", timeoutSeconds))
-	}
-	if c.maxRows > 0 {
-		params = append(params, fmt.Sprintf("maxRows=%d", c.maxRows))
-	}
-	if c.downloadThreadCount > 0 {
-		params = append(params, fmt.Sprintf("maxDownloadThreads=%d", c.downloadThreadCount))
-	}
-
-	// Add parameters to DSN if any
-	if len(params) > 0 {
-		dsn += "?" + strings.Join(params, "&")
-	}
-
-	return dsn
 }
 
 func (c *connectionImpl) Close() error {
