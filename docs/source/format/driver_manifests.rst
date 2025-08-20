@@ -242,10 +242,11 @@ about the driver.
 Platform Tuples
 ^^^^^^^^^^^^^^^
 
-Since the manifests use platform tuples to specify the different systems
-that drivers might be built for, it is important to create a consistent way to name
-these tuples. Specifically, consistent naming for operating system (OS) and architecture combinations
-that can be used by all systems that read and/or write manifest files.
+Since the manifests use platform tuples to specify the different systems that
+drivers might be built for, it is important to create a consistent way to name
+these tuples. Specifically, consistent naming for operating system (OS) and
+architecture combinations that can be used by all systems that read and/or write
+manifest files.
 
 As such, the following table should be considered the authoritative list:
 
@@ -284,12 +285,13 @@ As such, the following table should be considered the authoritative list:
 | WASM (64-bit) | wasm64        |
 +---------------+---------------+
 
-The construction of the platform tuple is: ``<OS>_<Architecture>``, for example: ``linux_amd64``.
+The construction of the platform tuple is: ``<OS>_<Architecture>``, for example:
+``linux_amd64``.
 
 .. note::
-   For alternative scenarios such as using musl instead of the GNU C Library (glibc) or MinGW, the tuple should
-   have the appropriate suffix for that environment. i.e. ``linux_amd64_musl`` or
-   ``windows_amd64_mingw``.
+   For alternative scenarios such as using musl instead of the GNU C Library
+   (glibc) or MinGW, the tuple should have the appropriate suffix for that
+   environment. i.e. ``linux_amd64_musl`` or ``windows_amd64_mingw``.
 
 Manifest Location and Discovery
 -------------------------------
