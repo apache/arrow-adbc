@@ -342,31 +342,22 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName, Activity? activity)
         {
-            try
+            // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
+            // are internal. (TODO: consider changing Arrow).
+            activity?.AddConditionalBigQueryTag("read_stream", streamName, BigQueryUtils.IsSafeToTrace());
+            BigQueryReadClient.ReadRowsStream readRowsStream = client.ReadRows(new ReadRowsRequest { ReadStream = streamName });
+            IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
+
+            ReadRowsStream stream = new ReadRowsStream(enumerator);
+            activity?.AddBigQueryTag("read_stream.has_rows", stream.HasRows);
+
+            if (stream.HasRows)
             {
-                // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
-                // are internal. (TODO: consider changing Arrow).
-                activity?.AddConditionalBigQueryTag("read_stream", streamName, BigQueryUtils.IsSafeToTrace());
-                BigQueryReadClient.ReadRowsStream readRowsStream = client.ReadRows(new ReadRowsRequest { ReadStream = streamName });
-                IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
-
-                ReadRowsStream stream = new ReadRowsStream(enumerator);
-                activity?.AddBigQueryTag("read_stream.has_rows", stream.HasRows);
-
-                if (stream.HasRows)
-                {
-                    return new ArrowStreamReader(stream);
-                }
-                else
-                {
-                    return null;
-                }
+                return new ArrowStreamReader(stream);
             }
-            catch (Exception ex)
+            else
             {
-                activity?.AddException(ex);
-
-                return null; // If there is an error reading the stream, return null to indicate no data.
+                return null;
             }
         }
 
@@ -613,17 +604,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response)
             {
-                if (response.MoveNextAsync().Result)
+                if (response.MoveNextAsync().Result && response.Current != null)
                 {
-                    if (response.Current != null)
-                    {
-                        this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
-                        this.hasRows = true;
-                    }
-                    else
-                    {
-                        this.hasRows = false;
-                    }
+                    this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
+                    this.hasRows = true;
                 }
                 else
                 {
