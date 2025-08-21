@@ -33,7 +33,7 @@
 
   <properties>
     <maven.deploy.skip>true</maven.deploy.skip>
-    <dep.mssql-jdbc.version>13.1.1.jre11-preview</dep.mssql-jdbc.version>
+    <dep.mssql-jdbc.version>13.2.0.jre11</dep.mssql-jdbc.version>
   </properties>
 
   <dependencies>

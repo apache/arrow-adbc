@@ -581,7 +581,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			}
 		}
 		authOptions = append(authOptions, option.WithTokenSource(c))
-	case OptionValueAuthTypeAppDefaultCredentials, "":
+	case OptionValueAuthTypeAppDefaultCredentials, OptionValueAuthTypeDefault, "":
 		// Use Application Default Credentials (default behavior)
 		// No additional options needed - ADC is used by default
 	default:
