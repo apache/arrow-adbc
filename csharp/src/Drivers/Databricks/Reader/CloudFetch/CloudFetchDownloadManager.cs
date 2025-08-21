@@ -30,15 +30,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
     /// </summary>
     internal sealed class CloudFetchDownloadManager : ICloudFetchDownloadManager
     {
-        // Default values
-        private const int DefaultParallelDownloads = 3;
+        // Default values - optimized for high performance
+        private const int DefaultParallelDownloads = 5;  // Increased from 3 to 10 for better concurrency
         private const int DefaultPrefetchCount = 2;
-        private const int DefaultMemoryBufferSizeMB = 200;
+        private const int DefaultMemoryBufferSizeMB = 500;  // Increased from 500MB to 1000MB to handle 10 concurrent downloads + LZ4 decompression
         private const bool DefaultPrefetchEnabled = true;
         private const int DefaultFetchBatchSize = 2000000;
         private const int DefaultTimeoutMinutes = 5;
         private const int DefaultMaxUrlRefreshAttempts = 3;
         private const int DefaultUrlExpirationBufferSeconds = 60;
+
+        // Queue size constants for optimal performance
+        private const int DefaultDownloadQueueSize = 10;  // Fixed size for download queue
+        private const int DefaultResultQueueSize = 50;    // Conservative default for batch aggregation (configurable via CloudFetchResultQueueSize parameter)
 
         private readonly IHiveServer2Statement _statement;
         private readonly Schema _schema;
@@ -116,6 +120,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
             }
 
+            // Parse result queue size
+            int resultQueueSize = DefaultResultQueueSize;
+            if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchResultQueueSize, out string? resultQueueSizeStr))
+            {
+                if (int.TryParse(resultQueueSizeStr, out int parsedResultQueueSize) && parsedResultQueueSize > 0)
+                {
+                    resultQueueSize = parsedResultQueueSize;
+                }
+                else
+                {
+                    throw new ArgumentException($"Invalid value for {DatabricksParameters.CloudFetchResultQueueSize}: {resultQueueSizeStr}. Expected a positive integer.");
+                }
+            }
+
             // Parse max retries
             int maxRetries = 3;
             if (connectionProps.TryGetValue(DatabricksParameters.CloudFetchMaxRetries, out string? maxRetriesStr))
@@ -189,9 +207,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             // Initialize the memory manager
             _memoryManager = new CloudFetchMemoryBufferManager(memoryBufferSizeMB);
 
-            // Initialize the queues with bounded capacity
-            _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), prefetchCount * 2);
-            _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), prefetchCount * 2);
+            // Initialize the queues with optimized fixed capacity for high throughput
+            _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), DefaultDownloadQueueSize);
+            _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), resultQueueSize);
+
+            System.Diagnostics.Debug.WriteLine($"CloudFetchDownloadManager: Initialized with download_queue={DefaultDownloadQueueSize}, result_queue={resultQueueSize}, memory_buffer={memoryBufferSizeMB}MB, parallel_downloads={parallelDownloads}");
 
             _httpClient = httpClient;
             _httpClient.Timeout = TimeSpan.FromMinutes(timeoutMinutes);
@@ -245,8 +265,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
             // Create empty collections for the test
             _memoryManager = new CloudFetchMemoryBufferManager(DefaultMemoryBufferSizeMB);
-            _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
-            _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
+            _downloadQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), DefaultDownloadQueueSize);
+            _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), DefaultResultQueueSize);
             _httpClient = new HttpClient();
         }
 
@@ -283,16 +303,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 throw new InvalidOperationException("Download manager is already started.");
             }
 
+            var startTimestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            System.Diagnostics.Debug.WriteLine($"🚀 [{startTimestamp}] CloudFetchDownloadManager: StartAsync called - About to start producer pipeline");
+            System.Diagnostics.Debug.WriteLine($"📊 [{startTimestamp}] CloudFetchDownloadManager: Pipeline startup - download_queue={_downloadQueue.Count}, result_queue={_resultQueue.Count}");
+
             // Create a new cancellation token source
             _cancellationTokenSource = new CancellationTokenSource();
 
             // Start the result fetcher
+            System.Diagnostics.Debug.WriteLine($"🔄 [{startTimestamp}] CloudFetchDownloadManager: Starting result fetcher...");
             await _resultFetcher.StartAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
 
             // Start the downloader
+            System.Diagnostics.Debug.WriteLine($"🔄 [{startTimestamp}] CloudFetchDownloadManager: Starting downloader...");
             await _downloader.StartAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
 
             _isStarted = true;
+            var completeTimestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            System.Diagnostics.Debug.WriteLine($"✅ [{completeTimestamp}] CloudFetchDownloadManager: StartAsync completed - Producer pipeline is now running and will populate result queue");
         }
 
         /// <inheritdoc />

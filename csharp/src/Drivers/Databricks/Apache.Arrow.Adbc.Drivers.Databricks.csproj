@@ -16,5 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Apache\Apache.Arrow.Adbc.Drivers.Apache.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Traces\Exporters\Apache.Arrow.Adbc.Telemetry.Traces.Exporters.csproj" />
   </ItemGroup>
 </Project>

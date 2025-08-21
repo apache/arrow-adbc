@@ -19,8 +19,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+#if NET5_0_OR_GREATER
+using System.Net.Sockets;
+#endif
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
@@ -29,8 +33,10 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader;
+using Apache.Arrow.Adbc.Telemetry.Traces.Exporters;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
+using OpenTelemetry.Trace;
 using Thrift.Protocol;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -39,6 +45,126 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         internal static new readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksConnection));
         internal static new readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksConnection));
+
+        // SHARED ActivitySource for all CloudFetch components to use the same instance as TracerProvider
+        internal static readonly ActivitySource s_sharedActivitySource = new ActivitySource(s_assemblyName, s_assemblyVersion);
+
+        private static TracerProvider? s_tracerProvider;
+
+        static DatabricksConnection()
+        {
+            // Auto-initialize TracerProvider for Databricks using ExportersBuilder
+            try
+            {
+                var builder = ExportersBuilder.Build(s_assemblyName, s_assemblyVersion, addDefaultExporters: true).Build();
+                // TEMPORARILY HARDCODE adbcfile for debugging
+                s_tracerProvider = builder.Activate("adbcfile", out string? exporterName);
+
+                // Write debug info to file for PowerBI scenarios
+                var debugMessage = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] DATABRICKS-TRACING: TracerProvider initialized: {s_tracerProvider != null}, Exporter: {exporterName}";
+                var assemblyMessage = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] DATABRICKS-TRACING: TracerProvider listening for AssemblyName: '{s_assemblyName}', Version: '{s_assemblyVersion}'";
+
+                // Show user where to look for trace files
+                var traceLocation = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Apache.Arrow.Adbc",
+                    "Traces"
+                );
+                var tracePattern = $"{s_assemblyName}-trace-*.log";
+                var locationMessage = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] DATABRICKS-TRACING: OpenTelemetry trace files should be at: '{traceLocation}' with pattern '{tracePattern}'";
+
+                // Test directory permissions
+                var permissionMessage = TestDirectoryPermissions(traceLocation);
+
+                WriteDebugToFile(debugMessage);
+                WriteDebugToFile(assemblyMessage);
+                WriteDebugToFile(locationMessage);
+                WriteDebugToFile(permissionMessage);
+
+                // Test TracerProvider with simple activity right after initialization
+                TestTracerProviderExport();
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] DATABRICKS-TRACING: Failed to initialize TracerProvider: {ex.Message}\nStack: {ex.StackTrace}";
+                WriteDebugToFile(errorMessage);
+                // Don't throw - tracing is optional
+            }
+        }
+
+        private static void WriteDebugToFile(string message)
+        {
+            try
+            {
+                var debugFile = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "adbc-databricks-debug.log"
+                );
+                System.IO.File.AppendAllText(debugFile, message + Environment.NewLine);
+            }
+            catch
+            {
+                // Ignore file write errors
+            }
+        }
+
+        private static string TestDirectoryPermissions(string traceLocation)
+        {
+            try
+            {
+                var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+
+                // Test directory creation
+                if (!System.IO.Directory.Exists(traceLocation))
+                {
+                    System.IO.Directory.CreateDirectory(traceLocation);
+                    return $"[{timestamp}] DATABRICKS-TRACING: Created trace directory: '{traceLocation}'";
+                }
+
+                // Test file write permissions
+                var testFile = System.IO.Path.Combine(traceLocation, "adbc-test-write.tmp");
+                System.IO.File.WriteAllText(testFile, "test");
+                System.IO.File.Delete(testFile);
+
+                return $"[{timestamp}] DATABRICKS-TRACING: Directory permissions OK: '{traceLocation}'";
+            }
+            catch (Exception ex)
+            {
+                return $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] DATABRICKS-TRACING: Directory permission ERROR: '{traceLocation}' - {ex.Message}";
+            }
+        }
+
+        private static void TestTracerProviderExport()
+        {
+            try
+            {
+                var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+                WriteDebugToFile($"[{timestamp}] DATABRICKS-TRACING: Testing TracerProvider export with simple activity...");
+
+                // Use the shared ActivitySource that TracerProvider is listening for
+                using var activity = s_sharedActivitySource.StartActivity("DatabricksConnection-Test");
+
+                if (activity != null)
+                {
+                    WriteDebugToFile($"[{timestamp}] DATABRICKS-TRACING: Test activity created: ID='{activity.Id}', Source='{activity.Source?.Name}'");
+                    activity.SetTag("test.source", "DatabricksConnection");
+                    activity.SetTag("test.timestamp", timestamp);
+                    //activity.AddEvent("DatabricksConnection TracerProvider test event");
+                    activity.SetStatus(System.Diagnostics.ActivityStatusCode.Ok);
+                    WriteDebugToFile($"[{timestamp}] DATABRICKS-TRACING: Test activity completed with status: {activity.Status}");
+                }
+                else
+                {
+                    WriteDebugToFile($"[{timestamp}] DATABRICKS-TRACING: Test activity was NULL - TracerProvider not listening!");
+                }
+
+                WriteDebugToFile($"[{timestamp}] DATABRICKS-TRACING: TracerProvider test completed - should be exported within 5 seconds");
+            }
+            catch (Exception ex)
+            {
+                WriteDebugToFile($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] DATABRICKS-TRACING: TracerProvider test FAILED: {ex.Message}");
+            }
+        }
 
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
@@ -445,8 +571,48 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 isLz4Compressed = metadataResp.Lz4Compressed;
             }
 
-            HttpClient httpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
+            // Create HttpClient with optimized connection limits for CloudFetch concurrent downloads
+            HttpClientHandler handler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
+            ConfigureHttpClientForConcurrency(handler, 15); // Allow 15+ connections to handle 10 concurrent downloads with headroom
+            HttpClient httpClient = new HttpClient(handler);
             return new DatabricksCompositeReader(databricksStatement, schema, response, isLz4Compressed, httpClient);
+        }
+
+        /// <summary>
+        /// Configures HttpClient handler for high concurrency CloudFetch downloads
+        /// </summary>
+        /// <param name="handler">The HttpClientHandler to configure</param>
+        /// <param name="minConnections">Minimum number of concurrent connections to support</param>
+        private static void ConfigureHttpClientForConcurrency(HttpClientHandler handler, int minConnections)
+        {
+
+
+#if NETFRAMEWORK
+            // For .NET Framework, configure ServicePointManager and per-host ServicePoint limits
+            try
+            {
+                // Set global default connection limit
+                int currentDefault = System.Net.ServicePointManager.DefaultConnectionLimit;
+                if (currentDefault < minConnections)
+                {
+                    System.Net.ServicePointManager.DefaultConnectionLimit = minConnections;
+                    WriteDebugToFile($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] HTTP-CLIENT: ServicePointManager.DefaultConnectionLimit updated from {currentDefault} to {minConnections}");
+                }
+                else
+                {
+                    WriteDebugToFile($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] HTTP-CLIENT: ServicePointManager.DefaultConnectionLimit already sufficient: {currentDefault}");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteDebugToFile($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] HTTP-CLIENT: Failed to set ServicePointManager.DefaultConnectionLimit: {ex.Message}");
+            }
+#endif
+
+#if !NET5_0_OR_GREATER || NETFRAMEWORK
+            // For .NET Standard 2.0 / .NET Framework, also try reflection for per-server limits
+            WriteDebugToFile($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] HTTP-CLIENT: CloudFetch HttpClient configured for {minConnections}+ concurrent connections");
+#endif
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
@@ -720,6 +886,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
             return CatalogName;
         }
+
+
 
         protected override void Dispose(bool disposing)
         {

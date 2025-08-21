@@ -87,6 +87,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             if (FileExporter.TryCreate(options, out FileExporter? fileExporter))
             {
                 // Only add a new processor if there isn't already one listening for the source/location.
+                // Use default BatchActivityExportProcessor for now - focus on diagnosing TracerProvider listener issue first
                 return builder.AddProcessor(_ => new BatchActivityExportProcessor(fileExporter!));
             }
             return builder;
@@ -129,6 +130,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             if (FileExporter.TryCreate(fileBaseName, traceLocation, maxTraceFileSizeKb.Value, maxTraceFiles.Value, out FileExporter? fileExporter))
             {
                 // Only add a new processor if there isn't already one listening for the source/location.
+                // Use default BatchActivityExportProcessor for now - focus on diagnosing TracerProvider listener issue first
                 return builder.AddProcessor(_ => new BatchActivityExportProcessor(fileExporter!));
             }
             return builder;
