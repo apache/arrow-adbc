@@ -294,6 +294,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         internal bool EnableDirectResults => _enableDirectResults;
 
+        /// <inheritdoc/>
+        protected internal override bool TrySetGetDirectResults(IRequest request)
+        {
+            if (EnableDirectResults)
+            {
+                return base.TrySetGetDirectResults(request);
+            }
+            return false;
+        }
+
         /// <summary>
         /// Gets whether CloudFetch is enabled.
         /// </summary>
