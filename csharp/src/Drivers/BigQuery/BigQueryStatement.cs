@@ -605,9 +605,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response)
             {
-                if (!response.MoveNextAsync().Result) { }
-
-                if (response.Current != null)
+                if (response.MoveNextAsync().Result && response.Current != null)
                 {
                     this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
                     this.hasRows = true;
