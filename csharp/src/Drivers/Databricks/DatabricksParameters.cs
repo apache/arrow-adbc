@@ -109,7 +109,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Maximum number of parallel downloads for CloudFetch operations.
-        /// Default value is 3 if not specified.
+        /// Default value is 10 if not specified.
         /// </summary>
         public const string CloudFetchParallelDownloads = "adbc.databricks.cloudfetch.parallel_downloads";
 
@@ -121,9 +121,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Maximum memory buffer size in MB for CloudFetch prefetched files.
-        /// Default value is 200MB if not specified.
+        /// Default value is 1000MB if not specified.
         /// </summary>
         public const string CloudFetchMemoryBufferSize = "adbc.databricks.cloudfetch.memory_buffer_size_mb";
+
+        /// <summary>
+        /// CloudFetch result queue size - number of downloaded files that can be queued while waiting for batch aggregation.
+        /// Default value is 75 if not specified.
+        /// Increase if downstream processing is slow (e.g., PowerBI), decrease to save memory.
+        /// Queue items are removed immediately when consumed for batch building, not held until full batch completion.
+        /// </summary>
+        public const string CloudFetchResultQueueSize = "adbc.databricks.cloudfetch.result_queue_size";
 
         /// <summary>
         /// Whether CloudFetch prefetch functionality is enabled.

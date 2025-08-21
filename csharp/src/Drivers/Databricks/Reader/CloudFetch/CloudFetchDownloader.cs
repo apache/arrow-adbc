@@ -22,6 +22,8 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
+using Apache.Arrow.Adbc.Drivers.Databricks;
 using K4os.Compression.LZ4.Streams;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
@@ -48,6 +50,33 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private bool _isCompleted;
         private Exception? _error;
         private readonly object _errorLock = new object();
+
+        // Instance tracking for debugging
+        private static int s_instanceCounter = 0;
+        private readonly int _instanceId;
+
+        #region Debug Helpers
+
+        private void WriteCloudFetchDebug(string message)
+        {
+            try
+            {
+
+                var debugFile = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "adbc-cloudfetch-debug.log"
+                );
+                var timestamped = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] [INSTANCE-{_instanceId}] {message}";
+                System.IO.File.AppendAllText(debugFile, timestamped + Environment.NewLine);
+
+            }
+            catch
+            {
+                // Ignore file write errors
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloader"/> class.
@@ -89,6 +118,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             _urlExpirationBufferSeconds = urlExpirationBufferSeconds > 0 ? urlExpirationBufferSeconds : throw new ArgumentOutOfRangeException(nameof(urlExpirationBufferSeconds));
             _downloadSemaphore = new SemaphoreSlim(_maxParallelDownloads, _maxParallelDownloads);
             _isCompleted = false;
+
+            // Initialize instance tracking
+            _instanceId = System.Threading.Interlocked.Increment(ref s_instanceCounter);
+
+            WriteCloudFetchDebug($"CloudFetchDownloader constructor: Instance #{_instanceId} initialized with {_maxParallelDownloads} parallel downloads");
+            WriteCloudFetchDebug($"CloudFetchDownloader constructor: Instance #{_instanceId} - Semaphore created with initial={_maxParallelDownloads}, max={_maxParallelDownloads}, current_available={_downloadSemaphore.CurrentCount}");
         }
 
         /// <inheritdoc />
@@ -148,6 +183,32 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <inheritdoc />
         public async Task<IDownloadResult?> GetNextDownloadedFileAsync(CancellationToken cancellationToken)
         {
+            var queueCountBefore = _resultQueue.Count;
+            var takeTimestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            WriteCloudFetchDebug($"🔄 [{takeTimestamp}] [INSTANCE-{_instanceId}] CloudFetchDownloader.GetNextDownloadedFileAsync called - queue_count_before_take={queueCountBefore}, queue_capacity={_resultQueue.BoundedCapacity}");
+
+            // CRITICAL DEBUGGING: Check producer status when consumer is waiting
+            WriteCloudFetchDebug($"🕵️ [INSTANCE-{_instanceId}] PRODUCER DEBUG - download_queue_count={_downloadQueue.Count}, download_queue_completed={_downloadQueue.IsCompleted}");
+            WriteCloudFetchDebug($"🕵️ [INSTANCE-{_instanceId}] PRODUCER DEBUG - result_queue_count={_resultQueue.Count}, result_queue_completed={_resultQueue.IsCompleted}");
+            WriteCloudFetchDebug($"🕵️ [INSTANCE-{_instanceId}] PRODUCER DEBUG - downloader_completed={_isCompleted}, has_error={HasError}");
+            if (HasError && _error != null)
+            {
+                WriteCloudFetchDebug($"🕵️ [INSTANCE-{_instanceId}] PRODUCER DEBUG - error_message={_error.Message}");
+            }
+
+            // LIFECYCLE ANALYSIS: Diagnose completion state
+            if (_isCompleted && _resultQueue.Count == 0)
+            {
+                if (_resultQueue.IsCompleted)
+                {
+                    WriteCloudFetchDebug($"✅ [INSTANCE-{_instanceId}] LIFECYCLE: Downloader completed AND result queue completed - future calls should return null immediately");
+                }
+                else
+                {
+                    WriteCloudFetchDebug($"🚨 [INSTANCE-{_instanceId}] LIFECYCLE BUG: Downloader completed BUT result queue NOT completed - this causes hangs!");
+                }
+            }
+
             try
             {
                 // Check if there's an error before trying to take from the queue
@@ -156,37 +217,74 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     throw new AdbcException("Error in download process", _error ?? new Exception("Unknown error"));
                 }
 
-                // Try to take the next result from the queue
+                var takeStartTimestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                WriteCloudFetchDebug($"📤 [{takeStartTimestamp}] [INSTANCE-{_instanceId}] CloudFetchDownloader: About to TAKE item from result queue - queue_count={_resultQueue.Count}, queue_completed={_resultQueue.IsCompleted}");
+
+                if (_resultQueue.Count == 0)
+                {
+                    WriteCloudFetchDebug($"⏳ [{takeStartTimestamp}] [INSTANCE-{_instanceId}] *** CONSUMER BLOCKING: Queue is empty - Take() will wait until producer adds items ***");
+                    WriteCloudFetchDebug($"💭 [INSTANCE-{_instanceId}] CONSUMER BLOCKING ANALYSIS:");
+                    WriteCloudFetchDebug($"   📥 Download Queue: count={_downloadQueue.Count}, completed={_downloadQueue.IsCompleted}");
+                    WriteCloudFetchDebug($"   📤 Result Queue: count={_resultQueue.Count}, completed={_resultQueue.IsCompleted}");
+                    WriteCloudFetchDebug($"   📊 Downloader: completed={_isCompleted}, has_error={HasError}");
+                    WriteCloudFetchDebug($"   🔧 Semaphore: available={_downloadSemaphore.CurrentCount}, max={_maxParallelDownloads}");
+
+                    if (_downloadQueue.IsCompleted && _resultQueue.Count == 0 && !_resultQueue.IsCompleted)
+                    {
+                        WriteCloudFetchDebug($"🚨 [INSTANCE-{_instanceId}] POTENTIAL DEADLOCK: Download queue completed but result queue not completed and empty!");
+                        WriteCloudFetchDebug($"🚨 [INSTANCE-{_instanceId}] This suggests EndOfResultsGuard was never added to result queue!");
+                    }
+                }
+
+                // Try to take the next result from the queue - THIS IS WHERE ITEMS ARE REMOVED FROM QUEUE
                 IDownloadResult result = await Task.Run(() => _resultQueue.Take(cancellationToken), cancellationToken);
+
+                var queueCountAfter = _resultQueue.Count;
+                var takeCompleteTimestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                WriteCloudFetchDebug($"✅ [{takeCompleteTimestamp}] [INSTANCE-{_instanceId}] CloudFetchDownloader: ITEM SUCCESSFULLY TAKEN from result queue - queue_before={queueCountBefore}, queue_after={queueCountAfter}, items_removed={(queueCountBefore - queueCountAfter)}, size={result.Size}");
+
+                if (queueCountBefore == 0)
+                {
+                    WriteCloudFetchDebug($"🎯 [{takeCompleteTimestamp}] [INSTANCE-{_instanceId}] *** CONSUMER UNBLOCKED: Producer added item to empty queue - consumer can now proceed ***");
+                }
 
                 // Check if this is the end of results guard
                 if (result == EndOfResultsGuard.Instance)
                 {
                     _isCompleted = true;
+                    WriteCloudFetchDebug("CloudFetchDownloader GetNext: ⚪ EndOfResultsGuard.Instance encountered - signaling end of results to CloudFetchReader");
+                    WriteCloudFetchDebug("CloudFetchDownloader GetNext: ⚪ CloudFetchReader will now return any accumulated batch buffer as final aggregated batch");
+
+                    // CRITICAL FIX: Mark result queue as completed so subsequent calls return immediately
+                    WriteCloudFetchDebug("CloudFetchDownloader GetNext: 🔒 Marking result queue as COMPLETED - future calls will return null immediately");
+                    _resultQueue.CompleteAdding();
+
                     return null;
                 }
 
+                WriteCloudFetchDebug($"🎯 CloudFetchDownloader: Returning item to CloudFetchReader for BATCH BUILDING - size={result.Size}, queue_remaining={_resultQueue.Count}");
+                WriteCloudFetchDebug($"📊 CloudFetchDownloader: *** PROOF: Item was REMOVED from result queue IMMEDIATELY when consumed for batch aggregation ***");
                 return result;
             }
             catch (OperationCanceledException)
             {
-                // Cancellation was requested
+                WriteCloudFetchDebug("CloudFetchDownloader GetNext: Operation cancelled");
                 return null;
             }
             catch (InvalidOperationException) when (_resultQueue.IsCompleted)
             {
-                // Queue is completed and empty
                 _isCompleted = true;
+                WriteCloudFetchDebug("CloudFetchDownloader GetNext: ✅ Queue completed and empty - no more results available");
                 return null;
             }
             catch (AdbcException)
             {
-                // Re-throw AdbcExceptions (these are our own errors)
+                WriteCloudFetchDebug("CloudFetchDownloader GetNext: ADBC error occurred");
                 throw;
             }
             catch (Exception ex)
             {
-                // If there's an error, set the error state and propagate it
+                WriteCloudFetchDebug($"CloudFetchDownloader GetNext: Exception - {ex.Message}");
                 SetError(ex);
                 throw;
             }
@@ -195,6 +293,31 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private async Task DownloadFilesAsync(CancellationToken cancellationToken)
         {
             await Task.Yield();
+
+            var startTimestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            WriteCloudFetchDebug($"🚀 [{startTimestamp}] CloudFetchDownloader.DownloadFilesAsync STARTED");
+            WriteCloudFetchDebug($"📊 [{startTimestamp}] CloudFetchDownloader: PIPELINE ENTRY - download_queue={_downloadQueue.Count}, result_queue={_resultQueue.Count}, semaphore_available={_downloadSemaphore.CurrentCount}");
+            WriteCloudFetchDebug($"📊 [{startTimestamp}] CloudFetchDownloader: Instance #{_instanceId} - PIPELINE STATUS CHECK - max_parallel={_maxParallelDownloads}, memory_max={_memoryManager.MaxMemory / 1024 / 1024}MB, memory_used={_memoryManager.UsedMemory / 1024 / 1024}MB");
+            WriteCloudFetchDebug($"🎯 [{startTimestamp}] CloudFetchDownloader: *** PRODUCER PIPELINE STARTING - Will add items to result queue for consumer to take ***");
+
+            try
+            {
+                WriteCloudFetchDebug($"CloudFetchDownloader: About to call DownloadFilesInternalAsync - download_queue={_downloadQueue.Count}");
+                await DownloadFilesInternalAsync(cancellationToken);
+                WriteCloudFetchDebug($"CloudFetchDownloader: DownloadFilesInternalAsync completed - download_queue={_downloadQueue.Count}, result_queue={_resultQueue.Count}");
+
+                WriteCloudFetchDebug("CloudFetchDownloader Download: Files download completed successfully");
+                WriteCloudFetchDebug($"CloudFetchDownloader: Batch completed - semaphore_available={_downloadSemaphore.CurrentCount}, max_parallel={_maxParallelDownloads}, download_queue={_downloadQueue.Count}, result_queue={_resultQueue.Count}");
+            }
+            catch (Exception ex)
+            {
+                WriteCloudFetchDebug($"CloudFetchDownloader Download: Exception - {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task DownloadFilesInternalAsync(CancellationToken cancellationToken)
+        {
 
             int totalFiles = 0;
             int successfulDownloads = 0;
@@ -209,9 +332,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 var downloadTaskCompletionSource = new TaskCompletionSource<bool>();
 
                 // Process items from the download queue until it's completed
+                WriteCloudFetchDebug($"CloudFetchDownloader Internal: About to start consuming download queue - queue_count={_downloadQueue.Count}, queue_completed={_downloadQueue.IsCompleted}");
+                WriteCloudFetchDebug($"🔍 CloudFetchDownloader Internal: PRODUCER LOOP STARTING - This will iterate until download queue is completed");
+
                 foreach (var downloadResult in _downloadQueue.GetConsumingEnumerable(cancellationToken))
                 {
                     totalFiles++;
+                    WriteCloudFetchDebug($"CloudFetchDownloader Internal: Processing file #{totalFiles} - download_queue={_downloadQueue.Count}, result_queue={_resultQueue.Count}");
 
                     // Check if there's an error before processing more downloads
                     if (HasError)
@@ -233,7 +360,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                             }
                             catch (Exception ex)
                             {
-                                Trace.TraceWarning($"Error waiting for downloads to complete: {ex.Message}");
+                                WriteCloudFetchDebug($"CloudFetchDownloader: Warning - Error waiting for downloads to complete: {ex.Message}");
                                 // Don't set error here, as individual download tasks will handle their own errors
                             }
                         }
@@ -242,7 +369,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         if (!HasError)
                         {
                             // Add the guard to the result queue to signal the end of results
+                            WriteCloudFetchDebug("CloudFetchDownloader Internal: ⚪ All downloads completed successfully - adding EndOfResultsGuard.Instance to result queue");
+                            WriteCloudFetchDebug($"CloudFetchDownloader Internal: ⚪ Result queue has {_resultQueue.Count} items before adding EndOfResultsGuard");
                             _resultQueue.Add(EndOfResultsGuard.Instance, cancellationToken);
+                            WriteCloudFetchDebug("CloudFetchDownloader Internal: ⚪ EndOfResultsGuard.Instance added - CloudFetchReader will handle final batch aggregation");
                             _isCompleted = true;
                         }
                         break;
@@ -257,32 +387,79 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         {
                             // Update the download result with the refreshed link
                             downloadResult.UpdateWithRefreshedLink(refreshedLink);
-                            Trace.TraceInformation($"Updated URL for file at offset {refreshedLink.StartRowOffset} before download");
+                            System.Diagnostics.Trace.TraceInformation($"Updated URL for file at offset {refreshedLink.StartRowOffset} before download");
                         }
                     }
 
                     // Acquire a download slot
+                    int taskId = totalFiles; // Use file number as unique task ID
+                    WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] About to wait for semaphore - available={_downloadSemaphore.CurrentCount}, max={_maxParallelDownloads}, active_tasks={downloadTasks.Count}");
+
+                    // CRITICAL: Add debugging around the WaitAsync call
+                    var semaphoreBefore = _downloadSemaphore.CurrentCount;
+                    WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Semaphore BEFORE WaitAsync: available={semaphoreBefore}");
+
                     await _downloadSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                    // Start the download task
-                    Task downloadTask = DownloadFileAsync(downloadResult, cancellationToken)
-                        .ContinueWith(t =>
-                        {
-                            // Release the download slot
-                            _downloadSemaphore.Release();
+                    var semaphoreAfter = _downloadSemaphore.CurrentCount;
+                    WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Got semaphore slot - BEFORE: available={semaphoreBefore}, AFTER: available={semaphoreAfter}, active_tasks={downloadTasks.Count}");
 
-                            // Remove the task from the dictionary
-                            downloadTasks.TryRemove(t, out _);
+                    // Sanity check: After WaitAsync, available count should be 1 less than before
+                    if (semaphoreAfter != semaphoreBefore - 1)
+                    {
+                        WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] ⚠️ SEMAPHORE INCONSISTENCY: Expected available={semaphoreBefore - 1}, got available={semaphoreAfter}");
+                    }
+
+                    WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Starting download task - active_tasks={downloadTasks.Count}");
+
+                    // Start the download task
+                    WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] About to start DownloadFileAsync");
+                    Task downloadTask = DownloadFileAsync(downloadResult, cancellationToken);
+
+                    // CRITICAL: Add task to dictionary BEFORE ContinueWith to avoid race condition
+                    downloadTasks[downloadTask] = downloadResult;
+                    WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Added task to dictionary BEFORE continuation - active_tasks={downloadTasks.Count}");
+
+                    // Now add the continuation
+                    downloadTask = downloadTask.ContinueWith(t =>
+                        {
+                            WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Download task completed - Status={t.Status}, IsFaulted={t.IsFaulted}, IsCanceled={t.IsCanceled}");
+
+                            // CRITICAL: Add debugging around the Release call
+                            var semaphoreBeforeRelease = _downloadSemaphore.CurrentCount;
+                            WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Semaphore BEFORE Release: available={semaphoreBeforeRelease}, max={_maxParallelDownloads}");
+
+                            var releasedCount = _downloadSemaphore.Release();
+
+                            var semaphoreAfterRelease = _downloadSemaphore.CurrentCount;
+                            WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] RELEASED semaphore slot - BEFORE: available={semaphoreBeforeRelease}, AFTER: available={semaphoreAfterRelease}, released_count={releasedCount}, max_count={_maxParallelDownloads}");
+
+                            // CRITICAL: If released_count is 0, that means we're over-releasing!
+                            if (releasedCount == 0)
+                            {
+                                WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] ⚠️ WARNING: Release() returned 0 - semaphore was already at maximum! BEFORE={semaphoreBeforeRelease}, AFTER={semaphoreAfterRelease}");
+                            }
+
+                            // Sanity check: After Release, available count should be 1 more than before (unless we were already at max)
+                            if (releasedCount > 0 && semaphoreAfterRelease != semaphoreBeforeRelease + 1)
+                            {
+                                WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] ⚠️ RELEASE INCONSISTENCY: Expected available={semaphoreBeforeRelease + 1}, got available={semaphoreAfterRelease}");
+                            }
+
+                            // Remove the ORIGINAL task from the dictionary (not the continuation task)
+                            var originalTask = t; // t is the original DownloadFileAsync task
+                            bool removed = downloadTasks.TryRemove(originalTask, out _);
+                            WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Removed ORIGINAL task from dictionary - removed={removed}, active_tasks={downloadTasks.Count}");
 
                             // Handle any exceptions
                             if (t.IsFaulted)
                             {
                                 Exception ex = t.Exception?.InnerException ?? new Exception("Unknown error");
-                                Trace.TraceError($"Download failed for file {SanitizeUrl(downloadResult.Link.FileLink)}: {ex.Message}");
+                                WriteCloudFetchDebug($"CloudFetchDownloader: [TASK-{taskId}] Error - Download failed for file {SanitizeUrl(downloadResult.Link.FileLink)}: {ex.Message}");
 
                                 // Set the download as failed
                                 downloadResult.SetFailed(ex);
-                                failedDownloads++;
+                                Interlocked.Increment(ref failedDownloads);
 
                                 // Set the error state to stop the download process
                                 SetError(ex);
@@ -290,18 +467,49 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                                 // Signal that we should stop processing downloads
                                 downloadTaskCompletionSource.TrySetException(ex);
                             }
-                            else if (!t.IsFaulted && !t.IsCanceled)
+                            else if (t.IsCompleted && !t.IsFaulted && !t.IsCanceled)
                             {
-                                successfulDownloads++;
-                                totalBytes += downloadResult.Size;
+                                Interlocked.Increment(ref successfulDownloads);
+                                Interlocked.Add(ref totalBytes, downloadResult.Size);
+                                WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Download successful - total_success={successfulDownloads}, total_bytes={totalBytes / 1024.0 / 1024.0:F1}MB");
                             }
-                        }, cancellationToken);
+                            else if (t.IsCanceled)
+                            {
+                                WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Download was canceled");
+                            }
+                        }, TaskContinuationOptions.ExecuteSynchronously);
 
-                    // Add the task to the dictionary
-                    downloadTasks[downloadTask] = downloadResult;
+                                    // CRITICAL: Add to result queue in ORDER to maintain sequence (before download completes)
+                // But use TryAdd with timeout to prevent deadlock when queue is full
+                var queueCountBeforeAdd = _resultQueue.Count;
+                WriteCloudFetchDebug($"📥 CloudFetchDownloader Internal: [TASK-{taskId}] About to ADD item to result queue - queue_count_before={queueCountBeforeAdd}, queue_capacity={_resultQueue.BoundedCapacity}, item_size={downloadResult.Size}");
 
-                    // Add the result to the result queue add the result here to assure the download sequence.
-                    _resultQueue.Add(downloadResult, cancellationToken);
+                if (!_resultQueue.TryAdd(downloadResult, 100, cancellationToken))
+                    {
+                        // If we can't add within 100ms, implement backpressure by pausing
+                        WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] ⚠️ RESULT QUEUE FULL! (capacity={_resultQueue.BoundedCapacity}) - This is blocking TCP connection #{taskId}");
+
+                        // Wait a bit longer and try again
+                        await Task.Delay(500, cancellationToken);
+                        if (!_resultQueue.TryAdd(downloadResult, 1000, cancellationToken))
+                        {
+                            WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] ⚠️ RESULT QUEUE STILL FULL after 1500ms - TCP connection #{taskId} will BLOCK here until consumer processes results");
+                            // Force add with blocking - but now we know why it's blocking
+                            _resultQueue.Add(downloadResult, cancellationToken);
+                            WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Result queue blockage resolved - TCP connection #{taskId} can now continue");
+                        }
+                        else
+                        {
+                            WriteCloudFetchDebug($"CloudFetchDownloader Internal: [TASK-{taskId}] Result queue unblocked after 1500ms - TCP connection #{taskId} proceeding");
+                        }
+                                    }
+                else
+                {
+                    var queueCountAfterAdd = _resultQueue.Count;
+                    var addTimestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                    WriteCloudFetchDebug($"✅ [{addTimestamp}] CloudFetchDownloader Internal: [TASK-{taskId}] ITEM SUCCESSFULLY ADDED to result queue - queue_before={queueCountBeforeAdd}, queue_after={queueCountAfterAdd}, items_added={(queueCountAfterAdd - queueCountBeforeAdd)}");
+                    WriteCloudFetchDebug($"📊 [{addTimestamp}] CloudFetchDownloader Internal: [TASK-{taskId}] *** PRODUCER: Item available for consumption *** - result_queue_count={_resultQueue.Count}");
+                }
 
                     // If there's an error, stop processing more downloads
                     if (HasError)
@@ -309,29 +517,41 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         break;
                     }
                 }
+
+                // CRITICAL: Log why the producer loop ended
+                WriteCloudFetchDebug($"🔍 CloudFetchDownloader Internal: PRODUCER LOOP ENDED - total_files_processed={totalFiles}");
+                WriteCloudFetchDebug($"🔍 CloudFetchDownloader Internal: FINAL STATE - download_queue_count={_downloadQueue.Count}, download_queue_completed={_downloadQueue.IsCompleted}");
+                WriteCloudFetchDebug($"🔍 CloudFetchDownloader Internal: FINAL STATE - result_queue_count={_resultQueue.Count}, result_queue_completed={_resultQueue.IsCompleted}");
+                WriteCloudFetchDebug($"🔍 CloudFetchDownloader Internal: FINAL STATE - has_error={HasError}, is_completed={_isCompleted}");
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // Expected when cancellation is requested
-                Trace.TraceInformation("Download process was cancelled");
+                WriteCloudFetchDebug("CloudFetchDownloader: Download process was cancelled");
             }
             catch (Exception ex)
             {
-                Trace.TraceError($"Error in download loop: {ex.Message}");
+                WriteCloudFetchDebug($"CloudFetchDownloader: Error in download loop: {ex.Message}");
                 SetError(ex);
             }
             finally
             {
                 overallStopwatch.Stop();
 
-                Trace.TraceInformation(
-                    $"Download process completed. Total files: {totalFiles}, Successful: {successfulDownloads}, " +
-                    $"Failed: {failedDownloads}, Total size: {totalBytes / 1024.0 / 1024.0:F2} MB, Total time: {overallStopwatch.ElapsedMilliseconds / 1000.0:F2} sec");
+                WriteCloudFetchDebug($"CloudFetchDownloader: Download process completed - TotalFiles={totalFiles}, SuccessfulDownloads={successfulDownloads}, FailedDownloads={failedDownloads}, TotalSizeMB={totalBytes / 1024.0 / 1024.0:F2}, TotalTimeSec={overallStopwatch.ElapsedMilliseconds / 1000.0:F2}");
 
-                // If there's an error, add the error to the result queue
+                // If there's an error, add the error to the result queue and complete it
                 if (HasError)
                 {
                     CompleteWithError();
+                    WriteCloudFetchDebug("CloudFetchDownloader Internal: 🔒 Marking result queue as COMPLETED due to error");
+                    _resultQueue.CompleteAdding();
+                }
+                else if (!_resultQueue.IsCompleted)
+                {
+                    // Ensure result queue is completed in normal scenarios (should already be done by EndOfResultsGuard processing)
+                    WriteCloudFetchDebug("CloudFetchDownloader Internal: 🔒 Ensuring result queue is COMPLETED (backup completion)");
+                    _resultQueue.CompleteAdding();
                 }
             }
         }
@@ -345,74 +565,131 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             // Use the size directly from the download result
             long size = downloadResult.Size;
 
+            WriteCloudFetchDebug($"CloudFetchDownloader: ENTERED DownloadFileAsync for {sanitizedUrl}, expected size: {size / 1024.0:F2} KB");
+
             // Create a stopwatch to track download time
             var stopwatch = Stopwatch.StartNew();
 
             // Log download start
-            Trace.TraceInformation($"Starting download of file {sanitizedUrl}, expected size: {size / 1024.0:F2} KB");
+            System.Diagnostics.Trace.TraceInformation($"Starting download of file {sanitizedUrl}, expected size: {size / 1024.0:F2} KB");
 
             // Acquire memory before downloading
-            await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
+            WriteCloudFetchDebug($"CloudFetchDownloader: About to acquire memory for {sanitizedUrl}, size: {size / 1024.0:F2} KB");
+
+            // SUSPECT #1: Memory acquisition might be hanging
+            WriteCloudFetchDebug($"CloudFetchDownloader: MEMORY STATE BEFORE ACQUIRE for {sanitizedUrl} - Requesting: {size / 1024.0 / 1024.0:F1}MB, Current: {_memoryManager.UsedMemory / 1024.0 / 1024.0:F1}MB, Max: {_memoryManager.MaxMemory / 1024.0 / 1024.0:F1}MB, Available: {(_memoryManager.MaxMemory - _memoryManager.UsedMemory) / 1024.0 / 1024.0:F1}MB");
+
+            var memoryTask = _memoryManager.AcquireMemoryAsync(size, cancellationToken);
+            var memoryDelay = Task.Delay(5000); // 5 second timeout for debugging
+            var completedTask = await Task.WhenAny(memoryTask, memoryDelay);
+
+            if (completedTask == memoryDelay)
+            {
+                WriteCloudFetchDebug($"CloudFetchDownloader: MEMORY ACQUISITION HANGING for {sanitizedUrl} - Requesting: {size / 1024.0 / 1024.0:F1}MB, Used: {_memoryManager.UsedMemory / 1024.0 / 1024.0:F1}MB, Max: {_memoryManager.MaxMemory / 1024.0 / 1024.0:F1}MB");
+                WriteCloudFetchDebug($"CloudFetchDownloader: ⚠️ MEMORY PRESSURE! Need {size / 1024.0 / 1024.0:F1}MB but only {(_memoryManager.MaxMemory - _memoryManager.UsedMemory) / 1024.0 / 1024.0:F1}MB available - this is likely the problem!");
+
+                // Still wait for it to complete, but now we know it's slow
+                await memoryTask.ConfigureAwait(false);
+                WriteCloudFetchDebug($"CloudFetchDownloader: Memory finally acquired for {sanitizedUrl} after timeout - New Used: {_memoryManager.UsedMemory / 1024.0 / 1024.0:F1}MB");
+            }
+            else
+            {
+                await memoryTask.ConfigureAwait(false);
+                WriteCloudFetchDebug($"CloudFetchDownloader: Memory acquired quickly for {sanitizedUrl} - New Used: {_memoryManager.UsedMemory / 1024.0 / 1024.0:F1}MB");
+            }
 
             // Retry logic for downloading files
             for (int retry = 0; retry < _maxRetries; retry++)
             {
                 try
                 {
-                    // Download the file directly
-                    using HttpResponseMessage response = await _httpClient.GetAsync(
-                        url,
-                        HttpCompletionOption.ResponseHeadersRead,
-                        cancellationToken).ConfigureAwait(false);
+                    WriteCloudFetchDebug($"CloudFetchDownloader: Starting HTTP request for {sanitizedUrl} (attempt {retry + 1}/{_maxRetries})");
 
-                    // Check if the response indicates an expired URL (typically 403 or 401)
-                    if (response.StatusCode == System.Net.HttpStatusCode.Forbidden ||
-                        response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    // SUSPECT #2: HTTP request might be hanging
+                    var httpTask = _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    var httpDelay = Task.Delay(10000); // 10 second timeout for debugging
+                    var httpCompletedTask = await Task.WhenAny(httpTask, httpDelay);
+
+                    HttpResponseMessage response;
+                    if (httpCompletedTask == httpDelay)
                     {
-                        // If we've already tried refreshing too many times, fail
-                        if (downloadResult.RefreshAttempts >= _maxUrlRefreshAttempts)
+                        WriteCloudFetchDebug($"CloudFetchDownloader: HTTP REQUEST HANGING for {sanitizedUrl} - this is likely the problem!");
+                        response = await httpTask.ConfigureAwait(false);
+                        WriteCloudFetchDebug($"CloudFetchDownloader: HTTP request finally completed for {sanitizedUrl} after timeout");
+                    }
+                    else
+                    {
+                        response = await httpTask.ConfigureAwait(false);
+                        WriteCloudFetchDebug($"CloudFetchDownloader: HTTP response received quickly for {sanitizedUrl} - Status: {response.StatusCode}");
+                    }
+
+                    using (response)
+                    {
+                        // Check if the response indicates an expired URL (typically 403 or 401)
+                        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden ||
+                            response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                         {
-                            throw new InvalidOperationException($"Failed to download file after {downloadResult.RefreshAttempts} URL refresh attempts.");
+                            // If we've already tried refreshing too many times, fail
+                            if (downloadResult.RefreshAttempts >= _maxUrlRefreshAttempts)
+                            {
+                                throw new InvalidOperationException($"Failed to download file after {downloadResult.RefreshAttempts} URL refresh attempts.");
+                            }
+
+                            // Try to refresh the URL
+                            var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
+                            if (refreshedLink != null)
+                            {
+                                // Update the download result with the refreshed link
+                                downloadResult.UpdateWithRefreshedLink(refreshedLink);
+                                url = refreshedLink.FileLink;
+                                sanitizedUrl = SanitizeUrl(url);
+
+                                System.Diagnostics.Trace.TraceInformation($"URL for file at offset {refreshedLink.StartRowOffset} was refreshed after expired URL response");
+
+                                // Continue to the next retry attempt with the refreshed URL
+                                continue;
+                            }
+                            else
+                            {
+                                // If refresh failed, throw an exception
+                                throw new InvalidOperationException("Failed to refresh expired URL.");
+                            }
                         }
 
-                        // Try to refresh the URL
-                        var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
-                        if (refreshedLink != null)
+                        response.EnsureSuccessStatusCode();
+
+                        // Log the download size if available from response headers
+                        long? contentLength = response.Content.Headers.ContentLength;
+                        if (contentLength.HasValue && contentLength.Value > 0)
                         {
-                            // Update the download result with the refreshed link
-                            downloadResult.UpdateWithRefreshedLink(refreshedLink);
-                            url = refreshedLink.FileLink;
-                            sanitizedUrl = SanitizeUrl(url);
+                            System.Diagnostics.Trace.TraceInformation($"Actual file size for {sanitizedUrl}: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
+                        }
 
-                            Trace.TraceInformation($"URL for file at offset {refreshedLink.StartRowOffset} was refreshed after expired URL response");
+                        // SUSPECT #3: Data reading might be hanging
+                        WriteCloudFetchDebug($"CloudFetchDownloader: Starting to read response data for {sanitizedUrl}");
+                        var readTask = response.Content.ReadAsByteArrayAsync();
+                        var readDelay = Task.Delay(15000); // 15 second timeout for debugging
+                        var readCompletedTask = await Task.WhenAny(readTask, readDelay);
 
-                            // Continue to the next retry attempt with the refreshed URL
-                            continue;
+                        if (readCompletedTask == readDelay)
+                        {
+                            WriteCloudFetchDebug($"CloudFetchDownloader: DATA READING HANGING for {sanitizedUrl} - this is likely the problem!");
+                            fileData = await readTask.ConfigureAwait(false);
+                            WriteCloudFetchDebug($"CloudFetchDownloader: Data finally read for {sanitizedUrl} after timeout - size: {fileData.Length / 1024.0:F2} KB");
                         }
                         else
                         {
-                            // If refresh failed, throw an exception
-                            throw new InvalidOperationException("Failed to refresh expired URL.");
+                            fileData = await readTask.ConfigureAwait(false);
+                            WriteCloudFetchDebug($"CloudFetchDownloader: Data read quickly for {sanitizedUrl} - size: {fileData.Length / 1024.0:F2} KB");
                         }
+
+                        break; // Success, exit retry loop
                     }
-
-                    response.EnsureSuccessStatusCode();
-
-                    // Log the download size if available from response headers
-                    long? contentLength = response.Content.Headers.ContentLength;
-                    if (contentLength.HasValue && contentLength.Value > 0)
-                    {
-                        Trace.TraceInformation($"Actual file size for {sanitizedUrl}: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
-                    }
-
-                    // Read the file data
-                    fileData = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-                    break; // Success, exit retry loop
                 }
                 catch (Exception ex) when (retry < _maxRetries - 1 && !cancellationToken.IsCancellationRequested)
                 {
                     // Log the error and retry
-                    Trace.TraceError($"Error downloading file {SanitizeUrl(url)} (attempt {retry + 1}/{_maxRetries}): {ex.Message}");
+                    WriteCloudFetchDebug($"CloudFetchDownloader: Error downloading file {SanitizeUrl(url)} (attempt {retry + 1}/{_maxRetries}): {ex.Message}");
 
                     await Task.Delay(_retryDelayMs * (retry + 1), cancellationToken).ConfigureAwait(false);
                 }
@@ -421,10 +698,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             if (fileData == null)
             {
                 stopwatch.Stop();
-                Trace.TraceError($"Failed to download file {sanitizedUrl} after {_maxRetries} attempts. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
+                System.Diagnostics.Trace.TraceError($"Failed to download file {sanitizedUrl} after {_maxRetries} attempts. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
 
                 // Release the memory we acquired
                 _memoryManager.ReleaseMemory(size);
+
+                // DO NOT RELEASE SEMAPHORE HERE - it will be released in ContinueWith
                 throw new InvalidOperationException($"Failed to download file from {url} after {_maxRetries} attempts.");
             }
 
@@ -437,27 +716,51 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             {
                 try
                 {
+                    WriteCloudFetchDebug($"CloudFetchDownloader: Starting LZ4 decompression for {sanitizedUrl}");
                     var decompressStopwatch = Stopwatch.StartNew();
                     dataStream = new MemoryStream();
+
+                    // SUSPECT #4: LZ4 decompression might be hanging
                     using (var inputStream = new MemoryStream(fileData))
                     using (var decompressor = LZ4Stream.Decode(inputStream))
                     {
-                        await decompressor.CopyToAsync(dataStream, 81920, cancellationToken).ConfigureAwait(false);
+                        var decompressTask = decompressor.CopyToAsync(dataStream, 81920, cancellationToken);
+                        var decompressDelay = Task.Delay(10000); // 10 second timeout for debugging
+                        var decompressCompletedTask = await Task.WhenAny(decompressTask, decompressDelay);
+
+                        if (decompressCompletedTask == decompressDelay)
+                        {
+                            WriteCloudFetchDebug($"CloudFetchDownloader: LZ4 DECOMPRESSION HANGING for {sanitizedUrl} - this is likely the problem!");
+                            await decompressTask.ConfigureAwait(false);
+                            WriteCloudFetchDebug($"CloudFetchDownloader: LZ4 decompression finally completed for {sanitizedUrl} after timeout");
+                        }
+                        else
+                        {
+                            await decompressTask.ConfigureAwait(false);
+                            WriteCloudFetchDebug($"CloudFetchDownloader: LZ4 decompression completed quickly for {sanitizedUrl}");
+                        }
                     }
                     dataStream.Position = 0;
                     decompressStopwatch.Stop();
 
-                    Trace.TraceInformation($"Decompressed file {sanitizedUrl} in {decompressStopwatch.ElapsedMilliseconds} ms. Compressed size: {actualSize / 1024.0:F2} KB, Decompressed size: {dataStream.Length / 1024.0:F2} KB");
+                    var compressedSize = actualSize;
+                    var decompressedSize = dataStream.Length;
+
+                    System.Diagnostics.Trace.TraceInformation($"Decompressed file {sanitizedUrl} in {decompressStopwatch.ElapsedMilliseconds} ms. Compressed size: {compressedSize / 1024.0:F2} KB, Decompressed size: {decompressedSize / 1024.0:F2} KB");
+                    WriteCloudFetchDebug($"📊 CloudFetchDownloader: ACTUAL DECOMPRESSION STATS - Compressed: {compressedSize:N0} bytes ({compressedSize / 1024.0 / 1024.0:F1}MB) → Decompressed: {decompressedSize:N0} bytes ({decompressedSize / 1024.0 / 1024.0:F1}MB)");
+                    WriteCloudFetchDebug($"📊 CloudFetchDownloader: COMPRESSION RATIO - {(double)decompressedSize / compressedSize:F1}x expansion ({100.0 * (decompressedSize - compressedSize) / compressedSize:F1}% larger after decompression)");
 
                     actualSize = dataStream.Length;
                 }
                 catch (Exception ex)
                 {
                     stopwatch.Stop();
-                    Trace.TraceError($"Error decompressing data for file {sanitizedUrl}: {ex.Message}. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
+                    System.Diagnostics.Trace.TraceError($"Error decompressing data for file {sanitizedUrl}: {ex.Message}. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
 
                     // Release the memory we acquired
                     _memoryManager.ReleaseMemory(size);
+
+                    // DO NOT RELEASE SEMAPHORE HERE - it will be released in ContinueWith
                     throw new InvalidOperationException($"Error decompressing data: {ex.Message}", ex);
                 }
             }
@@ -468,10 +771,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
             // Stop the stopwatch and log download completion
             stopwatch.Stop();
-            Trace.TraceInformation($"Completed download of file {sanitizedUrl}. Size: {actualSize / 1024.0:F2} KB, Latency: {stopwatch.ElapsedMilliseconds} ms, Throughput: {(actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0):F2} MB/s");
+            WriteCloudFetchDebug($"CloudFetchDownloader: COMPLETED DownloadFileAsync for {sanitizedUrl}. Size: {actualSize / 1024.0:F2} KB, Latency: {stopwatch.ElapsedMilliseconds} ms, Throughput: {(actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0):F2} MB/s");
+            System.Diagnostics.Trace.TraceInformation($"Completed download of file {sanitizedUrl}. Size: {actualSize / 1024.0:F2} KB, Latency: {stopwatch.ElapsedMilliseconds} ms, Throughput: {(actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0):F2} MB/s");
 
-            // Set the download as completed with the original size
-            downloadResult.SetCompleted(dataStream, size);
+            // Set the download as completed with the ACTUAL decompressed size (critical for accurate batch aggregation)
+            downloadResult.SetCompleted(dataStream, actualSize);
+            WriteCloudFetchDebug($"CloudFetchDownloader: SetCompleted called for {sanitizedUrl} - DownloadFileAsync FINISHED");
+            WriteCloudFetchDebug($"CloudFetchDownloader: MEMORY STATE AFTER DOWNLOAD for {sanitizedUrl} - Used: {_memoryManager.UsedMemory / 1024.0 / 1024.0:F1}MB, Max: {_memoryManager.MaxMemory / 1024.0 / 1024.0:F1}MB (Note: Memory will be released when file is consumed)");
         }
 
         private void SetError(Exception ex)
@@ -480,7 +786,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             {
                 if (_error == null)
                 {
-                    Trace.TraceError($"Setting error state: {ex.Message}");
+                    WriteCloudFetchDebug($"CloudFetchDownloader: Setting error state: {ex.Message}");
                     _error = ex;
                 }
             }
@@ -498,7 +804,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             }
             catch (Exception ex)
             {
-                Trace.TraceError($"Error completing with error: {ex.Message}");
+                System.Diagnostics.Trace.TraceError($"Error completing with error: {ex.Message}");
             }
         }
 

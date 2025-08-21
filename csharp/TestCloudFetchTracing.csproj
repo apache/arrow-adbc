@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Moq" Version="4.20.69" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src\Drivers\Databricks\Apache.Arrow.Adbc.Drivers.Databricks.csproj" />
+  </ItemGroup>
+
+</Project>

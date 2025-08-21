@@ -26,7 +26,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
     /// </summary>
     internal sealed class CloudFetchMemoryBufferManager : ICloudFetchMemoryBufferManager
     {
-        private const int DefaultMemoryBufferSizeMB = 200;
+        private const int DefaultMemoryBufferSizeMB = 1000;  // Updated to match CloudFetchDownloadManager default
         private readonly long _maxMemory;
         private long _usedMemory;
         private readonly SemaphoreSlim _memorySemaphore;
@@ -96,12 +96,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 throw new ArgumentOutOfRangeException(nameof(size), $"Requested size ({size} bytes) exceeds maximum memory ({_maxMemory} bytes).");
             }
 
+            // Add detailed memory debugging
+            WriteMemoryDebug($"MEMORY-REQUEST: Requesting {size / 1024.0 / 1024.0:F1}MB, Current: {UsedMemory / 1024.0 / 1024.0:F1}MB / {_maxMemory / 1024.0 / 1024.0:F1}MB");
+
+            int attemptCount = 0;
             while (!cancellationToken.IsCancellationRequested)
             {
                 // Try to acquire memory without blocking
                 if (TryAcquireMemory(size))
                 {
+                    WriteMemoryDebug($"MEMORY-ACQUIRED: Successfully acquired {size / 1024.0 / 1024.0:F1}MB after {attemptCount} attempts, New Total: {UsedMemory / 1024.0 / 1024.0:F1}MB / {_maxMemory / 1024.0 / 1024.0:F1}MB");
                     return;
+                }
+
+                // Log memory pressure every 100 attempts (every ~1 second)
+                attemptCount++;
+                if (attemptCount % 100 == 0)
+                {
+                    WriteMemoryDebug($"MEMORY-BLOCKED: Attempt #{attemptCount} - Still waiting for {size / 1024.0 / 1024.0:F1}MB, Current: {UsedMemory / 1024.0 / 1024.0:F1}MB / {_maxMemory / 1024.0 / 1024.0:F1}MB - MEMORY PRESSURE!");
                 }
 
                 // If we couldn't acquire memory, wait for some to be released
@@ -123,12 +135,38 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             // Release memory
             long newValue = Interlocked.Add(ref _usedMemory, -size);
 
+            WriteMemoryDebug($"MEMORY-RELEASED: Released {size / 1024.0 / 1024.0:F1}MB, New Total: {newValue / 1024.0 / 1024.0:F1}MB / {_maxMemory / 1024.0 / 1024.0:F1}MB");
+
             // Ensure we don't go negative
             if (newValue < 0)
             {
                 // This should never happen if the code is correct
                 Interlocked.Exchange(ref _usedMemory, 0);
                 throw new InvalidOperationException("Memory buffer manager released more memory than was acquired.");
+            }
+        }
+
+        private void WriteMemoryDebug(string message)
+        {
+            try
+            {
+                var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+                var logPath = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "adbc-memory-debug.log");
+
+                // Ensure directory exists
+                var logDir = System.IO.Path.GetDirectoryName(logPath);
+                if (!string.IsNullOrEmpty(logDir) && !System.IO.Directory.Exists(logDir))
+                {
+                    System.IO.Directory.CreateDirectory(logDir);
+                }
+
+                System.IO.File.AppendAllText(logPath, $"[{timestamp}] {message}{Environment.NewLine}");
+            }
+            catch
+            {
+                // If file logging fails, ignore it to prevent crashes
             }
         }
     }
