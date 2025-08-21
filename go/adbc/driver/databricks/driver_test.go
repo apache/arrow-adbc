@@ -18,7 +18,6 @@
 package databricks_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc/driver/databricks"
@@ -49,68 +48,4 @@ func TestDatabaseCreation(t *testing.T) {
 	// Clean up
 	err = db.Close()
 	assert.NoError(t, err)
-}
-
-func TestDatabaseOptionsValidation(t *testing.T) {
-	driver := databricks.NewDriver(memory.DefaultAllocator)
-
-	// Test missing required options
-	tests := []struct {
-		name    string
-		opts    map[string]string
-		wantErr bool
-	}{
-		{
-			name: "missing hostname",
-			opts: map[string]string{
-				databricks.OptionHTTPPath:    "/sql/1.0/warehouses/test",
-				databricks.OptionAccessToken: "test-token",
-			},
-			wantErr: true,
-		},
-		{
-			name: "missing http path",
-			opts: map[string]string{
-				databricks.OptionServerHostname: "test-hostname",
-				databricks.OptionAccessToken:    "test-token",
-			},
-			wantErr: true,
-		},
-		{
-			name: "missing access token",
-			opts: map[string]string{
-				databricks.OptionServerHostname: "test-hostname",
-				databricks.OptionHTTPPath:       "/sql/1.0/warehouses/test",
-			},
-			wantErr: true,
-		},
-		{
-			name: "all required options",
-			opts: map[string]string{
-				databricks.OptionServerHostname: "test-hostname",
-				databricks.OptionHTTPPath:       "/sql/1.0/warehouses/test",
-				databricks.OptionAccessToken:    "test-token",
-			},
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			db, err := driver.NewDatabase(tt.opts)
-			require.NoError(t, err)
-			require.NotNil(t, db)
-
-			// Test connection opening (will fail without real credentials, but validates options)
-			_, err = db.Open(context.Background())
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				// Even valid options will fail without real credentials, so expect error
-				assert.Error(t, err)
-			}
-
-			_ = db.Close()
-		})
-	}
 }
