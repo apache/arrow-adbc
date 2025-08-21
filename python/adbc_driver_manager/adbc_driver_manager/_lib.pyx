@@ -564,6 +564,15 @@ cdef class AdbcDatabase(_AdbcHandle):
                     &self.database, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
+        # check if we're running in a venv
+        if sys.prefix != sys.base_prefix:
+            # if we're in a venv, add the venv prefix to the search path list
+            status = AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                &self.database, _to_bytes(os.path.join(sys.prefix, 'etc/adbc'),
+                                          "sys.prefix"),
+                &c_error)
+            check_error(status, &c_error)
+
         with nogil:
             status = AdbcDatabaseInit(&self.database, &c_error)
         check_error(status, &c_error)

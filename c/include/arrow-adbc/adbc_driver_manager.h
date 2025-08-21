@@ -81,7 +81,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 ///
 /// If the passed in driver_name does not have an extension and is not an absolute path:
 /// - The load_options parameter will control whether the driver manager will search
-///   the ADBC_CONFIG_PATH, VIRTUAL_ENV and CONDA_PREFIX environment variables, the user
+///   the ADBC_CONFIG_PATH and CONDA_PREFIX environment variables, the user
 ///   configuration directory, and/or the system level directory of /etc/adbc for either
 ///   a manifest file or a shared library.
 /// - For each path to be searched, it will first look for <path>/<driver_name>.toml. If
@@ -101,12 +101,15 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 ///   entrypoint based on the driver name.
 /// \param[in] version The ADBC revision to attempt to initialize.
 /// \param[in] load_options bit mask of AdbcLoadFlags to control the directories searched
+/// \param[in] additional_search_path_list A list of additional paths to search for
+///    delimited by the OS specific path list separator.
 /// \param[out] driver The table of function pointers to initialize
 /// \param[out] error An optional location to return an error message
 ADBC_EXPORT
 AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoint,
                                   const int version, const AdbcLoadFlags load_options,
-                                  void* driver, struct AdbcError* error);
+                                  const char* additional_search_path_list, void* driver,
+                                  struct AdbcError* error);
 
 /// \brief Common entry point for drivers via the driver manager.
 ///
@@ -150,6 +153,23 @@ ADBC_EXPORT
 AdbcStatusCode AdbcDriverManagerDatabaseSetLoadFlags(struct AdbcDatabase* database,
                                                      AdbcLoadFlags flags,
                                                      struct AdbcError* error);
+
+/// \brief Set an additional manifest search path list for the driver manager.
+///
+/// This is an extension to the ADBC API. The driver manager shims
+/// the AdbcDatabase* functions to allow you to specify the
+/// driver/entrypoint dynamically. This function lets you explicitly
+/// set a path list at runtime for additional paths to search when
+/// looking for a driver manifest. While users can add additional
+/// paths via the ADBC_CONFIG_PATH environment variable, this allows
+/// an application to specify search paths at runtime which are not tied
+/// to the load flags.
+///
+/// Calling this function with NULL as the `path_list` will clear any
+/// previously set additional search paths.
+ADBC_EXPORT
+AdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+    struct AdbcDatabase* database, const char* path_list, struct AdbcError* error);
 
 /// \brief Get a human-friendly description of a status code.
 ADBC_EXPORT

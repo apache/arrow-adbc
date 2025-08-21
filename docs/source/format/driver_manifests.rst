@@ -351,7 +351,7 @@ to control which directories will be searched for manifests, with the behavior b
 
        The type :c:type:`AdbcLoadFlags` is a set of bitflags to control the directories to be searched. The flags are
 
-       * :c:macro:`ADBC_LOAD_FLAG_SEARCH_ENV` - search environment variables (``ADBC_CONFIG_PATH``, ``VIRTUAL_ENV``, ``CONDA_PREFIX``)
+       * :c:macro:`ADBC_LOAD_FLAG_SEARCH_ENV` - search environment variables (``ADBC_CONFIG_PATH``, ``CONDA_PREFIX``)
        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_USER` - search the user configuration directory
        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_SYSTEM` - search the system configuration directory
        * :c:macro:`ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS` - allow a relative path to be provided
@@ -364,7 +364,7 @@ to control which directories will be searched for manifests, with the behavior b
 
        The type ``GADBCLoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
 
-       * ``GADBC_LOAD_SEARCH_ENV`` - search environment variables (``ADBC_CONFIG_PATH``, ``VIRTUAL_ENV``, ``CONDA_PREFIX``)
+       * ``GADBC_LOAD_SEARCH_ENV`` - search environment variables (``ADBC_CONFIG_PATH``, ``CONDA_PREFIX``)
        * ``GADBC_LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
        * ``GADBC_LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
        * ``GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
@@ -380,7 +380,7 @@ to control which directories will be searched for manifests, with the behavior b
        ``drivermgr.LoadFlagsOptionKey`` with the value being the ``strconv.Itoa`` of the flags you want to use when you call ``NewDatabase``
        or ``NewDatabaseWithContext``. The flags are defined in the ``drivermgr`` package as constants:
 
-       * ``drivermgr.LoadFlagsSearchEnv`` - search environment variables (``ADBC_CONFIG_PATH``, ``VIRTUAL_ENV``, ``CONDA_PREFIX``)
+       * ``drivermgr.LoadFlagsSearchEnv`` - search environment variables (``ADBC_CONFIG_PATH``, ``CONDA_PREFIX``)
        * ``drivermgr.LoadFlagsSearchUser`` - search the user configuration directory
        * ``drivermgr.LoadFlagsSearchSystem`` - search the system configuration directory
        * ``drivermgr.LoadFlagsAllowRelativePaths`` - allow a relative path to be used
@@ -433,9 +433,7 @@ the given order:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then environment variables will be searched in this order
 
-   * ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``
-   * ``VIRTUAL_ENV`` is used by `venv <https://docs.python.org/3/library/venv.html>`__ and if set
-     ``$VIRTUAL_ENV/etc/adbc`` will be searched for ``${name}.toml``
+   * ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``   
    * ``CONDA_PREFIX`` is used by `conda <https://anaconda.org/anaconda/conda>`__ and if set
      ``$CONDA_PREFIX/etc/adbc`` will be searched for ``${name}.toml``
 
@@ -459,8 +457,6 @@ would happen for ODBC drivers. The search for a manifest on Windows would be the
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the environment variables will be searched in this order
 
    * ``ADBC_CONFIG_PATH`` is a semicolon-separated list of directories to search for ``${name}.toml``
-   * ``VIRTUAL_ENV`` is used by `venv <https://docs.python.org/3/library/venv.html>`__ and if set
-     ``$VIRTUAL_ENV/etc/adbc`` will be searched for ``${name}.toml``
    * ``CONDA_PREFIX`` is used by `conda <https://anaconda.org/anaconda/conda>`__ and if set
      ``$CONDA_PREFIX/etc/adbc`` will be searched for ``${name}.toml``
 

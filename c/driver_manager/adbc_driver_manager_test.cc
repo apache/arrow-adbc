@@ -457,7 +457,7 @@ class DriverManifest : public ::testing::Test {
 
 TEST_F(DriverManifest, LoadDriverEnv) {
   ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
   std::ofstream test_manifest_file(temp_dir / "sqlite.toml");
@@ -468,7 +468,7 @@ TEST_F(DriverManifest, LoadDriverEnv) {
   SetConfigPath(temp_dir.string().c_str());
 
   ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
   ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
@@ -478,7 +478,7 @@ TEST_F(DriverManifest, LoadDriverEnv) {
 
 TEST_F(DriverManifest, LoadNonAsciiPath) {
   ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
 #ifdef _WIN32
@@ -497,7 +497,7 @@ TEST_F(DriverManifest, LoadNonAsciiPath) {
   SetConfigPath(non_ascii_dir.string().c_str());
 
   ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
   ASSERT_TRUE(std::filesystem::remove(non_ascii_dir / "sqlite.toml"));
@@ -515,7 +515,7 @@ TEST_F(DriverManifest, DisallowEnvConfig) {
 
   auto load_options = ADBC_LOAD_FLAG_DEFAULT & ~ADBC_LOAD_FLAG_SEARCH_ENV;
   ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, load_options,
-                                 &driver, &error),
+                                 nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
   ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
@@ -543,7 +543,7 @@ TEST_F(DriverManifest, ConfigEntrypoint) {
   test_manifest_file.close();
 
   ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
@@ -557,7 +557,7 @@ TEST_F(DriverManifest, LoadAbsolutePath) {
   test_manifest_file.close();
 
   ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
@@ -573,7 +573,7 @@ TEST_F(DriverManifest, LoadAbsolutePathNoExtension) {
   auto noext = filepath;
   noext.replace_extension();  // Remove the .toml extension
   ASSERT_THAT(AdbcFindLoadDriver(noext.string().data(), nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
@@ -585,13 +585,14 @@ TEST_F(DriverManifest, LoadRelativePath) {
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
-  ASSERT_THAT(
-      AdbcFindLoadDriver("sqlite.toml", nullptr, ADBC_VERSION_1_1_0, 0, &driver, &error),
-      IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(AdbcFindLoadDriver("sqlite.toml", nullptr, ADBC_VERSION_1_1_0, 0, nullptr,
+                                 &driver, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
 
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite.toml", nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS, &driver, &error),
-              IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcFindLoadDriver("sqlite.toml", nullptr, ADBC_VERSION_1_1_0,
+                         ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS, nullptr, &driver, &error),
+      IsOkStatus(&error));
 
   ASSERT_TRUE(std::filesystem::remove("sqlite.toml"));
 }
@@ -609,7 +610,7 @@ TEST_F(DriverManifest, ManifestMissingDriver) {
 
   // Attempt to load the driver
   ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
@@ -634,7 +635,7 @@ TEST_F(DriverManifest, ManifestWrongArch) {
 
   // Attempt to load the driver
   ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
@@ -645,7 +646,7 @@ TEST_F(DriverManifest, ManifestWrongArch) {
 #ifdef ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL
 TEST_F(DriverManifest, LoadUserLevelManifest) {
   ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
   auto user_config_dir = InternalAdbcUserConfigDir();
@@ -662,12 +663,12 @@ TEST_F(DriverManifest, LoadUserLevelManifest) {
 
   // fail to load if flag doesn't have ADBC_LOAD_FLAG_SEARCH_USER
   ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, 0,
-                                 &driver, &error),
+                                 nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
   // succeed with default load options
   ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
   ASSERT_TRUE(std::filesystem::remove(user_config_dir / "adbc-test-sqlite.toml"));
@@ -682,7 +683,7 @@ TEST_F(DriverManifest, LoadUserLevelManifest) {
 #ifdef ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL
 TEST_F(DriverManifest, LoadSystemLevelManifest) {
   ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
   auto system_config_dir = std::filesystem::path("/etc/adbc");
@@ -699,12 +700,12 @@ TEST_F(DriverManifest, LoadSystemLevelManifest) {
 
   // fail to load if flag doesn't have ADBC_LOAD_FLAG_SEARCH_SYSTEM
   ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, 0,
-                                 &driver, &error),
+                                 nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
   // succeed with default load options
   ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0,
-                                 ADBC_LOAD_FLAG_DEFAULT, &driver, &error),
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
   ASSERT_TRUE(std::filesystem::remove(system_config_dir / "adbc-test-sqlite.toml"));

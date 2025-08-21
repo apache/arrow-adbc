@@ -1779,10 +1779,6 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
             }
         }
 
-        if let Some(path) = env::var_os("VIRTUAL_ENV") {
-            result.push(PathBuf::from(path).join("etc").join("adbc"));
-        }
-
         if let Some(path) = env::var_os("CONDA_PREFIX") {
             result.push(PathBuf::from(path).join("etc").join("adbc"));
         }
@@ -2248,10 +2244,6 @@ mod tests {
                     Some(env::join_paths(&path_list).unwrap().as_os_str()),
                 ),
                 (
-                    "VIRTUAL_ENV",
-                    Some(Path::new("/home/foo/.venv").as_os_str()),
-                ),
-                (
                     "CONDA_PREFIX",
                     Some(Path::new("/home/foo/.conda/envs/hi").as_os_str()),
                 ),
@@ -2264,7 +2256,6 @@ mod tests {
                         Path::new("/foo/bar/baz"),
                         Path::new("/majestik/møøse"),
                         Path::new("/super/duper"),
-                        Path::new("/home/foo/.venv/etc/adbc"),
                         Path::new("/home/foo/.conda/envs/hi/etc/adbc"),
                     ]
                 );
