@@ -298,7 +298,7 @@ cdef extern from "arrow-adbc/adbc_driver_manager.h":
         CAdbcDatabase* database,
         CAdbcLoadFlags flags,
         CAdbcError* error)
-    CAdbcstatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+    CAdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
         CAdbcDatabase* database,
         const char* path_list,
         CAdbcError* error)
