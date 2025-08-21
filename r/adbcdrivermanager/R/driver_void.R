@@ -96,11 +96,11 @@ adbc_driver <- function(x, entrypoint = NULL, ...,
 #' @export
 #'
 adbc_driver_load <- function(x, entrypoint, version, driver, error,
-                             load_flags = adbc_load_flags()) {
+                             load_flags = adbc_load_flags(), additional_search_path_list = NULL) {
   if (inherits(x, "adbc_driver_init_func")) {
     .Call(RAdbcLoadDriverFromInitFunc, x, version, driver, error)
   } else {
-    .Call(RAdbcLoadDriver, x, entrypoint, version, load_flags, driver, error)
+    .Call(RAdbcLoadDriver, x, entrypoint, version, load_flags, additional_search_path_list, driver, error)
   }
 }
 
