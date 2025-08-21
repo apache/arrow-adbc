@@ -37,7 +37,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         {
             TimeSpan timeSpan = CalculateTimeSpan(timeout, timeUnit);
             return new CancellationTokenSource(timeSpan);
-
         }
 
         public static CancellationToken GetCancellationToken(int timeout, TimeUnit timeUnit)

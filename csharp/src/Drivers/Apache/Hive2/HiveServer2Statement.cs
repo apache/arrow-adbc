@@ -53,7 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected const string PrimaryKeyPrefix = "PK_";
         protected const string ForeignKeyPrefix = "FK_";
 
-        // Lock to ensure consistent access to TokenSource and OperationHandle
+        // Lock to ensure consistent access to TokenSource
         private readonly object _tokenSourceLock = new();
         private CancellationTokenSource? _executeTokenSource;
 
@@ -1068,7 +1068,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             lock (_tokenSourceLock)
             {
-                _executeTokenSource?.Dispose();
+                if (_executeTokenSource != null)
+                {
+                    throw new InvalidOperationException("Simultaneous query or update execution is not allowed. Ensure to complete the query or update before starting a new one.");
+                }
+
                 _executeTokenSource = ApacheUtility.GetCancellationTokenSource(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
                 return _executeTokenSource;
             }
