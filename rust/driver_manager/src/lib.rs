@@ -2255,7 +2255,7 @@ mod tests {
                     "CONDA_PREFIX",
                     Some(Path::new("/home/foo/.conda/envs/hi").as_os_str()),
                 ),
-            ],
+            ].to_vec(),
             || {
                 let search_paths = get_search_paths(LOAD_FLAG_SEARCH_ENV);
                 assert_eq!(
