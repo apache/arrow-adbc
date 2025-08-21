@@ -433,7 +433,7 @@ the given order:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then environment variables will be searched in this order
 
-   * ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``   
+   * ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``
    * ``CONDA_PREFIX`` is used by `conda <https://anaconda.org/anaconda/conda>`__ and if set
      ``$CONDA_PREFIX/etc/adbc`` will be searched for ``${name}.toml``
 

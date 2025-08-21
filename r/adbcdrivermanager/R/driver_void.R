@@ -108,8 +108,8 @@ adbc_driver_load <- function(x, entrypoint, version, driver, error,
 #'
 #' Options that indicate where to look for driver manifests. Manifests
 #' (.toml files) can be installed at the system level, the user level,
-#' and/or location(s) specified by the ADBC_CONFIG_PATH or CONDA_PREFIX 
-#' environment variables. See the ADBC documentation for details regarding 
+#' and/or location(s) specified by the ADBC_CONFIG_PATH or CONDA_PREFIX
+#' environment variables. See the ADBC documentation for details regarding
 #' the locations of the user and system paths on various platforms.
 #'
 #' @param search_env Search for manifest files in the directories specified by
