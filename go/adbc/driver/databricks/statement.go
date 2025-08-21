@@ -39,6 +39,12 @@ type statementImpl struct {
 }
 
 func (s *statementImpl) Close() error {
+	if s.conn == nil {
+		return adbc.Error{
+			Msg:  "statement already closed",
+			Code: adbc.StatusInvalidState,
+		}
+	}
 	if s.prepared != nil {
 		return s.prepared.Close()
 	}
@@ -176,36 +182,17 @@ func (s *statementImpl) ExecuteUpdate(ctx context.Context) (int64, error) {
 }
 
 func (s *statementImpl) Bind(ctx context.Context, values arrow.Record) error {
-	// Convert Arrow record to parameters
-	s.parameters = make([]interface{}, values.NumCols())
-
-	for i := 0; i < int(values.NumCols()); i++ {
-		col := values.Column(i)
-		if col.Len() == 0 {
-			s.parameters[i] = nil
-			continue
-		}
-
-		// Take the first value from each column
-		value, err := s.arrowToGoValue(col, 0)
-		if err != nil {
-			return adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  fmt.Sprintf("failed to convert parameter %d: %v", i, err),
-			}
-		}
-		s.parameters[i] = value
+	return adbc.Error{
+		Msg:  "Bind not yet implemented for Databricks driver",
+		Code: adbc.StatusNotImplemented,
 	}
-
-	return nil
 }
 
 func (s *statementImpl) BindStream(ctx context.Context, stream array.RecordReader) error {
-	// For simplicity, we'll just bind the first record
-	if stream.Next() {
-		return s.Bind(ctx, stream.Record())
+	return adbc.Error{
+		Msg:  "Bind not yet implemented for Databricks driver",
+		Code: adbc.StatusNotImplemented,
 	}
-	return nil
 }
 
 func (s *statementImpl) GetParameterSchema() (*arrow.Schema, error) {

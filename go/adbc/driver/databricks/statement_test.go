@@ -18,7 +18,6 @@
 package databricks_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc/driver/databricks"
@@ -29,8 +28,6 @@ func TestStatementBasic(t *testing.T) {
 	// This is a basic test to ensure the code compiles
 	// Real tests would require a connection to Databricks
 
-	_ = context.Background()
-
 	// Create a driver and database
 	driver := databricks.NewDriver(nil)
 	db, err := driver.NewDatabase(map[string]string{
@@ -39,7 +36,8 @@ func TestStatementBasic(t *testing.T) {
 		databricks.OptionHTTPPath:       "mock-path",
 	})
 	assert.NoError(t, err)
-	_ = db // Avoid unused variable
+
+	defer func() { _ = db.Close() }()
 
 	// Note: We can't test the actual statement implementation without a real connection
 	// This test just ensures the public API compiles correctly
