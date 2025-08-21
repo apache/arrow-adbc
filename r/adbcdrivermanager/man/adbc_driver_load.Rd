@@ -10,7 +10,8 @@ adbc_driver_load(
   version,
   driver,
   error,
-  load_flags = adbc_load_flags()
+  load_flags = adbc_load_flags(),
+  additional_search_path_list = NULL,
 )
 }
 \arguments{
