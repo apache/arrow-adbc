@@ -62,7 +62,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -118,7 +118,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -186,7 +186,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -222,7 +222,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -254,7 +254,7 @@ jobs:
         os: ["windows-latest"]
         python: ["3.9", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -282,7 +282,7 @@ jobs:
             --file ci\conda_env_cpp.txt `
             --file ci\conda_env_python.txt
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
