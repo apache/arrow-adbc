@@ -1322,6 +1322,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             Client?.Dispose();
             Client = null;
             this.httpClient?.Dispose();
+            s_tracerProvider?.ForceFlush();
         }
 
         private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");

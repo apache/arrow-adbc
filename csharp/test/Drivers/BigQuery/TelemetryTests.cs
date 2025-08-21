@@ -18,9 +18,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Adbc.Telemetry.Traces.Exporters;
-using Apache.Arrow.Adbc.Tests.Xunit;
+using Apache.Arrow.Adbc.Tracing;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -48,7 +49,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [InlineData(ExportersOptions.Exporters.AdbcFile)]
         //[InlineData(null)]
         //[InlineData(ExportersOptions.Exporters.None)]
-        public void CanEnableDisableFileTracingExporterViaEnvVariable(string? exporterName)
+        public void CanEnableFileTracingExporterViaEnvVariable(string? exporterName)
         {
             Environment.SetEnvironmentVariable(ExportersOptions.Environment.Exporter, exporterName);
 
@@ -60,6 +61,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 directoryInfo.Refresh();
                 IEnumerable<FileInfo> files = directoryInfo.EnumerateFiles();
                 Assert.Empty(files);
+                string activitySourceName = string.Empty;
 
                 try
                 {
@@ -69,6 +71,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                         try
                         {
                             using AdbcConnection connection = database.Connect(new Dictionary<string, string>());
+                            TracingConnection? tc = connection as TracingConnection;
+                            Assert.NotNull(tc);
+                            Assert.True(tc.ActivitySourceName.Length > 0, "Activity source name should not be empty");
+                            activitySourceName = tc.ActivitySourceName;
                         }
                         catch (Exception ex)
                         {
@@ -83,6 +89,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     {
                         case ExportersOptions.Exporters.AdbcFile:
                             Assert.NotEmpty(files);
+                            Assert.NotEqual(0, files.First().Length);
+                            Assert.StartsWith(activitySourceName, files.First().Name, StringComparison.OrdinalIgnoreCase);
                             break;
                         default:
                             Assert.Empty(files);
