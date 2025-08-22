@@ -16,7 +16,11 @@
 # under the License.
 
 CXX_STD = CXX17
-PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT="" -DADBC_CONDA_BUILD=$(CONDA_BUILD)
+PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT=""
+@if [ "$(CONDA_BUILD)" = "1" ]; then \
+PKG_CPPFLAGS="$(PKG_CPPFLAGS) -DADBC_CONDA_BUILD=1"; \
+fi
+
 PKG_LIBS=-lshell32 -ladvapi32 -luuid
 
 OBJECTS = driver_test.o \
