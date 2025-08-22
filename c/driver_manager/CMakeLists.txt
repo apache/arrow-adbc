@@ -71,6 +71,8 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
   if("$ENV{CONDA_BUILD}" STREQUAL "1")
     target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_CONDA_BUILD=1)
+  else()
+    target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_CONDA_BUILD=0)
   endif()
 endforeach()
 
