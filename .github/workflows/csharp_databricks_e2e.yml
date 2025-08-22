@@ -71,7 +71,7 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet }}
       - name: Checkout ADBC
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0

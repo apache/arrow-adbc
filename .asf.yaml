@@ -19,11 +19,11 @@ github:
   description: "Database connectivity API standard and libraries for Apache Arrow"
   homepage: https://arrow.apache.org/adbc/
   collaborators:
+    - alexguo-db
+    - eric-wang-1990
+    - jadewang-db
     - krlmlr
     - nbenn
-    - alexguo-db
-    - jadewang-db
-    - eric-wang-1990
   enabled_merge_buttons:
     merge: false
     rebase: false
@@ -40,9 +40,12 @@ github:
     databricks-e2e:
       wait_timer: 0
       required_reviewers:
-        - alexguo-db
-        - jadewang-db
-        - eric-wang-1990
+        - id: alexguo-db
+          type: User
+        - id: eric-wang-1990
+          type: User
+        - id: jadewang-db
+          type: User
       deployment_branch_policy:
         protected_branches: true
 
