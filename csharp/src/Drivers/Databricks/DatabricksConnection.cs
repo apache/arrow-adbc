@@ -47,6 +47,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         public const string DefaultConfigEnvironmentVariable = "DATABRICKS_CONFIG_FILE";
 
+        internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
+        {
+            { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" },
+        };
+        
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
@@ -582,11 +587,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 req.InitialNamespace = _defaultNamespace;
             }
-
+            req.Configuration = new Dictionary<string, string>();
+            // merge timestampConfig with serverSideProperties
+            foreach (var kvp in timestampConfig)
+            {
+                req.Configuration[kvp.Key] = kvp.Value;
+            }
             // If not using queries to set server-side properties, include them in Configuration
             if (!_applySSPWithQueries)
             {
-                req.Configuration = new Dictionary<string, string>();
                 var serverSideProperties = GetServerSideProperties();
                 foreach (var property in serverSideProperties)
                 {
