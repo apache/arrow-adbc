@@ -97,10 +97,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.EnforceResultPersistenceMode = false;
             statement.CanReadArrowResult = true;
 
-#pragma warning disable CS0618 // Type or member is obsolete
-            statement.ConfOverlay = SparkConnection.timestampConfig;
-#pragma warning restore CS0618 // Type or member is obsolete
-
             statement.UseArrowNativeTypes = new TSparkArrowTypes
             {
                 TimestampAsArrow = true,
