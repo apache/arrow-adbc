@@ -1042,7 +1042,7 @@ struct TempDatabase {
   std::string entrypoint;
   AdbcDriverInitFunc init_func = nullptr;
   AdbcLoadFlags load_flags = ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
-  std::string_view additional_search_path_list;
+  std::string additional_search_path_list;
 };
 
 /// Temporary state while the database is being configured.
@@ -1423,9 +1423,9 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
 
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (path_list) {
-    args->additional_search_path_list = path_list;
+    args->additional_search_path_list.assign(path_list);
   } else {
-    args->additional_search_path_list = std::string_view();
+    args->additional_search_path_list.clear();
   }
   return ADBC_STATUS_OK;
 }

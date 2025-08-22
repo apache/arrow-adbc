@@ -435,7 +435,8 @@ the given order:
 
    * ``ADBC_CONFIG_PATH`` is a colon-separated list of directories to search for ``${name}.toml``
    * ``CONDA_PREFIX`` is used by `conda <https://anaconda.org/anaconda/conda>`__ and if set
-     ``$CONDA_PREFIX/etc/adbc`` will be searched for ``${name}.toml``
+     ``$CONDA_PREFIX/etc/adbc`` will be searched for ``${name}.toml`` (This only occurs when built using conda-build
+     or otherwise building for a conda package)
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration directory will be searched
 
@@ -458,7 +459,8 @@ would happen for ODBC drivers. The search for a manifest on Windows would be the
 
    * ``ADBC_CONFIG_PATH`` is a semicolon-separated list of directories to search for ``${name}.toml``
    * ``CONDA_PREFIX`` is used by `conda <https://anaconda.org/anaconda/conda>`__ and if set
-     ``$CONDA_PREFIX/etc/adbc`` will be searched for ``${name}.toml``
+     ``$CONDA_PREFIX/etc/adbc`` will be searched for ``${name}.toml`` (This only occurs when built using conda-build
+     or otherwise building for a conda package)
 
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration is searched for

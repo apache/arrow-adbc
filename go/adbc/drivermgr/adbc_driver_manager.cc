@@ -273,6 +273,7 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   return ADBC_STATUS_OK;
 }
 
+#ifdef ADBC_CONDA_BUILD
 #ifdef _WIN32
 std::filesystem::path GetEnvAsPath(const wchar_t* env_var) {
   size_t required_size;
@@ -299,6 +300,7 @@ std::filesystem::path GetEnvAsPath(const char* env_var) {
   return {};
 }
 #endif
+#endif
 
 std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
   std::vector<std::filesystem::path> paths;
@@ -309,6 +311,7 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
       paths = InternalAdbcParsePath(env_path);
     }
 
+#ifdef ADBC_CONDA_BUILD
 #ifdef _WIN32
     const wchar_t* conda_name = L"CONDA_PREFIX";
 #else
@@ -319,6 +322,7 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
     if (!venv.empty()) {
       paths.push_back(venv / "etc" / "adbc");
     }
+#endif
   }
 
   if (levels & ADBC_LOAD_FLAG_SEARCH_USER) {
@@ -1038,7 +1042,7 @@ struct TempDatabase {
   std::string entrypoint;
   AdbcDriverInitFunc init_func = nullptr;
   AdbcLoadFlags load_flags = ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
-  std::string_view additional_search_path_list;
+  std::string additional_search_path_list;
 };
 
 /// Temporary state while the database is being configured.
@@ -1419,9 +1423,9 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
 
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (path_list) {
-    args->additional_search_path_list = path_list;
+    args->additional_search_path_list.assign(path_list);
   } else {
-    args->additional_search_path_list = std::string_view();
+    args->additional_search_path_list.clear();
   }
   return ADBC_STATUS_OK;
 }
