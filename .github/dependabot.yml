@@ -64,8 +64,11 @@ updates:
     commit-message:
       prefix: "chore(rust): "
     groups:
-      arrow-datafusion:
+      arrow:
         applies-to: version-updates
         patterns:
           - "arrow-*"
+      datafusion:
+        applies-to: version-updates
+        patterns:
           - "datafusion*"
