@@ -273,7 +273,7 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   return ADBC_STATUS_OK;
 }
 
-#ifdef ADBC_CONDA_BUILD
+#if ADBC_CONDA_BUILD
 #ifdef _WIN32
 std::filesystem::path GetEnvAsPath(const wchar_t* env_var) {
   size_t required_size;
@@ -311,7 +311,7 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
       paths = InternalAdbcParsePath(env_path);
     }
 
-#ifdef ADBC_CONDA_BUILD
+#if ADBC_CONDA_BUILD
 #ifdef _WIN32
     const wchar_t* conda_name = L"CONDA_PREFIX";
 #else
