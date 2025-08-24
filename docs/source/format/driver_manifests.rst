@@ -352,7 +352,7 @@ to control which directories will be searched for manifests, with the behavior b
        The type :c:type:`AdbcLoadFlags` is a set of bitflags to control the directories to be searched. The flags are
 
        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_ENV` - search the directory paths in the environment variable
-       ``ADBC_CONFIG_PATH`` and (when built or installed with conda) search in the conda environment
+         ``ADBC_CONFIG_PATH`` and (when built or installed with conda) search in the conda environment
        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_USER` - search the user configuration directory
        * :c:macro:`ADBC_LOAD_FLAG_SEARCH_SYSTEM` - search the system configuration directory
        * :c:macro:`ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS` - allow a relative path to be provided
@@ -366,7 +366,7 @@ to control which directories will be searched for manifests, with the behavior b
        The type ``GADBCLoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
 
        * ``GADBC_LOAD_SEARCH_ENV`` - search the directory paths in the environment variable
-       ``ADBC_CONFIG_PATH`` and (when built or installed with conda) search in the conda environment
+         ``ADBC_CONFIG_PATH`` and (when built or installed with conda) search in the conda environment
        * ``GADBC_LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
        * ``GADBC_LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
        * ``GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
@@ -383,7 +383,7 @@ to control which directories will be searched for manifests, with the behavior b
        or ``NewDatabaseWithContext``. The flags are defined in the ``drivermgr`` package as constants:
 
        * ``drivermgr.LoadFlagsSearchEnv`` - search the directory paths in the environment variable
-       ``ADBC_CONFIG_PATH``
+         ``ADBC_CONFIG_PATH``
        * ``drivermgr.LoadFlagsSearchUser`` - search the user configuration directory
        * ``drivermgr.LoadFlagsSearchSystem`` - search the system configuration directory
        * ``drivermgr.LoadFlagsAllowRelativePaths`` - allow a relative path to be used
@@ -407,7 +407,7 @@ to control which directories will be searched for manifests, with the behavior b
        The class ``ADBC::LoadFlags`` is a set of bitflags to control the directories to be searched. The flags are
 
        * ``ADBC::LoadFlags::SEARCH_ENV`` - search the directory paths in the environment variable
-       ``ADBC_CONFIG_PATH`` and (when built or installed with conda) search in the conda environment
+         ``ADBC_CONFIG_PATH`` and (when built or installed with conda) search in the conda environment
        * ``ADBC::LoadFlags::SEARCH_USER`` - search the user configuration directory
        * ``ADBC::LoadFlags::SEARCH_SYSTEM`` - search the system configuration directory
        * ``ADBC::LoadFlags::ALLOW_RELATIVE_PATHS`` - allow a relative path to be provided
@@ -424,7 +424,7 @@ to control which directories will be searched for manifests, with the behavior b
        the type ``adbc_core::driver_manager::LoadFlags``, which has the following constants:
 
        * ``LOAD_FLAG_SEARCH_ENV`` - search the directory paths in the environment variable
-       ``ADBC_CONFIG_PATH`` and (when built or installed with conda) search in the conda environment
+         ``ADBC_CONFIG_PATH`` and (when built or installed with conda) search in the conda environment
        * ``LOAD_FLAG_SEARCH_USER`` - search the user configuration directory
        * ``LOAD_FLAG_SEARCH_SYSTEM`` - search the system configuration directory
        * ``LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be used
