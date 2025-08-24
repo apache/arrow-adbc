@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Traces\Exporters\Apache.Arrow.Adbc.Telemetry.Traces.Exporters.csproj" />
   </ItemGroup>
 
 </Project>
