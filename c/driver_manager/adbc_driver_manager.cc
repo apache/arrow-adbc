@@ -486,14 +486,15 @@ struct ManagedLibrary {
     }
 
     {
-      // we want the runtime application-defined paths to be searched AFTER
-      // we search `ADBC_CONFIG_PATH` but BEFORE we search `CONDA_PREFIX` if
-      // it exists.
+      // First search the paths in the env var `ADBC_CONFIG_PATH`.
+      // Then search the runtime application-defined additional search paths.
       auto search_paths = GetSearchPaths(load_options & ADBC_LOAD_FLAG_SEARCH_ENV);
       search_paths.insert(search_paths.end(), additional_search_paths.begin(),
                           additional_search_paths.end());
 
 #if ADBC_CONDA_BUILD
+      // Then, if this is a conda build, search in the conda environment if
+      // it is activated.
       if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
 #ifdef _WIN32
         const wchar_t* conda_name = L"CONDA_PREFIX";
@@ -512,11 +513,13 @@ struct ManagedLibrary {
         return status;
       }
     }
+
+    // We searched environment paths and additional search paths (if they
+    // exist), so now search the rest.
 #ifdef _WIN32
-    // windows is slightly more complex since we also need to check registry keys
-    // so we can't just grab the search paths only.
+    // On Windows, check registry keys, not just search paths.
     if (load_options & ADBC_LOAD_FLAG_SEARCH_USER) {
-      // Check the user registry for the driver
+      // Check the user registry for the driver.
       auto status =
           LoadDriverFromRegistry(HKEY_CURRENT_USER, driver_path.native(), info, error);
       if (status == ADBC_STATUS_OK) {
@@ -531,7 +534,7 @@ struct ManagedLibrary {
     }
 
     if (load_options & ADBC_LOAD_FLAG_SEARCH_SYSTEM) {
-      // Check the system registry for the driver
+      // Check the system registry for the driver.
       auto status =
           LoadDriverFromRegistry(HKEY_LOCAL_MACHINE, driver_path.native(), info, error);
       if (status == ADBC_STATUS_OK) {
@@ -548,14 +551,12 @@ struct ManagedLibrary {
     info.lib_path = driver_path;
     return Load(driver_path.c_str(), error);
 #else
-    // Otherwise, search the configured paths
-    // we already searched env path and additional paths if they exist, so now search the
-    // rest
+    // Otherwise, search the configured paths.
     auto search_paths = GetSearchPaths(load_options & ~ADBC_LOAD_FLAG_SEARCH_ENV);
     auto status = SearchPaths(driver_path, search_paths, info, error);
     if (status == ADBC_STATUS_NOT_FOUND) {
       // If we reach here, we didn't find the driver in any of the paths
-      // so let's just attempt to load it as default behavior
+      // so let's just attempt to load it as default behavior.
       info.lib_path = driver_path;
       return Load(driver_path.c_str(), error);
     }
