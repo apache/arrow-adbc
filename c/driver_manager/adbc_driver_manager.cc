@@ -485,40 +485,36 @@ struct ManagedLibrary {
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
+    {
+      // we want the runtime application-defined paths to be searched AFTER
+      // we search `ADBC_CONFIG_PATH` but BEFORE we search `CONDA_PREFIX` if
+      // it exists.
+      auto search_paths = GetSearchPaths(load_options & ADBC_LOAD_FLAG_SEARCH_ENV);
+      search_paths.insert(search_paths.end(), additional_search_paths.begin(),
+                          additional_search_paths.end());
+
+#if ADBC_CONDA_BUILD
+      if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
 #ifdef _WIN32
-    // windows is slightly more complex since we also need to check registry keys
-    // so we can't just grab the search paths only.
-    if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
-      auto search_paths = GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_ENV);
+        const wchar_t* conda_name = L"CONDA_PREFIX";
+#else
+        const char* conda_name = "CONDA_PREFIX";
+#endif  // _WIN32
+        std::filesystem::path venv = GetEnvAsPath(conda_name);
+        if (!venv.empty()) {
+          search_paths.push_back(venv / "etc" / "adbc");
+        }
+      }
+#endif  // ADBC_CONDA_BUILD
+
       auto status = SearchPaths(driver_path, search_paths, info, error);
       if (status == ADBC_STATUS_OK) {
         return status;
       }
     }
-
-    // we want the runtime application-defined paths to be searched AFTER
-    // we search `ADBC_CONFIG_PATH` but BEFORE we search `CONDA_PREFIX` if
-    // it exists.
-    {
-      auto status = SearchPaths(driver_path, additional_search_paths, info, error);
-      if (status == ADBC_STATUS_OK) {
-        return status;
-      }
-    }
-
-#if ADBC_CONDA_BUILD
-    const wchar_t* conda_name = L"CONDA_PREFIX";
-    if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
-      std::filesystem::path venv = GetEnvAsPath(conda_name);
-      if (!venv.empty()) {
-        auto status = SearchPaths(driver_path, {venv / "etc" / "adbc"}, info, error);
-        if (status == ADBC_STATUS_OK) {
-          return status;
-        }
-      }
-    }
-#endif  // ADBC_CONDA_BUILD
-
+#ifdef _WIN32
+    // windows is slightly more complex since we also need to check registry keys
+    // so we can't just grab the search paths only.
     if (load_options & ADBC_LOAD_FLAG_SEARCH_USER) {
       // Check the user registry for the driver
       auto status =
@@ -553,29 +549,9 @@ struct ManagedLibrary {
     return Load(driver_path.c_str(), error);
 #else
     // Otherwise, search the configured paths
-    // we want the runtime application-defined paths to be searched AFTER
-    // we search `ADBC_CONFIG_PATH` but BEFORE we search `CONDA_PREFIX` if
-    // it exists.
-    auto search_paths = GetSearchPaths(load_options & ADBC_LOAD_FLAG_SEARCH_ENV);
-    search_paths.insert(search_paths.end(), additional_search_paths.begin(),
-                        additional_search_paths.end());
-
-#if ADBC_CONDA_BUILD
-    if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
-      const char* conda_name = "CONDA_PREFIX";
-      std::filesystem::path venv = GetEnvAsPath(conda_name);
-      if (!venv.empty()) {
-        search_paths.push_back(venv / "etc" / "adbc");
-      }
-    }
-#endif  // ADBC_CONDA_BUILD
-
-    {
-      // we already added env paths if they exist, so now add all the rest
-      auto rest_of_paths = GetSearchPaths(load_options & ~ADBC_LOAD_FLAG_SEARCH_ENV);
-      search_paths.insert(search_paths.end(), rest_of_paths.begin(), rest_of_paths.end());
-    }
-
+    // we already searched env path and additional paths if they exist, so now search the
+    // rest
+    auto search_paths = GetSearchPaths(load_options & ~ADBC_LOAD_FLAG_SEARCH_ENV);
     auto status = SearchPaths(driver_path, search_paths, info, error);
     if (status == ADBC_STATUS_NOT_FOUND) {
       // If we reach here, we didn't find the driver in any of the paths
