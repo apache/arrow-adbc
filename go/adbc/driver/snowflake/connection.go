@@ -442,16 +442,15 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 
 	switch driverbase.ValueOrZero(columnInfo.XdbcTypeName) {
 	case "NUMBER":
-		if c.useHighPrecision {
+		scale := driverbase.ValueOrZero(columnInfo.XdbcDecimalDigits)
+		// Use Int64 only when useHighPrecision=false AND scale=0
+		if !c.useHighPrecision && scale == 0 {
+			field.Type = arrow.PrimitiveTypes.Int64
+		} else {
+			// Use Decimal128 for all other cases to preserve precision
 			field.Type = &arrow.Decimal128Type{
 				Precision: int32(driverbase.ValueOrZero(columnInfo.XdbcColumnSize)),
-				Scale:     int32(driverbase.ValueOrZero(columnInfo.XdbcDecimalDigits)),
-			}
-		} else {
-			if driverbase.ValueOrZero(columnInfo.XdbcDecimalDigits) == 0 {
-				field.Type = arrow.PrimitiveTypes.Int64
-			} else {
-				field.Type = arrow.PrimitiveTypes.Float64
+				Scale:     int32(scale),
 			}
 		}
 	case "FLOAT":
