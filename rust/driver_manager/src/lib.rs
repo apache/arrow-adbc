@@ -310,6 +310,7 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
         load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
         let driver_path = Path::new(name.as_ref());
         let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
@@ -334,7 +335,7 @@ impl ManagedDriver {
 
             Self::load_dynamic_from_filename(driver_path, entrypoint, version)
         } else {
-            Self::find_driver(driver_path, entrypoint, version, load_flags)
+            Self::find_driver(driver_path, entrypoint, version, load_flags, additional_search_paths)
         }
     }
 
@@ -481,6 +482,7 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
         load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
         if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
             if let Ok(result) = Self::search_path_list(
@@ -490,6 +492,35 @@ impl ManagedDriver {
                 version,
             ) {
                 return Ok(result);
+            }
+        }
+
+        // the logic we want is that we first search ADBC_CONFIG_PATH if set,
+        // then we search the additional search paths if they exist. Finally,
+        // we will search CONDA_PREFIX if built with conda_build before moving on.
+        if let Some(additional_search_paths) = additional_search_paths {
+            if let Ok(result) = Self::search_path_list(
+                driver_path,
+                additional_search_paths,
+                entrypoint,
+                version,
+            ) {
+                return Ok(result);
+            }
+        }
+
+        #[cfg(conda_build)]
+        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
+            if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
+                let conda_path = PathBuf::from(conda_prefix).join("etc").join("adbc");
+                if let Ok(result) = Self::search_path_list(
+                    driver_path,
+                    vec![conda_path],
+                    entrypoint,
+                    version,
+                ) {
+                    return Ok(result);
+                }
             }
         }
 
@@ -542,10 +573,27 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
         load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
+        let mut path_list = get_search_paths(load_flags & LOAD_FLAG_SEARCH_ENV);
+
+        if let Some(additional_search_paths) = additional_search_paths {
+            path_list.extend(additional_search_paths);
+        }
+
+        #[cfg(conda_build)]
+        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
+            if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
+                let conda_path = PathBuf::from(conda_prefix).join("etc").join("adbc");
+                path_list.push(conda_path);
+            }
+        }
+
+        
+        path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));        
         if let Ok(result) = Self::search_path_list(
             driver_path,
-            get_search_paths(load_flags),
+            path_list,
             entrypoint,
             version,
         ) {
@@ -1778,13 +1826,6 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
                 result.push(p);
             }
         }
-
-        #[cfg(conda_build)]
-        {
-            if let Some(path) = env::var_os("CONDA_PREFIX") {
-                result.push(PathBuf::from(path).join("etc").join("adbc"));
-            }
-        }
     }
 
     if lvls & LOAD_FLAG_SEARCH_USER != 0 {
@@ -1846,7 +1887,7 @@ mod tests {
     use super::*;
 
     use adbc_core::LOAD_FLAG_DEFAULT;
-    use temp_env::{with_var, with_var_unset, with_vars};
+    use temp_env::{with_var, with_var_unset};
     use tempfile::Builder;
 
     fn manifest_without_driver() -> &'static str {
@@ -1956,6 +1997,7 @@ mod tests {
                 None,
                 AdbcVersion::V100,
                 LOAD_FLAG_SEARCH_ENV,
+                None,
             )
             .unwrap_err();
             assert_eq!(err.status, Status::NotFound);
@@ -1973,6 +2015,7 @@ mod tests {
                     None,
                     AdbcVersion::V100,
                     LOAD_FLAG_SEARCH_ENV,
+                    None,
                 )
                 .unwrap();
             },
@@ -1997,7 +2040,7 @@ mod tests {
         .unwrap();
 
         with_var("ADBC_CONFIG_PATH", Some(&path_os_string), || {
-            ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV)
+            ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV, None)
                 .unwrap();
         });
 
@@ -2021,6 +2064,7 @@ mod tests {
                     None,
                     AdbcVersion::V100,
                     LOAD_FLAG_SEARCH_ENV,
+                    None,
                 )
                 .unwrap();
             },
@@ -2044,7 +2088,7 @@ mod tests {
             || {
                 let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;
                 let err =
-                    ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, load_flags)
+                    ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, load_flags, None)
                         .unwrap_err();
                 assert_eq!(err.status, Status::NotFound);
             },
@@ -2057,11 +2101,31 @@ mod tests {
 
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_load_additional_path() {
+        let p = PathBuf::from("majestik møøse/sqlite.toml");
+        let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
+
+        ManagedDriver::load_from_name(
+                    "sqlite",
+                    None,
+                    AdbcVersion::V100,
+                    LOAD_FLAG_SEARCH_ENV,
+                    Some(vec![manifest_path.parent().unwrap().to_path_buf()]),
+                )
+                .unwrap();
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_absolute_path() {
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
-        ManagedDriver::load_from_name(manifest_path, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT)
+        ManagedDriver::load_from_name(manifest_path, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None)
             .unwrap();
 
         tmp_dir
@@ -2076,7 +2140,7 @@ mod tests {
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
         manifest_path.set_extension("");
-        ManagedDriver::load_from_name(manifest_path, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT)
+        ManagedDriver::load_from_name(manifest_path, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None)
             .unwrap();
 
         tmp_dir
@@ -2091,7 +2155,7 @@ mod tests {
             .expect("Failed to write driver manager manifest to file");
 
         let err =
-            ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0).unwrap_err();
+            ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0, None).unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
         ManagedDriver::load_from_name(
@@ -2099,6 +2163,7 @@ mod tests {
             None,
             AdbcVersion::V100,
             LOAD_FLAG_ALLOW_RELATIVE_PATHS,
+            None,
         )
         .unwrap();
 
@@ -2119,6 +2184,7 @@ mod tests {
             None,
             AdbcVersion::V100,
             LOAD_FLAG_DEFAULT,
+            None,
         )
         .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
@@ -2150,6 +2216,7 @@ mod tests {
             None,
             AdbcVersion::V100,
             LOAD_FLAG_DEFAULT,
+            None,
         )
         .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
@@ -2174,6 +2241,7 @@ mod tests {
             None,
             AdbcVersion::V110,
             LOAD_FLAG_DEFAULT,
+            None,
         )
         .unwrap_err();
         assert_eq!(err.status, Status::NotFound);
@@ -2196,6 +2264,7 @@ mod tests {
             None,
             AdbcVersion::V110,
             LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_USER,
+            None,
         )
         .unwrap_err();
         assert_eq!(err.status, Status::NotFound);
@@ -2206,6 +2275,7 @@ mod tests {
             None,
             AdbcVersion::V110,
             LOAD_FLAG_SEARCH_USER,
+            None,
         )
         .unwrap();
 
@@ -2230,41 +2300,5 @@ mod tests {
         } else {
             assert_eq!(search_paths, Vec::<PathBuf>::new());
         }
-    }
-
-    #[test]
-    fn test_get_search_paths_env() {
-        let path_list = vec![
-            Path::new("/foo/bar/baz"),
-            Path::new("/majestik/møøse"),
-            Path::new("/super/duper"),
-        ];
-
-        with_vars(
-            vec![
-                (
-                    "ADBC_CONFIG_PATH",
-                    Some(env::join_paths(&path_list).unwrap().as_os_str()),
-                ),
-                #[cfg(conda_build)]
-                (
-                    "CONDA_PREFIX",
-                    Some(Path::new("/home/foo/.conda/envs/hi").as_os_str()),
-                ),
-            ],
-            || {
-                let search_paths = get_search_paths(LOAD_FLAG_SEARCH_ENV);
-                assert_eq!(
-                    search_paths,
-                    vec![
-                        Path::new("/foo/bar/baz"),
-                        Path::new("/majestik/møøse"),
-                        Path::new("/super/duper"),
-                        #[cfg(conda_build)]
-                        Path::new("/home/foo/.conda/envs/hi/etc/adbc"),
-                    ]
-                );
-            },
-        );
     }
 }
