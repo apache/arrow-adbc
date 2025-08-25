@@ -159,7 +159,7 @@ std::wstring Utf8Decode(const std::string& str) {
 
 #else
 using char_type = char;
-#endif
+#endif  // _WIN32
 
 // Driver state
 struct DriverInfo {
@@ -239,7 +239,7 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
   }
   return ADBC_STATUS_OK;
 }
-#endif
+#endif  // _WIN32
 
 AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
                                   DriverInfo& info, struct AdbcError* error) {
@@ -299,8 +299,8 @@ std::filesystem::path GetEnvAsPath(const char* env_var) {
   }
   return {};
 }
-#endif
-#endif
+#endif  // _WIN32
+#endif  // ADBC_CONDA_BUILD
 
 std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
   std::vector<std::filesystem::path> paths;
@@ -334,7 +334,7 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
     if (std::filesystem::exists(system_config_dir)) {
       paths.push_back(system_config_dir);
     }
-#endif
+#endif  // defined(__APPLE__)
   }
 
   return paths;
@@ -348,7 +348,7 @@ bool HasExtension(const std::filesystem::path& path, const std::string& ext) {
          _wcsnicmp(path_ext.data(), wext.data(), wext.size()) == 0;
 #else
   return path.extension() == ext;
-#endif
+#endif  // _WIN32
 }
 
 /// A driver DLL.
@@ -435,7 +435,7 @@ struct ManagedLibrary {
       static const std::string kPlatformLibrarySuffix = ".dylib";
 #else
       static const std::string kPlatformLibrarySuffix = ".so";
-#endif
+#endif  // defined(_WIN32)
       if (HasExtension(driver_path, kPlatformLibrarySuffix)) {
         info.lib_path = driver_path;
         return Load(driver_path.c_str(), error);
@@ -517,7 +517,7 @@ struct ManagedLibrary {
         }
       }
     }
-#endif
+#endif  // ADBC_CONDA_BUILD
 
     if (load_options & ADBC_LOAD_FLAG_SEARCH_USER) {
       // Check the user registry for the driver
@@ -568,7 +568,7 @@ struct ManagedLibrary {
         search_paths.push_back(venv / "etc" / "adbc");
       }
     }
-#endif
+#endif  // ADBC_CONDA_BUILD
 
     {
       // we already added env paths if they exist, so now add all the rest
@@ -584,7 +584,7 @@ struct ManagedLibrary {
       return Load(driver_path.c_str(), error);
     }
     return status;
-#endif
+#endif  // _WIN32
   }
 
   AdbcStatusCode Load(const char_type* library, struct AdbcError* error) {
@@ -1120,7 +1120,7 @@ std::filesystem::path InternalAdbcUserConfigDir() {
   if (!config_dir.empty()) {
     config_dir /= "adbc";
   }
-#endif
+#endif  // defined(_WIN32)
 
   return config_dir;
 }
