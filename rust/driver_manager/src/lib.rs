@@ -335,7 +335,13 @@ impl ManagedDriver {
 
             Self::load_dynamic_from_filename(driver_path, entrypoint, version)
         } else {
-            Self::find_driver(driver_path, entrypoint, version, load_flags, additional_search_paths)
+            Self::find_driver(
+                driver_path,
+                entrypoint,
+                version,
+                load_flags,
+                additional_search_paths,
+            )
         }
     }
 
@@ -499,12 +505,9 @@ impl ManagedDriver {
         // then we search the additional search paths if they exist. Finally,
         // we will search CONDA_PREFIX if built with conda_build before moving on.
         if let Some(additional_search_paths) = additional_search_paths {
-            if let Ok(result) = Self::search_path_list(
-                driver_path,
-                additional_search_paths,
-                entrypoint,
-                version,
-            ) {
+            if let Ok(result) =
+                Self::search_path_list(driver_path, additional_search_paths, entrypoint, version)
+            {
                 return Ok(result);
             }
         }
@@ -513,12 +516,9 @@ impl ManagedDriver {
         if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
             if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
                 let conda_path = PathBuf::from(conda_prefix).join("etc").join("adbc");
-                if let Ok(result) = Self::search_path_list(
-                    driver_path,
-                    vec![conda_path],
-                    entrypoint,
-                    version,
-                ) {
+                if let Ok(result) =
+                    Self::search_path_list(driver_path, vec![conda_path], entrypoint, version)
+                {
                     return Ok(result);
                 }
             }
@@ -589,14 +589,8 @@ impl ManagedDriver {
             }
         }
 
-        
-        path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));        
-        if let Ok(result) = Self::search_path_list(
-            driver_path,
-            path_list,
-            entrypoint,
-            version,
-        ) {
+        path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));
+        if let Ok(result) = Self::search_path_list(driver_path, path_list, entrypoint, version) {
             return Ok(result);
         }
 
@@ -2040,8 +2034,14 @@ mod tests {
         .unwrap();
 
         with_var("ADBC_CONFIG_PATH", Some(&path_os_string), || {
-            ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV, None)
-                .unwrap();
+            ManagedDriver::load_from_name(
+                "sqlite",
+                None,
+                AdbcVersion::V100,
+                LOAD_FLAG_SEARCH_ENV,
+                None,
+            )
+            .unwrap();
         });
 
         tmp_dir
@@ -2087,9 +2087,14 @@ mod tests {
             Some(manifest_path.parent().unwrap().as_os_str()),
             || {
                 let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;
-                let err =
-                    ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, load_flags, None)
-                        .unwrap_err();
+                let err = ManagedDriver::load_from_name(
+                    "sqlite",
+                    None,
+                    AdbcVersion::V100,
+                    load_flags,
+                    None,
+                )
+                .unwrap_err();
                 assert_eq!(err.status, Status::NotFound);
             },
         );
@@ -2106,13 +2111,13 @@ mod tests {
         let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
 
         ManagedDriver::load_from_name(
-                    "sqlite",
-                    None,
-                    AdbcVersion::V100,
-                    LOAD_FLAG_SEARCH_ENV,
-                    Some(vec![manifest_path.parent().unwrap().to_path_buf()]),
-                )
-                .unwrap();
+            "sqlite",
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_SEARCH_ENV,
+            Some(vec![manifest_path.parent().unwrap().to_path_buf()]),
+        )
+        .unwrap();
 
         tmp_dir
             .close()
@@ -2125,8 +2130,14 @@ mod tests {
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
-        ManagedDriver::load_from_name(manifest_path, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None)
-            .unwrap();
+        ManagedDriver::load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT,
+            None,
+        )
+        .unwrap();
 
         tmp_dir
             .close()
@@ -2140,8 +2151,14 @@ mod tests {
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
         manifest_path.set_extension("");
-        ManagedDriver::load_from_name(manifest_path, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None)
-            .unwrap();
+        ManagedDriver::load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT,
+            None,
+        )
+        .unwrap();
 
         tmp_dir
             .close()
@@ -2154,8 +2171,8 @@ mod tests {
         std::fs::write(PathBuf::from("sqlite.toml"), simple_manifest())
             .expect("Failed to write driver manager manifest to file");
 
-        let err =
-            ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0, None).unwrap_err();
+        let err = ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0, None)
+            .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
         ManagedDriver::load_from_name(
