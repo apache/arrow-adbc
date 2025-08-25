@@ -87,21 +87,31 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 		case "FIXED":
 			switch f.Type.ID() {
 			case arrow.DECIMAL, arrow.DECIMAL256:
-				if useHighPrecision {
-					transformers[i] = identCol
-				} else {
-					if srcMeta.Scale == 0 {
-						f.Type = arrow.PrimitiveTypes.Int64
-					} else {
-						f.Type = arrow.PrimitiveTypes.Float64
-					}
+				if !useHighPrecision && srcMeta.Scale == 0 {
+					// Optimize integer decimals to Int64 when useHighPrecision=false
+					f.Type = arrow.PrimitiveTypes.Int64
 					dt := f.Type
 					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 						return compute.CastArray(ctx, a, compute.UnsafeCastOptions(dt))
 					}
+				} else {
+					// Keep as Decimal128 for:
+					// - All cases when useHighPrecision=true
+					// - Non-zero scale when useHighPrecision=false
+					transformers[i] = identCol
 				}
 			default:
-				if useHighPrecision {
+				// When data arrives as Int64 (scaled integer)
+				if !useHighPrecision && srcMeta.Scale == 0 {
+					// Optimize to Int64 when scale=0 and useHighPrecision=false
+					f.Type = arrow.PrimitiveTypes.Int64
+					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
+						return compute.CastArray(ctx, a, compute.SafeCastOptions(arrow.PrimitiveTypes.Int64))
+					}
+				} else {
+					// Convert to Decimal128 for:
+					// - All cases when useHighPrecision=true
+					// - Non-zero scale when useHighPrecision=false
 					dt := &arrow.Decimal128Type{
 						Precision: int32(srcMeta.Precision),
 						Scale:     int32(srcMeta.Scale),
@@ -109,42 +119,6 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 					f.Type = dt
 					transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 						return integerToDecimal128(ctx, a, dt)
-					}
-				} else {
-					if srcMeta.Scale != 0 {
-						f.Type = arrow.PrimitiveTypes.Float64
-						// For precisions of 16, 17 and 18, a conversion from int64 to float64 fails with an error
-						// So for these precisions, we instead convert first to a decimal128 and then to a float64.
-						if srcMeta.Precision > 15 && srcMeta.Precision < 19 {
-							transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-								result, err := integerToDecimal128(ctx, a, &arrow.Decimal128Type{
-									Precision: int32(srcMeta.Precision),
-									Scale:     int32(srcMeta.Scale),
-								})
-								if err != nil {
-									return nil, err
-								}
-								defer result.Release()
-								return compute.CastArray(ctx, result, compute.UnsafeCastOptions(f.Type))
-							}
-						} else {
-							// For precisions less than 16, we can simply scale the integer value appropriately
-							transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-								result, err := compute.Divide(ctx, compute.ArithmeticOptions{NoCheckOverflow: true},
-									&compute.ArrayDatum{Value: a.Data()},
-									compute.NewDatum(math.Pow10(int(srcMeta.Scale))))
-								if err != nil {
-									return nil, err
-								}
-								defer result.Release()
-								return result.(*compute.ArrayDatum).MakeArray(), nil
-							}
-						}
-					} else {
-						f.Type = arrow.PrimitiveTypes.Int64
-						transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
-							return compute.CastArray(ctx, a, compute.SafeCastOptions(arrow.PrimitiveTypes.Int64))
-						}
 					}
 				}
 			}
@@ -355,7 +329,11 @@ func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, 
 				if srcMeta.Scale == 0 {
 					fields[i].Type = arrow.PrimitiveTypes.Int64
 				} else {
-					fields[i].Type = arrow.PrimitiveTypes.Float64
+					// Use Decimal128 to preserve precision even when useHighPrecision=false
+					fields[i].Type = &arrow.Decimal128Type{
+						Precision: int32(srcMeta.Precision),
+						Scale:     int32(srcMeta.Scale),
+					}
 				}
 			}
 		case "real":

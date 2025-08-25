@@ -1935,12 +1935,16 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 
 	suite.EqualValues(2, n)
 	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
-	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(1).Type), "expected float64, got %s", rdr.Schema().Field(1).Type)
+	// NUMBER(15,2) should now return Decimal128 even with useHighPrecision=false
+	expectedType := &arrow.Decimal128Type{Precision: 15, Scale: 2}
+	suite.Truef(arrow.TypeEqual(expectedType, rdr.Schema().Field(1).Type), "expected decimal128(15,2), got %s", rdr.Schema().Field(1).Type)
 	suite.True(rdr.Next())
 	rec := rdr.Record()
 
-	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
-	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
+	// Get values from Decimal128 array and verify precision is preserved
+	decimalArray := rec.Column(1).(*array.Decimal128)
+	suite.Equal(1234567.89, decimalArray.Value(0).ToFloat64(2))
+	suite.Equal(9876543210.99, decimalArray.Value(1).ToFloat64(2))
 }
 
 func (suite *SnowflakeTests) TestDecimalHighPrecision() {
@@ -1992,13 +1996,18 @@ func (suite *SnowflakeTests) TestNonIntDecimalLowPrecision() {
 			defer rdr.Release()
 
 			suite.EqualValues(1, n)
-			suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(0).Type), "expected float64, got %s", rdr.Schema().Field(0).Type)
+			// Now expects Decimal128 for non-zero scale even with useHighPrecision=false
+			expectedType := &arrow.Decimal128Type{Precision: int32(precision), Scale: int32(scale)}
+			suite.Truef(arrow.TypeEqual(expectedType, rdr.Schema().Field(0).Type), "expected decimal128(%d,%d), got %s", precision, scale, rdr.Schema().Field(0).Type)
 			suite.True(rdr.Next())
 			rec := rdr.Record()
 
-			value := rec.Column(0).(*array.Float64).Value(0)
-			difference := math.Abs(number - value)
-			suite.Truef(difference < 1e-13, "expected %f, got %f", number, value)
+			// Get value from Decimal128 array
+			decimalArray := rec.Column(0).(*array.Decimal128)
+			actualDecimal := decimalArray.Value(0)
+			actualValue := actualDecimal.ToFloat64(int32(scale))
+			difference := math.Abs(number - actualValue)
+			suite.Truef(difference < 1e-13, "expected %f, got %f", number, actualValue)
 
 			suite.False(rdr.Next())
 		}
@@ -2034,6 +2043,205 @@ func (suite *SnowflakeTests) TestIntDecimalLowPrecision() {
 			value := rec.Column(0).(*array.Int64).Value(0)
 			suite.Equal(number, value)
 		}
+	}
+}
+
+func (suite *SnowflakeTests) TestDecimalPrecisionPreserved() {
+	// Test that NUMBER(38,10) with use_high_precision=false
+	// returns exact decimal values, not floating point approximations
+	
+	testCases := []struct {
+		name     string
+		query    string
+		expected string
+	}{
+		{
+			name:     "Simple decimal addition",
+			query:    "SELECT CAST(0.1 AS NUMBER(10,2)) + CAST(0.2 AS NUMBER(10,2)) AS RESULT",
+			expected: "0.30",
+		},
+		{
+			name:     "Large precise decimal",
+			query:    "SELECT CAST('123456789.123456789' AS NUMBER(18,9)) AS RESULT",
+			expected: "123456789.123456789",
+		},
+		{
+			name:     "Financial calculation",
+			query:    "SELECT CAST('99999999.99' AS NUMBER(10,2)) AS RESULT",
+			expected: "99999999.99",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+			suite.Require().NoError(suite.stmt.SetSqlQuery(tc.query))
+			rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+			suite.Require().NoError(err)
+			defer rdr.Release()
+
+			suite.True(rdr.Next())
+			rec := rdr.Record()
+			
+			// Verify we got a Decimal128 type
+			decimalType, ok := rec.Column(0).DataType().(*arrow.Decimal128Type)
+			suite.True(ok, "expected Decimal128 type")
+			
+			// Get the decimal value and convert to string for exact comparison
+			decimalArray := rec.Column(0).(*array.Decimal128)
+			actualDecimal := decimalArray.Value(0)
+			actualStr := actualDecimal.ToString(decimalType.Scale)
+			
+			suite.Equal(tc.expected, actualStr, "Precision was not preserved")
+			suite.False(rdr.Next())
+		})
+	}
+}
+
+// TestNumberScaleWithLowPrecision specifically tests that NUMBER columns with scale > 0
+// return Decimal128 (not Float64) when use_high_precision=false.
+// 
+// - OLD CODE: Schema declared as Float64 for NUMBER(p,s>0) but data came as Int64 (scaled integers)
+// - NEW CODE: Schema and data both use Decimal128, preserving precision
+func (suite *SnowflakeTests) TestNumberScaleWithLowPrecision() {
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "NUMBER_SCALE_TEST"))
+
+	// Create a table with various NUMBER types with different scales
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`CREATE OR REPLACE TABLE NUMBER_SCALE_TEST (
+		int_col NUMBER(10,0),
+		decimal_2 NUMBER(10,2),
+		decimal_4 NUMBER(12,4),
+		decimal_9 NUMBER(18,9),
+		large_decimal NUMBER(38,10)
+	)`))
+	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	// Insert test data that would reveal precision loss if converted to Float64
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO NUMBER_SCALE_TEST VALUES 
+		(12345, 123.45, 1234.5678, 123456789.123456789, 12345678901234567890.1234567890),
+		(67890, 678.90, 6789.0123, 987654321.987654321, 98765432109876543210.9876543210)`))
+	_, err = suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	// Test with use_high_precision=false
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM NUMBER_SCALE_TEST"))
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(2, n)
+
+	// Verify schema types
+	schema := rdr.Schema()
+	
+	// int_col: NUMBER(10,0) should be Int64
+	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, schema.Field(0).Type), 
+		"NUMBER(10,0) expected int64, got %s", schema.Field(0).Type)
+	
+	// decimal_2: NUMBER(10,2) should be Decimal128 (NOT Float64)
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 10, Scale: 2}, schema.Field(1).Type),
+		"NUMBER(10,2) expected decimal128(10,2), got %s - if Float64, the bug is present!", schema.Field(1).Type)
+	
+	// decimal_4: NUMBER(12,4) should be Decimal128
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 12, Scale: 4}, schema.Field(2).Type),
+		"NUMBER(12,4) expected decimal128(12,4), got %s", schema.Field(2).Type)
+	
+	// decimal_9: NUMBER(18,9) should be Decimal128
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 18, Scale: 9}, schema.Field(3).Type),
+		"NUMBER(18,9) expected decimal128(18,9), got %s", schema.Field(3).Type)
+	
+	// large_decimal: NUMBER(38,10) should be Decimal128
+	suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: 38, Scale: 10}, schema.Field(4).Type),
+		"NUMBER(38,10) expected decimal128(38,10), got %s", schema.Field(4).Type)
+
+	// Verify data values are preserved correctly
+	suite.True(rdr.Next())
+	rec := rdr.Record()
+
+	// Check first row values
+	suite.Equal(int64(12345), rec.Column(0).(*array.Int64).Value(0))
+	
+	// For decimal columns, verify exact values are preserved
+	dec2, ok := rec.Column(1).(*array.Decimal128)
+	suite.True(ok, "Failed to cast column 1 to Decimal128 - this means data type doesn't match schema!")
+	suite.Equal("123.45", dec2.Value(0).ToString(2))
+	
+	dec4 := rec.Column(2).(*array.Decimal128)
+	suite.Equal("1234.5678", dec4.Value(0).ToString(4))
+	
+	dec9 := rec.Column(3).(*array.Decimal128)
+	suite.Equal("123456789.123456789", dec9.Value(0).ToString(9))
+	
+	dec38 := rec.Column(4).(*array.Decimal128)
+	suite.Equal("12345678901234567890.1234567890", dec38.Value(0).ToString(10))
+
+	// Check second row to ensure consistency
+	suite.True(rdr.Next())
+	rec = rdr.Record()
+	
+	suite.Equal(int64(67890), rec.Column(0).(*array.Int64).Value(0))
+	suite.Equal("678.90", rec.Column(1).(*array.Decimal128).Value(0).ToString(2))
+	suite.Equal("6789.0123", rec.Column(2).(*array.Decimal128).Value(0).ToString(4))
+	suite.Equal("987654321.987654321", rec.Column(3).(*array.Decimal128).Value(0).ToString(9))
+	suite.Equal("98765432109876543210.9876543210", rec.Column(4).(*array.Decimal128).Value(0).ToString(10))
+
+	suite.False(rdr.Next())
+}
+
+// TestNumberInt64DataPath verifies that when Snowflake returns NUMBER data as scaled Int64
+// (the default for performance), the conversion to Decimal128 works correctly.
+// This specifically tests the code path in getTransformer that handles Int64 -> Decimal128.
+func (suite *SnowflakeTests) TestNumberInt64DataPath() {
+	// Force Snowflake to return data as Int64 by using specific precision/scale combinations
+	testCases := []struct {
+		precision int
+		scale     int
+		value     string
+		expected  string
+	}{
+		// Test various precision/scale combinations that trigger Int64 data path
+		{10, 2, "123.45", "123.45"},
+		{15, 2, "1234567890.12", "1234567890.12"},
+		{18, 4, "12345678901234.5678", "12345678901234.5678"},
+		{38, 10, "1234567890123456789012345678.1234567890", "1234567890123456789012345678.1234567890"},
+		// Test negative values
+		{10, 2, "-999.99", "-999.99"},
+		{15, 3, "-123456789.123", "-123456789.123"},
+		// Test edge cases
+		{10, 2, "0.01", "0.01"},
+		{10, 2, "-0.01", "-0.01"},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(fmt.Sprintf("NUMBER(%d,%d)=%s", tc.precision, tc.scale, tc.value), func() {
+			query := fmt.Sprintf("SELECT CAST('%s' AS NUMBER(%d,%d)) AS result", tc.value, tc.precision, tc.scale)
+			
+			// Test with use_high_precision=false to ensure Decimal128 is used
+			suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+			suite.Require().NoError(suite.stmt.SetSqlQuery(query))
+			
+			rdr, _, err := suite.stmt.ExecuteQuery(suite.ctx)
+			suite.Require().NoError(err)
+			defer rdr.Release()
+			
+			// Verify schema type is Decimal128
+			expectedType := &arrow.Decimal128Type{Precision: int32(tc.precision), Scale: int32(tc.scale)}
+			actualType := rdr.Schema().Field(0).Type
+			suite.Truef(arrow.TypeEqual(expectedType, actualType),
+				"Expected decimal128(%d,%d), got %s", tc.precision, tc.scale, actualType)
+			
+			// Verify the value is preserved exactly
+			suite.True(rdr.Next())
+			rec := rdr.Record()
+			
+			decArray := rec.Column(0).(*array.Decimal128)
+			actualValue := decArray.Value(0).ToString(int32(tc.scale))
+			suite.Equal(tc.expected, actualValue, "Value not preserved exactly")
+			
+			suite.False(rdr.Next())
+		})
 	}
 }
 

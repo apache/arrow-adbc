@@ -469,11 +469,11 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     to ``true`` on Windows/OSX, ``false`` on Linux.
 
 ``adbc.snowflake.sql.client_option.use_high_precision``
-    When ``true``, fixed-point snowflake columns with the type ``NUMBER``
-    will be returned as ``Decimal128`` type Arrow columns using the precision
-    and scale of the ``NUMBER`` type. When ``false``, ``NUMBER`` columns
-    with a scale of 0 will be returned as ``Int64`` typed Arrow columns and
-    non-zero scaled columns will be returned as ``Float64`` typed Arrow columns.
+    When ``true``, all Snowflake ``NUMBER`` columns will be returned as 
+    ``Decimal128`` type Arrow columns preserving the exact precision and scale.
+    When ``false``, ``NUMBER`` columns with a scale of 0 will be returned as 
+    ``Int64`` typed Arrow columns for better performance, while non-zero scaled 
+    columns will still be returned as ``Decimal128`` to preserve precision.
     The default is ``true``.
 
 ``adbc.snowflake.sql.client_option.max_timestamp_precision``
@@ -543,9 +543,10 @@ indicated are done to ensure consistency of the stream of record batches.
 
    * - decimal/numeric
      - numeric
-     - Snowflake will respect the precision/scale of the Arrow type. See the
-       ``adbc.snowflake.sql.client_option.use_high_precision`` for exceptions to this
-       behavior.
+     - Snowflake will respect the precision/scale of the Arrow type. When reading,
+       the ``adbc.snowflake.sql.client_option.use_high_precision`` option controls
+       the Arrow type used: ``true`` returns all as Decimal128, ``false`` returns
+       integers (scale=0) as Int64 and decimals (scale>0) as Decimal128.
 
    * - time
      - time64[ns]
