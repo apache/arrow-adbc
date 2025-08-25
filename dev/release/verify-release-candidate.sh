@@ -701,6 +701,10 @@ test_rust() {
 
   # We expect the C++ libraries to exist.
   export ADBC_SNOWFLAKE_GO_LIB_DIR="${CPP_INSTALL_PREFIX}/lib"
+  # XXX(https://github.com/apache/arrow-adbc/issues/3288)
+  if [[ -n "${CC}" ]]; then
+      export RUSTDOCFLAGS="-Clinker=${CC}"
+  fi
   "${ADBC_DIR}/ci/scripts/rust_build.sh" "${ADBC_SOURCE_DIR}"
   "${ADBC_DIR}/ci/scripts/rust_test.sh" "${ADBC_SOURCE_DIR}" "${CPP_INSTALL_PREFIX}"
 }
