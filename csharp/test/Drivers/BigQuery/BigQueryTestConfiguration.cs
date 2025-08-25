@@ -36,6 +36,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             AllowLargeResults = false;
             IncludeTableConstraints = true;
+            ParallelQueries = new List<ParallelQuery>();
         }
 
         [JsonPropertyName("projectId")]
@@ -130,6 +131,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("entraConfiguration")]
         public EntraConfiguration? EntraConfiguration { get; set; }
+
+        /// <summary>
+        /// The number of times to repeat the parallel runs.
+        /// </summary>
+        [JsonPropertyName("numberOfParallelRuns")]
+        public int NumberOfParallelRuns { get; set; }
+
+        [JsonPropertyName("queries")]
+        public List<ParallelQuery> ParallelQueries { get; set; }
+    }
+
+    class ParallelQuery
+    {
+        /// <summary>
+        /// The query to run.
+        /// </summary>
+        [JsonPropertyName("query")]
+        public string Query { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The number of expected results from the query.
+        /// </summary>
+        [JsonPropertyName("expectedResults")]
+        public long ExpectedResultsCount { get; set; }
     }
 
     class EntraConfiguration

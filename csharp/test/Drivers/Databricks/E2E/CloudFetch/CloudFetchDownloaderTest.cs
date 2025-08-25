@@ -17,14 +17,14 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Moq.Protected;

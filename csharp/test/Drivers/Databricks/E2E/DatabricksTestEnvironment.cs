@@ -157,6 +157,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 parameters.Add(DatabricksParameters.TraceStateEnabled, testConfiguration.TraceStateEnabled!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.EnableRunAsyncInThriftOp))
+            {
+                parameters.Add(DatabricksParameters.EnableRunAsyncInThriftOp, testConfiguration.EnableRunAsyncInThriftOp!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.EnableDirectResults))
+            {
+                parameters.Add(DatabricksParameters.EnableDirectResults, testConfiguration.EnableDirectResults!);
+            }
             if (testConfiguration.HttpOptions != null)
             {
                 if (testConfiguration.HttpOptions.Tls != null)

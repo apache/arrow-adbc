@@ -89,6 +89,21 @@ class ConnectionTest < Test::Unit::TestCase
     end
   end
 
+  def test_get_objects
+    assert_equal([
+                   [
+                     "main",
+                     [
+                       {
+                         "db_schema_name" => "",
+                         "db_schema_tables" => [],
+                       },
+                     ],
+                   ],
+                 ],
+                 @connection.get_objects.raw_records)
+  end
+
   def test_vendor_name
     assert_equal("SQLite", @connection.vendor_name)
   end

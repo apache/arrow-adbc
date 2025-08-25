@@ -24,6 +24,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
 {
     public class StatementTests : Common.StatementTests<ApacheTestConfiguration, ImpalaTestEnvironment>
     {
+        private const string LongRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(100000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
+
         public StatementTests(ITestOutputHelper? outputHelper)
             : base(outputHelper, new ImpalaTestEnvironment.Factory())
         {
@@ -45,6 +47,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Impala
         public async Task CanGetCrossReferenceChildTableImpala()
         {
             await base.CanGetCrossReferenceFromChildTable(TestConfiguration.Metadata.Catalog, TestConfiguration.Metadata.Schema);
+        }
+
+        [SkippableTheory(Skip = "Untested")]
+        [InlineData(LongRunningQuery)]
+        internal override async Task CanCancelStatementTest(string query)
+        {
+            await base.CanCancelStatementTest(query);
         }
 
         protected override void PrepareCreateTableWithForeignKeys(string fullTableNameParent, out string sqlUpdate, out string tableNameChild, out string fullTableNameChild, out IReadOnlyList<string> foreignKeys)

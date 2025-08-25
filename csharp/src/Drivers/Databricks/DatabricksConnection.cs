@@ -18,9 +18,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
@@ -28,8 +30,7 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
-using Apache.Arrow.Adbc.Tracing;
+using Apache.Arrow.Adbc.Drivers.Databricks.Reader;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -38,10 +39,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksConnection : SparkHttpConnection
     {
+        internal static new readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksConnection));
+        internal static new readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksConnection));
+
+        /// <summary>
+        /// The environment variable name that contains the path to the default Databricks configuration file.
+        /// </summary>
+        public const string DefaultConfigEnvironmentVariable = "DATABRICKS_CONFIG_FILE";
+
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
         private bool _enablePKFK = true;
+        private bool _runAsyncInThrift = true;
 
         internal static TSparkGetDirectResults defaultGetDirectResults = new()
         {
@@ -51,7 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
-
+        private const int DefaultQueryTimeSeconds = 3 * 60 * 60; // 3 hours
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
@@ -64,17 +74,125 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
+        // Identity federation client ID for token exchange
+        private string? _identityFederationClientId;
+
         // Default namespace
         private TNamespace? _defaultNamespace;
 
-        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        private HttpClient? _authHttpClient;
+
+        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(MergeWithDefaultEnvironmentConfig(properties))
         {
             ValidateProperties();
+        }
+
+        public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
+        {
+            IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
+            // TODO: Add any additional tags specific to Databricks connection
+            //tags ??= [];
+            //tags.Concat([new("key", "value")]);
+            return tags;
         }
 
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
         {
             return new ThreadSafeClient(new TCLIService.Client(protocol));
+        }
+
+        /// <summary>
+        /// Automatically merges properties from the default DATABRICKS_CONFIG_FILE environment variable with passed-in properties.
+        /// The merge priority is controlled by the "adbc.databricks.driver_config_take_precedence" property.
+        /// If DATABRICKS_CONFIG_FILE is not set or invalid, only passed-in properties are used.
+        /// </summary>
+        /// <param name="properties">Properties passed to constructor.</param>
+        /// <returns>Merged properties dictionary.</returns>
+        private static IReadOnlyDictionary<string, string> MergeWithDefaultEnvironmentConfig(IReadOnlyDictionary<string, string> properties)
+        {
+            // Try to load configuration from the default environment variable
+            var environmentConfig = DatabricksConfiguration.TryFromEnvironmentVariable(DefaultConfigEnvironmentVariable);
+
+            if (environmentConfig != null)
+            {
+                // Determine precedence setting - check passed-in properties first, then environment config
+                bool driverConfigTakesPrecedence = DetermineDriverConfigPrecedence(properties, environmentConfig.Properties);
+
+                if (driverConfigTakesPrecedence)
+                {
+                    // Environment config properties override passed-in properties
+                    return MergeProperties(properties, environmentConfig.Properties);
+                }
+                else
+                {
+                    // Passed-in properties override environment config properties (default behavior)
+                    return MergeProperties(environmentConfig.Properties, properties);
+                }
+            }
+
+            // No environment config available, use only passed-in properties
+            return properties;
+        }
+
+        /// <summary>
+        /// Determines whether driver configuration should take precedence based on the precedence property.
+        /// Checks passed-in properties first, then environment properties, defaulting to false.
+        /// </summary>
+        /// <param name="passedInProperties">Properties passed to constructor.</param>
+        /// <param name="environmentProperties">Properties loaded from environment configuration.</param>
+        /// <returns>True if driver config should take precedence, false otherwise.</returns>
+        private static bool DetermineDriverConfigPrecedence(IReadOnlyDictionary<string, string> passedInProperties, IReadOnlyDictionary<string, string> environmentProperties)
+        {
+            // Priority 1: Check passed-in properties for precedence setting
+            if (passedInProperties.TryGetValue(DatabricksParameters.DriverConfigTakePrecedence, out string? passedInValue))
+            {
+                if (bool.TryParse(passedInValue, out bool passedInPrecedence))
+                {
+                    return passedInPrecedence;
+                }
+            }
+
+            // Priority 2: Check environment config for precedence setting
+            if (environmentProperties.TryGetValue(DatabricksParameters.DriverConfigTakePrecedence, out string? environmentValue))
+            {
+                if (bool.TryParse(environmentValue, out bool environmentPrecedence))
+                {
+                    return environmentPrecedence;
+                }
+            }
+
+            // Default: Passed-in properties override environment config (current behavior)
+            return false;
+        }
+
+        /// <summary>
+        /// Merges two property dictionaries, with additional properties taking precedence.
+        /// </summary>
+        /// <param name="baseProperties">Base properties dictionary.</param>
+        /// <param name="additionalProperties">Additional properties to merge. These take precedence over base properties.</param>
+        /// <returns>Merged properties dictionary.</returns>
+        private static IReadOnlyDictionary<string, string> MergeProperties(IReadOnlyDictionary<string, string> baseProperties, IReadOnlyDictionary<string, string>? additionalProperties)
+        {
+            if (additionalProperties == null || additionalProperties.Count == 0)
+            {
+                return baseProperties;
+            }
+
+            var merged = new Dictionary<string, string>();
+
+            // Add base properties first
+            foreach (var kvp in baseProperties)
+            {
+                merged[kvp.Key] = kvp.Value;
+            }
+
+            // Additional properties override base properties
+            foreach (var kvp in additionalProperties)
+            {
+                merged[kvp.Key] = kvp.Value;
+            }
+
+            return merged;
         }
 
         private void ValidateProperties()
@@ -164,6 +282,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.EnableRunAsyncInThriftOp, out string? enableRunAsyncInThriftStr))
+            {
+                if (bool.TryParse(enableRunAsyncInThriftStr, out bool enableRunAsyncInThrift))
+                {
+                    _runAsyncInThrift = enableRunAsyncInThrift;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.EnableRunAsyncInThriftOp}' value '{enableRunAsyncInThriftStr}' could not be parsed. Valid values are 'true' and 'false'.");
+                }
+            }
+
             if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFile, out string? maxBytesPerFileStr))
             {
                 if (!long.TryParse(maxBytesPerFileStr, out long maxBytesPerFileValue))
@@ -242,6 +372,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     throw new ArgumentException($"Parameter '{DatabricksParameters.TraceStateEnabled}' value '{traceStateEnabledStr}' could not be parsed. Valid values are 'true' and 'false'.");
                 }
             }
+
+            if (!Properties.ContainsKey(ApacheParameters.QueryTimeoutSeconds))
+            {
+                // Default QueryTimeSeconds in Hive2Connection is only 60s, which is too small for lots of long running query
+                QueryTimeoutSeconds = DefaultQueryTimeSeconds;
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.IdentityFederationClientId, out string? identityFederationClientId))
+            {
+                _identityFederationClientId = identityFederationClientId;
+            }
         }
 
         /// <summary>
@@ -253,6 +394,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets whether direct results are enabled.
         /// </summary>
         internal bool EnableDirectResults => _enableDirectResults;
+
+        /// <inheritdoc/>
+        protected internal override bool TrySetGetDirectResults(IRequest request)
+        {
+            if (EnableDirectResults)
+            {
+                return base.TrySetGetDirectResults(request);
+            }
+            return false;
+        }
 
         /// <summary>
         /// Gets whether CloudFetch is enabled.
@@ -282,12 +433,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Check if current connection can use `DESC TABLE EXTENDED` query
         /// </summary>
-        internal bool CanUseDescTableExtended => _useDescTableExtended && ServerProtocolVersion != null && ServerProtocolVersion >= TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7;
+        internal bool CanUseDescTableExtended => _useDescTableExtended && ServerProtocolVersion != null && FeatureVersionNegotiator.SupportsDESCTableExtended(ServerProtocolVersion.Value);
 
         /// <summary>
         /// Gets whether PK/FK metadata call is enabled
         /// </summary>
         public bool EnablePKFK => _enablePKFK;
+
+        /// <summary>
+        /// Enable RunAsync flag in Thrift Operation
+        /// </summary>
+        public bool RunAsyncInThrift => _runAsyncInThrift;
 
         /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
@@ -302,79 +458,89 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override HttpMessageHandler CreateHttpHandler()
         {
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
+            HttpMessageHandler baseAuthHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
 
             // Add tracing handler to propagate W3C trace context if enabled
             if (_tracePropagationEnabled)
             {
                 baseHandler = new TracingDelegatingHandler(baseHandler, this, _traceParentHeaderName, _traceStateEnabled);
+                baseAuthHandler = new TracingDelegatingHandler(baseAuthHandler, this, _traceParentHeaderName, _traceStateEnabled);
             }
 
             if (TemporarilyUnavailableRetry)
             {
                 // Add retry handler for 503 responses
                 baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
+                baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout);
             }
 
-            // Add OAuth handler if OAuth authentication is being used
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
                 SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue) &&
-                authTypeValue == SparkAuthType.OAuth &&
-                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr) &&
-                DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
-                grantType == DatabricksOAuthGrantType.ClientCredentials)
+                authTypeValue == SparkAuthType.OAuth)
             {
-                // Note: We assume that properties have already been validated
-                if (Properties.TryGetValue(SparkParameters.HostName, out string? host) && !string.IsNullOrEmpty(host))
+                Debug.Assert(_authHttpClient == null, "Auth HttpClient should not be initialized yet.");
+                _authHttpClient = new HttpClient(baseAuthHandler);
+
+                string host = GetHost();
+                ITokenExchangeClient tokenExchangeClient = new TokenExchangeClient(_authHttpClient, host);
+
+                // Mandatory token exchange should be the inner handler so that it happens
+                // AFTER the OAuth handlers (e.g. after M2M sets the access token)
+                baseHandler = new MandatoryTokenExchangeDelegatingHandler(
+                    baseHandler,
+                    tokenExchangeClient,
+                    _identityFederationClientId);
+
+                // Add OAuth client credentials handler if OAuth M2M authentication is being used
+                if (Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr) &&
+                    DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
+                    grantType == DatabricksOAuthGrantType.ClientCredentials)
                 {
-                    // Use hostname directly if provided
+                    Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
+                    Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
+                    Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
+
+                    var tokenProvider = new OAuthClientCredentialsProvider(
+                        _authHttpClient,
+                        clientId!,
+                        clientSecret!,
+                        host!,
+                        scope: scope ?? "sql",
+                        timeoutMinutes: 1
+                    );
+
+                    baseHandler = new OAuthDelegatingHandler(baseHandler, tokenProvider);
                 }
-                else if (Properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrEmpty(uri))
+                // Add token renewal handler for OAuth access token
+                else if (Properties.TryGetValue(DatabricksParameters.TokenRenewLimit, out string? tokenRenewLimitStr) &&
+                    int.TryParse(tokenRenewLimitStr, out int tokenRenewLimit) &&
+                    tokenRenewLimit > 0 &&
+                    Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
                 {
-                    // Extract hostname from URI if URI is provided
-                    if (Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsedUri))
+                    if (string.IsNullOrEmpty(accessToken))
                     {
-                        host = parsedUri.Host;
+                        throw new ArgumentException("Access token is required for OAuth authentication with token renewal.");
+                    }
+
+                    // Check if token is a JWT token by trying to decode it
+                    if (JwtTokenDecoder.TryGetExpirationTime(accessToken, out DateTime expiryTime))
+                    {
+                        baseHandler = new TokenRefreshDelegatingHandler(
+                            baseHandler,
+                            tokenExchangeClient,
+                            accessToken,
+                            expiryTime,
+                            tokenRenewLimit);
                     }
                 }
-
-                Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
-                Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
-                Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
-
-                HttpClient OauthHttpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
-
-                var tokenProvider = new OAuthClientCredentialsProvider(
-                    OauthHttpClient,
-                    clientId!,
-                    clientSecret!,
-                    host!,
-                    scope: scope ?? "sql",
-                    timeoutMinutes: 1
-                );
-
-                return new OAuthDelegatingHandler(baseHandler, tokenProvider);
             }
 
             return baseHandler;
         }
 
-        protected internal override bool AreResultsAvailableDirectly => _enableDirectResults;
+        protected override bool GetObjectsPatternsRequireLowerCase => true;
 
-        protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetCatalogsReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetSchemasReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null)
         {
             bool isLz4Compressed = false;
 
@@ -390,7 +556,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 isLz4Compressed = metadataResp.Lz4Compressed;
             }
 
-            return new DatabricksCompositeReader(databricksStatement, schema, isLz4Compressed, TlsOptions, _proxyConfigurator);
+            HttpClient httpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
+            return new DatabricksCompositeReader(databricksStatement, schema, response, isLz4Compressed, httpClient);
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
@@ -435,7 +602,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (session != null)
             {
                 var version = session.ServerProtocolVersion;
-                if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version)) {
+                if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version))
+                {
                     throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
                 }
                 _enablePKFK = _enablePKFK && FeatureVersionNegotiator.SupportsPKFK(version);
@@ -567,29 +735,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults!.ResultSetMetadata);
 
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults!.ResultSet.Results);
 
         protected override AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
         {
@@ -646,6 +796,33 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
+        /// <summary>
+        /// Gets the host from the connection properties.
+        /// </summary>
+        /// <returns>The host, or empty string if not found.</returns>
+        private string GetHost()
+        {
+            if (Properties.TryGetValue(SparkParameters.HostName, out string? host) && !string.IsNullOrEmpty(host))
+            {
+                return host;
+            }
+
+            if (Properties.TryGetValue(AdbcOptions.Uri, out string? uri) && !string.IsNullOrEmpty(uri))
+            {
+                // Parse the URI to extract the host
+                if (Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsedUri))
+                {
+                    return parsedUri.Host;
+                }
+            }
+
+            throw new ArgumentException("Host not found in connection properties. Please provide a valid host using either 'HostName' or 'Uri' property.");
+        }
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
+
         internal static string? HandleSparkCatalog(string? CatalogName)
         {
             if (CatalogName != null && CatalogName.Equals("SPARK", StringComparison.OrdinalIgnoreCase))
@@ -653,6 +830,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 return null;
             }
             return CatalogName;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _authHttpClient?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

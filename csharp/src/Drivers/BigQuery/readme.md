@@ -18,6 +18,13 @@
 -->
 
 # BigQuery
+
+![Vendor: Google BigQuery](https://img.shields.io/badge/vendor-Google%20BigQuery-blue?style=flat-square)
+![Implementation: C#](https://img.shields.io/badge/language-C%23-violet?style=flat-square)
+![Status: Beta](https://img.shields.io/badge/status-beta-yellow?style=flat-square)
+
+[![NuGet: Apache.Arrow.Adbc.Drivers.BigQuery](https://img.shields.io/nuget/v/Apache.Arrow.Adbc.Drivers.BigQuery)](https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery)
+
 The BigQuery ADBC driver wraps a [BigQueryClient](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.BigQueryClient) object for working with [Google BigQuery](https://cloud.google.com/bigquery/) data.
 
 # Supported Features
@@ -86,7 +93,7 @@ The following parameters can be used to configure the driver behavior. The param
 &nbsp;&nbsp;&nbsp;&nbsp;Include the `bigquery-public-data` project ID with the list of project IDs.
 
 **adbc.bigquery.large_results_dataset**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the dataset ID to use for large results. The dataset needs to be in the same region as the data being queried. If no value is specified, the driver will attempt to use or create `_bqodbc_temp_tables`. A randomly generated table name will be used for the DestinationTable.
+&nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the dataset ID to use for large results. The dataset needs to be in the same region as the data being queried. If no value is specified, the driver will attempt to use or create `_bqadbc_temp_tables`. A randomly generated table name will be used for the DestinationTable.
 
 **adbc.bigquery.large_results_destination_table**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Optional. Sets the [DestinationTable](https://cloud.google.com/dotnet/docs/reference/Google.Cloud.BigQuery.V2/latest/Google.Cloud.BigQuery.V2.QueryOptions#Google_Cloud_BigQuery_V2_QueryOptions_DestinationTable) value of the QueryOptions if configured. Expects the format to be `{projectId}.{datasetId}.{tableId}` to set the corresponding values in the [TableReference](https://github.com/googleapis/google-api-dotnet-client/blob/6c415c73788b848711e47c6dd33c2f93c76faf97/Src/Generated/Google.Apis.Bigquery.v2/Google.Apis.Bigquery.v2.cs#L9348) class.
@@ -162,8 +169,8 @@ a dataset using the `adbc.bigquery.large_results_dataset` parameter.
 Behavior:
 - If a destination table is explicitly set, the driver will use that value.
 - If only a dataset value is set, the driver will attempt to retrieve the dataset. If the dataset does not exist, the driver will attempt to
-  create it. The default table expiration will be set to 1 day and a `created_by` label will be included with the driver name and version that created the dataset. For example `created_by : adbc_bigquery_driver_v_0_19_0_0`. A randomly generated name will be used for the table name.
-- If a destination table and a dataset are not specified, the driver will attempt to use or create the `_bqodbc_temp_tables` dataset using the same defaults and label specified above. A randomly generated name will be used for the table name.
+  create it. The default table expiration will be set to 1 day. A randomly generated name will be used for the table name.
+- If a destination table and a dataset are not specified, the driver will attempt to use or create the `_bqadbc_temp_tables` dataset using the same defaults and label specified above. A randomly generated name will be used for the table name.
 
 ## Permissions
 

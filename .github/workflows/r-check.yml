@@ -44,7 +44,7 @@ jobs:
     runs-on: ${{ inputs.os }}-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV

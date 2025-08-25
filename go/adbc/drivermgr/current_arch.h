@@ -19,15 +19,38 @@
 
 #include <string>
 
+#if defined(_WIN32)
+#define ADBC_LITTLE_ENDIAN 1
+#else
+#if defined(__APPLE__) || defined(__FreeBSD__)
+#include <machine/endian.h>
+#elif defined(sun) || defined(__sun)
+#include <sys/byteorder.h>
+#elif !defined(_AIX)
+#include <endian.h>
+#endif
+#if !defined(__BYTE_ORDER__) || !defined(__ORDER_LITTLE_ENDIAN__)
+#define ADBC_LITTLE_ENDIAN 1
+#else
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define ADBC_LITTLE_ENDIAN 1
+#else
+#define ADBC_LITTLE_ENDIAN 0
+#endif
+#endif
+#endif
+
 namespace adbc {
 
 const std::string& CurrentArch() {
 #if defined(_WIN32)
   static const std::string platform = "windows";
 #elif defined(__APPLE__)
-  static const std::string platform = "osx";
+  static const std::string platform = "macos";
 #elif defined(__FreeBSD__)
   static const std::string platform = "freebsd";
+#elif defined(__OpenBSD__)
+  static const std::string platform = "openbsd";
 #elif defined(__linux__)
   static const std::string platform = "linux";
 #else
@@ -37,17 +60,45 @@ const std::string& CurrentArch() {
 #if defined(__x86_64__) || defined(__amd64__) || defined(_M_X64) || defined(_M_AMD64)
   static const std::string arch = "amd64";
 #elif defined(__aarch64__) || defined(_M_ARM64) || defined(__ARM_ARCH_ISA_A64)
+#ifdef ADBC_LITTLE_ENDIAN
   static const std::string arch = "arm64";
+#else
+  static const std::string arch = "arm64be";
+#endif
 #elif defined(__i386__) || defined(_M_IX86) || defined(_M_X86)
   static const std::string arch = "x86";
 #elif defined(__arm__) || defined(_M_ARM)
+#ifdef ADBC_LITTLE_ENDIAN
   static const std::string arch = "arm";
+#else
+  static const std::string arch = "armbe";
+#endif
 #elif defined(__riscv) || defined(_M_RISCV)
+#if defined(__riscv_xlen) && __riscv_xlen == 64
+  static const std::string arch = "riscv64";
+#else
   static const std::string arch = "riscv";
+#endif
+#elif defined(__ppc64__) || defined(__powerpc64__)
+#ifdef ADBC_LITTLE_ENDIAN
+  static const std::string arch = "powerpc64le";
+#else
+  static const std::string arch = "powerpc64";
+#endif
 #elif defined(__powerpc__) || defined(__ppc__) || defined(_M_PPC)
   static const std::string arch = "powerpc";
 #elif defined(__s390x__) || defined(_M_S390)
   static const std::string arch = "s390x";
+#elif defined(__sparc__) || defined(__sparc)
+#if defined(_LP64) || defined(__LP64__)
+  static const std::string arch = "sparc64";
+#else
+  static const std::string arch = "sparc";
+#endif
+#elif defined(__wasm32__)
+  static const std::string arch = "wasm32";
+#elif defined(__wasm64__)
+  static const std::string arch = "wasm64";
 #else
   static const std::string arch = "unknown";
 #endif
@@ -76,7 +127,7 @@ const std::string& CurrentArch() {
 #if defined(__MINGW32__) || defined(__MINGW64__)
   static const std::string target = "_mingw";
 #elif defined(__MUSL__)
-  static const std::string target = "_musl"
+  static const std::string target = "_musl";
 #else
   static const std::string target = "";
 #endif

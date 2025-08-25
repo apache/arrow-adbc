@@ -39,5 +39,30 @@ module ADBC
         GLib.free(c_abi_array_stream)
       end
     end
+
+    alias_method :get_objects_raw, :get_objects
+    def get_objects(depth: :all,
+                    catalog: nil,
+                    db_schema: nil,
+                    table_name: nil,
+                    table_types: nil,
+                    column_name: nil)
+      c_abi_array_stream = get_objects_raw(depth,
+                                           catalog,
+                                           db_schema,
+                                           table_name,
+                                           table_types,
+                                           column_name)
+      begin
+        reader = Arrow::RecordBatchReader.import(c_abi_array_stream)
+        begin
+          reader.read_all
+        ensure
+          reader.unref
+        end
+      ensure
+        GLib.free(c_abi_array_stream)
+      end
+    end
   end
 end

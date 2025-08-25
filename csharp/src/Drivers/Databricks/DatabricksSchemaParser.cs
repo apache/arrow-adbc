@@ -16,15 +16,39 @@
 */
 
 using System;
+using System.IO;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
+using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     internal class DatabricksSchemaParser : SchemaParser
     {
+        /// <summary>
+        /// Parses an Arrow schema from serialized schema bytes
+        /// </summary>
+        /// <param name="schemaBytes">The serialized Arrow schema bytes</param>
+        /// <returns>The parsed Arrow Schema</returns>
+        public Schema? ParseArrowSchema(byte[] schemaBytes)
+        {
+            if (schemaBytes == null || schemaBytes.Length == 0)
+                return null;
+
+            try
+            {
+                using var stream = new MemoryStream(schemaBytes);
+                using var reader = new ArrowStreamReader(stream);
+                return reader.Schema;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to parse Arrow schema", ex);
+            }
+        }
+
         public override IArrowType GetArrowType(TPrimitiveTypeEntry thriftType, DataTypeConversion dataTypeConversion)
         {
             return thriftType.Type switch
@@ -39,9 +63,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 TTypeId.NULL_TYPE => NullType.Default,
                 TTypeId.SMALLINT_TYPE => Int16Type.Default,
                 TTypeId.TIMESTAMP_TYPE => new TimestampType(TimeUnit.Microsecond, (string?)null),
+                // TIMESTAMP_TYPE could be a string if SQLConf.get.arrowThriftTimestampToString is configured differently
                 TTypeId.TINYINT_TYPE => Int8Type.Default,
-                TTypeId.DECIMAL_TYPE => NewDecima128Type(thriftType),
-                TTypeId.CHAR_TYPE
+                TTypeId.DECIMAL_TYPE
+                or TTypeId.CHAR_TYPE
                 or TTypeId.STRING_TYPE
                 or TTypeId.VARCHAR_TYPE
                 or TTypeId.INTERVAL_DAY_TIME_TYPE

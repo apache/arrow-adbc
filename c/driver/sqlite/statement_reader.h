@@ -55,7 +55,7 @@ void InternalAdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder);
 /// \param[in] db The SQLite connection.
 /// \param[in] stmt The SQLite statement.
 /// \param[in] binder Query parameters to bind, if provided.
-/// \param[in] infer_rows How many rows to read to infer the Arrow schema.
+/// \param[in] batch_size How many rows to read to infer the Arrow schema.
 /// \param[out] stream The stream to export to.
 /// \param[out] error Error details, if needed.
 ADBC_EXPORT

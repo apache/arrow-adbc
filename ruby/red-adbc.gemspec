@@ -59,16 +59,16 @@ Gem::Specification.new do |spec|
     spec.add_runtime_dependency("red-arrow")
   end
 
-  required_adbc_arrow_glib_version = version_components[0, 3].join(".")
+  required_adbc_glib_version = version_components[0, 3].join(".")
   [
-    ["debian", "libadbc-arrow-glib-dev"],
-    ["rhel", "adbc-arrow-glib-devel"],
+    ["debian", "libadbc-glib-dev"],
+    ["rhel", "adbc-glib-devel"],
   ].each do |platform, package|
     spec.requirements <<
-      "system: adbc-arrow-glib>=#{required_adbc_arrow_glib_version}: " +
+      "system: adbc-glib>=#{required_adbc_glib_version}: " +
       "#{platform}: #{package}"
   end
 
   # spec.metadata["msys2_mingw_dependencies"] = \
-  #   "adbc>=#{required_adbc_arrow_glib_version}"
+  #   "adbc>=#{required_adbc_glib_version}"
 end

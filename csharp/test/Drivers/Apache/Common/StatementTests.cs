@@ -171,6 +171,38 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             }
         }
 
+        internal virtual async Task CanCancelStatementTest(string query)
+        {
+            const int millisecondsDelay = 500;
+
+            TConfig testConfiguration = (TConfig)TestConfiguration.Clone();
+            testConfiguration.QueryTimeoutSeconds = "0"; // no timeout
+            testConfiguration.Query = query;
+
+            AdbcStatement st = NewConnection(testConfiguration).CreateStatement();
+            // Note: for this test to be valid, the query needs to run for more time than the delay value!
+            st.SqlQuery = testConfiguration.Query;
+            for (int i = 0; i < 10; i++)
+            {
+                // Reuse the statement to check for issue that might arise from using the Statement multiple times.
+                try
+                {
+                    Task<QueryResult> queryTask = Task.Run(st.ExecuteQuery);
+
+                    await Task.Delay(millisecondsDelay);
+                    st.Cancel();
+
+                    QueryResult queryResult = await queryTask;
+                    OutputHelper?.WriteLine($"QueryResultRowCount: {queryResult.RowCount}");
+                    Assert.Fail("Expecting query to timeout, but it did not.");
+                }
+                catch (Exception ex) when (ApacheUtility.ContainsException(ex, typeof(TimeoutException), out Exception? containedException))
+                {
+                    Assert.IsType<TimeoutException>(containedException!);
+                }
+            }
+        }
+
         /// <summary>
         /// Validates if the driver can execute update statements.
         /// </summary>
@@ -561,13 +593,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
     /// </summary>
     internal class ShortRunningStatementTimeoutTestData : TheoryData<StatementWithExceptions>
     {
-        public ShortRunningStatementTimeoutTestData()
+        public ShortRunningStatementTimeoutTestData(string? defaultQuery = null)
         {
-            Add(new(0, null, null));
-            Add(new(null, null, null));
-            Add(new(1, null, typeof(TimeoutException)));
-            Add(new(5, null, null));
-            Add(new(30, null, null));
+            Add(new(0, defaultQuery, null));
+            Add(new(null, defaultQuery, null));
+            Add(new(1, defaultQuery, typeof(TimeoutException)));
+            Add(new(5, defaultQuery, null));
+            Add(new(30, defaultQuery, null));
         }
     }
 }

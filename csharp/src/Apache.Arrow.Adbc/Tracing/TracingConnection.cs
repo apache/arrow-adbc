@@ -27,7 +27,7 @@ namespace Apache.Arrow.Adbc.Tracing
         protected TracingConnection(IReadOnlyDictionary<string, string> properties)
         {
             properties.TryGetValue(AdbcOptions.Telemetry.TraceParent, out string? traceParent);
-            _trace = new ActivityTrace(this.AssemblyName, this.AssemblyVersion, traceParent);
+            _trace = new ActivityTrace(AssemblyName, AssemblyVersion, traceParent, GetActivitySourceTags(properties));
         }
 
         string? IActivityTracer.TraceParent => _trace.TraceParent;
@@ -37,6 +37,13 @@ namespace Apache.Arrow.Adbc.Tracing
         public abstract string AssemblyVersion { get; }
 
         public abstract string AssemblyName { get; }
+
+        public string ActivitySourceName => _trace.ActivitySourceName;
+
+        public virtual IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
+        {
+            return null;
+        }
 
         protected void SetTraceParent(string? traceParent)
         {

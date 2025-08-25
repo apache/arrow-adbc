@@ -19,28 +19,14 @@
 JDBC Adapter
 ============
 
-**Available for:** Java
+.. adbc_driver_status:: ../../../java/driver/jdbc/README.md
 
 The JDBC Adapter provides access to any database with a JDBC driver.
 
 Installation
 ============
 
-.. tab-set::
-
-   .. tab-item:: Java
-      :sync: java
-
-      Add a dependency on ``org.apache.arrow.adbc:adbc-driver-jdbc``.
-
-      For Maven users:
-
-      .. code-block:: xml
-
-         <dependency>
-           <groupId>org.apache.arrow.adbc</groupId>
-           <artifactId>adbc-driver-jdbc</artifactId>
-         </dependency>
+.. adbc_driver_installation:: ../../../java/driver/jdbc/README.md
 
 Usage
 =====

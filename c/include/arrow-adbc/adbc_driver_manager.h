@@ -101,9 +101,8 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 ///   entrypoint based on the driver name.
 /// \param[in] version The ADBC revision to attempt to initialize.
 /// \param[in] load_options bit mask of AdbcLoadFlags to control the directories searched
-/// \param[out] raw_driver The table of function pointers to initialize
+/// \param[out] driver The table of function pointers to initialize
 /// \param[out] error An optional location to return an error message
-/// @return
 ADBC_EXPORT
 AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoint,
                                   const int version, const AdbcLoadFlags load_options,

@@ -71,7 +71,7 @@ Example::
 
   pip install \
         --pre \
-        --index-url https://repo.fury.io/arrow-adbc-nightlies \
+        --extra-index-url https://repo.fury.io/arrow-adbc-nightlies \
         adbc-driver-manager
 
 .. list-table:: Supported platforms for nightly Python wheels

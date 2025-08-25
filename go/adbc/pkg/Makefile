@@ -28,7 +28,13 @@ else
 	SUFFIX=dylib
 endif
 
-GIT_VERSION=$(shell git tag -l --points-at $(shell git rev-list --tags --max-count=1) --sort=-v:refname | head -n 1)
+ifeq ($(shell go env GOOS),windows)
+	GIT_VERSION := $(shell powershell -Command "git tag --sort=-v:refname --points-at $$(git rev-list --tags --max-count=1) | Select-Object -First 1")
+else
+	GIT_VERSION=$(shell git tag -l --points-at $(shell git rev-list --tags --max-count=1) --sort=-v:refname | head -n 1)
+endif
+
+GIT_VERSION ?= unknown
 VERSION=$(subst go/adbc/,,$(GIT_VERSION))
 
 # Expand dynamically libadbc_driver_.SUFFIX

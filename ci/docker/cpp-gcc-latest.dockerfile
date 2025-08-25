@@ -23,7 +23,7 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update -y && \
     apt-get install -y -q cmake curl git gnupg libpq-dev libsqlite3-dev pkg-config && \
-    apt-get install -y -q -t experimental g++-${GCC} gcc-${GCC} && \
+    apt-get install -y -q g++-${GCC} gcc-${GCC} && \
     apt-get clean
 
 RUN curl -L -o go.tar.gz https://go.dev/dl/go${GO}.linux-amd64.tar.gz && \

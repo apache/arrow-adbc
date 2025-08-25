@@ -19,7 +19,7 @@
 PostgreSQL Driver
 =================
 
-**Available for:** C/C++, GLib/Ruby, Go, Python, R
+.. adbc_driver_status:: ../../../c/driver/postgresql/README.md
 
 The PostgreSQL driver provides access to any database that supports
 the PostgreSQL wire format.  It wraps `libpq`_, the client library for
@@ -31,58 +31,17 @@ overall approach.
 .. _libpq: https://www.postgresql.org/docs/current/libpq.html
 .. _pgeon: https://github.com/0x0L/pgeon
 
-.. note:: The PostgreSQL driver is in beta.
-          Performance/optimization and support for complex types and
-          different ADBC features is still ongoing.
-
-.. note:: AWS Redshift supports a very old version of the PostgreSQL
-          wire protocol and has a basic level of support in the ADBC
-          PostgreSQL driver. Because Redshift does not support reading or
-          writing COPY in PostgreSQL binary format, the optimizations that
-          accelerate non-Redshift queries are not enabled when connecting
-          to a Redshift database. This functionality is experimental.
+.. note:: This driver has experimental support for Amazon Redshift.  As
+          Redshift does not support reading or writing COPY in PostgreSQL
+          binary format, however, the optimizations that accelerate queries
+          are not enabled when connecting to Redshift.  There may also be
+          other differences in functionality; please file a bug report if
+          problems are encountered.
 
 Installation
 ============
 
-.. tab-set::
-
-   .. tab-item:: C/C++
-      :sync: cpp
-
-      For conda-forge users:
-
-      .. code-block:: shell
-
-         mamba install libadbc-driver-postgresql
-
-   .. tab-item:: Go
-      :sync: go
-
-      Install the C/C++ package and use the Go driver manager.
-      Requires CGO.
-
-      .. code-block:: shell
-
-         go get github.com/apache/arrow-adbc/go/adbc/drivermgr
-
-   .. tab-item:: Python
-      :sync: python
-
-      .. code-block:: shell
-
-         # For conda-forge
-         mamba install adbc-driver-postgresql
-
-         # For pip
-         pip install adbc_driver_postgresql
-
-   .. tab-item:: R
-      :sync: r
-
-      .. code-block:: r
-
-         install.packages("adbcpostgresql")
+.. adbc_driver_installation:: ../../../c/driver/postgresql/README.md
 
 Usage
 =====

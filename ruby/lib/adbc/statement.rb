@@ -23,6 +23,16 @@ module ADBC
     extend StatementOpenable
     include StatementOperations
 
+    alias_method :parameter_schema_raw, :parameter_schema
+    def parameter_schema
+      _, c_abi_schema = parameter_schema_raw
+      begin
+        Arrow::Schema.import(c_abi_schema)
+      ensure
+        GLib.free(c_abi_schema)
+      end
+    end
+
     alias_method :execute_raw, :execute
     def execute(need_result: true)
       _, c_abi_array_stream, n_rows_affected = execute_raw(need_result)

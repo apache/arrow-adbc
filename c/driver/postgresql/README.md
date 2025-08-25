@@ -19,8 +19,17 @@
 
 # ADBC PostgreSQL Driver
 
+![Vendor: PostgreSQL](https://img.shields.io/badge/vendor-PostgreSQL-blue?style=flat-square)
+![Implementation: C/C++](https://img.shields.io/badge/implementation-C%2FC%2B%2B-violet?style=flat-square)
+![Status: Stable](https://img.shields.io/badge/status-stable-green?style=flat-square)
+
+[![conda-forge: adbc-driver-postgresql](https://img.shields.io/conda/vn/conda-forge/adbc-driver-postgresql?label=conda-forge%3A%20adbc-driver-postgresql&style=flat-square)](https://anaconda.org/conda-forge/adbc-driver-postgresql)
+[![conda-forge: libadbc-driver-postgresql](https://img.shields.io/conda/vn/conda-forge/libadbc-driver-postgresql?label=conda-forge%3A%20libadbc-driver-postgresql&style=flat-square)](https://anaconda.org/conda-forge/libadbc-driver-postgresql)
+[![CRAN: adbcpostgresql](https://img.shields.io/cran/v/adbcpostgresql?style=flat-square)](https://cran.r-project.org/web/packages/adbcpostgresql/index.html)
+[![PyPI: adbc-driver-postgresql](https://img.shields.io/pypi/v/adbc-driver-postgresql?style=flat-square)](https://pypi.org/project/adbc-driver-postgresql/)
+
 This implements an ADBC driver that wraps [libpq][libpq], the client
-library for PostgreSQL.  This is still a work in progress.
+library for PostgreSQL.
 
 This project owes credit to 0x0L's [pgeon][pgeon] for the overall
 approach.

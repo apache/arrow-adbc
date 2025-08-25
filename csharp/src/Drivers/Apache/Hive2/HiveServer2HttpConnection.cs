@@ -35,8 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     internal class HiveServer2HttpConnection : HiveServer2ExtendedConnection
     {
         private const string BasicAuthenticationScheme = "Basic";
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2HttpConnection));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2HttpConnection));
 
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
@@ -144,7 +142,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
             HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
-            httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
@@ -201,6 +198,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Http;
+
+        protected override IEnumerable<TProtocolVersion> FallbackProtocolVersions   => new[]
+        {
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V10,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V8,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7
+        };
 
         public override string AssemblyName => s_assemblyName;
 

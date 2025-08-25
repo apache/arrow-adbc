@@ -228,7 +228,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         public void Dispose()
         {
             _tokenLock.Dispose();
-            _httpClient.Dispose();
         }
 
         public string? GetCachedTokenScope()

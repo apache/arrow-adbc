@@ -136,6 +136,13 @@ const (
 	OptionValueMicroseconds = "microseconds"
 )
 
+// SQLSTATE codes
+// https://learn.microsoft.com/en-us/sql/odbc/reference/appendixes/appendix-a-odbc-error-codes
+const (
+	// Base table or view not found
+	SQLStateTableOrViewNotFound = "42S02"
+)
+
 var (
 	infoVendorVersion string
 )
@@ -171,7 +178,7 @@ func errToAdbcErr(code adbc.Status, err error) error {
 		var sqlstate [5]byte
 		copy(sqlstate[:], []byte(sferr.SQLState))
 
-		if sferr.SQLState == "42S02" {
+		if sferr.SQLState == SQLStateTableOrViewNotFound {
 			code = adbc.StatusNotFound
 		}
 

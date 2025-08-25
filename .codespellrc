@@ -16,5 +16,6 @@
 # under the License.
 
 [codespell]
+dictionary = .codespell-dictionary,-
 ignore-words = .codespell-ignore
 skip = go/adbc/go.sum

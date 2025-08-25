@@ -954,4 +954,5 @@ impl Statement for DataFusionStatement {
     }
 }
 
+#[cfg(feature = "ffi")]
 adbc_core::export_driver!(DataFusionDriverInit, DataFusionDriver);

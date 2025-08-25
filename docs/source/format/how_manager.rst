@@ -133,7 +133,8 @@ table of function pointers with one entry per ADBC function.  That way, an
 application can dynamically load a driver and call an entrypoint function that
 returns this table of function pointers.  (It does have to hardcode or guess
 the name of the entrypoint; the ADBC spec lists a set of names it can try,
-based on the name of the driver library itself.)
+based on the name of the driver library itself. See
+:c:type:`AdbcDriverInitFunc`.)
 
 .. figure:: DriverTableLoad.mmd.svg
 

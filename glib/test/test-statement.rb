@@ -40,6 +40,19 @@ class StatementTest < Test::Unit::TestCase
     end
   end
 
+  def test_parameter_schema
+    @statement.set_sql_query("SELECT ?, $2")
+    @statement.prepare
+    _, c_abi_schema = @statement.parameter_schema
+    begin
+      assert_equal(Arrow::Schema.new("0" => :null,
+                                     "$2" => :null),
+                   Arrow::Schema.import(c_abi_schema))
+    ensure
+      GLib.free(c_abi_schema)
+    end
+  end
+
   def test_bind
     @statement.set_sql_query("CREATE TABLE data (number int)")
     execute_statement(@statement, need_result: false)

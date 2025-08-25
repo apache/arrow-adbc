@@ -293,6 +293,54 @@ gboolean gadbc_statement_prepare(GADBCStatement* statement, GError** error) {
 }
 
 /**
+ * gadbc_statement_get_parameter_schema:
+ * @statement: A #GADBCStatement.
+ * @c_abi_schema: (out): Return location for the parameter schema as
+ *   `struct ArrowSchema *`. It should be freed with the `ArrowSchema::release`
+ *   callback then g_free() when no longer needed.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Get the schema for bound parameters.
+ *
+ * This retrieves an Arrow schema describing the number, names, and
+ * types of the parameters in a parameterized statement. The fields
+ * of the schema should be in order of the ordinal position of the
+ * parameters; named parameters should appear only once.
+ *
+ * If the parameter does not have a name, or the name cannot be
+ * determined, the name of the corresponding field in the schema will
+ * be an empty string. If the type cannot be determined, the type of
+ * the corresponding field will be NA (`NullType`).
+ *
+ * This should be called after gadbc_statement_prepare().
+ *
+ * Returns: %TRUE if parameter schema is returned successfully, %FALSE
+ *   otherwise.
+ *
+ * Since: 1.8.0
+ */
+gboolean gadbc_statement_get_parameter_schema(GADBCStatement* statement,
+                                              gpointer* c_abi_schema, GError** error) {
+  const gchar* context = "[adbc][statement][get-parameter-schema]";
+  struct AdbcStatement* adbc_statement =
+      gadbc_statement_get_raw(statement, context, error);
+  if (!adbc_statement) {
+    return FALSE;
+  }
+  struct ArrowSchema* schema = g_new0(struct ArrowSchema, 1);
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcStatementGetParameterSchema(adbc_statement, schema, &adbc_error);
+  if (gadbc_error_check(error, status_code, &adbc_error, context)) {
+    *c_abi_schema = schema;
+    return TRUE;
+  } else {
+    g_free(schema);
+    return FALSE;
+  }
+}
+
+/**
  * gadbc_statement_bind:
  * @statement: A #GADBCStatement.
  * @c_abi_array: A `struct ArrowArray *` of a record batch to

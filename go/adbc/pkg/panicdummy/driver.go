@@ -87,7 +87,15 @@ func setErr(err *C.struct_AdbcError, format string, vals ...interface{}) {
 		C.PanicDummyerrRelease(err)
 	}
 
-	msg := errPrefix + fmt.Sprintf(format, vals...)
+	var msg string
+	if strings.HasPrefix(format, errPrefix) {
+		// If the error message already starts with the prefix, we don't
+		// want to add it again.
+		msg = fmt.Sprintf(format, vals...)
+	} else {
+		// Otherwise, we prepend the prefix to the error message.
+		msg = errPrefix + fmt.Sprintf(format, vals...)
+	}
 	err.message = C.CString(msg)
 	err.release = (*[0]byte)(C.PanicDummy_release_error)
 }
@@ -97,7 +105,27 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 		return
 	}
 
+	for i := range 5 {
+		err.sqlstate[i] = C.char(adbcError.SqlState[i])
+	}
+
 	if err.vendor_code != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
+		// Caller is not interested in `private_data` if `vendor_code` is not
+		// `ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA` so let's use the field for
+		// `vendor_code` instead, but make sure it's not set to the value
+		// that would indicate `private_data` is set.
+		if adbcError.VendorCode != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
+			err.vendor_code = C.int(adbcError.VendorCode)
+		}
+		setErr(err, adbcError.Msg)
+		return
+	}
+
+	numDetails := len(adbcError.Details)
+	// If there are no details, but we have a `VendorCode`, let's override
+	// `vendor_code` and not populate `private_data` with the error details.
+	if numDetails == 0 && adbcError.VendorCode != 0 && adbcError.VendorCode != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
+		err.vendor_code = C.int(adbcError.VendorCode)
 		setErr(err, adbcError.Msg)
 		return
 	}
@@ -109,7 +137,6 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 	err.release = (*[0]byte)(C.PanicDummyReleaseErrWithDetails)
 	err.private_data = cErrPtr
 
-	numDetails := len(adbcError.Details)
 	if numDetails > 0 {
 		cErr.keys = (**C.cchar_t)(C.calloc(C.size_t(numDetails), C.size_t(unsafe.Sizeof((*C.cchar_t)(nil)))))
 		cErr.values = (**C.cuint8_t)(C.calloc(C.size_t(numDetails), C.size_t(unsafe.Sizeof((*C.cuint8_t)(nil)))))
@@ -1813,8 +1840,8 @@ func PanicDummyStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *
 	return C.ADBC_STATUS_OK
 }
 
-//export PanicDummyDriverInit
-func PanicDummyDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export AdbcDriverPanicDummyInit
+func AdbcDriverPanicDummyInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 
 	switch version {

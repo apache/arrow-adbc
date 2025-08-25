@@ -37,8 +37,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     internal class ImpalaHttpConnection : ImpalaConnection
     {
         private const string BasicAuthenticationScheme = "Basic";
-        private static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(ImpalaHttpConnection));
-        private static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(ImpalaHttpConnection));
 
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
@@ -127,7 +125,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null) =>
+            new HiveServer2Reader(statement, schema, response, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected override TTransport CreateTransport()
         {

@@ -57,6 +57,42 @@ GADBCArrowStatement* gadbc_arrow_statement_new(GADBCConnection* connection,
 }
 
 /**
+ * gadbc_arrow_statement_get_parameter_schema:
+ * @statement: A #GADBCArrowStatement.
+ * @error: (out) (optional): Return location for a #GError or %NULL.
+ *
+ * Get the schema for bound parameters.
+ *
+ * This retrieves an Arrow schema describing the number, names, and
+ * types of the parameters in a parameterized statement. The fields
+ * of the schema should be in order of the ordinal position of the
+ * parameters; named parameters should appear only once.
+ *
+ * If the parameter does not have a name, or the name cannot be
+ * determined, the name of the corresponding field in the schema will
+ * be an empty string. If the type cannot be determined, the type of
+ * the corresponding field will be NA (`NullType`).
+ *
+ * This should be called after gadbc_statement_prepare().
+ *
+ * Returns: (transfer full) (nullable): #GArrowSchema if parameter schema is
+ *   returned successfully, %NULL otherwise.
+ *
+ * Since: 1.8.0
+ */
+GArrowSchema* gadbc_arrow_statement_get_parameter_schema(GADBCArrowStatement* statement,
+                                                         GError** error) {
+  gpointer c_abi_schema = NULL;
+  if (!gadbc_statement_get_parameter_schema(GADBC_STATEMENT(statement), &c_abi_schema,
+                                            error)) {
+    return NULL;
+  }
+  GArrowSchema* schema = garrow_schema_import(c_abi_schema, error);
+  g_free(c_abi_schema);
+  return schema;
+}
+
+/**
  * gadbc_arrow_statement_bind:
  * @statement: A #GADBCArrowStatement.
  * @record_batch: A #GArrowRecordBatch.

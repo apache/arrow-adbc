@@ -91,9 +91,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         // default value per https://pkg.go.dev/cloud.google.com/go/bigquery#section-readme
         public const string DetectProjectId = "*detect-project-id*";
 
-        // Reuse what the ODBC driver already has in place, in case a caller
-        // has permission issues trying to create a new dataset
-        public const string DefaultLargeDatasetId = "_bqodbc_temp_tables";
+        // matches the pattern for odbc, but for adbc
+        public const string DefaultLargeDatasetId = "_bqadbc_temp_tables";
 
         public const string PublicProjectId = "bigquery-public-data";
     }

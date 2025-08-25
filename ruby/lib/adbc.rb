@@ -27,17 +27,3 @@ module ADBC
 end
 
 ADBC::Loader.load
-begin
-  ADBCArrow::Loader.load
-rescue GObjectIntrospection::RepositoryError
-else
-  module ADBC
-    RawConnection = Connection
-    remove_const(:Connection)
-    Connection = ADBCArrow::Connection
-
-    RawStatement = Statement
-    remove_const(:Statement)
-    Statement = ADBCArrow::Statement
-  end
-end

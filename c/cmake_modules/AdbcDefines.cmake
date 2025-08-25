@@ -20,6 +20,10 @@
 
 enable_language(C CXX)
 
+if(${CMAKE_VERSION} VERSION_GREATER "3.24")
+  cmake_policy(SET CMP0135 NEW)
+endif()
+
 set(BUILD_SUPPORT_DIR "${REPOSITORY_ROOT}/ci/build_support")
 
 include(CheckLinkerFlag)
@@ -137,8 +141,8 @@ else()
 endif()
 
 macro(adbc_configure_target TARGET)
-  target_compile_options(${TARGET}
-                         PRIVATE ${ADBC_C_CXX_FLAGS_${ADBC_BUILD_WARNING_LEVEL}})
+  target_compile_options(${TARGET} PRIVATE ${ADBC_C_CXX_FLAGS_${ADBC_BUILD_WARNING_LEVEL}}
+                                           ${ADBC_CXXFLAGS})
 endmacro()
 
 # Common testing setup

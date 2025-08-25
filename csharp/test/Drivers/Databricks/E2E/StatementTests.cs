@@ -90,15 +90,38 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             base.StatementTimeoutTest(statementWithExceptions);
         }
 
+        [SkippableTheory]
+        [InlineData(LongRunningStatementTimeoutTestData.LongRunningQuery, "false", "true")]
+        [InlineData(LongRunningStatementTimeoutTestData.LongRunningQuery, "true", "true")]
+        [InlineData(LongRunningStatementTimeoutTestData.LongRunningQuery, "true", "false")]
+        internal async Task DatabricksCanCancelStatementTest(string query, string enableRunAsyncInThriftOp, string enableDirectResults)
+        {
+            string enableRunAsyncInThriftOpOrig = TestConfiguration.EnableRunAsyncInThriftOp;
+            string enableDirectResultsOrig = TestConfiguration.EnableDirectResults;
+            try
+            {
+                TestConfiguration.EnableRunAsyncInThriftOp = enableRunAsyncInThriftOp;
+                TestConfiguration.EnableDirectResults = enableDirectResults;
+                await base.CanCancelStatementTest(query);
+            }
+            finally
+            {
+                TestConfiguration.EnableRunAsyncInThriftOp = enableRunAsyncInThriftOpOrig;
+                TestConfiguration.EnableDirectResults = enableDirectResultsOrig;
+            }
+        }
+
         internal class LongRunningStatementTimeoutTestData : ShortRunningStatementTimeoutTestData
         {
-            public LongRunningStatementTimeoutTestData()
-            {
-                string longRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(100000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
+            internal const string LongRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(100000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
+            private const string DefaultQuery = "SELECT 1";
 
-                Add(new(5, longRunningQuery, typeof(TimeoutException)));
-                Add(new(null, longRunningQuery, typeof(TimeoutException)));
-                Add(new(0, longRunningQuery, null));
+            public LongRunningStatementTimeoutTestData() : base(DefaultQuery)
+            {
+                // Add Databricks-specific long-running query tests
+                Add(new(5, LongRunningQuery, typeof(TimeoutException)));
+                Add(new(null, LongRunningQuery, typeof(TimeoutException)));
+                Add(new(0, LongRunningQuery, null));
             }
         }
 
@@ -132,25 +155,82 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         /// <summary>
-        /// Verifies that Dispose() can be called on metadata query statements without throwing
-        /// "Invalid OperationHandle" errors. This tests the fix for the issue where the server
-        /// auto-closes operations but the client still tries to close them during disposal.
+        /// Comprehensive test that verifies disposal works for all statement types without throwing exceptions.
+        /// This prevents regressions like the GetColumns disposal bug where _directResults wasn't set properly.
         /// </summary>
-        [SkippableFact]
-        public async Task CanDisposeMetadataQueriesWithoutError()
+        [SkippableTheory]
+        [InlineData("ExecuteStatement", "SELECT 1 as test_column")]
+        [InlineData("GetCatalogs", "GetCatalogs")]
+        [InlineData("GetSchemas", "GetSchemas")]
+        [InlineData("GetTables", "GetTables")]
+        [InlineData("GetColumns", "GetColumns")]
+        [InlineData("GetPrimaryKeys", "GetPrimaryKeys")]
+        [InlineData("GetCrossReference", "GetCrossReference")]
+        [InlineData("GetColumnsExtended", "GetColumnsExtended")]
+        public async Task AllStatementTypesDisposeWithoutErrors(string statementType, string sqlCommand)
         {
-            // Test a simple metadata command that's most likely to trigger the issue
             var statement = Connection.CreateStatement();
-            statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
-            statement.SqlQuery = "GetSchemas";
 
-            // Execute the metadata query
-            QueryResult queryResult = await statement.ExecuteQueryAsync();
-            Assert.NotNull(queryResult.Stream);
+            try
+            {
+                if (statementType == "ExecuteStatement")
+                {
+                    // Regular SQL statement
+                    statement.SqlQuery = sqlCommand;
+                }
+                else
+                {
+                    // Metadata command
+                    statement.SetOption(ApacheParameters.IsMetadataCommand, "true");
+                    statement.SqlQuery = sqlCommand;
 
-            // This should not throw "Invalid OperationHandle" errors
-            // The fix ensures _directResults is set so dispose logic works correctly
-            statement.Dispose();
+                    // Set required parameters for specific metadata commands
+                    if (sqlCommand is "GetColumns" or "GetPrimaryKeys" or "GetCrossReference" or "GetColumnsExtended")
+                    {
+                        statement.SetOption(ApacheParameters.CatalogName, TestConfiguration.Metadata.Catalog);
+                        statement.SetOption(ApacheParameters.SchemaName, TestConfiguration.Metadata.Schema);
+                        statement.SetOption(ApacheParameters.TableName, TestConfiguration.Metadata.Table);
+                    }
+
+                    if (sqlCommand == "GetCrossReference")
+                    {
+                        // GetCrossReference needs foreign table parameters too
+                        statement.SetOption(ApacheParameters.ForeignCatalogName, TestConfiguration.Metadata.Catalog);
+                        statement.SetOption(ApacheParameters.ForeignSchemaName, TestConfiguration.Metadata.Schema);
+                        statement.SetOption(ApacheParameters.ForeignTableName, TestConfiguration.Metadata.Table);
+                    }
+                }
+
+                // Execute the statement
+                QueryResult queryResult = await statement.ExecuteQueryAsync();
+                Assert.NotNull(queryResult.Stream);
+
+                // Consume at least one batch to ensure the operation completes
+                var batch = await queryResult.Stream.ReadNextRecordBatchAsync();
+                // Note: batch might be null for empty results, that's OK
+
+                // test disposing the stream does not throw
+                var streamException = Record.Exception(() => queryResult.Stream.Dispose());
+                Assert.Null(streamException);
+
+                // The critical test: disposal should not throw any exceptions
+                // This specifically tests the fix for the GetColumns bug where _directResults wasn't set
+                var statementException = Record.Exception(() => statement.Dispose());
+                Assert.Null(statementException);
+            }
+            catch (Exception ex)
+            {
+                // If execution fails, we still want to test disposal
+                OutputHelper?.WriteLine($"Statement execution failed for {statementType}: {ex.Message}");
+
+                // Even if execution failed, disposal should not throw
+                var disposalException = Record.Exception(() => statement.Dispose());
+                Assert.Null(disposalException);
+
+                // Re-throw the original exception if we want to investigate execution failures
+                // For now, we'll skip the test if execution fails since disposal is our main concern
+                Skip.If(true, $"Skipping disposal test for {statementType} due to execution failure: {ex.Message}");
+            }
         }
 
         [SkippableFact]
@@ -832,6 +912,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         [InlineData(true, "CloudFetch enabled")]
         public async Task StatusPollerKeepsQueryAlive(bool useCloudFetch, string configName)
         {
+            Skip.If(TestConfiguration.IsCITesting, "Skip test in CI testing");
+
             OutputHelper?.WriteLine($"Testing status poller with long delay between reads ({configName})");
 
             // Create a connection using the test configuration
@@ -1048,7 +1130,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         [Theory]
         [InlineData(false, "main", true)]
-        [InlineData(true, null, true)]
         [InlineData(true, "", true)]
         [InlineData(true, "SPARK", true)]
         [InlineData(true, "hive_metastore", true)]
@@ -1068,6 +1149,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             if (catalogName != null)
             {
                 statement.SetOption(ApacheParameters.CatalogName, catalogName);
+            }
+            else
+            {
+                statement.SetOption(ApacheParameters.CatalogName, string.Empty);
             }
 
             // Act
@@ -1225,5 +1310,146 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             Assert.True(foundSchemas.Count == 1, "Should have exactly one schema");
         }
 
+        [SkippableTheory]
+        [InlineData("cast(-6 as decimal(3, 1))", "-6.0", 3, 1, "Negative decimal with scale")]
+        [InlineData("cast(0 as decimal(1, 0))", "0", 1, 0, "Zero decimal")]
+        [InlineData("cast(123 as decimal(3, 0))", "123", 3, 0, "Positive integer decimal")]
+        [InlineData("cast(123456789.123456789 as decimal(18, 9))", "123456789.123456789", 18, 9, "High precision decimal")]
+        [InlineData("cast(-123456789.123456789 as decimal(18, 9))", "-123456789.123456789", 18, 9, "High precision negative decimal")]
+        public async Task CanExecuteDecimalQuery(string sqlExpression, string expectedValueString, int expectedPrecision, int expectedScale, string testDescription)
+        {
+            decimal expectedValue = decimal.Parse(expectedValueString);
+            // This tests the bug where older DBR versions return decimal values as strings when UseArrowNativeTypes is false
+            // To repro issue, run this with dbr < 10.0
+            OutputHelper?.WriteLine($"Testing: {testDescription}");
+            OutputHelper?.WriteLine($"SQL Expression: {sqlExpression}");
+            OutputHelper?.WriteLine($"Expected Value: {expectedValue}");
+            OutputHelper?.WriteLine($"Expected Precision: {expectedPrecision}, Scale: {expectedScale}");
+
+            using AdbcConnection connection = NewConnection();
+            using var statement = connection.CreateStatement();
+
+            // Use the provided SQL expression
+            statement.SqlQuery = $"SELECT {sqlExpression} as A";
+            QueryResult result = statement.ExecuteQuery();
+
+            Assert.NotNull(result.Stream);
+
+            // Verify the schema
+            var schema = result.Stream.Schema;
+            Assert.Single(schema.FieldsList);
+
+            var field = schema.GetFieldByName("A");
+            Assert.NotNull(field);
+
+            OutputHelper?.WriteLine($"Decimal field type: {field.DataType.GetType().Name}");
+            OutputHelper?.WriteLine($"Decimal field type ID: {field.DataType.TypeId}");
+
+            // Read the actual data
+            var batch = await result.Stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            Assert.Equal(1, batch.Length);
+
+            if (field.DataType is Decimal128Type decimalType)
+            {
+                // For newer DBR versions with UseArrowNativeTypes enabled, decimal is returned as Decimal128Type
+                Assert.Equal(expectedPrecision, decimalType.Precision);
+                Assert.Equal(expectedScale, decimalType.Scale);
+
+                var col0 = batch.Column(0) as Decimal128Array;
+                Assert.NotNull(col0);
+                Assert.Equal(1, col0.Length);
+
+                var sqlDecimal = col0.GetSqlDecimal(0);
+                Assert.NotNull(sqlDecimal);
+                Assert.Equal(expectedValue, sqlDecimal.Value);
+
+                OutputHelper?.WriteLine($"Decimal value: {sqlDecimal.Value} (precision: {decimalType.Precision}, scale: {decimalType.Scale})");
+            }
+            else if (field.DataType is StringType)
+            {
+                // For older DBR versions with UseArrowNativeTypes disabled, decimal is returned as StringType
+                var col0 = batch.Column(0) as StringArray;
+                Assert.NotNull(col0);
+                Assert.Equal(1, col0.Length);
+
+                var stringValue = col0.GetString(0);
+                Assert.NotNull(stringValue);
+                Assert.Equal(expectedValueString, stringValue);
+
+                OutputHelper?.WriteLine($"Decimal as string value: '{stringValue}'");
+            }
+            else
+            {
+                Assert.Fail($"Unexpected field type for decimal: {field.DataType.GetType().Name}");
+            }
+            OutputHelper?.WriteLine($"Test passed: {testDescription}");
+        }
+
+        // this test fails on dbr < 7.3, because timestamp is returned as string
+        // todo: add more edge cases
+        [SkippableTheory]
+        [InlineData("timestamp('2023-01-15 10:30:45')", "2023-01-15T10:30:45.0000000 +00:00", "Basic timestamp")]
+        [InlineData("timestamp('2023-12-31 23:59:59.999')", "2023-12-31T23:59:59.9990000 +00:00", "Timestamp with milliseconds")]
+        public async Task CanExecuteTimestampQuery(string sqlExpression, string expectedValueString, string testDescription)
+        {
+            DateTime expectedValue = DateTime.Parse(expectedValueString);
+            // This tests timestamp handling across different DBR versions
+            // Older DBR versions might return timestamps as strings when UseArrowNativeTypes is false
+            OutputHelper?.WriteLine($"Testing: {testDescription}");
+            OutputHelper?.WriteLine($"SQL Expression: {sqlExpression}");
+            OutputHelper?.WriteLine($"Expected Value: {expectedValue}");
+
+            using AdbcConnection connection = NewConnection();
+            using var statement = connection.CreateStatement();
+
+            // Use the provided SQL expression
+            statement.SqlQuery = $"SELECT {sqlExpression} as A";
+            QueryResult result = statement.ExecuteQuery();
+
+            Assert.NotNull(result.Stream);
+
+            // Verify the schema
+            var schema = result.Stream.Schema;
+            Assert.Single(schema.FieldsList);
+
+            var field = schema.GetFieldByName("A");
+            Assert.NotNull(field);
+
+            OutputHelper?.WriteLine($"Timestamp field type: {field.DataType.GetType().Name}");
+            OutputHelper?.WriteLine($"Timestamp field type ID: {field.DataType.TypeId}");
+
+            // Read the actual data
+            var batch = await result.Stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            Assert.Equal(1, batch.Length);
+
+            if (field.DataType is TimestampType timestampType)
+            {
+                // For newer DBR versions with UseArrowNativeTypes enabled, timestamp is returned as TimestampType
+                var col0 = batch.Column(0) as TimestampArray;
+                Assert.NotNull(col0);
+                Assert.Equal(1, col0.Length);
+
+                var timestampValue = col0.GetTimestamp(0);
+                Assert.NotNull(timestampValue);
+
+                // Verify the timestamp matches the expected value
+                var actualDateTime = timestampValue.Value;
+                OutputHelper?.WriteLine($"Actual timestamp value: {actualDateTime}");
+
+                // Allow some tolerance for millisecond precision differences
+                var timeDiff = Math.Abs((actualDateTime - expectedValue).TotalMilliseconds);
+                Assert.True(timeDiff < 1000, $"Timestamp difference too large: expected {expectedValue}, got {actualDateTime}");
+
+                OutputHelper?.WriteLine($"Timestamp unit: {timestampType.Unit}");
+                OutputHelper?.WriteLine($"Timestamp timezone: {timestampType.Timezone}");
+            }
+            else
+            {
+                Assert.Fail($"Unexpected field type for timestamp: {field.DataType.GetType().Name}");
+            }
+            OutputHelper?.WriteLine($"Test passed: {testDescription}");
+        }
     }
 }

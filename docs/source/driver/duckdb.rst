@@ -19,7 +19,7 @@
 DuckDB Support
 ==============
 
-**Available for:** C/C++, GLib/Ruby, Go, Python, R
+.. adbc_driver_status:: ../../../c/integration/duckdb/README.md
 
 `DuckDB`_ provides ADBC support since `version 0.8.0
 <https://duckdb.org/2023/05/17/announcing-duckdb-080.html>`_.

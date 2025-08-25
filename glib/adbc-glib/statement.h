@@ -69,6 +69,9 @@ gboolean gadbc_statement_set_ingest_mode(GADBCStatement* statement, GADBCIngestM
                                          GError** error);
 GADBC_AVAILABLE_IN_0_4
 gboolean gadbc_statement_prepare(GADBCStatement* statement, GError** error);
+GADBC_AVAILABLE_IN_1_8
+gboolean gadbc_statement_get_parameter_schema(GADBCStatement* statement,
+                                              gpointer* c_abi_schema, GError** error);
 GADBC_AVAILABLE_IN_0_4
 gboolean gadbc_statement_bind(GADBCStatement* statement, gpointer c_abi_array,
                               gpointer c_abi_schema, GError** error);

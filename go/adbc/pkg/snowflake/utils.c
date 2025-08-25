@@ -435,12 +435,6 @@ AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error
 }
 #endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
-ADBC_EXPORT
-AdbcStatusCode SnowflakeDriverInit(int version, void* driver, struct AdbcError* error) {
-  // For backwards compatibility
-  return AdbcDriverSnowflakeInit(version, driver, error);
-}
-
 int SnowflakeArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
 int SnowflakeArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);
 
