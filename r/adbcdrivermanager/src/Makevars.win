@@ -16,7 +16,8 @@
 # under the License.
 
 CXX_STD = CXX17
-PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT=""
+CONDA_BUILD ?= "0"
+PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT="" -DADBC_CONDA_BUILD=$(CONDA_BUILD)
 PKG_LIBS=-lshell32 -ladvapi32 -luuid
 
 OBJECTS = driver_test.o \
