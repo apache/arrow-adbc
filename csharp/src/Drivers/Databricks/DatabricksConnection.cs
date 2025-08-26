@@ -51,7 +51,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" },
         };
-        
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
