@@ -58,25 +58,14 @@ updates:
         update-types:
           - "version-update:semver-major"
   - package-ecosystem: "cargo"
-    directory: "/rust/driver/datafusion/"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "chore(rust/driver/datafusion): "
-    groups:
-      arrow-datafusion:
-        applies-to: version-updates
-        patterns:
-          - "arrow-*"
-          - "datafusion*"
-  - package-ecosystem: "cargo"
     directory: "/rust/"
     schedule:
       interval: "weekly"
     commit-message:
       prefix: "chore(rust): "
     groups:
-      arrow:
+      arrow-datafusion:
         applies-to: version-updates
         patterns:
           - "arrow-*"
+          - "datafusion*"
