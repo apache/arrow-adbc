@@ -90,16 +90,38 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             base.StatementTimeoutTest(statementWithExceptions);
         }
 
+        [SkippableTheory]
+        [InlineData(LongRunningStatementTimeoutTestData.LongRunningQuery, "false", "true")]
+        [InlineData(LongRunningStatementTimeoutTestData.LongRunningQuery, "true", "true")]
+        [InlineData(LongRunningStatementTimeoutTestData.LongRunningQuery, "true", "false")]
+        internal async Task DatabricksCanCancelStatementTest(string query, string enableRunAsyncInThriftOp, string enableDirectResults)
+        {
+            string enableRunAsyncInThriftOpOrig = TestConfiguration.EnableRunAsyncInThriftOp;
+            string enableDirectResultsOrig = TestConfiguration.EnableDirectResults;
+            try
+            {
+                TestConfiguration.EnableRunAsyncInThriftOp = enableRunAsyncInThriftOp;
+                TestConfiguration.EnableDirectResults = enableDirectResults;
+                await base.CanCancelStatementTest(query);
+            }
+            finally
+            {
+                TestConfiguration.EnableRunAsyncInThriftOp = enableRunAsyncInThriftOpOrig;
+                TestConfiguration.EnableDirectResults = enableDirectResultsOrig;
+            }
+        }
+
         internal class LongRunningStatementTimeoutTestData : ShortRunningStatementTimeoutTestData
         {
-            public LongRunningStatementTimeoutTestData() : base("SELECT 1")
-            {
-                string longRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(100000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
+            internal const string LongRunningQuery = "SELECT COUNT(*) AS total_count\nFROM (\n  SELECT t1.id AS id1, t2.id AS id2\n  FROM RANGE(1000000) t1\n  CROSS JOIN RANGE(100000) t2\n) subquery\nWHERE MOD(id1 + id2, 2) = 0";
+            private const string DefaultQuery = "SELECT 1";
 
+            public LongRunningStatementTimeoutTestData() : base(DefaultQuery)
+            {
                 // Add Databricks-specific long-running query tests
-                Add(new(5, longRunningQuery, typeof(TimeoutException)));
-                Add(new(null, longRunningQuery, typeof(TimeoutException)));
-                Add(new(0, longRunningQuery, null));
+                Add(new(5, LongRunningQuery, typeof(TimeoutException)));
+                Add(new(null, LongRunningQuery, typeof(TimeoutException)));
+                Add(new(0, LongRunningQuery, null));
             }
         }
 
