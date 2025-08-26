@@ -764,7 +764,7 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	case bigquery.BooleanFieldType:
 		field.Type = arrow.FixedWidthTypes.Boolean
 	case bigquery.TimestampFieldType:
-		field.Type = arrow.FixedWidthTypes.Timestamp_ms
+		field.Type = arrow.FixedWidthTypes.Timestamp_us
 	case bigquery.RecordFieldType:
 		// create an Arrow struct for BigQuery Record fields
 		nestedFields := make([]arrow.Field, len(schema.Schema))
