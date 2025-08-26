@@ -33,7 +33,7 @@ type rowsWithIPCStream interface {
 	GetArrowIPCStreams(context.Context) (dbsqlrows.ArrowIPCStreamIterator, error)
 }
 
-// ipcReaderAdapter uses the new IPC stream interface for zero-copy Arrow access
+// ipcReaderAdapter uses the new IPC stream interface for Arrow access
 type ipcReaderAdapter struct {
 	ipcIterator   dbsqlrows.ArrowIPCStreamIterator
 	currentReader *ipc.Reader
@@ -131,6 +131,7 @@ func (r *ipcReaderAdapter) Next() bool {
 	// Need to load next IPC stream
 	err := r.loadNextReader()
 	if err != nil {
+		// Err() will return `r.currentReader.Err()` which contains this error
 		return false
 	}
 
@@ -150,7 +151,10 @@ func (r *ipcReaderAdapter) Record() arrow.Record {
 
 func (r *ipcReaderAdapter) Release() {
 	r.refCount -= 1
-	if !r.closed && r.refCount <= 0 {
+	if r.refCount <= 0 {
+		if r.closed {
+			panic("Double cleanup on ipc_reader_adapter - was Release() called with a closed reader?")
+		}
 		r.closed = true
 
 		if r.currentRecord != nil {

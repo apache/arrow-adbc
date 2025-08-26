@@ -39,9 +39,6 @@ type connectionImpl struct {
 
 	// Database connection
 	conn *sql.Conn
-
-	// Current autocommit state
-	autocommit bool
 }
 
 func (c *connectionImpl) Close() error {
@@ -62,15 +59,22 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 
 // Autocommit interface implementation
 func (c *connectionImpl) GetAutocommit() bool {
-	return c.autocommit
+	// Databricks SQL doesn't support explicit transaction control in the same way
+	// as traditional databases. Most operations are implicitly committed.
+	return true
 }
 
 func (c *connectionImpl) SetAutocommit(autocommit bool) error {
 	// Databricks SQL doesn't support explicit transaction control in the same way
 	// as traditional databases. Most operations are implicitly committed.
-	// We'll track the autocommit state but won't change the underlying connection behavior.
-	c.autocommit = autocommit
-	return nil
+	if !autocommit {
+		return adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  fmt.Sprintf("disabling autocommit is not supported"),
+		}
+	} else {
+		return nil
+	}
 }
 
 // CurrentNamespacer interface implementation
@@ -85,7 +89,7 @@ func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
 func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 	// Use the database to execute USE CATALOG
 	if c.conn != nil && catalog != "" {
-		_, err := c.conn.ExecContext(context.TODO(), "USE CATALOG %s", catalog)
+		_, err := c.conn.ExecContext(context.TODO(), "USE CATALOG `%s`", catalog)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
@@ -100,7 +104,7 @@ func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 	// Use the database to execute USE SCHEMA
 	if c.conn != nil && schema != "" {
-		_, err := c.conn.ExecContext(context.TODO(), "USE SCHEMA %s", schema)
+		_, err := c.conn.ExecContext(context.TODO(), "USE SCHEMA `%s`", schema)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
@@ -148,15 +152,17 @@ func (c *connectionImpl) GetTableTypes(ctx context.Context) (array.RecordReader,
 
 // Transaction methods (Databricks has limited transaction support)
 func (c *connectionImpl) Commit(ctx context.Context) error {
-	// Databricks SQL doesn't support explicit transactions in the traditional sense.
-	// Most operations are auto-committed. We'll track state but not perform any operation.
+	// Most operations are auto-committed.
 	return nil
 }
 
 func (c *connectionImpl) Rollback(ctx context.Context) error {
 	// Databricks SQL doesn't support explicit transactions in the traditional sense.
 	// Most operations are auto-committed. We'll track state but not perform any operation.
-	return nil
+	return adbc.Error{
+		Code: adbc.StatusNotImplemented,
+		Msg:  fmt.Sprintf("rollback is not supported"),
+	}
 }
 
 // DbObjectsEnumerator interface implementation
@@ -191,7 +197,7 @@ func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string)
 }
 
 func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error) {
-	query := fmt.Sprintf("SHOW SCHEMAS IN %s", catalog)
+	query := fmt.Sprintf("SHOW SCHEMAS IN `%s`", catalog)
 	if schemaFilter != nil {
 		query += fmt.Sprintf(" LIKE '%s'", *schemaFilter)
 	}
@@ -221,7 +227,7 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 }
 
 func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
-	query := fmt.Sprintf("SHOW TABLES IN %s.%s", catalog, schema)
+	query := fmt.Sprintf("SHOW TABLES IN `%s`.`%s`", catalog, schema)
 	if tableFilter != nil {
 		query += fmt.Sprintf(" LIKE '%s'", *tableFilter)
 	}
