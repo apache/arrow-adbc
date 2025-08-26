@@ -48,7 +48,6 @@
     </dependency>
 
     <!-- Derby -->
-    <!-- Cannot upgrade beyond this version for Java 8 support -->
     <dependency>
       <groupId>org.apache.derby</groupId>
       <artifactId>derby</artifactId>
