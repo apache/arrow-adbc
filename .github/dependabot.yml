@@ -62,7 +62,7 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "chore(rust): "
+      prefix: "chore(rust/driver/datafusion): "
     groups:
       arrow-datafusion:
         applies-to: version-updates
