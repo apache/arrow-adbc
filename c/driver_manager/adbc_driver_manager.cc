@@ -273,9 +273,8 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   return ADBC_STATUS_OK;
 }
 
-#if ADBC_CONDA_BUILD
+std::vector<std::filesystem::path> GetEnvPaths(const char_type* env_var) {
 #ifdef _WIN32
-std::filesystem::path GetEnvAsPath(const wchar_t* env_var) {
   size_t required_size;
 
   _wgetenv_s(&required_size, NULL, 0, env_var);
@@ -286,30 +285,27 @@ std::filesystem::path GetEnvAsPath(const wchar_t* env_var) {
   std::wstring path_var;
   path_var.resize(required_size);
   _wgetenv_s(&required_size, path_var.data(), required_size, env_var);
-  return std::filesystem::path(path_var);
-}
+  auto path = Utf8Encode(path_var);
 #else
-std::filesystem::path GetEnvAsPath(const char* env_var) {
-  const char* path = std::getenv(env_var);
-  if (path) {
-    std::string_view venv(path);
-    if (!venv.empty()) {
-      return std::filesystem::path(venv);
-    }
+  const char* path_var = std::getenv(env_var);
+  if (!path_var) {
+    return {};
   }
-  return {};
+  std::string path(path_var);
+#endif
+  return InternalAdbcParsePath(path);
 }
-#endif  // _WIN32
-#endif  // ADBC_CONDA_BUILD
 
 std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
   std::vector<std::filesystem::path> paths;
   if (levels & ADBC_LOAD_FLAG_SEARCH_ENV) {
+#ifdef _WIN32
+    static const wchar_t* env_var = L"ADBC_CONFIG_PATH";
+#else
+    static const char* env_var = "ADBC_CONFIG_PATH";
+#endif
     // Check the ADBC_CONFIG_PATH environment variable
-    const char* env_path = std::getenv("ADBC_CONFIG_PATH");
-    if (env_path) {
-      paths = InternalAdbcParsePath(env_path);
-    }
+    paths = GetEnvPaths(env_var);
   }
 
   if (levels & ADBC_LOAD_FLAG_SEARCH_USER) {
@@ -501,9 +497,11 @@ struct ManagedLibrary {
 #else
         const char* conda_name = "CONDA_PREFIX";
 #endif  // _WIN32
-        std::filesystem::path venv = GetEnvAsPath(conda_name);
+        auto venv = GetEnvPaths(conda_name);
         if (!venv.empty()) {
-          search_paths.push_back(venv / "etc" / "adbc");
+          for (const auto& venv_path : venv) {
+            search_paths.push_back(venv_path / "etc" / "adbc");
+          }
         }
       }
 #endif  // ADBC_CONDA_BUILD
