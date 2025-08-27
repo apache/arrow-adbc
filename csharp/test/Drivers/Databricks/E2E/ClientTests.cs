@@ -52,5 +52,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                     affectedRows,  // DELETE
                   ];
         }
+
+        internal override string FormatTableName =>
+       $"{TestConfiguration.Metadata.Catalog}.{TestConfiguration.Metadata.Schema}.{TestConfiguration.Metadata.Table}";
     }
 }

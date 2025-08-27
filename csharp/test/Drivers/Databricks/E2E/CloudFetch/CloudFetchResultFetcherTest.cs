@@ -467,7 +467,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             Assert.True(timedOut, "Fetch operation should have timed out due to QueryTimeoutSeconds setting");
 
             // Wait a bit for the fetcher to complete its error handling
-            //await Task.Delay(100);
+            await Task.Delay(100);
 
             // Verify the fetcher state
             Assert.True(_resultFetcher.IsCompleted);
