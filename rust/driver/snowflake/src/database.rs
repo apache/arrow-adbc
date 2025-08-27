@@ -22,16 +22,16 @@
 use std::{collections::HashSet, ffi::c_int, sync::Arc};
 
 use adbc_core::{
+    arrow::arrow_array::{
+        cast::AsArray,
+        types::{Int64Type, UInt32Type},
+        Array,
+    },
     error::{Error, Result, Status},
     options::{AdbcVersion, InfoCode, OptionConnection, OptionDatabase, OptionValue},
     Connection as _, Database as _, Optionable,
 };
 use adbc_driver_manager::ManagedDatabase;
-use arrow_array::{
-    cast::AsArray,
-    types::{Int64Type, UInt32Type},
-    Array,
-};
 
 use crate::Connection;
 

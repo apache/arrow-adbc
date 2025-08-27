@@ -15,11 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use arrow_schema::{Field, Schema};
-
-use adbc_core::options::{AdbcVersion, OptionConnection, OptionDatabase};
-use adbc_core::{error::Status, Driver, Optionable};
-use adbc_core::{Connection, Database, Statement};
+use adbc_core::{
+    arrow::arrow_schema::{Field, Schema},
+    error::Status,
+    options::{AdbcVersion, OptionConnection, OptionDatabase},
+    Connection, Database, Driver, Optionable, Statement,
+};
 use adbc_driver_manager::{ManagedDatabase, ManagedDriver};
 
 mod common;

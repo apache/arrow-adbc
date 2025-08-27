@@ -17,11 +17,11 @@
 
 use adbc_core::{Connection, Database, Driver, Optionable, Statement};
 use adbc_datafusion::{DataFusionConnection, DataFusionDriver};
-use arrow_array::RecordBatch;
+use datafusion::arrow::array::RecordBatch;
+use datafusion::arrow::compute::concat_batches;
 use datafusion::prelude::*;
 
 use adbc_core::options::{OptionConnection, OptionStatement, OptionValue};
-use arrow_select::concat::concat_batches;
 use datafusion_substrait::logical_plan::producer::to_substrait_plan;
 use datafusion_substrait::substrait::proto::Plan;
 use prost::Message;

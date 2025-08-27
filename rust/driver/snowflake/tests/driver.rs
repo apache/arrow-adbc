@@ -37,12 +37,12 @@ mod tests {
     use std::{collections::HashSet, ops::Deref, sync::LazyLock};
 
     use adbc_core::{
+        arrow::arrow_array::{cast::AsArray, types::Decimal128Type},
         error::{Error, Result},
         options::AdbcVersion,
         Connection as _, Statement as _,
     };
     use adbc_snowflake::{connection, database, driver, Connection, Database, Driver, Statement};
-    use arrow_array::{cast::AsArray, types::Decimal128Type};
 
     const ADBC_VERSION: AdbcVersion = AdbcVersion::V110;
 

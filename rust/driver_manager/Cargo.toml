@@ -36,8 +36,6 @@ driver_manager_test_manifest_user = ["driver_manager_test_lib"]
 
 [dependencies]
 adbc_core.workspace = true
-arrow-array.workspace = true
-arrow-schema.workspace = true
 libloading = "0.8"
 toml = { version = "0.9.5", default-features = false, features = [
     "parse",

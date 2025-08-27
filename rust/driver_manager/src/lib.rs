@@ -44,11 +44,11 @@
 //!
 //! ```rust
 //! # use std::sync::Arc;
-//! # use arrow_array::{Array, StringArray, Int64Array, Float64Array};
-//! # use arrow_array::{RecordBatch, RecordBatchReader};
-//! # use arrow_schema::{Field, Schema, DataType};
 //! # use arrow_select::concat::concat_batches;
 //! # use adbc_core::{
+//! #     arrow::arrow_array::{Array, StringArray, Int64Array, Float64Array},
+//! #     arrow::arrow_array::{RecordBatch, RecordBatchReader},
+//! #     arrow::arrow_schema::{Field, Schema, DataType},
 //! #     options::{AdbcVersion, OptionDatabase, OptionStatement},
 //! #     Connection, Database, Driver, Statement, Optionable
 //! # };
@@ -102,32 +102,36 @@
 
 pub mod error;
 
-use std::collections::HashSet;
-use std::env;
-use std::ffi::{CStr, CString, OsStr};
-use std::fs;
-use std::ops::DerefMut;
-use std::os::raw::{c_char, c_void};
-use std::path::{Path, PathBuf};
-use std::pin::Pin;
-use std::ptr::{null, null_mut};
-use std::sync::{Arc, Mutex};
-
-use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
-use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
-use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
-use toml::de::DeTable;
-
-use adbc_core::{
-    error::{Error, Result, Status},
-    options::{self, AdbcVersion, InfoCode, OptionValue},
-    LoadFlags, PartitionedResult, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
-    LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
-};
-use adbc_core::{ffi, ffi::driver_method, Optionable};
-use adbc_core::{Connection, Database, Driver, Statement};
-
 use crate::error::libloading_error_to_adbc_error;
+use adbc_core::{
+    arrow::{
+        arrow_array::{
+            ffi::{to_ffi, FFI_ArrowSchema},
+            ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream},
+            Array, RecordBatch, RecordBatchReader, StructArray,
+        },
+        arrow_schema::Schema,
+    },
+    error::{Error, Result, Status},
+    ffi::{self, driver_method},
+    options::{self, AdbcVersion, InfoCode, OptionValue},
+    Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
+    LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
+    LOAD_FLAG_SEARCH_USER,
+};
+use std::{
+    collections::HashSet,
+    env,
+    ffi::{CStr, CString, OsStr},
+    fs,
+    ops::DerefMut,
+    os::raw::{c_char, c_void},
+    path::{Path, PathBuf},
+    pin::Pin,
+    ptr::{null, null_mut},
+    sync::{Arc, Mutex},
+};
+use toml::de::DeTable;
 
 const ERR_ONLY_STRING_OPT: &str = "Only string option value are supported with ADBC 1.0.0";
 const ERR_CANCEL_UNSUPPORTED: &str =
@@ -1319,7 +1323,7 @@ impl Connection for ManagedConnection {
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: &str,
-    ) -> Result<arrow_schema::Schema> {
+    ) -> Result<Schema> {
         let catalog = catalog.map(CString::new).transpose()?;
         let db_schema = db_schema.map(CString::new).transpose()?;
         let table_name = CString::new(table_name)?;
@@ -1498,7 +1502,7 @@ impl Statement for ManagedStatement {
         Ok(reader)
     }
 
-    fn execute_schema(&mut self) -> Result<arrow_schema::Schema> {
+    fn execute_schema(&mut self) -> Result<Schema> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);
@@ -1555,7 +1559,7 @@ impl Statement for ManagedStatement {
         Ok(result)
     }
 
-    fn get_parameter_schema(&self) -> Result<arrow_schema::Schema> {
+    fn get_parameter_schema(&self) -> Result<Schema> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = ffi::FFI_AdbcError::with_driver(driver);

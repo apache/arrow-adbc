@@ -22,13 +22,12 @@
 use std::collections::HashSet;
 
 use adbc_core::{
+    arrow::{arrow_array::RecordBatchReader, arrow_schema::Schema},
     error::Result,
     options::{InfoCode, OptionConnection, OptionValue},
     Optionable,
 };
 use adbc_driver_manager::ManagedConnection;
-use arrow_array::RecordBatchReader;
-use arrow_schema::Schema;
 
 use crate::Statement;
 

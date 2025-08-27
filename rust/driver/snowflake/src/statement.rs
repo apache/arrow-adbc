@@ -20,13 +20,15 @@
 //!
 
 use adbc_core::{
+    arrow::{
+        arrow_array::{RecordBatch, RecordBatchReader},
+        arrow_schema::Schema,
+    },
     error::Result,
     options::{OptionStatement, OptionValue},
     Optionable, PartitionedResult,
 };
 use adbc_driver_manager::ManagedStatement;
-use arrow_array::{RecordBatch, RecordBatchReader};
-use arrow_schema::Schema;
 
 /// Snowflake ADBC Statement.
 pub struct Statement(pub(crate) ManagedStatement);

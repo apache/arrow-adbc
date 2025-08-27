@@ -20,12 +20,18 @@ use std::ffi::{CStr, CString};
 use std::hash::Hash;
 use std::os::raw::{c_char, c_int, c_void};
 
-use arrow_array::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
-use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
-use arrow_array::StructArray;
-use arrow_schema::DataType;
+use crate::{
+    arrow::{
+        arrow_array::{
+            ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema},
+            ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream},
+            StructArray,
+        },
+        arrow_schema::DataType,
+    },
+    error::{Error, Result, Status},
+};
 
-use crate::error::{Error, Result, Status};
 use crate::ffi::constants::ADBC_STATUS_OK;
 use crate::ffi::{
     types::ErrorPrivateData, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError,

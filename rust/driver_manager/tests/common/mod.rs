@@ -15,23 +15,23 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::collections::HashSet;
-use std::ops::Deref;
-use std::sync::Arc;
+use std::{collections::HashSet, ops::Deref, sync::Arc};
 
-use adbc_core::error::Status;
-use adbc_core::options::{
-    InfoCode, IngestMode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement,
+use adbc_core::{
+    arrow::{
+        arrow_array::{
+            cast::as_string_array, Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader,
+            StringArray,
+        },
+        arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef},
+    },
+    error::Status,
+    options::{
+        InfoCode, IngestMode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement,
+    },
+    schemas, Connection, Database, Driver, Optionable, Statement,
 };
-use adbc_core::schemas;
-use adbc_core::{Connection, Database, Driver, Optionable, Statement};
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
-
-use arrow_array::{
-    cast::as_string_array, Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader,
-    StringArray,
-};
-use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef};
 use arrow_select::concat::concat_batches;
 
 pub struct SingleBatchReader {
