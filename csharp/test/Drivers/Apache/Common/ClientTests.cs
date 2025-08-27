@@ -45,10 +45,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }
-        internal virtual string formatTableName()
-        {
-            return TestConfiguration.Metadata.Table;
-        }
+        internal virtual string FormatTableName => TestConfiguration.Metadata.Table;
         /// <summary>
         /// Validates if the client execute updates.
         /// </summary>
@@ -76,7 +73,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         {
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
-                Tests.ClientTests.CanClientGetSchema(adbcConnection, TestConfiguration, $"SELECT * FROM {formatTableName()}");
+                Tests.ClientTests.CanClientGetSchema(adbcConnection, TestConfiguration, $"SELECT * FROM {FormatTableName}");
             }
         }
 
@@ -105,7 +102,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 Tests.ClientTests.CanClientExecuteQuery(
                     adbcConnection,
                     TestConfiguration,
-                    customQuery: $"SELECT * FROM {formatTableName()} WHERE FALSE",
+                    customQuery: $"SELECT * FROM {FormatTableName} WHERE FALSE",
                     expectedResultsCount: 0);
             }
         }
