@@ -47,6 +47,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         public const string DefaultConfigEnvironmentVariable = "DATABRICKS_CONFIG_FILE";
 
+        public const string DefaultInitialSchema = "default";
+
         internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
         {
             { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" },
@@ -329,16 +331,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // In newer DBR versions with Unity Catalog, the default catalog is typically hive_metastore.
             // Passing null here allows the runtime to fall back to the workspace-defined default catalog for the session.
             defaultCatalog = HandleSparkCatalog(defaultCatalog);
+            var ns = new TNamespace();
 
-            if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
-            {
-                var ns = new TNamespace();
-                if (!string.IsNullOrWhiteSpace(defaultCatalog))
-                    ns.CatalogName = defaultCatalog!;
-                if (!string.IsNullOrWhiteSpace(defaultSchema))
-                    ns.SchemaName = defaultSchema;
-                _defaultNamespace = ns;
-            }
+            ns.SchemaName = string.IsNullOrWhiteSpace(defaultSchema) ? DefaultInitialSchema : defaultSchema;
+
+            if (!string.IsNullOrWhiteSpace(defaultCatalog))
+                ns.CatalogName = defaultCatalog!;
+            _defaultNamespace = ns;
 
             // Parse trace propagation options
             if (Properties.TryGetValue(DatabricksParameters.TracePropagationEnabled, out string? tracePropagationEnabledStr))
