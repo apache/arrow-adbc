@@ -292,7 +292,7 @@ std::vector<std::filesystem::path> GetEnvPaths(const char_type* env_var) {
     return {};
   }
   std::string path(path_var);
-#endif
+#endif  // _WIN32
   return InternalAdbcParsePath(path);
 }
 
