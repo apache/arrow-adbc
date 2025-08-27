@@ -303,7 +303,7 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
     static const wchar_t* env_var = L"ADBC_CONFIG_PATH";
 #else
     static const char* env_var = "ADBC_CONFIG_PATH";
-#endif
+#endif  // _WIN32
     // Check the ADBC_CONFIG_PATH environment variable
     paths = GetEnvPaths(env_var);
   }
