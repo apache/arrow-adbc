@@ -182,5 +182,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                     return false;
             }
         }
+
+        internal override string formatTableName()
+        {
+            return $"{TestConfiguration.Metadata.Catalog}.{TestConfiguration.Metadata.Schema}.{TestConfiguration.Metadata.Table}";
+        }
     }
 }
