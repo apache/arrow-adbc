@@ -31,9 +31,11 @@ driver, based on the
 ## Example
 
 ```rust,no_run
-use adbc_core::{Connection, Statement};
+use adbc_core::{
+    arrow::arrow_array::{cast::AsArray, types::Decimal128Type},
+    Connection, Statement
+};
 use adbc_snowflake::{connection, database, Driver};
-use arrow_array::{cast::AsArray, types::Decimal128Type};
 
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
 
