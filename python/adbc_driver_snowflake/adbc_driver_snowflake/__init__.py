@@ -103,6 +103,7 @@ class DatabaseOptions(enum.Enum):
     #: set using 'true' or 'false'.
     USE_HIGH_PRECISION = "adbc.snowflake.sql.client_option.use_high_precision"
 
+
 class ValueAuth(enum.Enum):
     """Values for the AUTH_TYPE option to the Snowflake driver."""
 
@@ -120,6 +121,7 @@ class ValueAuth(enum.Enum):
     MFA = "auth_mfa"
     #: Use a programmatic access token
     PAT = "auth_pat"
+
 
 class StatementOptions(enum.Enum):
     """Statement options specific to the Snowflake driver."""
