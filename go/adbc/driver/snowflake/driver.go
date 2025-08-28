@@ -127,6 +127,8 @@ const (
 	OptionValueAuthJwt = "auth_jwt"
 	// use a username and password with mfa
 	OptionValueAuthUserPassMFA = "auth_mfa"
+	// use a programmatic access token
+	OptionValueAuthPat = "auth_pat"
 
 	// Use default behavior for nanoseconds.
 	OptionValueNanoseconds = "nanoseconds"

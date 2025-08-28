@@ -103,6 +103,23 @@ class DatabaseOptions(enum.Enum):
     #: set using 'true' or 'false'.
     USE_HIGH_PRECISION = "adbc.snowflake.sql.client_option.use_high_precision"
 
+class ValueAuth(enum.Enum):
+    """Values for the AUTH_TYPE option to the Snowflake driver."""
+
+    #: General username/password auth
+    SNOWFLAKE = "auth_snowflake"
+    #: Use OAuth authentication for the connection
+    OAUTH = "auth_oauth"
+    #: Use an external browser to access a FED and perform SSO auth
+    EXTERNAL_BROWSER = "auth_ext_browser"
+    #: Use Okta authentication for the connection
+    OKTA = "auth_okta"
+    #: Use JWT authentication for the connection
+    JWT = "auth_jwt"
+    #: Use a username and password with MFA
+    MFA = "auth_mfa"
+    #: Use a programmatic access token
+    PAT = "auth_pat"
 
 class StatementOptions(enum.Enum):
     """Statement options specific to the Snowflake driver."""

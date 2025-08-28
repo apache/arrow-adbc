@@ -47,6 +47,7 @@ var (
 		OptionValueAuthOkta:            gosnowflake.AuthTypeOkta,
 		OptionValueAuthJwt:             gosnowflake.AuthTypeJwt,
 		OptionValueAuthUserPassMFA:     gosnowflake.AuthTypeUsernamePasswordMFA,
+		OptionValueAuthPat:             gosnowflake.AuthTypePat,
 	}
 )
 
