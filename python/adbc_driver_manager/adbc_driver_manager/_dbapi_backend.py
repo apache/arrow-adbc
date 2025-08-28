@@ -129,8 +129,13 @@ try:
 
     class _PolarsBackend(DbapiBackend):
         def convert_bind_parameters(self, parameters: typing.Any) -> polars.DataFrame:
+            if isinstance(parameters, dict):
+                return polars.DataFrame(
+                    {str(k): v for k, v in parameters.items()},
+                )
+
             return polars.DataFrame(
-                {str(col_idx): x for col_idx, x in enumerate(parameters)},
+                {str(col_idx): v for col_idx, v in enumerate(parameters)},
             )
 
         def convert_executemany_parameters(self, parameters: typing.Any) -> typing.Any:
@@ -159,12 +164,17 @@ try:
 
     class _PyArrowBackend(DbapiBackend):
         def convert_bind_parameters(self, parameters: typing.Any) -> typing.Any:
+            if isinstance(parameters, dict):
+                return pyarrow.record_batch(
+                    {str(k): [v] for k, v in parameters.items()},
+                )
             return pyarrow.record_batch(
                 [[param_value] for param_value in parameters],
                 names=[str(i) for i in range(len(parameters))],
             )
 
         def convert_executemany_parameters(self, parameters: typing.Any) -> typing.Any:
+            # TODO: handle dicts
             return pyarrow.RecordBatch.from_pydict(
                 {
                     str(col_idx): pyarrow.array(x)

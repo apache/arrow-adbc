@@ -619,6 +619,7 @@ class Cursor(_Closeable):
         self._results: Optional["_RowIterator"] = None
         self._arraysize = 1
         self._rowcount = -1
+        self._bind_by_name = False
 
         if adbc_stmt_kwargs:
             self._stmt.set_options(**adbc_stmt_kwargs)
@@ -711,6 +712,17 @@ class Cursor(_Closeable):
             rb = self._conn._backend.convert_bind_parameters(parameters)
             self._bind(rb)
 
+            if isinstance(parameters, dict) and not self._bind_by_name:
+                self._stmt.set_options(
+                    **{adbc_driver_manager.StatementOptions.BIND_BY_NAME.value: "true"}
+                )
+                self._bind_by_name = True
+            elif not isinstance(parameters, dict) and self._bind_by_name:
+                self._stmt.set_options(
+                    **{adbc_driver_manager.StatementOptions.BIND_BY_NAME.value: "false"}
+                )
+                self._bind_by_name = False
+
     def execute(self, operation: Union[bytes, str], parameters=None) -> None:
         """
         Execute a query.
@@ -721,10 +733,17 @@ class Cursor(_Closeable):
             The query to execute.  Pass SQL queries as strings,
             (serialized) Substrait plans as bytes.
         parameters
-            Parameters to bind.  Can be a Python sequence (to provide
-            a single set of parameters), or an Arrow record batch,
-            table, or record batch reader (to provide multiple
-            parameters, which will each be bound in turn).
+            Parameters to bind.  Can be a Python sequence (to bind a single
+            set of parameters), a Python dictionary (to bind a single set of
+            parameters by name instead of position), or an Arrow record batch,
+            table, or record batch reader (to provide multiple parameters,
+            which will each be bound in turn).
+
+            To bind by name when providing Arrow data, explicitly toggle the
+            statement option "adbc.statement.bind_by_name".
+
+            Note that providing a list of tuples is not supported (this mode
+            of usage is deprecated in DBAPI-2.0; use executemany() instead).
         """
         self._clear()
         self._prepare_execute(operation, parameters)
