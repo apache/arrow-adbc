@@ -48,6 +48,8 @@ class DatabaseOptions(enum.Enum):
     #: When true, the ID token is cached in the credential manager. True by default
     #: on Windows/OSX, false for Linux
     CLIENT_STORE_TEMP_CRED = "adbc.snowflake.sql.client_option.store_temp_creds"
+    #: Specify the workload identity provider to use for WIF authentication.
+    CLIENT_IDENTITY_PROVIDER = "adbc.snowflake.sql.client_option.identity_provider"
     #: Timeout for network round trip + reading http response
     #: use format like http://pkg.go.dev/time#ParseDuration such as
     #: "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
@@ -121,6 +123,8 @@ class ValueAuth(enum.Enum):
     MFA = "auth_mfa"
     #: Use a programmatic access token
     PAT = "auth_pat"
+    #: Use Workload Identity Federation for auth
+    WIF = "auth_wif"
 
 
 class StatementOptions(enum.Enum):
