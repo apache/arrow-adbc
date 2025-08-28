@@ -1444,7 +1444,6 @@ func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 		"failed",
 		"suspended",
 		"uuid",
-		"budget",
 		"owner_role_type",
 	}
 

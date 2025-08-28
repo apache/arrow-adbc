@@ -432,7 +432,7 @@ jobs:
           popd
       - name: Go Test
         env:
-          SNOWFLAKE_DATABASE: ADBC_TESTING
+          SNOWFLAKE_DATABASE: ARROW_OSS_DB
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
