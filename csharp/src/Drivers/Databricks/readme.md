@@ -29,6 +29,41 @@ The Databricks ADBC driver is built on top of the Spark ADBC driver and inherits
 
 **Note**: The Databricks driver inherits all properties from the [Spark driver](../Apache/Spark/readme.md). The properties below are Databricks-specific additions.
 
+## Configuration Methods
+
+The Databricks driver supports multiple ways to configure properties:
+
+### 1. Direct Property Configuration
+Pass properties directly when creating the driver connection (traditional method).
+
+### 2. Environment Variable Configuration
+Configure properties using a JSON file loaded via environment variables:
+
+1. **Create a JSON configuration file** with standard ADBC parameters:
+```json
+{
+  "adbc.databricks.driver_config_take_precedence": "true",
+  "adbc.databricks.enable_pk_fk": "false",
+  "adbc.connection.catalog": "my_catalog",
+  "adbc.connection.db_schema": "my_schema"
+}
+```
+
+2. **Set the system environment variable** `DATABRICKS_CONFIG_FILE` to point to your JSON file:
+   1. Open System Properties → Advanced → Environment Variables
+   2. Add new system variable: Name=`DATABRICKS_CONFIG_FILE`, Value=`C:\path\to\your\config.json`
+
+3. **Property Merging Behavior**:
+   - By default: Constructor/code properties **override** environment config properties
+   - With `"adbc.databricks.driver_config_take_precedence": "true"`: Environment config properties **override** constructor/code properties
+
+### 3. Hybrid Configuration
+You can combine both methods - the driver will automatically merge environment config with constructor properties based on the precedence setting.
+
+**Use Cases**:
+- **PowerBI Integration**: Set system-wide defaults via environment config while allowing connection-specific overrides
+
+
 ### Authentication Properties
 
 | Property | Description | Default |
