@@ -604,12 +604,25 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response)
             {
-                if (response.MoveNextAsync().Result && response.Current != null)
+                try
                 {
-                    this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
-                    this.hasRows = true;
+                    // I think what happens is even if MoveNextAsync succeeds, the call to .Current
+                    // is throwing the InvalidOperationException because the internal `current` object
+                    // is still null in some scenarios. The only proof I have of this is older references
+                    // to different classes from grpc -
+                    // https://github.com/grpc/grpc/blob/2d4f3c56001cd1e1f85734b2f7c5ce5f2797c38a/src/csharp/Grpc.Core/Internal/ServerRequestStream.cs#L38
+
+                    if (response.MoveNextAsync().Result && response.Current != null)
+                    {
+                        this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
+                        this.hasRows = true;
+                    }
+                    else
+                    {
+                        this.hasRows = false;
+                    }
                 }
-                else
+                catch (InvalidOperationException)
                 {
                     this.hasRows = false;
                 }
