@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -61,6 +62,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             SparkStatement statement = new SparkStatement(this);
             return statement;
         }
+
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle!, Client, cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle!, cancellationToken: cancellationToken);
 
         protected internal override int PositionRequiredOffset => 1;
 
@@ -117,6 +123,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override bool GetObjectsPatternsRequireLowerCase => false;
 
         protected override bool IsColumnSizeValidForDecimal => false;
+
+        internal override SchemaParser SchemaParser { get; } = new HiveServer2SchemaParser();
 
         protected internal override bool TrySetGetDirectResults(IRequest request)
         {
