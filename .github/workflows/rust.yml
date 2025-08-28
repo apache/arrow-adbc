@@ -180,7 +180,7 @@ jobs:
         # env:
         # ADBC_SNOWFLAKE_TESTS: 1
         # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
-        # ADBC_SNOWFLAKE_SQL_DB: ADBC_TESTING
+        # ADBC_SNOWFLAKE_SQL_DB: ARROW_OSS_DB
       - name: Doctests
         working-directory: rust
         # TODO: enable snowflake tests on windows
