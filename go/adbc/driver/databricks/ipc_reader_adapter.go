@@ -18,6 +18,7 @@
 package databricks
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -57,9 +58,28 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 		return nil, fmt.Errorf("failed to get IPC streams: %w", err)
 	}
 
+	schema_bytes, err := ipcIterator.SchemaBytes()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get schema bytes: %w", err)
+	}
+
+	// Read schema from bytes
+	reader, err := ipc.NewReader(bytes.NewReader(schema_bytes))
+	defer reader.Release()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create schema reader: %w", err)
+	}
+
+	schema := reader.Schema()
+	if schema == nil {
+		return nil, fmt.Errorf("schema is nil")
+	}
+
 	adapter := &ipcReaderAdapter{
 		refCount:    1,
 		ipcIterator: ipcIterator,
+		schema:      schema,
 	}
 
 	// Initialize the first reader
@@ -67,13 +87,10 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to initialize IPC reader: %w", err)
 	}
-
 	return adapter, nil
 }
 
-// loadNextReader loads the next IPC stream into a reader
 func (r *ipcReaderAdapter) loadNextReader() error {
-	// Release current reader if any
 	if r.currentReader != nil {
 		r.currentReader.Release()
 		r.currentReader = nil
@@ -96,11 +113,6 @@ func (r *ipcReaderAdapter) loadNextReader() error {
 	}
 
 	r.currentReader = reader
-
-	// Cache schema from first reader
-	if r.schema == nil {
-		r.schema = reader.Schema()
-	}
 
 	return nil
 }
