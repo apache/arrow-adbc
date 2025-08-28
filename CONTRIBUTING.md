@@ -364,6 +364,10 @@ export BUILD_DRIVER_MANAGER=ON
 export BUILD_DRIVER_SQLITE=ON
 ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build $(pwd)/local
 
+# Ensure JAVA_HOME is set.
+# If it's not set, you can find it like so:
+# java -XshowSettings:properties -version 2>&1 >/dev/null | grep java.home
+
 # Build the JNI libraries
 ./ci/scripts/java_jni_build.sh $(pwd) $(pwd)/java/build $(pwd)/local
 ```
