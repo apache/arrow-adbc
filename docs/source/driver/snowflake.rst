@@ -351,6 +351,7 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     - ``auth_okta``: Use a native Okta URL to perform SSO authentication using Okta
     - ``auth_jwt``: Use a provided JWT to perform authentication.
     - ``auth_mfa``: Use a username and password with MFA.
+    - ``auth_pat``: Use a programmatic access token for authentication.
 
 ``adbc.snowflake.sql.client_option.auth_token``
     If using OAuth or another form of authentication, this option is how you can
