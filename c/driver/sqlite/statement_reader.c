@@ -35,7 +35,7 @@
 #include "driver/common/utils.h"
 
 AdbcStatusCode InternalAdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
-                                           struct AdbcError* error) {
+                                           bool bind_by_name, struct AdbcError* error) {
   int status = binder->params.get_schema(&binder->params, &binder->schema);
   if (status != 0) {
     const char* message = binder->params.get_last_error(&binder->params);
@@ -60,6 +60,12 @@ AdbcStatusCode InternalAdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
 
   binder->types =
       (enum ArrowType*)malloc(binder->schema.n_children * sizeof(enum ArrowType));
+
+  if (bind_by_name) {
+    binder->param_indices = (int*)malloc(binder->schema.n_children * sizeof(int));
+    // Lazily initialized below
+    memset(binder->param_indices, 0, binder->schema.n_children * sizeof(int));
+  }
 
   struct ArrowSchemaView view = {0};
   for (int i = 0; i < binder->schema.n_children; i++) {
@@ -111,11 +117,12 @@ AdbcStatusCode InternalAdbcSqliteBinderSet(struct AdbcSqliteBinder* binder,
 
 AdbcStatusCode InternalAdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
                                                       struct ArrowArrayStream* values,
+                                                      bool bind_by_name,
                                                       struct AdbcError* error) {
   InternalAdbcSqliteBinderRelease(binder);
   binder->params = *values;
   memset(values, 0, sizeof(*values));
-  return InternalAdbcSqliteBinderSet(binder, error);
+  return InternalAdbcSqliteBinderSet(binder, bind_by_name, error);
 }
 
 #define SECONDS_PER_DAY 86400
@@ -330,9 +337,27 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
     return ADBC_STATUS_INTERNAL;
   }
 
+  if (binder->param_indices != NULL && binder->param_indices[0] == 0) {
+    // Lazy initialize since we have the statement now
+    for (int i = 0; i < binder->schema.n_children; i++) {
+      binder->param_indices[i] =
+          sqlite3_bind_parameter_index(stmt, binder->schema.children[i]->name);
+      if (binder->param_indices[i] == 0) {
+        InternalAdbcSetError(error, "could not find parameter `%s`",
+                             binder->schema.children[i]->name);
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+    }
+  }
+
   for (int col = 0; col < binder->schema.n_children; col++) {
+    int bind_index = col + 1;
+    if (binder->param_indices != NULL) {
+      bind_index = binder->param_indices[col];
+    }
+
     if (ArrowArrayViewIsNull(binder->batch.children[col], binder->next_row)) {
-      status = sqlite3_bind_null(stmt, col + 1);
+      status = sqlite3_bind_null(stmt, bind_index);
     } else {
       switch (binder->types[col]) {
         case NANOARROW_TYPE_BINARY:
@@ -341,7 +366,7 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
         case NANOARROW_TYPE_BINARY_VIEW: {
           struct ArrowBufferView value =
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
-          status = sqlite3_bind_blob(stmt, col + 1, value.data.as_char,
+          status = sqlite3_bind_blob(stmt, bind_index, value.data.as_char,
                                      (int)value.size_bytes, SQLITE_STATIC);
           break;
         }
@@ -359,7 +384,7 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
                                  col, value);
             return ADBC_STATUS_INVALID_ARGUMENT;
           }
-          status = sqlite3_bind_int64(stmt, col + 1, (int64_t)value);
+          status = sqlite3_bind_int64(stmt, bind_index, (int64_t)value);
           break;
         }
         case NANOARROW_TYPE_INT8:
@@ -368,7 +393,7 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
         case NANOARROW_TYPE_INT64: {
           int64_t value =
               ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
-          status = sqlite3_bind_int64(stmt, col + 1, value);
+          status = sqlite3_bind_int64(stmt, bind_index, value);
           break;
         }
         case NANOARROW_TYPE_HALF_FLOAT:
@@ -376,7 +401,7 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
         case NANOARROW_TYPE_DOUBLE: {
           double value = ArrowArrayViewGetDoubleUnsafe(binder->batch.children[col],
                                                        binder->next_row);
-          status = sqlite3_bind_double(stmt, col + 1, value);
+          status = sqlite3_bind_double(stmt, bind_index, value);
           break;
         }
         case NANOARROW_TYPE_STRING:
@@ -384,7 +409,7 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
         case NANOARROW_TYPE_STRING_VIEW: {
           struct ArrowBufferView value =
               ArrowArrayViewGetBytesUnsafe(binder->batch.children[col], binder->next_row);
-          status = sqlite3_bind_text(stmt, col + 1, value.data.as_char,
+          status = sqlite3_bind_text(stmt, bind_index, value.data.as_char,
                                      (int)value.size_bytes, SQLITE_STATIC);
           break;
         }
@@ -393,11 +418,11 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
               ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);
           if (ArrowArrayViewIsNull(binder->batch.children[col]->dictionary,
                                    value_index)) {
-            status = sqlite3_bind_null(stmt, col + 1);
+            status = sqlite3_bind_null(stmt, bind_index);
           } else {
             struct ArrowBufferView value = ArrowArrayViewGetBytesUnsafe(
                 binder->batch.children[col]->dictionary, value_index);
-            status = sqlite3_bind_text(stmt, col + 1, value.data.as_char,
+            status = sqlite3_bind_text(stmt, bind_index, value.data.as_char,
                                        (int)value.size_bytes, SQLITE_STATIC);
           }
           break;
@@ -418,7 +443,7 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
 
           RAISE_ADBC(ArrowDate32ToIsoString((int32_t)value, &tsstr, error));
           // SQLITE_TRANSIENT ensures the value is copied during bind
-          status = sqlite3_bind_text(stmt, col + 1, tsstr, (int)strlen(tsstr),
+          status = sqlite3_bind_text(stmt, bind_index, tsstr, (int)strlen(tsstr),
                                      SQLITE_TRANSIENT);
 
           free(tsstr);
@@ -436,7 +461,7 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
           RAISE_ADBC(ArrowTimestampToIsoString(value, unit, &tsstr, error));
 
           // SQLITE_TRANSIENT ensures the value is copied during bind
-          status = sqlite3_bind_text(stmt, col + 1, tsstr, (int)strlen(tsstr),
+          status = sqlite3_bind_text(stmt, bind_index, tsstr, (int)strlen(tsstr),
                                      SQLITE_TRANSIENT);
           free((char*)tsstr);
           break;
@@ -449,8 +474,8 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
     }
 
     if (status != SQLITE_OK) {
-      InternalAdbcSetError(error, "Failed to clear statement bindings: %s",
-                           sqlite3_errmsg(conn));
+      InternalAdbcSetError(error, "Failed to bind col %d to param %d: %s", col,
+                           bind_index, sqlite3_errmsg(conn));
       return ADBC_STATUS_INTERNAL;
     }
   }
@@ -469,6 +494,9 @@ void InternalAdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder) {
   }
   if (binder->types) {
     free(binder->types);
+  }
+  if (binder->param_indices) {
+    free(binder->param_indices);
   }
   if (binder->array.release) {
     binder->array.release(&binder->array);

@@ -116,6 +116,8 @@ class StatementOptions(enum.Enum):
     Not all drivers support all options.
     """
 
+    #: Bind parameters by name instead of by position.
+    BIND_BY_NAME = "adbc.statement.bind_by_name"
     #: Enable incremental execution on ExecutePartitions.
     INCREMENTAL = "adbc.statement.exec.incremental"
     #: For bulk ingestion, whether to create or append to the table.
