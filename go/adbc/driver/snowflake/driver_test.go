@@ -2018,7 +2018,7 @@ func (suite *SnowflakeTests) TestSchemaWithLowPrecision() {
 	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
 	suite.Require().NoError(err)
 
-	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO SCHEMA_TYPE_TEST VALUES 
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO SCHEMA_TYPE_TEST VALUES
 		(12345, 123.45),
 		(67890, 678.90)`))
 	_, err = suite.stmt.ExecuteUpdate(suite.ctx)
