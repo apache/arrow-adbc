@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -35,6 +36,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
+            /*
+            if (!Debugger.IsAttached)
+            {
+                Debugger.Launch(); // Prompts to attach a debugger
+            }
+            */
             IReadOnlyDictionary<string, string> mergedProperties = options == null
                 ? properties
                 : options
