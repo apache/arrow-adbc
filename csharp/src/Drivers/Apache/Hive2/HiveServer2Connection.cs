@@ -346,7 +346,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     // Handle other exceptions if necessary
                     throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            }, exceptionIsPii: false);
+            });
         }
 
         private async Task<TOpenSessionResp?> TryOpenSessionWithFallbackAsync(TOpenSessionReq originalRequest, CancellationToken cancellationToken)
@@ -661,7 +661,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     IArrowArray[] dataArrays = new IArrowArray[]
                     {
-                tableTypesBuilder.Build()
+                        tableTypesBuilder.Build()
                     };
 
                     return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
@@ -674,7 +674,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            }, exceptionIsPii: false);
+            });
         }
 
         internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
@@ -724,7 +724,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            }, exceptionIsPii: false);
+            });
         }
 
         protected override void Dispose(bool disposing)
@@ -757,7 +757,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     _transport = null;
                     _client = null;
                 }
-            }, exceptionIsPii: false);
+            });
         }
 
         internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
@@ -1572,7 +1572,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 StandardSchemas.GetInfoSchema.Validate(dataArrays);
 
                 return new HiveInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
-            }, exceptionIsPii: false);
+            });
         }
 
         internal struct TableInfo(string type)

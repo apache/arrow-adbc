@@ -133,7 +133,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            }, exceptionIsPii: false);
+            });
         }
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)

@@ -143,7 +143,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 // the billing project can be null if it's not specified
                 if (this.properties.TryGetValue(BigQueryParameters.BillingProjectId, out billingProjectId))
                 {
-                    activity?.AddBigQueryParameterTag((BigQueryParameters.BillingProjectId), billingProjectId, isPii: false);
+                    activity?.AddBigQueryParameterTag((BigQueryParameters.BillingProjectId), billingProjectId);
                 }
 
                 if (this.properties.TryGetValue(BigQueryParameters.IncludePublicProjectId, out string? result))
@@ -180,7 +180,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 Client = client;
                 return client;
-            }, exceptionIsPii: false);
+            });
         }
 
         internal void SetCredential()
@@ -417,7 +417,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 StandardSchemas.GetInfoSchema.Validate(dataArrays);
 
                 return new BigQueryInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
-            }, exceptionIsPii: false);
+            });
         }
 
         public override IArrowArrayStream GetObjects(

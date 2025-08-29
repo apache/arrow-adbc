@@ -94,7 +94,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 
                     this.hasNoMoreRows = !response.HasMoreRows;
                 }
-            }, exceptionIsPii: false);
+            });
         }
 
         private void ProcessFetchedBatches()
