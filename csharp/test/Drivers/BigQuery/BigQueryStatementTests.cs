@@ -55,9 +55,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [Theory]
-        [InlineData(true)]  // MoveNextAsync throws
-        [InlineData(false)] // Current throws
-        public void ReadChunkWithRetries_ThrowsInvalidOperationException(bool moveNextThrowsError)
+        [InlineData(true)]  //.MoveNextAsync throws the error
+        [InlineData(false)] //.Current throws the error
+        public void ReadChunkWithRetries_ThrowsInvalidOperationExceptionOnReadRowsResponse(bool moveNextThrowsError)
         {
             var clientMgr = GetMockTokenProtectedReadClientManger();
             var mockReadRowsStream = GetMockReadRowsStream(clientMgr);
@@ -105,8 +105,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             var mockReadClient = new Mock<BigQueryReadClient>(MockBehavior.Strict);
             typeof(TokenProtectedReadClientManger)
-                .GetField("bigQueryReadClient", BindingFlags.NonPublic | BindingFlags.Instance)
-                ?.SetValue(clientMgr, mockReadClient.Object);
+                .GetField("bigQueryReadClient", BindingFlags.NonPublic | BindingFlags.Instance)?
+                .SetValue(clientMgr, mockReadClient.Object);
 
             var mockReadRowsStream = new Mock<BigQueryReadClient.ReadRowsStream>();
             mockReadClient
@@ -126,18 +126,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         private void SetupRetryValues(BigQueryStatement statement)
         {
             var connection = typeof(BigQueryStatement)
-                .GetField("bigQueryConnection", BindingFlags.NonPublic | BindingFlags.Instance)
-                ?.GetValue(statement) as BigQueryConnection;
+                .GetField("bigQueryConnection", BindingFlags.NonPublic | BindingFlags.Instance)?
+                .GetValue(statement) as BigQueryConnection;
 
             if (connection != null)
             {
                 typeof(BigQueryConnection)
-                    .GetField("maxRetryAttempts", BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?.SetValue(connection, 2);
+                    .GetField("maxRetryAttempts", BindingFlags.NonPublic | BindingFlags.Instance)?
+                    .SetValue(connection, 2);
 
                 typeof(BigQueryConnection)
-                    .GetField("retryDelayMs", BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?.SetValue(connection, 50);
+                    .GetField("retryDelayMs", BindingFlags.NonPublic | BindingFlags.Instance)?
+                    .SetValue(connection, 50);
             }
         }
 
