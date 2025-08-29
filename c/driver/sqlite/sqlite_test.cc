@@ -454,17 +454,19 @@ class SqliteReaderTest : public ::testing::Test {
     stmt = nullptr;
   }
 
-  void Bind(struct ArrowArray* batch, struct ArrowSchema* schema) {
+  void Bind(struct ArrowArray* batch, struct ArrowSchema* schema,
+            bool bind_by_name = false) {
     Handle<struct ArrowArrayStream> stream;
     struct ArrowArray batch_internal = *batch;
     batch->release = nullptr;
     adbc_validation::MakeStream(&stream.value, schema, {batch_internal});
-    ASSERT_NO_FATAL_FAILURE(Bind(&stream.value));
+    ASSERT_NO_FATAL_FAILURE(Bind(&stream.value, bind_by_name));
   }
 
-  void Bind(struct ArrowArrayStream* stream) {
-    ASSERT_THAT(InternalAdbcSqliteBinderSetArrayStream(&binder, stream, &error),
-                IsOkStatus(&error));
+  void Bind(struct ArrowArrayStream* stream, bool bind_by_name = false) {
+    ASSERT_THAT(
+        InternalAdbcSqliteBinderSetArrayStream(&binder, stream, bind_by_name, &error),
+        IsOkStatus(&error));
   }
 
   void ExecSelect(const std::string& values, size_t infer_rows,
@@ -824,6 +826,32 @@ TEST_F(SqliteReaderTest, InferTypedParams) {
   ASSERT_THAT(reader.stream->get_last_error(&reader.stream.value),
               ::testing::HasSubstr(
                   "[SQLite] Type mismatch in column 0: expected INT64 but got DOUBLE"));
+}
+
+TEST_F(SqliteReaderTest, BindByName) {
+  adbc_validation::StreamReader reader;
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value,
+                                          {
+                                              {"@b", NANOARROW_TYPE_INT64},
+                                              {"@a", NANOARROW_TYPE_INT64},
+                                          }),
+              IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, int64_t>(&schema.value, &batch.value,
+                                                            /*error=*/nullptr, {1}, {2})),
+              IsOkErrno());
+
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value, true));
+  ASSERT_NO_FATAL_FAILURE(Exec("SELECT @a, @b", /*infer_rows=*/2, &reader));
+  ASSERT_EQ(2, reader.schema->n_children);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[0].type);
+  ASSERT_EQ(NANOARROW_TYPE_INT64, reader.fields[1].type);
+
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[0], {2}));
+  ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[1], {1}));
 }
 
 TEST_F(SqliteReaderTest, MultiValueParams) {
