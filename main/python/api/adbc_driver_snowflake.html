@@ -432,8 +432,14 @@
 <span class="sig-name descname"><span class="pre">AUTH_TYPE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.snowflake.sql.auth_type'</span></em><a class="headerlink" href="#adbc_driver_snowflake.DatabaseOptions.AUTH_TYPE" title="Link to this definition">¶</a></dt>
 <dd><p>Specify auth type to use for snowflake connection based on
 what is supported by the snowflake driver. Default is
-“auth_snowflake” (use ValueAuth* consts to specify desired
+“auth_snowflake” (use AuthType.* consts to specify desired
 authentication type).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_snowflake.DatabaseOptions.CLIENT_IDENTITY_PROVIDER">
+<span class="sig-name descname"><span class="pre">CLIENT_IDENTITY_PROVIDER</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.snowflake.sql.client_option.identity_provider'</span></em><a class="headerlink" href="#adbc_driver_snowflake.DatabaseOptions.CLIENT_IDENTITY_PROVIDER" title="Link to this definition">¶</a></dt>
+<dd><p>Specify the workload identity provider to use for WIF authentication.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -752,6 +758,7 @@ United States and other countries.
 <li><a class="reference internal" href="#adbc_driver_snowflake.DatabaseOptions.AUTH_OKTA_URL"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.AUTH_OKTA_URL</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_snowflake.DatabaseOptions.AUTH_TOKEN"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.AUTH_TOKEN</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_snowflake.DatabaseOptions.AUTH_TYPE"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.AUTH_TYPE</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_snowflake.DatabaseOptions.CLIENT_IDENTITY_PROVIDER"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.CLIENT_IDENTITY_PROVIDER</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_snowflake.DatabaseOptions.CLIENT_REQUEST_MFA_TOKEN"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.CLIENT_REQUEST_MFA_TOKEN</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_snowflake.DatabaseOptions.CLIENT_STORE_TEMP_CRED"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.CLIENT_STORE_TEMP_CRED</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_snowflake.DatabaseOptions.CLIENT_TIMEOUT"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.CLIENT_TIMEOUT</span></code></a></li>

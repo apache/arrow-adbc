@@ -748,6 +748,8 @@ connection URI.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">auth_okta</span></code>: Use a native Okta URL to perform SSO authentication using Okta</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">auth_jwt</span></code>: Use a provided JWT to perform authentication.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">auth_mfa</span></code>: Use a username and password with MFA.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">auth_pat</span></code>: Use a programmatic access token for authentication.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">auth_wif</span></code>: Use Workload Identity Federation for authentication.</p></li>
 </ul>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.auth_token</span></code></dt><dd><p>If using OAuth or another form of authentication, this option is how you can
@@ -813,6 +815,9 @@ to <code class="docutils literal notranslate"><span class="pre">true</span></cod
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.store_temp_creds</span></code></dt><dd><p>When <code class="docutils literal notranslate"><span class="pre">true</span></code>, the ID token is cached in the credential manager. Defaults
 to <code class="docutils literal notranslate"><span class="pre">true</span></code> on Windows/OSX, <code class="docutils literal notranslate"><span class="pre">false</span></code> on Linux.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.identity_provider</span></code></dt><dd><p>When using <code class="docutils literal notranslate"><span class="pre">auth_wif</span></code> for workload identity federation authentication, this
+must be set to the appropriate identity provider.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.snowflake.sql.client_option.use_high_precision</span></code></dt><dd><p>When <code class="docutils literal notranslate"><span class="pre">true</span></code>, fixed-point snowflake columns with the type <code class="docutils literal notranslate"><span class="pre">NUMBER</span></code>
 will be returned as <code class="docutils literal notranslate"><span class="pre">Decimal128</span></code> type Arrow columns using the precision
