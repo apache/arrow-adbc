@@ -113,6 +113,9 @@ const (
 	// When true, the ID token is cached in the credential manager. True by default
 	// on Windows/OSX, false for Linux
 	OptionClientStoreTempCred = "adbc.snowflake.sql.client_option.store_temp_creds"
+	// Specify the identity provider to utilize for generating a workload identity
+	// federation attestation. Must be set when using OptionValueAuthWIF.
+	OptionIdentityProvider = "adbc.snowflake.sql.client_option.identity_provider"
 
 	// auth types are implemented by the Snowflake driver in gosnowflake
 	// general username password authentication
@@ -127,6 +130,10 @@ const (
 	OptionValueAuthJwt = "auth_jwt"
 	// use a username and password with mfa
 	OptionValueAuthUserPassMFA = "auth_mfa"
+	// use a programmatic access token
+	OptionValueAuthPat = "auth_pat"
+	// use Workload Identity Federation for auth, must also use option to specify the provider
+	OptionValueAuthWIF = "auth_wif"
 
 	// Use default behavior for nanoseconds.
 	OptionValueNanoseconds = "nanoseconds"
