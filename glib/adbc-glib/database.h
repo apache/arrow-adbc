@@ -27,9 +27,11 @@ G_BEGIN_DECLS
 
 /**
  * GADBCLoadFlags:
- * @GADBC_LOAD_SEARCH_ENV: Check the ADBC_CONFIG_PATH environment variable.
- * @GADBC_LOAD_SEARCH_USER: Check the user configuration directory.
- * @GADBC_LOAD_SEARCH_SYSTEM: Check the system configuration directory.
+ * @GADBC_LOAD_SEARCH_ENV: Search the directory paths in the environment
+ * variable ADBC_CONFIG_PATH and (when built or installed with conda)
+ * search in the conda environment
+ * @GADBC_LOAD_SEARCH_USER: Search the user configuration directory.
+ * @GADBC_LOAD_SEARCH_SYSTEM: Search the system configuration directory.
  * @GADBC_LOAD_ALLOW_RELATIVE_PATHS: Allow relative driver paths.
  *
  * The flags are used by gadbc_database_set_load_flags().

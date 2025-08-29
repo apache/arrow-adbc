@@ -48,17 +48,17 @@
     </dependency>
 
     <!-- Derby -->
-    <!-- Cannot upgrade beyond this version for Java 8 support -->
+    <!-- Cannot upgrade beyond this version for Java 11 support -->
     <dependency>
       <groupId>org.apache.derby</groupId>
       <artifactId>derby</artifactId>
-      <version>10.14.2.0</version>
+      <version>10.15.2.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.derby</groupId>
       <artifactId>derbytools</artifactId>
-      <version>10.14.2.0</version>
+      <version>10.15.2.0</version>
       <scope>test</scope>
     </dependency>
 

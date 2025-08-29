@@ -35,11 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
 
-        internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
-        {
-            { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" }
-        };
-
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
             : base(properties)
         {
