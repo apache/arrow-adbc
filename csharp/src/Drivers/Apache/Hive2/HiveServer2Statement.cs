@@ -1039,7 +1039,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             });
     }
 
-        private async Task CancelOperationAsync(Activity? activity, TOperationHandle? operationHandle)
+        private async Task CancelOperationAsync(ActivityWithPii? activity, TOperationHandle? operationHandle)
         {
             if (operationHandle == null)
             {
