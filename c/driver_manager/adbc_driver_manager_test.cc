@@ -678,7 +678,7 @@ TEST_F(DriverManifest, LoadUserLevelManifest) {
 }
 #endif
 
-// only build and run test that creates / adds a file to /etc/adbc if
+// only build and run test that creates / adds a file to /etc/adbc/drivers if
 // it's been enabled via the build system setting this compile def
 #ifdef ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL
 TEST_F(DriverManifest, LoadSystemLevelManifest) {
