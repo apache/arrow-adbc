@@ -680,6 +680,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	for {
 		if err = rows.Next(dest); err != nil {
 			if errors.Is(err, io.EOF) {
+				err = nil // don't return the io.EOF
 				break
 			}
 			err = errToAdbcErr(adbc.StatusIO, err)
