@@ -39,7 +39,7 @@ class DatabaseOptions(enum.Enum):
     AUTH_TOKEN = "adbc.snowflake.sql.client_option.auth_token"
     #: Specify auth type to use for snowflake connection based on
     #: what is supported by the snowflake driver. Default is
-    #: "auth_snowflake" (use ValueAuth* consts to specify desired
+    #: "auth_snowflake" (use AuthType.* consts to specify desired
     #: authentication type).
     AUTH_TYPE = "adbc.snowflake.sql.auth_type"
     #: When true, the MFA token is cached in the credential manager. True by default
@@ -106,7 +106,7 @@ class DatabaseOptions(enum.Enum):
     USE_HIGH_PRECISION = "adbc.snowflake.sql.client_option.use_high_precision"
 
 
-class ValueAuth(enum.Enum):
+class AuthType(str, enum.Enum):
     """Values for the AUTH_TYPE option to the Snowflake driver."""
 
     #: General username/password auth
