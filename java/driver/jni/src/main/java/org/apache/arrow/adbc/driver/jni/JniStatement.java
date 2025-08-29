@@ -22,8 +22,12 @@ import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeQueryResult;
 import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
+import org.apache.arrow.c.ArrowArray;
 import org.apache.arrow.c.ArrowArrayStream;
+import org.apache.arrow.c.ArrowSchema;
+import org.apache.arrow.c.Data;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 
 public class JniStatement implements AdbcStatement {
@@ -38,6 +42,18 @@ public class JniStatement implements AdbcStatement {
   @Override
   public void setSqlQuery(String query) throws AdbcException {
     JniLoader.INSTANCE.statementSetSqlQuery(handle, query);
+  }
+
+  @Override
+  public void bind(VectorSchemaRoot root) throws AdbcException {
+    try (final ArrowArray batch = ArrowArray.allocateNew(allocator);
+        final ArrowSchema schema = ArrowSchema.allocateNew(allocator)) {
+      // TODO(lidavidm): we may need a way to separately provide a dictionary provider
+      Data.exportSchema(allocator, root.getSchema(), null, schema);
+      Data.exportVectorSchemaRoot(allocator, root, null, batch);
+
+      JniLoader.INSTANCE.statementBind(handle, batch, schema);
+    }
   }
 
   @Override

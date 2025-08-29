@@ -370,4 +370,33 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetSqlQuery(
     e.ThrowJavaException(env);
   }
 }
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementBind(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jlong values, jlong schema) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+    auto* c_batch = reinterpret_cast<struct ArrowArray*>(static_cast<uintptr_t>(values));
+    auto* c_schema =
+        reinterpret_cast<struct ArrowSchema*>(static_cast<uintptr_t>(schema));
+    CHECK_ADBC_ERROR(AdbcStatementBind(ptr, c_batch, c_schema, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementBindStream(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jlong stream) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+    auto* c_stream =
+        reinterpret_cast<struct ArrowArrayStream*>(static_cast<uintptr_t>(stream));
+    CHECK_ADBC_ERROR(AdbcStatementBindStream(ptr, c_stream, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
 }
