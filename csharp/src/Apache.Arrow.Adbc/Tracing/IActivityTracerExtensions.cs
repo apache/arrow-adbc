@@ -37,9 +37,9 @@ namespace Apache.Arrow.Adbc.Tracing
         /// status is set to <see cref="ActivityStatusCode.Error"/> and an Activity <see cref="ActivityEvent"/> is added to the activity
         /// and finally the exception is rethrown.
         /// </remarks>
-        public static void TraceActivity(this IActivityTracer tracer, Action<ActivityWithPii?> call, [CallerMemberName] string? activityName = default, string? traceParent = default, bool exceptionIsPii = true)
+        public static void TraceActivity(this IActivityTracer tracer, Action<ActivityWithPii?> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
-            tracer.Trace.TraceActivity(call, activityName, traceParent ?? tracer.TraceParent, exceptionIsPii);
+            tracer.Trace.TraceActivity(call, activityName, traceParent ?? tracer.TraceParent);
         }
 
         /// <summary>
@@ -56,9 +56,9 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
-        public static T TraceActivity<T>(this IActivityTracer tracer, Func<ActivityWithPii?, T> call, [CallerMemberName] string? activityName = null, string? traceParent = null, bool exceptionIsPii = true)
+        public static T TraceActivity<T>(this IActivityTracer tracer, Func<ActivityWithPii?, T> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            return tracer.Trace.TraceActivity(call, activityName, traceParent ?? tracer.TraceParent, exceptionIsPii);
+            return tracer.Trace.TraceActivity(call, activityName, traceParent ?? tracer.TraceParent);
         }
 
         /// <summary>
@@ -74,9 +74,9 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
-        public static Task TraceActivityAsync(this IActivityTracer tracer, Func<ActivityWithPii?, Task> call, [CallerMemberName] string? activityName = null, string? traceParent = null, bool exceptionIsPii = true)
+        public static Task TraceActivityAsync(this IActivityTracer tracer, Func<ActivityWithPii?, Task> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            return tracer.Trace.TraceActivityAsync(call, activityName, traceParent ?? tracer.TraceParent, exceptionIsPii);
+            return tracer.Trace.TraceActivityAsync(call, activityName, traceParent ?? tracer.TraceParent);
         }
 
         /// <summary>
@@ -93,9 +93,9 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
-        public static Task<T> TraceActivityAsync<T>(this IActivityTracer tracer, Func<ActivityWithPii?, Task<T>> call, [CallerMemberName] string? activityName = null, string? traceParent = null, bool exceptionIsPii = true)
+        public static Task<T> TraceActivityAsync<T>(this IActivityTracer tracer, Func<ActivityWithPii?, Task<T>> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
-            return tracer.Trace.TraceActivityAsync(call, activityName, traceParent ?? tracer.TraceParent, exceptionIsPii);
+            return tracer.Trace.TraceActivityAsync(call, activityName, traceParent ?? tracer.TraceParent);
         }
     }
 }

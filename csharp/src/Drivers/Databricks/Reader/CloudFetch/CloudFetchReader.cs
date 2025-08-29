@@ -165,7 +165,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     // If we get here, there are no more files
                     return null;
                 }
-            }, exceptionIsPii: false);
+            });
         }
 
         protected override void Dispose(bool disposing)

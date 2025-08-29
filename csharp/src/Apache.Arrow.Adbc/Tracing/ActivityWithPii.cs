@@ -74,7 +74,6 @@ namespace Apache.Arrow.Adbc.Tracing
         /// Add an <see cref="ActivityEvent" /> object containing the exception information to the <see cref="Events" /> list.
         /// </summary>
         /// <param name="exception">The exception to add to the attached events list.</param>
-        /// <param name="isPii">Indicates whether the exception message contain PII (Personally Identifiable Information).</param>
         /// <returns><see langword="this" /> for convenient chaining.</returns>
         /// <remarks>
         /// <para>- The name of the event will be "exception", and it will include the tags "exception.message", "exception.stacktrace", and "exception.type".</para>
@@ -83,14 +82,13 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <para>- Any registered <see cref="ActivityListener"/> with the <see cref="ActivityListener.ExceptionRecorder"/> callback that adds "exception.message", "exception.stacktrace", or "exception.type" tags
         /// will not have these tags overwritten, except by any subsequent <see cref="ActivityListener"/> that explicitly overwrites them.</para>
         /// </remarks>
-        public ActivityWithPii AddException(Exception exception, bool isPii = true)
+        public ActivityWithPii AddException(Exception exception)
         {
             const string ExceptionMessageTag = "exception.message";
-            TagList tagList = new();
-            if (isPii)
+            TagList tagList = new()
             {
-                tagList.Add(new KeyValuePair<string, object?>(ExceptionMessageTag, new RedactedValue(exception.Message)));
-            }
+                new KeyValuePair<string, object?>(ExceptionMessageTag, new RedactedValue(exception.Message))
+            };
 
             _activity.AddException(exception, tagList);
             return this;

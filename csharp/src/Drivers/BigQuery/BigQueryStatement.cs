@@ -475,7 +475,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 if (gaEx.HttpStatusCode != System.Net.HttpStatusCode.NotFound)
                 {
-                    activity?.AddException(gaEx, isPii: false);
+                    activity?.AddException(gaEx);
                     throw new AdbcException($"Failure trying to retrieve dataset {datasetId}", gaEx);
                 }
             }
@@ -577,7 +577,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                         this.reader = null;
                     }
-                }, exceptionIsPii: false);
+                });
             }
 
             protected override void Dispose(bool disposing)
