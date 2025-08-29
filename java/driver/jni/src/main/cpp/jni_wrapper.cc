@@ -199,6 +199,9 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
     std::memset(db.get(), 0, sizeof(struct AdbcDatabase));
 
     CHECK_ADBC_ERROR(AdbcDatabaseNew(db.get(), &error), error);
+    CHECK_ADBC_ERROR(
+        AdbcDriverManagerDatabaseSetLoadFlags(db.get(), ADBC_LOAD_FLAG_DEFAULT, &error),
+        error);
 
     const jsize num_params = env->GetArrayLength(parameters);
     if (num_params % 2 != 0) {
