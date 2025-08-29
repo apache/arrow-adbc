@@ -321,12 +321,13 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
     // only need to check for macOS and fall back to Unix-like behavior as long
     // as we're not on Windows
 #if defined(__APPLE__)
-    const std::filesystem::path system_config_dir("/Library/Application Support/ADBC");
+    const std::filesystem::path system_config_dir(
+        "/Library/Application Support/ADBC/Drivers");
     if (std::filesystem::exists(system_config_dir)) {
       paths.push_back(system_config_dir);
     }
 #elif !defined(_WIN32)
-    const std::filesystem::path system_config_dir("/etc/adbc");
+    const std::filesystem::path system_config_dir("/etc/adbc/drivers");
     if (std::filesystem::exists(system_config_dir)) {
       paths.push_back(system_config_dir);
     }
@@ -500,7 +501,7 @@ struct ManagedLibrary {
         auto venv = GetEnvPaths(conda_name);
         if (!venv.empty()) {
           for (const auto& venv_path : venv) {
-            search_paths.push_back(venv_path / "etc" / "adbc");
+            search_paths.push_back(venv_path / "etc" / "adbc" / "drivers");
           }
         }
       }
@@ -1073,13 +1074,13 @@ std::filesystem::path InternalAdbcUserConfigDir() {
   std::filesystem::path dir(std::move(wpath));
   if (!dir.empty()) {
     config_dir = std::filesystem::path(dir);
-    config_dir /= "ADBC/drivers";
+    config_dir /= "ADBC/Drivers";
   }
 #elif defined(__APPLE__)
   auto dir = std::getenv("HOME");
   if (dir) {
     config_dir = std::filesystem::path(dir);
-    config_dir /= "Library/Application Support/ADBC";
+    config_dir /= "Library/Application Support/ADBC/Drivers";
   }
 #elif defined(__linux__)
   auto dir = std::getenv("XDG_CONFIG_HOME");
@@ -1093,7 +1094,7 @@ std::filesystem::path InternalAdbcUserConfigDir() {
   }
 
   if (!config_dir.empty()) {
-    config_dir /= "adbc";
+    config_dir = config_dir / "adbc" / "drivers";
   }
 #endif  // defined(_WIN32)
 

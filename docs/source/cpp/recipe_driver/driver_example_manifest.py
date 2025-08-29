@@ -41,8 +41,8 @@ def connect(uri: str):
         )
 
     # alternatively, it can look for the manifest file in the user's config
-    # directory ($HOME/.config/adbc/driver_example.toml) or the system's
-    # config directory (/etc/adbc/driver_example.toml)
+    # directory ($HOME/.config/adbc/drivers/driver_example.toml) or the system's
+    # config directory (/etc/adbc/drivers/driver_example.toml)
     return dbapi.connect(driver="driver_example", db_kwargs={"uri": uri})
 
 

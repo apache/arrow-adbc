@@ -442,20 +442,20 @@ the given order:
 
 #. If additional search paths have been specified, those will be searched
 
-   * The Python driver manager automatically adds ``$VIRTUAL_ENV/etc/adbc`` to the search paths when running in a ``venv`` virtual environment
+   * The Python driver manager automatically adds ``$VIRTUAL_ENV/etc/adbc/drivers`` to the search paths when running in a ``venv`` virtual environment
 
-#. If the driver manager was built or installed with conda and the ``LOAD_FLAG_SEARCH_ENV`` load option is set, ``$CONDA_PREFIX/etc/adbc`` will be searched
+#. If the driver manager was built or installed with conda and the ``LOAD_FLAG_SEARCH_ENV`` load option is set, ``$CONDA_PREFIX/etc/adbc/drivers`` will be searched
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration directory will be searched
 
-   * On macOS, this will be ``~/Library/Application Support/ADBC``
+   * On macOS, this will be ``~/Library/Application Support/ADBC/Drivers``
    * On Linux (and other Unix-like platforms), the ``XDG_CONFIG_HOME`` environment variable is checked first. If it is set, the driver manager
-     will search ``$XDG_CONFIG_HOME/adbc``, otherwise it will search ``~/.config/adbc``
+     will search ``$XDG_CONFIG_HOME/adbc/drivers``, otherwise it will search ``~/.config/adbc/drivers``
 
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, then a system-level configuration directory will be searched
 
-   * On macOS, this will be ``/Library/Application Support/ADBC`` if it exists
-   * On Linux (and other Unix-like platforms), this will be ``/etc/adbc`` if it exists
+   * On macOS, this will be ``/Library/Application Support/ADBC/Drivers`` if it exists
+   * On Linux (and other Unix-like platforms), this will be ``/etc/adbc/drivers`` if it exists
 
 Windows
 ^^^^^^^
@@ -469,9 +469,9 @@ would happen for ODBC drivers. The search for a manifest on Windows would be the
 
 #. If additional search paths have been specified, those will be searched
 
-   * The Python driver manager automatically adds ``$VIRTUAL_ENV\etc\adbc`` to the search paths when running in a ``venv`` virtual environment
+   * The Python driver manager automatically adds ``$VIRTUAL_ENV\etc\adbc\drivers`` to the search paths when running in a ``venv`` virtual environment
 
-#. If the driver manager was built or installed with conda and the ``LOAD_FLAG_SEARCH_ENV`` load option is set, ``$CONDA_PREFIX\etc\adbc`` will be searched
+#. If the driver manager was built or installed with conda and the ``LOAD_FLAG_SEARCH_ENV`` load option is set, ``$CONDA_PREFIX\etc\adbc\drivers`` will be searched
 
 #. If the ``LOAD_FLAG_SEARCH_USER`` load option is set, then a user-level configuration is searched for
 
@@ -484,7 +484,7 @@ would happen for ODBC drivers. The search for a manifest on Windows would be the
      * ``entrypoint`` - the entrypoint to use for the driver if a non-default entrypoint is needed
      * ``driver`` - the path to the driver shared library
 
-   * If no registry key is found, then the directory ``%LOCAL_APPDATA%\ADBC\drivers`` is searched
+   * If no registry key is found, then the directory ``%LOCAL_APPDATA%\ADBC\Drivers`` is searched
 
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search for a system-level configuration
 
