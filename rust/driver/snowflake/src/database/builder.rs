@@ -540,7 +540,8 @@ impl Builder {
             env_parse_map_err(Self::CLIENT_CACHE_MFA_TOKEN_ENV, str::parse)?;
         let client_store_temp_creds =
             env_parse_map_err(Self::CLIENT_STORE_TEMP_CREDS_ENV, str::parse)?;
-        let identity_provider = env_parse_map_err(Self::CLIENT_IDENTITY_PROVIDER_ENV, str::parse)?;
+        let client_identity_provider =
+            env_parse_map_err(Self::CLIENT_IDENTITY_PROVIDER_ENV, str::parse)?;
 
         Ok(Self {
             uri,
@@ -583,7 +584,7 @@ impl Builder {
 
 impl Builder {
     /// Number of fields in the builder (except other).
-    const COUNT: usize = 32;
+    const COUNT: usize = 33;
 
     pub const DATABASE: &str = "adbc.snowflake.sql.db";
     pub const SCHEMA: &str = "adbc.snowflake.sql.schema";
