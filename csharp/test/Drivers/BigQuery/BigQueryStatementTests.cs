@@ -39,7 +39,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             TokenProtectedReadClientManger clientMgr = GetMockTokenProtectedReadClientManger();
             var mockReadRowsStream = GetMockReadRowsStream(clientMgr);
-            mockReadRowsStream.Setup(s => s.GetResponseStream())
+            mockReadRowsStream
+                .Setup(s => s.GetResponseStream())
                 .Throws(new InvalidOperationException("GetAsyncEnumerator can only be called once for a gRPC response stream wrapper."));
 
             var statement = CreateBigQueryStatementForTest();
@@ -91,7 +92,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             Assert.True(mockedResponseStream != null);
 
-            mockReadRowsStream.Setup(c => c.GetResponseStream())
+            mockReadRowsStream
+                .Setup(c => c.GetResponseStream())
                 .Returns(mockedResponseStream);
 
             var statement = CreateBigQueryStatementForTest();
