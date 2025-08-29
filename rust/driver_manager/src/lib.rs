@@ -515,7 +515,10 @@ impl ManagedDriver {
         #[cfg(conda_build)]
         if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
             if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
-                let conda_path = PathBuf::from(conda_prefix).join("etc").join("adbc");
+                let conda_path = PathBuf::from(conda_prefix)
+                    .join("etc")
+                    .join("adbc")
+                    .join("drivers");
                 if let Ok(result) =
                     Self::search_path_list(driver_path, vec![conda_path], entrypoint, version)
                 {
@@ -584,7 +587,10 @@ impl ManagedDriver {
         #[cfg(conda_build)]
         if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
             if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
-                let conda_path = PathBuf::from(conda_prefix).join("etc").join("adbc");
+                let conda_path = PathBuf::from(conda_prefix)
+                    .join("etc")
+                    .join("adbc")
+                    .join("drivers");
                 path_list.push(conda_path);
             }
         }
@@ -1762,7 +1768,7 @@ fn user_config_dir() -> Option<PathBuf> {
         use target_windows::user_config_dir;
         user_config_dir().map(|mut path| {
             path.push("ADBC");
-            path.push("drivers");
+            path.push("Drivers");
             path
         })
     }
@@ -1773,6 +1779,7 @@ fn user_config_dir() -> Option<PathBuf> {
             path.push("Library");
             path.push("Application Support");
             path.push("ADBC");
+            path.push("Drivers");
             path
         })
     }
@@ -1790,6 +1797,7 @@ fn user_config_dir() -> Option<PathBuf> {
             })
             .map(|mut path| {
                 path.push("adbc");
+                path.push("drivers");
                 path
             })
     }
@@ -1798,12 +1806,12 @@ fn user_config_dir() -> Option<PathBuf> {
 fn system_config_dir() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
-        Some(PathBuf::from("/Library/Application Support/ADBC"))
+        Some(PathBuf::from("/Library/Application Support/ADBC/Drivers"))
     }
 
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        Some(PathBuf::from("/etc/adbc"))
+        Some(PathBuf::from("/etc/adbc/drivers"))
     }
 
     #[cfg(not(unix))]
@@ -2307,9 +2315,9 @@ mod tests {
     #[cfg_attr(not(windows), ignore)]
     fn test_get_search_paths() {
         #[cfg(target_os = "macos")]
-        let system_path = PathBuf::from("/Library/Application Support/ADBC");
+        let system_path = PathBuf::from("/Library/Application Support/ADBC/Drivers");
         #[cfg(not(target_os = "macos"))]
-        let system_path = PathBuf::from("/etc/adbc");
+        let system_path = PathBuf::from("/etc/adbc/drivers");
 
         let search_paths = get_search_paths(LOAD_FLAG_SEARCH_SYSTEM);
         if system_path.exists() {

@@ -686,7 +686,7 @@ TEST_F(DriverManifest, LoadSystemLevelManifest) {
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
-  auto system_config_dir = std::filesystem::path("/etc/adbc");
+  auto system_config_dir = std::filesystem::path("/etc/adbc/drivers");
   bool created = false;
   if (!std::filesystem::exists(system_config_dir)) {
     ASSERT_TRUE(std::filesystem::create_directories(system_config_dir));
