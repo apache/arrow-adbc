@@ -20,6 +20,7 @@ package org.apache.arrow.adbc.driver.jni;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -120,6 +121,46 @@ class JniDriverTest {
                 });
         assertThat(exc.getStatus()).isEqualTo(AdbcStatusCode.INVALID_STATE);
         assertThat(exc).hasMessageContaining("parameter count mismatch");
+      }
+    }
+  }
+
+  @Test
+  void initParams() throws Exception {
+    File tmpPath = File.createTempFile("jni_test", ".sqlite");
+    //noinspection ResultOfMethodCallIgnored
+    tmpPath.delete();
+    tmpPath.deleteOnExit();
+
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+      parameters.put("uri", "file:" + tmpPath);
+
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect();
+          final AdbcStatement stmt = conn.createStatement()) {
+        stmt.setSqlQuery("CREATE TABLE foo (v)");
+        stmt.executeQuery().close();
+      }
+
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect();
+          final AdbcStatement stmt = conn.createStatement()) {
+        stmt.setSqlQuery("INSERT INTO foo VALUES (1), (2), (3)");
+        stmt.executeQuery().close();
+      }
+
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect();
+          final AdbcStatement stmt = conn.createStatement()) {
+        stmt.setSqlQuery("SELECT * FROM foo ORDER BY v ASC");
+        try (final AdbcStatement.QueryResult result = stmt.executeQuery()) {
+          assertThat(result.getReader().loadNextBatch()).isTrue();
+          assertThat(result.getReader().getVectorSchemaRoot().getRowCount()).isEqualTo(3);
+          assertThat(result.getReader().loadNextBatch()).isFalse();
+        }
       }
     }
   }
