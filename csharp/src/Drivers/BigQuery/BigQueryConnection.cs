@@ -125,7 +125,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                     else
                     {
-                        activity?.AddBigQueryParameterTag(BigQueryParameters.ProjectId, projectId);
+                        activity?.AddBigQueryParameterTag(BigQueryParameters.ProjectId, projectId, isPii: false);
                     }
 
                     // in some situations, the publicProjectId gets passed and causes an error when we try to create a query job:
@@ -136,7 +136,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     if (projectId.Equals(BigQueryConstants.PublicProjectId, StringComparison.OrdinalIgnoreCase))
                     {
                         projectId = BigQueryConstants.DetectProjectId;
-                        activity?.AddBigQueryTag("change_public_projectId_to_detect_project_id", projectId);
+                        activity?.AddBigQueryTag("change_public_projectId_to_detect_project_id", projectId, isPii: false);
                     }
                 }
 
@@ -151,7 +151,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     if (!string.IsNullOrEmpty(result))
                     {
                         this.includePublicProjectIds = Convert.ToBoolean(result);
-                        activity?.AddBigQueryParameterTag(BigQueryParameters.IncludePublicProjectId, this.includePublicProjectIds);
+                        activity?.AddBigQueryParameterTag(BigQueryParameters.IncludePublicProjectId, this.includePublicProjectIds, isPii: false);
                     }
                 }
 
@@ -159,7 +159,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     int.TryParse(timeoutSeconds, out int seconds))
                 {
                     clientTimeout = TimeSpan.FromSeconds(seconds);
-                    activity?.AddBigQueryParameterTag(BigQueryParameters.ClientTimeout, seconds);
+                    activity?.AddBigQueryParameterTag(BigQueryParameters.ClientTimeout, seconds, isPii: false);
                 }
 
                 SetCredential();
@@ -214,7 +214,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                     else
                     {
-                        activity?.AddBigQueryParameterTag((BigQueryParameters.AuthenticationType), authenticationType);
+                        activity?.AddBigQueryParameterTag((BigQueryParameters.AuthenticationType), authenticationType, isPii: false);
                     }
                 }
 
@@ -451,7 +451,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// </summary>
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
-        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
+        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, ActivityWithPii? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
 
         /// <summary>
         /// Executes the query using the BigQueryClient.
@@ -470,7 +470,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             return this.TraceActivity(activity =>
             {
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, BigQueryUtils.IsSafeToTrace());
+                activity?.AddTag(SemanticConventions.Db.Query.Text, sql, isPii: true);
 
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
                 BigQueryResults? result = ExecuteWithRetriesAsync<BigQueryResults?>(func, activity).GetAwaiter().GetResult();

@@ -112,7 +112,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     int columnCount = GetColumnCount(response.Results);
                     int rowCount = GetRowCount(response.Results, columnCount);
-                    activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, rowCount)]);
+                    activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, rowCount)], isPii: false);
 
                     if ((_enableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                     {
