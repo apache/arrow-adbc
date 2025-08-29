@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             var exporterInstance = new Lazy<FileExporterInstance>(() =>
             {
                 CancellationTokenSource cancellationTokenSource = new();
-                FileExporter fileExporter = new(fileBaseName, tracesDirectory, maxTraceFileSizeKb, maxTraceFiles);
+                FileExporter fileExporter = new(fileBaseName, tracesDirectory, maxTraceFileSizeKb, maxTraceFiles, cancellationTokenSource);
                 return new FileExporterInstance(
                     fileExporter,
                     // This listens/polls for activity in the queue and writes them to file
@@ -171,8 +171,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 SerializableActivity serializableActivity = new(activity);
                 await JsonSerializer.SerializeAsync(
                     stream,
-                    serializableActivity,
-                    SerializableActivityJsonContext.Default.SerializableActivity);
+                    serializableActivity);
                 stream.Write(s_newLine, 0, s_newLine.Length);
                 stream.Position = 0;
 
@@ -180,13 +179,13 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             }
         }
 
-        private FileExporter(string fileBaseName, DirectoryInfo tracesDirectory, long maxTraceFileSizeKb, int maxTraceFiles)
+        private FileExporter(string fileBaseName, DirectoryInfo tracesDirectory, long maxTraceFileSizeKb, int maxTraceFiles, CancellationTokenSource cancellationTokenSource)
         {
             string fullName = tracesDirectory.FullName;
             _fileBaseName = fileBaseName;
             _tracesDirectoryFullName = fullName;
             _tracingFile = new(fileBaseName, fullName, maxTraceFileSizeKb, maxTraceFiles);
-            _cancellationTokenSource = new CancellationTokenSource();
+            _cancellationTokenSource = cancellationTokenSource;
         }
 
         internal static string TracingLocationDefault { get; } =
