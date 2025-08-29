@@ -15,27 +15,31 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::collections::HashSet;
-use std::sync::Arc;
-use std::{collections::HashMap, fmt::Debug, hash::Hash};
-
-use adbc_core::options::Statistics;
-use arrow_array::{
-    Array, ArrayRef, BinaryArray, BooleanArray, Float64Array, Int16Array, Int32Array, Int64Array,
-    ListArray, MapArray, RecordBatch, RecordBatchReader, StringArray, StructArray, UInt32Array,
-    UInt64Array, UnionArray,
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Debug,
+    hash::Hash,
+    sync::Arc,
 };
-use arrow_buffer::{OffsetBuffer, ScalarBuffer};
-use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef, UnionFields};
 
 use adbc_core::{
+    arrow::{
+        arrow_array::{
+            Array, ArrayRef, BinaryArray, BooleanArray, Float64Array, Int16Array, Int32Array,
+            Int64Array, ListArray, MapArray, RecordBatch, RecordBatchReader, StringArray,
+            StructArray, UInt32Array, UInt64Array, UnionArray,
+        },
+        arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef, UnionFields},
+    },
     error::{Error, Result, Status},
     ffi::constants,
     options::{
         InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement, OptionValue,
+        Statistics,
     },
     schemas, Connection, Database, Driver, Optionable, PartitionedResult, Statement,
 };
+use arrow_buffer::{OffsetBuffer, ScalarBuffer};
 
 #[derive(Debug)]
 pub struct SingleBatchReader {
@@ -762,7 +766,7 @@ impl Connection for DummyConnection {
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: &str,
-    ) -> Result<arrow_schema::Schema> {
+    ) -> Result<Schema> {
         let catalog = catalog.unwrap_or("default");
         let db_schema = db_schema.unwrap_or("default");
 

@@ -19,8 +19,10 @@
 
 use std::os::raw::{c_char, c_int};
 
-use arrow_array::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
-use arrow_array::ffi_stream::FFI_ArrowArrayStream;
+use crate::arrow::arrow_array::{
+    ffi::{FFI_ArrowArray, FFI_ArrowSchema},
+    ffi_stream::FFI_ArrowArrayStream,
+};
 
 use super::{
     constants::ADBC_STATUS_NOT_IMPLEMENTED, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcError,

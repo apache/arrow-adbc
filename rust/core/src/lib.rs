@@ -66,10 +66,16 @@ pub mod ffi;
 pub mod options;
 pub mod schemas;
 
+/// Re-export `arrow-rs` crates used in `adbc_core`.
+pub mod arrow {
+    pub use arrow_array;
+    pub use arrow_schema;
+}
+
 use std::collections::HashSet;
 
-use arrow_array::{RecordBatch, RecordBatchReader};
-use arrow_schema::Schema;
+use self::arrow::arrow_array::{RecordBatch, RecordBatchReader};
+use self::arrow::arrow_schema::Schema;
 
 use error::Result;
 use options::{OptionConnection, OptionDatabase, OptionStatement, OptionValue};

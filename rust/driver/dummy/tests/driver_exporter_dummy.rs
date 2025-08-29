@@ -19,22 +19,24 @@
 /// directly using the Rust API (native) and through the exported driver via the
 /// driver manager (exported). That allows us to test that data correctly round-trip
 /// between C and Rust.
-use std::ops::Deref;
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
-use arrow_array::{Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader, StringArray};
-use arrow_schema::{DataType, Field, Schema};
-use arrow_select::concat::concat_batches;
-
-use adbc_core::options::{
-    AdbcVersion, InfoCode, IngestMode, IsolationLevel, ObjectDepth, OptionConnection,
-    OptionDatabase, OptionStatement,
+use adbc_core::{
+    arrow::{
+        arrow_array::{
+            Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader, StringArray,
+        },
+        arrow_schema::{DataType, Field, Schema},
+    },
+    options::{
+        AdbcVersion, InfoCode, IngestMode, IsolationLevel, ObjectDepth, OptionConnection,
+        OptionDatabase, OptionStatement,
+    },
+    schemas, Connection, Database, Driver, Optionable, Statement,
 };
-use adbc_core::Statement;
-use adbc_core::{schemas, Connection, Database, Driver, Optionable};
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
-
 use adbc_dummy::{DummyConnection, DummyDatabase, DummyDriver, DummyStatement, SingleBatchReader};
+use arrow_select::concat::concat_batches;
 
 const OPTION_STRING_LONG: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 const OPTION_BYTES_LONG: &[u8] = b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";

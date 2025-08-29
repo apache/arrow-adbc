@@ -15,10 +15,6 @@ name = "adbc_datafusion"
 version = "0.20.0"
 dependencies = [
  "adbc_core",
- "arrow-array",
- "arrow-buffer",
- "arrow-schema",
- "arrow-select",
  "datafusion",
  "datafusion-substrait",
  "prost",
@@ -30,8 +26,6 @@ name = "adbc_driver_manager"
 version = "0.20.0"
 dependencies = [
  "adbc_core",
- "arrow-array",
- "arrow-schema",
  "arrow-select",
  "libloading",
  "temp-env",
@@ -47,9 +41,7 @@ version = "0.20.0"
 dependencies = [
  "adbc_core",
  "adbc_driver_manager",
- "arrow-array",
  "arrow-buffer",
- "arrow-schema",
  "arrow-select",
 ]
 
@@ -59,8 +51,6 @@ version = "0.20.0"
 dependencies = [
  "adbc_core",
  "adbc_driver_manager",
- "arrow-array",
- "arrow-schema",
  "dotenvy",
  "regex",
  "test-with",
