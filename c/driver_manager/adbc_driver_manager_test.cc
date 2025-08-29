@@ -439,9 +439,9 @@ class DriverManifest : public ::testing::Test {
  protected:
   void SetConfigPath(const char* path) {
 #ifdef _WIN32
-    ASSERT_TRUE(SetEnvironmentVariable("ADBC_CONFIG_PATH", path));
+    ASSERT_TRUE(SetEnvironmentVariable("ADBC_DRIVER_PATH", path));
 #else
-    setenv("ADBC_CONFIG_PATH", path, 1);
+    setenv("ADBC_DRIVER_PATH", path, 1);
 #endif
   }
 
