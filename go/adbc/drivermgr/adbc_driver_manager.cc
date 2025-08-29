@@ -501,7 +501,7 @@ struct ManagedLibrary {
         auto venv = GetEnvPaths(conda_name);
         if (!venv.empty()) {
           for (const auto& venv_path : venv) {
-            search_paths.push_back(venv_path / "etc" / "adbc");
+            search_paths.push_back(venv_path / "etc" / "adbc" / "drivers");
           }
         }
       }
