@@ -13,7 +13,7 @@ adbc_load_flags(
 }
 \arguments{
 \item{search_env}{Search for manifest files in the directories specified in
-the ADBC_CONFIG_PATH environment variable and (when installed with conda)
+the ADBC_DRIVER_PATH environment variable and (when installed with conda)
 in the conda environment.}
 
 \item{search_user}{Search for manifest files in the designated directory
@@ -31,7 +31,7 @@ An integer flag value for use in \code{adbc_driver()}
 \description{
 Options that indicate where to look for driver manifests. Manifests
 (.toml files) can be installed at the system level, the user level,
-in location(s) specified by the ADBC_CONFIG_PATH environment variable,
+in location(s) specified by the ADBC_DRIVER_PATH environment variable,
 and/or in a conda environment. See the ADBC documentation for details
 regarding the locations of the user and system paths on various platforms.
 }

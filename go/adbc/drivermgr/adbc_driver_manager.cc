@@ -300,11 +300,11 @@ std::vector<std::filesystem::path> GetSearchPaths(const AdbcLoadFlags levels) {
   std::vector<std::filesystem::path> paths;
   if (levels & ADBC_LOAD_FLAG_SEARCH_ENV) {
 #ifdef _WIN32
-    static const wchar_t* env_var = L"ADBC_CONFIG_PATH";
+    static const wchar_t* env_var = L"ADBC_DRIVER_PATH";
 #else
-    static const char* env_var = "ADBC_CONFIG_PATH";
+    static const char* env_var = "ADBC_DRIVER_PATH";
 #endif
-    // Check the ADBC_CONFIG_PATH environment variable
+    // Check the ADBC_DRIVER_PATH environment variable
     paths = GetEnvPaths(env_var);
   }
 
@@ -482,7 +482,7 @@ struct ManagedLibrary {
     }
 
     {
-      // First search the paths in the env var `ADBC_CONFIG_PATH`.
+      // First search the paths in the env var `ADBC_DRIVER_PATH`.
       // Then search the runtime application-defined additional search paths.
       auto search_paths = GetSearchPaths(load_options & ADBC_LOAD_FLAG_SEARCH_ENV);
       search_paths.insert(search_paths.end(), additional_search_paths.begin(),
