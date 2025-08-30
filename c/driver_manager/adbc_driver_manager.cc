@@ -392,14 +392,14 @@ struct ManagedLibrary {
 
         auto status = LoadDriverManifest(driver_path, info, error);
         if (status == ADBC_STATUS_OK) {
-          return Load(info.lib_path.c_str(), {}, error);
+          return Load(info.lib_path.c_str(), error);
         }
         return status;
       }
 
       // if the extension is not .toml, then just try to load the provided
       // path as if it was an absolute path to a driver library
-      return Load(driver_path.c_str(), {}, error);
+      return Load(driver_path.c_str(), error);
     }
 
     if (driver_path.is_absolute()) {
@@ -409,14 +409,14 @@ struct ManagedLibrary {
       if (std::filesystem::exists(driver_path)) {
         auto status = LoadDriverManifest(driver_path, info, error);
         if (status == ADBC_STATUS_OK) {
-          return Load(info.lib_path.c_str(), {}, error);
+          return Load(info.lib_path.c_str(), error);
         }
       }
 
       driver_path.replace_extension("");
       info.lib_path = driver_path;
       // otherwise just try to load the provided path as if it was an absolute path
-      return Load(driver_path.c_str(), {}, error);
+      return Load(driver_path.c_str(), error);
     }
 
     if (driver_path.has_extension()) {
@@ -434,7 +434,7 @@ struct ManagedLibrary {
 #endif  // defined(_WIN32)
       if (HasExtension(driver_path, kPlatformLibrarySuffix)) {
         info.lib_path = driver_path;
-        return Load(driver_path.c_str(), {}, error);
+        return Load(driver_path.c_str(), error);
       }
 
       SetError(error, "Driver name has unrecognized extension: " +
@@ -458,12 +458,12 @@ struct ManagedLibrary {
       if (std::filesystem::exists(full_path)) {
         auto status = LoadDriverManifest(full_path, info, nullptr);
         if (status == ADBC_STATUS_OK) {
-          return Load(info.lib_path.c_str(), {}, error);
+          return Load(info.lib_path.c_str(), error);
         }
       }
 
       full_path.replace_extension("");  // remove the .toml extension
-      auto status = Load(full_path.c_str(), {}, nullptr);
+      auto status = Load(full_path.c_str(), nullptr);
       if (status == ADBC_STATUS_OK) {
         return status;
       }
@@ -484,8 +484,7 @@ struct ManagedLibrary {
     {
       // First search the paths in the env var `ADBC_CONFIG_PATH`.
       // Then search the runtime application-defined additional search paths.
-      std::vector<std::filesystem::path> search_paths =
-          GetSearchPaths(load_options & ADBC_LOAD_FLAG_SEARCH_ENV);
+      auto search_paths = GetSearchPaths(load_options & ADBC_LOAD_FLAG_SEARCH_ENV);
       search_paths.insert(search_paths.end(), additional_search_paths.begin(),
                           additional_search_paths.end());
 
@@ -548,7 +547,7 @@ struct ManagedLibrary {
     }
 
     info.lib_path = driver_path;
-    return Load(driver_path.c_str(), search_paths, error);
+    return Load(driver_path.c_str(), error);
 #else
     // Otherwise, search the configured paths.
     auto search_paths = GetSearchPaths(load_options & ~ADBC_LOAD_FLAG_SEARCH_ENV);
@@ -557,15 +556,13 @@ struct ManagedLibrary {
       // If we reach here, we didn't find the driver in any of the paths
       // so let's just attempt to load it as default behavior.
       info.lib_path = driver_path;
-      return Load(driver_path.c_str(), search_paths, error);
+      return Load(driver_path.c_str(), error);
     }
     return status;
 #endif  // _WIN32
   }
 
-  AdbcStatusCode Load(const char_type* library,
-                      const std::vector<std::filesystem::path>& search_paths,
-                      struct AdbcError* error) {
+  AdbcStatusCode Load(const char_type* library, struct AdbcError* error) {
     std::string error_message;
 #if defined(_WIN32)
     HMODULE handle = LoadLibraryExW(library, NULL, 0);
@@ -625,16 +622,6 @@ struct ManagedLibrary {
       if (!handle) {
         error_message += "\ndlopen() failed: ";
         error_message += dlerror();
-
-        if (search_paths.empty()) {
-          error_message += "\nNo search paths to try";
-        } else {
-          error_message += "\nAlso searched these paths for manifests: ";
-          for (size_t i = 0; i < search_paths.size(); i++) {
-            if (i > 0) error_message += ", ";
-            error_message += search_paths[i].string();
-          }
-        }
       }
     }
     if (handle) {
