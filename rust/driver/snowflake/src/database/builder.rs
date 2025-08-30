@@ -55,6 +55,10 @@ pub enum AuthType {
     Jwt,
     /// Username and password with mfa
     UsernamePasswordMFA,
+    /// Use a programmatic access token for authentication.
+    Pat,
+    /// Use Workload Identity Federation for authentication.
+    Wif,
 }
 
 impl fmt::Display for AuthType {
@@ -69,6 +73,8 @@ impl fmt::Display for AuthType {
                 Self::Okta => "auth_okta",
                 Self::Jwt => "auth_jwt",
                 Self::UsernamePasswordMFA => "auth_mfa",
+                Self::Pat => "auth_pat",
+                Self::Wif => "auth_wif",
             }
         )
     }
@@ -85,15 +91,19 @@ impl str::FromStr for AuthType {
             "auth_okta" => Ok(Self::Okta),
             "auth_jwt" => Ok(Self::Jwt),
             "auth_mfa" => Ok(Self::UsernamePasswordMFA),
+            "auth_pat" => Ok(Self::Pat),
+            "auth_wif" => Ok(Self::Wif),
             _ => Err(Error::with_message_and_status(
                 format!(
-                    "invalid auth type: {s} (possible values: {}, {}, {}, {}, {}, {})",
+                    "invalid auth type: {s} (possible values: {}, {}, {}, {}, {}, {}, {}, {})",
                     Self::Snowflake,
                     Self::OAuth,
                     Self::ExternalBrowser,
                     Self::Okta,
                     Self::Jwt,
-                    Self::UsernamePasswordMFA
+                    Self::UsernamePasswordMFA,
+                    Self::Pat,
+                    Self::Wif,
                 ),
                 Status::InvalidArguments,
             )),
@@ -316,6 +326,10 @@ pub struct Builder {
     /// Client store temporary credentials ([`Self::CLIENT_STORE_TEMP_CREDS`]).
     pub client_store_temp_creds: Option<bool>,
 
+    /// When using [`AuthType::Wif`] for workload identity federation authentication, this
+    /// must be set to the appropriate identity provider. ([`Self::CLIENT_IDENTITY_PROVIDER`]).
+    pub client_identity_provider: Option<String>,
+
     /// Other options.
     pub other: Vec<(OptionDatabase, OptionValue)>,
 }
@@ -368,6 +382,7 @@ impl fmt::Debug for Builder {
             .field("client_config_file", &self.client_config_file)
             .field("client_cache_mfa_token", &self.client_cache_mfa_token)
             .field("client_store_temp_creds", &self.client_store_temp_creds)
+            .field("client_identity_provider", &self.client_identity_provider)
             .field("...", &self.other)
             .finish()
     }
@@ -475,6 +490,10 @@ impl Builder {
     pub const CLIENT_STORE_TEMP_CREDS_ENV: &str =
         "ADBC_SNOWFLAKE_SQL_CLIENT_OPTION_STORE_TEMP_CREDS";
 
+    /// See [`Self::]
+    pub const CLIENT_IDENTITY_PROVIDER_ENV: &str =
+        "ADBC_SNOWFLAKE_SQL_CLIENT_OPTION_IDENTITY_PROVIDER";
+
     /// Construct a builder, setting values based on values of the
     /// configuration environment variables.
     ///
@@ -521,6 +540,8 @@ impl Builder {
             env_parse_map_err(Self::CLIENT_CACHE_MFA_TOKEN_ENV, str::parse)?;
         let client_store_temp_creds =
             env_parse_map_err(Self::CLIENT_STORE_TEMP_CREDS_ENV, str::parse)?;
+        let client_identity_provider =
+            env_parse_map_err(Self::CLIENT_IDENTITY_PROVIDER_ENV, str::parse)?;
 
         Ok(Self {
             uri,
@@ -555,6 +576,7 @@ impl Builder {
             client_config_file,
             client_cache_mfa_token,
             client_store_temp_creds,
+            client_identity_provider,
             ..Default::default()
         })
     }
@@ -562,7 +584,7 @@ impl Builder {
 
 impl Builder {
     /// Number of fields in the builder (except other).
-    const COUNT: usize = 32;
+    const COUNT: usize = 33;
 
     pub const DATABASE: &str = "adbc.snowflake.sql.db";
     pub const SCHEMA: &str = "adbc.snowflake.sql.schema";
@@ -595,6 +617,7 @@ impl Builder {
     pub const CLIENT_CONFIG_FILE: &str = "adbc.snowflake.sql.client_option.config_file";
     pub const CLIENT_CACHE_MFA_TOKEN: &str = "adbc.snowflake.sql.client_option.cache_mfa_token";
     pub const CLIENT_STORE_TEMP_CREDS: &str = "adbc.snowflake.sql.client_option.store_temp_creds";
+    pub const CLIENT_IDENTITY_PROVIDER: &str = "adbc.snowflake.sql.client_option.identity_provider";
 
     /// Use the provided URI ([`Self::uri`]).
     pub fn with_uri(mut self, uri: Url) -> Self {
@@ -885,6 +908,12 @@ impl Builder {
         self.client_store_temp_creds = Some(client_store_temp_creds);
         self
     }
+
+    /// Use the provided client identity provider ([`Self::client_identity_provider`]).
+    pub fn with_client_identity_provider(mut self, client_identity_provider: String) -> Self {
+        self.client_identity_provider = Some(client_identity_provider);
+        self
+    }
 }
 
 impl Builder {
@@ -1045,6 +1074,11 @@ impl IntoIterator for Builder {
                     .map(ToString::to_string)
                     .map(OptionValue::String)
                     .map(|value| (Builder::CLIENT_STORE_TEMP_CREDS.into(), value)),
+                self.client_identity_provider
+                    .as_ref()
+                    .map(ToString::to_string)
+                    .map(OptionValue::String)
+                    .map(|value| (Builder::CLIENT_IDENTITY_PROVIDER.into(), value)),
             ],
             self.other,
         )
