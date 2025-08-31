@@ -27,10 +27,6 @@
 //!
 //! This library currently provides:
 //! - An abstract Rust API to be implemented by vendor-specific drivers.
-//! - A driver manager which implements this same API, but dynamically loads
-//!   drivers internally and forwards calls appropriately using the [C API](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h).
-//! - A driver exporter that takes an implementation of the abstract API and
-//!   turns it into an object file that implements the C API.
 //!
 //! # Native Rust drivers
 //!
@@ -42,21 +38,6 @@
 //!
 //! For drivers implemented in Rust, using these will be more efficient and
 //! safe, since it avoids the overhead of going through C FFI.
-//!
-//! # Driver Manager
-//!
-//! The [driver_manager] module allows loading drivers exposing the C API,
-//! either from an initialization function (link-time, either static or dynamic)
-//! or by dynamically finding such a function in a dynamic library (run-time).
-//! The driver manager is gated behind the `driver_manager` feature flag.
-//!
-//! # Driver Exporter
-//!
-//! The driver exporter allows exposing native Rust drivers as C drivers to be
-//! used by other languages via their own driver manager. Once you have an
-//! implementation of [Driver], provided that it also implements [Default], you
-//! can build it as an object file implementing the C API with the
-//! [export_driver] macro.
 
 pub mod constants;
 pub mod error;

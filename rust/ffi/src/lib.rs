@@ -15,7 +15,28 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! C-compatible items as defined in [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h)
+//! ADBC: Arrow Database Connectivity
+//!
+//! ADBC is a set of APIs and libraries for [Arrow](https://arrow.apache.org/)-native
+//! access to databases. Execute SQL and [Substrait](https://substrait.io/)
+//! queries, query database catalogs, and more, all using Arrow data to
+//! eliminate unnecessary data copies, speed up access, and make it more
+//! convenient to build analytical applications.
+//!
+//! Read more about ADBC at <https://arrow.apache.org/adbc/>
+//!
+//! This library currently provides:
+//! - Structs for C-compatible items as defined in [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h).
+//! - A driver exporter that takes an implementation of the abstract API and
+//!   turns it into an object file that implements the C API.
+//!
+//! # Driver Exporter
+//!
+//! The driver exporter allows exposing native Rust drivers as C drivers to be
+//! used by other languages via their own driver manager. Once you have an
+//! implementation of [adbc_core::Driver], provided that it also implements [Default], you
+//! can build it as an object file implementing the C API with the
+//! [export_driver] macro.
 
 pub mod driver_exporter;
 #[doc(hidden)]
