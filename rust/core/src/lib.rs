@@ -58,9 +58,6 @@
 //! can build it as an object file implementing the C API with the
 //! [export_driver] macro.
 
-mod driver_exporter;
-#[doc(hidden)]
-pub use driver_exporter::FFIDriver;
 pub mod error;
 pub mod ffi;
 pub mod options;
