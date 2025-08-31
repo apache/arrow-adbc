@@ -23,13 +23,13 @@
 use std::ffi::{c_int, c_void};
 use std::{fmt, sync::LazyLock};
 
-#[cfg(any(feature = "bundled", feature = "linked"))]
-use adbc_ffi::{FFI_AdbcDriverInitFunc, FFI_AdbcError};
 use adbc_core::{
     error::{AdbcStatusCode, Result},
     options::{AdbcVersion, OptionDatabase, OptionValue},
 };
 use adbc_driver_manager::ManagedDriver;
+#[cfg(any(feature = "bundled", feature = "linked"))]
+use adbc_ffi::{FFI_AdbcDriverInitFunc, FFI_AdbcError};
 
 use crate::Database;
 

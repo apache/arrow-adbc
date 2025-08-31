@@ -24,8 +24,8 @@ use std::ptr::{null, null_mut};
 
 use super::methods;
 use adbc_core::{
+    error::{AdbcStatusCode, Error, Status},
     ffi::constants,
-    error::{Error, Status, AdbcStatusCode},
     Partitions,
 };
 

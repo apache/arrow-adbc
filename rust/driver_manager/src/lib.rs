@@ -119,11 +119,12 @@ use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 use toml::de::DeTable;
 
 use adbc_core::{
-    ffi::constants, Optionable, Connection, Database, Driver, Statement,
     error::{AdbcStatusCode, Error, Result, Status},
+    ffi::constants,
     options::{self, AdbcVersion, InfoCode, OptionValue},
-    LoadFlags, PartitionedResult, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
-    LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
+    Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
+    LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
+    LOAD_FLAG_SEARCH_USER,
 };
 use adbc_ffi::driver_method;
 
@@ -276,7 +277,10 @@ impl ManagedDriver {
     }
 
     /// Load a driver from an initialization function.
-    pub fn load_static(init: &adbc_ffi::FFI_AdbcDriverInitFunc, version: AdbcVersion) -> Result<Self> {
+    pub fn load_static(
+        init: &adbc_ffi::FFI_AdbcDriverInitFunc,
+        version: AdbcVersion,
+    ) -> Result<Self> {
         let driver = Self::load_impl(init, version)?;
         let inner = Arc::pin(ManagedDriverInner {
             driver,
@@ -434,7 +438,10 @@ impl ManagedDriver {
     }
 
     /// Initialize the given database using the loaded driver.
-    fn database_init(&self, mut database: adbc_ffi::FFI_AdbcDatabase) -> Result<adbc_ffi::FFI_AdbcDatabase> {
+    fn database_init(
+        &self,
+        mut database: adbc_ffi::FFI_AdbcDatabase,
+    ) -> Result<adbc_ffi::FFI_AdbcDatabase> {
         let driver = self.inner_ffi_driver();
 
         // DatabaseInit
@@ -819,7 +826,12 @@ fn get_option_string<F>(
     driver: &adbc_ffi::FFI_AdbcDriver,
 ) -> Result<String>
 where
-    F: FnMut(*const c_char, *mut c_char, *mut usize, *mut adbc_ffi::FFI_AdbcError) -> AdbcStatusCode,
+    F: FnMut(
+        *const c_char,
+        *mut c_char,
+        *mut usize,
+        *mut adbc_ffi::FFI_AdbcError,
+    ) -> AdbcStatusCode,
 {
     let value = get_option_buffer(key, populate, driver)?;
     let value = unsafe { CStr::from_ptr(value.as_ptr()) };

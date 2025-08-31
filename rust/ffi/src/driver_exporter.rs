@@ -25,12 +25,12 @@ use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::StructArray;
 use arrow_schema::DataType;
 
-use adbc_core::error::{AdbcStatusCode, Error, Result, Status};
-use adbc_core::ffi::constants::ADBC_STATUS_OK;
 use super::{
     types::ErrorPrivateData, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError,
     FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
 };
+use adbc_core::error::{AdbcStatusCode, Error, Result, Status};
+use adbc_core::ffi::constants::ADBC_STATUS_OK;
 use adbc_core::options::{InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionValue};
 use adbc_core::{Connection, Database, Driver, Optionable, Statement};
 

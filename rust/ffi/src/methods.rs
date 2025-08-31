@@ -19,13 +19,13 @@
 
 use std::os::raw::{c_char, c_int};
 
+use adbc_core::{error::AdbcStatusCode, ffi::constants::ADBC_STATUS_NOT_IMPLEMENTED};
 use arrow_array::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
 use arrow_array::ffi_stream::FFI_ArrowArrayStream;
-use adbc_core::{ffi::constants::ADBC_STATUS_NOT_IMPLEMENTED, error::AdbcStatusCode};
 
 use super::{
-    FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcError,
-    FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
+    FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions,
+    FFI_AdbcStatement,
 };
 
 macro_rules! method {
