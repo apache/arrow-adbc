@@ -875,4 +875,4 @@ impl Statement for DummyStatement {
     }
 }
 
-adbc_core::export_driver!(DummyDriverInit, DummyDriver);
+adbc_ffi::export_driver!(DummyDriverInit, DummyDriver);
