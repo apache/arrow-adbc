@@ -32,6 +32,7 @@ categories.workspace = true
 
 [dependencies]
 adbc_core.workspace = true
+adbc_ffi = { workspace = true, optional = true }
 arrow-array = "55.2.0"
 arrow-buffer = "55.2.0"
 arrow-schema = "55.2.0"
@@ -48,4 +49,4 @@ crate-type = ["lib", "cdylib"]
 
 [features]
 default = []
-ffi = []
+ffi = ["adbc_ffi"]

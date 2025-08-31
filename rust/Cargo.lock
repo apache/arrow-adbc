@@ -15,6 +15,7 @@ name = "adbc_datafusion"
 version = "0.20.0"
 dependencies = [
  "adbc_core",
+ "adbc_ffi",
  "arrow-array",
  "arrow-buffer",
  "arrow-schema",

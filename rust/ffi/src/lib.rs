@@ -18,6 +18,8 @@
 //! C-compatible items as defined in [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h)
 
 pub mod driver_exporter;
+#[doc(hidden)]
+pub use driver_exporter::FFIDriver;
 pub mod methods;
 pub(crate) mod types;
 pub use types::{

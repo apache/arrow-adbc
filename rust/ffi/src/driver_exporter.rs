@@ -184,18 +184,18 @@ macro_rules! export_driver {
         pub unsafe extern "C" fn $func_name(
             version: std::os::raw::c_int,
             driver: *mut std::os::raw::c_void,
-            error: *mut $crate::ffi::FFI_AdbcError,
+            error: *mut $crate::FFI_AdbcError,
         ) -> adbc_core::error::AdbcStatusCode {
             let version =
-                $crate::check_err!($crate::options::AdbcVersion::try_from(version), error);
-            if version != $crate::options::AdbcVersion::V110 {
-                let err = $crate::error::Error::with_message_and_status(
+                $crate::check_err!(adbc_core::options::AdbcVersion::try_from(version), error);
+            if version != adbc_core::options::AdbcVersion::V110 {
+                let err = adbc_core::error::Error::with_message_and_status(
                     format!(
                         "Unsupported ADBC version: got={:?} expected={:?}",
                         version,
-                        $crate::options::AdbcVersion::V110
+                        adbc_core::options::AdbcVersion::V110
                     ),
-                    $crate::error::Status::NotImplemented,
+                    adbc_core::error::Status::NotImplemented,
                 );
                 $crate::check_err!(Err(err), error);
             }
@@ -203,9 +203,9 @@ macro_rules! export_driver {
 
             let ffi_driver = <$driver_type as $crate::FFIDriver>::ffi_driver();
             unsafe {
-                std::ptr::write_unaligned(driver as *mut $crate::ffi::FFI_AdbcDriver, ffi_driver);
+                std::ptr::write_unaligned(driver as *mut $crate::FFI_AdbcDriver, ffi_driver);
             }
-            $crate::ffi::constants::ADBC_STATUS_OK
+            adbc_core::ffi::constants::ADBC_STATUS_OK
         }
     };
 }
