@@ -1713,9 +1713,9 @@ impl Drop for ManagedStatement {
 mod target_windows {
     use windows_sys as windows;
 
-    use std::adbc_ffi::c_void;
-    use std::adbc_ffi::OsString;
-    use std::os::windows::adbc_ffi::OsStringExt;
+    use std::ffi::c_void;
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
     use std::path::PathBuf;
     use std::slice;
 
