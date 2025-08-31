@@ -37,7 +37,7 @@ pub enum OptionValue {
 
 impl OptionValue {
     /// Gets the data type of the option's value.
-    pub(crate) fn get_type(&self) -> &str {
+    pub fn get_type(&self) -> &str {
         match self {
             Self::String(_) => "String",
             Self::Bytes(_) => "Bytes",

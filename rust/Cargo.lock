@@ -54,6 +54,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "adbc_ffi"
+version = "0.20.0"
+dependencies = [
+ "adbc_core",
+ "arrow-array",
+ "arrow-schema",
+]
+
+[[package]]
 name = "adbc_snowflake"
 version = "0.20.0"
 dependencies = [
