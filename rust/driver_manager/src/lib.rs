@@ -119,8 +119,8 @@ use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 use toml::de::DeTable;
 
 use adbc_core::{
+    constants,
     error::{AdbcStatusCode, Error, Result, Status},
-    ffi::constants,
     options::{self, AdbcVersion, InfoCode, OptionValue},
     Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
     LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,

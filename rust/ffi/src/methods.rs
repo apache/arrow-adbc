@@ -19,7 +19,7 @@
 
 use std::os::raw::{c_char, c_int};
 
-use adbc_core::{error::AdbcStatusCode, ffi::constants::ADBC_STATUS_NOT_IMPLEMENTED};
+use adbc_core::{constants::ADBC_STATUS_NOT_IMPLEMENTED, error::AdbcStatusCode};
 use arrow_array::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
 use arrow_array::ffi_stream::FFI_ArrowArrayStream;
 

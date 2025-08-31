@@ -58,8 +58,8 @@
 //! can build it as an object file implementing the C API with the
 //! [export_driver] macro.
 
+pub mod constants;
 pub mod error;
-pub mod ffi;
 pub mod options;
 pub mod schemas;
 

@@ -19,8 +19,8 @@
 use std::{os::raw::c_int, str::FromStr};
 
 use crate::{
+    constants,
     error::{Error, Status},
-    ffi::constants,
 };
 
 /// Option value.

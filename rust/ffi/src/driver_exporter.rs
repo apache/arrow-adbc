@@ -29,8 +29,8 @@ use super::{
     types::ErrorPrivateData, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError,
     FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
 };
+use adbc_core::constants::ADBC_STATUS_OK;
 use adbc_core::error::{AdbcStatusCode, Error, Result, Status};
-use adbc_core::ffi::constants::ADBC_STATUS_OK;
 use adbc_core::options::{InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionValue};
 use adbc_core::{Connection, Database, Driver, Optionable, Statement};
 
@@ -205,7 +205,7 @@ macro_rules! export_driver {
             unsafe {
                 std::ptr::write_unaligned(driver as *mut $crate::FFI_AdbcDriver, ffi_driver);
             }
-            adbc_core::ffi::constants::ADBC_STATUS_OK
+            adbc_core::constants::ADBC_STATUS_OK
         }
     };
 }

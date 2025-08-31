@@ -22,7 +22,7 @@ use std::{ffi::NulError, fmt::Display};
 
 use arrow_schema::ArrowError;
 
-use crate::ffi::constants;
+use crate::constants;
 
 pub type AdbcStatusCode = u8;
 

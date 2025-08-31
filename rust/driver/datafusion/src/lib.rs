@@ -17,7 +17,7 @@
 
 #![allow(refining_impl_trait)]
 
-use adbc_core::ffi::constants;
+use adbc_core::constants;
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::datasource::TableType;
 use datafusion::prelude::*;
