@@ -69,6 +69,7 @@ version = "0.20.0"
 dependencies = [
  "adbc_core",
  "adbc_driver_manager",
+ "adbc_ffi",
  "arrow-array",
  "arrow-schema",
  "dotenvy",
