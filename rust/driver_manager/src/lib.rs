@@ -119,12 +119,12 @@ use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 use toml::de::DeTable;
 
 use adbc_core::{
-    error::{Error, Result, Status},
+    error::{AdbcStatusCode, Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionValue},
     LoadFlags, PartitionedResult, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
     LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
 };
-use adbc_core::{ffi, ffi::driver_method, Optionable};
+use adbc_core::{ffi, driver_method, Optionable};
 use adbc_core::{Connection, Database, Driver, Statement};
 
 use crate::error::libloading_error_to_adbc_error;
@@ -134,7 +134,7 @@ const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
 const ERR_STATISTICS_UNSUPPORTED: &str = "Statistics are not supported with ADBC 1.0.0";
 
-fn check_status(status: ffi::FFI_AdbcStatusCode, error: ffi::FFI_AdbcError) -> Result<()> {
+fn check_status(status: AdbcStatusCode, error: ffi::FFI_AdbcError) -> Result<()> {
     match status {
         ffi::constants::ADBC_STATUS_OK => Ok(()),
         _ => {
@@ -773,7 +773,7 @@ fn get_option_buffer<F, T>(
     driver: &ffi::FFI_AdbcDriver,
 ) -> Result<Vec<T>>
 where
-    F: FnMut(*const c_char, *mut T, *mut usize, *mut ffi::FFI_AdbcError) -> ffi::FFI_AdbcStatusCode,
+    F: FnMut(*const c_char, *mut T, *mut usize, *mut ffi::FFI_AdbcError) -> AdbcStatusCode,
     T: Default + Clone,
 {
     const DEFAULT_LENGTH: usize = 128;
@@ -808,12 +808,7 @@ fn get_option_bytes<F>(
     driver: &ffi::FFI_AdbcDriver,
 ) -> Result<Vec<u8>>
 where
-    F: FnMut(
-        *const c_char,
-        *mut u8,
-        *mut usize,
-        *mut ffi::FFI_AdbcError,
-    ) -> ffi::FFI_AdbcStatusCode,
+    F: FnMut(*const c_char, *mut u8, *mut usize, *mut ffi::FFI_AdbcError) -> AdbcStatusCode,
 {
     get_option_buffer(key, populate, driver)
 }
@@ -824,12 +819,7 @@ fn get_option_string<F>(
     driver: &ffi::FFI_AdbcDriver,
 ) -> Result<String>
 where
-    F: FnMut(
-        *const c_char,
-        *mut c_char,
-        *mut usize,
-        *mut ffi::FFI_AdbcError,
-    ) -> ffi::FFI_AdbcStatusCode,
+    F: FnMut(*const c_char, *mut c_char, *mut usize, *mut ffi::FFI_AdbcError) -> AdbcStatusCode,
 {
     let value = get_option_buffer(key, populate, driver)?;
     let value = unsafe { CStr::from_ptr(value.as_ptr()) };

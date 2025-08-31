@@ -25,11 +25,11 @@ use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::StructArray;
 use arrow_schema::DataType;
 
-use crate::error::{Error, Result, Status};
+use crate::error::{AdbcStatusCode, Error, Result, Status};
 use crate::ffi::constants::ADBC_STATUS_OK;
 use crate::ffi::{
     types::ErrorPrivateData, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError,
-    FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement, FFI_AdbcStatusCode,
+    FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
 };
 use crate::options::{InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionValue};
 use crate::{Connection, Database, Driver, Optionable, Statement};
@@ -185,7 +185,7 @@ macro_rules! export_driver {
             version: std::os::raw::c_int,
             driver: *mut std::os::raw::c_void,
             error: *mut $crate::ffi::FFI_AdbcError,
-        ) -> $crate::ffi::FFI_AdbcStatusCode {
+        ) -> $crate::error::AdbcStatusCode {
             let version =
                 $crate::check_err!($crate::options::AdbcVersion::try_from(version), error);
             if version != $crate::options::AdbcVersion::V110 {
@@ -213,7 +213,7 @@ macro_rules! export_driver {
 /// Given a Result, either unwrap the value or handle the error in ADBC function.
 ///
 /// This macro is for use when implementing ADBC methods that have an out
-/// parameter for [FFI_AdbcError] and return [FFI_AdbcStatusCode]. If the result is
+/// parameter for [FFI_AdbcError] and return [AdbcStatusCode]. If the result is
 /// `Ok`, the expression resolves to the value. Otherwise, it will return early,
 /// setting the error and status code appropriately. In order for this to work,
 /// the error must be convertible to [crate::error::Error].
@@ -225,7 +225,7 @@ macro_rules! check_err {
             Ok(x) => x,
             Err(error) => {
                 let error = $crate::error::Error::from(error);
-                let status: $crate::ffi::FFI_AdbcStatusCode = error.status.into();
+                let status: $crate::error::AdbcStatusCode = error.status.into();
                 if !$err_out.is_null() {
                     let mut ffi_error =
                         $crate::ffi::FFI_AdbcError::try_from(error).unwrap_or_else(Into::into);
@@ -261,7 +261,7 @@ macro_rules! check_not_null {
 unsafe extern "C" fn release_ffi_driver(
     driver: *mut FFI_AdbcDriver,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     if let Some(driver) = driver.as_mut() {
         if driver.release.take().is_none() {
             check_err!(
@@ -477,7 +477,7 @@ unsafe fn database_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>
     key: *const c_char,
     value: Value,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     assert!(!database.is_null());
     assert!(!key.is_null());
 
@@ -499,7 +499,7 @@ unsafe fn database_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>
 unsafe extern "C" fn database_new<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
 
     let database = database.as_mut().unwrap();
@@ -512,7 +512,7 @@ unsafe extern "C" fn database_new<DriverType: Driver>(
 unsafe extern "C" fn database_init<DriverType: Driver + Default>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
 
     let exported = check_err!(database_private_data::<DriverType>(database), error);
@@ -537,7 +537,7 @@ unsafe extern "C" fn database_init<DriverType: Driver + Default>(
 unsafe extern "C" fn database_release<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
 
     let database = database.as_mut().unwrap();
@@ -562,7 +562,7 @@ unsafe extern "C" fn database_set_option<DriverType: Driver>(
     key: *const c_char,
     value: *const c_char,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -576,7 +576,7 @@ unsafe extern "C" fn database_set_option_int<DriverType: Driver>(
     key: *const c_char,
     value: i64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
     check_not_null!(key, error);
 
@@ -588,7 +588,7 @@ unsafe extern "C" fn database_set_option_double<DriverType: Driver>(
     key: *const c_char,
     value: f64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
     check_not_null!(key, error);
 
@@ -601,7 +601,7 @@ unsafe extern "C" fn database_set_option_bytes<DriverType: Driver>(
     value: *const u8,
     length: usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -616,7 +616,7 @@ unsafe extern "C" fn database_get_option<DriverType: Driver>(
     value: *mut c_char,
     length: *mut usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -637,7 +637,7 @@ unsafe extern "C" fn database_get_option_int<DriverType: Driver>(
     key: *const c_char,
     value: *mut i64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -656,7 +656,7 @@ unsafe extern "C" fn database_get_option_double<DriverType: Driver>(
     key: *const c_char,
     value: *mut f64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -676,7 +676,7 @@ unsafe extern "C" fn database_get_option_bytes<DriverType: Driver>(
     value: *mut u8,
     length: *mut usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(database, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -720,7 +720,7 @@ unsafe fn connection_set_option_impl<DriverType: Driver, Value: Into<OptionValue
     key: *const c_char,
     value: Value,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     assert!(!connection.is_null());
     assert!(!key.is_null());
 
@@ -742,7 +742,7 @@ unsafe fn connection_set_option_impl<DriverType: Driver, Value: Into<OptionValue
 unsafe extern "C" fn connection_new<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
 
     let connection = connection.as_mut().unwrap();
@@ -756,7 +756,7 @@ unsafe extern "C" fn connection_init<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(database, error);
 
@@ -791,7 +791,7 @@ unsafe extern "C" fn connection_init<DriverType: Driver>(
 unsafe extern "C" fn connection_release<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
 
     let connection = connection.as_mut().unwrap();
@@ -816,7 +816,7 @@ unsafe extern "C" fn connection_set_option<DriverType: Driver>(
     key: *const c_char,
     value: *const c_char,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -830,7 +830,7 @@ unsafe extern "C" fn connection_set_option_int<DriverType: Driver>(
     key: *const c_char,
     value: i64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(key, error);
 
@@ -842,7 +842,7 @@ unsafe extern "C" fn connection_set_option_double<DriverType: Driver>(
     key: *const c_char,
     value: f64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(key, error);
 
@@ -855,7 +855,7 @@ unsafe extern "C" fn connection_set_option_bytes<DriverType: Driver>(
     value: *const u8,
     length: usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -870,7 +870,7 @@ unsafe extern "C" fn connection_get_option<DriverType: Driver>(
     value: *mut c_char,
     length: *mut usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -891,7 +891,7 @@ unsafe extern "C" fn connection_get_option_int<DriverType: Driver>(
     key: *const c_char,
     value: *mut i64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -910,7 +910,7 @@ unsafe extern "C" fn connection_get_option_double<DriverType: Driver>(
     key: *const c_char,
     value: *mut f64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -930,7 +930,7 @@ unsafe extern "C" fn connection_get_option_bytes<DriverType: Driver>(
     value: *mut u8,
     length: *mut usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -950,7 +950,7 @@ unsafe extern "C" fn connection_get_table_types<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -972,7 +972,7 @@ unsafe extern "C" fn connection_get_table_schema<DriverType: Driver>(
     table_name: *const c_char,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(table_name, error);
     check_not_null!(schema, error);
@@ -998,7 +998,7 @@ unsafe extern "C" fn connection_get_info<DriverType: Driver + 'static>(
     info_codes_length: usize,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -1026,7 +1026,7 @@ unsafe extern "C" fn connection_get_info<DriverType: Driver + 'static>(
 unsafe extern "C" fn connection_commit<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
@@ -1039,7 +1039,7 @@ unsafe extern "C" fn connection_commit<DriverType: Driver>(
 unsafe extern "C" fn connection_rollback<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
@@ -1052,7 +1052,7 @@ unsafe extern "C" fn connection_rollback<DriverType: Driver>(
 unsafe extern "C" fn connection_cancel<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
@@ -1066,7 +1066,7 @@ unsafe extern "C" fn connection_get_statistic_names<DriverType: Driver + 'static
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -1087,7 +1087,7 @@ unsafe extern "C" fn connection_read_partition<DriverType: Driver + 'static>(
     serialized_length: usize,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(serialized_partition, error);
     check_not_null!(out, error);
@@ -1112,7 +1112,7 @@ unsafe extern "C" fn connection_get_statistics<DriverType: Driver + 'static>(
     approximate: c_char,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -1143,7 +1143,7 @@ unsafe extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
     column_name: *const c_char,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(out, error);
 
@@ -1206,7 +1206,7 @@ unsafe fn statement_set_option_impl<DriverType: Driver, Value: Into<OptionValue>
     key: *const c_char,
     value: Value,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     assert!(!statement.is_null());
     assert!(!key.is_null());
 
@@ -1220,7 +1220,7 @@ unsafe extern "C" fn statement_new<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(connection, error);
     check_not_null!(statement, error);
 
@@ -1239,7 +1239,7 @@ unsafe extern "C" fn statement_new<DriverType: Driver>(
 unsafe extern "C" fn statement_release<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
 
     let statement = statement.as_mut().unwrap();
@@ -1264,7 +1264,7 @@ unsafe extern "C" fn statement_set_option<DriverType: Driver>(
     key: *const c_char,
     value: *const c_char,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -1278,7 +1278,7 @@ unsafe extern "C" fn statement_set_option_int<DriverType: Driver>(
     key: *const c_char,
     value: i64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(key, error);
 
@@ -1290,7 +1290,7 @@ unsafe extern "C" fn statement_set_option_double<DriverType: Driver>(
     key: *const c_char,
     value: f64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(key, error);
 
@@ -1303,7 +1303,7 @@ unsafe extern "C" fn statement_set_option_bytes<DriverType: Driver>(
     value: *const u8,
     length: usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -1318,7 +1318,7 @@ unsafe extern "C" fn statement_get_option<DriverType: Driver>(
     value: *mut c_char,
     length: *mut usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -1337,7 +1337,7 @@ unsafe extern "C" fn statement_get_option_int<DriverType: Driver>(
     key: *const c_char,
     value: *mut i64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -1354,7 +1354,7 @@ unsafe extern "C" fn statement_get_option_double<DriverType: Driver>(
     key: *const c_char,
     value: *mut f64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -1372,7 +1372,7 @@ unsafe extern "C" fn statement_get_option_bytes<DriverType: Driver>(
     value: *mut u8,
     length: *mut usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(key, error);
     check_not_null!(value, error);
@@ -1390,7 +1390,7 @@ unsafe extern "C" fn statement_bind<DriverType: Driver>(
     values: *mut FFI_ArrowArray,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(values, error);
     check_not_null!(schema, error);
@@ -1422,7 +1422,7 @@ unsafe extern "C" fn statement_bind_stream<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     stream: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(stream, error);
 
@@ -1439,7 +1439,7 @@ unsafe extern "C" fn statement_bind_stream<DriverType: Driver>(
 unsafe extern "C" fn statement_cancel<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
@@ -1455,7 +1455,7 @@ unsafe extern "C" fn statement_execute_query<DriverType: Driver + 'static>(
     out: *mut FFI_ArrowArrayStream,
     rows_affected: *mut i64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
@@ -1480,7 +1480,7 @@ unsafe extern "C" fn statement_execute_schema<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(schema, error);
 
@@ -1500,7 +1500,7 @@ unsafe extern "C" fn statement_execute_partitions<DriverType: Driver>(
     partitions: *mut FFI_AdbcPartitions,
     rows_affected: *mut i64,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(schema, error);
     check_not_null!(partitions, error);
@@ -1526,7 +1526,7 @@ unsafe extern "C" fn statement_execute_partitions<DriverType: Driver>(
 unsafe extern "C" fn statement_prepare<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
 
     let exported = check_err!(statement_private_data::<DriverType>(statement), error);
@@ -1539,7 +1539,7 @@ unsafe extern "C" fn statement_set_sql_query<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     query: *const c_char,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(query, error);
 
@@ -1557,7 +1557,7 @@ unsafe extern "C" fn statement_set_substrait_plan<DriverType: Driver>(
     plan: *const u8,
     length: usize,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(plan, error);
 
@@ -1574,7 +1574,7 @@ unsafe extern "C" fn statement_get_parameter_schema<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
-) -> FFI_AdbcStatusCode {
+) -> AdbcStatusCode {
     check_not_null!(statement, error);
     check_not_null!(schema, error);
 

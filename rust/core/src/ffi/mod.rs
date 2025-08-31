@@ -21,6 +21,6 @@ pub mod constants;
 pub mod methods;
 pub(crate) mod types;
 pub use types::{
-    driver_method, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcDriverInitFunc,
-    FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement, FFI_AdbcStatusCode,
+    FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcDriverInitFunc,
+    FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
 };

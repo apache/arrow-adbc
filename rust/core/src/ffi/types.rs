@@ -24,15 +24,13 @@ use std::ptr::{null, null_mut};
 
 use super::{constants, methods};
 use crate::{
-    error::{Error, Status},
+    error::{Error, Status, AdbcStatusCode},
     Partitions,
 };
 
-pub type FFI_AdbcStatusCode = u8;
-
 /// A driver initialization function.
 pub type FFI_AdbcDriverInitFunc =
-    unsafe extern "C" fn(c_int, *mut c_void, *mut FFI_AdbcError) -> FFI_AdbcStatusCode;
+    unsafe extern "C" fn(c_int, *mut c_void, *mut FFI_AdbcError) -> AdbcStatusCode;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -134,7 +132,7 @@ pub struct FFI_AdbcDriver {
     /// it need not have a value even if the driver is initialized).
     pub(crate) private_manager: *const c_void,
     pub(crate) release: Option<
-        unsafe extern "C" fn(driver: *mut Self, error: *mut FFI_AdbcError) -> FFI_AdbcStatusCode,
+        unsafe extern "C" fn(driver: *mut Self, error: *mut FFI_AdbcError) -> AdbcStatusCode,
     >,
     pub DatabaseInit: Option<methods::FuncDatabaseInit>,
     pub DatabaseNew: Option<methods::FuncDatabaseNew>,
@@ -203,64 +201,6 @@ macro_rules! driver_method {
     ($driver:expr, $method:ident) => {
         $driver.$method.unwrap_or($crate::ffi::methods::$method)
     };
-}
-
-pub use driver_method;
-
-impl TryFrom<FFI_AdbcStatusCode> for Status {
-    type Error = Error;
-
-    fn try_from(value: FFI_AdbcStatusCode) -> Result<Self, Error> {
-        match value {
-            constants::ADBC_STATUS_OK => Ok(Status::Ok),
-            constants::ADBC_STATUS_UNKNOWN => Ok(Status::Unknown),
-            constants::ADBC_STATUS_NOT_IMPLEMENTED => Ok(Status::NotImplemented),
-            constants::ADBC_STATUS_NOT_FOUND => Ok(Status::NotFound),
-            constants::ADBC_STATUS_ALREADY_EXISTS => Ok(Status::AlreadyExists),
-            constants::ADBC_STATUS_INVALID_ARGUMENT => Ok(Status::InvalidArguments),
-            constants::ADBC_STATUS_INVALID_STATE => Ok(Status::InvalidState),
-            constants::ADBC_STATUS_INVALID_DATA => Ok(Status::InvalidData),
-            constants::ADBC_STATUS_INTEGRITY => Ok(Status::Integrity),
-            constants::ADBC_STATUS_INTERNAL => Ok(Status::Internal),
-            constants::ADBC_STATUS_IO => Ok(Status::IO),
-            constants::ADBC_STATUS_CANCELLED => Ok(Status::Cancelled),
-            constants::ADBC_STATUS_TIMEOUT => Ok(Status::Timeout),
-            constants::ADBC_STATUS_UNAUTHENTICATED => Ok(Status::Unauthenticated),
-            constants::ADBC_STATUS_UNAUTHORIZED => Ok(Status::Unauthorized),
-            v => Err(Error::with_message_and_status(
-                format!("Unknown status code: {v}"),
-                Status::InvalidData,
-            )),
-        }
-    }
-}
-
-impl From<Status> for FFI_AdbcStatusCode {
-    fn from(value: Status) -> Self {
-        match value {
-            Status::Ok => constants::ADBC_STATUS_OK,
-            Status::Unknown => constants::ADBC_STATUS_UNKNOWN,
-            Status::NotImplemented => constants::ADBC_STATUS_NOT_IMPLEMENTED,
-            Status::NotFound => constants::ADBC_STATUS_NOT_FOUND,
-            Status::AlreadyExists => constants::ADBC_STATUS_ALREADY_EXISTS,
-            Status::InvalidArguments => constants::ADBC_STATUS_INVALID_ARGUMENT,
-            Status::InvalidState => constants::ADBC_STATUS_INVALID_STATE,
-            Status::InvalidData => constants::ADBC_STATUS_INVALID_DATA,
-            Status::Integrity => constants::ADBC_STATUS_INTEGRITY,
-            Status::Internal => constants::ADBC_STATUS_INTERNAL,
-            Status::IO => constants::ADBC_STATUS_IO,
-            Status::Cancelled => constants::ADBC_STATUS_CANCELLED,
-            Status::Timeout => constants::ADBC_STATUS_TIMEOUT,
-            Status::Unauthenticated => constants::ADBC_STATUS_UNAUTHENTICATED,
-            Status::Unauthorized => constants::ADBC_STATUS_UNAUTHORIZED,
-        }
-    }
-}
-
-impl From<&Status> for FFI_AdbcStatusCode {
-    fn from(value: &Status) -> Self {
-        (*value).into()
-    }
 }
 
 impl From<FFI_AdbcPartitions> for Partitions {
