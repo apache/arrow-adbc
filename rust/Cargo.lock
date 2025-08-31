@@ -30,6 +30,7 @@ name = "adbc_driver_manager"
 version = "0.20.0"
 dependencies = [
  "adbc_core",
+ "adbc_ffi",
  "arrow-array",
  "arrow-schema",
  "arrow-select",
