@@ -194,7 +194,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Set an additional manifest search path list for the driver manager. </p>
-<p>This is an extension to the ADBC API. The driver manager shims the AdbcDatabase* functions to allow you to specify the driver/entrypoint dynamically. This function lets you explicitly set a path list at runtime for additional paths to search when looking for a driver manifest. While users can add additional paths via the ADBC_CONFIG_PATH environment variable, this allows an application to specify search paths at runtime which are not tied to the load flags.</p>
+<p>This is an extension to the ADBC API. The driver manager shims the AdbcDatabase* functions to allow you to specify the driver/entrypoint dynamically. This function lets you explicitly set a path list at runtime for additional paths to search when looking for a driver manifest. While users can add additional paths via the ADBC_DRIVER_PATH environment variable, this allows an application to specify search paths at runtime which are not tied to the load flags.</p>
 <p>Calling this function with NULL as the <code>path_list</code> will clear any previously set additional search paths. </p>
 
 </div>
@@ -310,7 +310,7 @@ Functions</h2></td></tr>
 <li>If the path has an extension other than <code>.toml</code>, it will attempt to load the path as a shared library. Erroring if this fails.</li>
 </ul>
 <p>If the passed in driver_name does not have an extension and is not an absolute path:</p><ul>
-<li>The load_options parameter will control whether the driver manager will search the environment variable ADBC_CONFIG_PATH and (if built or installed with conda) the conda environment, the user-level configuration, and/or the system-level configuration for either a manifest file or a shared library.</li>
+<li>The load_options parameter will control whether the driver manager will search the environment variable ADBC_DRIVER_PATH and (if built or installed with conda) the conda environment, the user-level configuration, and/or the system-level configuration for either a manifest file or a shared library.</li>
 <li>For each path to be searched, it will first look for &lt;path&gt;/&lt;driver_name&gt;.toml. If that file exists, it will attempt to parse the manifest and load the driver specified within it, erroring if this fails.</li>
 <li>If the manifest file does not exist, it will then look for &lt;path&gt;/&lt;driver_name&gt;.&lt;extension&gt; where &lt;extension&gt; is one of the following: <code>.so</code>, <code>.dll</code>, <code>.dylib</code>. If it can load that shared library, then success is returned. Otherwise it moves to the next directory until the search is either successful, or all directories have been searched.</li>
 </ul>

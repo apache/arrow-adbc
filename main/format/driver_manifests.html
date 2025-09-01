@@ -748,7 +748,7 @@ C/C++</label><div class="sd-tab-content docutils">
 <p>The type <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#aa16189c0130657033e15736baf973d48" title="(in ADBC C vversion)"><code class="xref c c-type docutils literal notranslate"><span class="pre">AdbcLoadFlags</span></code></a> is a set of bitflags to control the directories to be searched. The flags are</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#af7c295dbe97a76960e2187057fa9a10c" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_ENV</span></code></a> - search the directory paths in the environment variable
-<code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> and (when built or installed with conda) search in the conda environment</p></li>
+<code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> and (when built or installed with conda) search in the conda environment</p></li>
 <li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ab2af3e195d718476a218b9ce82ed9898" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_USER</span></code></a> - search the user configuration directory</p></li>
 <li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#aa4fcbd5a0fec49eafc2ca41397b868af" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_SYSTEM</span></code></a> - search the system configuration directory</p></li>
 <li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ab160ff0074d08d2a434ae1c89b7977aa" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS</span></code></a> - allow a relative path to be provided</p></li>
@@ -762,7 +762,7 @@ GLib</label><div class="sd-tab-content docutils">
 <p>The type <code class="docutils literal notranslate"><span class="pre">GADBCLoadFlags</span></code> is a set of bitflags to control the directories to be searched. The flags are</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_SEARCH_ENV</span></code> - search the directory paths in the environment variable
-<code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> and (when built or installed with conda) search in the conda environment</p></li>
+<code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> and (when built or installed with conda) search in the conda environment</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_SEARCH_USER</span></code> - search the user configuration directory</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_SEARCH_SYSTEM</span></code> - search the system configuration directory</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS</span></code> - allow a relative path to be provided</p></li>
@@ -779,7 +779,7 @@ configuration directory, and system configuration directory. You can set the fla
 or <code class="docutils literal notranslate"><span class="pre">NewDatabaseWithContext</span></code>. The flags are defined in the <code class="docutils literal notranslate"><span class="pre">drivermgr</span></code> package as constants:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsSearchEnv</span></code> - search the directory paths in the environment variable
-<code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code></p></li>
+<code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsSearchUser</span></code> - search the user configuration directory</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsSearchSystem</span></code> - search the system configuration directory</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsAllowRelativePaths</span></code> - allow a relative path to be used</p></li>
@@ -804,7 +804,7 @@ Ruby</label><div class="sd-tab-content docutils">
 <p>The class <code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags</span></code> is a set of bitflags to control the directories to be searched. The flags are</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_ENV</span></code> - search the directory paths in the environment variable
-<code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> and (when built or installed with conda) search in the conda environment</p></li>
+<code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> and (when built or installed with conda) search in the conda environment</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_USER</span></code> - search the user configuration directory</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_SYSTEM</span></code> - search the system configuration directory</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::ALLOW_RELATIVE_PATHS</span></code> - allow a relative path to be provided</p></li>
@@ -821,7 +821,7 @@ Rust</label><div class="sd-tab-content docutils">
 the type <code class="docutils literal notranslate"><span class="pre">adbc_core::driver_manager::LoadFlags</span></code>, which has the following constants:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> - search the directory paths in the environment variable
-<code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> and (when built or installed with conda) search in the conda environment</p></li>
+<code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> and (when built or installed with conda) search in the conda environment</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_USER</span></code> - search the user configuration directory</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_SYSTEM</span></code> - search the system configuration directory</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_ALLOW_RELATIVE_PATHS</span></code> - allow a relative path to be used</p></li>
@@ -834,11 +834,11 @@ the type <code class="docutils literal notranslate"><span class="pre">adbc_core:
 <p>For Unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
 the given order:</p>
 <ol class="arabic simple">
-<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the paths in the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> will be searched</p></li>
+<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the paths in the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> will be searched</p></li>
 </ol>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> is a colon-separated list of directories</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> is a colon-separated list of directories</p></li>
 </ul>
 </div></blockquote>
 <ol class="arabic simple">
@@ -868,11 +868,11 @@ will search <code class="docutils literal notranslate"><span class="pre">$XDG_CO
 <p>Things are slightly different on Windows, where the driver manager will also search for driver information in the registry just as
 would happen for ODBC drivers. The search for a manifest on Windows would be the following:</p>
 <ol class="arabic simple">
-<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the paths in the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> will be searched</p></li>
+<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the paths in the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> will be searched</p></li>
 </ol>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">ADBC_CONFIG_PATH</span></code> is a semicolon-separated list of directories</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> is a semicolon-separated list of directories</p></li>
 </ul>
 </div></blockquote>
 <ol class="arabic simple">
