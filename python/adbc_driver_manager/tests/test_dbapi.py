@@ -314,6 +314,7 @@ def test_execute_parameters(sqlite, parameters):
         assert cur.fetchall() == [(2.0, 2)]
 
 
+@pytest.mark.sqlite
 def test_execute_parameters_name(sqlite):
     with sqlite.cursor() as cur:
         cur.execute("SELECT @a + 1, @b", {"@b": 2, "@a": 1})
@@ -330,6 +331,23 @@ def test_execute_parameters_name(sqlite):
         cur.adbc_ingest("ingest_tester", data)
         cur.execute("SELECT * FROM ingest_tester")
         assert cur.fetchall() == [(1.0, 2)]
+
+
+@pytest.mark.sqlite
+def test_executemany_parameters_name(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("CREATE TABLE executemany_params (a, b)")
+
+        cur.executemany(
+            "INSERT INTO executemany_params VALUES (@a, @b)",
+            [{"@b": 2, "@a": 1}, {"@b": 3, "@a": 2}],
+        )
+        cur.executemany(
+            "INSERT INTO executemany_params VALUES (?, ?)", [(3, 4), (4, 5)]
+        )
+
+        cur.execute("SELECT * FROM executemany_params ORDER BY a ASC")
+        assert cur.fetchall() == [(1, 2), (2, 3), (3, 4), (4, 5)]
 
 
 @pytest.mark.sqlite

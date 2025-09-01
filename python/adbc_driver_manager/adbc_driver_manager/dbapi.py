@@ -782,14 +782,25 @@ class Cursor(_Closeable):
             self._stmt.set_sql_query(operation)
             self._stmt.prepare()
 
+        bind_by_name = None
         if _is_arrow_data(seq_of_parameters):
             arrow_parameters = seq_of_parameters
         elif seq_of_parameters:
-            arrow_parameters = self._conn._backend.convert_executemany_parameters(
-                seq_of_parameters
+            arrow_parameters, bind_by_name = (
+                self._conn._backend.convert_executemany_parameters(seq_of_parameters)
             )
         else:
             arrow_parameters = None
+
+        if bind_by_name is not None and bind_by_name != self._bind_by_name:
+            self._stmt.set_options(
+                **{
+                    adbc_driver_manager.StatementOptions.BIND_BY_NAME.value: (
+                        "true" if bind_by_name else "false"
+                    ),
+                }
+            )
+            self._bind_by_name = bind_by_name
 
         if arrow_parameters is not None:
             self._bind(arrow_parameters)
