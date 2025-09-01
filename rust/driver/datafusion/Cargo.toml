@@ -49,4 +49,4 @@ crate-type = ["lib", "cdylib"]
 
 [features]
 default = []
-ffi = ["adbc_ffi"]
+ffi = ["dep:adbc_ffi"]
