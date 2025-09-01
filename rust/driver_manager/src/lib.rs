@@ -501,7 +501,7 @@ impl ManagedDriver {
             }
         }
 
-        // the logic we want is that we first search ADBC_CONFIG_PATH if set,
+        // the logic we want is that we first search ADBC_DRIVER_PATH if set,
         // then we search the additional search paths if they exist. Finally,
         // we will search CONDA_PREFIX if built with conda_build before moving on.
         if let Some(additional_search_paths) = additional_search_paths {
@@ -1823,7 +1823,7 @@ fn system_config_dir() -> Option<PathBuf> {
 fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     let mut result = Vec::new();
     if lvls & LOAD_FLAG_SEARCH_ENV != 0 {
-        if let Some(paths) = env::var_os("ADBC_CONFIG_PATH") {
+        if let Some(paths) = env::var_os("ADBC_DRIVER_PATH") {
             for p in env::split_paths(&paths) {
                 result.push(p);
             }
@@ -1993,7 +1993,7 @@ mod tests {
     #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
     fn test_load_driver_env() {
         // ensure that we fail without the env var set
-        with_var_unset("ADBC_CONFIG_PATH", || {
+        with_var_unset("ADBC_DRIVER_PATH", || {
             let err = ManagedDriver::load_from_name(
                 "sqlite",
                 None,
@@ -2009,7 +2009,7 @@ mod tests {
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
         with_var(
-            "ADBC_CONFIG_PATH",
+            "ADBC_DRIVER_PATH",
             Some(manifest_path.parent().unwrap().as_os_str()),
             || {
                 ManagedDriver::load_from_name(
@@ -2041,7 +2041,7 @@ mod tests {
         ])
         .unwrap();
 
-        with_var("ADBC_CONFIG_PATH", Some(&path_os_string), || {
+        with_var("ADBC_DRIVER_PATH", Some(&path_os_string), || {
             ManagedDriver::load_from_name(
                 "sqlite",
                 None,
@@ -2064,7 +2064,7 @@ mod tests {
         let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
 
         with_var(
-            "ADBC_CONFIG_PATH",
+            "ADBC_DRIVER_PATH",
             Some(manifest_path.parent().unwrap().as_os_str()),
             || {
                 ManagedDriver::load_from_name(
@@ -2091,7 +2091,7 @@ mod tests {
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
         with_var(
-            "ADBC_CONFIG_PATH",
+            "ADBC_DRIVER_PATH",
             Some(manifest_path.parent().unwrap().as_os_str()),
             || {
                 let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;

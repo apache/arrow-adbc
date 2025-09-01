@@ -81,7 +81,7 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 ///
 /// If the passed in driver_name does not have an extension and is not an absolute path:
 /// - The load_options parameter will control whether the driver manager will search the
-///   environment variable ADBC_CONFIG_PATH and (if built or installed with conda) the
+///   environment variable ADBC_DRIVER_PATH and (if built or installed with conda) the
 ///   conda environment, the user-level configuration, and/or the system-level
 ///   configuration for either a manifest file or a shared library.
 /// - For each path to be searched, it will first look for <path>/<driver_name>.toml. If
@@ -161,7 +161,7 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetLoadFlags(struct AdbcDatabase* databa
 /// driver/entrypoint dynamically. This function lets you explicitly
 /// set a path list at runtime for additional paths to search when
 /// looking for a driver manifest. While users can add additional
-/// paths via the ADBC_CONFIG_PATH environment variable, this allows
+/// paths via the ADBC_DRIVER_PATH environment variable, this allows
 /// an application to specify search paths at runtime which are not tied
 /// to the load flags.
 ///

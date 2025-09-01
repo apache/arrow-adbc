@@ -28,7 +28,7 @@ G_BEGIN_DECLS
 /**
  * GADBCLoadFlags:
  * @GADBC_LOAD_SEARCH_ENV: Search the directory paths in the environment
- * variable ADBC_CONFIG_PATH and (when built or installed with conda)
+ * variable ADBC_DRIVER_PATH and (when built or installed with conda)
  * search in the conda environment
  * @GADBC_LOAD_SEARCH_USER: Search the user configuration directory.
  * @GADBC_LOAD_SEARCH_SYSTEM: Search the system configuration directory.
