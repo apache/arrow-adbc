@@ -25,8 +25,8 @@
 //!
 //! Read more about ADBC at <https://arrow.apache.org/adbc/>
 //!
-//! This library currently provides:
-//! - An abstract Rust API to be implemented by vendor-specific drivers.
+//! The `core` library currently provides the basic types shared by vendor-specific drivers,
+//! the driver manager, and the driver exporter.
 //!
 //! # Native Rust drivers
 //!
