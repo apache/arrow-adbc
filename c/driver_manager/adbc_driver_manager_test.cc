@@ -678,7 +678,7 @@ TEST_F(DriverManifest, LoadUserLevelManifest) {
 }
 #endif
 
-// only build and run test that creates / adds a file to /etc/adbc if
+// only build and run test that creates / adds a file to /etc/adbc/drivers if
 // it's been enabled via the build system setting this compile def
 #ifdef ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL
 TEST_F(DriverManifest, LoadSystemLevelManifest) {
@@ -686,7 +686,7 @@ TEST_F(DriverManifest, LoadSystemLevelManifest) {
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
-  auto system_config_dir = std::filesystem::path("/etc/adbc");
+  auto system_config_dir = std::filesystem::path("/etc/adbc/drivers");
   bool created = false;
   if (!std::filesystem::exists(system_config_dir)) {
     ASSERT_TRUE(std::filesystem::create_directories(system_config_dir));
