@@ -17,36 +17,33 @@
 
 #![allow(refining_impl_trait)]
 
-use adbc_core::ffi::constants;
-use datafusion::dataframe::DataFrameWriteOptions;
-use datafusion::datasource::TableType;
-use datafusion::prelude::*;
-use datafusion_substrait::logical_plan::consumer::from_substrait_plan;
-use datafusion_substrait::substrait::proto::Plan;
-use prost::Message;
-use std::fmt::Debug;
-use std::sync::Arc;
-use std::vec::IntoIter;
-use tokio::runtime::Runtime;
-
-use arrow_array::builder::{
-    BooleanBuilder, Int32Builder, Int64Builder, ListBuilder, MapBuilder, MapFieldNames,
-    StringBuilder, UInt32Builder,
-};
-use arrow_array::{
-    ArrayRef, BooleanArray, Int16Array, Int32Array, ListArray, RecordBatch, RecordBatchReader,
-    StringArray, StructArray, UnionArray,
-};
-use arrow_buffer::{OffsetBuffer, ScalarBuffer};
-use arrow_schema::{ArrowError, DataType, Field, SchemaRef};
-
 use adbc_core::{
     error::{Error, Result, Status},
+    ffi::constants,
     options::{
         InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement, OptionValue,
     },
-    schemas, Connection, Database, Driver, Optionable, Statement,
+    schemas, Connection, Database, Driver, Optionable, PartitionedResult, Statement,
 };
+use datafusion::{
+    arrow::{
+        array::{
+            ArrayRef, BooleanArray, BooleanBuilder, Int16Array, Int32Array, Int32Builder,
+            Int64Builder, ListArray, ListBuilder, MapBuilder, MapFieldNames, RecordBatch,
+            RecordBatchReader, StringArray, StringBuilder, StructArray, UInt32Builder, UnionArray,
+        },
+        buffer::{OffsetBuffer, ScalarBuffer},
+        datatypes::{DataType, Field, Schema, SchemaRef},
+        error::ArrowError,
+    },
+    dataframe::DataFrameWriteOptions,
+    datasource::TableType,
+    prelude::*,
+};
+use datafusion_substrait::{logical_plan::consumer::from_substrait_plan, substrait::proto::Plan};
+use prost::Message;
+use std::{fmt::Debug, sync::Arc, vec::IntoIter};
+use tokio::runtime::Runtime;
 
 #[derive(Debug)]
 pub struct SingleBatchReader {
@@ -126,7 +123,7 @@ impl Driver for DataFusionDriver {
                 adbc_core::options::OptionValue,
             ),
         >,
-    ) -> adbc_core::error::Result<Self::DatabaseType> {
+    ) -> Result<Self::DatabaseType> {
         let mut database = Self::DatabaseType {};
         for (key, value) in opts {
             database.set_option(key, value)?;
@@ -144,35 +141,35 @@ impl Optionable for DataFusionDatabase {
         &mut self,
         key: Self::Option,
         _value: adbc_core::options::OptionValue,
-    ) -> adbc_core::error::Result<()> {
+    ) -> Result<()> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
@@ -205,7 +202,7 @@ impl Database for DataFusionDatabase {
                 adbc_core::options::OptionValue,
             ),
         >,
-    ) -> adbc_core::error::Result<Self::ConnectionType> {
+    ) -> Result<Self::ConnectionType> {
         let ctx = SessionContext::new();
 
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -238,7 +235,7 @@ impl Optionable for DataFusionConnection {
         &mut self,
         key: Self::Option,
         value: adbc_core::options::OptionValue,
-    ) -> adbc_core::error::Result<()> {
+    ) -> Result<()> {
         match key.as_ref() {
             constants::ADBC_CONNECTION_OPTION_CURRENT_CATALOG => match value {
                 OptionValue::String(value) => {
@@ -273,7 +270,7 @@ impl Optionable for DataFusionConnection {
         }
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
         match key.as_ref() {
             constants::ADBC_CONNECTION_OPTION_CURRENT_CATALOG => Ok(self
                 .ctx
@@ -296,21 +293,21 @@ impl Optionable for DataFusionConnection {
         }
     }
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
@@ -691,7 +688,7 @@ impl GetObjectsBuilder {
 impl Connection for DataFusionConnection {
     type StatementType = DataFusionStatement;
 
-    fn new_statement(&mut self) -> adbc_core::error::Result<Self::StatementType> {
+    fn new_statement(&mut self) -> Result<Self::StatementType> {
         Ok(DataFusionStatement {
             runtime: self.runtime.clone(),
             ctx: self.ctx.clone(),
@@ -702,7 +699,7 @@ impl Connection for DataFusionConnection {
         })
     }
 
-    fn cancel(&mut self) -> adbc_core::error::Result<()> {
+    fn cancel(&mut self) -> Result<()> {
         todo!()
     }
 
@@ -744,7 +741,7 @@ impl Connection for DataFusionConnection {
         _catalog: Option<&str>,
         _db_schema: Option<&str>,
         _table_name: &str,
-    ) -> adbc_core::error::Result<arrow_schema::Schema> {
+    ) -> Result<Schema> {
         todo!()
     }
 
@@ -766,11 +763,11 @@ impl Connection for DataFusionConnection {
         todo!()
     }
 
-    fn commit(&mut self) -> adbc_core::error::Result<()> {
+    fn commit(&mut self) -> Result<()> {
         todo!()
     }
 
-    fn rollback(&mut self) -> adbc_core::error::Result<()> {
+    fn rollback(&mut self) -> Result<()> {
         todo!()
     }
 
@@ -795,7 +792,7 @@ impl Optionable for DataFusionStatement {
         &mut self,
         key: Self::Option,
         value: adbc_core::options::OptionValue,
-    ) -> adbc_core::error::Result<()> {
+    ) -> Result<()> {
         match key.as_ref() {
             constants::ADBC_INGEST_OPTION_TARGET_TABLE => match value {
                 OptionValue::String(value) => {
@@ -814,7 +811,7 @@ impl Optionable for DataFusionStatement {
         }
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
         match key.as_ref() {
             constants::ADBC_INGEST_OPTION_TARGET_TABLE => {
                 let target_table = self.ingest_target_table.clone();
@@ -833,21 +830,21 @@ impl Optionable for DataFusionStatement {
         }
     }
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
@@ -856,15 +853,12 @@ impl Optionable for DataFusionStatement {
 }
 
 impl Statement for DataFusionStatement {
-    fn bind(&mut self, batch: arrow_array::RecordBatch) -> adbc_core::error::Result<()> {
+    fn bind(&mut self, batch: RecordBatch) -> Result<()> {
         self.bound_record_batch.replace(batch);
         Ok(())
     }
 
-    fn bind_stream(
-        &mut self,
-        _reader: Box<dyn arrow_array::RecordBatchReader + Send>,
-    ) -> adbc_core::error::Result<()> {
+    fn bind_stream(&mut self, _reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
         todo!()
     }
 
@@ -887,7 +881,7 @@ impl Statement for DataFusionStatement {
         })
     }
 
-    fn execute_update(&mut self) -> adbc_core::error::Result<Option<i64>> {
+    fn execute_update(&mut self) -> Result<Option<i64>> {
         if self.sql_query.is_some() {
             self.runtime.block_on(async {
                 let _ = self
@@ -915,7 +909,7 @@ impl Statement for DataFusionStatement {
         Ok(Some(0))
     }
 
-    fn execute_schema(&mut self) -> adbc_core::error::Result<arrow_schema::Schema> {
+    fn execute_schema(&mut self) -> Result<Schema> {
         self.runtime.block_on(async {
             let df = self
                 .ctx
@@ -927,29 +921,29 @@ impl Statement for DataFusionStatement {
         })
     }
 
-    fn execute_partitions(&mut self) -> adbc_core::error::Result<adbc_core::PartitionedResult> {
+    fn execute_partitions(&mut self) -> Result<PartitionedResult> {
         todo!()
     }
 
-    fn get_parameter_schema(&self) -> adbc_core::error::Result<arrow_schema::Schema> {
+    fn get_parameter_schema(&self) -> Result<Schema> {
         todo!()
     }
 
-    fn prepare(&mut self) -> adbc_core::error::Result<()> {
+    fn prepare(&mut self) -> Result<()> {
         todo!()
     }
 
-    fn set_sql_query(&mut self, query: impl AsRef<str>) -> adbc_core::error::Result<()> {
+    fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()> {
         self.sql_query = Some(query.as_ref().to_string());
         Ok(())
     }
 
-    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> adbc_core::error::Result<()> {
+    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()> {
         self.substrait_plan = Some(Plan::decode(plan.as_ref()).unwrap());
         Ok(())
     }
 
-    fn cancel(&mut self) -> adbc_core::error::Result<()> {
+    fn cancel(&mut self) -> Result<()> {
         todo!()
     }
 }

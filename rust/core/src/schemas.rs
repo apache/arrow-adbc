@@ -19,7 +19,7 @@
 
 use std::sync::{Arc, LazyLock};
 
-use arrow_schema::{DataType, Field, Schema, SchemaRef, UnionFields, UnionMode};
+use crate::arrow::arrow_schema::{DataType, Field, Schema, SchemaRef, UnionFields, UnionMode};
 
 /// Schema of the data returned by [get_table_types][crate::Connection::get_table_types].
 pub static GET_TABLE_TYPES_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
