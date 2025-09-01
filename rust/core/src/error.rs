@@ -207,9 +207,3 @@ impl From<Status> for AdbcStatusCode {
         }
     }
 }
-
-impl From<&Status> for AdbcStatusCode {
-    fn from(value: &Status) -> Self {
-        (*value).into()
-    }
-}
