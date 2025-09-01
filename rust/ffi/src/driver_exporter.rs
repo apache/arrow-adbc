@@ -26,8 +26,8 @@ use arrow_array::StructArray;
 use arrow_schema::DataType;
 
 use super::{
-    types::ErrorPrivateData, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError,
-    FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
+    types::ErrorPrivateData, utils::get_opt_name, FFI_AdbcConnection, FFI_AdbcDatabase,
+    FFI_AdbcDriver, FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
 };
 use adbc_core::constants::ADBC_STATUS_OK;
 use adbc_core::error::{AdbcStatusCode, Error, Result, Status};
@@ -326,7 +326,7 @@ where
             let err = Error::with_message_and_status(
                 format!(
                     "Option value for key {key:?} has wrong type (got={}, expected=Int)",
-                    optvalue.get_type()
+                    get_opt_name(optvalue)
                 ),
                 Status::InvalidState,
             );
@@ -365,7 +365,7 @@ where
             let err = Error::with_message_and_status(
                 format!(
                     "Option value for key {key:?} has wrong type (got={}, expected=Double)",
-                    optvalue.get_type()
+                    get_opt_name(optvalue)
                 ),
                 Status::InvalidState,
             );
@@ -404,7 +404,7 @@ where
             let err = Error::with_message_and_status(
                 format!(
                     "Option value for key {key:?} has wrong type (got={}, expected=String)",
-                    optvalue.get_type()
+                    get_opt_name(optvalue)
                 ),
                 Status::InvalidState,
             );
@@ -443,7 +443,7 @@ where
             let err = Error::with_message_and_status(
                 format!(
                     "Option value for key {key:?} has wrong type (got={}, expected=Bytes)",
-                    optvalue.get_type()
+                    get_opt_name(optvalue)
                 ),
                 Status::InvalidState,
             );

@@ -35,18 +35,6 @@ pub enum OptionValue {
     Double(f64),
 }
 
-impl OptionValue {
-    /// Gets the data type of the option's value.
-    pub fn get_type(&self) -> &str {
-        match self {
-            Self::String(_) => "String",
-            Self::Bytes(_) => "Bytes",
-            Self::Int(_) => "Int",
-            Self::Double(_) => "Double",
-        }
-    }
-}
-
 impl From<String> for OptionValue {
     fn from(value: String) -> Self {
         Self::String(value)
