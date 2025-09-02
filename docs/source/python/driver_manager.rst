@@ -45,9 +45,14 @@ such as ``adbc_driver_postgresql``.
 With the driver-specific packages, you connect to the target database with the
 ``connect`` method provided by the package you're using.  For example,
 :func:`adbc_driver_postgresql.connect` or :func:`adbc_driver_sqlite.connect`.
+The driver shared library is bundled with the respective package and loaded
+invisibly for the user.
 
 With the driver manager package, you use a single package and API regardless of
-the database you're connecting to.
+the database you're connecting to. However, the user must install the driver for
+their database as a separate step. :term:`Driver manifests <driver manifest>`
+are a first step in making this experience better for users but more work is
+planned to make this as straightforward as using driver-specific packages.
 
 Low-Level API
 -------------
