@@ -597,7 +597,7 @@ TEST_F(DriverManifest, LoadRelativePath) {
   ASSERT_TRUE(std::filesystem::remove("sqlite.toml"));
 }
 
-TEST_F(DriverManifest, ManifestMissingDriver) {
+TEST_F(DriverManifest, ManifestDriverMissing) {
   // Create a manifest without the "Driver" section
   auto filepath = temp_dir / "sqlite.toml";
   toml::table manifest_without_driver = simple_manifest;
@@ -613,6 +613,54 @@ TEST_F(DriverManifest, ManifestMissingDriver) {
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
 
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Driver path not defined in manifest"));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("`Driver.shared` must be a string or table"));
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, ManifestDriverInvalid) {
+  // "Driver" section is not a table
+  auto filepath = temp_dir / "sqlite.toml";
+  toml::table manifest_without_driver = simple_manifest;
+  manifest_without_driver.erase("Driver");
+  manifest_without_driver.insert("Driver", toml::table{{"shared", true}});
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << manifest_without_driver;
+  test_manifest_file.close();
+
+  // Attempt to load the driver
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Driver path not defined in manifest"));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("`Driver.shared` must be a string or table"));
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, ManifestDriverEmpty) {
+  // "Driver" section is not a table
+  auto filepath = temp_dir / "sqlite.toml";
+  toml::table manifest_without_driver = simple_manifest;
+  manifest_without_driver.erase("Driver");
+  manifest_without_driver.insert("Driver", toml::table{{"shared", ""}});
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << manifest_without_driver;
+  test_manifest_file.close();
+
+  // Attempt to load the driver
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("Driver path is an empty string in manifest"));
   ASSERT_TRUE(std::filesystem::remove(filepath));
 }
 
@@ -625,6 +673,7 @@ TEST_F(DriverManifest, ManifestWrongArch) {
                                      {"shared",
                                       toml::table{
                                           {"non-existent", "path/to/bad/driver.so"},
+                                          {"windows-alpha64", "path/to/bad/driver.so"},
                                       }},
                                  });
 
@@ -638,6 +687,95 @@ TEST_F(DriverManifest, ManifestWrongArch) {
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
 
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Driver path not found in manifest"));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("Architectures found: non-existent windows-alpha64"));
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, ManifestArchPathEmpty) {
+  auto filepath = temp_dir / "sqlite.toml";
+  toml::table manifest_without_driver = simple_manifest;
+  manifest_without_driver.erase("Driver");
+  manifest_without_driver.insert("Driver", toml::table{
+                                               {"shared",
+                                                toml::table{
+                                                    {"linux_arm64", ""},
+                                                    {"linux_amd64", ""},
+                                                    {"macos_arm64", ""},
+                                                    {"macos_amd64", ""},
+                                                    {"windows_arm64", ""},
+                                                    {"windows_amd64", ""},
+                                                }},
+                                           });
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << manifest_without_driver;
+  test_manifest_file.close();
+
+  // Attempt to load the driver
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("Driver path is an empty string in manifest"));
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, ManifestArchPathInvalid) {
+  auto filepath = temp_dir / "sqlite.toml";
+  toml::table manifest_without_driver = simple_manifest;
+  manifest_without_driver.erase("Driver");
+  manifest_without_driver.insert("Driver", toml::table{
+                                               {"shared",
+                                                toml::table{
+                                                    {"linux_arm64", 42},
+                                                    {"linux_amd64", 42},
+                                                    {"macos_arm64", 42},
+                                                    {"macos_amd64", 42},
+                                                    {"windows_arm64", 42},
+                                                    {"windows_amd64", 42},
+                                                }},
+                                           });
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << manifest_without_driver;
+  test_manifest_file.close();
+
+  // Attempt to load the driver
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Driver path not found in manifest"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Value was not a string"));
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, ManifestEntrypointInvalid) {
+  auto filepath = temp_dir / "sqlite.toml";
+  toml::table manifest_without_driver = simple_manifest;
+  manifest_without_driver.erase("Driver");
+  manifest_without_driver.insert("Driver", toml::table{
+                                               {"shared", "foobar"},
+                                               {"entrypoint", 42},
+                                           });
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << manifest_without_driver;
+  test_manifest_file.close();
+
+  // Attempt to load the driver
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("Driver entrypoint not a string in manifest"));
   ASSERT_TRUE(std::filesystem::remove(filepath));
 }
 

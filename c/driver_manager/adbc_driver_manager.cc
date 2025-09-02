@@ -161,7 +161,7 @@ std::wstring Utf8Decode(const std::string& str) {
 using char_type = char;
 #endif  // _WIN32
 
-// Driver state
+/// \brief The location and entrypoint of a resolved driver.
 struct DriverInfo {
   std::string manifest_file;
   std::string driver_name;
@@ -253,24 +253,70 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 
   info.manifest_file = driver_manifest.string();
   info.driver_name = config["name"].value_or(""s);
-  info.entrypoint = config.at_path("Driver.entrypoint").value_or(""s);
   info.version = config["version"].value_or(""s);
   info.source = config["source"].value_or(""s);
 
+  auto entrypoint = config.at_path("Driver.entrypoint");
+  if (entrypoint) {
+    if (auto* ep = entrypoint.as_string()) {
+      info.entrypoint = ep->get();
+    } else {
+      SetError(error, "Driver entrypoint not a string in manifest '"s +
+                          driver_manifest.string() + "'"s);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+  }
+
   auto driver = config.at_path("Driver.shared");
   if (toml::table* platforms = driver.as_table()) {
-    info.lib_path = platforms->at_path(adbc::CurrentArch()).value_or(""s);
+    auto view = platforms->at_path(adbc::CurrentArch());
+    if (!view) {
+      std::string message = "Driver path not found in manifest '";
+      message += driver_manifest.string();
+      message += "' for current architecture '";
+      message += adbc::CurrentArch();
+      message += "'. Architectures found:";
+      for (const auto& [key, val] : *platforms) {
+        message += " ";
+        message += key;
+      }
+      SetError(error, std::move(message));
+      return ADBC_STATUS_NOT_FOUND;
+    } else if (auto* path = view.as_string()) {
+      if (path->get().empty()) {
+        std::string message = "Driver path is an empty string in manifest '";
+        message += driver_manifest.string();
+        message += "' for current architecture '";
+        message += adbc::CurrentArch();
+        message += "'";
+        SetError(error, std::move(message));
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      info.lib_path = path->get();
+      return ADBC_STATUS_OK;
+    } else {
+      std::string message = "Driver path not found in manifest '";
+      message += driver_manifest.string();
+      message += "' for current architecture '";
+      message += adbc::CurrentArch();
+      message += "'. Value was not a string";
+      SetError(error, std::move(message));
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    return ADBC_STATUS_OK;
   } else if (auto* path = driver.as_string()) {
     info.lib_path = path->get();
+    if (info.lib_path.empty()) {
+      SetError(error, "Driver path is an empty string in manifest '"s +
+                          driver_manifest.string() + "'"s);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+    return ADBC_STATUS_OK;
   }
-
-  if (info.lib_path.empty()) {
-    SetError(error, "Driver path not found in manifest '"s + driver_manifest.string() +
-                        "' for current architecture '" + adbc::CurrentArch() + "'");
-    return ADBC_STATUS_NOT_FOUND;
-  }
-
-  return ADBC_STATUS_OK;
+  SetError(error, "Driver path not defined in manifest '"s + driver_manifest.string() +
+                      "'. `Driver.shared` must be a string or table"s);
+  return ADBC_STATUS_NOT_FOUND;
 }
 
 std::vector<std::filesystem::path> GetEnvPaths(const char_type* env_var) {
@@ -365,11 +411,13 @@ struct ManagedLibrary {
   ~ManagedLibrary() { Release(); }
 
   void Release() {
-    // TODO(apache/arrow-adbc#204): causes tests to segfault
-    // Need to refcount the driver DLL; also, errors may retain a reference to
-    // release() from the DLL - how to handle this?
+    // TODO(apache/arrow-adbc#204): causes tests to segfault.  Need to
+    // refcount the driver DLL; also, errors may retain a reference to
+    // release() from the DLL - how to handle this?  It's unlikely we can
+    // actually do this - in general shared libraries are not safe to unload.
   }
 
+  /// \brief Resolve the driver name to a concrete location.
   AdbcStatusCode GetDriverInfo(
       const std::string_view driver_name, const AdbcLoadFlags load_options,
       const std::vector<std::filesystem::path>& additional_search_paths, DriverInfo& info,
@@ -379,6 +427,7 @@ struct ManagedLibrary {
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
+    // First try to treat the given driver name as a path to a manifest or shared library
     std::filesystem::path driver_path(driver_name);
     const bool allow_relative_paths = load_options & ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
     if (driver_path.has_extension()) {
@@ -2223,7 +2272,6 @@ AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoin
     SetError(error, "Driver pointer is null");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
-  auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
   if (!driver_name) {
     SetError(error, "Driver name is null");
     return ADBC_STATUS_INVALID_ARGUMENT;
@@ -2239,6 +2287,8 @@ AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoin
   if (additional_search_path_list) {
     additional_paths = InternalAdbcParsePath(additional_search_path_list);
   }
+
+  auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
 
   AdbcStatusCode status =
       library.GetDriverInfo(driver_name, load_options, additional_paths, info, error);
