@@ -39,8 +39,8 @@ Installation
 Usage
 =====
 
-Using the driver manager is different from using the individual, driver-specific
-packages such as ``adbc_driver_postgresql``.
+The driver manager is different from the individual, driver-specific packages
+such as ``adbc_driver_postgresql``.
 
 With the driver-specific packages, you connect to the target database with the
 ``connect`` method provided by the package you're using.  For example,
