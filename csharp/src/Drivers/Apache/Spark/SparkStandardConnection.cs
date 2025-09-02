@@ -86,12 +86,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             // Validate port range
             Properties.TryGetValue(SparkParameters.Port, out string? port);
+            if (string.IsNullOrWhiteSpace(port))
+            {
+                throw new ArgumentException(
+                    $"Required parameter '{SparkParameters.Port}' is missing. Please provide a port number for the data source.",
+                    nameof(Properties));
+            }
             if (int.TryParse(port, out int portNumber) && (portNumber <= IPEndPoint.MinPort || portNumber > IPEndPoint.MaxPort))
+            {
                 throw new ArgumentOutOfRangeException(
                     nameof(Properties),
                     port,
                     $"Parameter '{SparkParameters.Port}' value is not in the valid range of 1 .. {IPEndPoint.MaxPort}.");
-
+            }
         }
 
         protected override TTransport CreateTransport()
@@ -205,7 +212,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null) =>
             new HiveServer2Reader(statement, schema, response, dataTypeConversion: statement.Connection.DataTypeConversion);
-
 
         internal override SparkServerType ServerType => SparkServerType.Standard;
 
