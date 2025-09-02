@@ -61,7 +61,8 @@ First, create an :py:class:`AdbcDatabase`, passing ``driver`` and (optionally)
 
    import adbc_driver_manager
 
-   # Note: You must build/locate the driver yourself
+   # Note: You must install the driver shared library
+   (``.so``/``.dylib``/``.dll`` file) separately
    with adbc_driver_manager.AdbcDatabase(driver="PATH/TO/libadbc_driver_sqlite.so") as db:
        with adbc_driver_manager.AdbcConnection(db) as conn:
            pass
