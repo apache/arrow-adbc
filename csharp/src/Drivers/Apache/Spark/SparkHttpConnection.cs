@@ -241,11 +241,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle!, Client, cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle!, cancellationToken: cancellationToken);
-
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
