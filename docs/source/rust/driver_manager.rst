@@ -21,8 +21,8 @@ Driver Manager
 
 This document describes the installation and usage of the Rust :term:`driver
 manager`. The Rust :term:`driver manager` is currently part of the ``adbc_core``
-package, though we plan to split it into its own package for users who don't
-want or need FFI.
+package, though we plan to split it into its own package for to keep the
+``adbc_core`` package smaller for users who don't want or need FFI.
 
 Installation
 ============
