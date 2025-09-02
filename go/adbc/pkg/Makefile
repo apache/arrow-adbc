@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-MANAGERS = bigquery flightsql panicdummy snowflake
+MANAGERS = bigquery flightsql panicdummy snowflake databricks
 
 GO_BUILD := go build
 RM := rm -f
