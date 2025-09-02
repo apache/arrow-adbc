@@ -21,15 +21,11 @@
 Driver Manager
 ==============
 
-The driver manager is a library that provides bindings to the ADBC C
-API.  It delegates to dynamically-loaded drivers.  This allows
-applications to use multiple drivers simultaneously, and decouple
-themselves from the specific driver.
+The ``adbc_driver_manager`` package provides a :term:`driver manager` interface
+to Python. The package provides two APIs:
 
-The Python driver manager provides both low-level bindings that are
-essentially the same as the C API.  If PyArrow is installed, it also
-provides high-level bindings that implement the DBAPI_ (PEP 249)
-standard.
+1. Low-level bindings that are essentially the same as the :doc:`C API <../format/specification>`.
+2. If PyArrow is installed, a DBAPI_ (PEP 249) compliant interface.
 
 .. _DBAPI: https://peps.python.org/pep-0249/
 
@@ -43,33 +39,51 @@ Installation
 Usage
 =====
 
-.. warning:: This API is for low level usage only.  **You almost certainly
-             should not use this**, instead use the entrypoints provided by
-             driver packages, for example:
+Using the driver manager is different from using the individual, driver-specific
+packages such as ``adbc_driver_postgresql``.
 
-             - :func:`adbc_driver_sqlite.dbapi.connect`
-             - :func:`adbc_driver_sqlite.connect`
+With the driver-specific packages, you connect to the target database with the
+``connect`` method provided by the package you're using.  For example,
+:func:`adbc_driver_postgresql.connect` or :func:`adbc_driver_sqlite.connect`.
 
-The Python bindings for each driver abstract the steps here for you behind a
-convenient ``connect`` function.  For example, prefer
-:func:`adbc_driver_sqlite.connect` or :func:`adbc_driver_postgresql.connect`
-to manually constructing the connection as demonstrated here.
+With the driver manager package, you use a single package and API regardless of
+the database you're connecting to.
 
-To manually create a connection: first, create a :py:class:`AdbcDatabase`,
-passing ``driver`` and (optionally) ``entrypoint``.  ``driver`` must be the
-name of a library to load, or the path to a library to load.  ``entrypoint``,
-if provided, should be the name of the symbol that serves as the ADBC
-entrypoint (see :c:type:`AdbcDriverInitFunc`).  Then, create a
-:py:class:`AdbcConnection`.
+Low-Level API
+-------------
+
+First, create an :py:class:`AdbcDatabase`, passing ``driver`` and (optionally)
+``entrypoint``. Then, create an :py:class:`AdbcConnection`.
+
+.. note:: See :doc:`../format/driver_manifests` for more information on what to pass as the ``driver`` argument and how the driver manager finds and loads drivers.
 
 .. code-block:: python
 
    import adbc_driver_manager
 
-   # You must build/locate the driver yourself
+   # Note: You must build/locate the driver yourself
    with adbc_driver_manager.AdbcDatabase(driver="PATH/TO/libadbc_driver_sqlite.so") as db:
        with adbc_driver_manager.AdbcConnection(db) as conn:
            pass
+
+Connecting to a second database could be done in the same session using the same
+code just with a different ``driver`` argument.
+
+DBAPI API
+---------
+
+Use the DBAPI_ API by calling the ``dbapi.connect`` method, passing ``driver``
+and (optionally) ``entrypoint``. These arguments work the same as with the
+low-level API.
+
+.. code-block:: python
+
+   from adbc_driver_manager import dbapi
+
+   # Note: You must build/locate the driver yourself
+   with dbapi.connect(driver="PATH/TO/libadbc_driver_sqlite.so") as conn:
+      pass
+
 
 API Reference
 =============

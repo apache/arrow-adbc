@@ -19,11 +19,10 @@
 Driver Manager
 ==============
 
-The driver manager is a library that implements the ADBC API by delegating to
-dynamically-loaded drivers.  This allows applications to load drivers at
-runtime, and use drivers that aren't necessarily written in Rust.  It is
-currently part of the adbc_core package, though we plan to split it into its
-own package for users who don't want or need FFI.
+This document describes the installation and usage of the Rust :term:`driver
+manager`. The Rust :term:`driver manager` is currently part of the ``adbc_core``
+package, though we plan to split it into its own package for users who don't
+want or need FFI.
 
 Installation
 ============
