@@ -133,7 +133,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 baseTransport = new TSocketTransport(hostName!, portValue, connectClient, config: new());
             }
-            baseTransport = new TSocketTransport(hostName!, portValue, connectClient, config: new());
             TBufferedTransport bufferedTransport = new TBufferedTransport(baseTransport);
             switch (authTypeValue)
             {
