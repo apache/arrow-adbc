@@ -577,6 +577,24 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
   ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
 
+  if (schema_view.extension_name.data != nullptr &&
+      std::string_view(schema_view.extension_name.data,
+                       schema_view.extension_name.size_bytes)
+              .compare("arrow.json") == 0) {
+    switch (schema_view.type) {
+      case NANOARROW_TYPE_STRING:
+      case NANOARROW_TYPE_LARGE_STRING:
+      case NANOARROW_TYPE_STRING_VIEW:
+        return resolver.Find(resolver.GetOID(PostgresTypeId::kJson), out, error);
+      default:
+        break;
+    }
+    ArrowErrorSet(
+        error, "Field '%s' is of type arrow.json but storage type is not a string type",
+        schema_view.schema->name);
+    return EINVAL;
+  }
+
   switch (schema_view.type) {
     case NANOARROW_TYPE_BOOL:
       return resolver.Find(resolver.GetOID(PostgresTypeId::kBool), out, error);

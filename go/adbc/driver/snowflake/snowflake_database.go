@@ -47,6 +47,8 @@ var (
 		OptionValueAuthOkta:            gosnowflake.AuthTypeOkta,
 		OptionValueAuthJwt:             gosnowflake.AuthTypeJwt,
 		OptionValueAuthUserPassMFA:     gosnowflake.AuthTypeUsernamePasswordMFA,
+		OptionValueAuthPat:             gosnowflake.AuthTypePat,
+		OptionValueAuthWIF:             gosnowflake.AuthTypeWorkloadIdentityFederation,
 	}
 )
 
@@ -240,6 +242,8 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 		d.cfg.Protocol = v
 	case OptionHost:
 		d.cfg.Host = v
+	case OptionIdentityProvider:
+		d.cfg.WorkloadIdentityProvider = v
 	case OptionPort:
 		d.cfg.Port, err = strconv.Atoi(v)
 		if err != nil {
