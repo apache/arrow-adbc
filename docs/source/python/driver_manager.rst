@@ -66,8 +66,8 @@ First, create an :py:class:`AdbcDatabase`, passing ``driver`` and (optionally)
 
    import adbc_driver_manager
 
-   # Note: You must install the driver shared library
-   (``.so``/``.dylib``/``.dll`` file) separately
+   # Note: You must install the driver shared library (.so, .dylib, .dll)
+   # separately
    with adbc_driver_manager.AdbcDatabase(driver="PATH/TO/libadbc_driver_sqlite.so") as db:
        with adbc_driver_manager.AdbcConnection(db) as conn:
            pass
@@ -86,8 +86,8 @@ low-level API.
 
    from adbc_driver_manager import dbapi
 
-   # Note: You must install the driver shared library
-   (``.so``/``.dylib``/``.dll`` file) separately
+   # Note: You must install the driver shared library (.so, .dylib, .dll)
+   # separately
    with dbapi.connect(driver="PATH/TO/libadbc_driver_sqlite.so") as conn:
       pass
 
