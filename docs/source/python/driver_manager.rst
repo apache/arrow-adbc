@@ -80,7 +80,8 @@ low-level API.
 
    from adbc_driver_manager import dbapi
 
-   # Note: You must build/locate the driver yourself
+   # Note: You must install the driver shared library
+   (``.so``/``.dylib``/``.dll`` file) separately
    with dbapi.connect(driver="PATH/TO/libadbc_driver_sqlite.so") as conn:
       pass
 
