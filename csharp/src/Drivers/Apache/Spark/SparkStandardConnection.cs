@@ -18,8 +18,12 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
@@ -27,7 +31,7 @@ using Thrift.Transport.Client;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 {
-    internal class SparkStandardConnection : SparkHttpConnection
+    internal class SparkStandardConnection : SparkConnection
     {
         public SparkStandardConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
@@ -82,12 +86,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
             // Validate port range
             Properties.TryGetValue(SparkParameters.Port, out string? port);
+            if (string.IsNullOrWhiteSpace(port))
+            {
+                throw new ArgumentException(
+                    $"Required parameter '{SparkParameters.Port}' is missing. Please provide a port number for the data source.",
+                    nameof(Properties));
+            }
             if (int.TryParse(port, out int portNumber) && (portNumber <= IPEndPoint.MinPort || portNumber > IPEndPoint.MaxPort))
+            {
                 throw new ArgumentOutOfRangeException(
                     nameof(Properties),
                     port,
                     $"Parameter '{SparkParameters.Port}' value is not in the valid range of 1 .. {IPEndPoint.MaxPort}.");
-
+            }
         }
 
         protected override TTransport CreateTransport()
@@ -95,19 +106,68 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             // Assumption: hostName and port have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
             Properties.TryGetValue(SparkParameters.Port, out string? port);
+            Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
+
+            if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
+            }
 
             // Delay the open connection until later.
             bool connectClient = false;
-            TSocketTransport transport = new(hostName!, int.Parse(port!), connectClient, config: new());
-            return transport;
+            int portValue = int.Parse(port!);
+
+            // TLS setup
+            TTransport baseTransport;
+            if (TlsOptions.IsTlsEnabled)
+            {
+                X509Certificate2? trustedCert = !string.IsNullOrEmpty(TlsOptions.TrustedCertificatePath)
+                    ? new X509Certificate2(TlsOptions.TrustedCertificatePath!)
+                    : null;
+
+                RemoteCertificateValidationCallback certValidator = (sender, cert, chain, errors) => HiveServer2TlsImpl.ValidateCertificate(cert, errors, TlsOptions);
+
+                if (IPAddress.TryParse(hostName!, out var ipAddress))
+                {
+                    baseTransport = new TTlsSocketTransport(ipAddress, portValue, config: new(), 0, trustedCert, certValidator);
+                }
+                else
+                {
+                    baseTransport = new TTlsSocketTransport(hostName!, portValue, config: new(), 0, trustedCert, certValidator);
+                }
+            }
+            else
+            {
+                baseTransport = new TSocketTransport(hostName!, portValue, connectClient, config: new());
+            }
+            TBufferedTransport bufferedTransport = new TBufferedTransport(baseTransport);
+            switch (authTypeValue)
+            {
+                case SparkAuthType.None:
+                    return bufferedTransport;
+
+                case SparkAuthType.Basic:
+                    Properties.TryGetValue(AdbcOptions.Username, out string? username);
+                    Properties.TryGetValue(AdbcOptions.Password, out string? password);
+
+                    if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                    {
+                        throw new InvalidOperationException("Username and password must be provided for this authentication type.");
+                    }
+
+                    PlainSaslMechanism saslMechanism = new(username, password);
+                    TSaslTransport saslTransport = new(bufferedTransport, saslMechanism, config: new());
+                    return new TFramedTransport(saslTransport);
+
+                default:
+                    throw new NotSupportedException($"Authentication type '{authTypeValue}' is not supported.");
+            }
         }
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
         {
-            return await base.CreateProtocolAsync(transport, cancellationToken);
-
-            //if (!transport.IsOpen) await transport.OpenAsync(CancellationToken.None);
-            //return new TBinaryProtocol(transport);
+            if (!transport.IsOpen) await transport.OpenAsync(cancellationToken);
+            return new TBinaryProtocol(transport, true, true);
         }
 
         protected override TOpenSessionReq CreateSessionRequest()
@@ -120,7 +180,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
-            TOpenSessionReq request = base.CreateSessionRequest();
+            TOpenSessionReq request = new TOpenSessionReq
+            {
+                Client_protocol = TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7,
+                CanUseMultipleCatalogs = true,
+            };
             switch (authTypeValue)
             {
                 case SparkAuthType.UsernameOnly:
@@ -139,10 +203,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return request;
         }
 
+        protected override void ValidateOptions()
+        {
+            Properties.TryGetValue(SparkParameters.DataTypeConv, out string? dataTypeConv);
+            DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
+            TlsOptions = HiveServer2TlsImpl.GetStandardTlsOptions(Properties);
+        }
+
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null) =>
+            new HiveServer2Reader(statement, schema, response, dataTypeConversion: statement.Connection.DataTypeConversion);
+
         internal override SparkServerType ServerType => SparkServerType.Standard;
 
         public override string AssemblyName => s_assemblyName;
 
         public override string AssemblyVersion => s_assemblyVersion;
+
+        protected override int ColumnMapIndexOffset => 0;
     }
 }
