@@ -46,11 +46,11 @@ Glossary
      protocol, but exposes the JDBC client API instead.
 
    driver manager
-     A library for loading and using :term:`drivers <driver>`. A :term:`driver
-     manager` implements the ADBC API and delegates to dynamically-loaded
-     drivers. It simplifies using multiple drivers in a single application and
-     makes it possible to use drivers written in any language, regardless of the
-     language the application is written in.
+     A library for loading and using :term:`drivers <driver>`. A driver manager
+     implements the ADBC API and delegates to dynamically-loaded drivers. It
+     simplifies using multiple drivers in a single application and makes it
+     possible to use drivers written in any language, regardless of the language
+     the application is written in.
 
      The in each language is similar.  In C/C++, it can dynamically load drivers
      so that applications do not have to directly link to them.  (Since all
