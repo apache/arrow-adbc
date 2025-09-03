@@ -58,6 +58,60 @@ std::filesystem::path InternalAdbcUserConfigDir();
 
 namespace {
 
+/// \brief Where a search path came from (for error reporting)
+enum class SearchPathSource {
+  kEnv,
+  kUser,
+  kRegistry,
+  kSystem,
+  kAdditional,
+  kConda,
+  kUnset,
+  kDoesNotExist,
+  kDisabled,
+};
+
+using SearchPaths = std::vector<std::pair<SearchPathSource, std::filesystem::path>>;
+
+void AddSearchPathsToError(const SearchPaths& search_paths, std::string& error_message) {
+  if (!search_paths.empty()) {
+    error_message += "\nAlso searched these paths for manifests:";
+    for (const auto& [source, path] : search_paths) {
+      error_message += "\n\t";
+      switch (source) {
+        case SearchPathSource::kEnv:
+          error_message += "ADBC_DRIVER_PATH: ";
+          break;
+        case SearchPathSource::kUser:
+          error_message += "user config dir: ";
+          break;
+        case SearchPathSource::kRegistry:
+          error_message += "Registry: ";
+          break;
+        case SearchPathSource::kSystem:
+          error_message += "system config dir: ";
+          break;
+        case SearchPathSource::kAdditional:
+          error_message += "additional search path: ";
+          break;
+        case SearchPathSource::kConda:
+          error_message += "Conda prefix: ";
+          break;
+        case SearchPathSource::kUnset:
+          error_message += "not set: ";
+          break;
+        case SearchPathSource::kDoesNotExist:
+          error_message += "does not exist: ";
+          break;
+        case SearchPathSource::kDisabled:
+          error_message += "not enabled at build time: ";
+          break;
+      }
+      error_message += path.string();
+    }
+  }
+}
+
 // Platform-specific helpers
 
 #if defined(_WIN32)
@@ -216,14 +270,23 @@ class RegistryKey {
 
 AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name,
                                       DriverInfo& info, struct AdbcError* error) {
+  // N.B. start all error messages with the subkey so that the calling code
+  // can prepend the name of 'root' to the error message (easier than trying
+  // to invoke win32 API to get the name of the HKEY)
   static const LPCWSTR kAdbcDriverRegistry = L"SOFTWARE\\ADBC\\Drivers";
   RegistryKey drivers_key(root, kAdbcDriverRegistry);
   if (!drivers_key.is_open()) {
+    std::string error_message = "SOFTWARE\\ADBC\\DRIVERS not found"s;
+    SetError(error, std::move(error_message));
     return ADBC_STATUS_NOT_FOUND;
   }
 
   RegistryKey dkey(drivers_key.key(), driver_name);
   if (!dkey.is_open()) {
+    std::string error_message = "SOFTWARE\\ADBC\\DRIVERS has no entry for driver \""s;
+    error_message += Utf8Encode(driver_name);
+    error_message += "\""s;
+    SetError(error, std::move(error_message));
     return ADBC_STATUS_NOT_FOUND;
   }
 
@@ -233,8 +296,10 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
   info.source = Utf8Encode(dkey.GetString(L"source", L""));
   info.lib_path = std::filesystem::path(dkey.GetString(L"driver", L""));
   if (info.lib_path.empty()) {
-    SetError(error, "Driver path not found in registry for \""s +
-                        Utf8Encode(driver_name) + "\"");
+    std::string error_message = "SOFTWARE\\ADBC\\DRIVERS\\"s;
+    error_message += Utf8Encode(driver_name);
+    error_message += " has no driver path"s;
+    SetError(error, std::move(error_message));
     return ADBC_STATUS_NOT_FOUND;
   }
   return ADBC_STATUS_OK;
@@ -318,19 +383,6 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
                       "'. `Driver.shared` must be a string or table"s);
   return ADBC_STATUS_NOT_FOUND;
 }
-
-/// \brief Where a search path came from (for error reporting)
-enum class SearchPathSource {
-  kEnv,
-  kUser,
-  kSystem,
-  kAdditional,
-  kConda,
-  kUnset,
-  kDisabled,
-};
-
-using SearchPaths = std::vector<std::pair<SearchPathSource, std::filesystem::path>>;
 
 SearchPaths GetEnvPaths(const char_type* env_var) {
 #ifdef _WIN32
@@ -525,7 +577,9 @@ struct ManagedLibrary {
                                       const SearchPaths& search_paths, DriverInfo& info,
                                       struct AdbcError* error) {
     for (const auto& [source, search_path] : search_paths) {
-      if (source == SearchPathSource::kUnset || source == SearchPathSource::kDisabled) {
+      if (source == SearchPathSource::kRegistry || source == SearchPathSource::kUnset ||
+          source == SearchPathSource::kDoesNotExist ||
+          source == SearchPathSource::kDisabled) {
         continue;
       }
       std::filesystem::path full_path = search_path / driver_path;
@@ -610,12 +664,21 @@ struct ManagedLibrary {
       if (status == ADBC_STATUS_OK) {
         return Load(info.lib_path.c_str(), error);
       }
+      if (error.message) {
+        std::string message = "HKEY_CURRENT_USER\\"s;
+        message += error.message;
+        search_paths.emplace_back(SearchPathSource::kRegistry, std::move(message));
+      } else {
+        search_paths.emplace_back(SearchPathSource::kRegistry,
+                                  "not found in HKEY_CURRENT_USER");
+      }
 
-      status = SearchPaths(driver_path, GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_USER), info,
-                           error);
+      auto user_paths = GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_USER);
+      status = SearchPathsForDriver(driver_path, user_paths, info, error);
       if (status == ADBC_STATUS_OK) {
         return status;
       }
+      search_paths.insert(search_paths.end(), user_paths.begin(), user_paths.end());
     }
 
     if (load_options & ADBC_LOAD_FLAG_SEARCH_SYSTEM) {
@@ -625,16 +688,25 @@ struct ManagedLibrary {
       if (status == ADBC_STATUS_OK) {
         return Load(info.lib_path.c_str(), error);
       }
+      if (error.message) {
+        std::string message = "HKEY_LOCAL_MACHINE\\"s;
+        message += error.message;
+        search_paths.emplace_back(SearchPathSource::kRegistry, std::move(message));
+      } else {
+        search_paths.emplace_back(SearchPathSource::kRegistry,
+                                  "not found in HKEY_LOCAL_MACHINE");
+      }
 
-      status = SearchPaths(driver_path, GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_SYSTEM),
-                           info, error);
+      auto system_paths = GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_SYSTEM);
+      status = SearchPathsForDriver(driver_path, system_paths, info, error);
       if (status == ADBC_STATUS_OK) {
         return status;
       }
+      search_paths.insert(search_paths.end(), system_paths.begin(), system_paths.end());
     }
 
     info.lib_path = driver_path;
-    return Load(driver_path.c_str(), error);
+    return Load(driver_path.c_str(), search_paths, error);
 #else
     // Otherwise, search the configured paths.
     SearchPaths more_search_paths =
@@ -673,6 +745,7 @@ struct ManagedLibrary {
       }
     }
     if (!handle) {
+      AddSearchPathsToError(attempted_paths, error_message);
       SetError(error, error_message);
       return ADBC_STATUS_INTERNAL;
     } else {
@@ -718,36 +791,7 @@ struct ManagedLibrary {
     if (handle) {
       this->handle = handle;
     } else {
-      if (!attempted_paths.empty()) {
-        error_message += "\nAlso searched these paths for manifests:";
-        for (const auto& [source, path] : attempted_paths) {
-          error_message += "\n\t";
-          switch (source) {
-            case SearchPathSource::kEnv:
-              error_message += "ADBC_DRIVER_PATH: ";
-              break;
-            case SearchPathSource::kUser:
-              error_message += "user config dir: ";
-              break;
-            case SearchPathSource::kSystem:
-              error_message += "system config dir: ";
-              break;
-            case SearchPathSource::kAdditional:
-              error_message += "additional search path: ";
-              break;
-            case SearchPathSource::kConda:
-              error_message += "Conda prefix: ";
-              break;
-            case SearchPathSource::kUnset:
-              error_message += "not set/does not exist: ";
-              break;
-            case SearchPathSource::kDisabled:
-              error_message += "not enabled at build time: ";
-              break;
-          }
-          error_message += path.string();
-        }
-      }
+      AddSearchPathsToError(attempted_paths, error_message);
       SetError(error, error_message);
       return ADBC_STATUS_NOT_FOUND;
     }

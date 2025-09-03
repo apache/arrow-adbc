@@ -482,7 +482,7 @@ def test_release(sqlite, op) -> None:
 
 def test_driver_path():
     with pytest.raises(
-        dbapi.InternalError,
+        dbapi.ProgrammingError,
         match="(dlopen|LoadLibraryExW).*failed:",
     ):
         with dbapi.connect(driver=pathlib.Path("/tmp/thisdriverdoesnotexist")):
