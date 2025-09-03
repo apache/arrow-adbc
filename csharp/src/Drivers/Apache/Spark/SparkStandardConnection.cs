@@ -219,6 +219,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         public override string AssemblyVersion => s_assemblyVersion;
 
-        protected override int ColumnMapIndexOffset => 0;
+        protected override int ColumnMapIndexOffset => 1;
     }
 }
