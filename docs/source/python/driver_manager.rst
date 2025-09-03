@@ -25,7 +25,7 @@ The ``adbc_driver_manager`` package provides a :term:`driver manager` interface
 for Python. The package provides two APIs:
 
 1. Low-level bindings that are essentially the same as the :doc:`C API <../format/specification>`.
-2. If PyArrow is installed, a DBAPI_ (PEP 249) compliant interface.
+2. If PyArrow or Polars are installed, a DBAPI_ (PEP 249) compliant interface.
 
 .. _DBAPI: https://peps.python.org/pep-0249/
 
