@@ -206,6 +206,8 @@ Below is an example of a driver manifest:
 
 .. code-block:: toml
 
+   manifest_version = 1
+
    name = 'Driver Display Name'
    version = '1.0.0' # driver version
    publisher = 'string to identify the publisher'
@@ -420,7 +422,7 @@ to control which directories will be searched for manifests, with the behavior b
     .. tab-item:: Rust
        :sync: rust
 
-       The ``ManagedDriver`` type has a method ``load_dynamic_from_name`` which takes an optional ``load_flags`` parameter. The flags as a ``u32`` with
+       The ``ManagedDriver`` type has a method ``load_from_name`` which takes an optional ``load_flags`` parameter. The flags as a ``u32`` with
        the type ``adbc_core::driver_manager::LoadFlags``, which has the following constants:
 
        * ``LOAD_FLAG_SEARCH_ENV`` - search the directory paths in the environment variable

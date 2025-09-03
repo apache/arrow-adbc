@@ -164,6 +164,7 @@ using char_type = char;
 // Driver state
 struct DriverInfo {
   std::string manifest_file;
+  int64_t manifest_version;
   std::string driver_name;
   std::filesystem::path lib_path;
   std::string entrypoint;
@@ -208,6 +209,19 @@ class RegistryKey {
     return value;
   }
 
+  int32_t GetInt(const std::wstring& name, const int32_t default_value) {
+    if (!is_open()) return default_value;
+
+    DWORD dwValue;
+    DWORD dataSize = sizeof(dwValue);
+    DWORD valueType;
+    auto result = RegQueryValueEx(key_, name.data(), nullptr, &valueType,
+                                  (LPBYTE)&dwValue, &dataSize);
+    if (result != ERROR_SUCCESS) return default_value;
+    if (valueType != REG_DWORD) return default_value;
+    return static_cast<int32_t>(dwValue);
+  }
+
  private:
   HKEY root_;
   HKEY key_;
@@ -228,6 +242,13 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
   }
 
   info.driver_name = Utf8Encode(dkey.GetString(L"name", L""));
+  info.manifest_version = int64_t(dkey.GetInt(L"manifest_version", 1));
+  if (info.manifest_version != 1) {
+    SetError(error, "Driver manifest version '" + std::to_string(info.manifest_version) +
+                        "' is not supported by this driver manager.");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
   info.entrypoint = Utf8Encode(dkey.GetString(L"entrypoint", L""));
   info.version = Utf8Encode(dkey.GetString(L"version", L""));
   info.source = Utf8Encode(dkey.GetString(L"source", L""));
@@ -253,6 +274,13 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 
   info.manifest_file = driver_manifest.string();
   info.driver_name = config["name"].value_or(""s);
+  info.manifest_version = config["manifest_version"].value_or(int64_t(1));
+  if (info.manifest_version != 1) {
+    SetError(error, "Driver manifest version '" + std::to_string(info.manifest_version) +
+                        "' is not supported by this driver manager.");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
   info.entrypoint = config.at_path("Driver.entrypoint").value_or(""s);
   info.version = config["version"].value_or(""s);
   info.source = config["source"].value_or(""s);
