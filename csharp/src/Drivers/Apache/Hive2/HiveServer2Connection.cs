@@ -397,7 +397,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             _client = null;
         }
 
-        protected virtual Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
+        protected virtual Task HandleOpenSessionResponse(TOpenSessionResp? session, ActivityWithPii? activity = default)
         {
             // Explicitly check the session status
             if (session == null)
@@ -661,7 +661,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     IArrowArray[] dataArrays = new IArrowArray[]
                     {
-                tableTypesBuilder.Build()
+                        tableTypesBuilder.Build()
                     };
 
                     return new HiveInfoArrowStream(StandardSchemas.TableTypesSchema, dataArrays);
@@ -1540,7 +1540,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             nullCount++;
                             break;
                     }
-                    ActivityExtensions.AddTag(activity, tagKey, tagValue);
+                    activity?.AddTag(tagKey, tagValue, false);
                 }
 
                 StructType entryType = new StructType(
@@ -1638,24 +1638,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        internal static void HandleThriftResponse(TStatus status, Activity? activity)
+        internal static void HandleThriftResponse(TStatus status, ActivityWithPii? activity)
         {
-            if (ErrorHandlers.TryGetValue(status.StatusCode, out Action<TStatus, Activity?>? handler))
+            if (ErrorHandlers.TryGetValue(status.StatusCode, out Action<TStatus, ActivityWithPii?>? handler))
             {
                 handler(status, activity);
             }
         }
 
-        private static IReadOnlyDictionary<TStatusCode, Action<TStatus, Activity?>> ErrorHandlers => new Dictionary<TStatusCode, Action<TStatus, Activity?>>()
+        private static IReadOnlyDictionary<TStatusCode, Action<TStatus, ActivityWithPii?>> ErrorHandlers => new Dictionary<TStatusCode, Action<TStatus, ActivityWithPii?>>()
         {
             [TStatusCode.ERROR_STATUS] = (status, _) => ThrowErrorResponse(status),
             [TStatusCode.INVALID_HANDLE_STATUS] = (status, _) => ThrowErrorResponse(status),
             [TStatusCode.STILL_EXECUTING_STATUS] = (status, _) => ThrowErrorResponse(status, AdbcStatusCode.InvalidState),
-            [TStatusCode.SUCCESS_STATUS] = (status, activity) => activity?.AddTag(SemanticConventions.Db.Response.StatusCode, status.StatusCode),
+            [TStatusCode.SUCCESS_STATUS] = (status, activity) => activity?.AddTag(SemanticConventions.Db.Response.StatusCode, status.StatusCode, isPii: false),
             [TStatusCode.SUCCESS_WITH_INFO_STATUS] = (status, activity) =>
             {
-                activity?.AddTag(SemanticConventions.Db.Response.StatusCode, status.StatusCode);
-                activity?.AddTag(SemanticConventions.Db.Response.InfoMessages, string.Join(Environment.NewLine, status.InfoMessages));
+                activity?.AddTag(SemanticConventions.Db.Response.StatusCode, status.StatusCode, isPii: false);
+                activity?.AddTag(SemanticConventions.Db.Response.InfoMessages, string.Join(Environment.NewLine, status.InfoMessages), isPii: true);
             },
         };
 
