@@ -45,6 +45,13 @@ Glossary
      PostgreSQL wire protocol.  The JDBC PostgreSQL driver uses the same wire
      protocol, but exposes the JDBC client API instead.
 
+     ADBC drivers can be implemented as libraries in different languages
+     including C++, C#, Go, and Rust. A driver can be statically linked into an
+     application that's implemented in the same language, or it can be compiled
+     into a shared library (a ``.so`` file for Linux, a ``.dylib`` file for
+     macOS, or a ``.dll`` file for Windows) and dynamically loaded into an
+     application in any supported language using a :term:`driver manager`.
+
    driver manager
      A library for loading and using :term:`drivers <driver>`. A driver manager
      implements the ADBC API and delegates to dynamically-loaded drivers. It
