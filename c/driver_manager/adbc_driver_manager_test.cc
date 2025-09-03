@@ -597,6 +597,15 @@ TEST_F(DriverManifest, LoadRelativePath) {
   ASSERT_TRUE(std::filesystem::remove("sqlite.toml"));
 }
 
+TEST_F(DriverManifest, NotFound) {
+  ASSERT_THAT(AdbcFindLoadDriver("nosuchdriver", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("Also searched these paths for manifests:\n\tnot "
+                                   "set/does not exist: ADBC_DRIVER_PATH"));
+}
+
 TEST_F(DriverManifest, ManifestDriverMissing) {
   // Create a manifest without the "Driver" section
   auto filepath = temp_dir / "sqlite.toml";
@@ -852,5 +861,8 @@ TEST_F(DriverManifest, LoadSystemLevelManifest) {
   }
 }
 #endif
+
+// TEST CASES
+// manifest not found on given paths
 
 }  // namespace adbc
