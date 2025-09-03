@@ -430,7 +430,7 @@ SearchPaths GetSearchPaths(const AdbcLoadFlags levels) {
     if (!user_config_dir.empty() && std::filesystem::exists(user_config_dir)) {
       paths.emplace_back(SearchPathSource::kUser, std::move(user_config_dir));
     } else {
-      paths.emplace_back(SearchPathSource::kUnset, std::move(user_config_dir));
+      paths.emplace_back(SearchPathSource::kDoesNotExist, std::move(user_config_dir));
     }
   }
 
@@ -444,14 +444,14 @@ SearchPaths GetSearchPaths(const AdbcLoadFlags levels) {
     if (std::filesystem::exists(system_config_dir)) {
       paths.emplace_back(SearchPathSource::kSystem, std::move(system_config_dir));
     } else {
-      paths.emplace_back(SearchPathSource::kUnset, std::move(system_config_dir));
+      paths.emplace_back(SearchPathSource::kDoesNotExist, std::move(system_config_dir));
     }
 #elif !defined(_WIN32)
     const std::filesystem::path system_config_dir("/etc/adbc/drivers");
     if (std::filesystem::exists(system_config_dir)) {
       paths.emplace_back(SearchPathSource::kSystem, std::move(system_config_dir));
     } else {
-      paths.emplace_back(SearchPathSource::kUnset, std::move(system_config_dir));
+      paths.emplace_back(SearchPathSource::kDoesNotExist, std::move(system_config_dir));
     }
 #endif  // defined(__APPLE__)
   }

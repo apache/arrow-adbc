@@ -603,7 +603,7 @@ TEST_F(DriverManifest, NotFound) {
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
   ASSERT_THAT(error.message,
               ::testing::HasSubstr("Also searched these paths for manifests:\n\tnot "
-                                   "set/does not exist: ADBC_DRIVER_PATH"));
+                                   "set: ADBC_DRIVER_PATH"));
 }
 
 TEST_F(DriverManifest, ManifestDriverMissing) {
