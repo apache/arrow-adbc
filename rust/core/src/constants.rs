@@ -15,25 +15,27 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//! Constants defined in [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h)
+
 use std::os::raw::c_int;
 
-use super::types::FFI_AdbcStatusCode;
+use crate::error::AdbcStatusCode;
 
-pub const ADBC_STATUS_OK: FFI_AdbcStatusCode = 0;
-pub const ADBC_STATUS_UNKNOWN: FFI_AdbcStatusCode = 1;
-pub const ADBC_STATUS_NOT_IMPLEMENTED: FFI_AdbcStatusCode = 2;
-pub const ADBC_STATUS_NOT_FOUND: FFI_AdbcStatusCode = 3;
-pub const ADBC_STATUS_ALREADY_EXISTS: FFI_AdbcStatusCode = 4;
-pub const ADBC_STATUS_INVALID_ARGUMENT: FFI_AdbcStatusCode = 5;
-pub const ADBC_STATUS_INVALID_STATE: FFI_AdbcStatusCode = 6;
-pub const ADBC_STATUS_INVALID_DATA: FFI_AdbcStatusCode = 7;
-pub const ADBC_STATUS_INTEGRITY: FFI_AdbcStatusCode = 8;
-pub const ADBC_STATUS_INTERNAL: FFI_AdbcStatusCode = 9;
-pub const ADBC_STATUS_IO: FFI_AdbcStatusCode = 10;
-pub const ADBC_STATUS_CANCELLED: FFI_AdbcStatusCode = 11;
-pub const ADBC_STATUS_TIMEOUT: FFI_AdbcStatusCode = 12;
-pub const ADBC_STATUS_UNAUTHENTICATED: FFI_AdbcStatusCode = 13;
-pub const ADBC_STATUS_UNAUTHORIZED: FFI_AdbcStatusCode = 14;
+pub const ADBC_STATUS_OK: AdbcStatusCode = 0;
+pub const ADBC_STATUS_UNKNOWN: AdbcStatusCode = 1;
+pub const ADBC_STATUS_NOT_IMPLEMENTED: AdbcStatusCode = 2;
+pub const ADBC_STATUS_NOT_FOUND: AdbcStatusCode = 3;
+pub const ADBC_STATUS_ALREADY_EXISTS: AdbcStatusCode = 4;
+pub const ADBC_STATUS_INVALID_ARGUMENT: AdbcStatusCode = 5;
+pub const ADBC_STATUS_INVALID_STATE: AdbcStatusCode = 6;
+pub const ADBC_STATUS_INVALID_DATA: AdbcStatusCode = 7;
+pub const ADBC_STATUS_INTEGRITY: AdbcStatusCode = 8;
+pub const ADBC_STATUS_INTERNAL: AdbcStatusCode = 9;
+pub const ADBC_STATUS_IO: AdbcStatusCode = 10;
+pub const ADBC_STATUS_CANCELLED: AdbcStatusCode = 11;
+pub const ADBC_STATUS_TIMEOUT: AdbcStatusCode = 12;
+pub const ADBC_STATUS_UNAUTHENTICATED: AdbcStatusCode = 13;
+pub const ADBC_STATUS_UNAUTHORIZED: AdbcStatusCode = 14;
 
 pub const ADBC_VERSION_1_0_0: c_int = 1_000_000;
 pub const ADBC_VERSION_1_1_0: c_int = 1_001_000;

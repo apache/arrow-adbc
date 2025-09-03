@@ -16,7 +16,7 @@
 # under the License.
 
 [workspace]
-members = ["core", "driver_manager", "driver/*"]
+members = ["core", "driver_manager", "ffi", "driver/*"]
 resolver = "2"
 
 [workspace.package]
@@ -36,6 +36,7 @@ categories = ["database"]
 [workspace.dependencies]
 adbc_core = { path = "./core", version = "0.20.0" }
 adbc_driver_manager = { path = "./driver_manager", version = "0.20.0" }
+adbc_ffi = { path = "./ffi", version = "0.20.0" }
 arrow-array = { version = ">=53.1.0, <57", default-features = false, features = [
     "ffi",
 ] }

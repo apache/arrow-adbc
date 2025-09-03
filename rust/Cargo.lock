@@ -15,6 +15,7 @@ name = "adbc_datafusion"
 version = "0.20.0"
 dependencies = [
  "adbc_core",
+ "adbc_ffi",
  "arrow-array",
  "arrow-buffer",
  "arrow-schema",
@@ -30,6 +31,7 @@ name = "adbc_driver_manager"
 version = "0.20.0"
 dependencies = [
  "adbc_core",
+ "adbc_ffi",
  "arrow-array",
  "arrow-schema",
  "arrow-select",
@@ -47,10 +49,20 @@ version = "0.20.0"
 dependencies = [
  "adbc_core",
  "adbc_driver_manager",
+ "adbc_ffi",
  "arrow-array",
  "arrow-buffer",
  "arrow-schema",
  "arrow-select",
+]
+
+[[package]]
+name = "adbc_ffi"
+version = "0.20.0"
+dependencies = [
+ "adbc_core",
+ "arrow-array",
+ "arrow-schema",
 ]
 
 [[package]]
@@ -59,6 +71,7 @@ version = "0.20.0"
 dependencies = [
  "adbc_core",
  "adbc_driver_manager",
+ "adbc_ffi",
  "arrow-array",
  "arrow-schema",
  "dotenvy",

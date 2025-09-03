@@ -15,12 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! C-compatible items as defined in [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h)
+use adbc_core::options::OptionValue;
 
-pub mod constants;
-pub mod methods;
-pub(crate) mod types;
-pub use types::{
-    driver_method, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcDriverInitFunc,
-    FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement, FFI_AdbcStatusCode,
-};
+#[allow(unknown_lints)]
+#[warn(non_exhaustive_omitted_patterns)]
+pub(crate) fn get_opt_name(value: &OptionValue) -> &str {
+    match value {
+        OptionValue::String(_) => "String",
+        OptionValue::Bytes(_) => "Bytes",
+        OptionValue::Int(_) => "Int",
+        OptionValue::Double(_) => "Double",
+        _ => unreachable!(),
+    }
+}

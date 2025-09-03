@@ -19,8 +19,8 @@
 use std::{os::raw::c_int, str::FromStr};
 
 use crate::{
+    constants,
     error::{Error, Status},
-    ffi::constants,
 };
 
 /// Option value.
@@ -33,18 +33,6 @@ pub enum OptionValue {
     Bytes(Vec<u8>),
     Int(i64),
     Double(f64),
-}
-
-impl OptionValue {
-    /// Gets the data type of the option's value.
-    pub(crate) fn get_type(&self) -> &str {
-        match self {
-            Self::String(_) => "String",
-            Self::Bytes(_) => "Bytes",
-            Self::Int(_) => "Int",
-            Self::Double(_) => "Double",
-        }
-    }
 }
 
 impl From<String> for OptionValue {
