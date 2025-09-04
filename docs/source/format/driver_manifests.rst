@@ -172,7 +172,7 @@ direct file path to the dynamic library as the driver name.
           use adbc_core::driver_manager::ManagedDriver;
 
           fn get_driver() -> ManagedDriver {
-              ManagedDriver::load_dynamic_from_name("/path/to/libadbc_driver.so", None, AdbcVersion::V100).unwrap()
+              ManagedDriver::load_from_name("/path/to/libadbc_driver.so", None, AdbcVersion::V100).unwrap()
           }
 
 As an alternative to passing the full path to the dynamic library, you may
