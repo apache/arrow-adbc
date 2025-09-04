@@ -59,10 +59,11 @@ Glossary
      possible to use drivers written in any language, regardless of the language
      the application is written in.
 
-     The driver manager in each language is similar.  In C/C++, it can dynamically load drivers
-     so that applications do not have to directly link to them.  (Since all
-     drivers expose the same API, their symbols would collide otherwise.)  In
-     Python, it loads drivers and provides Python bindings on top.
+     The driver manager in each language is similar.  In C/C++, it can
+     dynamically load drivers so that applications do not have to directly link
+     to them.  (Since all drivers expose the same API, their symbols would
+     collide otherwise.)  In Python, it loads drivers and provides Python
+     bindings on top.
 
    driver manifest
      A file (in TOML format) describing a :term:`driver`. This file's structure
