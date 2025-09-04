@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
@@ -142,6 +143,12 @@ func init() {
 			}
 		}
 	}
+
+	// hook to override the defaults used in secure_storage_manager.go
+	gosnowflake.ConfigureLeaseOnce(
+		30*time.Second, // TTL supports SSO
+		90*time.Second, // Lease Operation Timeout
+	)
 
 	// Disable some stray logs
 	// https://github.com/snowflakedb/gosnowflake/pull/1332

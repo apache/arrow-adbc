@@ -26,6 +26,7 @@ require (
 	github.com/apache/arrow-go/v18 v18.2.0
 	github.com/bluele/gcache v0.0.2
 	github.com/databricks/databricks-sdk-go v0.72.0
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -42,7 +43,7 @@ require (
 	modernc.org/sqlite v1.37.0
 )
 
-replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.14.3
+replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.14.4
 
 require (
 	cloud.google.com/go v0.118.3 // indirect
@@ -77,7 +78,6 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
