@@ -19,47 +19,59 @@
 ADBC Driver Manager and Manifests
 =================================
 
-.. note:: This document focuses on scenarios that use the driver manager
-          to load drivers.  The driver manager is not required to use ADBC
-          in general, but allows a convenient experience for dynamically
-          loading arbitrary drivers.
+.. note:: This document describes using the :term:`driver manager` to load
+          drivers.  The driver manager is not required to use ADBC in general
+          but it allows loading drivers written in a different language from the
+          application and improves the experience when using multiple drivers in
+          a single application. For more information on how the driver manager
+          works see :doc:`how_manager`.
 
-The ADBC driver manager is itself, an ADBC driver which loads another driver
-dynamically and forwards the calls to the loaded driver.  For more information on the
-driver manager see :doc:`how_manager`.
-
-There are two ways to specify a driver for the driver manager to load:
+There are two ways to load a driver with the driver manager:
 
 1. Directly specifying the dynamic library to load
 2. Referring to a driver manifest file which contains metadata along with the
    location of the dynamic library to be loaded
 
-When using the driver manager, you can either use the ``driver`` option to the
-driver manager, or you can use functions in the language bindings which explicitly
-load a driver by name.
+With either method, you specify the dynamic library or driver manifest as the
+``driver`` option to the driver manager or you can use an explicit function for
+loading drivers if your driver manager library exposes one (e.g., C++, see
+example below).
 
-.. note:: In addition to the ``driver`` option, there is also an ``entrypoint`` option
-          which can be used to specify the entrypoint function to call for populating
-          the driver function table.  If the driver does not use the default entrypoint
-          function, it can be indicated with this option.
+.. note:: In addition to the ``driver`` option, there is also an ``entrypoint``
+          option that should be used if the driver uses a non-default
+          entrypoint.
 
 Directly Loading a Driver
 =========================
 
 The simplest mechanism for loading a driver via the driver manager is to provide a
-direct file path to the dynamic library as the driver name.
+file path to the dynamic library as the driver name.
 
 .. tab-set::
 
     .. tab-item:: C/C++
        :sync: cpp
 
-       You can use the :c:func:`AdbcLoadDriver` function to load the driver directly or you can use it as a driver
-       itself via :c:struct:`AdbcDatabase`.
+       You can specify the driver to load using the ``driver`` option to the
+       driver manager or you can use :c:func:`AdbcLoadDriver` to directly load
+       the driver.
 
        .. code-block:: cpp
 
-          // load directly
+          struct AdbcDatabase database;
+          struct AdbcError error;
+
+          std::memset(&database, 0, sizeof(database));
+          std::memset(&error, 0, sizeof(error));
+
+          auto status = AdbcDatabaseNew(&database, &error);
+          // if status != ADBC_STATUS_OK then handle the error
+
+          // Load the driver by setting the "driver" option
+          status = AdbcDatabaseSetOption(&database, "driver", "/path/to/libadbc_driver.so", &error);
+          // if status != ADBC_STATUS_OK then handle the error
+
+          // Alternatively, load directly with AdbcLoadDriver
           struct AdbcDriver driver;
           struct AdbcError error;
 
@@ -69,16 +81,6 @@ direct file path to the dynamic library as the driver name.
           auto status = AdbcLoadDriver("/path/to/libadbc_driver.so", nullptr,
             ADBC_VERSION_1_1_0, &driver, &error);
           // if status != ADBC_STATUS_OK then handle the error
-
-          // or use the Driver Manager as a driver itself
-          struct AdbcDatabase database;
-          struct AdbcError error;
-          std::memset(&database, 0, sizeof(database));
-          std::memset(&error, 0, sizeof(error));
-          auto status = AdbcDatabaseNew(&database, &error);
-          // check status
-          status = AdbcDatabaseSetOption(&database, "driver", "/path/to/libadbc_driver.so", &error);
-          // check status
 
     .. tab-item:: GLib
        :sync: glib
@@ -180,14 +182,14 @@ prefer to use ``LD_LIBRARY_PATH`` (or similar, depending on your operating
 system) and specify just the filename (i.e., ``libadbc_driver.so`` instead of
 ``/path/to/libadbc_driver.so``.
 
-However, the requirement to having the path to the dynamic library or having it
+However, the requirement of having the path to the dynamic library or having it
 on your ``LD_LIBRARY_PATH`` can prove difficult for ensuring security, reproducibility,
 and ease of use.  For this reason, there is the concept of a driver manifest.
 
 Driver Manifests
 ================
 
-A ``driver manifest`` is a `TOML`_ file that contains both metadata about the driver along with the location
+A :term:`driver manifest` is a `TOML`_ file that contains both metadata about the driver along with the location
 of the shared library to load.  The driver manager can then locate the manifest and use it to load the
 driver if it was given the shared library path directly.  This allows for more portable installations of
 drivers, and sharing of configurations.  Tools can even be created and written to automatically manage driver
