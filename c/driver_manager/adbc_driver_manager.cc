@@ -662,7 +662,7 @@ struct ManagedLibrary {
       auto status =
           LoadDriverFromRegistry(HKEY_CURRENT_USER, driver_path.native(), info, error);
       if (status == ADBC_STATUS_OK) {
-        return Load(info.lib_path.c_str(), error);
+        return Load(info.lib_path.c_str(), {}, error);
       }
       if (error.message) {
         std::string message = "HKEY_CURRENT_USER\\"s;
@@ -686,7 +686,7 @@ struct ManagedLibrary {
       auto status =
           LoadDriverFromRegistry(HKEY_LOCAL_MACHINE, driver_path.native(), info, error);
       if (status == ADBC_STATUS_OK) {
-        return Load(info.lib_path.c_str(), error);
+        return Load(info.lib_path.c_str(), {}, error);
       }
       if (error.message) {
         std::string message = "HKEY_LOCAL_MACHINE\\"s;
