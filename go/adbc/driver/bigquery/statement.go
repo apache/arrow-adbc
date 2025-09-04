@@ -811,8 +811,6 @@ func (st *statement) GetParameterSchema() (*arrow.Schema, error) {
 }
 
 // Arrow Schema to Bigquery Schema conversion
-
-// Decode base-64 IPC payload to []*bigquery.FieldSchema
 func (st *statement) loadExplicitSchema(ipcBytes []byte) error {
 	r, err := ipc.NewReader(bytes.NewReader(ipcBytes))
 	if err != nil {
