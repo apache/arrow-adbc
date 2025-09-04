@@ -440,7 +440,7 @@ the given order:
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the paths in the environment variable ``ADBC_DRIVER_PATH`` will be searched
 
-  * ``ADBC_DRIVER_PATH`` is a colon-separated list of directories
+   * ``ADBC_DRIVER_PATH`` is a colon-separated list of directories
 
 #. If additional search paths have been specified, those will be searched
 
@@ -467,7 +467,7 @@ would happen for ODBC drivers. The search for a manifest on Windows would be the
 
 #. If the ``LOAD_FLAG_SEARCH_ENV`` load option is set, then the paths in the environment variable ``ADBC_DRIVER_PATH`` will be searched
 
-  * ``ADBC_DRIVER_PATH`` is a semicolon-separated list of directories
+   * ``ADBC_DRIVER_PATH`` is a semicolon-separated list of directories
 
 #. If additional search paths have been specified, those will be searched
 
