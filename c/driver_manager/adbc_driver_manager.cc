@@ -664,9 +664,9 @@ struct ManagedLibrary {
       if (status == ADBC_STATUS_OK) {
         return Load(info.lib_path.c_str(), {}, error);
       }
-      if (error.message) {
+      if (error && error->message) {
         std::string message = "HKEY_CURRENT_USER\\"s;
-        message += error.message;
+        message += error->message;
         search_paths.emplace_back(SearchPathSource::kRegistry, std::move(message));
       } else {
         search_paths.emplace_back(SearchPathSource::kRegistry,
@@ -688,9 +688,9 @@ struct ManagedLibrary {
       if (status == ADBC_STATUS_OK) {
         return Load(info.lib_path.c_str(), {}, error);
       }
-      if (error.message) {
+      if (error && error->message) {
         std::string message = "HKEY_LOCAL_MACHINE\\"s;
-        message += error.message;
+        message += error->message;
         search_paths.emplace_back(SearchPathSource::kRegistry, std::move(message));
       } else {
         search_paths.emplace_back(SearchPathSource::kRegistry,
