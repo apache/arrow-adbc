@@ -20,7 +20,6 @@ package bigquery
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -88,9 +87,14 @@ func (st *statement) GetOptionDouble(key string) (float64, error) {
 }
 
 func (st *statement) SetOptionBytes(key string, value []byte) error {
-	return adbc.Error{
-		Msg:  fmt.Sprintf("[BigQuery] Unknown statement option '%s'", key),
-		Code: adbc.StatusNotImplemented,
+	switch key {
+	case OptionStringIngestSchema:
+		return st.loadExplicitSchema(value)
+	default:
+		return adbc.Error{
+			Msg:  fmt.Sprintf("[BigQuery] Unknown statement option '%s'", key),
+			Code: adbc.StatusNotImplemented,
+		}
 	}
 }
 
@@ -279,10 +283,6 @@ func (st *statement) SetOption(key string, v string) error {
 		st.ingestPath = v
 	case OptionStringIngestFileDelimiter:
 		st.ingestFileDelimiter = v
-	case OptionStringIngestSchema:
-		if err := st.loadExplicitSchema(v); err != nil {
-			return err
-		}
 	case OptionJsonUpdateTableColumnsDescription:
 		st.updateTableColumnsDescription = v
 	case OptionJsonAuthorizeViewToDatasets:
@@ -813,14 +813,7 @@ func (st *statement) GetParameterSchema() (*arrow.Schema, error) {
 // Arrow Schema to Bigquery Schema conversion
 
 // Decode base-64 IPC payload to []*bigquery.FieldSchema
-func (st *statement) loadExplicitSchema(b64 string) error {
-	ipcBytes, err := base64.StdEncoding.DecodeString(b64)
-	if err != nil {
-		return adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  "ingest.schema must be base64-encoded IPC stream",
-		}
-	}
+func (st *statement) loadExplicitSchema(ipcBytes []byte) error {
 	r, err := ipc.NewReader(bytes.NewReader(ipcBytes))
 	if err != nil {
 		return err
