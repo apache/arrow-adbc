@@ -46,7 +46,7 @@ Glossary
      protocol, but exposes the JDBC client API instead.
 
      ADBC drivers can be implemented as libraries in different languages
-     including C++, C#, Go, and Rust. A driver can be statically linked into an
+     including C++, C#, Go, and Rust. A driver can be imported directly into an
      application that's implemented in the same language, or it can be compiled
      into a shared library (a ``.so`` file for Linux, a ``.dylib`` file for
      macOS, or a ``.dll`` file for Windows) and dynamically loaded into an
