@@ -270,7 +270,7 @@ class RegistryKey {
     DWORD dataSize = sizeof(dwValue);
     DWORD valueType;
     auto result = RegQueryValueExW(key_, name.data(), nullptr, &valueType,
-                                  (LPBYTE)&dwValue, &dataSize);
+                                   (LPBYTE)&dwValue, &dataSize);
     if (result != ERROR_SUCCESS) return default_value;
     if (valueType != REG_DWORD) return default_value;
     return static_cast<int32_t>(dwValue);
