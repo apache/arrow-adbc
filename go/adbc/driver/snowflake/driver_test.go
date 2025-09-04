@@ -2004,6 +2004,79 @@ func (suite *SnowflakeTests) TestNonIntDecimalLowPrecision() {
 	}
 }
 
+func (suite *SnowflakeTests) TestSchemaWithLowPrecision() {
+	// This test verifies that the schema type matches the actual data type
+	// for NUMBER columns when use_high_precision=false for scale=0 and scale>0
+	// This is critical for clients that rely on the schema being correct
+	suite.Require().NoError(suite.Quirks.DropTable(suite.cnxn, "SCHEMA_TYPE_TEST"))
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`CREATE OR REPLACE TABLE SCHEMA_TYPE_TEST (
+		INTEGER_COL NUMBER(10,0),
+		DECIMAL_COL NUMBER(10,2)
+	)`))
+	_, err := suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.stmt.SetSqlQuery(`INSERT INTO SCHEMA_TYPE_TEST VALUES
+		(12345, 123.45),
+		(67890, 678.90)`))
+	_, err = suite.stmt.ExecuteUpdate(suite.ctx)
+	suite.Require().NoError(err)
+
+	// Test with use_high_precision=false
+	suite.Require().NoError(suite.stmt.SetOption(driver.OptionUseHighPrecision, adbc.OptionValueDisabled))
+	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT * FROM SCHEMA_TYPE_TEST"))
+
+	// First test: ExecuteSchema (schema only, no data)
+	schemaOnly, err := suite.stmt.(adbc.StatementExecuteSchema).ExecuteSchema(suite.ctx)
+	suite.Require().NoError(err)
+
+	// Verify ExecuteSchema returns correct types
+	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, schemaOnly.Field(0).Type),
+		"ExecuteSchema INTEGER_COL: expected int64, got %s", schemaOnly.Field(0).Type)
+	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, schemaOnly.Field(1).Type),
+		"ExecuteSchema DECIMAL_COL: expected float64, got %s", schemaOnly.Field(1).Type)
+
+	// Second test: ExecuteQuery (schema with data)
+	rdr, n, err := suite.stmt.ExecuteQuery(suite.ctx)
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.EqualValues(2, n)
+
+	// Check schema types from ExecuteQuery
+	schema := rdr.Schema()
+	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, schema.Field(0).Type),
+		"INTEGER_COL: expected int64 in schema, got %s", schema.Field(0).Type)
+	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, schema.Field(1).Type),
+		"DECIMAL_COL: expected float64 in schema, got %s", schema.Field(1).Type)
+
+	// Check actual data types in the record
+	suite.True(rdr.Next())
+	rec := rdr.Record()
+
+	// Verify INTEGER_COL is actually Int64
+	col0 := rec.Column(0)
+	suite.Equal(arrow.INT64, col0.DataType().ID(),
+		"INTEGER_COL data: expected INT64 type, got %s", col0.DataType())
+	suite.Equal(int64(12345), col0.(*array.Int64).Value(0))
+
+	// Verify DECIMAL_COL is actually Float64
+	col1 := rec.Column(1)
+	suite.Equal(arrow.FLOAT64, col1.DataType().ID(),
+		"DECIMAL_COL data: expected FLOAT64 type, got %s", col1.DataType())
+	suite.InDelta(123.45, col1.(*array.Float64).Value(0), 0.001)
+
+	// Check second row
+	suite.Equal(int64(67890), col0.(*array.Int64).Value(1))
+	suite.InDelta(678.90, col1.(*array.Float64).Value(1), 0.001)
+
+	// Verify schema type matches actual data type
+	suite.Equal(schema.Field(1).Type.ID(), col1.DataType().ID(),
+		"Schema type must match data type for DECIMAL_COL: schema says %s, data is %s",
+		schema.Field(1).Type, col1.DataType())
+}
+
 func (suite *SnowflakeTests) TestIntDecimalLowPrecision() {
 	for sign := 0; sign <= 1; sign++ {
 		for precision := 3; precision <= 38; precision++ {

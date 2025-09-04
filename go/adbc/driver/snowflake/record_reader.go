@@ -351,7 +351,12 @@ func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, 
 					Scale:     int32(srcMeta.Scale),
 				}
 			} else {
-				fields[i].Type = arrow.PrimitiveTypes.Int64
+				// Check scale to determine if this is an integer or decimal
+				if srcMeta.Scale == 0 {
+					fields[i].Type = arrow.PrimitiveTypes.Int64
+				} else {
+					fields[i].Type = arrow.PrimitiveTypes.Float64
+				}
 			}
 		case "real":
 			fields[i].Type = arrow.PrimitiveTypes.Float64
