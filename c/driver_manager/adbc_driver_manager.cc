@@ -747,7 +747,7 @@ struct ManagedLibrary {
     if (!handle) {
       AddSearchPathsToError(attempted_paths, error_message);
       SetError(error, error_message);
-      return ADBC_STATUS_INTERNAL;
+      return ADBC_STATUS_NOT_FOUND;
     } else {
       this->handle = handle;
     }
