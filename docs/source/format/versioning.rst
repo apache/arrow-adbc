@@ -77,7 +77,7 @@ or semantics of a function), the next version would be 2.0.0.
 
 The ADBC :doc:`driver manifest <driver_manifests>`
 TOML format is versioned separately from the ADBC standard and
-components.  Its version is an integer number currently set to 1.
+components.  Its version is an integer currently set to 1.
 The driver manifest version number must be incremented when and only
 when breaking changes are made to the driver manifest format.  Driver
 managers must check the driver manifest version number when reading
