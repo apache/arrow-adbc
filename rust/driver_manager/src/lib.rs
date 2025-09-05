@@ -1919,6 +1919,8 @@ mod tests {
 
     fn manifest_without_driver() -> &'static str {
         r#"
+        manifest_version = 1
+
         name = 'SQLite3'
         publisher = 'arrow-adbc'
         version = '1.0.0'
