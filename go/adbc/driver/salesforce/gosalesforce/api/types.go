@@ -1,6 +1,7 @@
 package api
 
 import (
+	"strings"
 	"time"
 )
 
@@ -12,6 +13,8 @@ const (
 	AuthTypeUsernamePassword
 	AuthTypeRefreshToken
 )
+
+const DATASPACE_DEFAULT = "default"
 
 // Token represents an authenticated token with expiry information
 type Token struct {
@@ -74,7 +77,7 @@ var (
 // SqlQueryRequest represents a SQL query request to Data Cloud
 type SqlQueryRequest struct {
 	SQL           string         `json:"sql"`
-	RowLimit      *int64         `json:"rowLimit,omitempty"`
+	RowLimit      int64          `json:"rowLimit,omitempty"`
 	SqlParameters []SqlParameter `json:"sqlParameters,omitempty"`
 	Dataspace     string         `json:"dataspace,omitempty"`
 	WorkloadName  string         `json:"workloadName,omitempty"`
@@ -97,11 +100,56 @@ type SqlQueryResponse struct {
 
 // SqlQueryMetadata represents metadata for a SQL query result column
 type SqlQueryMetadata struct {
-	Name      string `json:"name"`
-	Nullable  bool   `json:"nullable"`
-	Type      string `json:"type"`
-	Precision *int   `json:"precision,omitempty"`
-	Scale     *int   `json:"scale,omitempty"`
+	Name      string  `json:"name"`
+	Nullable  bool    `json:"nullable"`
+	Type      SqlType `json:"type"`
+	Precision *int    `json:"precision,omitempty"`
+	Scale     *int    `json:"scale,omitempty"`
+}
+
+// SqlType represents the type of a SQL query result column
+type SqlType string
+
+const (
+	SqlTypeArrayOfX    SqlType = "ArrayOfX"
+	SqlTypeBigInt      SqlType = "BigInt"
+	SqlTypeBool        SqlType = "Bool"
+	SqlTypeChar        SqlType = "Char"
+	SqlTypeDate        SqlType = "Date"
+	SqlTypeDouble      SqlType = "Double"
+	SqlTypeFloat       SqlType = "Float"
+	SqlTypeInteger     SqlType = "Integer"
+	SqlTypeNumeric     SqlType = "Numeric"
+	SqlTypeOid         SqlType = "Oid"
+	SqlTypeSmallInt    SqlType = "SmallInt"
+	SqlTypeTime        SqlType = "Time"
+	SqlTypeTimestamp   SqlType = "Timestamp"
+	SqlTypeTimestampTZ SqlType = "TimestampTZ"
+	SqlTypeUnspecified SqlType = "Unspecified"
+	SqlTypeVarchar     SqlType = "Varchar"
+)
+
+// ToDataLakeFieldDataType converts a SqlType to a DataLakeFieldDataType
+func (s SqlType) ToDataLakeFieldDataType() DataLakeFieldDataType {
+	switch s {
+	case SqlTypeBool:
+		return DataLakeFieldDataTypeBoolean
+	case SqlTypeDate:
+		return DataLakeFieldDataTypeDate
+	case SqlTypeTimestamp, SqlTypeTimestampTZ:
+		return DataLakeFieldDataTypeDateTime
+	case SqlTypeBigInt, SqlTypeInteger, SqlTypeSmallInt, SqlTypeDouble, SqlTypeFloat, SqlTypeNumeric:
+		return DataLakeFieldDataTypeNumber
+	case SqlTypeChar, SqlTypeVarchar, SqlTypeArrayOfX, SqlTypeOid, SqlTypeUnspecified:
+		return DataLakeFieldDataTypeText
+	case SqlTypeTime:
+		// TODO: investigates if this is a proper conversion
+		return DataLakeFieldDataTypeNumber
+	default:
+		// Default fallback
+		// TODO: supports `SqlTypeArrayOfX` properly
+		return DataLakeFieldDataTypeText
+	}
 }
 
 // SqlQueryStatus represents the status of a SQL query execution
@@ -164,14 +212,14 @@ type MetadataEntity struct {
 
 // MetadataField represents a field/column in a metadata entity
 type MetadataField struct {
-	Name         string `json:"name"`
-	DisplayName  string `json:"displayName"`
-	Type         string `json:"type"`
-	KeyQualifier string `json:"keyQualifier,omitempty"`
-	BusinessType string `json:"businessType,omitempty"`
-	Precision    int    `json:"precision,omitempty"`
-	Scale        int    `json:"scale,omitempty"`
-	Nullable     bool   `json:"nullable,omitempty"`
+	Name         string  `json:"name"`
+	DisplayName  string  `json:"displayName"`
+	Type         SqlType `json:"type"`
+	KeyQualifier string  `json:"keyQualifier,omitempty"`
+	BusinessType string  `json:"businessType,omitempty"`
+	Precision    int     `json:"precision,omitempty"`
+	Scale        int     `json:"scale,omitempty"`
+	Nullable     bool    `json:"nullable,omitempty"`
 }
 
 // MetadataRelationship represents a relationship between entities
@@ -247,8 +295,8 @@ type CloseJobResponse struct {
 type DataTransformType string
 
 const (
-	DataTransformTypeBatch     DataTransformType = "BATCH"
-	DataTransformTypeStreaming DataTransformType = "STREAMING"
+	DataTransformTypeBatch DataTransformType = "BATCH"
+	// "STREAMING" is not supported on purpose since it's not supposed to be used by dbt
 )
 
 // DataTransformCreationType represents the creation type of the data transform
@@ -263,12 +311,12 @@ const (
 type DataTransformDefinitionType string
 
 const (
-	DataTransformDefinitionTypeSQL       DataTransformDefinitionType = "SQL"
-	DataTransformDefinitionTypeSTL       DataTransformDefinitionType = "STL"
-	DataTransformDefinitionTypeDBT       DataTransformDefinitionType = "DBT"
-	DataTransformDefinitionTypeSQLHidden DataTransformDefinitionType = "SqlHidden"
-	DataTransformDefinitionTypeSTLHidden DataTransformDefinitionType = "StlHidden"
-	DataTransformDefinitionTypeDBTHidden DataTransformDefinitionType = "DbtHidden"
+	// This type is not publicly available yet; be cautious of possible breaking changes in the future.
+	// This is only meant to use together with a DbtDataTransformDefinition (see DataTransformDefinition.Manifest)
+	DataTransformDefinitionTypeDCSQL DataTransformDefinitionType = "DCSQL"
+	// "SQL" and "STL" are not supported on purpose since they are not supposed to be used by dbt
+	// "SQL" is sql expression that defines the streaming data transform
+	// "STL" is the DSL used to describe the Node components that defines the batch data transform
 )
 
 // DataTransformStatus represents the status of the data transform
@@ -309,79 +357,46 @@ type CreateDataTransformRequest struct {
 }
 
 // DataTransformDefinition represents the base definition of a data transform
+// This only supports BATCH data transform
 type DataTransformDefinition struct {
 	Type    DataTransformDefinitionType `json:"type"`
 	Version string                      `json:"version"`
-	// For batch transforms
-	Nodes map[string]DataTransformNode `json:"nodes,omitempty"`
-	UI    interface{}                  `json:"ui,omitempty"`
-	// For streaming transforms
-	Expression        string                          `json:"expression,omitempty"`
-	TargetDlo         string                          `json:"targetDlo,omitempty"`
+	// This feature is not publicly available yet; be cautious of possible breaking changes in the future.
+	Manifest          DbtDataTransformDefinition      `json:"manifest,omitempty"`
 	OutputDataObjects []DataTransformOutputDataObject `json:"outputDataObjects,omitempty"`
 }
 
-// DataTransformNode represents a node in a data transform
-type DataTransformNode struct {
-	Action     string                      `json:"action"`
-	Parameters DataTransformNodeParameters `json:"parameters"`
-	Sources    []string                    `json:"sources"`
+type DbtDataTransformDefinition struct {
+	Nodes map[string]DbtDataTransformNode `json:"nodes,omitempty"`
 }
 
-// DataTransformNodeParameters represents parameters for a transform node
-type DataTransformNodeParameters struct {
-	// For load action
-	Dataset       *DataTransformDataset       `json:"dataset,omitempty"`
-	Fields        []string                    `json:"fields,omitempty"`
-	SampleDetails *DataTransformSampleDetails `json:"sampleDetails,omitempty"`
-	// For output action
-	FieldsMappings []DataTransformFieldMapping `json:"fieldsMappings,omitempty"`
-	Name           string                      `json:"name,omitempty"`
-	Type           string                      `json:"type,omitempty"`
-}
-
-// DataTransformDataset represents a dataset reference
-type DataTransformDataset struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
-
-// DataTransformSampleDetails represents sampling details
-type DataTransformSampleDetails struct {
-	SortBy []interface{} `json:"sortBy"`
-	Type   string        `json:"type"`
-}
-
-// DataTransformFieldMapping represents field mapping for output
-type DataTransformFieldMapping struct {
-	SourceField string `json:"sourceField"`
-	TargetField string `json:"targetField"`
-}
-
-// DataTransformOutputDataObject represents output data object information
+// Information about the objects into which the data transform writes the transformed data.
+// See `outputDataObjects` from reference: https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=type:Batch+Data+Transform+Output
 type DataTransformOutputDataObject struct {
-	Category         string               `json:"category,omitempty"`
-	CreatedDate      string               `json:"createdDate,omitempty"`
-	Fields           []DataTransformField `json:"fields,omitempty"`
-	ID               string               `json:"id,omitempty"`
-	Label            string               `json:"label"`
-	LastModifiedDate string               `json:"lastModifiedDate,omitempty"`
-	Name             string               `json:"name"`
-	Status           string               `json:"status,omitempty"`
-	Type             string               `json:"type"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace,omitempty"`
+	// TODO: There are more fields known to be missing, add if necessary
 }
 
-// DataTransformField represents a field in a data transform output
-type DataTransformField struct {
-	IsPrimaryKey      bool   `json:"isPrimaryKey,omitempty"`
-	KeyQualifierField string `json:"keyQualifierField,omitempty"`
-	Label             string `json:"label"`
-	Name              string `json:"name"`
-	Type              string `json:"type"`
+// DataTransformNode represents a node in a data transform
+type DbtDataTransformNode struct {
+	// The name of the node, must match its associated key in the DbtDataTransformDefinition.Nodes map
+	// Otherwise, it seems that you can arbitrarily choose a value and without impacting the results of the operation
+	Name string `json:"name"`
+	// The name of the target DLO/DMO of this data transform
+	RelationName string                     `json:"relation_name,omitempty"`
+	Config       DbtDataTransformNodeConfig `json:"config"`
+	CompiledCode string                     `json:"compiled_code"`
+	DependsOn    map[string]interface{}     `json:"depends_on,omitempty"`
 }
 
-// DataTransformResponse represents the response from creating a data transform
-type DataTransformResponse struct {
+type DbtDataTransformNodeConfig struct {
+	Materialized string `json:"materialized"`
+}
+
+// DataTransform represents the response from creating a data transform
+// see Responses from https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=createDataTransform
+type DataTransform struct {
 	ActionUrls       DataTransformActionUrls    `json:"actionUrls,omitempty"`
 	CreatedBy        DataTransformUser          `json:"createdBy"`
 	CreatedDate      string                     `json:"createdDate"`
@@ -401,6 +416,10 @@ type DataTransformResponse struct {
 	Description      string                     `json:"description,omitempty"`
 	LastRunDate      string                     `json:"lastRunDate,omitempty"`
 	Version          int64                      `json:"version,omitempty"`
+}
+
+type DataTransformList struct {
+	DataTransforms []DataTransform `json:"dataTransforms"`
 }
 
 // DataTransformActionUrls represents available actions for the data transform
@@ -441,14 +460,20 @@ const (
 )
 
 // DataLakeFieldDataType represents the data type of a field
+// reference: https://help.salesforce.com/s/articleView?id=data.c360_a_data_types.htm&type=5
 type DataLakeFieldDataType string
 
 const (
-	DataLakeFieldDataTypeText     DataLakeFieldDataType = "Text"
-	DataLakeFieldDataTypeNumber   DataLakeFieldDataType = "Number"
-	DataLakeFieldDataTypeDateTime DataLakeFieldDataType = "DateTime"
-	DataLakeFieldDataTypeDate     DataLakeFieldDataType = "Date"
 	DataLakeFieldDataTypeBoolean  DataLakeFieldDataType = "Boolean"
+	DataLakeFieldDataTypeDate     DataLakeFieldDataType = "Date"
+	DataLakeFieldDataTypeDateOnly DataLakeFieldDataType = "DateOnly"
+	DataLakeFieldDataTypeDateTime DataLakeFieldDataType = "DateTime"
+	DataLakeFieldDataTypeEmail    DataLakeFieldDataType = "Email"
+	DataLakeFieldDataTypeNumber   DataLakeFieldDataType = "Number"
+	DataLakeFieldDataTypePercent  DataLakeFieldDataType = "Percent"
+	DataLakeFieldDataTypePhone    DataLakeFieldDataType = "Phone"
+	DataLakeFieldDataTypeText     DataLakeFieldDataType = "Text"
+	DataLakeFieldDataTypeUrl      DataLakeFieldDataType = "Url"
 )
 
 // FilterOperator represents filter operators
@@ -468,9 +493,12 @@ const (
 
 // CreateDataLakeObjectRequest represents a request to create a Data Lake Object
 type CreateDataLakeObjectRequest struct {
-	Name                              string                             `json:"name"`
-	Label                             string                             `json:"label"`
-	Category                          DataLakeObjectCategory             `json:"category"`
+	Name     string                 `json:"name"`
+	Label    string                 `json:"label"`
+	Category DataLakeObjectCategory `json:"category"`
+	// WARNING: `dataspaceName` field is seen in the doc but when passing it in, request fails.
+	// Therefore, use `dataspaceInfo` here instead
+	// This is recommended to set, otherwise it'll lead to a DLO unassigned to any data space which makes it not queryable via the SQL API
 	DataspaceInfo                     []DataspaceInfo                    `json:"dataspaceInfo"`
 	OrgUnitIdentifierFieldName        string                             `json:"orgUnitIdentifierFieldName"`
 	RecordModifiedFieldName           string                             `json:"recordModifiedFieldName"`
@@ -480,8 +508,8 @@ type CreateDataLakeObjectRequest struct {
 
 // DataspaceInfo represents information about a data space
 type DataspaceInfo struct {
-	Name   string       `json:"name"`
-	Filter FilterConfig `json:"filter"`
+	Name string `json:"name"`
+	// TODO: There are more fields known to be missing, add if necessary
 }
 
 // FilterConfig represents filter configuration
@@ -511,8 +539,8 @@ type DataLakeFieldInputRepresentation struct {
 	IsPrimaryKey string                `json:"isPrimaryKey"` // "true" or "false" as string
 }
 
-// DataLakeObjectResponse represents the response from creating a Data Lake Object
-type DataLakeObjectResponse struct {
+// DataLakeObject represents the response from creating a Data Lake Object
+type DataLakeObject struct {
 	Capabilities                    map[string]interface{} `json:"capabilities"`
 	Category                        DataLakeObjectCategory `json:"category"`
 	DataLakeFieldInfoRepresentation []DataLakeFieldOutput  `json:"dataLakeFieldInfoRepresentation"`
@@ -546,4 +574,51 @@ type DataSpaceObject struct {
 	Filter FilterConfig `json:"filter"`
 	Label  string       `json:"label"`
 	Name   string       `json:"name"`
+}
+
+// Error response.
+// reference: https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=type:Data+Cloud+Error
+type DataCloudError struct {
+	ErrorCode    string `json:"errorCode"`
+	ErrorMessage string `json:"errorMessage"`
+}
+
+// Data Cloud action response base.
+// reference: https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=type:Data+Cloud+Action+Response+Base
+type DataCloudActionResponse struct {
+	Errors  []DataCloudError `json:"errors"`
+	Success bool             `json:"success"`
+}
+
+func (s *DataTransform) IsActive() bool {
+	// Though it's documented that the status value is Camel case
+	// see `status` from https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=getDataTransform
+	// it's actually returned as all upper case
+	return strings.EqualFold(string(s.Status), string(DataTransformStatusActive))
+}
+
+func (s *DataTransform) IsError() bool {
+	return strings.EqualFold(string(s.Status), string(DataTransformStatusError))
+}
+
+func (s *DataTransform) IsLastRunSuccess() bool {
+	return strings.EqualFold(string(s.LastRunStatus), string(DataTransformLastRunStatusSuccess))
+}
+
+func (s *DataTransform) IsLastRunFailure() bool {
+	return strings.EqualFold(string(s.LastRunStatus), string(DataTransformLastRunStatusFailure)) ||
+		strings.EqualFold(string(s.LastRunStatus), string(DataTransformLastRunStatusPartialFailure))
+}
+
+func (s *DataTransform) IsLastRunCanceled() bool {
+	return strings.EqualFold(string(s.LastRunStatus), string(DataTransformLastRunStatusCanceled)) ||
+		strings.EqualFold(string(s.LastRunStatus), string(DataTransformLastRunStatusPartiallyCanceled))
+}
+
+func (s *DataTransform) IsLastRunInProgress() bool {
+	return strings.EqualFold(string(s.LastRunStatus), string(DataTransformLastRunStatusInProgress))
+}
+
+func (s *DataTransform) IsLastRunPending() bool {
+	return strings.EqualFold(string(s.LastRunStatus), string(DataTransformLastRunStatusPending))
 }

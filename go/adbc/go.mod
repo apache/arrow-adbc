@@ -25,6 +25,7 @@ require (
 	cloud.google.com/go/bigquery v1.67.0
 	github.com/apache/arrow-go/v18 v18.2.0
 	github.com/bluele/gcache v0.0.2
+	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/databricks/databricks-sdk-go v0.72.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang/protobuf v1.5.4

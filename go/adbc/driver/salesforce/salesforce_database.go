@@ -23,6 +23,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/api"
 )
 
 type databaseImpl struct {
@@ -45,6 +46,7 @@ type databaseImpl struct {
 
 	// Connection settings
 	instanceURL string
+	dataSpace   string
 
 	// Query settings
 	queryRowLimit string
@@ -67,6 +69,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		jwtBearerPrivateKey: d.jwtBearerPrivateKey,
 
 		instanceURL:   d.instanceURL,
+		dataSpace:     d.dataSpace,
 		queryRowLimit: d.queryRowLimit,
 		queryTimeout:  d.queryTimeout,
 	}
@@ -111,10 +114,6 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 	case OptionStringInstanceURL:
 		return d.instanceURL, nil
 
-	case OptionStringQueryRowLimit:
-		return d.queryRowLimit, nil
-	case OptionStringQueryTimeout:
-		return d.queryTimeout, nil
 	default:
 		return d.DatabaseImplBase.GetOption(key)
 	}
@@ -146,6 +145,12 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.loginURL = value
 	case OptionStringVersion:
 		d.version = value
+	case OptionStringDataSpace:
+		if value == "" {
+			d.dataSpace = api.DATASPACE_DEFAULT
+		} else {
+			d.dataSpace = value
+		}
 
 	case OptionStringClientID:
 		d.clientId = value
@@ -163,10 +168,6 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 	case OptionStringInstanceURL:
 		d.instanceURL = value
 
-	case OptionStringQueryRowLimit:
-		d.queryRowLimit = value
-	case OptionStringQueryTimeout:
-		d.queryTimeout = value
 	default:
 		return d.DatabaseImplBase.SetOption(key, value)
 	}

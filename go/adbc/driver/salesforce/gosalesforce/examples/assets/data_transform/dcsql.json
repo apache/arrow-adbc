@@ -1,0 +1,39 @@
+{
+    "name": "sampleDBTExample",
+    "label": "DBT Example DT",
+    "description": "Creates a DBT transform",
+    "type": "batch",
+    "definition": {
+        "type": "DCSQL",
+        "version": "1.0",
+        "manifest": {
+            "nodes": {
+                "src1": {
+                    "name": "src1",
+                    "compiled_code": "SELECT \"CustomerId__c\" FROM \"customers_raw__dll\"",
+                    "config": {
+                        "materialized": "ephemeral"
+                    }
+                },
+                "nodeName2": {
+                    "name": "nodeName2",
+                    "relation_name": "customers_stg_1__dll",
+                    "config": {
+                        "materialized": "table"
+                    },
+                    "compiled_code": "SELECT \"CustomerId__c\" FROM src1",
+                    "depends_on": {
+                        "nodes": [
+                            "src1"
+                        ]
+                    }
+                }
+            },
+            "sources": {
+                "src1": {
+                    "relation_name": "customers_raw__dll"
+                }
+            }
+        }
+    }
+}

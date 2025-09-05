@@ -3,22 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"time"
 
-	shared "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/examples/shared"
-	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/pkg"
+	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/api"
+	shared "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/shared"
 )
 
 func main() {
 	fmt.Println("Salesforce Data Cloud - Data Lake Object Examples")
 	fmt.Println("================================================")
 
-	// JWT Authentication
-	fmt.Println("\n=== JWT Authentication ===")
-	client, err := shared.DemonstrateJWTAuth()
+	client, err := api.NewClientWithJWT()
 	if err != nil {
-		log.Fatalf("JWT Auth failed: %v", err)
+		fmt.Printf("JWT Auth failed: %v\n", err)
 		return
 	}
 
@@ -70,17 +66,11 @@ func demonstrateDataLakeObject(client *api.Client) {
 	}
 
 	fmt.Println("\n✅ Data Lake Object demonstration completed!")
-	fmt.Println("📊 Summary:")
-	fmt.Println("   - Demonstrated Profile DLO creation with GET/DELETE logic")
-	fmt.Println("   - Demonstrated Engagement DLO creation with GET/DELETE logic")
-	fmt.Println("   - Demonstrated DLO with data space filters with GET/DELETE logic")
-	fmt.Println("   - Each DLO checks for existence, deletes if found, then creates new")
-	fmt.Println("   - DLOs can be monitored and managed via Data Cloud UI")
 }
 
 func demonstrateProfileDLO(ctx context.Context, client *api.Client) error {
 	name := "CustomerProfile_Example"
-	err := deleteIfExists(ctx, client, name)
+	err := client.DeleteIfDloExists(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -105,15 +95,15 @@ func demonstrateProfileDLO(ctx context.Context, client *api.Client) error {
 		return err
 	}
 
+	shared.PrettyPrintJSON(response)
 	fmt.Printf("✅ Profile DLO created successfully!\n")
-	fmt.Printf("   ID: %s, Status: %s, Fields: %d\n", response.ID, response.Status, len(response.Fields))
 
 	return nil
 }
 
 func demonstrateEngagementDLO(ctx context.Context, client *api.Client) error {
 	name := "CustomerEvents_Example"
-	err := deleteIfExists(ctx, client, name)
+	err := client.DeleteIfDloExists(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -142,15 +132,15 @@ func demonstrateEngagementDLO(ctx context.Context, client *api.Client) error {
 		return err
 	}
 
+	shared.PrettyPrintJSON(response)
 	fmt.Printf("✅ Engagement DLO created successfully!\n")
-	fmt.Printf("   ID: %s, Status: %s, Fields: %d\n", response.ID, response.Status, len(response.Fields))
 
 	return nil
 }
 
 func demonstrateDLOWithFilters(ctx context.Context, client *api.Client) error {
 	name := "RegionalOrders_Example"
-	err := deleteIfExists(ctx, client, name)
+	err := client.DeleteIfDloExists(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -187,36 +177,8 @@ func demonstrateDLOWithFilters(ctx context.Context, client *api.Client) error {
 		return err
 	}
 
+	shared.PrettyPrintJSON(response)
 	fmt.Printf("✅ DLO with filters created successfully!\n")
-	fmt.Printf("   ID: %s, Status: %s, Fields: %d, Data Spaces: %d\n",
-		response.ID, response.Status, len(response.Fields), len(response.DataSpaceInfo))
 
 	return nil
-}
-
-func deleteIfExists(ctx context.Context, client *api.Client, name string) error {
-	fmt.Printf("Checking if DLO exists: %s\n", name)
-	deletionInProgress := false
-	for {
-		existingDLO, err := client.GetDataLakeObjectByName(ctx, name)
-		if err == nil {
-			if !deletionInProgress {
-				fmt.Printf("🚨 DLO already exists (ID: %s), deleting it first...\n", existingDLO.ID)
-				err = client.DeleteDataLakeObjectByName(ctx, name)
-				if err != nil {
-					return fmt.Errorf("failed to delete existing DLO: %w", err)
-				} else {
-					deletionInProgress = true
-				}
-			}
-
-			// Wait for deletion to complete and verify
-			fmt.Println("🕒 Waiting 5 seconds for deletion to complete...")
-			time.Sleep(5 * time.Second)
-		} else {
-			fmt.Printf("✅ DLO does not exist, proceeding with creation\n")
-			return nil
-		}
-	}
-
 }

@@ -25,7 +25,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/pkg"
+	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/api"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 )
@@ -48,6 +48,7 @@ type connectionImpl struct {
 	password string
 
 	instanceURL   string
+	dataSpace     string
 	queryRowLimit string
 	queryTimeout  string
 
@@ -260,16 +261,16 @@ func (c *connectionImpl) getQueryTimeout() time.Duration {
 }
 
 // Helper function to parse row limit
-func (c *connectionImpl) getQueryRowLimit() *int64 {
+func (c *connectionImpl) getQueryRowLimit() int64 {
 	if c.queryRowLimit == "" {
-		return nil // no limit
+		return 0
 	}
 
 	if limit, err := strconv.ParseInt(c.queryRowLimit, 10, 64); err == nil {
-		return &limit
+		return limit
 	}
 
-	return nil // fallback to no limit
+	return 0
 }
 
 // GetTableSchema retrieves the schema for a specific table using Salesforce metadata API
@@ -307,7 +308,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 
 	var fields []arrow.Field
 	for _, field := range table.Fields {
-		arrowType := SalesforceTypeToArrowType(field.Type)
+		arrowType := SalesforceSqlTypeToArrowType(field.Type)
 
 		arrowField := arrow.Field{
 			Name:     field.Name,

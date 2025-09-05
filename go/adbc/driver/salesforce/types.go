@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/pkg"
+	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/api"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 )
@@ -14,7 +14,7 @@ func (s *statement) buildArrowSchema(metadata []api.SqlQueryMetadata) *arrow.Sch
 	fields := make([]arrow.Field, len(metadata))
 
 	for i, col := range metadata {
-		arrowType := SalesforceTypeToArrowType(col.Type)
+		arrowType := SalesforceSqlTypeToArrowType(col.Type)
 		field := arrow.Field{
 			Name:     col.Name,
 			Type:     arrowType,
@@ -230,39 +230,39 @@ func convertToFloat32(value interface{}) (float32, bool) {
 	return 0, false
 }
 
-// SalesforceTypeToArrowType converts a Salesforce type to an Arrow type
+// SalesforceSqlTypeToArrowType converts a Salesforce type to an Arrow type
 // reference: https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=createSqlQuery
-func SalesforceTypeToArrowType(sfType string) arrow.DataType {
+func SalesforceSqlTypeToArrowType(sfType api.SqlType) arrow.DataType {
 	switch sfType {
-	case "Varchar", "Char":
+	case api.SqlTypeVarchar, api.SqlTypeChar:
 		return arrow.BinaryTypes.String
-	case "BigInt":
+	case api.SqlTypeBigInt:
 		return arrow.PrimitiveTypes.Int64
-	case "Integer":
+	case api.SqlTypeInteger:
 		return arrow.PrimitiveTypes.Int32
-	case "SmallInt":
+	case api.SqlTypeSmallInt:
 		return arrow.PrimitiveTypes.Int16
-	case "Double":
+	case api.SqlTypeDouble:
 		return arrow.PrimitiveTypes.Float64
-	case "Numeric", "Float":
+	case api.SqlTypeNumeric, api.SqlTypeFloat:
 		return arrow.PrimitiveTypes.Float32
-	case "Bool":
+	case api.SqlTypeBool:
 		return arrow.FixedWidthTypes.Boolean
-	case "Date":
+	case api.SqlTypeDate:
 		return arrow.FixedWidthTypes.Date32
-	case "Time":
+	case api.SqlTypeTime:
 		return arrow.FixedWidthTypes.Time32ms
-	case "Timestamp", "TimestampTZ":
+	case api.SqlTypeTimestamp, api.SqlTypeTimestampTZ:
 		return arrow.FixedWidthTypes.Timestamp_ms
-	case "Oid":
+	case api.SqlTypeOid:
 		return arrow.PrimitiveTypes.Uint32
-	case "Unspecified":
+	case api.SqlTypeUnspecified:
 		return arrow.Null
 	default:
 		// Handle ArrayOfX types
 		if len(sfType) > 7 && sfType[:7] == "ArrayOf" {
 			elementType := sfType[7:] // Extract the element type after "ArrayOf"
-			elementArrowType := SalesforceTypeToArrowType(elementType)
+			elementArrowType := SalesforceSqlTypeToArrowType(elementType)
 			return arrow.ListOf(elementArrowType)
 		}
 		// Default to string for unknown types

@@ -22,6 +22,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/api"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 )
 
@@ -45,10 +46,12 @@ const (
 	// Connection options
 	OptionStringInstanceURL = "adbc.salesforce.dc.instance_url"
 	OptionStringVersion     = "adbc.salesforce.dc.version"
+	OptionStringDataSpace   = "adbc.salesforce.dc.data_space"
 
-	// Query options
-	OptionStringQueryRowLimit = "adbc.salesforce.dc.query.row_limit"
-	OptionStringQueryTimeout  = "adbc.salesforce.dc.query.timeout"
+	// Stmt options
+	OptionStringDLOCategory   = "adbc.salesforce.dc.dlo.category"
+	OptionStringDLOPrimaryKey = "adbc.salesforce.dc.dlo.primary_key"
+	OptionsStringTargetDLO    = "adbc.salesforce.dc.dlo.target_dlo"
 
 	// Default values
 	DefaultLoginURL = "https://login.salesforce.com"
@@ -56,9 +59,6 @@ const (
 )
 
 // Driver implements the ADBC Driver interface for Salesforce Data Cloud
-type Driver struct {
-	allocator memory.Allocator
-}
 
 var (
 	infoVendorVersion string
@@ -97,9 +97,10 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 	db := &databaseImpl{
 		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
 		// Defaults to the JWT Bearer Flow
-		authType: OptionValueAuthTypeJwtBearer,
-		loginURL: DefaultLoginURL,
-		version:  DefaultVersion,
+		authType:  OptionValueAuthTypeJwtBearer,
+		loginURL:  DefaultLoginURL,
+		version:   DefaultVersion,
+		dataSpace: api.DATASPACE_DEFAULT,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err

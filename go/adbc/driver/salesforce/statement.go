@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/pkg"
+	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/api"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -37,6 +37,13 @@ type statement struct {
 	// Parameter binding
 	paramBinding  *arrow.Record
 	streamBinding array.RecordReader
+
+	// Create DLO options
+	dloCategory   string
+	dloPrimaryKey string
+
+	// Data Transform options
+	targetDLO string
 }
 
 // Close cleans up the statement
@@ -73,6 +80,55 @@ func (s *statement) executeSQLQuery(ctx context.Context) (array.RecordReader, in
 			Code: adbc.StatusInvalidState,
 			Msg:  "connection not properly initialized",
 		}
+	}
+
+	// This is supposed to be equivalent to `CREATE OR REPLACE TABLE`
+	if s.dloCategory != "" && s.dloPrimaryKey != "" && s.targetDLO != "" {
+		if s.cnxn.dataSpace == "" {
+			return nil, 0, adbc.Error{
+				Code: adbc.StatusInvalidState,
+				Msg:  "data space must be set for the DLO to be created",
+			}
+		}
+
+		// Delete the existing DLO
+		err := s.cnxn.client.DeleteIfDloExists(ctx, s.targetDLO)
+		if err != nil {
+			return nil, 0, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  fmt.Sprintf("failed to delete DLO: %v", err),
+			}
+		}
+
+		// Creates the DLO
+		dataLakeObject, err := s.cnxn.client.CreateDataLakeObjectWithInferredSchema(ctx, s.query, s.cnxn.dataSpace, s.targetDLO, s.dloPrimaryKey, api.DataLakeObjectCategory(s.dloCategory))
+		if err != nil {
+			fmt.Printf("ERROR: Failed to create DLO from SQL response: %v\n", err)
+			return nil, 0, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  fmt.Sprintf("failed to create DLO from SQL response: %v", err),
+			}
+		}
+
+		// Inserts data
+		_, err = s.cnxn.client.TriggerDbtBatchDataTransform(ctx, dataLakeObject, s.query, true)
+		if err != nil {
+			return nil, 0, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  fmt.Sprintf("failed to create DCSQL data transform: %v", err),
+			}
+		}
+
+		// Returns empty
+		emptySchema := arrow.NewSchema([]arrow.Field{}, nil)
+		reader, err := array.NewRecordReader(emptySchema, []arrow.Record{})
+		if err != nil {
+			return nil, 0, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  fmt.Sprintf("failed to create empty record reader: %v", err),
+			}
+		}
+		return reader, 0, nil
 	}
 
 	rowLimit := s.cnxn.getQueryRowLimit()
@@ -153,6 +209,14 @@ func (s *statement) Prepare(ctx context.Context) error {
 
 // Additional required interface methods
 func (s *statement) GetOption(key string) (string, error) {
+	switch key {
+	case OptionStringDLOCategory:
+		return s.dloCategory, nil
+	case OptionStringDLOPrimaryKey:
+		return s.dloPrimaryKey, nil
+	case OptionsStringTargetDLO:
+		return s.targetDLO, nil
+	}
 	return "", adbc.Error{
 		Code: adbc.StatusNotFound,
 		Msg:  fmt.Sprintf("unknown statement option: %s", key),
@@ -181,10 +245,20 @@ func (s *statement) GetOptionInt(key string) (int64, error) {
 }
 
 func (s *statement) SetOption(key, value string) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  fmt.Sprintf("unknown statement option: %s", key),
+	switch key {
+	case OptionStringDLOCategory:
+		s.dloCategory = value
+	case OptionStringDLOPrimaryKey:
+		s.dloPrimaryKey = value
+	case OptionsStringTargetDLO:
+		s.targetDLO = value
+	default:
+		return adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  fmt.Sprintf("unknown statement string type option: %s", key),
+		}
 	}
+	return nil
 }
 
 func (s *statement) SetOptionBytes(key string, value []byte) error {
