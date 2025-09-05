@@ -241,9 +241,11 @@ a string (single path) or a table of platform-specific paths.  The ``Driver.shar
 needed to successfully load a driver manifest.  The other keys are optional, but provide useful metadata
 about the driver.
 
-The ``manifest_version`` key is not required, but if present, it must be set to 1.  Driver manager
-implementations must error upon reading a manifest with ``manifest_version`` higher than 1.  This is to
-prevent undefined behavior if breaking changes are made to the manifest format in the future.
+The ``manifest_version`` key is currently not required, but if present, it must be set to 1.  Driver
+manager implementations must error upon reading a manifest with ``manifest_version`` higher than 1.
+This is to prevent undefined behavior if breaking changes are made to the manifest format in the future.
+In the future, manifests that use a manifest version higher than 1 will be required to include the
+``manifest_version`` key.
 
 Platform Tuples
 ^^^^^^^^^^^^^^^
