@@ -27,10 +27,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Adbc.Telemetry.Traces.Exporters;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
+using OpenTelemetry.Trace;
 using Thrift.Protocol;
 using Thrift.Transport;
 
@@ -49,6 +51,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
         private bool _isDisposed;
+        private static readonly object s_tracerProviderLock = new object();
+        private static TracerProvider? s_tracerProvider;
+        private static bool s_isFileExporterEnabled = false;
 
         readonly AdbcInfoCode[] infoSupportedCodes = [
             AdbcInfoCode.DriverName,
@@ -278,6 +283,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             Properties = properties;
 
+            TryInitTracerProvider();
+
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -293,6 +300,48 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
             }
         }
+
+        private void TryInitTracerProvider()
+        {
+            // Avoid locking if the tracer provider is already set.
+            if (s_tracerProvider != null)
+            {
+                return;
+            }
+            // Avoid locking if the exporter option would not activate.
+            Properties.TryGetValue(ExportersOptions.Exporter, out string? exporterOption);
+            ExportersBuilder exportersBuilder = ExportersBuilder.Build(this.ActivitySourceName, addDefaultExporters: true).Build();
+            if (!exportersBuilder.WouldActivate(exporterOption))
+            {
+                return;
+            }
+
+            // Will likely activate the exporter, so we need to lock to ensure thread safety.
+            lock (s_tracerProviderLock)
+            {
+                // Due to race conditions, we need to check again if the tracer provider is already set.
+                if (s_tracerProvider != null)
+                {
+                    return;
+                }
+
+                // Activates the exporter specified in the connection property (if exists) or environment variable (if is set).
+                if (exportersBuilder.TryActivate(exporterOption, out string? exporterName, out TracerProvider? tracerProvider, ExportersOptions.Environment.Exporter) && tracerProvider != null)
+                {
+                    s_tracerProvider = tracerProvider;
+                    s_isFileExporterEnabled = ExportersOptions.Exporters.AdbcFile.Equals(exporterName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Conditional used to determines if it is safe to trace
+        /// </summary>
+        /// <remarks>
+        /// It is safe to write to some output types (ie, files) but not others (ie, a shared resource).
+        /// </remarks>
+        /// <returns></returns>
+        internal static bool IsSafeToTrace => s_isFileExporterEnabled;
 
         internal TCLIService.IAsync Client
         {
@@ -733,6 +782,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 DisposeClient();
                 _isDisposed = true;
+                s_tracerProvider?.ForceFlush();
             }
             base.Dispose(disposing);
         }
@@ -1540,7 +1590,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             nullCount++;
                             break;
                     }
-                    ActivityExtensions.AddTag(activity, tagKey, tagValue);
+                    Tracing.ActivityExtensions.AddTag(activity, tagKey, tagValue);
                 }
 
                 StructType entryType = new StructType(
