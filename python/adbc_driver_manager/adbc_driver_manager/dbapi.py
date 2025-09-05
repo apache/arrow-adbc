@@ -746,10 +746,16 @@ class Cursor(_Closeable):
             The query to execute.  Pass SQL queries as strings,
             (serialized) Substrait plans as bytes.
         seq_of_parameters
-            Parameters to bind.  Can be a list of Python sequences, or
-            an Arrow record batch, table, or record batch reader.  If
-            None, then the query will be executed once, else it will
-            be executed once per row.
+            Parameters to bind.  Can be a list of Python sequences, or an
+            Arrow record batch, table, or record batch reader.  If None, then
+            the query will be executed once, else it will be executed once per
+            row.  (That implies that an empty sequence is equivalent to not
+            executing the query at all.)
+
+        Notes
+        -----
+        Allowing ``None`` for parameters is outside of the DB-API
+        specification.
         """
         self._clear()
         if operation != self._last_query:
@@ -768,6 +774,20 @@ class Cursor(_Closeable):
 
         if arrow_parameters is not None:
             self._bind(arrow_parameters)
+        elif seq_of_parameters is not None:
+            # arrow_parameters is None and seq_of_parameters is not None =>
+            # empty list or sequence
+
+            # NOTE(https://github.com/apache/arrow-adbc/issues/3319): If there
+            # are no parameters, don't do anything.  (We could give this to
+            # the driver to handle, but it's easier to do it here, especially
+            # in the case that Python objects are given - we would have to
+            # figure out the schema and create temporary Arrow data just to do
+            # nothing.)  Note that for C Data objects, we can't check the
+            # length so the driver might end up having to handle them after
+            # all.
+            return
+
         self._rowcount = _blocking_call(
             self._stmt.execute_update, (), {}, self._stmt.cancel
         )
