@@ -29,7 +29,7 @@ using Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter;
 
 namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
 {
-    public class TracingFileExporterTests : IDisposable
+    public class FileExporterTests : IDisposable
     {
         private readonly ITestOutputHelper? _outputHelper;
         private bool _disposed;
@@ -37,7 +37,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
         private readonly ActivitySource _activitySource;
         private static readonly string s_localApplicationDataFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-        public TracingFileExporterTests(ITestOutputHelper? outputHelper)
+        public FileExporterTests(ITestOutputHelper? outputHelper)
         {
             _outputHelper = outputHelper;
             _activitySourceName = ExportersBuilderTests.NewName();
@@ -278,8 +278,8 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                 // Note, because we don't reference count, one of the listeners will likely
                 // close the shared instance before the other is finished.
                 // That can result in some events not being written.
-                Assert.InRange(activity1Count, writeCount * 0.7, writeCount);
-                Assert.InRange(activity2Count, writeCount * 0.7, writeCount);
+                Assert.InRange(activity1Count, writeCount * 0.8, writeCount);
+                Assert.InRange(activity2Count, writeCount * 0.8, writeCount);
             }
             finally
             {
@@ -299,6 +299,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                     await StartActivity(activityName);
                     await Task.Delay(TimeSpan.FromMilliseconds(0.1));
                 }
+                provider.ForceFlush(2000);
             }
         }
 
