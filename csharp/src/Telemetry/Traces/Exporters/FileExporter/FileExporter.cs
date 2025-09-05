@@ -219,7 +219,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             {
                 // Allow flush of any existing events.
                 using CancellationTokenSource flushTimeout = new();
-                flushTimeout.CancelAfter(TimeSpan.FromSeconds(10));
+                flushTimeout.CancelAfter(TimeSpan.FromSeconds(5));
                 FlushAsync(flushTimeout.Token).Wait();
 
                 // Remove and dispose of single instance of exporter
