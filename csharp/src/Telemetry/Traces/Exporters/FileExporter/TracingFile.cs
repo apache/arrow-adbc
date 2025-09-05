@@ -131,12 +131,16 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     }
                     _currentFileStream = _currentTraceFileInfo.OpenWrite();
                 }
-                catch (IOException ioEx) when (ioEx.HResult == -2147024864) // ERROR_SHARING_VIOLATION
+                catch (IOException ioEx) when ((uint)ioEx.HResult == 0x80070020) // ERROR_SHARING_VIOLATION
                 {
                     // If we can't open the file, just set to null.
                     _currentFileStream = null;
                     int delayMs = ThreadLocalRandom.Next(5, 50);
                     await Task.Delay(delayMs).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.Message);
                 }
             } while (_currentFileStream == null);
 
