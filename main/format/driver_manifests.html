@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/format/driver_manifests.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="The ADBC driver manager is itself, an ADBC driver which loads another driver dynamically and forwards the calls to the loaded driver. For more information on the driver manager see How Drivers and ..." />
+<meta property="og:description" content="There are two ways to load a driver with the driver manager: Directly specifying the dynamic library to load, Referring to a driver manifest file which contains metadata along with the location of ..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="The ADBC driver manager is itself, an ADBC driver which loads another driver dynamically and forwards the calls to the loaded driver. For more information on the driver manager see How Drivers and ..." />
+<meta name="description" content="There are two ways to load a driver with the driver manager: Directly specifying the dynamic library to load, Referring to a driver manifest file which contains metadata along with the location of ..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Related Work" href="related_work.html" /><link rel="prev" title="How Drivers and the Driver Manager Work Together" href="how_manager.html" />
 
     <!-- Generated with Sphinx 8.3.0 and Furo 2024.08.06 -->
@@ -399,41 +399,54 @@
 <h1>ADBC Driver Manager and Manifests<a class="headerlink" href="#adbc-driver-manager-and-manifests" title="Link to this heading">¶</a></h1>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>This document focuses on scenarios that use the driver manager
-to load drivers.  The driver manager is not required to use ADBC
-in general, but allows a convenient experience for dynamically
-loading arbitrary drivers.</p>
+<p>This document describes using the <a class="reference internal" href="../glossary.html#term-driver-manager"><span class="xref std std-term">driver manager</span></a> to load
+drivers.  The driver manager is not required to use ADBC in general
+but it allows loading drivers written in a different language from the
+application and improves the experience when using multiple drivers in
+a single application. For more information on how the driver manager
+works see <a class="reference internal" href="how_manager.html"><span class="doc">How Drivers and the Driver Manager Work Together</span></a>.</p>
 </div>
-<p>The ADBC driver manager is itself, an ADBC driver which loads another driver
-dynamically and forwards the calls to the loaded driver.  For more information on the
-driver manager see <a class="reference internal" href="how_manager.html"><span class="doc">How Drivers and the Driver Manager Work Together</span></a>.</p>
-<p>There are two ways to specify a driver for the driver manager to load:</p>
+<p>There are two ways to load a driver with the driver manager:</p>
 <ol class="arabic simple">
 <li><p>Directly specifying the dynamic library to load</p></li>
 <li><p>Referring to a driver manifest file which contains metadata along with the
 location of the dynamic library to be loaded</p></li>
 </ol>
-<p>When using the driver manager, you can either use the <code class="docutils literal notranslate"><span class="pre">driver</span></code> option to the
-driver manager, or you can use functions in the language bindings which explicitly
-load a driver by name.</p>
+<p>With either method, you specify the dynamic library or driver manifest as the
+<code class="docutils literal notranslate"><span class="pre">driver</span></code> option to the driver manager or you can use an explicit function for
+loading drivers if your driver manager library exposes one (e.g., C++, see
+example below).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>In addition to the <code class="docutils literal notranslate"><span class="pre">driver</span></code> option, there is also an <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code> option
-which can be used to specify the entrypoint function to call for populating
-the driver function table.  If the driver does not use the default entrypoint
-function, it can be indicated with this option.</p>
+<p>In addition to the <code class="docutils literal notranslate"><span class="pre">driver</span></code> option, there is also an
+<a class="reference internal" href="../glossary.html#term-entrypoint"><span class="xref std std-term">entrypoint</span></a> option that should be used if the driver uses a
+non-default entrypoint.</p>
 </div>
 <section id="directly-loading-a-driver">
 <h2>Directly Loading a Driver<a class="headerlink" href="#directly-loading-a-driver" title="Link to this heading">¶</a></h2>
 <p>The simplest mechanism for loading a driver via the driver manager is to provide a
-direct file path to the dynamic library as the driver name.</p>
+file path to the dynamic library as the driver name.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
 C/C++</label><div class="sd-tab-content docutils">
-<p>You can use the <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ac9a4db661a21cca1bbb47a4bd47f9ad0" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcLoadDriver()</span></code></a> function to load the driver directly or you can use it as a driver
-itself via <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-database.html#structAdbcDatabase" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// load directly</span>
+<p>You can specify the driver to load using the <code class="docutils literal notranslate"><span class="pre">driver</span></code> option to the
+driver manager or you can use <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ac9a4db661a21cca1bbb47a4bd47f9ad0" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcLoadDriver()</span></code></a> to directly load
+the driver.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">AdbcError</span><span class="w"> </span><span class="n">error</span><span class="p">;</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">database</span><span class="p">));</span>
+<span class="n">std</span><span class="o">::</span><span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">error</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">error</span><span class="p">));</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="c1">// if status != ADBC_STATUS_OK then handle the error</span>
+
+<span class="c1">// Load the driver by setting the &quot;driver&quot; option</span>
+<span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="c1">// if status != ADBC_STATUS_OK then handle the error</span>
+
+<span class="c1">// Alternatively, load directly with AdbcLoadDriver</span>
 <span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDriver</span><span class="w"> </span><span class="n">driver</span><span class="p">;</span>
 <span class="k">struct</span><span class="w"> </span><span class="nc">AdbcError</span><span class="w"> </span><span class="n">error</span><span class="p">;</span>
 
@@ -443,16 +456,6 @@ itself via <a class="reference external" href="https://arrow.apache.org/adbc/mai
 <span class="k">auto</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcLoadDriver</span><span class="p">(</span><span class="s">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">nullptr</span><span class="p">,</span>
 <span class="w">  </span><span class="n">ADBC_VERSION_1_1_0</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">driver</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="c1">// if status != ADBC_STATUS_OK then handle the error</span>
-
-<span class="c1">// or use the Driver Manager as a driver itself</span>
-<span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
-<span class="k">struct</span><span class="w"> </span><span class="nc">AdbcError</span><span class="w"> </span><span class="n">error</span><span class="p">;</span>
-<span class="n">std</span><span class="o">::</span><span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">database</span><span class="p">));</span>
-<span class="n">std</span><span class="o">::</span><span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">error</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">error</span><span class="p">));</span>
-<span class="k">auto</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="c1">// check status</span>
-<span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="c1">// check status</span>
 </pre></div>
 </div>
 </div>
@@ -550,13 +553,13 @@ Rust</label><div class="sd-tab-content docutils">
 prefer to use <code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code> (or similar, depending on your operating
 system) and specify just the filename (i.e., <code class="docutils literal notranslate"><span class="pre">libadbc_driver.so</span></code> instead of
 <code class="docutils literal notranslate"><span class="pre">/path/to/libadbc_driver.so</span></code>.</p>
-<p>However, the requirement to having the path to the dynamic library or having it
+<p>However, the requirement of having the path to the dynamic library or having it
 on your <code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code> can prove difficult for ensuring security, reproducibility,
 and ease of use.  For this reason, there is the concept of a driver manifest.</p>
 </section>
 <section id="driver-manifests">
 <h2>Driver Manifests<a class="headerlink" href="#driver-manifests" title="Link to this heading">¶</a></h2>
-<p>A <code class="docutils literal notranslate"><span class="pre">driver</span> <span class="pre">manifest</span></code> is a <a class="reference external" href="https://toml.io/en/">TOML</a> file that contains both metadata about the driver along with the location
+<p>A <a class="reference internal" href="../glossary.html#term-driver-manifest"><span class="xref std std-term">driver manifest</span></a> is a <a class="reference external" href="https://toml.io/en/">TOML</a> file that contains both metadata about the driver along with the location
 of the shared library to load.  The driver manager can then locate the manifest and use it to load the
 driver if it was given the shared library path directly.  This allows for more portable installations of
 drivers, and sharing of configurations.  Tools can even be created and written to automatically manage driver
@@ -811,7 +814,7 @@ Ruby</label><div class="sd-tab-content docutils">
 <li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::DEFAULT</span></code> - default value with all flags set</p></li>
 </ul>
 <p>These can be provided by using <code class="docutils literal notranslate"><span class="pre">ADBC::Database#load_flags=</span></code>.
-Passing the option <code class="docutils literal notranslate"><span class="pre">load_flags</span></code> as an option to <code class="docutils literal notranslate"><span class="pre">AdbcDatabase</span></code> (or via <code class="docutils literal notranslate"><span class="pre">db_kwargs</span></code> in <code class="docutils literal notranslate"><span class="pre">adbc_driver_qmanager.dbapi.connect</span></code>) will
+Passing the option <code class="docutils literal notranslate"><span class="pre">load_flags</span></code> as an option to <code class="docutils literal notranslate"><span class="pre">AdbcDatabase</span></code> (or via <code class="docutils literal notranslate"><span class="pre">db_kwargs</span></code> in <code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.dbapi.connect</span></code>) will
 allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.</p>
 </div>
 <input id="sd-tab-item-13" name="sd-tab-set-1" type="radio">
@@ -834,14 +837,11 @@ the type <code class="docutils literal notranslate"><span class="pre">adbc_core:
 <p>For Unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
 the given order:</p>
 <ol class="arabic simple">
-<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the paths in the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> will be searched</p></li>
-</ol>
-<blockquote>
-<div><ul class="simple">
+<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the paths in the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> will be searched</p>
+<ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> is a colon-separated list of directories</p></li>
 </ul>
-</div></blockquote>
-<ol class="arabic simple">
+</li>
 <li><p>If additional search paths have been specified, those will be searched</p>
 <ul class="simple">
 <li><p>The Python driver manager automatically adds <code class="docutils literal notranslate"><span class="pre">$VIRTUAL_ENV/etc/adbc/drivers</span></code> to the search paths when running in a <code class="docutils literal notranslate"><span class="pre">venv</span></code> virtual environment</p></li>
@@ -868,14 +868,11 @@ will search <code class="docutils literal notranslate"><span class="pre">$XDG_CO
 <p>Things are slightly different on Windows, where the driver manager will also search for driver information in the registry just as
 would happen for ODBC drivers. The search for a manifest on Windows would be the following:</p>
 <ol class="arabic simple">
-<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the paths in the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> will be searched</p></li>
-</ol>
-<blockquote>
-<div><ul class="simple">
+<li><p>If the <code class="docutils literal notranslate"><span class="pre">LOAD_FLAG_SEARCH_ENV</span></code> load option is set, then the paths in the environment variable <code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> will be searched</p>
+<ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_PATH</span></code> is a semicolon-separated list of directories</p></li>
 </ul>
-</div></blockquote>
-<ol class="arabic simple">
+</li>
 <li><p>If additional search paths have been specified, those will be searched</p>
 <ul class="simple">
 <li><p>The Python driver manager automatically adds <code class="docutils literal notranslate"><span class="pre">$VIRTUAL_ENV\etc\adbc\drivers</span></code> to the search paths when running in a <code class="docutils literal notranslate"><span class="pre">venv</span></code> virtual environment</p></li>

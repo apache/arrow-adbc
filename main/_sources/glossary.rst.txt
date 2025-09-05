@@ -71,6 +71,12 @@ Glossary
      :term:`driver manager` can load a driver from a which simplifies the
      process for users.
 
+   entrypoint
+     The name of a function exported by a driver that the :term:`driver manager`
+     calls when a driver is loaded to perform any initialization required by the
+     driver. The name follows a convention which is outlined in
+     :c:type:`AdbcDriverInitFunc` but another name may be used.
+
    statement
      In ADBC, the statement object/struct holds state for executing a single
      query.  The query itself, bind parameters, result sets, and so on are all
