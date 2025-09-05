@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
     /// Provides access to writing trace files, limiting the
     /// individual files size and ensuring unique file names.
     /// </summary>
-    internal class TracingFile
+    internal class TracingFile : IDisposable
     {
         private static readonly string s_defaultTracePath = FileExporter.TracingLocationDefault;
         private static readonly Random s_globalRandom = new();
@@ -38,6 +38,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         private readonly string _fileBaseName;
         private readonly DirectoryInfo _tracingDirectory;
         private FileInfo? _currentTraceFileInfo;
+        private FileStream? _currentFileStream;
         private readonly long _maxFileSizeKb;
         private readonly int _maxTraceFiles;
 
@@ -61,35 +62,35 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         /// <param name="streams">The enumerable of trace lines.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        internal async Task WriteLinesAsync(IAsyncEnumerable<Stream> streams, CancellationToken cancellationToken = default)
+        internal async Task WriteLineAsync(Stream stream, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return;
 
             string findSearchPattern = _fileBaseName + $"-trace-*-{ProcessId}.log";
             if (_currentTraceFileInfo == null)
             {
-                IOrderedEnumerable<FileInfo>? traceFileInfos = await GetTracingFilesAsync(_tracingDirectory, findSearchPattern);
-                FileInfo? mostRecentFile = traceFileInfos?.FirstOrDefault();
-                mostRecentFile?.Refresh();
-
-                // Use the latest file, if it is not maxxed-out, or start a new tracing file.
-                _currentTraceFileInfo = mostRecentFile != null && mostRecentFile.Length < _maxFileSizeKb * 1024
-                    ? mostRecentFile
-                    : new FileInfo(NewFileName());
+                await OpenNewTracingFileAsync();
             }
 
             // Write out to the file and retry if IO errors occur.
-            await ActionWithRetryAsync<IOException>(async () => await WriteLinesAsync(streams), cancellationToken: cancellationToken);
+            await ActionWithRetryAsync<IOException>(async () => await WriteSingleLineAsync(stream), cancellationToken: cancellationToken);
 
+        }
+
+        private async Task TryRemoveOlderFiles()
+        {
             // Check if we need to remove old files
             if (_tracingDirectory.Exists)
             {
                 // This will clean-up files for all processes in the same directory.
                 string deleteSearchPattern = _fileBaseName + $"-trace-*.log";
-                FileInfo[] tracingFiles = [.. await GetTracingFilesAsync(_tracingDirectory, deleteSearchPattern)];
-                if (tracingFiles != null && tracingFiles.Length > _maxTraceFiles)
+                IOrderedEnumerable<FileInfo> orderedFiles = await GetTracingFilesAsync(_tracingDirectory, deleteSearchPattern);
+                // Avoid accidentally trying to delete the current file.
+                FileInfo[] tracingFiles = orderedFiles.Where(f => !f.FullName.Equals(_currentTraceFileInfo?.FullName))?.ToArray() ?? new FileInfo[0];
+                if (tracingFiles.Length >= _maxTraceFiles)
                 {
-                    for (int i = tracingFiles.Length - 1; i >= _maxTraceFiles; i--)
+                    int lastIndex = Math.Max(0, _maxTraceFiles - 1);
+                    for (int i = tracingFiles.Length - 1; i >= lastIndex; i--)
                     {
                         FileInfo? file = tracingFiles.ElementAtOrDefault(i);
                         // Note: don't pass the cancellation token, as we want this to ALWAYS run at the end.
@@ -103,43 +104,58 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             }
         }
 
-        private async Task WriteLinesAsync(IAsyncEnumerable<Stream> streams)
+        private async Task WriteSingleLineAsync(Stream stream)
         {
-            bool hasMoreData;
+            if (_currentFileStream!.Length >= _maxFileSizeKb * 1024)
+            {
+                // If tracing file is maxxed-out, start a new tracing file.
+                await OpenNewTracingFileAsync();
+            }
+            _currentFileStream.Position = _currentFileStream.Length;
+            await stream.CopyToAsync(_currentFileStream);
+        }
+
+        private async Task OpenNewTracingFileAsync()
+        {
+            _currentFileStream?.Dispose();
+            _currentFileStream = null;
+
             do
             {
-                bool newFileRequired = false;
-                _currentTraceFileInfo!.Refresh();
-                using (FileStream fileStream = _currentTraceFileInfo!.OpenWrite())
+                _currentTraceFileInfo = new FileInfo(NewFileName());
+                try
                 {
-                    fileStream.Position = fileStream.Length;
-                    hasMoreData = false;
-                    await foreach (Stream stream in streams)
+                    if (!_tracingDirectory.Exists)
                     {
-                        if (fileStream.Length >= _maxFileSizeKb * 1024)
-                        {
-                            hasMoreData = true;
-                            newFileRequired = true;
-                            break;
-                        }
-
-                        await stream.CopyToAsync(fileStream);
+                        _tracingDirectory.Create();
                     }
+                    _currentFileStream = _currentTraceFileInfo.OpenWrite();
                 }
-                await Task.Yield(); // Yield to allow other tasks to run.
-                if (newFileRequired)
+                catch (IOException ioEx) when (ioEx.HResult == -2147024864) // ERROR_SHARING_VIOLATION
                 {
-                    // If tracing file is maxxed-out, start a new tracing file.
-                    _currentTraceFileInfo = new FileInfo(NewFileName());
+                    // If we can't open the file, just set to null.
+                    _currentFileStream = null;
+                    int delayMs = ThreadLocalRandom.Next(5, 50);
+                    await Task.Delay(delayMs).ConfigureAwait(false);
                 }
-            } while (hasMoreData);
+            } while (_currentFileStream == null);
+
+            await TryRemoveOlderFiles();
         }
 
         private static async Task<IOrderedEnumerable<FileInfo>> GetTracingFilesAsync(DirectoryInfo tracingDirectory, string searchPattern)
         {
-            return await Task.Run(() => tracingDirectory
-                .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
-                .OrderByDescending(f => f.LastWriteTimeUtc));
+            return await Task.Run(() =>
+            {
+                if (!tracingDirectory.Exists)
+                {
+                    tracingDirectory.Create();
+                    return Enumerable.Empty<FileInfo>().OrderByDescending(f => f.LastWriteTimeUtc);
+                }
+                return tracingDirectory
+                    .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
+                    .OrderByDescending(f => f.LastWriteTimeUtc.Ticks);
+            });
         }
 
         private static async Task ActionWithRetryAsync<T>(
@@ -206,6 +222,13 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             // Create a new random instance based on the global random seed.
             // This ensures that each thread gets a different seed.
             return new Random(seed);
+        }
+
+        public void Dispose()
+        {
+            _currentFileStream?.Dispose();
+            _currentFileStream = null;
+            _currentTraceFileInfo = null;
         }
     }
 }

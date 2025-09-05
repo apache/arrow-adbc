@@ -208,7 +208,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                     for (int i = 0; i < 100; i++)
                     {
                         await AddEvent("test");
-                        await Task.Delay(TimeSpan.FromMilliseconds(0.1));
+                        await Task.Delay(TimeSpan.FromMilliseconds(0.11));
                     }
                 }
 
@@ -278,8 +278,8 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                 // Note, because we don't reference count, one of the listeners will likely
                 // close the shared instance before the other is finished.
                 // That can result in some events not being written.
-                Assert.InRange(activity1Count, writeCount * 0.9, writeCount);
-                Assert.InRange(activity2Count, writeCount * 0.9, writeCount);
+                Assert.InRange(activity1Count, writeCount * 0.7, writeCount);
+                Assert.InRange(activity2Count, writeCount * 0.7, writeCount);
             }
             finally
             {

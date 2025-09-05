@@ -41,7 +41,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
         internal async Task TestMultipleConcurrentTracingFiles()
         {
             CancellationTokenSource tokenSource = new CancellationTokenSource();
-            int concurrentCount = 5;
+            int concurrentCount = 50;
             Task[] tasks = new Task[concurrentCount];
             int[] lineCounts = new int[concurrentCount];
             string sourceName = ExportersBuilderTests.NewName();
@@ -80,8 +80,11 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
         private async Task Run(string sourceName, string traceFolder, CancellationToken cancellationToken)
         {
             int instanceNumber = Interlocked.Increment(ref _testInstance) - 1;
-            TracingFile tracingFile = new TracingFile(sourceName, traceFolder);
-            await tracingFile.WriteLinesAsync(GetLinesAsync(instanceNumber, 100, cancellationToken), cancellationToken);
+            using TracingFile tracingFile = new TracingFile(sourceName, traceFolder);
+            await foreach (var stream in GetLinesAsync(instanceNumber, 100, cancellationToken))
+            {
+                await tracingFile.WriteLineAsync(stream, cancellationToken);
+            }
         }
 
         private static async IAsyncEnumerable<Stream> GetLinesAsync(int instanceNumber, int lineCount, [EnumeratorCancellation] CancellationToken cancellationToken = default)
