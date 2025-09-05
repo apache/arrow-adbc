@@ -81,6 +81,7 @@ components.  Its version is an integer number currently set to 1.
 The driver manifest version number must be incremented when and only
 when breaking changes are made to the driver manifest format.  Driver
 managers must check the driver manifest version number when reading
-manifests and error if the version number is higher than 1.  This is
-intended to prevent undefined behavior of the current driver managers
-with incompatible future versions of the driver manifest format.
+manifests and error if the version number is present and higher than
+1.  This is intended to prevent undefined behavior of the current
+driver managers with incompatible future versions of the driver
+manifest format.
