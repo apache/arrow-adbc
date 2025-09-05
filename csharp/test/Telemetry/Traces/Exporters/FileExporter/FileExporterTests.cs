@@ -141,7 +141,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                 }
                 for (int i = 0; i < files.Length; i++)
                 {
-                    long expectedUpperSizeLimit = (maxTraceFileSizeKb + (long)(0.3 * maxTraceFileSizeKb)) * kilobyte;
+                    long expectedUpperSizeLimit = (maxTraceFileSizeKb + (long)(0.2 * maxTraceFileSizeKb)) * kilobyte;
                     Assert.True(files[i].Length < expectedUpperSizeLimit, summary.ToString());
                 }
                 _outputHelper?.WriteLine($"number of files: {files.Length}");

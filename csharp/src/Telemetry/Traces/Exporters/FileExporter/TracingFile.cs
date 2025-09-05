@@ -107,13 +107,13 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private async Task WriteSingleLineAsync(Stream stream)
         {
-            _currentFileStream!.Position = _currentFileStream.Length;
-            await stream.CopyToAsync(_currentFileStream);
-            if (_currentFileStream.Length >= _maxFileSizeKb * KbInByes)
+            if ((_currentFileStream!.Length + stream.Length) >= (_maxFileSizeKb * KbInByes))
             {
                 // If tracing file is maxxed-out, start a new tracing file.
                 await OpenNewTracingFileAsync();
             }
+            _currentFileStream!.Position = _currentFileStream.Length;
+            await stream.CopyToAsync(_currentFileStream);
         }
 
         private async Task OpenNewTracingFileAsync()
