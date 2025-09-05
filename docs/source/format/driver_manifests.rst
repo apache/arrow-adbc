@@ -37,9 +37,9 @@ With either method, you specify the dynamic library or driver manifest as the
 loading drivers if your driver manager library exposes one (e.g., C++, see
 example below).
 
-.. note:: In addition to the ``driver`` option, there is also an ``entrypoint``
-          option that should be used if the driver uses a non-default
-          entrypoint.
+.. note:: In addition to the ``driver`` option, there is also an
+          :term:`entrypoint` option that should be used if the driver uses a
+          non-default entrypoint.
 
 Directly Loading a Driver
 =========================
