@@ -788,6 +788,24 @@ TEST_F(DriverManifest, ManifestEntrypointInvalid) {
   ASSERT_TRUE(std::filesystem::remove(filepath));
 }
 
+TEST_F(DriverManifest, ManifestBadVersion) {
+  auto filepath = temp_dir / "sqlite.toml";
+  toml::table manifest_with_bad_version = simple_manifest;
+  manifest_with_bad_version.insert("manifest_version", 2);
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << manifest_with_bad_version;
+  test_manifest_file.close();
+
+  // Attempt to load the driver
+  ASSERT_THAT(AdbcFindLoadDriver(filepath.string().data(), nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
 // only build and run test that puts files in the users home directory if
 // it's been enabled via the build system setting this compile def
 #ifdef ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL

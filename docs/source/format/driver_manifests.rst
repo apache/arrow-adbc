@@ -174,7 +174,7 @@ file path to the dynamic library as the driver name.
           use adbc_core::driver_manager::ManagedDriver;
 
           fn get_driver() -> ManagedDriver {
-              ManagedDriver::load_dynamic_from_name("/path/to/libadbc_driver.so", None, AdbcVersion::V100).unwrap()
+              ManagedDriver::load_from_name("/path/to/libadbc_driver.so", None, AdbcVersion::V100).unwrap()
           }
 
 As an alternative to passing the full path to the dynamic library, you may
@@ -208,6 +208,8 @@ Below is an example of a driver manifest:
 
 .. code-block:: toml
 
+   manifest_version = 1
+
    name = 'Driver Display Name'
    version = '1.0.0' # driver version
    publisher = 'string to identify the publisher'
@@ -240,6 +242,10 @@ In general, the only *required* key is the ``Driver.shared`` key, which must exi
 a string (single path) or a table of platform-specific paths.  The ``Driver.shared`` key is the only key
 needed to successfully load a driver manifest.  The other keys are optional, but provide useful metadata
 about the driver.
+
+The ``manifest_version`` key, if present, it must be set to 1.  It defaults to 1 and can currently only
+be set to 1.  Driver manager implementations must error upon reading a manifest with
+``manifest_version`` higher than 1.
 
 Platform Tuples
 ^^^^^^^^^^^^^^^
@@ -422,7 +428,7 @@ to control which directories will be searched for manifests, with the behavior b
     .. tab-item:: Rust
        :sync: rust
 
-       The ``ManagedDriver`` type has a method ``load_dynamic_from_name`` which takes an optional ``load_flags`` parameter. The flags as a ``u32`` with
+       The ``ManagedDriver`` type has a method ``load_from_name`` which takes an optional ``load_flags`` parameter. The flags as a ``u32`` with
        the type ``adbc_core::driver_manager::LoadFlags``, which has the following constants:
 
        * ``LOAD_FLAG_SEARCH_ENV`` - search the directory paths in the environment variable
