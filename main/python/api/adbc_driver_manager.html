@@ -2006,14 +2006,18 @@ parameters, which will each be bound in turn).</p>
 <dt><strong>operation</strong><span class="classifier">bytes or str</span></dt><dd><p>The query to execute.  Pass SQL queries as strings,
 (serialized) Substrait plans as bytes.</p>
 </dd>
-<dt><strong>seq_of_parameters</strong></dt><dd><p>Parameters to bind.  Can be a list of Python sequences, or
-an Arrow record batch, table, or record batch reader.  If
-None, then the query will be executed once, else it will
-be executed once per row.</p>
+<dt><strong>seq_of_parameters</strong></dt><dd><p>Parameters to bind.  Can be a list of Python sequences, or an
+Arrow record batch, table, or record batch reader.  If None, then
+the query will be executed once, else it will be executed once per
+row.  (That implies that an empty sequence is equivalent to not
+executing the query at all.)</p>
 </dd>
 </dl>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>Allowing <code class="docutils literal notranslate"><span class="pre">None</span></code> for parameters is outside of the DB-API
+specification.</p>
 </dd></dl>
 
 <dl class="py method">
