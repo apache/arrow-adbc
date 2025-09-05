@@ -416,7 +416,7 @@ to control which directories will be searched for manifests, with the behavior b
        * ``ADBC::LoadFlags::DEFAULT`` - default value with all flags set
 
        These can be provided by using ``ADBC::Database#load_flags=``.
-       Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_qmanager.dbapi.connect``) will
+       Passing the option ``load_flags`` as an option to ``AdbcDatabase`` (or via ``db_kwargs`` in ``adbc_driver_manager.dbapi.connect``) will
        allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.
 
     .. tab-item:: Rust
