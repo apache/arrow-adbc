@@ -31,6 +31,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
     /// </summary>
     internal class TracingFile : IDisposable
     {
+        private const int KbInByes = 1024;
         private static readonly string s_defaultTracePath = FileExporter.TracingLocationDefault;
         private static readonly Random s_globalRandom = new();
         private static readonly ThreadLocal<Random> s_threadLocalRandom = new(NewRandom);
@@ -106,13 +107,13 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private async Task WriteSingleLineAsync(Stream stream)
         {
-            if (_currentFileStream!.Length >= _maxFileSizeKb * 1024)
+            _currentFileStream!.Position = _currentFileStream.Length;
+            await stream.CopyToAsync(_currentFileStream);
+            if (_currentFileStream.Length >= _maxFileSizeKb * KbInByes)
             {
                 // If tracing file is maxxed-out, start a new tracing file.
                 await OpenNewTracingFileAsync();
             }
-            _currentFileStream.Position = _currentFileStream.Length;
-            await stream.CopyToAsync(_currentFileStream);
         }
 
         private async Task OpenNewTracingFileAsync()
