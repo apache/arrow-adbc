@@ -75,7 +75,7 @@ options or API functions are defined), the next version would be
 1.2.0.  If incompatible changes are made (e.g. changing the signature
 or semantics of a function), the next version would be 2.0.0.
 
-The ADBC :doc:`driver manifest <driver_manifests#driver-manifests>`
+The ADBC :doc:`driver manifest <driver_manifests>`
 TOML format is versioned separately from the ADBC standard and
 components.  Its version is an integer number currently set to 1.
 The driver manifest version number must be incremented when and only
