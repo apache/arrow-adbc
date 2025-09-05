@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/python/driver_manager.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="The driver manager is a library that provides bindings to the ADBC C API. It delegates to dynamically-loaded drivers. This allows applications to use multiple drivers simultaneously, and decouple t..." />
+<meta property="og:description" content="The adbc_driver_manager package provides a driver manager interface for Python. The package provides two APIs: Low-level bindings that are essentially the same as the C API., If PyArrow or Polars a..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="The driver manager is a library that provides bindings to the ADBC C API. It delegates to dynamically-loaded drivers. This allows applications to use multiple drivers simultaneously, and decouple t..." />
+<meta name="description" content="The adbc_driver_manager package provides a driver manager interface for Python. The package provides two APIs: Low-level bindings that are essentially the same as the C API., If PyArrow or Polars a..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Python API Reference" href="api/index.html" /><link rel="prev" title="Quickstart" href="quickstart.html" />
 
     <!-- Generated with Sphinx 8.3.0 and Furo 2024.08.06 -->
@@ -397,14 +397,12 @@
         <article role="main" id="furo-main-content">
           <section id="driver-manager">
 <h1>Driver Manager<a class="headerlink" href="#driver-manager" title="Link to this heading">¶</a></h1>
-<p>The driver manager is a library that provides bindings to the ADBC C
-API.  It delegates to dynamically-loaded drivers.  This allows
-applications to use multiple drivers simultaneously, and decouple
-themselves from the specific driver.</p>
-<p>The Python driver manager provides both low-level bindings that are
-essentially the same as the C API.  If PyArrow is installed, it also
-provides high-level bindings that implement the <a class="reference external" href="https://peps.python.org/pep-0249/">DBAPI</a> (PEP 249)
-standard.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code> package provides a <a class="reference internal" href="../glossary.html#term-driver-manager"><span class="xref std std-term">driver manager</span></a> interface
+for Python. The package provides two APIs:</p>
+<ol class="arabic simple">
+<li><p>Low-level bindings that are essentially the same as the <a class="reference internal" href="../format/specification.html"><span class="doc">C API</span></a>.</p></li>
+<li><p>If PyArrow or Polars are installed, a <a class="reference external" href="https://peps.python.org/pep-0249/">DBAPI</a> (PEP 249) compliant interface.</p></li>
+</ol>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc_driver_manager
@@ -413,34 +411,52 @@ standard.</p>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>This API is for low level usage only.  <strong>You almost certainly
-should not use this</strong>, instead use the entrypoints provided by
-driver packages, for example:</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="api/adbc_driver_sqlite.html#adbc_driver_sqlite.dbapi.connect" title="adbc_driver_sqlite.dbapi.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_sqlite.dbapi.connect()</span></code></a></p></li>
-<li><p><a class="reference internal" href="api/adbc_driver_sqlite.html#adbc_driver_sqlite.connect" title="adbc_driver_sqlite.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_sqlite.connect()</span></code></a></p></li>
-</ul>
+<p>The driver manager is different from the individual, driver-specific packages
+such as <code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code>.</p>
+<p>With the driver-specific packages, you connect to the target database with the
+<code class="docutils literal notranslate"><span class="pre">connect</span></code> method provided by the package you’re using.  For example,
+<a class="reference internal" href="api/adbc_driver_postgresql.html#adbc_driver_postgresql.connect" title="adbc_driver_postgresql.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_postgresql.connect()</span></code></a> or <a class="reference internal" href="api/adbc_driver_sqlite.html#adbc_driver_sqlite.connect" title="adbc_driver_sqlite.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_sqlite.connect()</span></code></a>.
+The driver shared library is bundled with the respective package and loaded
+invisibly for the user.</p>
+<p>With the driver manager package, you use a single package and API regardless of
+the database you’re connecting to. However, the user must install the driver for
+their database as a separate step. <a class="reference internal" href="../glossary.html#term-driver-manifest"><span class="xref std std-term">Driver manifests</span></a>
+are a first step in making this experience better for users but more work is
+planned to make this as straightforward as using driver-specific packages.</p>
+<section id="low-level-api">
+<h3>Low-Level API<a class="headerlink" href="#low-level-api" title="Link to this heading">¶</a></h3>
+<p>First, create an <a class="reference internal" href="api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager.AdbcDatabase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>, passing <code class="docutils literal notranslate"><span class="pre">driver</span></code> and (optionally)
+<code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>. Then, create an <a class="reference internal" href="api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection" title="adbc_driver_manager.AdbcConnection"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>See <a class="reference internal" href="../format/driver_manifests.html"><span class="doc">ADBC Driver Manager and Manifests</span></a> for more information on what to pass as the <code class="docutils literal notranslate"><span class="pre">driver</span></code> argument and how the driver manager finds and loads drivers.</p>
 </div>
-<p>The Python bindings for each driver abstract the steps here for you behind a
-convenient <code class="docutils literal notranslate"><span class="pre">connect</span></code> function.  For example, prefer
-<a class="reference internal" href="api/adbc_driver_sqlite.html#adbc_driver_sqlite.connect" title="adbc_driver_sqlite.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_sqlite.connect()</span></code></a> or <a class="reference internal" href="api/adbc_driver_postgresql.html#adbc_driver_postgresql.connect" title="adbc_driver_postgresql.connect"><code class="xref py py-func docutils literal notranslate"><span class="pre">adbc_driver_postgresql.connect()</span></code></a>
-to manually constructing the connection as demonstrated here.</p>
-<p>To manually create a connection: first, create a <a class="reference internal" href="api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager.AdbcDatabase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>,
-passing <code class="docutils literal notranslate"><span class="pre">driver</span></code> and (optionally) <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>.  <code class="docutils literal notranslate"><span class="pre">driver</span></code> must be the
-name of a library to load, or the path to a library to load.  <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>,
-if provided, should be the name of the symbol that serves as the ADBC
-entrypoint (see <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db" title="(in ADBC C vversion)"><code class="xref c c-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code></a>).  Then, create a
-<a class="reference internal" href="api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection" title="adbc_driver_manager.AdbcConnection"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_manager</span>
 
-<span class="c1"># You must build/locate the driver yourself</span>
+<span class="c1"># Note: You must install the driver shared library (.so, .dylib, .dll)</span>
+<span class="c1"># separately</span>
 <span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcDatabase</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;PATH/TO/libadbc_driver_sqlite.so&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
     <span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcConnection</span><span class="p">(</span><span class="n">db</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
         <span class="k">pass</span>
 </pre></div>
 </div>
+<p>Connecting to a second database could be done in the same session using the same
+code just with a different <code class="docutils literal notranslate"><span class="pre">driver</span></code> argument.</p>
+</section>
+<section id="dbapi-api">
+<h3>DBAPI API<a class="headerlink" href="#dbapi-api" title="Link to this heading">¶</a></h3>
+<p>Use the <a class="reference external" href="https://peps.python.org/pep-0249/">DBAPI</a> API by calling the <code class="docutils literal notranslate"><span class="pre">dbapi.connect</span></code> method, passing <code class="docutils literal notranslate"><span class="pre">driver</span></code>
+and (optionally) <code class="docutils literal notranslate"><span class="pre">entrypoint</span></code>. These arguments work the same as with the
+low-level API.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
+
+<span class="c1"># Note: You must install the driver shared library (.so, .dylib, .dll)</span>
+<span class="c1"># separately</span>
+<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;PATH/TO/libadbc_driver_sqlite.so&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+   <span class="k">pass</span>
+</pre></div>
+</div>
+</section>
 </section>
 <section id="api-reference">
 <h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h2>
@@ -508,7 +524,11 @@ United States and other countries.
             <ul>
 <li><a class="reference internal" href="#">Driver Manager</a><ul>
 <li><a class="reference internal" href="#installation">Installation</a></li>
-<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#usage">Usage</a><ul>
+<li><a class="reference internal" href="#low-level-api">Low-Level API</a></li>
+<li><a class="reference internal" href="#dbapi-api">DBAPI API</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#api-reference">API Reference</a></li>
 </ul>
 </li>

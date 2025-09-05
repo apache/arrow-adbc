@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/rust/driver_manager.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="The driver manager is a library that implements the ADBC API by delegating to dynamically-loaded drivers. This allows applications to load drivers at runtime, and use drivers that aren’t necessaril..." />
+<meta property="og:description" content="This document describes the installation and usage of the Rust driver manager which is available in the adbc_driver_manager crate. Installation: Usage: API Reference: See the API reference: Module ..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="The driver manager is a library that implements the ADBC API by delegating to dynamically-loaded drivers. This allows applications to load drivers at runtime, and use drivers that aren’t necessaril..." />
+<meta name="description" content="This document describes the installation and usage of the Rust driver manager which is available in the adbc_driver_manager crate. Installation: Usage: API Reference: See the API reference: Module ..." />
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Installation" href="../driver/installation.html" /><link rel="prev" title="Quickstart" href="quickstart.html" />
 
     <!-- Generated with Sphinx 8.3.0 and Furo 2024.08.06 -->
@@ -397,31 +397,31 @@
         <article role="main" id="furo-main-content">
           <section id="driver-manager">
 <h1>Driver Manager<a class="headerlink" href="#driver-manager" title="Link to this heading">¶</a></h1>
-<p>The driver manager is a library that implements the ADBC API by delegating to
-dynamically-loaded drivers.  This allows applications to load drivers at
-runtime, and use drivers that aren’t necessarily written in Rust.  It is
-currently part of the adbc_core package, though we plan to split it into its
-own package for users who don’t want or need FFI.</p>
+<p>This document describes the installation and usage of the Rust <a class="reference internal" href="../glossary.html#term-driver-manager"><span class="xref std std-term">driver
+manager</span></a> which is available in the <code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code> crate.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core<span class="w"> </span>--features<span class="w"> </span>driver_manager
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core<span class="w"> </span>adbc_driver_manager
 </pre></div>
 </div>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
-<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::{</span><span class="n">Connection</span><span class="p">,</span><span class="w"> </span><span class="n">Database</span><span class="p">,</span><span class="w"> </span><span class="n">Driver</span><span class="p">,</span><span class="w"> </span><span class="n">Statement</span><span class="p">};</span>
-<span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::</span><span class="n">options</span><span class="p">::{</span><span class="n">AdbcVersion</span><span class="p">,</span><span class="w"> </span><span class="n">OptionDatabase</span><span class="p">};</span>
-<span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::</span><span class="n">driver_manager</span><span class="p">::</span><span class="n">ManagedDriver</span><span class="p">;</span>
+<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::</span><span class="n">options</span><span class="p">::</span><span class="n">AdbcVersion</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::{</span><span class="n">Database</span><span class="p">,</span><span class="w"> </span><span class="n">Driver</span><span class="p">};</span>
+<span class="k">use</span><span class="w"> </span><span class="n">adbc_driver_manager</span><span class="p">::</span><span class="n">ManagedDriver</span><span class="p">;</span>
 
 <span class="c1">// You must build/locate the driver yourself</span>
 <span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ManagedDriver</span><span class="p">::</span><span class="n">load_dynamic_from_filename</span><span class="p">(</span>
 <span class="w">    </span><span class="s">&quot;/PATH/TO/libadbc_driver_sqlite.so&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nb">None</span><span class="p">,</span>
 <span class="w">    </span><span class="n">AdbcVersion</span><span class="p">::</span><span class="n">default</span><span class="p">(),</span>
-<span class="p">).</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to load driver&quot;</span><span class="p">);</span>
-<span class="kd">let</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="n">new_database</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create database handle&quot;</span><span class="p">);</span>
-<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">new_connection</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create connection&quot;</span><span class="p">);</span>
+<span class="p">)</span>
+<span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to load driver&quot;</span><span class="p">);</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span>
+<span class="w">    </span><span class="p">.</span><span class="n">new_database</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create database handle&quot;</span><span class="p">);</span>
+<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">new_connection</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create connection&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>

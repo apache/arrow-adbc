@@ -19,10 +19,7 @@
 Driver Manager
 ==============
 
-The driver manager is a library that implements the ADBC API by
-delegating to dynamically-loaded drivers.  This allows applications to
-use multiple drivers simultaneously, and decouple themselves from the
-specific driver.
+This document describes the installation and usage of the C++ :term:`driver manager`.
 
 Installation
 ============
