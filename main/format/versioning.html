@@ -446,6 +446,17 @@ implement the API standard version 1.0.0.</p>
 options or API functions are defined), the next version would be
 1.2.0.  If incompatible changes are made (e.g. changing the signature
 or semantics of a function), the next version would be 2.0.0.</p>
+<p>The ADBC <a class="reference internal" href="driver_manifests.html"><span class="doc">driver manifest</span></a> TOML format is
+versioned separately from the ADBC standard and components.  Its
+version is an integer currently set to 1.  This version number may
+optionally be included in the manifest as the value of the
+<code class="docutils literal notranslate"><span class="pre">manifest_version</span></code> key.  If present, it must be set to 1.  If not
+present, it is assumed to be 1.  The manifest version number must be
+incremented when and only when breaking changes are made to the
+driver manifest format.  In future manifests with a version higher
+than 1, the <code class="docutils literal notranslate"><span class="pre">manifest_version</span></code> key will be required.  Current
+driver manager implementations must error upon reading a manifest
+with <code class="docutils literal notranslate"><span class="pre">manifest_version</span></code> higher than 1.</p>
 </section>
 </section>
 
