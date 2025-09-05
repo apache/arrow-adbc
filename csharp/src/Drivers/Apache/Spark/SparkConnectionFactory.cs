@@ -36,8 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return serverTypeValue switch
             {
                 SparkServerType.Http => new SparkHttpConnection(properties),
-                // TODO: Re-enable when properly supported
-                //SparkServerType.Standard => new SparkStandardConnection(properties),
+                SparkServerType.Standard => new SparkStandardConnection(properties),
                 _ => throw new ArgumentOutOfRangeException(nameof(properties), $"Unsupported or unknown value '{type}' given for property '{SparkParameters.Type}'. Supported types: {ServerTypeParser.SupportedList}"),
             };
         }

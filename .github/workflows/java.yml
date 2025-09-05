@@ -146,6 +146,9 @@ jobs:
       - name: Build artifacts (macOS)
         if: matrix.os == 'macOS'
         run: |
+          # XXX(https://github.com/apache/arrow-adbc/issues/3382)
+          sudo xcode-select -s "/Applications/Xcode_16.app"
+
           export ADBC_BUILD_STATIC=ON
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
@@ -173,6 +176,18 @@ jobs:
           retention-days: 7
           path: |
             artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz
+      - name: Assemble logs
+        if: failure()
+        run: |
+          mkdir ~/logs
+          find "$VCPKG_ROOT" -name 'build-*.log' -exec cp '{}' ~/logs ';'
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: ~/logs
 
   java-jni:
     name: "Java ${{ matrix.java }} JNI/${{ matrix.os }} ${{ matrix.arch }}"

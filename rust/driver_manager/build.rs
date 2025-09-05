@@ -15,12 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! C-compatible items as defined in [`adbc.h`](https://github.com/apache/arrow-adbc/blob/main/c/include/arrow-adbc/adbc.h)
+use std::env;
 
-pub mod constants;
-pub mod methods;
-pub(crate) mod types;
-pub use types::{
-    driver_method, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcDriverInitFunc,
-    FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement, FFI_AdbcStatusCode,
-};
+fn main() {
+    println!("cargo::rustc-check-cfg=cfg(conda_build)");
+    let is_conda_build = env::var("CONDA_BUILD").unwrap_or_default() == "1";
+    if is_conda_build {
+        println!("cargo::rustc-cfg=conda_build");
+    }
+}

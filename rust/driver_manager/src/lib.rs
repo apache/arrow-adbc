@@ -119,13 +119,14 @@ use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 use toml::de::DeTable;
 
 use adbc_core::{
-    error::{Error, Result, Status},
+    constants,
+    error::{AdbcStatusCode, Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionValue},
-    LoadFlags, PartitionedResult, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
-    LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
+    Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
+    LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
+    LOAD_FLAG_SEARCH_USER,
 };
-use adbc_core::{ffi, ffi::driver_method, Optionable};
-use adbc_core::{Connection, Database, Driver, Statement};
+use adbc_ffi::driver_method;
 
 use crate::error::libloading_error_to_adbc_error;
 
@@ -134,9 +135,9 @@ const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
 const ERR_STATISTICS_UNSUPPORTED: &str = "Statistics are not supported with ADBC 1.0.0";
 
-fn check_status(status: ffi::FFI_AdbcStatusCode, error: ffi::FFI_AdbcError) -> Result<()> {
+fn check_status(status: AdbcStatusCode, error: adbc_ffi::FFI_AdbcError) -> Result<()> {
     match status {
-        ffi::constants::ADBC_STATUS_OK => Ok(()),
+        constants::ADBC_STATUS_OK => Ok(()),
         _ => {
             let mut error: Error = error.try_into()?;
             error.status = status.try_into()?;
@@ -147,7 +148,7 @@ fn check_status(status: ffi::FFI_AdbcStatusCode, error: ffi::FFI_AdbcError) -> R
 
 #[derive(Debug)]
 struct ManagedDriverInner {
-    driver: ffi::FFI_AdbcDriver,
+    driver: adbc_ffi::FFI_AdbcDriver,
     version: AdbcVersion, // Driver version
     // The dynamic library must be kept loaded for the entire lifetime of the driver.
     // To avoid complex lifetimes we prefer to store it as part of this struct.
@@ -181,6 +182,20 @@ impl DriverInfo {
 
         let manifest = DeTable::parse(&contents)
             .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
+
+        let manifest_version = manifest
+            .get_ref()
+            .get("manifest_version")
+            .and_then(|v| v.get_ref().as_integer())
+            .map(|v| v.as_str())
+            .unwrap_or("1");
+
+        if manifest_version != "1" {
+            return Err(Error::with_message_and_status(
+                format!("Unsupported manifest version: {manifest_version}"),
+                Status::InvalidArguments,
+            ));
+        }
 
         // leave these out until we add logging that would actually utilize them
         // let driver_name = get_optional_key(&manifest, "name");
@@ -276,7 +291,10 @@ impl ManagedDriver {
     }
 
     /// Load a driver from an initialization function.
-    pub fn load_static(init: &ffi::FFI_AdbcDriverInitFunc, version: AdbcVersion) -> Result<Self> {
+    pub fn load_static(
+        init: &adbc_ffi::FFI_AdbcDriverInitFunc,
+        version: AdbcVersion,
+    ) -> Result<Self> {
         let driver = Self::load_impl(init, version)?;
         let inner = Arc::pin(ManagedDriverInner {
             driver,
@@ -310,6 +328,7 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
         load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
         let driver_path = Path::new(name.as_ref());
         let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
@@ -334,7 +353,13 @@ impl ManagedDriver {
 
             Self::load_dynamic_from_filename(driver_path, entrypoint, version)
         } else {
-            Self::find_driver(driver_path, entrypoint, version, load_flags)
+            Self::find_driver(
+                driver_path,
+                entrypoint,
+                version,
+                load_flags,
+                additional_search_paths,
+            )
         }
     }
 
@@ -359,7 +384,7 @@ impl ManagedDriver {
         let library = unsafe {
             libloading::Library::new(filename.as_ref()).map_err(libloading_error_to_adbc_error)?
         };
-        let init: libloading::Symbol<ffi::FFI_AdbcDriverInitFunc> = unsafe {
+        let init: libloading::Symbol<adbc_ffi::FFI_AdbcDriverInitFunc> = unsafe {
             library
                 .get(entrypoint)
                 .or_else(|_| library.get(b"AdbcDriverInit"))
@@ -392,15 +417,15 @@ impl ManagedDriver {
     }
 
     fn load_impl(
-        init: &ffi::FFI_AdbcDriverInitFunc,
+        init: &adbc_ffi::FFI_AdbcDriverInitFunc,
         version: AdbcVersion,
-    ) -> Result<ffi::FFI_AdbcDriver> {
-        let mut error = ffi::FFI_AdbcError::default();
-        let mut driver = ffi::FFI_AdbcDriver::default();
+    ) -> Result<adbc_ffi::FFI_AdbcDriver> {
+        let mut error = adbc_ffi::FFI_AdbcError::default();
+        let mut driver = adbc_ffi::FFI_AdbcDriver::default();
         let status = unsafe {
             init(
                 version.into(),
-                &mut driver as *mut ffi::FFI_AdbcDriver as *mut c_void,
+                &mut driver as *mut adbc_ffi::FFI_AdbcDriver as *mut c_void,
                 &mut error,
             )
         };
@@ -408,17 +433,17 @@ impl ManagedDriver {
         Ok(driver)
     }
 
-    fn inner_ffi_driver(&self) -> &ffi::FFI_AdbcDriver {
+    fn inner_ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
         &self.inner.driver
     }
 
     /// Returns a new database using the loaded driver.
-    fn database_new(&self) -> Result<ffi::FFI_AdbcDatabase> {
+    fn database_new(&self) -> Result<adbc_ffi::FFI_AdbcDatabase> {
         let driver = self.inner_ffi_driver();
-        let mut database = ffi::FFI_AdbcDatabase::default();
+        let mut database = adbc_ffi::FFI_AdbcDatabase::default();
 
         // DatabaseNew
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(*driver, DatabaseNew);
         let status = unsafe { method(&mut database, &mut error) };
         check_status(status, error)?;
@@ -427,11 +452,14 @@ impl ManagedDriver {
     }
 
     /// Initialize the given database using the loaded driver.
-    fn database_init(&self, mut database: ffi::FFI_AdbcDatabase) -> Result<ffi::FFI_AdbcDatabase> {
+    fn database_init(
+        &self,
+        mut database: adbc_ffi::FFI_AdbcDatabase,
+    ) -> Result<adbc_ffi::FFI_AdbcDatabase> {
         let driver = self.inner_ffi_driver();
 
         // DatabaseInit
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, DatabaseInit);
         let status = unsafe { method(&mut database, &mut error) };
         check_status(status, error)?;
@@ -481,6 +509,7 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
         load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
         if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
             if let Ok(result) = Self::search_path_list(
@@ -490,6 +519,32 @@ impl ManagedDriver {
                 version,
             ) {
                 return Ok(result);
+            }
+        }
+
+        // the logic we want is that we first search ADBC_DRIVER_PATH if set,
+        // then we search the additional search paths if they exist. Finally,
+        // we will search CONDA_PREFIX if built with conda_build before moving on.
+        if let Some(additional_search_paths) = additional_search_paths {
+            if let Ok(result) =
+                Self::search_path_list(driver_path, additional_search_paths, entrypoint, version)
+            {
+                return Ok(result);
+            }
+        }
+
+        #[cfg(conda_build)]
+        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
+            if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
+                let conda_path = PathBuf::from(conda_prefix)
+                    .join("etc")
+                    .join("adbc")
+                    .join("drivers");
+                if let Ok(result) =
+                    Self::search_path_list(driver_path, vec![conda_path], entrypoint, version)
+                {
+                    return Ok(result);
+                }
             }
         }
 
@@ -542,13 +597,27 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
         load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
-        if let Ok(result) = Self::search_path_list(
-            driver_path,
-            get_search_paths(load_flags),
-            entrypoint,
-            version,
-        ) {
+        let mut path_list = get_search_paths(load_flags & LOAD_FLAG_SEARCH_ENV);
+
+        if let Some(additional_search_paths) = additional_search_paths {
+            path_list.extend(additional_search_paths);
+        }
+
+        #[cfg(conda_build)]
+        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
+            if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
+                let conda_path = PathBuf::from(conda_prefix)
+                    .join("etc")
+                    .join("adbc")
+                    .join("drivers");
+                path_list.push(conda_path);
+            }
+        }
+
+        path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));
+        if let Ok(result) = Self::search_path_list(driver_path, path_list, entrypoint, version) {
             return Ok(result);
         }
 
@@ -620,6 +689,15 @@ fn load_driver_from_registry(
             )
         })?;
 
+    let manifest_version = drivers_key.get_u32("manifest_version").unwrap_or(1);
+
+    if manifest_version != 1 {
+        return Err(Error::with_message_and_status(
+            format!("Unsupported manifest version: {manifest_version}"),
+            Status::InvalidArguments,
+        ));
+    }
+
     let entrypoint_val = drivers_key
         .get_string("entrypoint")
         .ok()
@@ -674,14 +752,14 @@ fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
 }
 
 fn set_option_database(
-    driver: &ffi::FFI_AdbcDriver,
-    database: &mut ffi::FFI_AdbcDatabase,
+    driver: &adbc_ffi::FFI_AdbcDriver,
+    database: &mut adbc_ffi::FFI_AdbcDatabase,
     version: AdbcVersion,
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
     let key = CString::new(key.as_ref())?;
-    let mut error = ffi::FFI_AdbcError::with_driver(driver);
+    let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
     #[allow(unknown_lints)]
     #[warn(non_exhaustive_omitted_patterns)]
     let status = match (version, value) {
@@ -728,10 +806,10 @@ fn set_option_database(
 fn get_option_buffer<F, T>(
     key: impl AsRef<str>,
     mut populate: F,
-    driver: &ffi::FFI_AdbcDriver,
+    driver: &adbc_ffi::FFI_AdbcDriver,
 ) -> Result<Vec<T>>
 where
-    F: FnMut(*const c_char, *mut T, *mut usize, *mut ffi::FFI_AdbcError) -> ffi::FFI_AdbcStatusCode,
+    F: FnMut(*const c_char, *mut T, *mut usize, *mut adbc_ffi::FFI_AdbcError) -> AdbcStatusCode,
     T: Default + Clone,
 {
     const DEFAULT_LENGTH: usize = 128;
@@ -739,7 +817,7 @@ where
     let mut run = |length| {
         let mut value = vec![T::default(); length];
         let mut length: usize = core::mem::size_of::<T>() * value.len();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         (
             populate(key.as_ptr(), value.as_mut_ptr(), &mut length, &mut error),
             length,
@@ -763,15 +841,10 @@ where
 fn get_option_bytes<F>(
     key: impl AsRef<str>,
     populate: F,
-    driver: &ffi::FFI_AdbcDriver,
+    driver: &adbc_ffi::FFI_AdbcDriver,
 ) -> Result<Vec<u8>>
 where
-    F: FnMut(
-        *const c_char,
-        *mut u8,
-        *mut usize,
-        *mut ffi::FFI_AdbcError,
-    ) -> ffi::FFI_AdbcStatusCode,
+    F: FnMut(*const c_char, *mut u8, *mut usize, *mut adbc_ffi::FFI_AdbcError) -> AdbcStatusCode,
 {
     get_option_buffer(key, populate, driver)
 }
@@ -779,15 +852,15 @@ where
 fn get_option_string<F>(
     key: impl AsRef<str>,
     populate: F,
-    driver: &ffi::FFI_AdbcDriver,
+    driver: &adbc_ffi::FFI_AdbcDriver,
 ) -> Result<String>
 where
     F: FnMut(
         *const c_char,
         *mut c_char,
         *mut usize,
-        *mut ffi::FFI_AdbcError,
-    ) -> ffi::FFI_AdbcStatusCode,
+        *mut adbc_ffi::FFI_AdbcError,
+    ) -> AdbcStatusCode,
 {
     let value = get_option_buffer(key, populate, driver)?;
     let value = unsafe { CStr::from_ptr(value.as_ptr()) };
@@ -795,7 +868,7 @@ where
 }
 
 struct ManagedDatabaseInner {
-    database: Mutex<ffi::FFI_AdbcDatabase>,
+    database: Mutex<adbc_ffi::FFI_AdbcDatabase>,
     driver: Pin<Arc<ManagedDriverInner>>,
 }
 
@@ -817,7 +890,7 @@ pub struct ManagedDatabase {
 }
 
 impl ManagedDatabase {
-    fn ffi_driver(&self) -> &ffi::FFI_AdbcDriver {
+    fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
         &self.inner.driver.driver
     }
 
@@ -826,12 +899,12 @@ impl ManagedDatabase {
     }
 
     /// Returns a new connection using the loaded driver.
-    fn connection_new(&self) -> Result<ffi::FFI_AdbcConnection> {
+    fn connection_new(&self) -> Result<adbc_ffi::FFI_AdbcConnection> {
         let driver = self.ffi_driver();
-        let mut connection = ffi::FFI_AdbcConnection::default();
+        let mut connection = adbc_ffi::FFI_AdbcConnection::default();
 
         // ConnectionNew
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(*driver, ConnectionNew);
         let status = unsafe { method(&mut connection, &mut error) };
         check_status(status, error)?;
@@ -842,13 +915,13 @@ impl ManagedDatabase {
     /// Initialize the given connection using the loaded driver.
     fn connection_init(
         &self,
-        mut connection: ffi::FFI_AdbcConnection,
-    ) -> Result<ffi::FFI_AdbcConnection> {
+        mut connection: adbc_ffi::FFI_AdbcConnection,
+    ) -> Result<adbc_ffi::FFI_AdbcConnection> {
         let driver = self.ffi_driver();
         let mut database = self.inner.database.lock().unwrap();
 
         // ConnectionInit
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionInit);
         let status = unsafe { method(&mut connection, &mut *database, &mut error) };
         check_status(status, error)?;
@@ -867,7 +940,7 @@ impl Optionable for ManagedDatabase {
         let populate = |key: *const c_char,
                         value: *mut u8,
                         length: *mut usize,
-                        error: *mut ffi::FFI_AdbcError| unsafe {
+                        error: *mut adbc_ffi::FFI_AdbcError| unsafe {
             method(database.deref_mut(), key, value, length, error)
         };
         get_option_bytes(key, populate, driver)
@@ -877,7 +950,7 @@ impl Optionable for ManagedDatabase {
         let driver = self.ffi_driver();
         let mut database = self.inner.database.lock().unwrap();
         let key = CString::new(key.as_ref())?;
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let mut value: f64 = f64::default();
         let method = driver_method!(driver, DatabaseGetOptionDouble);
         let status = unsafe { method(database.deref_mut(), key.as_ptr(), &mut value, &mut error) };
@@ -889,7 +962,7 @@ impl Optionable for ManagedDatabase {
         let driver = self.ffi_driver();
         let mut database = self.inner.database.lock().unwrap();
         let key = CString::new(key.as_ref())?;
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let mut value: i64 = 0;
         let method = driver_method!(driver, DatabaseGetOptionInt);
         let status = unsafe { method(database.deref_mut(), key.as_ptr(), &mut value, &mut error) };
@@ -904,7 +977,7 @@ impl Optionable for ManagedDatabase {
         let populate = |key: *const c_char,
                         value: *mut c_char,
                         length: *mut usize,
-                        error: *mut ffi::FFI_AdbcError| unsafe {
+                        error: *mut adbc_ffi::FFI_AdbcError| unsafe {
             method(database.deref_mut(), key, value, length, error)
         };
         get_option_string(key, populate, driver)
@@ -966,14 +1039,14 @@ impl Database for ManagedDatabase {
 }
 
 fn set_option_connection(
-    driver: &ffi::FFI_AdbcDriver,
-    connection: &mut ffi::FFI_AdbcConnection,
+    driver: &adbc_ffi::FFI_AdbcDriver,
+    connection: &mut adbc_ffi::FFI_AdbcConnection,
     version: AdbcVersion,
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
     let key = CString::new(key.as_ref())?;
-    let mut error = ffi::FFI_AdbcError::with_driver(driver);
+    let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
     #[allow(unknown_lints)]
     #[warn(non_exhaustive_omitted_patterns)]
     let status = match (version, value) {
@@ -1012,7 +1085,7 @@ fn set_option_connection(
 }
 
 struct ManagedConnectionInner {
-    connection: Mutex<ffi::FFI_AdbcConnection>,
+    connection: Mutex<adbc_ffi::FFI_AdbcConnection>,
     database: Arc<ManagedDatabaseInner>,
 }
 
@@ -1034,7 +1107,7 @@ pub struct ManagedConnection {
 }
 
 impl ManagedConnection {
-    fn ffi_driver(&self) -> &ffi::FFI_AdbcDriver {
+    fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
         &self.inner.database.driver.driver
     }
 
@@ -1053,7 +1126,7 @@ impl Optionable for ManagedConnection {
         let populate = |key: *const c_char,
                         value: *mut u8,
                         length: *mut usize,
-                        error: *mut ffi::FFI_AdbcError| unsafe {
+                        error: *mut adbc_ffi::FFI_AdbcError| unsafe {
             method(connection.deref_mut(), key, value, length, error)
         };
         get_option_bytes(key, populate, driver)
@@ -1064,7 +1137,7 @@ impl Optionable for ManagedConnection {
         let mut value: f64 = f64::default();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetOptionDouble);
         let status =
             unsafe { method(connection.deref_mut(), key.as_ptr(), &mut value, &mut error) };
@@ -1077,7 +1150,7 @@ impl Optionable for ManagedConnection {
         let mut value: i64 = 0;
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetOptionInt);
         let status =
             unsafe { method(connection.deref_mut(), key.as_ptr(), &mut value, &mut error) };
@@ -1092,7 +1165,7 @@ impl Optionable for ManagedConnection {
         let populate = |key: *const c_char,
                         value: *mut c_char,
                         length: *mut usize,
-                        error: *mut ffi::FFI_AdbcError| unsafe {
+                        error: *mut adbc_ffi::FFI_AdbcError| unsafe {
             method(connection.deref_mut(), key, value, length, error)
         };
         get_option_string(key, populate, driver)
@@ -1117,8 +1190,8 @@ impl Connection for ManagedConnection {
     fn new_statement(&mut self) -> Result<Self::StatementType> {
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut statement = ffi::FFI_AdbcStatement::default();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut statement = adbc_ffi::FFI_AdbcStatement::default();
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementNew);
         let status = unsafe { method(connection.deref_mut(), &mut statement, &mut error) };
         check_status(status, error)?;
@@ -1140,7 +1213,7 @@ impl Connection for ManagedConnection {
         }
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionCancel);
         let status = unsafe { method(connection.deref_mut(), &mut error) };
         check_status(status, error)
@@ -1149,7 +1222,7 @@ impl Connection for ManagedConnection {
     fn commit(&mut self) -> Result<()> {
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionCommit);
         let status = unsafe { method(connection.deref_mut(), &mut error) };
         check_status(status, error)
@@ -1158,7 +1231,7 @@ impl Connection for ManagedConnection {
     fn rollback(&mut self) -> Result<()> {
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionRollback);
         let status = unsafe { method(connection.deref_mut(), &mut error) };
         check_status(status, error)
@@ -1174,7 +1247,7 @@ impl Connection for ManagedConnection {
             .unwrap_or((null(), 0));
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetInfo);
         let status = unsafe {
             method(
@@ -1230,7 +1303,7 @@ impl Connection for ManagedConnection {
 
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetObjects);
         let mut stream = FFI_ArrowArrayStream::empty();
 
@@ -1278,7 +1351,7 @@ impl Connection for ManagedConnection {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetStatistics);
         let status = unsafe {
             method(
@@ -1306,7 +1379,7 @@ impl Connection for ManagedConnection {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetStatisticNames);
         let status = unsafe { method(connection.deref_mut(), &mut stream, &mut error) };
         check_status(status, error)?;
@@ -1331,7 +1404,7 @@ impl Connection for ManagedConnection {
         let mut schema = FFI_ArrowSchema::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetTableSchema);
         let status = unsafe {
             method(
@@ -1351,7 +1424,7 @@ impl Connection for ManagedConnection {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetTableTypes);
         let status = unsafe { method(connection.deref_mut(), &mut stream, &mut error) };
         check_status(status, error)?;
@@ -1363,7 +1436,7 @@ impl Connection for ManagedConnection {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionReadPartition);
         let partition = partition.as_ref();
         let status = unsafe {
@@ -1382,14 +1455,14 @@ impl Connection for ManagedConnection {
 }
 
 fn set_option_statement(
-    driver: &ffi::FFI_AdbcDriver,
-    statement: &mut ffi::FFI_AdbcStatement,
+    driver: &adbc_ffi::FFI_AdbcDriver,
+    statement: &mut adbc_ffi::FFI_AdbcStatement,
     version: AdbcVersion,
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
     let key = CString::new(key.as_ref())?;
-    let mut error = ffi::FFI_AdbcError::with_driver(driver);
+    let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
     #[allow(unknown_lints)]
     #[warn(non_exhaustive_omitted_patterns)]
     let status = match (version, value) {
@@ -1428,7 +1501,7 @@ fn set_option_statement(
 }
 
 struct ManagedStatementInner {
-    statement: Mutex<ffi::FFI_AdbcStatement>,
+    statement: Mutex<adbc_ffi::FFI_AdbcStatement>,
     connection: Arc<ManagedConnectionInner>,
 }
 /// Implementation of [Statement].
@@ -1442,7 +1515,7 @@ impl ManagedStatement {
         self.inner.connection.database.driver.version
     }
 
-    fn ffi_driver(&self) -> &ffi::FFI_AdbcDriver {
+    fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
         &self.inner.connection.database.driver.driver
     }
 }
@@ -1451,7 +1524,7 @@ impl Statement for ManagedStatement {
     fn bind(&mut self, batch: RecordBatch) -> Result<()> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementBind);
         let batch: StructArray = batch.into();
         let (mut array, mut schema) = to_ffi(&batch.to_data())?;
@@ -1463,7 +1536,7 @@ impl Statement for ManagedStatement {
     fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementBindStream);
         let mut stream = FFI_ArrowArrayStream::new(reader);
         let status = unsafe { method(statement.deref_mut(), &mut stream, &mut error) };
@@ -1480,7 +1553,7 @@ impl Statement for ManagedStatement {
         }
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementCancel);
         let status = unsafe { method(statement.deref_mut(), &mut error) };
         check_status(status, error)
@@ -1489,7 +1562,7 @@ impl Statement for ManagedStatement {
     fn execute(&mut self) -> Result<impl RecordBatchReader> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementExecuteQuery);
         let mut stream = FFI_ArrowArrayStream::empty();
         let status = unsafe { method(statement.deref_mut(), &mut stream, null_mut(), &mut error) };
@@ -1501,7 +1574,7 @@ impl Statement for ManagedStatement {
     fn execute_schema(&mut self) -> Result<arrow_schema::Schema> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementExecuteSchema);
         let mut schema = FFI_ArrowSchema::empty();
         let status = unsafe { method(statement.deref_mut(), &mut schema, &mut error) };
@@ -1512,7 +1585,7 @@ impl Statement for ManagedStatement {
     fn execute_update(&mut self) -> Result<Option<i64>> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementExecuteQuery);
         let mut rows_affected: i64 = -1;
         let status = unsafe {
@@ -1530,10 +1603,10 @@ impl Statement for ManagedStatement {
     fn execute_partitions(&mut self) -> Result<PartitionedResult> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementExecutePartitions);
         let mut schema = FFI_ArrowSchema::empty();
-        let mut partitions = ffi::FFI_AdbcPartitions::default();
+        let mut partitions = adbc_ffi::FFI_AdbcPartitions::default();
         let mut rows_affected: i64 = -1;
         let status = unsafe {
             method(
@@ -1558,7 +1631,7 @@ impl Statement for ManagedStatement {
     fn get_parameter_schema(&self) -> Result<arrow_schema::Schema> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementGetParameterSchema);
         let mut schema = FFI_ArrowSchema::empty();
         let status = unsafe { method(statement.deref_mut(), &mut schema, &mut error) };
@@ -1569,7 +1642,7 @@ impl Statement for ManagedStatement {
     fn prepare(&mut self) -> Result<()> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementPrepare);
         let status = unsafe { method(statement.deref_mut(), &mut error) };
         check_status(status, error)?;
@@ -1580,7 +1653,7 @@ impl Statement for ManagedStatement {
         let query = CString::new(query.as_ref())?;
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementSetSqlQuery);
         let status = unsafe { method(statement.deref_mut(), query.as_ptr(), &mut error) };
         check_status(status, error)?;
@@ -1590,7 +1663,7 @@ impl Statement for ManagedStatement {
     fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementSetSubstraitPlan);
         let plan = plan.as_ref();
         let status =
@@ -1610,7 +1683,7 @@ impl Optionable for ManagedStatement {
         let populate = |key: *const c_char,
                         value: *mut u8,
                         length: *mut usize,
-                        error: *mut ffi::FFI_AdbcError| unsafe {
+                        error: *mut adbc_ffi::FFI_AdbcError| unsafe {
             method(statement.deref_mut(), key, value, length, error)
         };
         get_option_bytes(key, populate, driver)
@@ -1621,7 +1694,7 @@ impl Optionable for ManagedStatement {
         let mut value: f64 = f64::default();
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementGetOptionDouble);
         let status = unsafe { method(statement.deref_mut(), key.as_ptr(), &mut value, &mut error) };
         check_status(status, error)?;
@@ -1633,7 +1706,7 @@ impl Optionable for ManagedStatement {
         let mut value: i64 = 0;
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = ffi::FFI_AdbcError::with_driver(driver);
+        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementGetOptionInt);
         let status = unsafe { method(statement.deref_mut(), key.as_ptr(), &mut value, &mut error) };
         check_status(status, error)?;
@@ -1647,7 +1720,7 @@ impl Optionable for ManagedStatement {
         let populate = |key: *const c_char,
                         value: *mut c_char,
                         length: *mut usize,
-                        error: *mut ffi::FFI_AdbcError| unsafe {
+                        error: *mut adbc_ffi::FFI_AdbcError| unsafe {
             method(statement.deref_mut(), key, value, length, error)
         };
         get_option_string(key, populate, driver)
@@ -1720,7 +1793,7 @@ fn user_config_dir() -> Option<PathBuf> {
         use target_windows::user_config_dir;
         user_config_dir().map(|mut path| {
             path.push("ADBC");
-            path.push("drivers");
+            path.push("Drivers");
             path
         })
     }
@@ -1731,6 +1804,7 @@ fn user_config_dir() -> Option<PathBuf> {
             path.push("Library");
             path.push("Application Support");
             path.push("ADBC");
+            path.push("Drivers");
             path
         })
     }
@@ -1748,6 +1822,7 @@ fn user_config_dir() -> Option<PathBuf> {
             })
             .map(|mut path| {
                 path.push("adbc");
+                path.push("drivers");
                 path
             })
     }
@@ -1756,12 +1831,12 @@ fn user_config_dir() -> Option<PathBuf> {
 fn system_config_dir() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
-        Some(PathBuf::from("/Library/Application Support/ADBC"))
+        Some(PathBuf::from("/Library/Application Support/ADBC/Drivers"))
     }
 
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        Some(PathBuf::from("/etc/adbc"))
+        Some(PathBuf::from("/etc/adbc/drivers"))
     }
 
     #[cfg(not(unix))]
@@ -1773,7 +1848,7 @@ fn system_config_dir() -> Option<PathBuf> {
 fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     let mut result = Vec::new();
     if lvls & LOAD_FLAG_SEARCH_ENV != 0 {
-        if let Some(paths) = env::var_os("ADBC_CONFIG_PATH") {
+        if let Some(paths) = env::var_os("ADBC_DRIVER_PATH") {
             for p in env::split_paths(&paths) {
                 result.push(p);
             }
@@ -1844,6 +1919,8 @@ mod tests {
 
     fn manifest_without_driver() -> &'static str {
         r#"
+        manifest_version = 1
+
         name = 'SQLite3'
         publisher = 'arrow-adbc'
         version = '1.0.0'
@@ -1943,12 +2020,13 @@ mod tests {
     #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
     fn test_load_driver_env() {
         // ensure that we fail without the env var set
-        with_var_unset("ADBC_CONFIG_PATH", || {
+        with_var_unset("ADBC_DRIVER_PATH", || {
             let err = ManagedDriver::load_from_name(
                 "sqlite",
                 None,
                 AdbcVersion::V100,
                 LOAD_FLAG_SEARCH_ENV,
+                None,
             )
             .unwrap_err();
             assert_eq!(err.status, Status::NotFound);
@@ -1958,7 +2036,7 @@ mod tests {
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
         with_var(
-            "ADBC_CONFIG_PATH",
+            "ADBC_DRIVER_PATH",
             Some(manifest_path.parent().unwrap().as_os_str()),
             || {
                 ManagedDriver::load_from_name(
@@ -1966,6 +2044,7 @@ mod tests {
                     None,
                     AdbcVersion::V100,
                     LOAD_FLAG_SEARCH_ENV,
+                    None,
                 )
                 .unwrap();
             },
@@ -1989,9 +2068,15 @@ mod tests {
         ])
         .unwrap();
 
-        with_var("ADBC_CONFIG_PATH", Some(&path_os_string), || {
-            ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, LOAD_FLAG_SEARCH_ENV)
-                .unwrap();
+        with_var("ADBC_DRIVER_PATH", Some(&path_os_string), || {
+            ManagedDriver::load_from_name(
+                "sqlite",
+                None,
+                AdbcVersion::V100,
+                LOAD_FLAG_SEARCH_ENV,
+                None,
+            )
+            .unwrap();
         });
 
         tmp_dir
@@ -2006,7 +2091,7 @@ mod tests {
         let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
 
         with_var(
-            "ADBC_CONFIG_PATH",
+            "ADBC_DRIVER_PATH",
             Some(manifest_path.parent().unwrap().as_os_str()),
             || {
                 ManagedDriver::load_from_name(
@@ -2014,6 +2099,7 @@ mod tests {
                     None,
                     AdbcVersion::V100,
                     LOAD_FLAG_SEARCH_ENV,
+                    None,
                 )
                 .unwrap();
             },
@@ -2032,16 +2118,41 @@ mod tests {
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
         with_var(
-            "ADBC_CONFIG_PATH",
+            "ADBC_DRIVER_PATH",
             Some(manifest_path.parent().unwrap().as_os_str()),
             || {
                 let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;
-                let err =
-                    ManagedDriver::load_from_name("sqlite", None, AdbcVersion::V100, load_flags)
-                        .unwrap_err();
+                let err = ManagedDriver::load_from_name(
+                    "sqlite",
+                    None,
+                    AdbcVersion::V100,
+                    load_flags,
+                    None,
+                )
+                .unwrap_err();
                 assert_eq!(err.status, Status::NotFound);
             },
         );
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_load_additional_path() {
+        let p = PathBuf::from("majestik møøse/sqlite.toml");
+        let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
+
+        ManagedDriver::load_from_name(
+            "sqlite",
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_SEARCH_ENV,
+            Some(vec![manifest_path.parent().unwrap().to_path_buf()]),
+        )
+        .unwrap();
 
         tmp_dir
             .close()
@@ -2054,8 +2165,14 @@ mod tests {
         let (tmp_dir, manifest_path) =
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
-        ManagedDriver::load_from_name(manifest_path, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT)
-            .unwrap();
+        ManagedDriver::load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT,
+            None,
+        )
+        .unwrap();
 
         tmp_dir
             .close()
@@ -2069,8 +2186,14 @@ mod tests {
             write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
 
         manifest_path.set_extension("");
-        ManagedDriver::load_from_name(manifest_path, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT)
-            .unwrap();
+        ManagedDriver::load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT,
+            None,
+        )
+        .unwrap();
 
         tmp_dir
             .close()
@@ -2083,8 +2206,8 @@ mod tests {
         std::fs::write(PathBuf::from("sqlite.toml"), simple_manifest())
             .expect("Failed to write driver manager manifest to file");
 
-        let err =
-            ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0).unwrap_err();
+        let err = ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0, None)
+            .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
         ManagedDriver::load_from_name(
@@ -2092,6 +2215,7 @@ mod tests {
             None,
             AdbcVersion::V100,
             LOAD_FLAG_ALLOW_RELATIVE_PATHS,
+            None,
         )
         .unwrap();
 
@@ -2112,6 +2236,29 @@ mod tests {
             None,
             AdbcVersion::V100,
             LOAD_FLAG_DEFAULT,
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(err.status, Status::InvalidArguments);
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_manifest_bad_version() {
+        let manifest = "manifest_version = 2\n".to_owned() + &simple_manifest().to_owned();
+        let (tmp_dir, manifest_path) =
+            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest);
+
+        let err = ManagedDriver::load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT,
+            None,
         )
         .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
@@ -2143,6 +2290,7 @@ mod tests {
             None,
             AdbcVersion::V100,
             LOAD_FLAG_DEFAULT,
+            None,
         )
         .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
@@ -2167,6 +2315,7 @@ mod tests {
             None,
             AdbcVersion::V110,
             LOAD_FLAG_DEFAULT,
+            None,
         )
         .unwrap_err();
         assert_eq!(err.status, Status::NotFound);
@@ -2189,6 +2338,7 @@ mod tests {
             None,
             AdbcVersion::V110,
             LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_USER,
+            None,
         )
         .unwrap_err();
         assert_eq!(err.status, Status::NotFound);
@@ -2199,6 +2349,7 @@ mod tests {
             None,
             AdbcVersion::V110,
             LOAD_FLAG_SEARCH_USER,
+            None,
         )
         .unwrap();
 
@@ -2213,9 +2364,9 @@ mod tests {
     #[cfg_attr(not(windows), ignore)]
     fn test_get_search_paths() {
         #[cfg(target_os = "macos")]
-        let system_path = PathBuf::from("/Library/Application Support/ADBC");
+        let system_path = PathBuf::from("/Library/Application Support/ADBC/Drivers");
         #[cfg(not(target_os = "macos"))]
-        let system_path = PathBuf::from("/etc/adbc");
+        let system_path = PathBuf::from("/etc/adbc/drivers");
 
         let search_paths = get_search_paths(LOAD_FLAG_SEARCH_SYSTEM);
         if system_path.exists() {

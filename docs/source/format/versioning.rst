@@ -74,3 +74,15 @@ Similarly, this documentation describes the ADBC API standard version
 options or API functions are defined), the next version would be
 1.2.0.  If incompatible changes are made (e.g. changing the signature
 or semantics of a function), the next version would be 2.0.0.
+
+The ADBC :doc:`driver manifest <driver_manifests>` TOML format is
+versioned separately from the ADBC standard and components.  Its
+version is an integer currently set to 1.  This version number may
+optionally be included in the manifest as the value of the
+``manifest_version`` key.  If present, it must be set to 1.  If not
+present, it is assumed to be 1.  The manifest version number must be
+incremented when and only when breaking changes are made to the
+driver manifest format.  In future manifests with a version higher
+than 1, the ``manifest_version`` key will be required.  Current
+driver manager implementations must error upon reading a manifest
+with ``manifest_version`` higher than 1.

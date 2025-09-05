@@ -29,8 +29,8 @@ use arrow_buffer::{OffsetBuffer, ScalarBuffer};
 use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef, UnionFields};
 
 use adbc_core::{
+    constants,
     error::{Error, Result, Status},
-    ffi::constants,
     options::{
         InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement, OptionValue,
     },
@@ -875,4 +875,4 @@ impl Statement for DummyStatement {
     }
 }
 
-adbc_core::export_driver!(DummyDriverInit, DummyDriver);
+adbc_ffi::export_driver!(DummyDriverInit, DummyDriver);

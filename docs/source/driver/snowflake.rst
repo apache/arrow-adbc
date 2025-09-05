@@ -351,6 +351,8 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
     - ``auth_okta``: Use a native Okta URL to perform SSO authentication using Okta
     - ``auth_jwt``: Use a provided JWT to perform authentication.
     - ``auth_mfa``: Use a username and password with MFA.
+    - ``auth_pat``: Use a programmatic access token for authentication.
+    - ``auth_wif``: Use Workload Identity Federation for authentication.
 
 ``adbc.snowflake.sql.client_option.auth_token``
     If using OAuth or another form of authentication, this option is how you can
@@ -433,6 +435,10 @@ These options map 1:1 with the Snowflake `Config object <https://pkg.go.dev/gith
 ``adbc.snowflake.sql.client_option.store_temp_creds``
     When ``true``, the ID token is cached in the credential manager. Defaults
     to ``true`` on Windows/OSX, ``false`` on Linux.
+
+``adbc.snowflake.sql.client_option.identity_provider``
+    When using ``auth_wif`` for workload identity federation authentication, this
+    must be set to the appropriate identity provider.
 
 ``adbc.snowflake.sql.client_option.use_high_precision``
     When ``true``, fixed-point snowflake columns with the type ``NUMBER``

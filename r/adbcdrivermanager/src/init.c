@@ -48,7 +48,8 @@ SEXP RAdbcStatementGetOptionDouble(SEXP statement_xptr, SEXP key_sexp, SEXP erro
 SEXP RAdbcCurrentArch(void);
 SEXP RAdbcAllocateDriver(void);
 SEXP RAdbcLoadDriver(SEXP driver_name_sexp, SEXP entrypoint_sexp, SEXP version_sexp,
-                     SEXP load_flags_sexp, SEXP driver_sexp, SEXP error_sexp);
+                     SEXP load_flags_sexp, SEXP additional_search_path_list_sexp,
+                     SEXP driver_sexp, SEXP error_sexp);
 SEXP RAdbcLoadDriverFromInitFunc(SEXP driver_init_func_xptr, SEXP version_sexp,
                                  SEXP driver_sexp, SEXP error_sexp);
 SEXP RAdbcDatabaseNew(SEXP driver_init_func_xptr, SEXP load_flags_sexp);
@@ -130,7 +131,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"RAdbcStatementGetOptionDouble", (DL_FUNC)&RAdbcStatementGetOptionDouble, 3},
     {"RAdbcCurrentArch", (DL_FUNC)&RAdbcCurrentArch, 0},
     {"RAdbcAllocateDriver", (DL_FUNC)&RAdbcAllocateDriver, 0},
-    {"RAdbcLoadDriver", (DL_FUNC)&RAdbcLoadDriver, 6},
+    {"RAdbcLoadDriver", (DL_FUNC)&RAdbcLoadDriver, 7},
     {"RAdbcLoadDriverFromInitFunc", (DL_FUNC)&RAdbcLoadDriverFromInitFunc, 4},
     {"RAdbcDatabaseNew", (DL_FUNC)&RAdbcDatabaseNew, 2},
     {"RAdbcMoveDatabase", (DL_FUNC)&RAdbcMoveDatabase, 1},

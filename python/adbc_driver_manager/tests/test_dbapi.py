@@ -339,6 +339,38 @@ def test_executemany_parameters(sqlite, parameters):
 
 
 @pytest.mark.sqlite
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        [],
+        pyarrow.record_batch([[]], schema=pyarrow.schema([("v", pyarrow.int64())])),
+        pyarrow.table([[]], schema=pyarrow.schema([("v", pyarrow.int64())])),
+    ],
+)
+def test_executemany_empty(sqlite, parameters):
+    # Regression test for https://github.com/apache/arrow-adbc/issues/3319
+    with sqlite.cursor() as cur:
+        # With an empty sequence, it should be the same as not executing the
+        # query at all.
+        cur.execute("DROP TABLE IF EXISTS executemany")
+        cur.execute("CREATE TABLE executemany (v)")
+        cur.executemany("INSERT INTO executemany VALUES (?)", parameters)
+        cur.execute("SELECT * FROM executemany")
+        assert cur.fetchall() == []
+
+
+@pytest.mark.sqlite
+def test_executemany_none(sqlite):
+    # Regression test for https://github.com/apache/arrow-adbc/issues/3319
+    with sqlite.cursor() as cur:
+        # With None, it should be the same as executing the query once.
+        cur.execute("DROP TABLE IF EXISTS executemany")
+        cur.execute("CREATE TABLE executemany (v)")
+        with pytest.raises(sqlite.Error):
+            cur.executemany("INSERT INTO executemany VALUES (?)", None)
+
+
+@pytest.mark.sqlite
 def test_query_substrait(sqlite):
     with sqlite.cursor() as cur:
         with pytest.raises(dbapi.NotSupportedError):
@@ -482,7 +514,7 @@ def test_release(sqlite, op) -> None:
 
 def test_driver_path():
     with pytest.raises(
-        dbapi.InternalError,
+        dbapi.ProgrammingError,
         match="(dlopen|LoadLibraryExW).*failed:",
     ):
         with dbapi.connect(driver=pathlib.Path("/tmp/thisdriverdoesnotexist")):

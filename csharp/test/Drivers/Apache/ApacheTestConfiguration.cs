@@ -63,6 +63,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
         [JsonPropertyName("http_options"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public HttpTestConfiguration? HttpOptions { get; set; }
 
+        [JsonPropertyName("standard_options"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public StandardTestConfiguration? StandardOptions { get; set; }
+
         [JsonPropertyName("catalog"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Catalog { get; set; } = string.Empty;
 
@@ -77,6 +80,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache
 
         [JsonPropertyName("proxy"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public ProxyTestConfiguration? Proxy { get; set; }
+    }
+
+    public class StandardTestConfiguration
+    {
+        [JsonPropertyName("tls"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public TlsTestConfiguration? Tls { get; set; }
     }
 
     public class ProxyTestConfiguration

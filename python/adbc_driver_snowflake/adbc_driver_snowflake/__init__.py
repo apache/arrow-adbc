@@ -39,7 +39,7 @@ class DatabaseOptions(enum.Enum):
     AUTH_TOKEN = "adbc.snowflake.sql.client_option.auth_token"
     #: Specify auth type to use for snowflake connection based on
     #: what is supported by the snowflake driver. Default is
-    #: "auth_snowflake" (use ValueAuth* consts to specify desired
+    #: "auth_snowflake" (use AuthType.* consts to specify desired
     #: authentication type).
     AUTH_TYPE = "adbc.snowflake.sql.auth_type"
     #: When true, the MFA token is cached in the credential manager. True by default
@@ -48,6 +48,8 @@ class DatabaseOptions(enum.Enum):
     #: When true, the ID token is cached in the credential manager. True by default
     #: on Windows/OSX, false for Linux
     CLIENT_STORE_TEMP_CRED = "adbc.snowflake.sql.client_option.store_temp_creds"
+    #: Specify the workload identity provider to use for WIF authentication.
+    CLIENT_IDENTITY_PROVIDER = "adbc.snowflake.sql.client_option.identity_provider"
     #: Timeout for network round trip + reading http response
     #: use format like http://pkg.go.dev/time#ParseDuration such as
     #: "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
@@ -102,6 +104,27 @@ class DatabaseOptions(enum.Enum):
     #: scale will be returned as a Float64 column. This option must be
     #: set using 'true' or 'false'.
     USE_HIGH_PRECISION = "adbc.snowflake.sql.client_option.use_high_precision"
+
+
+class AuthType(str, enum.Enum):
+    """Values for the AUTH_TYPE option to the Snowflake driver."""
+
+    #: General username/password auth
+    SNOWFLAKE = "auth_snowflake"
+    #: Use OAuth authentication for the connection
+    OAUTH = "auth_oauth"
+    #: Use an external browser to access a FED and perform SSO auth
+    EXTERNAL_BROWSER = "auth_ext_browser"
+    #: Use Okta authentication for the connection
+    OKTA = "auth_okta"
+    #: Use JWT authentication for the connection
+    JWT = "auth_jwt"
+    #: Use a username and password with MFA
+    MFA = "auth_mfa"
+    #: Use a programmatic access token
+    PAT = "auth_pat"
+    #: Use Workload Identity Federation for auth
+    WIF = "auth_wif"
 
 
 class StatementOptions(enum.Enum):

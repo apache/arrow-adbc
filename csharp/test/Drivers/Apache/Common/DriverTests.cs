@@ -604,10 +604,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             using AdbcConnection adbcConnection = NewConnection();
             using AdbcStatement statement = adbcConnection.CreateStatement();
 
-            statement.SqlQuery = $"SELECT * from {TestConfiguration.Metadata.Table} WHERE FALSE";
+            statement.SqlQuery = $"SELECT * from {FormatTableName} WHERE FALSE";
             QueryResult queryResult = await statement.ExecuteQueryAsync();
 
             await Tests.DriverTests.CanExecuteQueryAsync(queryResult, 0);
         }
+
+        internal virtual string FormatTableName => TestConfiguration.Metadata.Table;
     }
 }

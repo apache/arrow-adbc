@@ -468,7 +468,7 @@ def test_pycapsule(sqlite):
 
 def test_driver_path():
     with pytest.raises(
-        adbc_driver_manager.InternalError,
+        adbc_driver_manager.ProgrammingError,
         match="(dlopen|LoadLibraryExW).*failed:",
     ):
         with adbc_driver_manager.AdbcDatabase(

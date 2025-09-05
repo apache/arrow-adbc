@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -34,11 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override string GetProductVersionDefault() => ProductVersionDefault;
 
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
-
-        internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
-        {
-            { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" }
-        };
 
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
             : base(properties)
@@ -62,7 +58,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return statement;
         }
 
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle!, Client, cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle!, cancellationToken: cancellationToken);
+
         protected internal override int PositionRequiredOffset => 1;
+
+        protected override int ColumnMapIndexOffset => 1;
 
         internal override void SetPrecisionScaleAndTypeName(
             short colType,
@@ -117,6 +120,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override bool GetObjectsPatternsRequireLowerCase => false;
 
         protected override bool IsColumnSizeValidForDecimal => false;
+
+        internal override SchemaParser SchemaParser { get; } = new HiveServer2SchemaParser();
 
         protected internal override bool TrySetGetDirectResults(IRequest request)
         {
