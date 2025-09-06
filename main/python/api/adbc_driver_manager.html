@@ -578,6 +578,12 @@ definitions in Python.  For a higher-level interface, use
 <p>Statement options that are standardized between drivers.</p>
 <p>Not all drivers support all options.</p>
 <dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_manager.StatementOptions.BIND_BY_NAME">
+<span class="sig-name descname"><span class="pre">BIND_BY_NAME</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.statement.bind_by_name'</span></em><a class="headerlink" href="#adbc_driver_manager.StatementOptions.BIND_BY_NAME" title="Link to this definition">¶</a></dt>
+<dd><p>Bind parameters by name instead of by position.</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="adbc_driver_manager.StatementOptions.INCREMENTAL">
 <span class="sig-name descname"><span class="pre">INCREMENTAL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.statement.exec.incremental'</span></em><a class="headerlink" href="#adbc_driver_manager.StatementOptions.INCREMENTAL" title="Link to this definition">¶</a></dt>
 <dd><p>Enable incremental execution on ExecutePartitions.</p>
@@ -1979,16 +1985,21 @@ could not be determined.</p>
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.execute">
 <span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.13)"><span class="pre">bytes</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.execute" title="Link to this definition">¶</a></dt>
 <dd><p>Execute a query.</p>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
+<dd class="field-odd"><dl>
 <dt><strong>operation</strong><span class="classifier">bytes or str</span></dt><dd><p>The query to execute.  Pass SQL queries as strings,
 (serialized) Substrait plans as bytes.</p>
 </dd>
-<dt><strong>parameters</strong></dt><dd><p>Parameters to bind.  Can be a Python sequence (to provide
-a single set of parameters), or an Arrow record batch,
-table, or record batch reader (to provide multiple
-parameters, which will each be bound in turn).</p>
+<dt><strong>parameters</strong></dt><dd><p>Parameters to bind.  Can be a Python sequence (to bind a single
+set of parameters), a Python dictionary (to bind a single set of
+parameters by name instead of position), or an Arrow record batch,
+table, or record batch reader (to provide multiple parameters,
+which will each be bound in turn).</p>
+<p>To bind by name when providing Arrow data, explicitly toggle the
+statement option “adbc.statement.bind_by_name”.</p>
+<p>Note that providing a list of tuples is not supported (this mode
+of usage is deprecated in DBAPI-2.0; use executemany() instead).</p>
 </dd>
 </dl>
 </dd>
@@ -2358,6 +2369,7 @@ United States and other countries.
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_manager.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.BIND_BY_NAME"><code class="docutils literal notranslate"><span class="pre">StatementOptions.BIND_BY_NAME</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INCREMENTAL"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INCREMENTAL</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INGEST_MODE"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INGEST_MODE</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.StatementOptions.INGEST_TARGET_CATALOG"><code class="docutils literal notranslate"><span class="pre">StatementOptions.INGEST_TARGET_CATALOG</span></code></a></li>
