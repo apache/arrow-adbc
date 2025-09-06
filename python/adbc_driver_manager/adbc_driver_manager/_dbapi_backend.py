@@ -60,7 +60,9 @@ class DbapiBackend(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def convert_executemany_parameters(self, parameters: typing.Any) -> typing.Any:
+    def convert_executemany_parameters(
+        self, parameters: typing.Any
+    ) -> typing.Tuple[typing.Any, bool]:
         """Convert an arbitrary Python sequence into bind parameters.
 
         Parameters
@@ -74,6 +76,9 @@ class DbapiBackend(abc.ABC):
         parameters : CapsuleType
             This should be an Arrow stream capsule or an object implementing
             the Arrow PyCapsule interface.
+        bind_by_name : bool
+            Whether the parameters should be bound by name (e.g. because they
+            contain a dictionary).
 
         See Also
         --------
@@ -107,7 +112,9 @@ class _NoOpBackend(DbapiBackend):
             status_code=_lib.AdbcStatusCode.INVALID_STATE,
         )
 
-    def convert_executemany_parameters(self, parameters: typing.Any) -> typing.Any:
+    def convert_executemany_parameters(
+        self, parameters: typing.Any
+    ) -> typing.Tuple[typing.Any, bool]:
         raise _lib.ProgrammingError(
             "This API requires PyArrow or another suitable backend to be installed",
             status_code=_lib.AdbcStatusCode.INVALID_STATE,
@@ -122,6 +129,29 @@ class _NoOpBackend(DbapiBackend):
         return handle
 
 
+def param_iterable_to_dict(parameters: typing.Any) -> typing.Tuple[dict, bool]:
+    bind_by_name = False
+    cols = {}
+    for param in parameters:
+        if not cols:
+            # First iteration
+            if isinstance(param, dict):
+                bind_by_name = True
+                for k, v in param.items():
+                    cols[str(k)] = []
+            else:
+                for col_idx, v in enumerate(param):
+                    cols[str(col_idx)] = []
+
+        if isinstance(param, dict):
+            for k, v in param.items():
+                cols[str(k)].append(v)
+        else:
+            for col_idx, v in enumerate(param):
+                cols[str(col_idx)].append(v)
+    return cols, bind_by_name
+
+
 _ALL_BACKENDS.append(_NoOpBackend())
 
 try:
@@ -129,17 +159,20 @@ try:
 
     class _PolarsBackend(DbapiBackend):
         def convert_bind_parameters(self, parameters: typing.Any) -> polars.DataFrame:
+            if isinstance(parameters, dict):
+                return polars.DataFrame(
+                    {str(k): v for k, v in parameters.items()},
+                )
+
             return polars.DataFrame(
-                {str(col_idx): x for col_idx, x in enumerate(parameters)},
+                {str(col_idx): v for col_idx, v in enumerate(parameters)},
             )
 
-        def convert_executemany_parameters(self, parameters: typing.Any) -> typing.Any:
-            return polars.DataFrame(
-                {
-                    str(col_idx): x
-                    for col_idx, x in enumerate(map(list, zip(*parameters)))
-                },
-            )
+        def convert_executemany_parameters(
+            self, parameters: typing.Any
+        ) -> typing.Tuple[typing.Any, bool]:
+            cols, bind_by_name = param_iterable_to_dict(parameters)
+            return polars.DataFrame(cols), bind_by_name
 
         def import_array_stream(
             self, handle: _lib.ArrowArrayStreamHandle
@@ -159,18 +192,20 @@ try:
 
     class _PyArrowBackend(DbapiBackend):
         def convert_bind_parameters(self, parameters: typing.Any) -> typing.Any:
+            if isinstance(parameters, dict):
+                return pyarrow.record_batch(
+                    {str(k): [v] for k, v in parameters.items()},
+                )
             return pyarrow.record_batch(
                 [[param_value] for param_value in parameters],
                 names=[str(i) for i in range(len(parameters))],
             )
 
-        def convert_executemany_parameters(self, parameters: typing.Any) -> typing.Any:
-            return pyarrow.RecordBatch.from_pydict(
-                {
-                    str(col_idx): pyarrow.array(x)
-                    for col_idx, x in enumerate(map(list, zip(*parameters)))
-                },
-            )
+        def convert_executemany_parameters(
+            self, parameters: typing.Any
+        ) -> typing.Tuple[typing.Any, bool]:
+            cols, bind_by_name = param_iterable_to_dict(parameters)
+            return pyarrow.RecordBatch.from_pydict(cols), bind_by_name
 
         def import_array_stream(
             self, handle: _lib.ArrowArrayStreamHandle
