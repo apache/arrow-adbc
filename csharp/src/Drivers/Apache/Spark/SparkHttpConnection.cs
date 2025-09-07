@@ -245,8 +245,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         internal override SparkServerType ServerType => SparkServerType.Http;
 
-        protected override int ColumnMapIndexOffset => 1;
-
         public override string AssemblyVersion => s_assemblyVersion;
 
         public override string AssemblyName => s_assemblyName;

@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 #include <arrow-adbc/adbc.h>
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
@@ -33,6 +35,7 @@ struct ADBC_EXPORT AdbcSqliteBinder {
   struct ArrowSchema schema;
   struct ArrowArrayStream params;
   enum ArrowType* types;
+  int* param_indices;
 
   // Scratch space
   struct ArrowArray array;
@@ -43,6 +46,7 @@ struct ADBC_EXPORT AdbcSqliteBinder {
 ADBC_EXPORT
 AdbcStatusCode InternalAdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
                                                       struct ArrowArrayStream* values,
+                                                      bool bind_by_name,
                                                       struct AdbcError* error);
 ADBC_EXPORT
 AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,

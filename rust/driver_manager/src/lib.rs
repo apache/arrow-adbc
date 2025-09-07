@@ -183,6 +183,20 @@ impl DriverInfo {
         let manifest = DeTable::parse(&contents)
             .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
 
+        let manifest_version = manifest
+            .get_ref()
+            .get("manifest_version")
+            .and_then(|v| v.get_ref().as_integer())
+            .map(|v| v.as_str())
+            .unwrap_or("1");
+
+        if manifest_version != "1" {
+            return Err(Error::with_message_and_status(
+                format!("Unsupported manifest version: {manifest_version}"),
+                Status::InvalidArguments,
+            ));
+        }
+
         // leave these out until we add logging that would actually utilize them
         // let driver_name = get_optional_key(&manifest, "name");
         // let version = get_optional_key(&manifest, "version");
@@ -674,6 +688,15 @@ fn load_driver_from_registry(
                 Status::NotFound,
             )
         })?;
+
+    let manifest_version = drivers_key.get_u32("manifest_version").unwrap_or(1);
+
+    if manifest_version != 1 {
+        return Err(Error::with_message_and_status(
+            format!("Unsupported manifest version: {manifest_version}"),
+            Status::InvalidArguments,
+        ));
+    }
 
     let entrypoint_val = drivers_key
         .get_string("entrypoint")
@@ -1896,6 +1919,8 @@ mod tests {
 
     fn manifest_without_driver() -> &'static str {
         r#"
+        manifest_version = 1
+
         name = 'SQLite3'
         publisher = 'arrow-adbc'
         version = '1.0.0'
@@ -2205,6 +2230,28 @@ mod tests {
             PathBuf::from("sqlite.toml"),
             manifest_without_driver().to_string(),
         );
+
+        let err = ManagedDriver::load_from_name(
+            manifest_path,
+            None,
+            AdbcVersion::V100,
+            LOAD_FLAG_DEFAULT,
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(err.status, Status::InvalidArguments);
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+    fn test_manifest_bad_version() {
+        let manifest = "manifest_version = 2\n".to_owned() + &simple_manifest().to_owned();
+        let (tmp_dir, manifest_path) =
+            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest);
 
         let err = ManagedDriver::load_from_name(
             manifest_path,
