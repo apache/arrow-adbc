@@ -29,3 +29,8 @@ source_dir=${1}/csharp/test/Drivers/Databricks
 pushd ${source_dir}
 dotnet test --filter "FullyQualifiedName~Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit"
 popd
+
+source_dir=${1}/csharp/test/Telemetry/Traces/Exporters
+pushd ${source_dir}
+dotnet test
+popd

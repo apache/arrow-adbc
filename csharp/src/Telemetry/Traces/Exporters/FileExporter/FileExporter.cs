@@ -17,12 +17,12 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using OpenTelemetry;
 
@@ -41,8 +41,8 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         private readonly TracingFile _tracingFile;
         private readonly string _fileBaseName;
         private readonly string _tracesDirectoryFullName;
-        private readonly ConcurrentQueue<Activity> _activityQueue = new();
-        private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly Channel<Activity> _channel = Channel.CreateUnbounded<Activity>();
+        private volatile bool _isProcessingComplete = false;
 
         private bool _disposed = false;
 
@@ -120,28 +120,54 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             foreach (Activity activity in batch)
             {
                 if (activity == null) continue;
-                _activityQueue.Enqueue(activity);
+                _ = _channel.Writer.TryWrite(activity);
             }
             return ExportResult.Success;
+        }
+
+        protected override bool OnForceFlush(int timeoutMilliseconds)
+        {
+            CancellationTokenSource cts = new CancellationTokenSource();
+            cts.CancelAfter(TimeSpan.FromMilliseconds(timeoutMilliseconds));
+            Task.Delay(100).ConfigureAwait(false).GetAwaiter().GetResult();
+            while (!cts.IsCancellationRequested && !_channel.Reader.Completion.IsCompleted && _channel.Reader.Count > 0)
+            {
+                Task.Delay(100).ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            return true;
         }
 
         private static async Task ProcessActivitiesAsync(FileExporter fileExporter, CancellationToken cancellationToken)
         {
             try
             {
-                TimeSpan delay = TimeSpan.FromMilliseconds(100);
-                // Polls for and then writes any activities in the queue
-                while (!cancellationToken.IsCancellationRequested)
+                using MemoryStream stream = new();
+                await foreach (Activity activity in fileExporter._channel.Reader.ReadAllAsync(cancellationToken))
                 {
-                    await Task.Delay(delay, cancellationToken);
-                    await fileExporter._tracingFile.WriteLinesAsync(GetActivitiesAsync(fileExporter._activityQueue), cancellationToken);
+                    if (cancellationToken.IsCancellationRequested) break;
+
+                    stream.SetLength(0);
+                    SerializableActivity serializableActivity = new(activity);
+                    await JsonSerializer.SerializeAsync(
+                        stream,
+                        serializableActivity);
+                    stream.Write(s_newLine, 0, s_newLine.Length);
+                    stream.Position = 0;
+
+                    await fileExporter._tracingFile.WriteLineAsync(stream, cancellationToken);
                 }
+            }
+            catch (OperationCanceledException ex)
+            {
+                // Expected when cancellationToken is cancelled.
+                Debug.WriteLine(ex);
             }
             catch (Exception ex)
             {
                 // Since this will be called on an independent thread, we need to avoid uncaught exceptions.
                 Debug.WriteLine(ex);
             }
+            fileExporter._isProcessingComplete = true;
         }
 
         private static bool IsDirectoryWritable(string traceLocation, bool throwIfFails = false)
@@ -162,30 +188,12 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             }
         }
 
-        private static async IAsyncEnumerable<Stream> GetActivitiesAsync(ConcurrentQueue<Activity> activityQueue)
-        {
-            using MemoryStream stream = new MemoryStream();
-            while (activityQueue.TryDequeue(out Activity? activity))
-            {
-                stream.SetLength(0);
-                SerializableActivity serializableActivity = new(activity);
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    serializableActivity);
-                stream.Write(s_newLine, 0, s_newLine.Length);
-                stream.Position = 0;
-
-                yield return stream;
-            }
-        }
-
         private FileExporter(string fileBaseName, DirectoryInfo tracesDirectory, long maxTraceFileSizeKb, int maxTraceFiles, CancellationTokenSource cancellationTokenSource)
         {
             string fullName = tracesDirectory.FullName;
             _fileBaseName = fileBaseName;
             _tracesDirectoryFullName = fullName;
             _tracingFile = new(fileBaseName, fullName, maxTraceFileSizeKb, maxTraceFiles);
-            _cancellationTokenSource = cancellationTokenSource;
         }
 
         internal static string TracingLocationDefault { get; } =
@@ -198,7 +206,8 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         private async Task FlushAsync(CancellationToken cancellationToken = default)
         {
             // Ensure existing writes are completed.
-            while (!cancellationToken.IsCancellationRequested && !_activityQueue.IsEmpty)
+            _ = _channel.Writer.TryComplete();
+            while (!cancellationToken.IsCancellationRequested && !_isProcessingComplete)
             {
                 await Task.Delay(100);
             }
@@ -220,8 +229,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 {
                     listener?.Value.Dispose();
                 }
-                _cancellationTokenSource.Cancel();
-                _cancellationTokenSource.Dispose();
+                _tracingFile.Dispose();
                 _disposed = true;
             }
             base.Dispose(disposing);
