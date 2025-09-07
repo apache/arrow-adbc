@@ -128,7 +128,7 @@ Python
 
 Install the appropriate driver package.
 
-.. note:: To use the DBAPI interface, ``pyarrow`` is also required.
+.. note:: To use the DBAPI interface, either ``pyarrow`` or ``polars`` must be installed.
 
 For example, from PyPI:
 

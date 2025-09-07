@@ -42,6 +42,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         [InlineData(LongRunningStatementTimeoutTestData.LongRunningQuery)]
         internal override async Task CanCancelStatementTest(string query)
         {
+            Skip.If(TestConfiguration.Type == "standard", "Spark 'standard' transport does not support cancellation test.");
             await base.CanCancelStatementTest(query);
         }
 
