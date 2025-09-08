@@ -154,7 +154,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     lastException = ioEx;
                     // If we can't open the file, just set to null.
                     _currentFileStream = null;
-                    int delayMs = ThreadLocalRandom.Next(5, 50);
+                    int delayMs = ThreadLocalRandom.Next(5, 10 * attempts);
                     await Task.Delay(delayMs).ConfigureAwait(false);
                 }
                 catch (Exception ex)
