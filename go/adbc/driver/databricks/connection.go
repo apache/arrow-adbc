@@ -82,7 +82,7 @@ func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
 func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 	// Use the database to execute USE CATALOG
 	if c.conn != nil && catalog != "" {
-		_, err := c.conn.ExecContext(context.TODO(), "USE CATALOG `%s`", catalog)
+		_, err := c.conn.ExecContext(context.Background(), "USE CATALOG `%s`", catalog)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
@@ -97,7 +97,7 @@ func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 	// Use the database to execute USE SCHEMA
 	if c.conn != nil && schema != "" {
-		_, err := c.conn.ExecContext(context.TODO(), "USE SCHEMA `%s`", schema)
+		_, err := c.conn.ExecContext(context.Background(), "USE SCHEMA `%s`", schema)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
@@ -113,34 +113,6 @@ func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 	// Databricks supports these table types
 	return []string{"TABLE", "VIEW", "EXTERNAL_TABLE", "MANAGED_TABLE"}, nil
-}
-
-func (c *connectionImpl) GetTableTypes(ctx context.Context) (array.RecordReader, error) {
-	// Databricks supports these table types
-	tableTypes := []string{"TABLE", "VIEW", "EXTERNAL_TABLE", "MANAGED_TABLE"}
-
-	// Create Arrow schema for table types
-	schema := arrow.NewSchema([]arrow.Field{
-		{Name: "table_type", Type: arrow.BinaryTypes.String},
-	}, nil)
-
-	// Create record batch
-	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
-	defer bldr.Release()
-
-	tableTypeBuilder := bldr.Field(0).(*array.StringBuilder)
-	for _, tableType := range tableTypes {
-		tableTypeBuilder.Append(tableType)
-	}
-
-	rec := bldr.NewRecord()
-	defer rec.Release()
-
-	reader, err := array.NewRecordReader(schema, []arrow.Record{rec})
-	if err != nil {
-		return nil, err
-	}
-	return reader, nil
 }
 
 // Transaction methods (Databricks has limited transaction support)
