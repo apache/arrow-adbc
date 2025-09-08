@@ -67,14 +67,12 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         {
             if (cancellationToken.IsCancellationRequested) return;
 
-            string findSearchPattern = _fileBaseName + $"-trace-*-{ProcessId}.log";
-            if (_currentTraceFileInfo == null || _currentFileStream == null)
-            {
-                await OpenNewTracingFileAsync();
-            }
-
             try
             {
+                if (_currentTraceFileInfo == null || _currentFileStream == null)
+                {
+                    await OpenNewTracingFileAsync();
+                }
                 // Write out to the file and retry if IO errors occur.
                 await ActionWithRetryAsync<IOException>(async () => await WriteSingleLineAsync(stream), cancellationToken: cancellationToken);
             }
@@ -165,6 +163,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             } while (_currentFileStream == null && attempts <= maxAttempts);
             if (_currentFileStream == null && lastException != null)
             {
+                _currentTraceFileInfo = null;
                 throw new IOException($"Unable to create a new tracing file after {attempts - 1} attempts.", lastException);
             }
 
