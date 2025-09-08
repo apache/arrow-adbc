@@ -57,13 +57,6 @@ func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	}, nil
 }
 
-// Autocommit interface implementation
-func (c *connectionImpl) GetAutocommit() bool {
-	// Databricks SQL doesn't support explicit transaction control in the same way
-	// as traditional databases. Most operations are implicitly committed.
-	return true
-}
-
 func (c *connectionImpl) SetAutocommit(autocommit bool) error {
 	// Databricks SQL doesn't support explicit transaction control in the same way
 	// as traditional databases. Most operations are implicitly committed.
