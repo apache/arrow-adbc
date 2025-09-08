@@ -112,7 +112,7 @@ func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 // TableTypeLister interface implementation
 func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 	// Databricks supports these table types
-	return []string{"TABLE", "VIEW", "EXTERNAL_TABLE", "MANAGED_TABLE"}, nil
+	return []string{"TABLE", "VIEW", "EXTERNAL_TABLE", "MANAGED_TABLE", "STREAMING_TABLE", "MATERIALIZED_VIEW"}, nil
 }
 
 // Transaction methods (Databricks has limited transaction support)
