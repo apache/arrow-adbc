@@ -20,6 +20,7 @@ package databricks
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -174,7 +175,11 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 			Msg:  fmt.Sprintf("failed to query schemas: %v", err),
 		}
 	}
-	defer func() { _ = rows.Close() }()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	var schemas []string
 	for rows.Next() {
@@ -188,7 +193,8 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 		schemas = append(schemas, schema)
 	}
 
-	return schemas, rows.Err()
+	err = errors.Join(err, rows.Err())
+	return schemas, err
 }
 
 func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {

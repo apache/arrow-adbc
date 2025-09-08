@@ -20,6 +20,7 @@ package databricks
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -211,7 +212,7 @@ func (d *databaseImpl) initializeConnectionPool(ctx context.Context) (*sql.DB, e
 
 	// Test the connection
 	if err := db.PingContext(ctx); err != nil {
-		_ = db.Close() // Ignore error on cleanup
+		err = errors.Join(db.Close())
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
 			Msg:  fmt.Sprintf("failed to ping database: %v", err),
