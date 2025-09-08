@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc/driver/databricks"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,19 +49,19 @@ func TestCloudFetchE2E_BasicConnection(t *testing.T) {
 
 	db, err := driver.NewDatabase(opts)
 	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	conn, err := db.Open(ctx)
 	require.NoError(t, err)
-	defer func() { _ = conn.Close() }()
+	defer validation.CheckedClose(t, conn)
 
 	// Execute a simple query to verify connection works
 	stmt, err := conn.NewStatement()
 	require.NoError(t, err)
-	defer func() { _ = stmt.Close() }()
+	defer validation.CheckedClose(t, stmt)
 
 	err = stmt.SetSqlQuery("SELECT 1 as test")
 	require.NoError(t, err)
@@ -111,18 +112,18 @@ func TestCloudFetchE2E_SmallQueries(t *testing.T) {
 
 			db, err := driver.NewDatabase(opts)
 			require.NoError(t, err)
-			defer func() { _ = db.Close() }()
+			defer validation.CheckedClose(t, db)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
 
 			conn, err := db.Open(ctx)
 			require.NoError(t, err)
-			defer func() { _ = conn.Close() }()
+			defer validation.CheckedClose(t, conn)
 
 			stmt, err := conn.NewStatement()
 			require.NoError(t, err)
-			defer func() { _ = stmt.Close() }()
+			defer validation.CheckedClose(t, stmt)
 
 			err = stmt.SetSqlQuery(q.query)
 			require.NoError(t, err)
@@ -203,18 +204,18 @@ func TestCloudFetchE2E_LargeQueries(t *testing.T) {
 
 			db, err := driver.NewDatabase(opts)
 			require.NoError(t, err)
-			defer func() { _ = db.Close() }()
+			defer validation.CheckedClose(t, db)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 
 			conn, err := db.Open(ctx)
 			require.NoError(t, err)
-			defer func() { _ = conn.Close() }()
+			defer validation.CheckedClose(t, conn)
 
 			stmt, err := conn.NewStatement()
 			require.NoError(t, err)
-			defer func() { _ = stmt.Close() }()
+			defer validation.CheckedClose(t, stmt)
 
 			err = stmt.SetSqlQuery(q.query)
 			require.NoError(t, err)
@@ -274,18 +275,18 @@ func TestCloudFetchE2E_DataTypes(t *testing.T) {
 
 	db, err := driver.NewDatabase(opts)
 	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	conn, err := db.Open(ctx)
 	require.NoError(t, err)
-	defer func() { _ = conn.Close() }()
+	defer validation.CheckedClose(t, conn)
 
 	stmt, err := conn.NewStatement()
 	require.NoError(t, err)
-	defer func() { _ = stmt.Close() }()
+	defer validation.CheckedClose(t, stmt)
 
 	// Test query with various data types
 	query := `
@@ -388,18 +389,18 @@ func TestCloudFetchE2E_ErrorHandling(t *testing.T) {
 
 			db, err := driver.NewDatabase(opts)
 			require.NoError(t, err)
-			defer func() { _ = db.Close() }()
+			defer validation.CheckedClose(t, db)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
 			conn, err := db.Open(ctx)
 			require.NoError(t, err)
-			defer func() { _ = conn.Close() }()
+			defer validation.CheckedClose(t, conn)
 
 			stmt, err := conn.NewStatement()
 			require.NoError(t, err)
-			defer func() { _ = stmt.Close() }()
+			defer validation.CheckedClose(t, stmt)
 
 			err = stmt.SetSqlQuery(tc.query)
 			require.NoError(t, err)
@@ -461,18 +462,18 @@ func runPerformanceTest(t *testing.T, host, token, httpPath, query string) time.
 
 	db, err := driver.NewDatabase(opts)
 	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	conn, err := db.Open(ctx)
 	require.NoError(t, err)
-	defer func() { _ = conn.Close() }()
+	defer validation.CheckedClose(t, conn)
 
 	stmt, err := conn.NewStatement()
 	require.NoError(t, err)
-	defer func() { _ = stmt.Close() }()
+	defer validation.CheckedClose(t, stmt)
 
 	err = stmt.SetSqlQuery(query)
 	require.NoError(t, err)
