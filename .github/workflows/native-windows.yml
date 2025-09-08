@@ -215,7 +215,7 @@ jobs:
         run: |
           mamba install -c conda-forge `
             --file ci\conda_env_cpp.txt
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true

@@ -121,7 +121,7 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -729,7 +729,7 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -896,7 +896,7 @@ jobs:
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
