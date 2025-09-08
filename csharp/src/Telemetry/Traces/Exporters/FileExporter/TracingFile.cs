@@ -165,7 +165,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             } while (_currentFileStream == null && attempts <= maxAttempts);
             if (_currentFileStream == null && lastException != null)
             {
-                throw new IOException($"Unable to create a new tracing file after {attempts} attempts.", lastException);
+                throw new IOException($"Unable to create a new tracing file after {attempts - 1} attempts.", lastException);
             }
 
             await TryRemoveOlderFiles();
@@ -221,7 +221,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private string NewFileName()
         {
-            string dateTimeSortable = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd-HH-mm-ss-fff");
+            string dateTimeSortable = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd-HH-mm-ss-ffffff");
             return Path.Combine(_tracingDirectory.FullName, $"{_fileBaseName}-trace-{dateTimeSortable}-{ProcessId}.log");
         }
 
