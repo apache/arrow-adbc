@@ -25,9 +25,6 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/apache/arrow-go/v18/arrow"
-	"github.com/apache/arrow-go/v18/arrow/array"
-	"github.com/apache/arrow-go/v18/arrow/memory"
 	_ "github.com/databricks/databricks-sql-go"
 )
 
@@ -233,29 +230,4 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 	}
 
 	return tables, rows.Err()
-}
-
-func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
-	// This is a simplified implementation. A full implementation would need to:
-	// 1. Query INFORMATION_SCHEMA or system tables
-	// 2. Build proper Arrow record structure
-	// 3. Handle all the filtering parameters
-
-	// For now, return empty result
-	schema := arrow.NewSchema([]arrow.Field{
-		{Name: "catalog_name", Type: arrow.BinaryTypes.String},
-		{Name: "catalog_db_schemas", Type: arrow.ListOf(arrow.BinaryTypes.String)},
-	}, nil)
-
-	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
-	defer bldr.Release()
-
-	rec := bldr.NewRecord()
-	defer rec.Release()
-
-	reader, err := array.NewRecordReader(schema, []arrow.Record{rec})
-	if err != nil {
-		return nil, err
-	}
-	return reader, nil
 }
