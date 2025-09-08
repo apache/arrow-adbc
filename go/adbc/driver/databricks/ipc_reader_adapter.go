@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync/atomic"
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -162,8 +163,7 @@ func (r *ipcReaderAdapter) Record() arrow.Record {
 }
 
 func (r *ipcReaderAdapter) Release() {
-	r.refCount -= 1
-	if r.refCount <= 0 {
+	if atomic.AddInt64(&r.refCount, -1) <= 0 {
 		if r.closed {
 			panic("Double cleanup on ipc_reader_adapter - was Release() called with a closed reader?")
 		}
@@ -188,7 +188,7 @@ func (r *ipcReaderAdapter) Release() {
 }
 
 func (r *ipcReaderAdapter) Retain() {
-	r.refCount += 1
+	atomic.AddInt64(&r.refCount, 1)
 }
 
 func (r *ipcReaderAdapter) Err() error {
