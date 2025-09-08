@@ -55,13 +55,14 @@ shared = "adbc_driver_goosedb"
 
     monkeypatch.setenv("ADBC_DRIVER_PATH", str(tmp_path))
 
-    with pytest.raises(adbc_driver_manager.dbapi.Error) as excinfo:
+    with pytest.raises(
+        adbc_driver_manager.dbapi.Error, match="adbc_driver_goosedb"
+    ) as excinfo:
         with adbc_driver_manager.dbapi.connect(driver="testdriver2"):
             pass
 
     assert "ADBC_DRIVER_PATH: " + str(tmp_path) in str(excinfo.value)
     assert "found {}".format(str(tmp_path / "testdriver2.toml")) in str(excinfo.value)
-    assert "adbc_driver_goosedb" in str(excinfo.value)
 
 
 def test_manifest_indirect_missing_platform(tmp_path, monkeypatch) -> None:

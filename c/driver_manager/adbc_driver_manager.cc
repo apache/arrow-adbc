@@ -342,10 +342,10 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
   } catch (const toml::parse_error& err) {
     // Despite the name, this exception covers IO errors too.  Hence, we can't
     // differentiate between bad syntax and other I/O error.
-    std::string message = "Could not open manifest "s;
-    message += driver_manifest.string();
-    message += ": "s;
+    std::string message = "Could not open manifest. ";
     message += err.what();
+    message += ". Manifest: ";
+    message += driver_manifest.string();
     SetError(error, std::move(message));
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
@@ -438,6 +438,8 @@ SearchPaths GetEnvPaths(const char_type* env_var) {
   std::wstring path_var;
   path_var.resize(required_size);
   _wgetenv_s(&required_size, path_var.data(), required_size, env_var);
+  // Remove null terminator
+  path_var.resize(required_size - 1);
   auto path = Utf8Encode(path_var);
 #else
   const char* path_var = std::getenv(env_var);
@@ -661,11 +663,13 @@ struct ManagedLibrary {
           return status;
         } else if (status == ADBC_STATUS_INVALID_ARGUMENT) {
           // The manifest was invalid. Don't ignore that!
-          if (intermediate_error.error.message) {
-            SetError(error, intermediate_error.error.message);
-          }
           search_paths.insert(search_paths.end(), extra_debug_info.begin(),
                               extra_debug_info.end());
+          if (intermediate_error.error.message) {
+            std::string error_message = intermediate_error.error.message;
+            AddSearchPathsToError(search_paths, error_message);
+            SetError(error, std::move(error_message));
+          }
           return status;
         }
         // Should be NOT_FOUND otherwise
