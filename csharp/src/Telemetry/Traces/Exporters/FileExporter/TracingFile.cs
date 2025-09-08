@@ -68,13 +68,23 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             if (cancellationToken.IsCancellationRequested) return;
 
             string findSearchPattern = _fileBaseName + $"-trace-*-{ProcessId}.log";
-            if (_currentTraceFileInfo == null)
+            if (_currentTraceFileInfo == null || _currentFileStream == null)
             {
                 await OpenNewTracingFileAsync();
             }
 
-            // Write out to the file and retry if IO errors occur.
-            await ActionWithRetryAsync<IOException>(async () => await WriteSingleLineAsync(stream), cancellationToken: cancellationToken);
+            try
+            {
+                // Write out to the file and retry if IO errors occur.
+                await ActionWithRetryAsync<IOException>(async () => await WriteSingleLineAsync(stream), cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                this._currentTraceFileInfo = null;
+                this._currentFileStream?.Dispose();
+                this._currentFileStream = null;
+                Console.WriteLine(ex.Message);
+            }
 
         }
 
@@ -120,20 +130,28 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         {
             _currentFileStream?.Dispose();
             _currentFileStream = null;
+            const int maxAttempts = 20;
+            int attempts = 0;
+            Exception? lastException;
 
             do
             {
+                lastException = null;
                 _currentTraceFileInfo = new FileInfo(NewFileName());
                 try
                 {
+                    attempts++;
                     if (!_tracingDirectory.Exists)
                     {
                         _tracingDirectory.Create();
                     }
-                    _currentFileStream = _currentTraceFileInfo.OpenWrite();
+                    _currentFileStream = _currentTraceFileInfo.Open(FileMode.CreateNew, FileAccess.Write, FileShare.Read);
                 }
-                catch (IOException ioEx) when ((uint)ioEx.HResult == 0x80070020) // ERROR_SHARING_VIOLATION
+                catch (IOException ioEx)
+                    when ((uint)ioEx.HResult == 0x80070020     // ERROR_SHARING_VIOLATION
+                        || ((uint)ioEx.HResult == 0x80070050)) // ERROR_ALREADY_EXISTS)
                 {
+                    lastException = ioEx;
                     // If we can't open the file, just set to null.
                     _currentFileStream = null;
                     int delayMs = ThreadLocalRandom.Next(5, 50);
@@ -141,9 +159,14 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine(ex.Message);
+                    lastException = ex;
+                    Console.WriteLine(ex.Message);
                 }
-            } while (_currentFileStream == null);
+            } while (_currentFileStream == null && attempts <= maxAttempts);
+            if (_currentFileStream == null && lastException != null)
+            {
+                throw new IOException($"Unable to create a new tracing file after {attempts} attempts.", lastException);
+            }
 
             await TryRemoveOlderFiles();
         }
@@ -165,11 +188,11 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private static async Task ActionWithRetryAsync<T>(
             Func<Task> action,
-            int maxRetries = 100,
+            int maxRetries = 10,
             CancellationToken cancellationToken = default) where T : Exception
         {
             int retryCount = 0;
-            int delayTime = ThreadLocalRandom.Next(50, 500); // Introduce a small random delay to avoid contention.
+            int delayTime = ThreadLocalRandom.Next(10, 500); // Introduce a small random delay to avoid contention.
             TimeSpan pauseTime = TimeSpan.FromMilliseconds(delayTime);
             bool completed = false;
 

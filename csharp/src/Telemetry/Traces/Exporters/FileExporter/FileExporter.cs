@@ -160,12 +160,12 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             catch (OperationCanceledException ex)
             {
                 // Expected when cancellationToken is cancelled.
-                Debug.WriteLine(ex);
+                Console.WriteLine(ex);
             }
             catch (Exception ex)
             {
                 // Since this will be called on an independent thread, we need to avoid uncaught exceptions.
-                Debug.WriteLine(ex);
+                Console.WriteLine(ex);
             }
             fileExporter._isProcessingComplete = true;
         }
