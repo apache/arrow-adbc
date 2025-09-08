@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc/driver/databricks"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,17 +38,9 @@ func TestStatementBasic(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	// Note: We can't test the actual statement implementation without a real connection
 	// This test just ensures the public API compiles correctly
 	t.Log("Databricks driver public API is correct")
-}
-
-func TestIPCReaderAdapterCompileTime(t *testing.T) {
-	// Test that ipcReaderAdapter implements array.RecordReader
-	// This ensures our interface definitions are correct
-
-	// This is a compile-time check - if it compiles, the test passes
-	t.Log("IPC reader adapter implements required interfaces")
 }
