@@ -22,7 +22,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"reflect"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
@@ -217,37 +216,5 @@ func (s *statementImpl) ExecutePartitions(ctx context.Context) (*arrow.Schema, a
 	return nil, adbc.Partitions{}, -1, adbc.Error{
 		Code: adbc.StatusNotImplemented,
 		Msg:  "partitioned result sets not supported",
-	}
-}
-
-func (s *statementImpl) arrowToGoValue(arr arrow.Array, idx int) (interface{}, error) {
-	if arr.IsNull(idx) {
-		return nil, nil
-	}
-
-	switch a := arr.(type) {
-	case *array.Boolean:
-		return a.Value(idx), nil
-	case *array.Int8:
-		return a.Value(idx), nil
-	case *array.Int16:
-		return a.Value(idx), nil
-	case *array.Int32:
-		return a.Value(idx), nil
-	case *array.Int64:
-		return a.Value(idx), nil
-	case *array.Float32:
-		return a.Value(idx), nil
-	case *array.Float64:
-		return a.Value(idx), nil
-	case *array.String:
-		return a.Value(idx), nil
-	case *array.Binary:
-		return a.Value(idx), nil
-	default:
-		return nil, adbc.Error{
-			Code: adbc.StatusNotImplemented,
-			Msg:  fmt.Sprintf("conversion from Arrow type %v not implemented", reflect.TypeOf(arr)),
-		}
 	}
 }
