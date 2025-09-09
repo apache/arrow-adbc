@@ -41,7 +41,10 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const MetadataKeySnowflakeType = "SNOWFLAKE_TYPE"
+const (
+	MetadataKeySnowflakeType    = "SNOWFLAKE_TYPE"
+	MetadataKeySnowflakeQueryID = "SNOWFLAKE_QUERY_ID"
+)
 
 func identCol(_ context.Context, a arrow.Array) (arrow.Array, error) {
 	a.Retain()
@@ -349,7 +352,11 @@ func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, 
 			fields[i].Type = arrow.BinaryTypes.String
 		}
 	}
-	return arrow.NewSchema(fields, nil), nil
+	// Add query ID to schema metadata
+	schemaMetadata := arrow.MetadataFrom(map[string]string{
+		MetadataKeySnowflakeQueryID: ld.QueryID(),
+	})
+	return arrow.NewSchema(fields, &schemaMetadata), nil
 }
 
 func extractTimestamp(src *string) (sec, nsec int64, err error) {
