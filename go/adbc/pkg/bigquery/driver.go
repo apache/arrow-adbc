@@ -385,7 +385,7 @@ func BigQueryArrayStreamGetNext(stream *C.struct_ArrowArrayStream, array *C.stru
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
 	if cStream.rdr.Next() {
-		cdata.ExportArrowRecordBatch(cStream.rdr.Record(), toCdataArray(array), nil)
+		cdata.ExportArrowRecordBatch(cStream.rdr.RecordBatch(), toCdataArray(array), nil)
 		return 0
 	}
 	array.release = nil

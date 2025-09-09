@@ -28,7 +28,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/array"
 )
 
-func convertArrowToNamedValue(batch arrow.Record, index int) ([]driver.NamedValue, error) {
+func convertArrowToNamedValue(batch arrow.RecordBatch, index int) ([]driver.NamedValue, error) {
 	// see goTypeToSnowflake in gosnowflake
 	// technically, snowflake can bind an array of values at once, but
 	// only for INSERT, so we can't take advantage of that without
@@ -97,7 +97,7 @@ func convertArrowToNamedValue(batch arrow.Record, index int) ([]driver.NamedValu
 
 type snowflakeBindReader struct {
 	doQuery      func([]driver.NamedValue) (array.RecordReader, error)
-	currentBatch arrow.Record
+	currentBatch arrow.RecordBatch
 	nextIndex    int64
 	// may be nil if we bound only a batch
 	stream array.RecordReader
@@ -135,7 +135,7 @@ func (r *snowflakeBindReader) NextParams() ([]driver.NamedValue, error) {
 		}
 		r.currentBatch = nil
 		if r.stream != nil && r.stream.Next() {
-			r.currentBatch = r.stream.Record()
+			r.currentBatch = r.stream.RecordBatch()
 			r.currentBatch.Retain()
 			r.nextIndex = 0
 			continue

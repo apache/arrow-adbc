@@ -209,10 +209,10 @@ func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.In
 		}
 	}
 
-	final := bldr.NewRecord()
+	final := bldr.NewRecordBatch()
 	defer final.Release()
 
-	reader, err = array.NewRecordReader(adbc.GetInfoSchema, []arrow.Record{final})
+	reader, err = array.NewRecordReader(adbc.GetInfoSchema, []arrow.RecordBatch{final})
 	return reader, err
 }
 
@@ -584,9 +584,9 @@ func (cnxn *connection) GetTableTypes(ctx context.Context) (array.RecordReader, 
 	defer bldr.Release()
 
 	bldr.Field(0).(*array.StringBuilder).AppendValues(tableTypes, nil)
-	final := bldr.NewRecord()
+	final := bldr.NewRecordBatch()
 	defer final.Release()
-	return array.NewRecordReader(adbc.TableTypesSchema, []arrow.Record{final})
+	return array.NewRecordReader(adbc.TableTypesSchema, []arrow.RecordBatch{final})
 }
 
 func (cnxn *connection) Commit(ctx context.Context) error {
@@ -744,10 +744,10 @@ CATALOGLOOP:
 		}
 	}
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
-	return array.NewRecordReader(adbc.GetObjectsSchema, []arrow.Record{rec})
+	return array.NewRecordReader(adbc.GetObjectsSchema, []arrow.RecordBatch{rec})
 }
 
 func PatternToNamedArg(name string, pattern *string) sql.NamedArg {

@@ -63,7 +63,7 @@ type statement struct {
 	ingestOptions *ingestOptions
 	queryTag      string
 
-	bound      arrow.Record
+	bound      arrow.RecordBatch
 	streamBind array.RecordReader
 }
 
@@ -696,7 +696,7 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 // The driver will call release on the passed in Record when it is done,
 // but it may not do this until the statement is closed or another
 // record is bound.
-func (st *statement) Bind(_ context.Context, values arrow.Record) error {
+func (st *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 	if st.streamBind != nil {
 		st.streamBind.Release()
 		st.streamBind = nil
