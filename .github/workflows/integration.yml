@@ -28,6 +28,8 @@ on:
       - "python/**"
       - ".github/workflows/integration.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "c/**"
       - "ci/**"
