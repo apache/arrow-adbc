@@ -31,6 +31,8 @@ on:
       - "ruby/**"
       - ".github/workflows/native-unix.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "c/**"
       - "ci/**"

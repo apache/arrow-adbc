@@ -30,6 +30,8 @@ on:
       - "ruby/**"
       - ".github/workflows/native-windows.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "c/**"
       - "ci/**"

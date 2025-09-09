@@ -30,6 +30,10 @@ updates:
     commit-message:
       prefix: "chore(go/adbc): "
     groups:
+      "golang.org/x":
+        applies-to: version-updates
+        patterns:
+          - "golang.org/x/*"
       opentelemetry:
         applies-to: version-updates
         patterns:
