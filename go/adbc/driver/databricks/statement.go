@@ -95,6 +95,14 @@ func (s *statementImpl) Prepare(ctx context.Context) error {
 }
 
 func (s *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	// TODO: Prepared statement support with raw connections
+	if s.prepared != nil {
+		return nil, -1, adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  "Prepared statements are not yet supported via `execute query`",
+		}
+	}
+
 	if s.query == "" {
 		return nil, -1, adbc.Error{
 			Code: adbc.StatusInvalidState,
