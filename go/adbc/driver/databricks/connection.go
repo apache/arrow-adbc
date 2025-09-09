@@ -142,7 +142,11 @@ func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string)
 			Msg:  fmt.Sprintf("failed to query catalogs: %v", err),
 		}
 	}
-	defer func() { _ = rows.Close() }()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	var catalogs []string
 	for rows.Next() {
@@ -207,7 +211,11 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 			Msg:  fmt.Sprintf("failed to query tables: %v", err),
 		}
 	}
-	defer func() { _ = rows.Close() }()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	var tables []driverbase.TableInfo
 	for rows.Next() {

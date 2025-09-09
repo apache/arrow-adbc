@@ -21,6 +21,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -136,7 +137,12 @@ func (s *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, i
 			Msg:  fmt.Sprintf("failed to execute query: %v", err),
 		}
 	}
-	defer func() { _ = driverRows.Close() }()
+
+	defer func() {
+		if closeErr := driverRows.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	// Convert to databricks rows interface to get Arrow batches
 	databricksRows, ok := driverRows.(dbsqlrows.Rows)
