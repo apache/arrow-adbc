@@ -24,6 +24,7 @@ import (
 	"io"
 	"sync/atomic"
 
+	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/ipc"
@@ -47,21 +48,23 @@ type ipcReaderAdapter struct {
 
 // newIPCReaderAdapter creates a RecordReader using direct IPC stream access
 func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.RecordReader, error) {
-	// Check if rows supports IPC streams
-	ipcRows, ok := rows.(rowsWithIPCStream)
-	if !ok {
-		return nil, fmt.Errorf("databricks rows do not support IPC stream access")
-	}
+	ipcRows := rows.(rowsWithIPCStream)
 
 	// Get IPC stream iterator
 	ipcIterator, err := ipcRows.GetArrowIPCStreams(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get IPC streams: %w", err)
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to get IPC streams: %w", err),
+		}
 	}
 
 	schema_bytes, err := ipcIterator.SchemaBytes()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get schema bytes: %w", err)
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to get schema bytes: %w", err),
+		}
 	}
 
 	// Read schema from bytes
@@ -69,12 +72,18 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 	defer reader.Release()
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create schema reader: %w", err)
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to get schema reader: %w", err),
+		}
 	}
 
 	schema := reader.Schema()
-	if schema == nil {
-		return nil, fmt.Errorf("schema is nil")
+	if err != nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  "schema is nil",
+		}
 	}
 
 	adapter := &ipcReaderAdapter{
@@ -86,7 +95,12 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 	// Initialize the first reader
 	err = adapter.loadNextReader()
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("failed to initialize IPC reader: %w", err)
+		if err != nil {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  fmt.Sprintf("failed to initialize IPC reader: %w", err),
+			}
+		}
 	}
 	return adapter, nil
 }
@@ -110,7 +124,10 @@ func (r *ipcReaderAdapter) loadNextReader() error {
 	// Create IPC reader from stream
 	reader, err := ipc.NewReader(ipcStream)
 	if err != nil {
-		return fmt.Errorf("failed to create IPC reader: %w", err)
+		return adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to create IPC reader: %w", err),
+		}
 	}
 
 	r.currentReader = reader
