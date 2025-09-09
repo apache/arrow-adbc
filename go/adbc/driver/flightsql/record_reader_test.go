@@ -73,7 +73,7 @@ func (f *testFlightService) DoGet(request *flight.Ticket, stream flight.FlightSe
 		epIndex.Append(int8(request.Ticket[0]))
 		batchIndex.Append(idx)
 
-		rec := builder.NewRecord()
+		rec := builder.NewRecordBatch()
 		defer rec.Release()
 		if err := wr.Write(rec); err != nil {
 			return err
@@ -346,7 +346,7 @@ func (suite *RecordReaderTests) TestOrdering() {
 	for epIdx := int8(0); epIdx < 4; epIdx++ {
 		for batchIdx := int8(0); batchIdx < 4; batchIdx++ {
 			suite.True(reader.Next())
-			rec := reader.Record()
+			rec := reader.RecordBatch()
 			// don't need to manually release this record because we never
 			// call retain. Each call to Next releases the previous record
 

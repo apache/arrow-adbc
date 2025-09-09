@@ -528,7 +528,7 @@ func arrFromVal(val any, dt arrow.DataType) (arrow.Array, error) {
 	return array.MakeFromData(data), nil
 }
 
-func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) (arrow.Record, error) {
+func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) (arrow.RecordBatch, error) {
 	fields := make([]arrow.Field, len(values))
 	cols := make([]arrow.Array, len(values))
 	if schema == nil {
@@ -548,7 +548,7 @@ func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) (arrow.
 			cols[v.Ordinal-1] = arr
 		}
 
-		return array.NewRecord(arrow.NewSchema(fields, nil), cols, 1), nil
+		return array.NewRecordBatch(arrow.NewSchema(fields, nil), cols, 1), nil
 	}
 
 	for _, v := range values {
@@ -572,7 +572,7 @@ func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) (arrow.
 		f.Type = arr.DataType()
 		cols[idx] = arr
 	}
-	return array.NewRecord(arrow.NewSchema(fields, nil), cols, 1), nil
+	return array.NewRecordBatch(arrow.NewSchema(fields, nil), cols, 1), nil
 }
 
 func (s *stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
@@ -618,7 +618,7 @@ func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driv
 type rows struct {
 	rdr          array.RecordReader
 	curRow       int64
-	curRecord    arrow.Record
+	curRecord    arrow.RecordBatch
 	rowsAffected int64
 	stmt         *stmt
 }
@@ -654,7 +654,7 @@ func (r *rows) Next(dest []driver.Value) error {
 			}
 			return io.EOF
 		}
-		r.curRecord = r.rdr.Record()
+		r.curRecord = r.rdr.RecordBatch()
 		r.curRow = 0
 		if r.curRecord.NumRows() == 0 {
 			r.curRecord = nil

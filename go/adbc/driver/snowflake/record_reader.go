@@ -48,11 +48,11 @@ func identCol(_ context.Context, a arrow.Array) (arrow.Array, error) {
 	return a, nil
 }
 
-type recordTransformer = func(context.Context, arrow.Record) (arrow.Record, error)
+type recordTransformer = func(context.Context, arrow.RecordBatch) (arrow.RecordBatch, error)
 type colTransformer = func(context.Context, arrow.Array) (arrow.Array, error)
 
 func getRecTransformer(sc *arrow.Schema, tr []colTransformer) recordTransformer {
-	return func(ctx context.Context, r arrow.Record) (arrow.Record, error) {
+	return func(ctx context.Context, r arrow.RecordBatch) (arrow.RecordBatch, error) {
 		if len(tr) != int(r.NumCols()) {
 			return nil, adbc.Error{
 				Msg:  "mismatch in record cols and transformers",
@@ -71,7 +71,7 @@ func getRecTransformer(sc *arrow.Schema, tr []colTransformer) recordTransformer 
 			defer cols[i].Release()
 		}
 
-		return array.NewRecord(sc, cols, r.NumRows()), nil
+		return array.NewRecordBatch(sc, cols, r.NumRows()), nil
 	}
 }
 
@@ -400,7 +400,7 @@ func extractTimestamp(src *string) (sec, nsec int64, err error) {
 	return
 }
 
-func jsonDataToArrow(_ context.Context, bldr *array.RecordBuilder, rawData [][]*string, maxTimestampPrecision MaxTimestampPrecision) (arrow.Record, error) {
+func jsonDataToArrow(_ context.Context, bldr *array.RecordBuilder, rawData [][]*string, maxTimestampPrecision MaxTimestampPrecision) (arrow.RecordBatch, error) {
 	fieldBuilders := bldr.Fields()
 	for _, rec := range rawData {
 		for i, col := range rec {
@@ -507,15 +507,15 @@ func jsonDataToArrow(_ context.Context, bldr *array.RecordBuilder, rawData [][]*
 			}
 		}
 	}
-	return bldr.NewRecord(), nil
+	return bldr.NewRecordBatch(), nil
 }
 
 type reader struct {
 	refCount   int64
 	schema     *arrow.Schema
-	chs        []chan arrow.Record
+	chs        []chan arrow.RecordBatch
 	curChIndex int
-	rec        arrow.Record
+	rec        arrow.RecordBatch
 	err        error
 
 	cancelFn context.CancelFunc
@@ -542,7 +542,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		}
 
 		if ld.TotalRows() == 0 {
-			return array.NewRecordReader(schema, []arrow.Record{})
+			return array.NewRecordReader(schema, []arrow.RecordBatch{})
 		}
 
 		bldr := array.NewRecordBuilder(alloc, schema)
@@ -554,7 +554,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		}
 		defer rec.Release()
 
-		results := []arrow.Record{rec}
+		results := []arrow.RecordBatch{rec}
 		for _, b := range batches {
 			rdr, err := b.GetStream(ctx)
 			if err != nil {
@@ -626,7 +626,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		return array.NewRecordReader(schema, results)
 	}
 
-	ch := make(chan arrow.Record, bufferSize)
+	ch := make(chan arrow.RecordBatch, bufferSize)
 	group, ctx := errgroup.WithContext(compute.WithAllocator(ctx, alloc))
 	ctx, cancelFn := context.WithCancel(ctx)
 	group.SetLimit(prefetchConcurrency)
@@ -638,7 +638,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		}
 	}()
 
-	chs := make([]chan arrow.Record, len(batches))
+	chs := make([]chan arrow.RecordBatch, len(batches))
 	rdr := &reader{
 		refCount: 1,
 		chs:      chs,
@@ -681,7 +681,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		}
 
 		for rr.Next() && ctx.Err() == nil {
-			rec := rr.Record()
+			rec := rr.RecordBatch()
 			rec, err = recTransform(ctx, rec)
 			if err != nil {
 				return err
@@ -697,7 +697,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 	go func() {
 		for i, b := range batches[1:] {
 			batch, batchIdx := b, i+1
-			chs[batchIdx] = make(chan arrow.Record, bufferSize)
+			chs[batchIdx] = make(chan arrow.RecordBatch, bufferSize)
 			group.Go(func() (err error) {
 				// close channels (except the last) so that Next can move on to the next channel properly
 				if batchIdx != lastChannelIndex {
@@ -719,7 +719,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 				defer rr.Release()
 
 				for rr.Next() && ctx.Err() == nil {
-					rec := rr.Record()
+					rec := rr.RecordBatch()
 					rec, err = recTransform(ctx, rec)
 					if err != nil {
 						return err
@@ -748,7 +748,11 @@ func (r *reader) Schema() *arrow.Schema {
 	return r.schema
 }
 
-func (r *reader) Record() arrow.Record {
+func (r *reader) Record() arrow.RecordBatch {
+	return r.rec
+}
+
+func (r *reader) RecordBatch() arrow.RecordBatch {
 	return r.rec
 }
 
@@ -793,3 +797,5 @@ func (r *reader) Release() {
 		}
 	}
 }
+
+var _ array.RecordReader = (*reader)(nil)

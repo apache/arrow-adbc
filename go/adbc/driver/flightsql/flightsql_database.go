@@ -511,7 +511,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			defer rdr.Release()
 
 			for rdr.Next() {
-				rec := rdr.Record()
+				rec := rdr.RecordBatch()
 				codes := rec.Column(0).(*array.Uint32)
 				values := rec.Column(1).(*array.DenseUnion)
 				int32Value := values.Field(int32code).(*array.Int32)

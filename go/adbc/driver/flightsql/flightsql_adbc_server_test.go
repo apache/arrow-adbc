@@ -1732,7 +1732,7 @@ func (ts *TimeoutTests) TestDontTimeout() {
 	defer rr.Release()
 
 	ts.True(rr.Next())
-	rec := rr.Record()
+	rec := rr.RecordBatch()
 
 	sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
 	expected, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
@@ -1914,7 +1914,7 @@ var (
 
 func (server *DataTypeTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
 	var schema *arrow.Schema
-	var record arrow.Record
+	var record arrow.RecordBatch
 	var err error
 
 	cmd := string(tkt.GetStatementHandle())
@@ -2041,7 +2041,7 @@ func (server *MultiTableTestServer) DoGetTables(ctx context.Context, cmd flights
 	bldr.Field(4).(*array.BinaryBuilder).AppendValues([][]byte{buf1, buf2}, nil)
 	defer bldr.Release()
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 
 	ch := make(chan flight.StreamChunk)
 	go func() {
@@ -2387,12 +2387,12 @@ func (srv *GetObjectsTestServer) DoGetTables(ctx context.Context, cmd flightsql.
 	tablesRecord, _, _ := array.RecordFromJSON(srv.Alloc, schema_ref.Tables, strings.NewReader(jsonStr))
 	defer tablesRecord.Release()
 
-	tablesRecordWithSchema := array.NewRecord(schema_ref.TablesWithIncludedSchema, append(tablesRecord.Columns(), schemaCol), tablesRecord.NumRows())
+	tablesRecordWithSchema := array.NewRecordBatch(schema_ref.TablesWithIncludedSchema, append(tablesRecord.Columns(), schemaCol), tablesRecord.NumRows())
 	defer tablesRecordWithSchema.Release()
 
 	ch := make(chan flight.StreamChunk)
 
-	rdr, err := array.NewRecordReader(schema_ref.TablesWithIncludedSchema, []arrow.Record{tablesRecordWithSchema})
+	rdr, err := array.NewRecordReader(schema_ref.TablesWithIncludedSchema, []arrow.RecordBatch{tablesRecordWithSchema})
 	go flight.StreamChunksFromReader(rdr, ch)
 	return schema_ref.TablesWithIncludedSchema, ch, err
 }
@@ -2413,7 +2413,7 @@ func (srv *GetObjectsTestServer) DoGetDBSchemas(ctx context.Context, cmd flights
 	}
 	defer dbSchemas.Release()
 
-	batch := array.NewRecord(schema, []arrow.Array{catalogs, dbSchemas}, 1)
+	batch := array.NewRecordBatch(schema, []arrow.Array{catalogs, dbSchemas}, 1)
 	ch <- flight.StreamChunk{Data: batch}
 	close(ch)
 	return schema, ch, nil
@@ -2560,7 +2560,7 @@ func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
 
 			suite.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
 			suite.True(rdr.Next())
-			rec := rdr.Record()
+			rec := rdr.RecordBatch()
 			suite.Greater(rec.NumRows(), int64(0))
 			var (
 				foundExpected        = false
