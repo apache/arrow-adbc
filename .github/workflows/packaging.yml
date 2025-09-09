@@ -904,7 +904,7 @@ jobs:
           cache-dependency-path: adbc/go/adbc/go.sum
 
       - name: Install Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           check-latest: true
           python-version: ${{ matrix.python_version }}
@@ -1108,7 +1108,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Clean
