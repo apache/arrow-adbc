@@ -17,7 +17,7 @@
 
 module github.com/apache/arrow-adbc/go/adbc
 
-go 1.23.0
+go 1.24.0
 
 toolchain go1.24.1
 
@@ -40,7 +40,7 @@ require (
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.16.0
 	golang.org/x/tools v0.36.0
-	google.golang.org/api v0.248.0
+	google.golang.org/api v0.249.0
 	google.golang.org/grpc v1.75.0
 	google.golang.org/protobuf v1.36.8
 	modernc.org/sqlite v1.38.2
