@@ -352,6 +352,9 @@ Documentation for Apache Arrow GLib integration.
 %{_docdir}/adbc-arrow-glib/
 
 %changelog
+* Tue Sep 09 2025 David Li <li.davidm96@gmail.com> - 20-1
+- New upstream release.
+
 * Thu Apr 27 2023 Matt Topol <matt@voltrondata.com> - 0.4.0-1
 - Add snowflake driver
 * Mon Dec 26 2022 Sutou Kouhei <kou@clear-code.com> - 0.1.0-1
