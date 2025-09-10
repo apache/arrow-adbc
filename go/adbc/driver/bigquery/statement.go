@@ -1126,6 +1126,8 @@ func (st *statement) executeUpdateTableColumnsDescription(ctx context.Context) (
 			Name:        field.Name,
 			Type:        field.Type,
 			Description: field.Description,
+			Repeated:    field.Repeated,
+			Required:    field.Required,
 			Schema:      field.Schema, // For nested fields
 		}
 		if description, exists := columnDescriptions[field.Name]; exists {
