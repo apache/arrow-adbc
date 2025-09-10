@@ -116,19 +116,17 @@ func (s *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, i
 	var err error
 	err = s.conn.conn.Raw(func(driverConn interface{}) error {
 		// Use raw driver interface for direct Arrow access
-		if queryerCtx, ok := driverConn.(driver.QueryerContext); ok {
-			// Convert parameters to driver.NamedValue slice
-			var driverArgs []driver.NamedValue
-			for i, param := range s.parameters {
-				driverArgs = append(driverArgs, driver.NamedValue{
-					Ordinal: i + 1,
-					Value:   param,
-				})
-			}
-			driverRows, err = queryerCtx.QueryContext(ctx, s.query, driverArgs)
-			return err
+		// Convert parameters to driver.NamedValue slice
+		queryerCtx := driverConn.(driver.QueryerContext)
+		var driverArgs []driver.NamedValue
+		for i, param := range s.parameters {
+			driverArgs = append(driverArgs, driver.NamedValue{
+				Ordinal: i + 1,
+				Value:   param,
+			})
 		}
-		return fmt.Errorf("driver does not support QueryerContext")
+		driverRows, err = queryerCtx.QueryContext(ctx, s.query, driverArgs)
+		return err
 	})
 
 	if err != nil {
