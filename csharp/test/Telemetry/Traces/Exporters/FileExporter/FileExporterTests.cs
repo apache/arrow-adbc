@@ -252,6 +252,9 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
             try
             {
+                // This simulates two drivers/connections in the same process trying to write to the same
+                // trace file(s). In fact, because the FileExporter is a singleton by the combined key of
+                // the activity source name and the trace file path, both providers will register only one listener.
                 TracerProvider provider1 = Sdk.CreateTracerProviderBuilder()
                     .AddSource(_activitySourceName)
                     .AddAdbcFileExporter(_activitySourceName, traceFolder)
@@ -263,7 +266,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                 var tasks = new Task[]
                 {
                     Task.Run(async () => await TraceActivities(traceFolder, "activity1", writeCount, provider1)),
-                    Task.Run(async () => await TraceActivities(traceFolder, "activity2", writeCount, provider1)),
+                    Task.Run(async () => await TraceActivities(traceFolder, "activity2", writeCount, provider2)),
                 };
                 await Task.WhenAll(tasks);
                 await Task.Delay(500);
