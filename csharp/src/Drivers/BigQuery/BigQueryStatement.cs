@@ -695,7 +695,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response, CancellationToken parentCancellationToken)
             {
-                this.parentCancellationToken = parentCancellationToken;   
+                this.parentCancellationToken = parentCancellationToken;
                 try
                 {
                     if (response.MoveNextAsync().Result && response.Current != null)
