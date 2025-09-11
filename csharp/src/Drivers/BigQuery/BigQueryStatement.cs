@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -43,6 +42,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     class BigQueryStatement : TracingStatement, ITokenProtectedResource, IDisposable
     {
         readonly BigQueryConnection bigQueryConnection;
+        readonly object cancellationTokenSourceLock;
+        CancellationTokenSource? cancellationTokenSource;
 
         public BigQueryStatement(BigQueryConnection bigQueryConnection) : base(bigQueryConnection)
         {
@@ -52,6 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             UpdateToken = bigQueryConnection.UpdateToken;
 
             this.bigQueryConnection = bigQueryConnection;
+            this.cancellationTokenSourceLock = new object();
         }
 
         public Func<Task>? UpdateToken { get; set; }
@@ -110,19 +112,22 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 // When encountering a long-running job, it should be controlled by the timeout in the Google SDK instead of blocking in a while loop.
                 Func<Task<BigQueryResults>> getJobResults = async () =>
                 {
-                    // if the authentication token was reset, then we need a new job with the latest token
-                    BigQueryJob completedJob = await Client.GetJobAsync(jobReference);
-                    return await completedJob.GetQueryResultsAsync(getQueryResultsOptions);
+                    return await ExecuteCancellableJobAsync(job, activity, async (context) =>
+                    {
+                        // if the authentication token was reset, then we need a new job with the latest token
+                        context.Job = await Client.GetJobAsync(jobReference, cancellationToken: context.Token).ConfigureAwait(false);
+                        return await context.Job.GetQueryResultsAsync(getQueryResultsOptions, cancellationToken: context.Token).ConfigureAwait(false);
+                    }).ConfigureAwait(false);
                 };
 
-                BigQueryResults results = await ExecuteWithRetriesAsync(getJobResults, activity);
+                BigQueryResults results = await ExecuteWithRetriesAsync(getJobResults, activity).ConfigureAwait(false);
 
                 TokenProtectedReadClientManger clientMgr = new TokenProtectedReadClientManger(Credential);
                 clientMgr.UpdateToken = () => Task.Run(() =>
-                {
-                    this.bigQueryConnection.SetCredential();
-                    clientMgr.UpdateCredential(Credential);
-                });
+                    {
+                        this.bigQueryConnection.SetCredential();
+                        clientMgr.UpdateCredential(Credential);
+                    });
 
                 // For multi-statement queries, StatementType == "SCRIPT"
                 if (results.TableReference == null || job.Statistics.Query.StatementType.Equals("SCRIPT", StringComparison.OrdinalIgnoreCase))
@@ -134,8 +139,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                     int statementIndex = 1;
                     if (Options?.TryGetValue(BigQueryParameters.StatementIndex, out string? statementIndexString) == true &&
-                        int.TryParse(statementIndexString, out int statementIndexInt) &&
-                        statementIndexInt > 0)
+                            int.TryParse(statementIndexString, out int statementIndexInt) &&
+                            statementIndexInt > 0)
                     {
                         statementIndex = statementIndexInt;
                     }
@@ -146,31 +151,35 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
 
                     Func<Task<BigQueryResults>> getMultiJobResults = async () =>
-                    {
-                        // To get the results of all statements in a multi-statement query, enumerate the child jobs. Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements.
-                        // Can filter by StatementType and EvaluationKind. Related public docs: https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobstatistics2, https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#evaluationkind
-                        ListJobsOptions listJobsOptions = new ListJobsOptions();
-                        listJobsOptions.ParentJobId = results.JobReference.JobId;
-                        var joblist = Client.ListJobs(listJobsOptions)
-                            .Select(job => Client.GetJob(job.Reference))
-                            .Where(job => string.IsNullOrEmpty(evaluationKind) || job.Statistics.ScriptStatistics.EvaluationKind.Equals(evaluationKind, StringComparison.OrdinalIgnoreCase))
-                            .Where(job => string.IsNullOrEmpty(statementType) || job.Statistics.Query.StatementType.Equals(statementType, StringComparison.OrdinalIgnoreCase))
-                            .OrderBy(job => job.Resource.Statistics.CreationTime)
-                            .ToList();
-
-                        if (joblist.Count > 0)
                         {
-                            if (statementIndex < 1 || statementIndex > joblist.Count)
+                            // To get the results of all statements in a multi-statement query, enumerate the child jobs. Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements.
+                            // Can filter by StatementType and EvaluationKind. Related public docs: https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobstatistics2, https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#evaluationkind
+                            ListJobsOptions listJobsOptions = new ListJobsOptions();
+                            listJobsOptions.ParentJobId = results.JobReference.JobId;
+                            var joblist = Client.ListJobs(listJobsOptions)
+                                .Select(job => Client.GetJob(job.Reference))
+                                .Where(job => string.IsNullOrEmpty(evaluationKind) || job.Statistics.ScriptStatistics.EvaluationKind.Equals(evaluationKind, StringComparison.OrdinalIgnoreCase))
+                                .Where(job => string.IsNullOrEmpty(statementType) || job.Statistics.Query.StatementType.Equals(statementType, StringComparison.OrdinalIgnoreCase))
+                                .OrderBy(job => job.Resource.Statistics.CreationTime)
+                                .ToList();
+
+                            if (joblist.Count > 0)
                             {
-                                throw new ArgumentOutOfRangeException($"The specified index {statementIndex} is out of range. There are {joblist.Count} jobs available.");
+                                if (statementIndex < 1 || statementIndex > joblist.Count)
+                                {
+                                    throw new ArgumentOutOfRangeException($"The specified index {statementIndex} is out of range. There are {joblist.Count} jobs available.");
+                                }
+                                BigQueryJob indexedJob = joblist[statementIndex - 1];
+                                return await ExecuteCancellableJobAsync(indexedJob, activity, async (context) =>
+                                {
+                                    return await indexedJob.GetQueryResultsAsync(getQueryResultsOptions, cancellationToken: context.Token).ConfigureAwait(false);
+                                }).ConfigureAwait(false);
                             }
-                            return await joblist[statementIndex - 1].GetQueryResultsAsync(getQueryResultsOptions);
-                        }
 
-                        throw new AdbcException($"Unable to obtain result from statement [{statementIndex}]", AdbcStatusCode.InvalidData);
-                    };
+                            throw new AdbcException($"Unable to obtain result from statement [{statementIndex}]", AdbcStatusCode.InvalidData);
+                        };
 
-                    results = await ExecuteWithRetriesAsync(getMultiJobResults, activity);
+                    results = await ExecuteWithRetriesAsync(getMultiJobResults, activity).ConfigureAwait(false);
                 }
 
                 if (results?.TableReference == null)
@@ -195,8 +204,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 long totalRows = results.TotalRows == null ? -1L : (long)results.TotalRows.Value;
 
-                Func<Task<IEnumerable<IArrowReader>>> func = () => GetArrowReaders(clientMgr, table, results.TableReference.ProjectId, maxStreamCount, activity);
-                IEnumerable<IArrowReader> readers = await ExecuteWithRetriesAsync<IEnumerable<IArrowReader>>(func, activity);
+                Func<Task<IEnumerable<IArrowReader>>> getArrowReadersFunc = async () =>
+                {
+                    return await ExecuteCancellableJobAsync(null, activity, async (context) =>
+                    {
+                        // Cancelling this step may leave the server with unread streams.
+                        return await GetArrowReaders(clientMgr, table, results.TableReference.ProjectId, maxStreamCount, activity, context.Token).ConfigureAwait(false);
+                    }).ConfigureAwait(false);
+                };
+                IEnumerable<IArrowReader> readers = await ExecuteWithRetriesAsync(getArrowReadersFunc, activity).ConfigureAwait(false);
 
                 IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers);
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, totalRows);
@@ -209,14 +225,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string table,
             string projectId,
             int maxStreamCount,
-            Activity? activity)
+            Activity? activity,
+            CancellationToken cancellationToken = default)
         {
             ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
             BigQueryReadClient bigQueryReadClient = clientMgr.ReadClient;
             ReadSession rrs = await bigQueryReadClient.CreateReadSessionAsync("projects/" + projectId, rs, maxStreamCount);
 
             var readers = rrs.Streams
-                             .Select(s => ReadChunk(bigQueryReadClient, s.Name, activity))
+                             .Select(s => ReadChunk(bigQueryReadClient, s.Name, activity, cancellationToken))
                              .Where(chunk => chunk != null)
                              .Cast<IArrowReader>();
 
@@ -226,6 +243,23 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public override UpdateResult ExecuteUpdate()
         {
             return ExecuteUpdateInternalAsync().GetAwaiter().GetResult();
+        }
+
+        public override void Cancel()
+        {
+            this.TraceActivity(_ =>
+            {
+                lock (this.cancellationTokenSourceLock)
+                {
+                    this.cancellationTokenSource?.Cancel();
+                }
+            });
+        }
+
+        public override void Dispose()
+        {
+            ClearCancellationTokenSource();
+            base.Dispose();
         }
 
         private async Task<UpdateResult> ExecuteUpdateInternalAsync()
@@ -245,8 +279,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.IsSafeToTrace());
 
                 // Cannot set destination table in jobs with DDL statements, otherwise an error will be prompted
-                Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(SqlQuery, null, null, getQueryResultsOptions);
-                BigQueryResults? result = await ExecuteWithRetriesAsync<BigQueryResults?>(func, activity);
+                Func<Task<BigQueryResults?>> getQueryResultsAsyncFunc = async () =>
+                {
+                    return await ExecuteCancellableJobAsync(null, activity, async (context) =>
+                    {
+                        context.Job = await this.Client.CreateQueryJobAsync(SqlQuery, null, null, context.Token).ConfigureAwait(false);
+                        return await context.Job.GetQueryResultsAsync(getQueryResultsOptions, context.Token).ConfigureAwait(false);
+                    }).ConfigureAwait(false);
+                };
+                BigQueryResults? result = await ExecuteWithRetriesAsync(getQueryResultsAsyncFunc, activity);
                 long updatedRows = result?.NumDmlAffectedRows.HasValue == true ? result.NumDmlAffectedRows.Value : -1L;
 
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, updatedRows);
@@ -340,13 +381,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return type;
         }
 
-        private static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName, Activity? activity)
+        private static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName, Activity? activity, CancellationToken cancellationToken = default)
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
             activity?.AddConditionalBigQueryTag("read_stream", streamName, BigQueryUtils.IsSafeToTrace());
             BigQueryReadClient.ReadRowsStream readRowsStream = client.ReadRows(new ReadRowsRequest { ReadStream = streamName });
-            IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
+            IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator(cancellationToken);
 
             ReadRowsStream stream = new ReadRowsStream(enumerator);
             activity?.AddBigQueryTag("read_stream.has_rows", stream.HasRows);
@@ -524,6 +565,79 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
         private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
+
+        private CancellationTokenSource NewCancellationTokenSource()
+        {
+            lock (this.cancellationTokenSourceLock)
+            {
+                if (this.cancellationTokenSource != null)
+                {
+                    throw new InvalidOperationException("CancellationTokenSource already exists");
+                }
+
+                this.cancellationTokenSource = new CancellationTokenSource();
+                return this.cancellationTokenSource;
+            }
+        }
+
+        private void ClearCancellationTokenSource()
+        {
+            lock (this.cancellationTokenSourceLock)
+            {
+                this.cancellationTokenSource?.Dispose();
+                this.cancellationTokenSource = null;
+            }
+        }
+
+        private class BigQueryJobContext
+        {
+            public BigQueryJobContext(BigQueryJob? job, CancellationToken token)
+            {
+                Job = job;
+                Token = token;
+            }
+
+            public BigQueryJob? Job { get; set; }
+
+            public CancellationToken Token { get; }
+        }
+
+        private async Task<T> ExecuteCancellableJobAsync<T>(
+            BigQueryJob? job,
+            Activity? activity,
+            Func<BigQueryJobContext, Task<T>> func)
+        {
+            CancellationTokenSource? tokenSource = null;
+            BigQueryJobContext? context = null;
+            try
+            {
+                tokenSource = NewCancellationTokenSource();
+                context = new BigQueryJobContext(job, tokenSource.Token);
+
+                return await func(context).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException cancelledEx)
+            {
+                activity?.AddException(cancelledEx);
+                try
+                {
+                    if (context?.Job != null)
+                    {
+                        activity?.AddBigQueryTag("job.cancel", context.Job.Reference.JobId);
+                        context.Job.CancelAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    activity?.AddException(ex);
+                }
+                throw;
+            }
+            finally
+            {
+                ClearCancellationTokenSource();
+            }
+        }
 
         private class MultiArrowReader : TracingReader
         {
