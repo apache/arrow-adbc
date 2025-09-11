@@ -69,17 +69,16 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 
 	// Read schema from bytes
 	reader, err := ipc.NewReader(bytes.NewReader(schema_bytes))
-	defer reader.Release()
-
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
 			Msg:  fmt.Sprintf("failed to get schema reader: %v", err),
 		}
 	}
+	defer reader.Release()
 
 	schema := reader.Schema()
-	if err != nil {
+	if schema == nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
 			Msg:  "schema is nil",
@@ -95,11 +94,9 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 	// Initialize the first reader
 	err = adapter.loadNextReader()
 	if err != nil && err != io.EOF {
-		if err != nil {
-			return nil, adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  fmt.Sprintf("failed to initialize IPC reader: %v", err),
-			}
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to initialize IPC reader: %v", err),
 		}
 	}
 	return adapter, nil

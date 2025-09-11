@@ -110,10 +110,17 @@ func TestIPCReaderAdapter(t *testing.T) {
 
 	ipcData := buf.Bytes()
 
+	// Create schema bytes
+	var schemaBuf bytes.Buffer
+	schemaWriter := ipc.NewWriter(&schemaBuf, ipc.WithSchema(schema))
+	err = schemaWriter.Close()
+	require.NoError(t, err)
+	schemaBytes := schemaBuf.Bytes()
+
 	// Create mock iterator
 	mockIterator := &mockIPCStreamIterator{
 		streams: [][]byte{ipcData},
-		schema:  nil, // Schema is included in the IPC stream
+		schema:  schemaBytes,
 	}
 
 	// Create mock rows
@@ -201,10 +208,16 @@ func TestIPCReaderAdapterMultipleStreams(t *testing.T) {
 		builder.Release()
 	}
 
+	var schemaBuf bytes.Buffer
+	schemaWriter := ipc.NewWriter(&schemaBuf, ipc.WithSchema(schema))
+	err := schemaWriter.Close()
+	require.NoError(t, err)
+	schemaBytes := schemaBuf.Bytes()
+
 	// Create mock iterator
 	mockIterator := &mockIPCStreamIterator{
 		streams: streams,
-		schema:  nil,
+		schema:  schemaBytes,
 	}
 
 	// Create mock rows
