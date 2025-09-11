@@ -42,8 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     class BigQueryStatement : TracingStatement, ITokenProtectedResource, IDisposable
     {
         readonly BigQueryConnection bigQueryConnection;
-        readonly object cancellationTokenSourceLock;
-        CancellationTokenSource? cancellationTokenSource;
+        readonly CancellationTokenSource cancellationTokenSource;
 
         public BigQueryStatement(BigQueryConnection bigQueryConnection) : base(bigQueryConnection)
         {
@@ -53,7 +52,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             UpdateToken = bigQueryConnection.UpdateToken;
 
             this.bigQueryConnection = bigQueryConnection;
-            this.cancellationTokenSourceLock = new object();
+            this.cancellationTokenSource = new CancellationTokenSource();
         }
 
         public Func<Task>? UpdateToken { get; set; }
@@ -95,7 +94,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.IsSafeToTrace());
 
-                BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
+
+                BigQueryJob job = await ExecuteCancellableJobAsync(null, activity, async (context) =>
+                {
+                    return await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions, cancellationToken: context.Token);
+                });
 
                 JobReference jobReference = job.Reference;
                 GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
@@ -226,7 +229,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string projectId,
             int maxStreamCount,
             Activity? activity,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
         {
             ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
             BigQueryReadClient bigQueryReadClient = clientMgr.ReadClient;
@@ -249,16 +252,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             this.TraceActivity(_ =>
             {
-                lock (this.cancellationTokenSourceLock)
-                {
-                    this.cancellationTokenSource?.Cancel();
-                }
+                this.cancellationTokenSource.Cancel();
             });
         }
 
         public override void Dispose()
         {
-            ClearCancellationTokenSource();
+            this.cancellationTokenSource.Dispose();
             base.Dispose();
         }
 
@@ -389,7 +389,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             BigQueryReadClient.ReadRowsStream readRowsStream = client.ReadRows(new ReadRowsRequest { ReadStream = streamName });
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator(cancellationToken);
 
-            ReadRowsStream stream = new ReadRowsStream(enumerator);
+            ReadRowsStream stream = new ReadRowsStream(enumerator, cancellationToken);
             activity?.AddBigQueryTag("read_stream.has_rows", stream.HasRows);
 
             if (stream.HasRows)
@@ -566,29 +566,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
 
-        private CancellationTokenSource NewCancellationTokenSource()
-        {
-            lock (this.cancellationTokenSourceLock)
-            {
-                if (this.cancellationTokenSource != null)
-                {
-                    throw new InvalidOperationException("CancellationTokenSource already exists");
-                }
-
-                this.cancellationTokenSource = new CancellationTokenSource();
-                return this.cancellationTokenSource;
-            }
-        }
-
-        private void ClearCancellationTokenSource()
-        {
-            lock (this.cancellationTokenSourceLock)
-            {
-                this.cancellationTokenSource?.Dispose();
-                this.cancellationTokenSource = null;
-            }
-        }
-
         private class BigQueryJobContext
         {
             public BigQueryJobContext(BigQueryJob? job, CancellationToken token)
@@ -607,12 +584,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             Activity? activity,
             Func<BigQueryJobContext, Task<T>> func)
         {
-            CancellationTokenSource? tokenSource = null;
             BigQueryJobContext? context = null;
             try
             {
-                tokenSource = NewCancellationTokenSource();
-                context = new BigQueryJobContext(job, tokenSource.Token);
+                context = new BigQueryJobContext(job, this.cancellationTokenSource.Token);
 
                 return await func(context).ConfigureAwait(false);
             }
@@ -633,10 +608,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
                 throw;
             }
-            finally
-            {
-                ClearCancellationTokenSource();
-            }
         }
 
         private class MultiArrowReader : TracingReader
@@ -645,6 +616,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             private static readonly string s_assemblyVersion = BigQueryUtils.GetAssemblyVersion(typeof(BigQueryStatement));
 
             readonly Schema schema;
+            readonly CancellationToken parentCancellationToken;
             IEnumerator<IArrowReader>? readers;
             IArrowReader? reader;
 
@@ -652,6 +624,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 this.schema = schema;
                 this.readers = readers.GetEnumerator();
+                this.parentCancellationToken = statement.cancellationTokenSource.Token;
             }
 
             public override Schema Schema { get { return this.schema; } }
@@ -664,6 +637,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 return await this.TraceActivityAsync(async activity =>
                 {
+                    using CancellationTokenSource linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.parentCancellationToken, cancellationToken);
+                    cancellationToken = linkedTokenSource.Token;
+
                     if (this.readers == null)
                     {
                         return null;
@@ -710,14 +686,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         sealed class ReadRowsStream : Stream
         {
+            readonly CancellationToken parentCancellationToken;
             IAsyncEnumerator<ReadRowsResponse> response;
             ReadOnlyMemory<byte> currentBuffer;
             bool first;
             int position;
             bool hasRows;
 
-            public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response)
+            public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response, CancellationToken parentCancellationToken)
             {
+                this.parentCancellationToken = parentCancellationToken;   
                 try
                 {
                     if (response.MoveNextAsync().Result && response.Current != null)
@@ -786,6 +764,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
+                using CancellationTokenSource linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(this.parentCancellationToken, cancellationToken);
+                cancellationToken = linkedTokenSource.Token;
+
                 return base.ReadAsync(buffer, offset, count, cancellationToken);
             }
 

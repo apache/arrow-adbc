@@ -68,8 +68,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             }
         }
 
-        [Fact]
-        public async Task CanCancelStatement()
+        [SkippableTheory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task CanCancelStatement(bool cancelBeforeExecuteQuery)
         {
             foreach (BigQueryTestEnvironment environment in _environments)
             {
@@ -83,6 +85,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 _outputHelper?.WriteLine($"Query: {statement.SqlQuery}");
 
                 // Execute the query/cancel multiple times to validate consistent behavior
+
+                bool isCancelled = false;
+                // This will cancel the query before ExecuteQuery is called.
+                if (cancelBeforeExecuteQuery)
+                {
+                    statement.Cancel();
+                    isCancelled = true;
+                }
+
                 const int iterations = 3;
                 for (int i = 0; i < iterations; i++)
                 {
@@ -91,9 +102,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     // Expect this to take about 10 seconds without cancellation
                     Task<QueryResult> queryTask = Task.Run(statement.ExecuteQuery);
 
-                    await Task.Yield();
-                    await Task.Delay(3000);
-                    statement.Cancel();
+                    // Will cancel in-progress query
+                    if (!isCancelled)
+                    {
+                        // Wait a bit before cancelling
+                        await Task.Yield();
+                        await Task.Delay(3000);
+                        // Only need to cancel once.
+                        statement.Cancel();
+                        isCancelled = true;
+                    }
 
                     try
                     {
@@ -110,7 +128,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     }
                 }
             }
-
         }
 
         private AdbcConnection GetAdbcConnection(string? environmentName)
