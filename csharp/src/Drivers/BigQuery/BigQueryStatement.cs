@@ -124,10 +124,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 TokenProtectedReadClientManger clientMgr = new TokenProtectedReadClientManger(Credential);
                 clientMgr.UpdateToken = () => Task.Run(() =>
-                    {
-                        this.bigQueryConnection.SetCredential();
-                        clientMgr.UpdateCredential(Credential);
-                    });
+                {
+                    this.bigQueryConnection.SetCredential();
+                    clientMgr.UpdateCredential(Credential);
+                });
 
                 // For multi-statement queries, StatementType == "SCRIPT"
                 if (results.TableReference == null || job.Statistics.Query.StatementType.Equals("SCRIPT", StringComparison.OrdinalIgnoreCase))
@@ -139,8 +139,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                     int statementIndex = 1;
                     if (Options?.TryGetValue(BigQueryParameters.StatementIndex, out string? statementIndexString) == true &&
-                            int.TryParse(statementIndexString, out int statementIndexInt) &&
-                            statementIndexInt > 0)
+                        int.TryParse(statementIndexString, out int statementIndexInt) &&
+                        statementIndexInt > 0)
                     {
                         statementIndex = statementIndexInt;
                     }

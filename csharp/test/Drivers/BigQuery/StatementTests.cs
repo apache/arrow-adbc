@@ -76,16 +76,17 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
 
                 AdbcStatement statement = adbcConnection.CreateStatement();
+                // Generate unique column names so query will not be served from cache
                 string columnName1 = Guid.NewGuid().ToString("N");
                 string columnName2 = Guid.NewGuid().ToString("N");
                 statement.SqlQuery = $"SELECT GENERATE_ARRAY(`{columnName2}`, 10000) AS `{columnName1}` FROM UNNEST(GENERATE_ARRAY(0, 100000)) AS `{columnName2}`";
                 _outputHelper?.WriteLine($"Query: {statement.SqlQuery}");
 
                 // Execute the query/cancel multiple times to validate consistent behavior
-                const int iternations = 3;
-                for (int i = 0; i < iternations; i++)
+                const int iterations = 3;
+                for (int i = 0; i < iterations; i++)
                 {
-                    _outputHelper?.WriteLine($"Iteration {i + 1} of {iternations}");
+                    _outputHelper?.WriteLine($"Iteration {i + 1} of {iterations}");
 
                     // Expect this to take about 10 seconds without cancellation
                     Task<QueryResult> queryTask = Task.Run(statement.ExecuteQuery);
@@ -121,6 +122,5 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             return _configuredConnections[environmentName!];
         }
-
     }
 }
