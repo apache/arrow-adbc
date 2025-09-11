@@ -152,6 +152,85 @@ def test_query_executemany_parameters(sqlite: dbapi.Connection, parameters) -> N
         )
 
 
+def test_execute_parameters_name(sqlite):
+    with sqlite.cursor() as cursor:
+        cursor.execute("SELECT @a + 1, @b", {"@b": 2, "@a": 1})
+        df = cursor.fetch_polars()
+        polars.testing.assert_frame_equal(
+            df,
+            polars.DataFrame(
+                {
+                    "@a + 1": [2],
+                    "@b": [2],
+                }
+            ),
+        )
+
+        # Ensure the state of the cursor isn't affected
+        cursor.execute("SELECT ?2 + 1, ?1", [2, 1])
+        df = cursor.fetch_polars()
+        polars.testing.assert_frame_equal(
+            df,
+            polars.DataFrame(
+                {
+                    "?2 + 1": [2],
+                    "?1": [2],
+                }
+            ),
+        )
+
+        cursor.execute("SELECT @a + 1, @b + @b", {"@b": 2, "@a": 1})
+        df = cursor.fetch_polars()
+        polars.testing.assert_frame_equal(
+            df,
+            polars.DataFrame(
+                {
+                    "@a + 1": [2],
+                    "@b + @b": [4],
+                }
+            ),
+        )
+
+        data = polars.DataFrame({"float": [1.0], "int": [2]})
+        cursor.adbc_ingest("ingest_tester", data)
+        cursor.execute("SELECT * FROM ingest_tester")
+        df = cursor.fetch_polars()
+        polars.testing.assert_frame_equal(
+            df,
+            polars.DataFrame(
+                {
+                    "float": [1.0],
+                    "int": [2],
+                }
+            ),
+        )
+
+
+def test_executemany_parameters_name(sqlite):
+    with sqlite.cursor() as cursor:
+        cursor.execute("CREATE TABLE executemany_params (a, b)")
+
+        cursor.executemany(
+            "INSERT INTO executemany_params VALUES (@a, @b)",
+            [{"@b": 2, "@a": 1}, {"@b": 3, "@a": 2}],
+        )
+        cursor.executemany(
+            "INSERT INTO executemany_params VALUES (?, ?)", [(3, 4), (4, 5)]
+        )
+
+        cursor.execute("SELECT * FROM executemany_params ORDER BY a ASC")
+        df = cursor.fetch_polars()
+        polars.testing.assert_frame_equal(
+            df,
+            polars.DataFrame(
+                {
+                    "a": [1, 2, 3, 4],
+                    "b": [2, 3, 4, 5],
+                }
+            ),
+        )
+
+
 @pytest.mark.parametrize(
     "parameters",
     [

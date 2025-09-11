@@ -602,18 +602,6 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 
-3rdparty dependency github.com/apache/arrow-go/v18
-is statically linked in certain binary distributions, like the Python wheels.
-github.com/apache/arrow-go/v18 is under the Apache-2.0 license.
-
---------------------------------------------------------------------------------
-
-3rdparty dependency github.com/apache/thrift/lib/go/thrift
-is statically linked in certain binary distributions, like the Python wheels.
-github.com/apache/thrift/lib/go/thrift is under the Apache-2.0 license.
-
---------------------------------------------------------------------------------
-
 3rdparty dependency github.com/aws/aws-sdk-go-v2
 is statically linked in certain binary distributions, like the Python wheels.
 github.com/aws/aws-sdk-go-v2 is under the Apache-2.0 license.
@@ -1236,7 +1224,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
 
 --------------------------------------------------------------------------------
 

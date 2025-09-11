@@ -115,7 +115,7 @@ We can execute a query and get the results as Arrow data:
     fmt.Println("Rows affected: ", n)
 
     for reader.Next() {
-        record := reader.Record()
+        record := reader.RecordBatch()
 
         // Extract our three columns
         col0 := record.Column(0)
@@ -199,7 +199,7 @@ First, let's prepare some data.
     }
     defer table.Release()
 
-    reader3, err := array.NewRecordReader(schema, []arrow.Record{table})
+    reader3, err := array.NewRecordReader(schema, []arrow.RecordBatch{table})
     if err != nil {
         return err
     }
@@ -235,7 +235,7 @@ We can get information about the driver and the database:
 
     // Process the info results...
     for infoReader.Next() {
-        record := infoReader.Record()
+        record := infoReader.RecordBatch()
         // Extract vendor name, driver name, etc. from the record
     }
 ```
@@ -261,7 +261,7 @@ Note: `GetObjects` takes an optional set of filters which control which objects 
 
     // Process the objects results to get catalog/schema/table information
     for objectsReader.Next() {
-        record := objectsReader.Record()
+        record := objectsReader.RecordBatch()
         // Navigate the nested structure for catalogs, schemas, tables, columns
     }
 ```

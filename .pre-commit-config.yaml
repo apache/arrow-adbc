@@ -117,6 +117,12 @@ repos:
       pass_filenames: true
       files: '^c/include/arrow-adbc/[^/]*\.h$'
       entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
+    - id: check-cgo-adbc-impl
+      name: Ensure CGO adbc_driver_manager.cc is syncd
+      language: script
+      pass_filenames: true
+      files: '^c/driver_manager/adbc_driver_manager\.cc$'
+      entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
     # https://infra.apache.org/github-actions-policy.html
     - id: check-pin
       name: Ensure GitHub Actions and pre-commit hooks are pinned to a specific SHA

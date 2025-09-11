@@ -317,7 +317,7 @@ func TestNextRowTypes(t *testing.T) {
 			recordBuilder := array.NewRecordBuilder(memory.DefaultAllocator, schema)
 			t.Cleanup(recordBuilder.Release)
 			test.arrowValueFunc(t, recordBuilder.Field(0))
-			record := recordBuilder.NewRecord()
+			record := recordBuilder.NewRecordBatch()
 			t.Cleanup(record.Release)
 
 			r := &rows{curRecord: record}
@@ -428,49 +428,49 @@ func TestArrFromVal(t *testing.T) {
 			value:               tstampSec,
 			inputDataType:       &arrow.TimestampType{Unit: arrow.Second},
 			expectedDataType:    &arrow.TimestampType{Unit: arrow.Second},
-			expectedStringValue: testTime.UTC().Truncate(time.Second).Format("2006-01-02 15:04:05Z"),
+			expectedStringValue: testTime.UTC().Truncate(time.Second).Format("2006-01-02T15:04:05Z"),
 		},
 		{
 			value:               tstampMilli,
 			inputDataType:       &arrow.TimestampType{Unit: arrow.Millisecond},
 			expectedDataType:    &arrow.TimestampType{Unit: arrow.Millisecond},
-			expectedStringValue: testTime.UTC().Truncate(time.Millisecond).Format("2006-01-02 15:04:05.000Z"),
+			expectedStringValue: testTime.UTC().Truncate(time.Millisecond).Format("2006-01-02T15:04:05.000Z"),
 		},
 		{
 			value:               tstampMicro,
 			inputDataType:       &arrow.TimestampType{Unit: arrow.Microsecond},
 			expectedDataType:    &arrow.TimestampType{Unit: arrow.Microsecond},
-			expectedStringValue: testTime.UTC().Truncate(time.Microsecond).Format("2006-01-02 15:04:05.000000Z"),
+			expectedStringValue: testTime.UTC().Truncate(time.Microsecond).Format("2006-01-02T15:04:05.000000Z"),
 		},
 		{
 			value:               tstampNano,
 			inputDataType:       &arrow.TimestampType{Unit: arrow.Nanosecond},
 			expectedDataType:    &arrow.TimestampType{Unit: arrow.Nanosecond},
-			expectedStringValue: testTime.UTC().Truncate(time.Nanosecond).Format("2006-01-02 15:04:05.000000000Z"),
+			expectedStringValue: testTime.UTC().Truncate(time.Nanosecond).Format("2006-01-02T15:04:05.000000000Z"),
 		},
 		{
 			value:               testTime,
 			inputDataType:       &arrow.TimestampType{Unit: arrow.Second},
 			expectedDataType:    &arrow.TimestampType{Unit: arrow.Second},
-			expectedStringValue: testTime.UTC().Truncate(time.Second).Format("2006-01-02 15:04:05Z"),
+			expectedStringValue: testTime.UTC().Truncate(time.Second).Format("2006-01-02T15:04:05Z"),
 		},
 		{
 			value:               testTime,
 			inputDataType:       &arrow.TimestampType{Unit: arrow.Millisecond},
 			expectedDataType:    &arrow.TimestampType{Unit: arrow.Millisecond},
-			expectedStringValue: testTime.UTC().Truncate(time.Millisecond).Format("2006-01-02 15:04:05.000Z"),
+			expectedStringValue: testTime.UTC().Truncate(time.Millisecond).Format("2006-01-02T15:04:05.000Z"),
 		},
 		{
 			value:               testTime,
 			inputDataType:       &arrow.TimestampType{Unit: arrow.Microsecond},
 			expectedDataType:    &arrow.TimestampType{Unit: arrow.Microsecond},
-			expectedStringValue: testTime.UTC().Truncate(time.Microsecond).Format("2006-01-02 15:04:05.000000Z"),
+			expectedStringValue: testTime.UTC().Truncate(time.Microsecond).Format("2006-01-02T15:04:05.000000Z"),
 		},
 		{
 			value:               testTime,
 			inputDataType:       &arrow.TimestampType{Unit: arrow.Nanosecond},
 			expectedDataType:    &arrow.TimestampType{Unit: arrow.Nanosecond},
-			expectedStringValue: testTime.UTC().Truncate(time.Nanosecond).Format("2006-01-02 15:04:05.000000000Z"),
+			expectedStringValue: testTime.UTC().Truncate(time.Nanosecond).Format("2006-01-02T15:04:05.000000000Z"),
 		},
 	}
 	for i, test := range tests {

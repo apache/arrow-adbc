@@ -208,7 +208,7 @@ func GetDriverInfo(ctx context.Context, cnxn Connection) (DriverInfo, error) {
 	}
 
 	for stream.Next() {
-		batch := stream.Record()
+		batch := stream.RecordBatch()
 		codeArr := batch.Column(0).(*array.Uint32)
 		unionArr := batch.Column(1).(*array.DenseUnion)
 
