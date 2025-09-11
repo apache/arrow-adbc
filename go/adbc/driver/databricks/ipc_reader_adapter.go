@@ -55,7 +55,7 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("failed to get IPC streams: %w", err),
+			Msg:  fmt.Sprintf("failed to get IPC streams: %v", err),
 		}
 	}
 
@@ -63,7 +63,7 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("failed to get schema bytes: %w", err),
+			Msg:  fmt.Sprintf("failed to get schema bytes: %v", err),
 		}
 	}
 
@@ -74,7 +74,7 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("failed to get schema reader: %w", err),
+			Msg:  fmt.Sprintf("failed to get schema reader: %v", err),
 		}
 	}
 
@@ -98,7 +98,7 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 		if err != nil {
 			return nil, adbc.Error{
 				Code: adbc.StatusInternal,
-				Msg:  fmt.Sprintf("failed to initialize IPC reader: %w", err),
+				Msg:  fmt.Sprintf("failed to initialize IPC reader: %v", err),
 			}
 		}
 	}
@@ -126,7 +126,7 @@ func (r *ipcReaderAdapter) loadNextReader() error {
 	if err != nil {
 		return adbc.Error{
 			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("failed to create IPC reader: %w", err),
+			Msg:  fmt.Sprintf("failed to create IPC reader: %v", err),
 		}
 	}
 

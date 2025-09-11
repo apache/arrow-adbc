@@ -67,7 +67,7 @@ func (s *statementImpl) SetSqlQuery(query string) error {
 		if err := s.prepared.Close(); err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInvalidState,
-				Msg:  fmt.Sprintf("failed to close previous prepared statement: %w", err),
+				Msg:  fmt.Sprintf("failed to close previous prepared statement: %v", err),
 			}
 		}
 		s.prepared = nil
