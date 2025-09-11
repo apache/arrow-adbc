@@ -198,7 +198,7 @@ func (s *statementImpl) ExecuteUpdate(ctx context.Context) (int64, error) {
 	return rowsAffected, nil
 }
 
-func (s *statementImpl) Bind(ctx context.Context, values arrow.Record) error {
+func (s *statementImpl) Bind(ctx context.Context, values arrow.RecordBatch) error {
 	return adbc.Error{
 		Msg:  "Bind not yet implemented for Databricks driver",
 		Code: adbc.StatusNotImplemented,

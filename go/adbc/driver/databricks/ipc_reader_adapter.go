@@ -40,7 +40,7 @@ type rowsWithIPCStream interface {
 type ipcReaderAdapter struct {
 	ipcIterator   dbsqlrows.ArrowIPCStreamIterator
 	currentReader *ipc.Reader
-	currentRecord arrow.Record
+	currentRecord arrow.RecordBatch
 	schema        *arrow.Schema
 	closed        bool
 	refCount      int64
@@ -172,7 +172,11 @@ func (r *ipcReaderAdapter) Next() bool {
 	return false
 }
 
-func (r *ipcReaderAdapter) Record() arrow.Record {
+func (r *ipcReaderAdapter) Record() arrow.RecordBatch {
+	return r.currentRecord
+}
+
+func (r *ipcReaderAdapter) RecordBatch() arrow.RecordBatch {
 	return r.currentRecord
 }
 

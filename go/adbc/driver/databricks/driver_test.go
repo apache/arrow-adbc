@@ -147,7 +147,7 @@ func getArr(arr arrow.Array) interface{} {
 	}
 }
 
-func (d *DatabricksQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
+func (d *DatabricksQuirks) CreateSampleTable(tableName string, r arrow.RecordBatch) error {
 	drv := databricks.NewDriver(d.mem)
 	db, err := drv.NewDatabase(d.DatabaseOptions())
 	if err != nil {
@@ -198,7 +198,7 @@ func (d *DatabricksQuirks) CreateSampleTable(tableName string, r arrow.Record) e
 	return d.insertDataRows(stmt, tableName, r)
 }
 
-func (d *DatabricksQuirks) insertDataRows(stmt adbc.Statement, tableName string, r arrow.Record) error {
+func (d *DatabricksQuirks) insertDataRows(stmt adbc.Statement, tableName string, r arrow.RecordBatch) error {
 	if r.NumRows() == 0 {
 		return nil
 	}
