@@ -127,14 +127,14 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         protected override bool OnForceFlush(int timeoutMilliseconds)
         {
-            CancellationTokenSource cts = new CancellationTokenSource();
+            CancellationTokenSource cts = new();
             cts.CancelAfter(TimeSpan.FromMilliseconds(timeoutMilliseconds));
-            Task.Delay(100).ConfigureAwait(false).GetAwaiter().GetResult();
-            while (!cts.IsCancellationRequested && !_channel.Reader.Completion.IsCompleted && _channel.Reader.Count > 0)
+            int poolTime = Math.Min(100, timeoutMilliseconds / 10);
+            do
             {
-                Task.Delay(100).ConfigureAwait(false).GetAwaiter().GetResult();
-            }
-            return true;
+                Thread.Sleep(poolTime);
+            } while (!cts.IsCancellationRequested && !_channel.Reader.Completion.IsCompleted && _channel.Reader.Count > 0);
+            return !cts.IsCancellationRequested;
         }
 
         private static async Task ProcessActivitiesAsync(FileExporter fileExporter, CancellationToken cancellationToken)
@@ -150,7 +150,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     SerializableActivity serializableActivity = new(activity);
                     await JsonSerializer.SerializeAsync(
                         stream,
-                        serializableActivity).ConfigureAwait(false);
+                        serializableActivity, cancellationToken: cancellationToken).ConfigureAwait(false);
                     stream.Write(s_newLine, 0, s_newLine.Length);
                     stream.Position = 0;
 
@@ -203,7 +203,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     ApacheArrowAdbcNamespace,
                     TracesFolderName)).FullName;
 
-        private void FlushAsync(CancellationToken cancellationToken = default)
+        private void Flush(CancellationToken cancellationToken = default)
         {
             // Ensure existing writes are completed.
             _channel.Writer.TryComplete();
@@ -220,7 +220,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 // Allow flush of any existing events.
                 using CancellationTokenSource flushTimeout = new();
                 flushTimeout.CancelAfter(TimeSpan.FromSeconds(5));
-                FlushAsync(flushTimeout.Token);
+                Flush(flushTimeout.Token);
 
                 // Remove and dispose of single instance of exporter
                 string listenerId = GetListenerId(_fileBaseName, _tracesDirectoryFullName);
