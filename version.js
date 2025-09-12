@@ -18,8 +18,9 @@ const versions = `
 17;17
 18;18
 19;19
+20;20
 main;20 (dev)
-current;19 (current)
+current;20 (current)
 `;
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
