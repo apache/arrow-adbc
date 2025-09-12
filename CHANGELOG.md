@@ -1100,7 +1100,7 @@
 - **c/driver_manager**: use Driver.entrypoint as per docs (#3242)
 - **c/driver_manager, rust/driver_manager**: establish standard platform tuples (#3313)
 - **csharp/src/Apache.Arrow.Adbc/C**: Stop trying to unload dynamic libraries (#3291)
-- **csharp/src/Drivers**: Fix cloud fetch cancel/timeout mechnism (#3285)
+- **csharp/src/Drivers**: Fix cloud fetch cancel/timeout mechanism (#3285)
 - **csharp/src/Drivers/Apache**: generate type-consistent empty result for GetColumnsExtended query (#3096)
 - **csharp/src/Drivers/Apache/Hive2**: Remove unnecessary CloseOperation in Statement.Dispose when query is metadata query (#3189)
 - **csharp/src/Drivers/Apache/Hive2**: add check to see if operation is already closed (#3301)
@@ -1143,7 +1143,7 @@
 - **python/adbc_driver_bigquery**: correct string value of credential enum (#3091)
 - **python/adbc_driver_manager**: handle empty params in executemany (#3332)
 - **python/adbc_driver_manager**: mark calls with nogil (#3321)
-- **rust/core**: fix build errror on windows and enable ci for windows (#3148)
+- **rust/core**: fix build error on windows and enable ci for windows (#3148)
 - **rust/driver_manager**: modify SYSTEM path behavior on macOS (#3252)
 
 ### Documentation Improvements
