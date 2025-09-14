@@ -140,6 +140,8 @@ update_versions() {
   sed -i.bak -E \
     -e "s/^version = \".+\"/version = \"${rust_version}\"/" \
     -e "s/^adbc_core = \{ path = \".\/core\", version = \".+\"/adbc_core = { path = \".\/core\", version = \"${rust_version}\"/" \
+    -e "s/^adbc_driver_manager = \{ path = \".\/driver_manager\", version = \".+\"/adbc_driver_manager = { path = \".\/driver_manager\", version = \"${rust_version}\"/" \
+    -e "s/^adbc_ffi = \{ path = \".\/ffi\", version = \".+\"/adbc_ffi = { path = \".\/ffi\", version = \"${rust_version}\"/" \
     "${ADBC_DIR}/rust/Cargo.toml"
   rm "${ADBC_DIR}/rust/Cargo.toml.bak"
   git add "${ADBC_DIR}/rust/Cargo.toml"
