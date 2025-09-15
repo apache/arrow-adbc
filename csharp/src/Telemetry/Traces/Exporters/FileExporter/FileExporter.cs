@@ -72,11 +72,11 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             var exporterInstance = new Lazy<FileExporterInstance>(() =>
             {
                 CancellationTokenSource cancellationTokenSource = new();
-                FileExporter fileExporter = new(fileBaseName, tracesDirectory, maxTraceFileSizeKb, maxTraceFiles, cancellationTokenSource);
+                FileExporter fileExporter = new(fileBaseName, tracesDirectory, maxTraceFileSizeKb, maxTraceFiles);
                 return new FileExporterInstance(
                     fileExporter,
                     // This listens/polls for activity in the queue and writes them to file
-                    Task.Run(async () => await ProcessActivitiesAsync(fileExporter, cancellationTokenSource.Token)),
+                    Task.Run(async () => await ProcessActivitiesAsync(fileExporter, cancellationTokenSource.Token).ConfigureAwait(false)),
                     cancellationTokenSource);
             });
 
@@ -120,21 +120,21 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             foreach (Activity activity in batch)
             {
                 if (activity == null) continue;
-                _ = _channel.Writer.TryWrite(activity);
+                _channel.Writer.TryWrite(activity);
             }
             return ExportResult.Success;
         }
 
         protected override bool OnForceFlush(int timeoutMilliseconds)
         {
-            CancellationTokenSource cts = new CancellationTokenSource();
+            CancellationTokenSource cts = new();
             cts.CancelAfter(TimeSpan.FromMilliseconds(timeoutMilliseconds));
-            Task.Delay(100).ConfigureAwait(false).GetAwaiter().GetResult();
-            while (!cts.IsCancellationRequested && !_channel.Reader.Completion.IsCompleted && _channel.Reader.Count > 0)
+            int poolTime = Math.Min(100, timeoutMilliseconds / 10);
+            do
             {
-                Task.Delay(100).ConfigureAwait(false).GetAwaiter().GetResult();
-            }
-            return true;
+                Thread.Sleep(poolTime);
+            } while (!cts.IsCancellationRequested && !_channel.Reader.Completion.IsCompleted && _channel.Reader.Count > 0);
+            return !cts.IsCancellationRequested;
         }
 
         private static async Task ProcessActivitiesAsync(FileExporter fileExporter, CancellationToken cancellationToken)
@@ -142,7 +142,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             try
             {
                 using MemoryStream stream = new();
-                await foreach (Activity activity in fileExporter._channel.Reader.ReadAllAsync(cancellationToken))
+                await foreach (Activity activity in fileExporter._channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 {
                     if (cancellationToken.IsCancellationRequested) break;
 
@@ -150,22 +150,22 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     SerializableActivity serializableActivity = new(activity);
                     await JsonSerializer.SerializeAsync(
                         stream,
-                        serializableActivity);
+                        serializableActivity, cancellationToken: cancellationToken).ConfigureAwait(false);
                     stream.Write(s_newLine, 0, s_newLine.Length);
                     stream.Position = 0;
 
-                    await fileExporter._tracingFile.WriteLineAsync(stream, cancellationToken);
+                    await fileExporter._tracingFile.WriteLineAsync(stream, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException ex)
             {
                 // Expected when cancellationToken is cancelled.
-                Console.WriteLine(ex);
+                Trace.TraceError(ex.ToString());
             }
             catch (Exception ex)
             {
                 // Since this will be called on an independent thread, we need to avoid uncaught exceptions.
-                Console.WriteLine(ex);
+                Trace.TraceError(ex.ToString());
             }
             fileExporter._isProcessingComplete = true;
         }
@@ -188,7 +188,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             }
         }
 
-        private FileExporter(string fileBaseName, DirectoryInfo tracesDirectory, long maxTraceFileSizeKb, int maxTraceFiles, CancellationTokenSource cancellationTokenSource)
+        private FileExporter(string fileBaseName, DirectoryInfo tracesDirectory, long maxTraceFileSizeKb, int maxTraceFiles)
         {
             string fullName = tracesDirectory.FullName;
             _fileBaseName = fileBaseName;
@@ -203,13 +203,13 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     ApacheArrowAdbcNamespace,
                     TracesFolderName)).FullName;
 
-        private async Task FlushAsync(CancellationToken cancellationToken = default)
+        private void Flush(CancellationToken cancellationToken = default)
         {
             // Ensure existing writes are completed.
-            _ = _channel.Writer.TryComplete();
+            _channel.Writer.TryComplete();
             while (!cancellationToken.IsCancellationRequested && !_isProcessingComplete)
             {
-                await Task.Delay(100);
+                Thread.Sleep(100);
             }
         }
 
@@ -220,7 +220,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 // Allow flush of any existing events.
                 using CancellationTokenSource flushTimeout = new();
                 flushTimeout.CancelAfter(TimeSpan.FromSeconds(5));
-                FlushAsync(flushTimeout.Token).Wait();
+                Flush(flushTimeout.Token);
 
                 // Remove and dispose of single instance of exporter
                 string listenerId = GetListenerId(_fileBaseName, _tracesDirectoryFullName);
@@ -256,7 +256,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     CancellationTokenSource.Cancel();
                     try
                     {
-                        WriteActivitiesTask.Wait();
+                        WriteActivitiesTask.ConfigureAwait(false).GetAwaiter().GetResult();
                     }
                     catch
                     {

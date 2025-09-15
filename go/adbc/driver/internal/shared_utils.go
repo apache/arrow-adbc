@@ -256,10 +256,10 @@ func (g *GetObjects) Release() {
 }
 
 func (g *GetObjects) Finish() (array.RecordReader, error) {
-	record := g.builder.NewRecord()
+	record := g.builder.NewRecordBatch()
 	defer record.Release()
 
-	result, err := array.NewRecordReader(g.builder.Schema(), []arrow.Record{record})
+	result, err := array.NewRecordReader(g.builder.Schema(), []arrow.RecordBatch{record})
 	if err != nil {
 		return nil, adbc.Error{
 			Msg:  err.Error(),

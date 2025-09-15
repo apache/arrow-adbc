@@ -71,17 +71,18 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             {
                 if (_currentTraceFileInfo == null || _currentFileStream == null)
                 {
-                    await OpenNewTracingFileAsync();
+                    await OpenNewTracingFileAsync().ConfigureAwait(false);
                 }
                 // Write out to the file and retry if IO errors occur.
-                await ActionWithRetryAsync<IOException>(async () => await WriteSingleLineAsync(stream), cancellationToken: cancellationToken);
+                await ActionWithRetryAsync<IOException>(async () =>
+                    await WriteSingleLineAsync(stream).ConfigureAwait(false), cancellationToken: cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 this._currentTraceFileInfo = null;
                 this._currentFileStream?.Dispose();
                 this._currentFileStream = null;
-                Console.WriteLine(ex.Message);
+                Trace.TraceError(ex.ToString());
             }
 
         }
@@ -93,7 +94,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             {
                 // This will clean-up files for all processes in the same directory.
                 string deleteSearchPattern = _fileBaseName + $"-trace-*.log";
-                IOrderedEnumerable<FileInfo> orderedFiles = await GetTracingFilesAsync(_tracingDirectory, deleteSearchPattern);
+                IOrderedEnumerable<FileInfo> orderedFiles = await GetTracingFilesAsync(_tracingDirectory, deleteSearchPattern).ConfigureAwait(false);
                 // Avoid accidentally trying to delete the current file.
                 FileInfo[] tracingFiles = orderedFiles.Where(f => !f.FullName.Equals(_currentTraceFileInfo?.FullName))?.ToArray() ?? new FileInfo[0];
                 if (tracingFiles.Length >= _maxTraceFiles)
@@ -107,7 +108,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                         {
                             file?.Delete();
                             return Task.CompletedTask;
-                        });
+                        }).ConfigureAwait(false);
                     }
                 }
             }
@@ -118,10 +119,9 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             if ((_currentFileStream!.Length + stream.Length) >= (_maxFileSizeKb * KbInByes))
             {
                 // If tracing file is maxxed-out, start a new tracing file.
-                await OpenNewTracingFileAsync();
+                await OpenNewTracingFileAsync().ConfigureAwait(false);
             }
-            _currentFileStream!.Position = _currentFileStream.Length;
-            await stream.CopyToAsync(_currentFileStream);
+            await stream.CopyToAsync(_currentFileStream).ConfigureAwait(false);
         }
 
         private async Task OpenNewTracingFileAsync()
@@ -146,8 +146,6 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     _currentFileStream = _currentTraceFileInfo.Open(FileMode.CreateNew, FileAccess.Write, FileShare.Read);
                 }
                 catch (IOException ioEx)
-                    when ((uint)ioEx.HResult == 0x80070020     // ERROR_SHARING_VIOLATION
-                        || ((uint)ioEx.HResult == 0x80070050)) // ERROR_ALREADY_EXISTS)
                 {
                     lastException = ioEx;
                     // If we can't open the file, just set to null.
@@ -158,7 +156,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 catch (Exception ex)
                 {
                     lastException = ex;
-                    Console.WriteLine(ex.Message);
+                    Trace.TraceError(ex.ToString());
                 }
             } while (_currentFileStream == null && attempts <= maxAttempts);
             if (_currentFileStream == null && lastException != null)
@@ -167,22 +165,25 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 throw new IOException($"Unable to create a new tracing file after {attempts - 1} attempts.", lastException);
             }
 
-            await TryRemoveOlderFiles();
+            await TryRemoveOlderFiles().ConfigureAwait(false);
         }
 
         private static async Task<IOrderedEnumerable<FileInfo>> GetTracingFilesAsync(DirectoryInfo tracingDirectory, string searchPattern)
         {
             return await Task.Run(() =>
             {
+                IEnumerable<FileInfo> unorderedFiles;
                 if (!tracingDirectory.Exists)
                 {
                     tracingDirectory.Create();
-                    return Enumerable.Empty<FileInfo>().OrderByDescending(f => f.LastWriteTimeUtc);
+                    unorderedFiles = [];
+        }
+                else
+                {
+                    unorderedFiles = tracingDirectory.EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly);
                 }
-                return tracingDirectory
-                    .EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly)
-                    .OrderByDescending(f => f.LastWriteTimeUtc.Ticks);
-            });
+                return unorderedFiles.OrderByDescending(f => f.LastWriteTimeUtc.Ticks);
+            }).ConfigureAwait(false);
         }
 
         private static async Task ActionWithRetryAsync<T>(
@@ -199,7 +200,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             {
                 try
                 {
-                    await action.Invoke();
+                    await action.Invoke().ConfigureAwait(false);
                     completed = true;
                 }
                 catch (T) when (retryCount < (maxRetries - 1))
@@ -207,7 +208,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     retryCount++;
                     try
                     {
-                        await Task.Delay(pauseTime, cancellationToken);
+                        await Task.Delay(pauseTime, cancellationToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {

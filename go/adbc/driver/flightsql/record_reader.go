@@ -38,9 +38,9 @@ import (
 type reader struct {
 	refCount   int64
 	schema     *arrow.Schema
-	chs        []chan arrow.Record
+	chs        []chan arrow.RecordBatch
 	curChIndex int
-	rec        arrow.Record
+	rec        arrow.RecordBatch
 	err        error
 
 	cancelFn context.CancelFunc
@@ -67,10 +67,10 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				Code: adbc.StatusInternal,
 			}
 		}
-		return array.NewRecordReader(schema, []arrow.Record{})
+		return array.NewRecordReader(schema, []arrow.RecordBatch{})
 	}
 
-	ch := make(chan arrow.Record, bufferSize)
+	ch := make(chan arrow.RecordBatch, bufferSize)
 	group, ctx := errgroup.WithContext(ctx)
 	ctx, cancelFn := context.WithCancel(ctx)
 	// We may mutate endpoints below
@@ -104,7 +104,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 			}
 
 			for rdr.Next() && ctx.Err() == nil {
-				rec := rdr.Record()
+				rec := rdr.RecordBatch()
 				rec.Retain()
 				ch <- rec
 			}
@@ -117,7 +117,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		endpoints = endpoints[1:]
 	}
 
-	chs := make([]chan arrow.Record, numEndpoints)
+	chs := make([]chan arrow.RecordBatch, numEndpoints)
 	chs[0] = ch
 	reader := &reader{
 		refCount: 1,
@@ -133,7 +133,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	for i, ep := range endpoints {
 		endpoint := ep
 		endpointIndex := i
-		chs[endpointIndex] = make(chan arrow.Record, bufferSize)
+		chs[endpointIndex] = make(chan arrow.RecordBatch, bufferSize)
 		group.Go(func() error {
 			// Close channels (except the last) so that Next can move on to the next channel properly
 			if endpointIndex != lastChannelIndex {
@@ -152,7 +152,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 			}
 
 			for rdr.Next() && ctx.Err() == nil {
-				rec := rdr.Record()
+				rec := rdr.RecordBatch()
 				rec.Retain()
 				chs[endpointIndex] <- rec
 			}
@@ -220,6 +220,12 @@ func (r *reader) Schema() *arrow.Schema {
 	return r.schema
 }
 
-func (r *reader) Record() arrow.Record {
+func (r *reader) Record() arrow.RecordBatch {
 	return r.rec
 }
+
+func (r *reader) RecordBatch() arrow.RecordBatch {
+	return r.rec
+}
+
+var _ array.RecordReader = (*reader)(nil)

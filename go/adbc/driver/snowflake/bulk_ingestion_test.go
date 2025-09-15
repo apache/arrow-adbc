@@ -59,7 +59,7 @@ func TestIngestBatchedParquetWithFileLimit(t *testing.T) {
 	expectedRowGroupSize := buf.Len()
 	require.NoError(t, tempWriter.Close())
 
-	recs := make([]arrow.Record, nRecs)
+	recs := make([]arrow.RecordBatch, nRecs)
 	for i := 0; i < nRecs; i++ {
 		recs[i] = rec
 	}
@@ -68,7 +68,7 @@ func TestIngestBatchedParquetWithFileLimit(t *testing.T) {
 	require.NoError(t, err)
 	defer rdr.Release()
 
-	records := make(chan arrow.Record)
+	records := make(chan arrow.RecordBatch)
 	go func() { assert.NoError(t, readRecords(ctx, rdr, records)) }()
 
 	buf.Reset()
@@ -83,7 +83,7 @@ func TestIngestBatchedParquetWithFileLimit(t *testing.T) {
 	require.ErrorIs(t, writeParquet(rdr.Schema(), &buf, records, -1, parquetProps, arrowProps), io.EOF)
 }
 
-func makeRec(mem memory.Allocator, nCols, nRows int) arrow.Record {
+func makeRec(mem memory.Allocator, nCols, nRows int) arrow.RecordBatch {
 	vals := make([]int8, nRows)
 	for val := 0; val < nRows; val++ {
 		vals[val] = int8(val)
@@ -100,9 +100,9 @@ func makeRec(mem memory.Allocator, nCols, nRows int) arrow.Record {
 	cols := make([]arrow.Array, nCols)
 	for i := 0; i < nCols; i++ {
 		fields[i] = arrow.Field{Name: fmt.Sprintf("field_%d", i), Type: arrow.PrimitiveTypes.Int8}
-		cols[i] = arr // array.NewRecord will retain these
+		cols[i] = arr // array.NewRecordBatch will retain these
 	}
 
 	schema := arrow.NewSchema(fields, nil)
-	return array.NewRecord(schema, cols, int64(nRows))
+	return array.NewRecordBatch(schema, cols, int64(nRows))
 }

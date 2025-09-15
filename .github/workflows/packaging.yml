@@ -121,7 +121,7 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -346,7 +346,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@efbf473cab83af4468e8606cc33eca9281bb213f  # v1.256.0
+        uses: ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0eb  # v1.257.0
         with:
           ruby-version: ruby
 
@@ -729,7 +729,7 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -896,7 +896,7 @@ jobs:
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -904,7 +904,7 @@ jobs:
           cache-dependency-path: adbc/go/adbc/go.sum
 
       - name: Install Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           check-latest: true
           python-version: ${{ matrix.python_version }}
@@ -1108,7 +1108,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Clean
