@@ -26,6 +26,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/databricks"
+	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/stretchr/testify/assert"
@@ -45,7 +46,7 @@ func TestMetadataE2E_GetInfo(t *testing.T) {
 		databricks.OptionSchema:         schema,
 	})
 	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -107,7 +108,7 @@ func TestMetadataE2E_GetTableTypes(t *testing.T) {
 		databricks.OptionSchema:         schema,
 	})
 	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -162,7 +163,7 @@ func TestMetadataE2E_GetObjects(t *testing.T) {
 		databricks.OptionSchema:         schema,
 	})
 	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -263,7 +264,7 @@ func TestMetadataE2E_GetTableSchema(t *testing.T) {
 		databricks.OptionSchema:         schema,
 	})
 	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -376,7 +377,7 @@ func TestMetadataE2E_ComplexMetadataQueries(t *testing.T) {
 		databricks.OptionSchema:         schema,
 	})
 	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -491,7 +492,7 @@ func TestMetadataE2E_CurrentCatalogSchema(t *testing.T) {
 		databricks.OptionSchema:         schema,
 	})
 	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
+	defer validation.CheckedClose(t, db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

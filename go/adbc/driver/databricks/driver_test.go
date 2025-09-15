@@ -412,9 +412,9 @@ func (suite *DatabricksTests) SetupTest() {
 func (suite *DatabricksTests) TearDownTest() {
 	suite.NoError(suite.stmt.Close())
 	suite.NoError(suite.cnxn.Close())
+	suite.NoError(suite.db.Close())
 	suite.Quirks.TearDownDriver(suite.T(), suite.driver)
 	suite.cnxn = nil
-	suite.NoError(suite.db.Close())
 	suite.db = nil
 	suite.driver = nil
 }
@@ -429,13 +429,11 @@ func (suite *DatabricksTests) TestNewDatabaseWithOptions() {
 		db, err := drv.NewDatabase(dbOptions)
 		suite.NoError(err)
 		suite.NotNil(db)
-
 		cnxn, err := db.Open(suite.ctx)
 		suite.NoError(err)
 		suite.NotNil(cnxn)
-
-		suite.NoError(cnxn.Close())
-		suite.NoError(db.Close())
+		defer validation.CheckedClose(suite.T(), cnxn)
+		defer validation.CheckedClose(suite.T(), db)
 	})
 
 	t.Run("WithPort", func(t *testing.T) {
@@ -444,7 +442,7 @@ func (suite *DatabricksTests) TestNewDatabaseWithOptions() {
 		db, err := drv.NewDatabase(dbOptions)
 		suite.NoError(err)
 		suite.NotNil(db)
-		suite.NoError(db.Close())
+		defer validation.CheckedClose(suite.T(), db)
 	})
 
 	t.Run("WithSSLOptions", func(t *testing.T) {
@@ -453,7 +451,7 @@ func (suite *DatabricksTests) TestNewDatabaseWithOptions() {
 		db, err := drv.NewDatabase(dbOptions)
 		suite.NoError(err)
 		suite.NotNil(db)
-		suite.NoError(db.Close())
+		defer validation.CheckedClose(suite.T(), db)
 	})
 }
 
@@ -533,15 +531,15 @@ func (suite *DatabricksTests) TestQueryTimeout() {
 
 	db, err := suite.driver.NewDatabase(dbOptions)
 	suite.NoError(err)
-	defer func() { suite.NoError(db.Close()) }()
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.NoError(err)
-	defer func() { suite.NoError(cnxn.Close()) }()
+	defer validation.CheckedClose(suite.T(), cnxn)
+	defer validation.CheckedClose(suite.T(), db)
 
 	stmt, err := cnxn.NewStatement()
 	suite.NoError(err)
-	defer func() { suite.NoError(stmt.Close()) }()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	suite.Require().NoError(stmt.SetSqlQuery("SELECT 1"))
 	rdr, _, err := stmt.ExecuteQuery(suite.ctx)
@@ -558,15 +556,15 @@ func (suite *DatabricksTests) TestMaxRows() {
 
 	db, err := suite.driver.NewDatabase(dbOptions)
 	suite.NoError(err)
-	defer func() { suite.NoError(db.Close()) }()
 
 	cnxn, err := db.Open(suite.ctx)
 	suite.NoError(err)
-	defer func() { suite.NoError(cnxn.Close()) }()
+	defer validation.CheckedClose(suite.T(), cnxn)
+	defer validation.CheckedClose(suite.T(), db)
 
 	stmt, err := cnxn.NewStatement()
 	suite.NoError(err)
-	defer func() { suite.NoError(stmt.Close()) }()
+	defer validation.CheckedClose(suite.T(), stmt)
 
 	// Generate a query that would return more than 100 rows if not limited
 	suite.Require().NoError(stmt.SetSqlQuery("SELECT id FROM range(200)"))
@@ -580,7 +578,7 @@ func (suite *DatabricksTests) TestMaxRows() {
 func (suite *DatabricksTests) TestConcurrentStatements() {
 	stmt2, err := suite.cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer func() { suite.NoError(stmt2.Close()) }()
+	defer validation.CheckedClose(suite.T(), stmt2)
 
 	suite.Require().NoError(suite.stmt.SetSqlQuery("SELECT 1 as col1"))
 	suite.Require().NoError(stmt2.SetSqlQuery("SELECT 2 as col2"))
@@ -641,7 +639,7 @@ func TestDatabaseCreation(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, db)
 
-	err = db.Close()
+	defer validation.CheckedClose(t, db)
 	assert.NoError(t, err)
 }
 
@@ -680,22 +678,21 @@ func TestDatabaseCreationWithAllOptions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "1m0s", value)
 
-	err = db.Close()
-	assert.NoError(t, err)
+	defer validation.CheckedClose(t, db)
 }
 
 func (suite *DatabricksTests) TestConnectionManagement() {
 	cnxn2, err := suite.db.Open(suite.ctx)
 	suite.Require().NoError(err)
-	defer func() { suite.NoError(cnxn2.Close()) }()
+	defer validation.CheckedClose(suite.T(), cnxn2)
 
 	stmt1, err := suite.cnxn.NewStatement()
 	suite.Require().NoError(err)
-	defer func() { suite.NoError(stmt1.Close()) }()
+	defer validation.CheckedClose(suite.T(), stmt1)
 
 	stmt2, err := cnxn2.NewStatement()
 	suite.Require().NoError(err)
-	defer func() { suite.NoError(stmt2.Close()) }()
+	defer validation.CheckedClose(suite.T(), stmt2)
 
 	suite.Require().NoError(stmt1.SetSqlQuery("SELECT 'connection1' as source"))
 	suite.Require().NoError(stmt2.SetSqlQuery("SELECT 'connection2' as source"))
@@ -733,7 +730,7 @@ func (suite *DatabricksTests) TestDatabaseOptions() {
 
 			db, err := suite.driver.NewDatabase(dbOptions)
 			suite.NoError(err)
-			defer func() { suite.NoError(db.Close()) }()
+			defer validation.CheckedClose(suite.T(), db)
 
 			getSetDB, ok := db.(adbc.GetSetOptions)
 			suite.True(ok)
