@@ -410,9 +410,9 @@ func (suite *DatabricksTests) SetupTest() {
 }
 
 func (suite *DatabricksTests) TearDownTest() {
-	suite.NoError(suite.stmt.Close())
-	suite.NoError(suite.cnxn.Close())
-	suite.NoError(suite.db.Close())
+	validation.CheckedClose(suite.T(), suite.stmt)
+	validation.CheckedClose(suite.T(), suite.cnxn)
+	validation.CheckedClose(suite.T(), suite.db)
 	suite.Quirks.TearDownDriver(suite.T(), suite.driver)
 	suite.cnxn = nil
 	suite.db = nil
