@@ -71,11 +71,15 @@ function build_drivers {
     echo "=== Setup VCPKG ==="
 
     pushd "${VCPKG_ROOT}"
-    # XXX: patch an odd issue where the path of some file is inconsistent between builds
-    patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-inconsistent-path.patch" || true
+    # XXX: work around lz4 CMakeLists being out of date
+    # https://github.com/lz4/lz4/issues/1550
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-lz4-CMake-https-github.com-lz4-lz4-issue.patch"
 
     # XXX: make vcpkg retry downloads https://github.com/microsoft/vcpkg/discussions/20583
-    patch -N -p1 < "${source_dir}/ci/vcpkg/0002-Retry-downloads.patch" || true
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0002-Retry-downloads.patch"
+
+    # XXX: backport fix for CMake 4 and macOS
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0003-Fix-CMake-4-OSX.patch"
     popd
 
     # Need to install sqlite3 to make CMake be able to find it below
