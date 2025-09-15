@@ -32,10 +32,18 @@ main() {
 
   for f in "$@"; do
     fn=$(basename $f)
-    if ! diff -q "$f" "go/adbc/drivermgr/arrow-adbc/$fn" &>/dev/null; then
-      >&2 echo "OUT OF SYNC: $f differs from go/adbc/drivermgr/arrow-adbc/$fn"
-      popd
-      return 1
+    if [[ "$fn" == "adbc_driver_manager.cc" ]]; then
+        if ! diff -q "$f" "go/adbc/drivermgr/$fn" &>/dev/null; then
+            >&2 echo "OUT OF SYNC: $f differs from go/adbc/drivermgr/$fn"
+            popd
+            return 1
+        fi
+    else
+        if ! diff -q "$f" "go/adbc/drivermgr/arrow-adbc/$fn" &>/dev/null; then
+            >&2 echo "OUT OF SYNC: $f differs from go/adbc/drivermgr/arrow-adbc/$fn"
+            popd
+            return 1
+        fi
     fi
   done
 

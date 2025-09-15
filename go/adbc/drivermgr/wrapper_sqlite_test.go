@@ -132,7 +132,7 @@ func (dm *DriverMgrSuite) TestGetObjects() {
 	dm.True(expSchema.Equal(rdr.Schema()))
 	dm.True(rdr.Next())
 
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	dm.Equal(int64(1), rec.NumRows())
 	expRec, _, err := array.RecordFromJSON(
 		memory.DefaultAllocator,
@@ -204,7 +204,7 @@ func (dm *DriverMgrSuite) TestGetObjectsDBSchema() {
 	dm.True(expSchema.Equal(rdr.Schema()))
 	dm.True(rdr.Next())
 
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	dm.Equal(int64(1), rec.NumRows())
 	expRec, _, err := array.RecordFromJSON(
 		memory.DefaultAllocator,
@@ -233,7 +233,7 @@ func (dm *DriverMgrSuite) TestGetObjectsTableName() {
 	dm.True(expSchema.Equal(rdr.Schema()))
 	dm.True(rdr.Next())
 
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	dm.Equal(int64(1), rec.NumRows())
 	expRec, _, err := array.RecordFromJSON(
 		memory.DefaultAllocator,
@@ -267,7 +267,7 @@ func (dm *DriverMgrSuite) TestGetObjectsColumnName() {
 	dm.True(expSchema.Equal(rdr.Schema()))
 	dm.True(rdr.Next())
 
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	dm.Equal(int64(1), rec.NumRows())
 	expRec, _, err := array.RecordFromJSON(
 		memory.DefaultAllocator,
@@ -320,7 +320,7 @@ func (dm *DriverMgrSuite) TestGetObjectsTableType() {
 	dm.True(expSchema.Equal(rdr.Schema()))
 	dm.True(rdr.Next())
 
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	dm.Equal(int64(1), rec.NumRows())
 	expRec, _, err := array.RecordFromJSON(
 		memory.DefaultAllocator,
@@ -384,7 +384,7 @@ func (dm *DriverMgrSuite) TestGetTableTypes() {
 	dm.True(expSchema.Equal(rdr.Schema()))
 	dm.True(rdr.Next())
 
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	dm.Equal(int64(2), rec.NumRows())
 
 	expTableTypes := []string{"table", "view"}
@@ -439,7 +439,7 @@ func (dm *DriverMgrSuite) TestSqlExecute() {
 	defer expRec.Release()
 
 	dm.True(rdr.Next())
-	dm.Truef(array.RecordEqual(expRec, rdr.Record()), "expected: %s\ngot: %s", expRec, rdr.Record())
+	dm.Truef(array.RecordEqual(expRec, rdr.RecordBatch()), "expected: %s\ngot: %s", expRec, rdr.RecordBatch())
 	dm.False(rdr.Next())
 }
 
@@ -480,7 +480,7 @@ func (dm *DriverMgrSuite) TestSqlPrepare() {
 	defer expRec.Release()
 
 	dm.True(rdr.Next())
-	dm.Truef(array.RecordEqual(expRec, rdr.Record()), "expected: %s\ngot: %s", expRec, rdr.Record())
+	dm.Truef(array.RecordEqual(expRec, rdr.RecordBatch()), "expected: %s\ngot: %s", expRec, rdr.RecordBatch())
 	dm.False(rdr.Next())
 }
 
@@ -511,7 +511,7 @@ func (dm *DriverMgrSuite) TestSqlPrepareMultipleParams() {
 	defer rdr.Release()
 
 	dm.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	dm.Truef(array.RecordEqual(params, rec), "expected: %s\ngot: %s", params, rec)
 	dm.False(rdr.Next())
 }
@@ -553,16 +553,16 @@ func (dm *DriverMgrSuite) TestBindStream() {
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
 	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"one", "two", "three"}, nil)
 
-	rec1 := bldr.NewRecord()
+	rec1 := bldr.NewRecordBatch()
 	defer rec1.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{4, 5, 6}, nil)
 	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"four", "five", "six"}, nil)
 
-	rec2 := bldr.NewRecord()
+	rec2 := bldr.NewRecordBatch()
 	defer rec2.Release()
 
-	recsIn := []arrow.Record{rec1, rec2}
+	recsIn := []arrow.RecordBatch{rec1, rec2}
 	rdrIn, err := array.NewRecordReader(schema, recsIn)
 	dm.NoError(err)
 
@@ -572,9 +572,9 @@ func (dm *DriverMgrSuite) TestBindStream() {
 	dm.NoError(err)
 	defer rdrOut.Release()
 
-	recsOut := make([]arrow.Record, 0)
+	recsOut := make([]arrow.RecordBatch, 0)
 	for rdrOut.Next() {
-		rec := rdrOut.Record()
+		rec := rdrOut.RecordBatch()
 		rec.Retain()
 		defer rec.Release()
 		recsOut = append(recsOut, rec)
@@ -658,7 +658,7 @@ func (dm *DriverMgrSuite) TestIngestStream() {
 	dm.Require().NoError(err)
 	defer rec2.Release()
 
-	rdr, err := array.NewRecordReader(schema, []arrow.Record{rec1, rec2})
+	rdr, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec1, rec2})
 	dm.Require().NoError(err)
 	defer rdr.Release()
 
@@ -678,7 +678,7 @@ func (dm *DriverMgrSuite) TestIngestStream() {
 	defer rdr2.Release()
 
 	dm.True(rdr2.Next(), "expected one row with the count")
-	recCount := rdr2.Record()
+	recCount := rdr2.RecordBatch()
 	cntArr := recCount.Column(0).(*array.Int64)
 	dm.Equal(int64(5), cntArr.Value(0), "table should contain 5 rows")
 	dm.False(rdr2.Next(), "no more rows expected")

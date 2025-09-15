@@ -527,7 +527,7 @@ func (s *stmt) SetSubstraitPlan(plan []byte) error {
 	return &adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
-func (s *stmt) Bind(_ context.Context, values arrow.Record) error {
+func (s *stmt) Bind(_ context.Context, values arrow.RecordBatch) error {
 	var (
 		arr    = C.allocArr()
 		schema C.struct_ArrowSchema

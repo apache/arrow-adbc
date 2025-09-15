@@ -80,7 +80,7 @@ jobs:
           path: temp
       # To use pip below, we need to install our own Python; the system Python's
       # pip won't let us install packages without a scary flag.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.x'
       - name: Build

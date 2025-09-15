@@ -28,7 +28,7 @@
 
   <groupId>org.apache.arrow.adbc</groupId>
   <artifactId>arrow-adbc-java-root</artifactId>
-  <version>0.20.0-SNAPSHOT</version>
+  <version>0.21.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Arrow ADBC Java Root POM</name>
@@ -97,7 +97,7 @@
 
   <properties>
     <dep.arrow.version>18.0.0</dep.arrow.version>
-    <dep.org.checkerframework.version>3.49.5</dep.org.checkerframework.version>
+    <dep.org.checkerframework.version>3.50.0</dep.org.checkerframework.version>
     <!-- org.apache:apache overrides -->
     <minimalJavaBuildVersion>11</minimalJavaBuildVersion>
     <maven.compiler.target>11</maven.compiler.target>
