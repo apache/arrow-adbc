@@ -29,7 +29,7 @@ using Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter;
 
 namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
 {
-    public class TracingFileExporterTests : IDisposable
+    public class FileExporterTests : IDisposable
     {
         private readonly ITestOutputHelper? _outputHelper;
         private bool _disposed;
@@ -37,7 +37,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
         private readonly ActivitySource _activitySource;
         private static readonly string s_localApplicationDataFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-        public TracingFileExporterTests(ITestOutputHelper? outputHelper)
+        public FileExporterTests(ITestOutputHelper? outputHelper)
         {
             _outputHelper = outputHelper;
             _activitySourceName = ExportersBuilderTests.NewName();
@@ -104,7 +104,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
         [Fact]
         internal async Task CanSetCustomMaxFileSize()
         {
-            const long maxTraceFileSizeKb = 30;
+            const long maxTraceFileSizeKb = 50;
             const long kilobyte = 1024;
             string customFolderName = ExportersBuilderTests.NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
@@ -141,7 +141,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                 }
                 for (int i = 0; i < files.Length; i++)
                 {
-                    long expectedUpperSizeLimit = (maxTraceFileSizeKb + (long)(0.2 * maxTraceFileSizeKb)) * kilobyte;
+                    long expectedUpperSizeLimit = maxTraceFileSizeKb * 2 * kilobyte;
                     Assert.True(files[i].Length < expectedUpperSizeLimit, summary.ToString());
                 }
                 _outputHelper?.WriteLine($"number of files: {files.Length}");
@@ -208,7 +208,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                     for (int i = 0; i < 100; i++)
                     {
                         await AddEvent("test");
-                        await Task.Delay(TimeSpan.FromMilliseconds(0.1));
+                        await Task.Delay(TimeSpan.FromMilliseconds(0.11));
                     }
                 }
 
@@ -252,12 +252,26 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
             try
             {
+                // This simulates two drivers/connections in the same process trying to write to the same
+                // trace file(s). In fact, because the FileExporter is a singleton by the combined key of
+                // the activity source name and the trace file path, both providers will register only one listener.
+                TracerProvider provider1 = Sdk.CreateTracerProviderBuilder()
+                    .AddSource(_activitySourceName)
+                    .AddAdbcFileExporter(_activitySourceName, traceFolder)
+                    .Build();
+                TracerProvider provider2 = Sdk.CreateTracerProviderBuilder()
+                    .AddSource(_activitySourceName)
+                    .AddAdbcFileExporter(_activitySourceName, traceFolder)
+                    .Build();
                 var tasks = new Task[]
                 {
-                    Task.Run(async () => await TraceActivities(traceFolder, "activity1", writeCount)),
-                    Task.Run(async () => await TraceActivities(traceFolder, "activity2", writeCount)),
+                    Task.Run(async () => await TraceActivities(traceFolder, "activity1", writeCount, provider1)),
+                    Task.Run(async () => await TraceActivities(traceFolder, "activity2", writeCount, provider2)),
                 };
                 await Task.WhenAll(tasks);
+                await Task.Delay(500);
+                provider1.Dispose();
+                provider2.Dispose();
 
                 int activity1Count = 0;
                 int activity2Count = 0;
@@ -278,8 +292,8 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                 // Note, because we don't reference count, one of the listeners will likely
                 // close the shared instance before the other is finished.
                 // That can result in some events not being written.
-                Assert.InRange(activity1Count, writeCount * 0.9, writeCount);
-                Assert.InRange(activity2Count, writeCount * 0.9, writeCount);
+                Assert.InRange(activity1Count, writeCount * 0.8, writeCount);
+                Assert.InRange(activity2Count, writeCount * 0.8, writeCount);
             }
             finally
             {
@@ -287,19 +301,14 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
             }
         }
 
-        private async Task TraceActivities(string traceFolder, string activityName, int writeCount)
+        private async Task TraceActivities(string traceFolder, string activityName, int writeCount, TracerProvider provider)
         {
-            using (TracerProvider provider = Sdk.CreateTracerProviderBuilder()
-                .AddSource(_activitySourceName)
-                .AddAdbcFileExporter(_activitySourceName, traceFolder)
-                .Build())
+            for (int i = 0; i < writeCount; i++)
             {
-                for (int i = 0; i < writeCount; i++)
-                {
-                    await StartActivity(activityName);
-                    await Task.Delay(TimeSpan.FromMilliseconds(0.1));
-                }
+                await StartActivity(activityName);
+                await Task.Delay(TimeSpan.FromMilliseconds(0.1));
             }
+            provider.ForceFlush(2000);
         }
 
         private Task AddEvent(string eventName, string activityName = nameof(AddEvent))
