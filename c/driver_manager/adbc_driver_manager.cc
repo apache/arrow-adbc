@@ -720,7 +720,7 @@ struct ManagedLibrary {
         search_paths.emplace_back(SearchPathSource::kAdditional, path);
       }
 
-#if ADBC_CONDA_BUILD
+#if defined(ADBC_CONDA_BUILD)
       // Then, if this is a conda build, search in the conda environment if
       // it is activated.
       if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
@@ -731,7 +731,7 @@ struct ManagedLibrary {
 #endif  // _WIN32
         auto venv = GetEnvPaths(conda_name);
         if (!venv.empty()) {
-          for (const auto& venv_path : venv) {
+          for (const auto& [_, venv_path] : venv) {
             search_paths.emplace_back(SearchPathSource::kConda,
                                       venv_path / "etc" / "adbc" / "drivers");
           }
@@ -741,7 +741,7 @@ struct ManagedLibrary {
       if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
         search_paths.emplace_back(SearchPathSource::kDisabled, "Conda prefix");
       }
-#endif  // ADBC_CONDA_BUILD
+#endif  // defined(ADBC_CONDA_BUILD)
 
       auto status = SearchPathsForDriver(driver_path, search_paths, info, error);
       if (status != ADBC_STATUS_NOT_FOUND) {
