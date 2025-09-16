@@ -22,6 +22,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
@@ -85,7 +86,8 @@ func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 		}
 	}
 	if c.conn != nil {
-		_, err := c.conn.ExecContext(context.Background(), "USE CATALOG `%s`", catalog)
+		escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
+		_, err := c.conn.ExecContext(context.Background(), "USE CATALOG `%s`", escapedCatalog)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
@@ -105,7 +107,8 @@ func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 		}
 	}
 	if c.conn != nil {
-		_, err := c.conn.ExecContext(context.Background(), "USE SCHEMA `%s`", schema)
+		escapedSchema := strings.ReplaceAll(schema, "`", "``")
+		_, err := c.conn.ExecContext(context.Background(), "USE SCHEMA `%s`", escapedSchema)
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
@@ -142,7 +145,8 @@ func (c *connectionImpl) Rollback(ctx context.Context) error {
 func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error) {
 	query := "SHOW CATALOGS"
 	if catalogFilter != nil {
-		query += fmt.Sprintf(" LIKE '%s'", *catalogFilter)
+		escapedFilter := strings.ReplaceAll(*catalogFilter, "'", "''")
+		query += fmt.Sprintf(" LIKE '%s'", escapedFilter)
 	}
 
 	rows, err := c.conn.QueryContext(ctx, query)
@@ -168,13 +172,15 @@ func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string)
 		catalogs = append(catalogs, catalog)
 	}
 
-	return catalogs, rows.Err()
+	return catalogs, errors.Join(err, rows.Err())
 }
 
 func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error) {
-	query := fmt.Sprintf("SHOW SCHEMAS IN `%s`", catalog)
+	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
+	query := fmt.Sprintf("SHOW SCHEMAS IN `%s`", escapedCatalog)
 	if schemaFilter != nil {
-		query += fmt.Sprintf(" LIKE '%s'", *schemaFilter)
+		escapedFilter := strings.ReplaceAll(*schemaFilter, "'", "''")
+		query += fmt.Sprintf(" LIKE '%s'", escapedFilter)
 	}
 
 	rows, err := c.conn.QueryContext(ctx, query)
@@ -205,9 +211,12 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 }
 
 func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
-	query := fmt.Sprintf("SHOW TABLES IN `%s`.`%s`", catalog, schema)
+	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
+	escapedSchema := strings.ReplaceAll(schema, "`", "``")
+	query := fmt.Sprintf("SHOW TABLES IN `%s`.`%s`", escapedCatalog, escapedSchema)
 	if tableFilter != nil {
-		query += fmt.Sprintf(" LIKE '%s'", *tableFilter)
+		escapedFilter := strings.ReplaceAll(*tableFilter, "'", "''")
+		query += fmt.Sprintf(" LIKE '%s'", escapedFilter)
 	}
 
 	rows, err := c.conn.QueryContext(ctx, query)
@@ -241,5 +250,5 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 		tables = append(tables, tableInfo)
 	}
 
-	return tables, rows.Err()
+	return tables, errors.Join(err, rows.Err())
 }
