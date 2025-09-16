@@ -262,6 +262,8 @@ func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, optFuncs ...
 	}
 
 	cfg := &config{Config: db.cfg}
+	//allow connection for schemas/databases that don't exist yet
+	cfg.ValidateDefaultParameters = gosnowflake.ConfigBoolFalse
 	for _, opt := range optFuncs {
 		if err := opt(cfg); err != nil {
 			return nil, err
