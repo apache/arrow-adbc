@@ -78,8 +78,13 @@ func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
 }
 
 func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
-	// Use the database to execute USE CATALOG
-	if c.conn != nil && catalog != "" {
+	if catalog == "" {
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "catalog cannot be empty",
+		}
+	}
+	if c.conn != nil {
 		_, err := c.conn.ExecContext(context.Background(), "USE CATALOG `%s`", catalog)
 		if err != nil {
 			return adbc.Error{
@@ -87,14 +92,19 @@ func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 				Msg:  fmt.Sprintf("failed to set catalog: %v", err),
 			}
 		}
+		c.catalog = catalog
 	}
-	c.catalog = catalog
 	return nil
 }
 
 func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
-	// Use the database to execute USE SCHEMA
-	if c.conn != nil && schema != "" {
+	if schema == "" {
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "schema cannot be empty",
+		}
+	}
+	if c.conn != nil {
 		_, err := c.conn.ExecContext(context.Background(), "USE SCHEMA `%s`", schema)
 		if err != nil {
 			return adbc.Error{
@@ -102,8 +112,8 @@ func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 				Msg:  fmt.Sprintf("failed to set schema: %v", err),
 			}
 		}
+		c.dbSchema = schema
 	}
-	c.dbSchema = schema
 	return nil
 }
 
@@ -143,9 +153,7 @@ func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string)
 		}
 	}
 	defer func() {
-		if closeErr := rows.Close(); closeErr != nil {
-			err = errors.Join(err, closeErr)
-		}
+		err = errors.Join(err, rows.Close())
 	}()
 
 	var catalogs []string
@@ -177,9 +185,7 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 		}
 	}
 	defer func() {
-		if closeErr := rows.Close(); closeErr != nil {
-			err = errors.Join(err, closeErr)
-		}
+		err = errors.Join(err, rows.Close())
 	}()
 
 	var schemas []string
@@ -212,9 +218,7 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 		}
 	}
 	defer func() {
-		if closeErr := rows.Close(); closeErr != nil {
-			err = errors.Join(err, closeErr)
-		}
+		err = errors.Join(err, rows.Close())
 	}()
 
 	var tables []driverbase.TableInfo
