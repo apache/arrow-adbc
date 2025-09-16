@@ -277,14 +277,15 @@ jobs:
           mv apache-arrow-adbc-${VERSION} adbc
       - name: Build JNI artifacts
         working-directory: adbc
+        emv:
+          ADBC_BUILD_STATIC: ON
+          ADBC_BUILD_TESTS: OFF
+          ADBC_USE_ASAN: OFF
+          ADBC_USE_UBSAN: OFF
+          BUILD_ALL: 0
+          BUILD_DRIVER_MANAGER: 1
+          CMAKE_BUILD_TYPE: release
         run: |
-          export ADBC_BUILD_STATIC=ON
-          export ADBC_BUILD_TESTS=OFF
-          export ADBC_USE_ASAN=OFF
-          export ADBC_USE_UBSAN=OFF
-          export BUILD_ALL=0
-          export BUILD_DRIVER_MANAGER=1
-          export CMAKE_BUILD_TYPE=release
           ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build_driver_manager
           ./ci/scripts/java_build.sh $(pwd)
           ./ci/scripts/java_jni_build.sh $(pwd) $(pwd)/build_jni $(pwd)/build_driver_manager/local
