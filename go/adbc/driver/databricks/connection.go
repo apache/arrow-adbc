@@ -87,7 +87,7 @@ func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 	}
 	if c.conn != nil {
 		escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
-		_, err := c.conn.ExecContext(context.Background(), "USE CATALOG `%s`", escapedCatalog)
+		_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE CATALOG `%s`", escapedCatalog))
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
@@ -108,7 +108,7 @@ func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 	}
 	if c.conn != nil {
 		escapedSchema := strings.ReplaceAll(schema, "`", "``")
-		_, err := c.conn.ExecContext(context.Background(), "USE SCHEMA `%s`", escapedSchema)
+		_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA `%s`", escapedSchema))
 		if err != nil {
 			return adbc.Error{
 				Code: adbc.StatusInternal,
