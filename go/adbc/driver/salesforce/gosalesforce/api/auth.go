@@ -131,7 +131,7 @@ func GetInstanceFromToken(token *Token) string {
 // This combines authentication and query execution in a single step
 func ExecuteSqlQuery(ctx context.Context, client *Client, queryRequest *SqlQueryRequest) (*SqlQueryResponse, error) {
 	if client == nil {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Client cannot be nil",
 			Type:    "invalid_client",
@@ -148,7 +148,7 @@ func ExecuteSqlQuery(ctx context.Context, client *Client, queryRequest *SqlQuery
 // ExecuteSqlQueryLegacy is a convenience function to execute a v2 SQL query using a Data Cloud token
 func ExecuteSqlQueryLegacy(ctx context.Context, client *Client, query string, enableArrowStream bool) (*QueryV2Response, error) {
 	if client == nil {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Client cannot be nil",
 			Type:    "invalid_client",
@@ -165,7 +165,7 @@ func ExecuteSqlQueryLegacy(ctx context.Context, client *Client, query string, en
 // GetNextBatchV2WithToken is a convenience function to get the next batch of v2 query results using a Data Cloud token
 func GetNextBatchV2WithToken(ctx context.Context, client *Client, nextBatchId string, enableArrowStream bool) (*QueryV2Response, error) {
 	if client == nil {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Client cannot be nil",
 			Type:    "invalid_client",
@@ -183,7 +183,7 @@ func GetNextBatchV2WithToken(ctx context.Context, client *Client, nextBatchId st
 // GetMetadata is a convenience function to retrieve Data Cloud metadata using a token
 func GetMetadata(ctx context.Context, client *Client, dataspace, entityCategory, entityName, entityType string) (*MetadataResponse, error) {
 	if client == nil {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Client cannot be nil",
 			Type:    "invalid_client",
@@ -200,7 +200,7 @@ func GetMetadata(ctx context.Context, client *Client, dataspace, entityCategory,
 // CreateJob is a convenience function to create a data ingestion job using a token
 func CreateJob(ctx context.Context, client *Client, request *CreateJobRequest) (*CreateJobResponse, error) {
 	if client == nil {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Client cannot be nil",
 			Type:    "invalid_client",
@@ -217,7 +217,7 @@ func CreateJob(ctx context.Context, client *Client, request *CreateJobRequest) (
 // UploadJobData is a convenience function to upload data to a job using a token
 func UploadJobData(ctx context.Context, client *Client, jobID string, data []byte, contentType string) error {
 	if client == nil {
-		return &AuthError{
+		return &SfdcError{
 			Code:    400,
 			Message: "Client cannot be nil",
 			Type:    "invalid_client",
@@ -234,7 +234,7 @@ func UploadJobData(ctx context.Context, client *Client, jobID string, data []byt
 // CloseJob is a convenience function to close or abort a job using a token
 func CloseJob(ctx context.Context, client *Client, jobID string, state string) (*CloseJobResponse, error) {
 	if client == nil {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Client cannot be nil",
 			Type:    "invalid_client",

@@ -4,13 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"slices"
+	"strings"
 )
 
 // PostDataLakeObject creates a new Data Lake Object (DLO) in Data Cloud
 // reference: https://developer.salesforce.com/docs/data/data-cloud-ref/guide/c360a-api-data-lake-objects.html
 func (c *Client) PostDataLakeObject(ctx context.Context, request *CreateDataLakeObjectRequest) (*DataLakeObject, error) {
 	if request == nil {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Data Lake Object request cannot be nil",
 			Type:    "invalid_request",
@@ -18,7 +20,7 @@ func (c *Client) PostDataLakeObject(ctx context.Context, request *CreateDataLake
 	}
 
 	if request.Name == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Data Lake Object name cannot be empty",
 			Type:    "invalid_request",
@@ -26,7 +28,7 @@ func (c *Client) PostDataLakeObject(ctx context.Context, request *CreateDataLake
 	}
 
 	if request.Label == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Data Lake Object label cannot be empty",
 			Type:    "invalid_request",
@@ -40,7 +42,7 @@ func (c *Client) PostDataLakeObject(ctx context.Context, request *CreateDataLake
 // reference: https://developer.salesforce.com/docs/data/data-cloud-ref/guide/c360a-api-data-lake-objects.html
 func (c *Client) GetDataLakeObject(ctx context.Context, recordIdOrDeveloperName string, limit, offset *int, orderBy string) (*DataLakeObject, error) {
 	if recordIdOrDeveloperName == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Record ID or developer name cannot be empty",
 			Type:    "invalid_request",
@@ -64,7 +66,7 @@ func (c *Client) GetDataLakeObject(ctx context.Context, recordIdOrDeveloperName 
 // reference: https://developer.salesforce.com/docs/data/data-cloud-ref/guide/c360a-api-data-lake-objects.html
 func (c *Client) DeleteDataLakeObject(ctx context.Context, recordIdOrDeveloperName string) error {
 	if recordIdOrDeveloperName == "" {
-		return &AuthError{
+		return &SfdcError{
 			Code:    400,
 			Message: "Record ID or developer name cannot be empty",
 			Type:    "invalid_request",
@@ -173,6 +175,18 @@ func SqlMetadataToDataLakeFields(metadata []SqlQueryMetadata, primaryKeyFieldNam
 
 // NewDataLakeObjectFromSqlResponse creates a Data Lake Object request from SQL query response metadata
 func NewDataLakeObjectFromSqlResponse(name, label string, category DataLakeObjectCategory, sqlResponse *SqlQueryResponse, primaryKeyFieldName string) *CreateDataLakeObjectRequest {
-	fields := SqlMetadataToDataLakeFields(sqlResponse.Metadata, primaryKeyFieldName)
+	filteredMetadata := make([]SqlQueryMetadata, 0, len(sqlResponse.Metadata))
+
+	// The filtered out fields are pseudo columns automatically filled by the Data Cloud
+	// The postDataLakeObject request will fail if any of these fields are included in the request
+	excludedFields := []string{"DataSourceObject__c", "InternalOrganization__c", "DataSource__c"}
+	for _, meta := range sqlResponse.Metadata {
+		if strings.HasPrefix(meta.Name, "cdp_sys_") || strings.HasPrefix(meta.Name, "KQ_") || slices.Contains(excludedFields, meta.Name) {
+			continue
+		} else {
+			filteredMetadata = append(filteredMetadata, meta)
+		}
+	}
+	fields := SqlMetadataToDataLakeFields(filteredMetadata, primaryKeyFieldName)
 	return NewDataLakeObjectRequest(name, label, category, fields)
 }

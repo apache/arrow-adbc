@@ -20,6 +20,7 @@ package salesforce
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/api"
@@ -43,7 +44,8 @@ type statement struct {
 	dloPrimaryKey string
 
 	// Data Transform options
-	targetDLO string
+	targetDLO            string
+	dataTransformTimeout time.Duration
 }
 
 // Close cleans up the statement
@@ -96,26 +98,25 @@ func (s *statement) executeSQLQuery(ctx context.Context) (array.RecordReader, in
 		if err != nil {
 			return nil, 0, adbc.Error{
 				Code: adbc.StatusInternal,
-				Msg:  fmt.Sprintf("failed to delete DLO: %v", err),
+				Msg:  err.Error(),
 			}
 		}
 
 		// Creates the DLO
 		dataLakeObject, err := s.cnxn.client.CreateDataLakeObjectWithInferredSchema(ctx, s.query, s.cnxn.dataSpace, s.targetDLO, s.dloPrimaryKey, api.DataLakeObjectCategory(s.dloCategory))
 		if err != nil {
-			fmt.Printf("ERROR: Failed to create DLO from SQL response: %v\n", err)
 			return nil, 0, adbc.Error{
 				Code: adbc.StatusInternal,
-				Msg:  fmt.Sprintf("failed to create DLO from SQL response: %v", err),
+				Msg:  err.Error(),
 			}
 		}
 
 		// Inserts data
-		_, err = s.cnxn.client.TriggerDbtBatchDataTransform(ctx, dataLakeObject, s.query, true)
+		_, err = s.cnxn.client.TriggerDbtBatchDataTransform(ctx, dataLakeObject, s.query, true, s.dataTransformTimeout)
 		if err != nil {
 			return nil, 0, adbc.Error{
 				Code: adbc.StatusInternal,
-				Msg:  fmt.Sprintf("failed to create DCSQL data transform: %v", err),
+				Msg:  err.Error(),
 			}
 		}
 
@@ -123,9 +124,10 @@ func (s *statement) executeSQLQuery(ctx context.Context) (array.RecordReader, in
 		emptySchema := arrow.NewSchema([]arrow.Field{}, nil)
 		reader, err := array.NewRecordReader(emptySchema, []arrow.Record{})
 		if err != nil {
+			err = fmt.Errorf("failed to create empty record reader: %w", err)
 			return nil, 0, adbc.Error{
 				Code: adbc.StatusInternal,
-				Msg:  fmt.Sprintf("failed to create empty record reader: %v", err),
+				Msg:  err.Error(),
 			}
 		}
 		return reader, 0, nil
@@ -140,18 +142,20 @@ func (s *statement) executeSQLQuery(ctx context.Context) (array.RecordReader, in
 
 	response, err := api.ExecuteSqlQuery(ctx, s.cnxn.client, queryRequest)
 	if err != nil {
+		err = fmt.Errorf("SQL query execution failed: %w", err)
 		return nil, 0, adbc.Error{
 			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("SQL query execution failed: %v", err),
+			Msg:  err.Error(),
 		}
 	}
 
 	// Convert the response to Arrow format
 	reader, rowCount, err := s.convertSqlQueryResponseToArrow(response)
 	if err != nil {
+		err = fmt.Errorf("failed to convert query response to Arrow: %w", err)
 		return nil, 0, adbc.Error{
 			Code: adbc.StatusInternal,
-			Msg:  fmt.Sprintf("failed to convert query response to Arrow: %v", err),
+			Msg:  err.Error(),
 		}
 	}
 
@@ -238,9 +242,13 @@ func (s *statement) GetOptionDouble(key string) (float64, error) {
 }
 
 func (s *statement) GetOptionInt(key string) (int64, error) {
+	switch key {
+	case OptionIntDataTransformRunTimeout:
+		return s.dataTransformTimeout.Milliseconds(), nil
+	}
 	return 0, adbc.Error{
 		Code: adbc.StatusNotFound,
-		Msg:  fmt.Sprintf("unknown statement option: %s", key),
+		Msg:  fmt.Sprintf("unknown int type statement option: %s", key),
 	}
 }
 
@@ -276,10 +284,16 @@ func (s *statement) SetOptionDouble(key string, value float64) error {
 }
 
 func (s *statement) SetOptionInt(key string, value int64) error {
-	return adbc.Error{
-		Code: adbc.StatusNotImplemented,
-		Msg:  fmt.Sprintf("unknown statement option: %s", key),
+	switch key {
+	case OptionIntDataTransformRunTimeout:
+		s.dataTransformTimeout = time.Duration(value) * time.Millisecond
+	default:
+		return adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  fmt.Sprintf("unknown int type statement option: %s", key),
+		}
 	}
+	return nil
 }
 
 func (s *statement) SetSubstraitPlan(plan []byte) error {

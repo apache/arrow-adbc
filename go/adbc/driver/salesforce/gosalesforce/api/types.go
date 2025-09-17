@@ -55,24 +55,16 @@ func DefaultAuthConfig() *AuthConfig {
 	}
 }
 
-// AuthError represents an authentication-related error
-type AuthError struct {
+// SfdcError represents an authentication-related error
+type SfdcError struct {
 	Code    int
 	Message string
 	Type    string
 }
 
-func (e *AuthError) Error() string {
+func (e *SfdcError) Error() string {
 	return e.Message
 }
-
-// Common authentication errors
-var (
-	ErrInvalidCredentials = &AuthError{Code: 400, Message: "Invalid credentials", Type: "invalid_credentials"}
-	ErrTokenExpired       = &AuthError{Code: 401, Message: "Token expired", Type: "token_expired"}
-	ErrInvalidGrant       = &AuthError{Code: 400, Message: "Invalid grant", Type: "invalid_grant"}
-	ErrInsufficientScope  = &AuthError{Code: 403, Message: "Insufficient scope", Type: "insufficient_scope"}
-)
 
 // SqlQueryRequest represents a SQL query request to Data Cloud
 type SqlQueryRequest struct {
@@ -621,4 +613,159 @@ func (s *DataTransform) IsLastRunInProgress() bool {
 
 func (s *DataTransform) IsLastRunPending() bool {
 	return strings.EqualFold(string(s.LastRunStatus), string(DataTransformLastRunStatusPending))
+}
+
+// DataStreamType represents the type of data stream
+type DataStreamType string
+
+const (
+	DataStreamTypeConnectorFramework DataStreamType = "ConnectorFramework"
+	DataStreamTypeEvents             DataStreamType = "Events"
+	DataStreamTypeExternal           DataStreamType = "External"
+	DataStreamTypeIngestAPI          DataStreamType = "IngestAPI"
+	DataStreamTypeMc                 DataStreamType = "Mc"
+	DataStreamTypeMcde               DataStreamType = "Mcde"
+	DataStreamTypeSfdc               DataStreamType = "Sfdc"
+)
+
+// DataStreamStatus represents the status of a data stream
+type DataStreamStatus string
+
+const (
+	DataStreamStatusActive     DataStreamStatus = "Active"
+	DataStreamStatusDeleting   DataStreamStatus = "Deleting"
+	DataStreamStatusError      DataStreamStatus = "Error"
+	DataStreamStatusProcessing DataStreamStatus = "Processing"
+)
+
+// DataStreamLastRunStatus represents the status of the last run
+type DataStreamLastRunStatus string
+
+const (
+	DataStreamLastRunStatusCancelled  DataStreamLastRunStatus = "Cancelled"
+	DataStreamLastRunStatusExtracting DataStreamLastRunStatus = "Extracting"
+	DataStreamLastRunStatusFailure    DataStreamLastRunStatus = "Failure"
+	DataStreamLastRunStatusInProgress DataStreamLastRunStatus = "In Progress"
+	DataStreamLastRunStatusNone       DataStreamLastRunStatus = "None"
+	DataStreamLastRunStatusPending    DataStreamLastRunStatus = "Pending"
+	DataStreamLastRunStatusSuccess    DataStreamLastRunStatus = "Success"
+)
+
+// DataAccessMode represents the data access mode used to create the data stream
+type DataAccessMode string
+
+const (
+	DataAccessModeDirectAccess DataAccessMode = "Direct_Access"
+	DataAccessModeIngest       DataAccessMode = "Ingest"
+)
+
+// DataStreamFrequencyType represents how often the data stream is refreshed
+type DataStreamFrequencyType string
+
+const (
+	DataStreamFrequencyTypeDaily           DataStreamFrequencyType = "Daily"
+	DataStreamFrequencyTypeHourly          DataStreamFrequencyType = "Hourly"
+	DataStreamFrequencyTypeMinutely        DataStreamFrequencyType = "Minutely"
+	DataStreamFrequencyTypeMonthly         DataStreamFrequencyType = "Monthly"
+	DataStreamFrequencyTypeMonthlyRelative DataStreamFrequencyType = "MonthlyRelative"
+	DataStreamFrequencyTypeNone            DataStreamFrequencyType = "None"
+	DataStreamFrequencyTypeWeekly          DataStreamFrequencyType = "Weekly"
+)
+
+// DataStreamRefreshDayOfWeek represents which day of the week the data stream is refreshed
+type DataStreamRefreshDayOfWeek string
+
+const (
+	DataStreamRefreshDayOfWeekFriday    DataStreamRefreshDayOfWeek = "Friday"
+	DataStreamRefreshDayOfWeekMonday    DataStreamRefreshDayOfWeek = "Monday"
+	DataStreamRefreshDayOfWeekSaturday  DataStreamRefreshDayOfWeek = "Saturday"
+	DataStreamRefreshDayOfWeekSunday    DataStreamRefreshDayOfWeek = "Sunday"
+	DataStreamRefreshDayOfWeekThursday  DataStreamRefreshDayOfWeek = "Thursday"
+	DataStreamRefreshDayOfWeekTuesday   DataStreamRefreshDayOfWeek = "Tuesday"
+	DataStreamRefreshDayOfWeekWednesday DataStreamRefreshDayOfWeek = "Wednesday"
+)
+
+// DataStreamRefreshMode represents the refresh mode of the refresh configuration
+type DataStreamRefreshMode string
+
+const (
+	DataStreamRefreshModeFullRefresh             DataStreamRefreshMode = "FullRefresh"
+	DataStreamRefreshModeIncremental             DataStreamRefreshMode = "Incremental"
+	DataStreamRefreshModeNearRealTimeIncremental DataStreamRefreshMode = "NearRealTimeIncremental"
+	DataStreamRefreshModePartialUpdate           DataStreamRefreshMode = "PartialUpdate"
+	DataStreamRefreshModeReplace                 DataStreamRefreshMode = "Replace"
+	DataStreamRefreshModeUpsertMode              DataStreamRefreshMode = "UpsertMode"
+)
+
+// DataStreamConnectorDetails represents details about the Data Cloud connector
+type DataStreamConnectorDetails struct {
+	Name         string `json:"name"`
+	SourceObject string `json:"sourceObject"`
+}
+
+// DataStreamConnectorInfo represents data stream connector information
+type DataStreamConnectorInfo struct {
+	ConnectorDetails DataStreamConnectorDetails `json:"connectorDetails"`
+	ConnectorType    string                     `json:"connectorType"`
+}
+
+// DataStreamSourceField represents a source field in the data stream
+type DataStreamSourceField struct {
+	Datatype string `json:"datatype"`
+	Format   string `json:"format,omitempty"`
+	Name     string `json:"name"`
+}
+
+// DataStreamFieldMapping represents field mapping for the data stream
+type DataStreamFieldMapping struct {
+	Formula         string `json:"formula"`
+	SourceFieldName string `json:"sourceFieldName"`
+	TargetFieldName string `json:"targetFieldName"`
+}
+
+// DataStreamFrequency represents frequency of the refresh configuration
+type DataStreamFrequency struct {
+	FrequencyType     DataStreamFrequencyType     `json:"frequencyType"`
+	Hours             []int                       `json:"hours"`
+	RefreshDayOfMonth []int                       `json:"refreshDayOfMonth"`
+	RefreshDayOfWeek  *DataStreamRefreshDayOfWeek `json:"refreshDayOfWeek,omitempty"`
+}
+
+// DataStreamRefreshConfig represents data stream refresh configuration
+type DataStreamRefreshConfig struct {
+	Frequency                         DataStreamFrequency   `json:"frequency"`
+	HasHeaders                        bool                  `json:"hasHeaders"`
+	IsAccelerationEnabled             *bool                 `json:"isAccelerationEnabled,omitempty"`
+	RefreshMode                       DataStreamRefreshMode `json:"refreshMode"`
+	ShouldFetchImmediately            bool                  `json:"shouldFetchImmediately"`
+	ShouldTreatMissingFilesAsFailures bool                  `json:"shouldTreatMissingFilesAsFailures"`
+}
+
+// DataStream represents a data stream
+type DataStream struct {
+	// Inherited from Asset Base Output
+	CreatedBy DataTransformUser `json:"createdBy"`
+	ID        string            `json:"id"`
+	Label     string            `json:"label"`
+	Name      string            `json:"name"`
+	URL       string            `json:"url,omitempty"`
+
+	// Data stream specific fields
+	AdvancedAttributes   map[string]interface{}   `json:"advancedAttributes,omitempty"`
+	ConnectorInfo        DataStreamConnectorInfo  `json:"connectorInfo"`
+	DataAccessMode       *DataAccessMode          `json:"dataAccessMode,omitempty"`
+	DataLakeObjectInfo   DataLakeObject           `json:"dataLakeObjectInfo"`
+	DataSource           string                   `json:"dataSource,omitempty"`
+	DataStreamType       *DataStreamType          `json:"dataStreamType,omitempty"`
+	IsEnabled            *bool                    `json:"isEnabled,omitempty"`
+	LastAddedRecords     *int64                   `json:"lastAddedRecords,omitempty"`
+	LastProcessedRecords *int64                   `json:"lastProcessedRecords,omitempty"`
+	LastRefreshDate      string                   `json:"lastRefreshDate,omitempty"`
+	LastRunStatus        *DataStreamLastRunStatus `json:"lastRunStatus,omitempty"`
+	Mappings             []DataStreamFieldMapping `json:"mappings"`
+	RecordID             string                   `json:"recordId,omitempty"`
+	RefreshConfig        *DataStreamRefreshConfig `json:"refreshConfig,omitempty"`
+	SourceFields         []DataStreamSourceField  `json:"sourceFields"`
+	Status               *DataStreamStatus        `json:"status,omitempty"`
+	TotalRecords         *int64                   `json:"totalRecords,omitempty"`
 }

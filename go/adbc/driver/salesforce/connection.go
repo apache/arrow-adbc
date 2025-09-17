@@ -326,8 +326,9 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 // NewStatement creates a new statement implementation
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	stmt := &statement{
-		alloc: c.Alloc,
-		cnxn:  c,
+		alloc:                c.Alloc,
+		cnxn:                 c,
+		dataTransformTimeout: api.MAX_ELAPSED_TIME,
 	}
 
 	return stmt, nil

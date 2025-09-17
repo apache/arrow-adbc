@@ -95,7 +95,7 @@ func handleErrorResponse(statusCode int, body []byte, errorType string) error {
 	var errorResp map[string]interface{}
 	if json.Unmarshal(body, &errorResp) == nil {
 		if errorMsg, ok := errorResp["message"].(string); ok {
-			return &AuthError{
+			return &SfdcError{
 				Code:    statusCode,
 				Message: errorMsg,
 				Type:    errorType,
@@ -103,9 +103,9 @@ func handleErrorResponse(statusCode int, body []byte, errorType string) error {
 		}
 	}
 
-	return &AuthError{
+	return &SfdcError{
 		Code:    statusCode,
-		Message: fmt.Sprintf("Request failed with code %d: %s", statusCode, string(body)),
+		Message: string(body),
 		Type:    errorType,
 	}
 }
@@ -119,7 +119,7 @@ func setCommonHeaders(req *http.Request, accessToken string) {
 // validateToken checks if a token is valid and not expired
 func validateToken(token *Token, tokenName string) error {
 	if token == nil {
-		return &AuthError{
+		return &SfdcError{
 			Code:    400,
 			Message: fmt.Sprintf("%s cannot be nil", tokenName),
 			Type:    "invalid_token",
@@ -127,7 +127,7 @@ func validateToken(token *Token, tokenName string) error {
 	}
 
 	if token.IsExpired() {
-		return &AuthError{
+		return &SfdcError{
 			Code:    401,
 			Message: fmt.Sprintf("%s is expired", tokenName),
 			Type:    "token_expired",
@@ -212,7 +212,7 @@ func (c *Client) authenticateRefreshToken(ctx context.Context) (*Token, error) {
 // RefreshToken refreshes an existing token
 func (c *Client) RefreshToken(ctx context.Context, token *Token) (*Token, error) {
 	if token.RefreshToken == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "No refresh token available",
 			Type:    "no_refresh_token",
@@ -257,7 +257,7 @@ func (c *Client) ExchangeAndSetDataCloudToken(ctx context.Context) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return &AuthError{
+		return &SfdcError{
 			Code:    resp.StatusCode,
 			Message: fmt.Sprintf("data cloud token retrieval failed with code %d: %s", resp.StatusCode, string(body)),
 			Type:    "data_cloud_token_failed",
@@ -314,7 +314,7 @@ func (c *Client) RevokeToken(ctx context.Context, token string) error {
 // ExecuteSqlQuery executes a SQL query against Data Cloud
 func (c *Client) ExecuteSqlQuery(ctx context.Context, queryRequest *SqlQueryRequest) (*SqlQueryResponse, error) {
 	if queryRequest == nil {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "SQL query request cannot be nil",
 			Type:    "invalid_request",
@@ -322,7 +322,7 @@ func (c *Client) ExecuteSqlQuery(ctx context.Context, queryRequest *SqlQueryRequ
 	}
 
 	if queryRequest.SQL == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "SQL query cannot be empty",
 			Type:    "invalid_request",
@@ -382,7 +382,7 @@ func (c *Client) ExecuteSqlQuery(ctx context.Context, queryRequest *SqlQueryRequ
 // ExecuteQueryV2 executes a SQL query against the Data Cloud v2 query API
 func (c *Client) ExecuteQueryV2(ctx context.Context, query string, enableArrowStream bool) (*QueryV2Response, error) {
 	if query == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "SQL query cannot be empty",
 			Type:    "invalid_request",
@@ -442,7 +442,7 @@ func (c *Client) ExecuteQueryV2(ctx context.Context, query string, enableArrowSt
 // GetNextBatchV2 fetches the next batch of results for a v2 query
 func (c *Client) GetNextBatchV2(ctx context.Context, instanceURL, accessToken, nextBatchId string, enableArrowStream bool) (*QueryV2Response, error) {
 	if nextBatchId == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Next batch ID cannot be empty",
 			Type:    "invalid_request",
@@ -530,7 +530,7 @@ func (c *Client) requestAccessToken(ctx context.Context, tokenURL string, data u
 		var errorResp map[string]interface{}
 		if json.Unmarshal(body, &errorResp) == nil {
 			if errorMsg, ok := errorResp["error_description"].(string); ok {
-				return nil, &AuthError{
+				return nil, &SfdcError{
 					Code:    resp.StatusCode,
 					Message: errorMsg,
 					Type:    fmt.Sprintf("%v", errorResp["error"]),
@@ -538,7 +538,7 @@ func (c *Client) requestAccessToken(ctx context.Context, tokenURL string, data u
 			}
 		}
 
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    resp.StatusCode,
 			Message: fmt.Sprintf("Authentication failed with code %d: %s", resp.StatusCode, string(body)),
 			Type:    "authentication_failed",

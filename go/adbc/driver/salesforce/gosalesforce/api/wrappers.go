@@ -13,7 +13,7 @@ import (
 
 // Constants for exponential backoff
 const (
-	MAX_ELAPSED_TIME = 5 * time.Minute
+	MAX_ELAPSED_TIME = 3 * time.Minute
 	INITIAL_INTERVAL = 100 * time.Millisecond
 	MAX_INTERVAL     = 1 * time.Second
 )
@@ -51,7 +51,7 @@ func (client *Client) DeleteIfDloExists(ctx context.Context, name string) error 
 		if !deletionTriggered {
 			deleteErr := client.DeleteDataLakeObjectByName(ctx, name)
 			if deleteErr != nil {
-				return nil, backoff.Permanent(fmt.Errorf("failed to delete existing DLO: %w", deleteErr))
+				return nil, backoff.Permanent(fmt.Errorf("failed to delete the existing DLO %s: %w", name, deleteErr))
 			}
 			deletionTriggered = true
 		}
@@ -69,7 +69,7 @@ func (client *Client) DeleteIfDloExists(ctx context.Context, name string) error 
 		}))
 
 	if err != nil {
-		return fmt.Errorf("timeout waiting for DLO deletion: %w", err)
+		return err
 	}
 
 	return nil
@@ -95,13 +95,13 @@ func (client *Client) DeleteDataTransformIfExists(ctx context.Context, name stri
 		if !deletionTriggered {
 			deleteErr := client.DeleteDataTransform(ctx, name)
 			if deleteErr != nil {
-				return nil, backoff.Permanent(fmt.Errorf("failed to delete existing Data Transform: %w", deleteErr))
+				return nil, backoff.Permanent(fmt.Errorf("failed to delete the existing data transform: %w", deleteErr))
 			}
 			deletionTriggered = true
 		}
 
-		// Return retriable error to continue polling
-		return nil, fmt.Errorf("data Transform %s still exists, waiting for deletion to complete", name)
+		// Return retryable error to continue polling
+		return nil, fmt.Errorf("data transform %s is not deleted yet", name)
 	}
 
 	// Retry with exponential backoff
@@ -109,11 +109,11 @@ func (client *Client) DeleteDataTransformIfExists(ctx context.Context, name stri
 		backoff.WithBackOff(exponentialBackOff),
 		backoff.WithMaxElapsedTime(MAX_ELAPSED_TIME),
 		backoff.WithNotify(func(err error, duration time.Duration) {
-			log.Printf("🕒 Data Transform deletion in progress, retrying in %v...\n", duration)
+			log.Printf("🕒 data transform deletion in progress, retrying in %v...\n", duration)
 		}))
 
 	if err != nil {
-		return fmt.Errorf("timeout waiting for Data Transform deletion: %w", err)
+		return err
 	}
 
 	return nil
@@ -165,7 +165,7 @@ func (client *Client) CreateDataLakeObjectWithInferredSchema(ctx context.Context
 
 // If recreateIfExists is true, delete the existing data transform and create a new one before running it.
 // Otherwise, run the existing data transform.
-func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDlo *DataLakeObject, sql string, recreateIfExists bool) (*DataTransform, error) {
+func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDlo *DataLakeObject, sql string, recreateIfExists bool, runTimeout time.Duration) (*DataTransform, error) {
 	var dataTransform *DataTransform
 	var err error
 	if recreateIfExists {
@@ -177,7 +177,7 @@ func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDl
 		// Creates a data transform
 		request := NewBatchDataTransformRequest(
 			targetDlo.Name,
-			fmt.Sprintf("Create the target DLO %s", targetDlo.Name),
+			targetDlo.Name,
 			map[string]DbtDataTransformNode{
 				"node": NewSimpleDbtDataTransformNode(
 					"node",
@@ -209,19 +209,20 @@ func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDl
 			return nil, err
 		}
 		if !refreshStatusResponse.Success {
-			return nil, fmt.Errorf("DCSQL transform status refresh failed: %v", refreshStatusResponse.Errors)
+			return nil, fmt.Errorf("data transform status refresh failed with errors %v", refreshStatusResponse.Errors)
 		}
 
 		dataTransform, err := client.GetDataTransform(ctx, dataTransform.Name)
 		if err != nil {
 			return nil, err
 		}
+
 		if dataTransform.IsActive() {
 			return nil, nil
 		} else if dataTransform.IsError() {
-			return nil, fmt.Errorf("DCSQL transform error: %v", dataTransform.Status)
+			return nil, fmt.Errorf("failed to create the data transform, settled status [%v]", dataTransform.Status)
 		} else {
-			return nil, fmt.Errorf("DCSQL transform is not active")
+			return nil, fmt.Errorf("waiting for data transform %s to be active times out, it is still in status [%v]", dataTransform.Name, dataTransform.Status)
 		}
 	}
 
@@ -231,10 +232,10 @@ func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDl
 		backoff.WithBackOff(exponentialBackOff),
 		backoff.WithMaxElapsedTime(MAX_ELAPSED_TIME),
 		backoff.WithNotify(func(err error, duration time.Duration) {
-			log.Printf("🕒 DCSQL transform action in progress, retrying in %v...\n", duration)
+			log.Printf("🕒 data transform run in progress, retrying in %v...\n", duration)
 		}))
 	if err != nil {
-		return nil, fmt.Errorf("timeout waiting for DCSQL transform action: %w", err)
+		return nil, err
 	}
 
 	// Runs the data transform
@@ -246,6 +247,9 @@ func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDl
 	// Waits for the data transform run to be success
 	waitForRunOp := func() (interface{}, error) {
 		refreshStatusResponse, err := client.RefreshDataTransformStatus(ctx, dataTransform.Name)
+		if !refreshStatusResponse.Success {
+			return nil, fmt.Errorf("failed to refresh the data transform status [%v]", refreshStatusResponse.Errors)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -258,23 +262,21 @@ func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDl
 		if dataTransform.IsLastRunSuccess() {
 			return nil, nil
 		} else if dataTransform.IsLastRunFailure() || dataTransform.IsLastRunCanceled() {
-			return nil, fmt.Errorf("DCSQL transform last run did not complete successfully: %v", refreshStatusResponse.Errors)
+			return nil, fmt.Errorf("failed to complete the data transform with errors %v", refreshStatusResponse.Errors)
+		} else {
+			return nil, fmt.Errorf("data transform run times out, it is still in status [%v]", dataTransform.LastRunStatus)
 		}
-		if !refreshStatusResponse.Success {
-			return nil, fmt.Errorf("DCSQL transform status refresh failed: %v", refreshStatusResponse.Errors)
-		}
-		return nil, fmt.Errorf("DCSQL transform is not running")
 	}
 
 	exponentialBackOff.MaxInterval = 5 * time.Second // data transform run takes longer to complete
 	_, err = backoff.Retry(ctx, waitForRunOp,
 		backoff.WithBackOff(exponentialBackOff),
-		backoff.WithMaxElapsedTime(MAX_ELAPSED_TIME),
+		backoff.WithMaxElapsedTime(runTimeout),
 		backoff.WithNotify(func(err error, duration time.Duration) {
-			log.Printf("🕒 DCSQL transform run in progress, retrying in %v...\n", duration)
+			log.Printf("🕒 data transform run in progress, retrying in %v...\n", duration)
 		}))
 	if err != nil {
-		return nil, fmt.Errorf("timeout waiting for DCSQL transform run: %w", err)
+		return nil, err
 	}
 
 	return dataTransform, nil

@@ -10,7 +10,7 @@ import (
 func (c *Client) CreateDataTransform(ctx context.Context, request *CreateDataTransformRequest) (*DataTransform, error) {
 	// Validate required fields
 	if request.Name == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Data transform name cannot be empty",
 			Type:    "invalid_request",
@@ -18,7 +18,7 @@ func (c *Client) CreateDataTransform(ctx context.Context, request *CreateDataTra
 	}
 
 	if request.Label == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Data transform label cannot be empty",
 			Type:    "invalid_request",
@@ -33,7 +33,7 @@ func (c *Client) CreateDataTransform(ctx context.Context, request *CreateDataTra
 func (c *Client) GetDataTransform(ctx context.Context, dataTransformNameOrId string) (*DataTransform, error) {
 	// Validate required fields
 	if dataTransformNameOrId == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Data transform name or ID cannot be empty",
 			Type:    "invalid_request",
@@ -53,7 +53,7 @@ func (c *Client) GetDataTransform(ctx context.Context, dataTransformNameOrId str
 func (c *Client) GetDataTransformByDLO(ctx context.Context, dloName string) ([]DataTransform, error) {
 	// Validate required fields
 	if dloName == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Data transform name or ID cannot be empty",
 			Type:    "invalid_request",
@@ -81,7 +81,7 @@ func (c *Client) GetDataTransformByDLO(ctx context.Context, dloName string) ([]D
 func (c *Client) RefreshDataTransformStatus(ctx context.Context, dataTransformNameOrId string) (*DataCloudActionResponse, error) {
 	// Validate required fields
 	if dataTransformNameOrId == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Data transform name or ID cannot be empty",
 			Type:    "invalid_request",
@@ -97,7 +97,7 @@ func (c *Client) RefreshDataTransformStatus(ctx context.Context, dataTransformNa
 func (c *Client) RunDataTransform(ctx context.Context, dataTransformNameOrId string) (*DataCloudActionResponse, error) {
 	// Validate required fields
 	if dataTransformNameOrId == "" {
-		return nil, &AuthError{
+		return nil, &SfdcError{
 			Code:    400,
 			Message: "Data transform name or ID cannot be empty",
 			Type:    "invalid_request",
@@ -113,7 +113,7 @@ func (c *Client) RunDataTransform(ctx context.Context, dataTransformNameOrId str
 func (c *Client) DeleteDataTransform(ctx context.Context, dataTransformNameOrId string) error {
 	// Validate required fields
 	if dataTransformNameOrId == "" {
-		return &AuthError{
+		return &SfdcError{
 			Code:    400,
 			Message: "Data transform name or ID cannot be empty",
 			Type:    "invalid_request",
