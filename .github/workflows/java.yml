@@ -25,6 +25,8 @@ on:
       - "java/**"
       - ".github/workflows/java.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "java/**"
       - ".github/workflows/java.yml"
@@ -180,7 +182,12 @@ jobs:
         if: failure()
         run: |
           mkdir ~/logs
-          find "$VCPKG_ROOT" -name 'build-*.log' -exec cp '{}' ~/logs ';'
+          counter=0
+          for log in $(find "$VCPKG_ROOT" -name 'build-*.log' -or -name 'config-*.log'); do
+            echo cp "$log" ~/logs/$counter-$(basename "$log")
+            cp "$log" ~/logs/$counter-$(basename "$log")
+            counter=$((counter+1))
+          done
       - name: Upload failure logs
         if: failure()
         uses: actions/upload-artifact@v4
