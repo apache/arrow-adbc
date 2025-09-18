@@ -29,17 +29,17 @@ repos:
     - id: check-yaml
       exclude: ci/conda/meta.yaml
     - id: end-of-file-fixer
-      exclude: "^r/.*?/_snaps/.*?.md$"
+      exclude: "^(r/.*?/_snaps/.*?.md)|(.*\\.patch)$"
     - id: mixed-line-ending
       name: "Mixed line endings (LF)"
       args: [--fix=lf]
-      exclude: '\.(bat|sln)$'
+      exclude: '\.(bat|sln|patch)$'
     - id: mixed-line-ending
       name: "Mixed line endings (CRLF)"
       args: [--fix=crlf]
       files: '\.(bat|sln)$'
     - id: trailing-whitespace
-      exclude: "^r/.*?/_snaps/.*?.md$"
+      exclude: "^(r/.*?/_snaps/.*?.md)|(.*\\.patch)$"
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: deec0115cd2847f837ac9180c4b7d1edb423fe02  # v18.1.7
     hooks:

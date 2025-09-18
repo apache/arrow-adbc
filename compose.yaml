@@ -92,7 +92,8 @@ services:
     image: ${ARCH}/maven:${MAVEN}-eclipse-temurin-${JDK}
     volumes:
       - .:/adbc:delegated
-    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
+    # N.B. never run JNI tests as we won't have the drivers built
+    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && env BUILD_JNI=OFF /adbc/ci/scripts/java_test.sh /adbc'"
 
   # Build the JNI and driver libraries
   java-jni:

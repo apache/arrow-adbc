@@ -52,6 +52,7 @@ adbcsnowflake <- function() {
 
 #' @rdname adbcsnowflake
 #' @importFrom adbcdrivermanager adbc_database_init
+#' @importFrom utils packageVersion
 #' @export
 adbc_database_init.adbcsnowflake_driver_snowflake <- function(driver, ..., uri = NULL) {
   options <- list(

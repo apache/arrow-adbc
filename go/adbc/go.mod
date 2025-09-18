@@ -39,11 +39,11 @@ require (
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
 	golang.org/x/oauth2 v0.31.0
 	golang.org/x/sync v0.17.0
-	golang.org/x/tools v0.36.0
+	golang.org/x/tools v0.37.0
 	google.golang.org/api v0.249.0
-	google.golang.org/grpc v1.75.0
-	google.golang.org/protobuf v1.36.8
-	modernc.org/sqlite v1.38.2
+	google.golang.org/grpc v1.75.1
+	google.golang.org/protobuf v1.36.9
+	modernc.org/sqlite v1.39.0
 )
 
 require (
@@ -121,12 +121,13 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.38.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
-	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/term v0.34.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/crypto v0.42.0 // indirect
+	golang.org/x/mod v0.28.0 // indirect
+	golang.org/x/net v0.44.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/telemetry v0.0.0-20250908211612-aef8a434d053 // indirect
+	golang.org/x/term v0.35.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
