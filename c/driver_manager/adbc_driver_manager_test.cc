@@ -1001,11 +1001,11 @@ TEST_F(DriverManifest, LoadSystemLevelManifest) {
 #endif
 
 TEST_F(DriverManifest, CondaPrefix) {
-#if defined(ADBC_CONDA_BUILD)
+#if ADBC_CONDA_BUILD
   constexpr bool is_conda_build = true;
 #else
   constexpr bool is_conda_build = false;
-#endif  // defined(ADBC_CONDA_BUILD)
+#endif  // ADBC_CONDA_BUILD
 
   std::cerr << "ADBC_CONDA_BUILD: " << (is_conda_build ? "defined" : "not defined")
             << std::endl;

@@ -69,8 +69,11 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
                                      ${REPOSITORY_ROOT}/c/vendor
                                      ${REPOSITORY_ROOT}/c/driver)
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
+  # We have to match R Makevars which can only set to 1 or 0 (not define/undefine)
   if("$ENV{CONDA_BUILD}" STREQUAL "1")
-    target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_CONDA_BUILD)
+    target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_CONDA_BUILD=1)
+  else()
+    target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_CONDA_BUILD=0)
   endif()
 endforeach()
 
@@ -108,7 +111,9 @@ if(ADBC_BUILD_TESTS)
                                PRIVATE ADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL=1)
   endif()
   if("$ENV{CONDA_BUILD}" STREQUAL "1")
-    target_compile_definitions(adbc-driver-manager-test PRIVATE ADBC_CONDA_BUILD)
+    target_compile_definitions(adbc-driver-manager-test PRIVATE ADBC_CONDA_BUILD=1)
+  else()
+    target_compile_definitions(adbc-driver-manager-test PRIVATE ADBC_CONDA_BUILD=0)
   endif()
   target_include_directories(adbc-driver-manager-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
