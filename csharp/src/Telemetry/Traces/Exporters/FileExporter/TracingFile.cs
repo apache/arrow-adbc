@@ -177,7 +177,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 {
                     tracingDirectory.Create();
                     unorderedFiles = [];
-        }
+                }
                 else
                 {
                     unorderedFiles = tracingDirectory.EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly);
