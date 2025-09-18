@@ -731,7 +731,7 @@ struct ManagedLibrary {
 #endif  // _WIN32
         auto venv = GetEnvPaths(conda_name);
         if (!venv.empty()) {
-          for (const auto& venv_path : venv) {
+          for (const auto& [_, venv_path] : venv) {
             search_paths.emplace_back(SearchPathSource::kConda,
                                       venv_path / "etc" / "adbc" / "drivers");
           }
