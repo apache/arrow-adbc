@@ -15,18 +15,21 @@
  * limitations under the License.
  */
 
-using System.Text.Json.Serialization;
-
-namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
+namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners
 {
-    /// <summary>
-    /// Provides a source-generated JSON serialization context for the <see cref="SerializableActivity"/> type.
-    /// </summary>
-    /// <remarks>This context is used to optimize JSON serialization and deserialization of <see
-    /// cref="SerializableActivity"/> objects by leveraging source generation. It is intended for internal use within
-    /// the application.</remarks>
-    [JsonSerializable(typeof(SerializableActivity))]
-    internal partial class SerializableActivityJsonContext : JsonSerializerContext
+    public class ListenersOptions
     {
+        public const string Exporter = "adbc.traces.exporter";
+
+        public static class Environment
+        {
+            public const string Exporter = "OTEL_TRACES_EXPORTER";
+        }
+
+        public static class Exporters
+        {
+            public const string None = "none";
+            public const string AdbcFile = "adbcfile";
+        }
     }
 }

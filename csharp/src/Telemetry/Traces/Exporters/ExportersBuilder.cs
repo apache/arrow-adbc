@@ -94,32 +94,63 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
             out string? exporterName,
             string environmentName = ExportersOptions.Environment.Exporter)
         {
-            TracerProvider? tracerProvider = null;
-            exporterName = null;
-
-            if (string.IsNullOrWhiteSpace(exporterOption))
+            if (TryActivate(exporterOption, out exporterName, out TracerProvider? tracerProvider, environmentName))
             {
-                // Fall back to check the environment variable
-                exporterOption = Environment.GetEnvironmentVariable(environmentName);
+                return tracerProvider;
             }
-            if (string.IsNullOrWhiteSpace(exporterOption))
-            {
-                // Neither option or environment variable is set - no tracer provider will be activated.
-                return null;
-            }
-
-            if (!_tracerProviderFactories.TryGetValue(exporterOption!, out Func<string, string?, TracerProvider?>? factory))
+            if (!string.IsNullOrEmpty(exporterName) && exporterName != ExportersOptions.Exporters.None)
             {
                 // Requested option has not been added via the builder
-                throw AdbcException.NotImplemented($"Exporter option '{exporterOption}' is not implemented.");
+                throw AdbcException.NotImplemented($"Exporter option '{exporterName}' is not implemented.");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Tries to activate an exporter based on the dictionary of <see cref="TracerProvider"/> factories.
+        /// </summary>
+        /// <param name="exporterOption">The value (name) of the exporter option, typically passed as option <see cref="ExportersOptions.Exporter"/>.</param>
+        /// <param name="exporterName">The actual exporter name when successfully activated.</param>
+        /// <param name="tracerProvider">A non-null <see cref="TracerProvider"/> when successfully activated. Returns null if not successful. Note: this object must be explicitly disposed when no longer necessary.</param>
+        /// <param name="environmentName">The (optional) name of the environment variable to test for the exporter name. Default: <see cref="ExportersOptions.Environment.Exporter"/></param>
+        /// <returns>Returns true if the exporter was successfully activated. Returns false, otherwise.</returns>
+        public bool TryActivate(
+            string? exporterOption,
+            out string? exporterName,
+            out TracerProvider? tracerProvider,
+            string environmentName = ExportersOptions.Environment.Exporter)
+        {
+            tracerProvider = null;
+            exporterName = null;
+
+            if (!TryGetExporterName(exporterOption, environmentName, out exporterName)
+                || !_tracerProviderFactories.TryGetValue(exporterName!, out Func<string, string?, TracerProvider?>? factory))
+            {
+                return false;
             }
 
             tracerProvider = factory.Invoke(_sourceName, _sourceVersion);
-            if (tracerProvider != null)
+            if (tracerProvider == null)
             {
-                exporterName = exporterOption;
+                return false;
             }
-            return tracerProvider;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Determines whether the specified exporter option would activate an exporter.
+        /// </summary>
+        /// <param name="exporterOption">The value (name) of the exporter option, typically passed as option <see cref="ExportersOptions.Exporter"/>.</param>
+        /// <param name="exporterName">The actual exporter name when successfully activated.</param>
+        /// <returns></returns>
+        public bool WouldActivate(string? exporterOption, string environmentName = ExportersOptions.Environment.Exporter)
+        {
+            if (!TryGetExporterName(exporterOption, environmentName, out string? exporterName))
+            {
+                return false;
+            }
+            return _tracerProviderFactories.ContainsKey(exporterName!);
         }
 
         public static TracerProvider NewAdbcFileTracerProvider(string sourceName, string? sourceVersion) =>
@@ -154,6 +185,23 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
 
         public static TracerProvider? NewNoopTracerProvider(string sourceName, string? sourceVersion) =>
             null;
+
+        private static bool TryGetExporterName(string? exporterOption, string environmentName, out string? exporterName)
+        {
+            if (string.IsNullOrWhiteSpace(exporterOption))
+            {
+                // Fall back to check the environment variable
+                exporterOption = Environment.GetEnvironmentVariable(environmentName);
+            }
+            if (string.IsNullOrWhiteSpace(exporterOption))
+            {
+                // Neither option or environment variable is set - no tracer provider will be activated.
+                exporterName = null;
+                return false;
+            }
+            exporterName = exporterOption!;
+            return true;
+        }
 
         public class Builder
         {

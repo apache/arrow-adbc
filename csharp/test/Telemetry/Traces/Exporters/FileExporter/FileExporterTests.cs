@@ -193,7 +193,6 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
         {
             const long maxTraceFileSizeKb = 5;
             const int maxTraceFiles = 1;
-            var delay = TimeSpan.FromSeconds(8);
             string customFolderName = ExportersBuilderTests.NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
 
@@ -265,8 +264,8 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                     .Build();
                 var tasks = new Task[]
                 {
-                    Task.Run(async () => await TraceActivities(traceFolder, "activity1", writeCount, provider1)),
-                    Task.Run(async () => await TraceActivities(traceFolder, "activity2", writeCount, provider2)),
+                    Task.Run(async () => await TraceActivities("activity1", writeCount, provider1)),
+                    Task.Run(async () => await TraceActivities("activity2", writeCount, provider2)),
                 };
                 await Task.WhenAll(tasks);
                 await Task.Delay(500);
@@ -301,7 +300,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
             }
         }
 
-        private async Task TraceActivities(string traceFolder, string activityName, int writeCount, TracerProvider provider)
+        private async Task TraceActivities(string activityName, int writeCount, TracerProvider provider)
         {
             for (int i = 0; i < writeCount; i++)
             {
