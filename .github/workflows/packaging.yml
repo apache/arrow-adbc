@@ -277,7 +277,7 @@ jobs:
           mv apache-arrow-adbc-${VERSION} adbc
       - name: Build JNI artifacts
         working-directory: adbc
-        emv:
+        env:
           ADBC_BUILD_STATIC: ON
           ADBC_BUILD_TESTS: OFF
           ADBC_USE_ASAN: OFF
