@@ -282,8 +282,14 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 		fields[i] = f
 	}
 
-	meta := sc.Metadata()
-	out := arrow.NewSchema(fields, &meta)
+	meta := sc.Metadata().ToMap()
+	if _, ok := meta[MetadataKeySnowflakeQueryID]; !ok {
+		meta[MetadataKeySnowflakeQueryID] = ld.QueryID()
+	}
+
+	finalMeta := arrow.MetadataFrom(meta)
+	out := arrow.NewSchema(fields, &finalMeta)
+
 	return out, getRecTransformer(out, transformers)
 }
 
