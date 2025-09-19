@@ -15,14 +15,7 @@
 * limitations under the License.
 */
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
-using Apache.Arrow.Adbc.Drivers.Databricks;
-using Apache.Arrow.Adbc.Telemetry.Traces.Exporters;
-using Xunit;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
