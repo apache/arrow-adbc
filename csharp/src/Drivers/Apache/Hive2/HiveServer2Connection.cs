@@ -51,6 +51,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
         private bool _isDisposed;
+        // Note: this needs to be set before the constructor runs
         private readonly string _traceInstanceId = Guid.NewGuid().ToString("N");
         private readonly FileActivityListener? _fileActivityListener;
 
@@ -303,11 +304,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private void TryInitTracerProvider(out FileActivityListener? fileActivityListener)
         {
             Properties.TryGetValue(ListenersOptions.Exporter, out string? exporterOption);
-            bool shouldListenTo(ActivitySource source)
-            {
-                return source.Tags?.Any(t => t.Key == _traceInstanceId) == true;
-            }
-
+            // This listener will only listen for activity from this specific connection instance.
+            bool shouldListenTo(ActivitySource source) => source.Tags?.Any(t => t.Key == _traceInstanceId) == true;
             FileActivityListener.TryActivateFileListener(AssemblyName, exporterOption, out fileActivityListener, shouldListenTo: shouldListenTo);
         }
 
