@@ -179,3 +179,6 @@ The folder used depends on the platform.
 | Windows | `%LOCALAPPDATA%/Apache.Arrow.Adbc/Traces` |
 | macOS   | `$HOME/Library/Application Support/Apache.Arrow.Adbc/Traces` |
 | Linux   | `$HOME/.local/share/Apache.Arrow.Adbc/Traces` |
+
+By default, up to 999 files of maximum size 1024 KB are written to
+the trace folder.

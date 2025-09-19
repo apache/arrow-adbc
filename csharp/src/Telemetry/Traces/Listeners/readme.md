@@ -17,7 +17,7 @@
 
 -->
 
-# Traces Exporters
+# Traces Listeners
 
 ## FileActivityListener
 
@@ -35,7 +35,7 @@ The default folder used is:
 | macOS   | `$HOME/Library/Application Support/Apache.Arrow.Adbc/Traces` |
 | Linux   | `$HOME/.local/share/Apache.Arrow.Adbc/Traces` |
 
-By default, up to 100 files of maximum size 1024 KB are written to
+By default, up to 999 files of maximum size 1024 KB are written to
 the trace folder.
 
 The environment variable `OTEL_TRACES_EXPORTER` can be used to select one of the
