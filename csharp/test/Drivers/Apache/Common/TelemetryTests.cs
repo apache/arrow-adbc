@@ -19,7 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Apache.Arrow.Adbc.Telemetry.Traces.Exporters;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners;
 using Apache.Arrow.Adbc.Tracing;
 using Xunit;
 using Xunit.Abstractions;
@@ -33,18 +33,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         public TelemetryTests(ITestOutputHelper output, TestEnvironment<TConfig>.Factory<TEnv> testEnvFactory)
             : base(output, testEnvFactory) { }
 
-        /// <summary>
-        /// Note: Once an exporter is loaded, it is "sticky". So we can't reliably test the difference between loaded and unloaded
-        /// in a single (or even multiople) test. This just tests the ability to load the file exporter and that it produces at least one file.
-        /// </summary>
-        /// <param name="exporterName"></param>
         [SkippableTheory]
-        [InlineData(ExportersOptions.Exporters.AdbcFile)]
-        //[InlineData(null)]
-        //[InlineData(ExportersOptions.Exporters.None)]
+        [InlineData(ListenersOptions.Exporters.AdbcFile)]
+        [InlineData(null)]
+        [InlineData(ListenersOptions.Exporters.None)]
         public void CanEnableFileTracingExporterViaEnvVariable(string? exporterName)
         {
-            Environment.SetEnvironmentVariable(ExportersOptions.Environment.Exporter, exporterName);
+            Environment.SetEnvironmentVariable(ListenersOptions.Environment.Exporter, exporterName);
 
             DirectoryInfo directoryInfo = GetTracesDirectoryInfo();
             ResetTraceDirectory(directoryInfo);
@@ -78,7 +73,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 files = directoryInfo.EnumerateFiles();
                 switch (exporterName)
                 {
-                    case ExportersOptions.Exporters.AdbcFile:
+                    case ListenersOptions.Exporters.AdbcFile:
                         Assert.NotEmpty(files);
                         Assert.NotEqual(0, files.First().Length);
                         Assert.StartsWith(activitySourceName, files.First().Name);

@@ -25,7 +25,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Extensions;
-using Apache.Arrow.Adbc.Telemetry.Traces.Exporters;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
@@ -33,7 +34,6 @@ using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.V2;
-using OpenTelemetry.Trace;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
@@ -47,9 +47,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         bool includePublicProjectIds = false;
         const string infoDriverName = "ADBC BigQuery Driver";
         const string infoVendorName = "BigQuery";
-        private static readonly object s_tracerProviderLock = new();
-        private static TracerProvider? s_tracerProvider;
-        private static bool s_isFileExporterEnabled;
+        private readonly string _traceInstanceId = Guid.NewGuid().ToString("N");
+        private readonly FileActivityListener? _fileActivityListener;
 
         private readonly string infoDriverArrowVersion = BigQueryUtils.GetAssemblyVersion(typeof(IArrowArray));
 
@@ -71,7 +70,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.properties = properties.ToDictionary(k => k.Key, v => v.Value);
             }
 
-            TryInitTracerProvider();
+            TryInitTracerProvider(out _fileActivityListener);
 
             // add the default value for now and set to true until C# has a BigDecimal
             this.properties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
@@ -92,37 +91,23 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
-        private void TryInitTracerProvider()
+        private void TryInitTracerProvider(out FileActivityListener? fileActivityListener)
         {
-            // Avoid locking if the tracer provider is already set.
-            if (s_tracerProvider != null)
+            properties.TryGetValue(ListenersOptions.Exporter, out string? exporterOption);
+            bool shouldListenTo(ActivitySource source)
             {
-                return;
-            }
-            // Avoid locking if the exporter option would not activate.
-            this.properties.TryGetValue(ExportersOptions.Exporter, out string? exporterOption);
-            ExportersBuilder exportersBuilder = ExportersBuilder.Build(this.ActivitySourceName, addDefaultExporters: true).Build();
-            if (!exportersBuilder.WouldActivate(exporterOption))
-            {
-                return;
+                return source.Tags?.Any(t => t.Key == _traceInstanceId) == true;
             }
 
-            // Will likely activate the exporter, so we need to lock to ensure thread safety.
-            lock (s_tracerProviderLock)
-            {
-                // Due to race conditions, we need to check again if the tracer provider is already set.
-                if (s_tracerProvider != null)
-                {
-                    return;
-                }
+            FileActivityListener.TryActivateFileListener(AssemblyName, exporterOption, out fileActivityListener, shouldListenTo: shouldListenTo);
+        }
 
-                // Activates the exporter specified in the connection property (if exists) or environment variable (if is set).
-                if (exportersBuilder.TryActivate(exporterOption, out string? exporterName, out TracerProvider? tracerProvider, ExportersOptions.Environment.Exporter) && tracerProvider != null)
-                {
-                    s_tracerProvider = tracerProvider;
-                    s_isFileExporterEnabled = ExportersOptions.Exporters.AdbcFile.Equals(exporterName);
-                }
-            }
+        public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
+        {
+            IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
+            tags ??= [];
+            tags = tags.Concat([new(_traceInstanceId, null)]);
+            return tags;
         }
 
         /// <summary>
@@ -132,7 +117,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// It is safe to write to some output types (ie, files) but not others (ie, a shared resource).
         /// </remarks>
         /// <returns></returns>
-        internal static bool IsSafeToTrace => s_isFileExporterEnabled;
+        internal bool IsSafeToTrace => _fileActivityListener != null;
 
         /// <summary>
         /// The function to call when updating the token.
@@ -519,7 +504,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             return this.TraceActivity(activity =>
             {
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, BigQueryConnection.IsSafeToTrace);
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, IsSafeToTrace);
 
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
                 BigQueryResults? result = ExecuteWithRetriesAsync<BigQueryResults?>(func, activity).GetAwaiter().GetResult();
@@ -1322,7 +1307,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             Client?.Dispose();
             Client = null;
             this.httpClient?.Dispose();
-            s_tracerProvider?.ForceFlush();
+            this._fileActivityListener?.Dispose();
         }
 
         private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");

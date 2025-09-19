@@ -40,15 +40,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             _outputHelper = outputHelper;
         }
 
-        /// <summary>
-        /// Note: Once an exporter is loaded, it is "sticky". So we can't reliably test the difference between loaded and unloaded
-        /// in a single (or even multiople) test. This just tests the ability to load the file exporter and that it produces at least one file.
-        /// </summary>
-        /// <param name="exporterName"></param>
         [SkippableTheory]
         [InlineData(ExportersOptions.Exporters.AdbcFile)]
-        //[InlineData(null)]
-        //[InlineData(ExportersOptions.Exporters.None)]
+        [InlineData(null)]
+        [InlineData(ExportersOptions.Exporters.None)]
         public void CanEnableFileTracingExporterViaEnvVariable(string? exporterName)
         {
             Environment.SetEnvironmentVariable(ExportersOptions.Environment.Exporter, exporterName);

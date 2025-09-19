@@ -15,25 +15,21 @@
  * limitations under the License.
  */
 
-using Apache.Arrow.Adbc.Telemetry.Traces.Listeners;
-
-namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
+namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners
 {
-    public class ExportersOptions
+    public class ListenersOptions
     {
-        public const string Exporter = ListenersOptions.Exporter;
+        public const string Exporter = "adbc.traces.exporter";
 
         public static class Environment
         {
-            public const string Exporter = ListenersOptions.Environment.Exporter;
+            public const string Exporter = "OTEL_TRACES_EXPORTER";
         }
 
         public static class Exporters
         {
-            public const string None = ListenersOptions.Exporters.None;
-            public const string Otlp = "otlp";
-            public const string Console = "console";
-            public const string AdbcFile = ListenersOptions.Exporters.AdbcFile;
+            public const string None = "none";
+            public const string AdbcFile = "adbcfile";
         }
     }
 }

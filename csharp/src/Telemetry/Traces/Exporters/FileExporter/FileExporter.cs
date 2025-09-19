@@ -24,6 +24,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener;
 using OpenTelemetry;
 
 namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
