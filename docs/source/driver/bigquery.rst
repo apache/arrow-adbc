@@ -51,4 +51,4 @@ Installation
 More Information
 ~~~~~~~~~~~~~~~~
 
-For more informaton about this driver, please see the `README <https://github.com/apache/arrow-adbc/blob/main/c/driver/bigquery/README.md>`__ and this `tracking issue <https://github.com/apache/arrow-adbc/issues/1974>`__.
+For more information about this driver, please see the `README <https://github.com/apache/arrow-adbc/blob/main/c/driver/bigquery/README.md>`__ and this `tracking issue <https://github.com/apache/arrow-adbc/issues/1974>`__.
