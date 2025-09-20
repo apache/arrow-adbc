@@ -18,7 +18,6 @@
      <ProjectReference Include="..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
      <ProjectReference Include="..\..\..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
      <ProjectReference Include="..\..\..\src\Drivers\BigQuery\Apache.Arrow.Adbc.Drivers.BigQuery.csproj" />
-     <ProjectReference Include="..\..\..\src\Telemetry\Traces\Exporters\Apache.Arrow.Adbc.Telemetry.Traces.Exporters.csproj" />
      <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
    </ItemGroup>
     <ItemGroup>

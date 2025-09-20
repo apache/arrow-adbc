@@ -31,7 +31,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
         [JsonConstructor]
         public SerializableActivity() { }
 
-        public SerializableActivity(
+        internal SerializableActivity(
             ActivityStatusCode status,
             string? statusDescription,
             bool hasRemoteParent,

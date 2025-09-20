@@ -120,7 +120,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
 
         private async Task WriteSingleLineAsync(Stream stream)
         {
-            if (_currentFileStream!.Length + stream.Length >= _maxFileSizeKb * KbInByes)
+            if ((_currentFileStream!.Length + stream.Length) >= (_maxFileSizeKb * KbInByes))
             {
                 // If tracing file is maxxed-out, start a new tracing file.
                 await OpenNewTracingFileAsync().ConfigureAwait(false);
@@ -209,7 +209,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
                     await action.Invoke().ConfigureAwait(false);
                     completed = true;
                 }
-                catch (T) when (retryCount < maxRetries - 1)
+                catch (T) when (retryCount < (maxRetries - 1))
                 {
                     retryCount++;
                     try

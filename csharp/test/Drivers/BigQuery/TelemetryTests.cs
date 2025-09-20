@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
-using Apache.Arrow.Adbc.Telemetry.Traces.Exporters;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners;
 using Apache.Arrow.Adbc.Tracing;
 using Xunit;
 using Xunit.Abstractions;
@@ -41,12 +41,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [SkippableTheory]
-        [InlineData(ExportersOptions.Exporters.AdbcFile)]
+        [InlineData(ListenersOptions.Exporters.AdbcFile)]
         [InlineData(null)]
-        [InlineData(ExportersOptions.Exporters.None)]
+        [InlineData(ListenersOptions.Exporters.None)]
         public void CanEnableFileTracingExporterViaEnvVariable(string? exporterName)
         {
-            Environment.SetEnvironmentVariable(ExportersOptions.Environment.Exporter, exporterName);
+            Environment.SetEnvironmentVariable(ListenersOptions.Environment.Exporter, exporterName);
 
             foreach (BigQueryTestEnvironment environment in _environments)
             {
@@ -82,7 +82,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     files = directoryInfo.EnumerateFiles();
                     switch (exporterName)
                     {
-                        case ExportersOptions.Exporters.AdbcFile:
+                        case ListenersOptions.Exporters.AdbcFile:
                             Assert.NotEmpty(files);
                             Assert.NotEqual(0, files.First().Length);
                             Assert.StartsWith(activitySourceName, files.First().Name, StringComparison.OrdinalIgnoreCase);
