@@ -20,7 +20,7 @@ BigQuery Support
 ================
 
 .. adbc_driver_status:: ../../../c/driver/bigquery/README.md
-.. adbc_driver_status:: ../../../csharp/src/Drivers/BigQuery/README.md
+.. adbc_driver_status:: ../../../csharp/src/Drivers/BigQuery/readme.md
 
 There are two official BigQuery drivers in development:
 
@@ -33,7 +33,7 @@ C# BigQuery Driver
 Installation
 ~~~~~~~~~~~~
 
-.. adbc_driver_installation:: ../../../csharp/src/Drivers/BigQuery/README.md
+.. adbc_driver_installation:: ../../../csharp/src/Drivers/BigQuery/readme.md
 
 More Information
 ~~~~~~~~~~~~~~~~
