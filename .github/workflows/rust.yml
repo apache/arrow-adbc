@@ -72,7 +72,7 @@ jobs:
         working-directory: rust
         run: |
           rustup toolchain install nightly
-          cargo +nightly generate-lockfile -Z direct-minimal-versions
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +nightly generate-lockfile -Z direct-minimal-versions
       - name: Use stable Rust
         id: rust
         run: |
