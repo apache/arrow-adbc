@@ -228,6 +228,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is false if not specified.
         /// </summary>
         public const string DriverConfigTakePrecedence = "adbc.databricks.driver_config_take_precedence";
+
+        /// <summary>
+        /// The interval in seconds for heartbeat polling during long-running operations.
+        /// This prevents queries from timing out by periodically checking operation status.
+        /// Default value is 60 seconds if not specified.
+        /// Must be a positive integer value.
+        /// </summary>
+        public const string FetchHeartbeatInterval = "adbc.databricks.fetch_heartbeat_interval";
     }
 
     /// <summary>
@@ -236,7 +244,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     public class DatabricksConstants
     {
         /// <summary>
-        /// Default heartbeat interval in seconds for long-running operations. TODO: make this user-configurable
+        /// Default heartbeat interval in seconds for long-running operations. 
         /// </summary>
         public const int DefaultOperationStatusPollingIntervalSeconds = 60;
 

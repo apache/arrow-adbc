@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             }
             if (_response.DirectResults?.ResultSet?.HasMoreRows ?? true)
             {
-                operationStatusPoller = operationPoller ?? new DatabricksOperationStatusPoller(_statement, response);
+                operationStatusPoller = operationPoller ?? new DatabricksOperationStatusPoller(_statement, response, GetHeartbeatIntervalFromConnection());
                 operationStatusPoller.Start();
             }
         }
@@ -196,6 +196,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             operationStatusPoller?.Stop();
             operationStatusPoller?.Dispose();
             operationStatusPoller = null;
+        }
+
+        /// <summary>
+        /// Gets the heartbeat interval from the statement's connection.
+        /// </summary>
+        /// <returns>The heartbeat interval in seconds, or default if not available.</returns>
+        private int GetHeartbeatIntervalFromConnection()
+        {
+            if (_statement is DatabricksStatement databricksStatement)
+            {
+                var connection = databricksStatement.Connection;
+                if (connection is DatabricksConnection databricksConnection)
+                {
+                    return databricksConnection.FetchHeartbeatIntervalSeconds;
+                }
+            }
+
+            return DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
         }
     }
 }

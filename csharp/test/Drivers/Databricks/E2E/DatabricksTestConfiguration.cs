@@ -55,6 +55,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         [JsonPropertyName("enableRunAsyncInThriftOp"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string EnableRunAsyncInThriftOp { get; set; } = string.Empty;
 
+        [JsonPropertyName("fetchHeartbeatInterval"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string FetchHeartbeatInterval { get; set; } = string.Empty;
+
         [JsonPropertyName("enableDirectResults"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string EnableDirectResults { get; set; } = string.Empty;
     }
