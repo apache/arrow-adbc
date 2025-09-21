@@ -5,18 +5,18 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Versioning" />
+<meta property="og:title" content="BigQuery Support" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://arrow.apache.org/adbc/main/development/versioning.html" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/bigquery.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="ADBC has multiple subcomponents with independent version numbers all on the same release cycle. When a new release is made, the overall release is assigned a release number (e.g. ADBC Release 12). ..." />
+<meta property="og:description" content="Language: Go Status: Experimental Language: C# Status: Beta There are two official BigQuery drivers in development: C# (Beta): Available as a NuGet package, Go (Experimental): Available on conda-fo..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="ADBC has multiple subcomponents with independent version numbers all on the same release cycle. When a new release is made, the overall release is assigned a release number (e.g. ADBC Release 12). ..." />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Release Management Guide" href="releasing.html" /><link rel="prev" title="Nightly Packages" href="nightly.html" />
+<meta name="description" content="Language: Go Status: Experimental Language: C# Status: Beta There are two official BigQuery drivers in development: C# (Beta): Available as a NuGet package, Go (Experimental): Available on conda-fo..." />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="DuckDB Support" href="duckdb.html" /><link rel="prev" title="Driver Implementation Status" href="status.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
-        <title>Versioning - ADBC 21 (dev) documentation</title>
+        <title>BigQuery Support - ADBC 21 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
@@ -247,7 +247,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -325,17 +325,17 @@
 </li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/bigquery.html">BigQuery Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/snowflake.html">Snowflake Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Driver Implementation Status</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">BigQuery Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="duckdb.html">DuckDB Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="jdbc.html">JDBC Adapter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="postgresql.html">PostgreSQL Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="snowflake.html">Snowflake Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -347,11 +347,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../format/related_work.html">Related Work</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Development</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="nightly.html">Nightly Packages</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Versioning</a></li>
-<li class="toctree-l1"><a class="reference internal" href="releasing.html">Release Management Guide</a></li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/nightly.html">Nightly Packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/versioning.html">Versioning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/releasing.html">Release Management Guide</a></li>
 </ul>
 
 </div>
@@ -372,12 +372,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/development/versioning.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/driver/bigquery.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/development/versioning.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/driver/bigquery.rst" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -390,22 +390,101 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="versioning">
-<h1>Versioning<a class="headerlink" href="#versioning" title="Link to this heading">¶</a></h1>
-<p>ADBC has multiple subcomponents with independent version numbers all on the
-same release cycle.</p>
-<p>When a new release is made, the overall release is assigned a release number
-(e.g. ADBC Release 12).  The various components, like the C# packages, Java
-packages, C/C++/Go packages, and so on, are tagged individually with their own
-version numbers, which will show up in package indices like PyPI or Maven
-Central.  Common resources like documentation, verification script, and the
-GitHub release use the release number.</p>
+          <section id="bigquery-support">
+<h1>BigQuery Support<a class="headerlink" href="#bigquery-support" title="Link to this heading">¶</a></h1>
+<p><span class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary">Language: Go</span>
+<a class="sd-sphinx-override sd-badge sd-bg-danger sd-bg-text-danger reference internal" href="status.html#driver-status"><span class="std std-ref">Status: Experimental</span></a></p>
+<p><span class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary">Language: C#</span>
+<a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="status.html#driver-status"><span class="std std-ref">Status: Beta</span></a></p>
+<p>There are two official BigQuery drivers in development:</p>
+<ul class="simple">
+<li><p>C# (Beta): Available as a <a class="reference external" href="https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery">NuGet package</a></p></li>
+<li><p>Go (Experimental): Available on conda-forge (<a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-bigquery">adbc-driver-bigquery</a>, <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-bigquery">libadbc-driver-bigquery</a>), <a class="reference external" href="https://pypi.org/project/adbc-driver-bigquery/">PyPI</a>, and <a class="reference external" href="https://community.r-multiverse.org/adbcbigquery/">R-multiverse</a></p></li>
+</ul>
+<section id="c-bigquery-driver">
+<h2>C# BigQuery Driver<a class="headerlink" href="#c-bigquery-driver" title="Link to this heading">¶</a></h2>
+<section id="installation">
+<h3>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h3>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="csharp" for="sd-tab-item-0">
+C#</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery">Apache.Arrow.Adbc.Drivers.BigQuery</a> from NuGet:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>dotnet<span class="w"> </span>package<span class="w"> </span>add<span class="w"> </span>Apache.Arrow.Adbc.Drivers.BigQuery
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
+Go</label><div class="sd-tab-content docutils">
+<p>Install the C/C++ driver, then use the Go driver manager.  Requires CGO.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/drivermgr
+</pre></div>
+</div>
+</div>
+</div>
+<p>Additionally, the driver may be used from C/C++, C#, GLib, Go, R, Ruby, and Rust via the driver manager.</p>
+</section>
+<section id="more-information">
+<h3>More Information<a class="headerlink" href="#more-information" title="Link to this heading">¶</a></h3>
+<p>For more information about this driver, please see the <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/csharp/src/Drivers/BigQuery/readme.md">README</a>.</p>
+</section>
+</section>
+<section id="go-bigquery-driver">
+<h2>Go BigQuery Driver<a class="headerlink" href="#go-bigquery-driver" title="Link to this heading">¶</a></h2>
+<section id="id1">
+<h3>Installation<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-2" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-2">
+C/C++</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-bigquery">libadbc-driver-bigquery</a> from conda-forge:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-bigquery
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-3" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-3">
+Go</label><div class="sd-tab-content docutils">
+<p>Install the C/C++ driver, then use the Go driver manager.  Requires CGO.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/drivermgr
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-4">
+Python</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-bigquery">adbc-driver-bigquery</a> from conda-forge:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-bigquery
+</pre></div>
+</div>
+<p>Install <a class="reference external" href="https://pypi.org/project/adbc-driver-bigquery/">adbc-driver-bigquery</a> from PyPI:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc-driver-bigquery
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
+<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-5">
+R</label><div class="sd-tab-content docutils">
+<p>Install <a class="reference external" href="https://community.r-multiverse.org/adbcbigquery/">adbcbigquery</a> from R-multiverse:</p>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcbigquery&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">repos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://community.r-multiverse.org&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Additionally, the driver may be used from C/C++, C#, GLib, Go, R, Ruby, and Rust via the driver manager.</p>
+</section>
+<section id="id2">
+<h3>More Information<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<p>For more information about this driver, please see the <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/c/driver/bigquery/README.md">README</a> and this <a class="reference external" href="https://github.com/apache/arrow-adbc/issues/1974">tracking issue</a>.</p>
+</section>
+</section>
 </section>
 
         </article>
@@ -413,23 +492,23 @@ GitHub release use the release number.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="releasing.html">
+          <a class="next-page" href="duckdb.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Release Management Guide</div>
+                <div class="title">DuckDB Support</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="nightly.html">
+          <a class="prev-page" href="status.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Nightly Packages</div>
+                <div class="title">Driver Implementation Status</div>
                 
               </div>
             </a>
@@ -454,8 +533,36 @@ United States and other countries.
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">BigQuery Support</a><ul>
+<li><a class="reference internal" href="#c-bigquery-driver">C# BigQuery Driver</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#more-information">More Information</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#go-bigquery-driver">Go BigQuery Driver</a><ul>
+<li><a class="reference internal" href="#id1">Installation</a></li>
+<li><a class="reference internal" href="#id2">More Information</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>
