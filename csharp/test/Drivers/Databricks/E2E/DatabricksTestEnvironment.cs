@@ -145,6 +145,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 parameters.Add(DatabricksParameters.FetchHeartbeatInterval, testConfiguration.FetchHeartbeatInterval!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.OperationStatusRequestTimeout))
+            {
+                parameters.Add(DatabricksParameters.OperationStatusRequestTimeout, testConfiguration.OperationStatusRequestTimeout!);
+            }
             if (!string.IsNullOrEmpty(testConfiguration.EnableMultipleCatalogSupport))
             {
                 parameters.Add(DatabricksParameters.EnableMultipleCatalogSupport, testConfiguration.EnableMultipleCatalogSupport!);

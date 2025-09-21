@@ -58,6 +58,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         [JsonPropertyName("fetchHeartbeatInterval"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string FetchHeartbeatInterval { get; set; } = string.Empty;
 
+        [JsonPropertyName("operationStatusRequestTimeout"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string OperationStatusRequestTimeout { get; set; } = string.Empty;
+
         [JsonPropertyName("enableDirectResults"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string EnableDirectResults { get; set; } = string.Empty;
     }

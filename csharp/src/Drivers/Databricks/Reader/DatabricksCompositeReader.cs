@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             }
             if (_response.DirectResults?.ResultSet?.HasMoreRows ?? true)
             {
-                operationStatusPoller = operationPoller ?? new DatabricksOperationStatusPoller(_statement, response, GetHeartbeatIntervalFromConnection());
+                operationStatusPoller = operationPoller ?? new DatabricksOperationStatusPoller(_statement, response, GetHeartbeatIntervalFromConnection(), GetRequestTimeoutFromConnection());
                 operationStatusPoller.Start();
             }
         }
@@ -214,6 +214,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             }
 
             return DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
+        }
+
+        /// <summary>
+        /// Gets the request timeout from the statement's connection.
+        /// </summary>
+        /// <returns>The request timeout in seconds, or default if not available.</returns>
+        private int GetRequestTimeoutFromConnection()
+        {
+            if (_statement is DatabricksStatement databricksStatement)
+            {
+                var connection = databricksStatement.Connection;
+                if (connection is DatabricksConnection databricksConnection)
+                {
+                    return databricksConnection.OperationStatusRequestTimeoutSeconds;
+                }
+            }
+
+            return DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
         }
     }
 }

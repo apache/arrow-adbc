@@ -236,6 +236,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Must be a positive integer value.
         /// </summary>
         public const string FetchHeartbeatInterval = "adbc.databricks.fetch_heartbeat_interval";
+
+        /// <summary>
+        /// The timeout in seconds for operation status polling requests.
+        /// This controls how long to wait for each individual polling request to complete.
+        /// Default value is 30 seconds if not specified.
+        /// Must be a positive integer value.
+        /// </summary>
+        public const string OperationStatusRequestTimeout = "adbc.databricks.operation_status_request_timeout";
     }
 
     /// <summary>
@@ -249,7 +257,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const int DefaultOperationStatusPollingIntervalSeconds = 60;
 
         /// <summary>
-        /// Default timeout in seconds for operation status polling requests. TODO: make this user-configurable
+        /// Default timeout in seconds for operation status polling requests. 
         /// </summary>
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
 
