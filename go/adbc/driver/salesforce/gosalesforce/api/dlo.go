@@ -59,7 +59,18 @@ func (c *Client) GetDataLakeObject(ctx context.Context, recordIdOrDeveloperName 
 	if orderBy != "" {
 		queryParams.Add("orderBy", orderBy)
 	}
-	return GetJSON[DataLakeObject](c, ctx, fmt.Sprintf("data-lake-objects/%s", recordIdOrDeveloperName), queryParams)
+
+	// TODO(investigate): the actual response is different from what is documented
+	// see the DLO-output-example: https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=getDataLakeObject
+	// the documented output doesn't have `dataLakeObjects` field but the actual return seems to have
+	response, err := GetJSON[DataLakeObjects](c, ctx, fmt.Sprintf("data-lake-objects/%s", recordIdOrDeveloperName), queryParams)
+	if err != nil {
+		return nil, err
+	}
+	if len(response.DataLakeObjects) == 0 {
+		return nil, fmt.Errorf("no DLO found with name %s", recordIdOrDeveloperName)
+	}
+	return &response.DataLakeObjects[0], nil
 }
 
 // DeleteDataLakeObject deletes a Data Lake Object (DLO) by ID or developer name

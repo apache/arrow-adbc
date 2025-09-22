@@ -108,6 +108,22 @@ func (c *Client) RunDataTransform(ctx context.Context, dataTransformNameOrId str
 	return PostJSON[interface{}, DataCloudActionResponse](c, ctx, path, nil)
 }
 
+// CancelDataTransform cancels a data transform
+// reference: https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=cancelDataTransform
+func (c *Client) CancelDataTransform(ctx context.Context, dataTransformNameOrId string) (*DataCloudActionResponse, error) {
+	// Validate required fields
+	if dataTransformNameOrId == "" {
+		return nil, &SfdcError{
+			Code:    400,
+			Message: "Data transform name or ID cannot be empty",
+			Type:    "invalid_request",
+		}
+	}
+
+	path := fmt.Sprintf("data-transforms/%s/actions/cancel", dataTransformNameOrId)
+	return PostJSON[interface{}, DataCloudActionResponse](c, ctx, path, nil)
+}
+
 // DeleteDataTransform deletes a data transform
 // reference: https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=deleteDataTransform
 func (c *Client) DeleteDataTransform(ctx context.Context, dataTransformNameOrId string) error {

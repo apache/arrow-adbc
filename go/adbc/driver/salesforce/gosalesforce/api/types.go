@@ -324,10 +324,12 @@ const (
 // DataTransformLastRunStatus represents the status of the last run
 type DataTransformLastRunStatus string
 
+// TODO: revisit these values, the actual returns are different from the documentation
+// see LastRunStatus from https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=getDataTransform
 const (
 	DataTransformLastRunStatusCanceled          DataTransformLastRunStatus = "Canceled"
 	DataTransformLastRunStatusFailure           DataTransformLastRunStatus = "Failure"
-	DataTransformLastRunStatusInProgress        DataTransformLastRunStatus = "InProgress"
+	DataTransformLastRunStatusInProgress        DataTransformLastRunStatus = "In_Progress"
 	DataTransformLastRunStatusNone              DataTransformLastRunStatus = "None"
 	DataTransformLastRunStatusPartialFailure    DataTransformLastRunStatus = "PartialFailure"
 	DataTransformLastRunStatusPartiallyCanceled DataTransformLastRunStatus = "PartiallyCanceled"
@@ -531,6 +533,10 @@ type DataLakeFieldInputRepresentation struct {
 	IsPrimaryKey string                `json:"isPrimaryKey"` // "true" or "false" as string
 }
 
+type DataLakeObjects struct {
+	DataLakeObjects []DataLakeObject `json:"dataLakeObjects"`
+}
+
 // DataLakeObject represents the response from creating a Data Lake Object
 type DataLakeObject struct {
 	Capabilities                    map[string]interface{} `json:"capabilities"`
@@ -551,6 +557,14 @@ type DataLakeObject struct {
 	LastModifiedBy                  DataTransformUser      `json:"lastModifiedBy,omitempty"`
 	LastModifiedDate                string                 `json:"lastModifiedDate,omitempty"`
 	URL                             string                 `json:"url,omitempty"`
+}
+
+func (d *DataLakeObject) IsActive() bool {
+	return strings.EqualFold(string(d.Status), string(DataLakeObjectStatusActive))
+}
+
+func (d *DataLakeObject) IsError() bool {
+	return strings.EqualFold(string(d.Status), string(DataLakeObjectStatusError))
 }
 
 // DataLakeFieldOutput represents a field in the DLO output

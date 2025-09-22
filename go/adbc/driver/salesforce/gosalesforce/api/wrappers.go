@@ -160,7 +160,41 @@ func (client *Client) CreateDataLakeObjectWithInferredSchema(ctx context.Context
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DLO: %w", err)
 	}
-	return dataLakeObject, nil
+
+	// Wait for the DLO to be Active
+	exponentialBackOff := backoff.NewExponentialBackOff()
+	exponentialBackOff.InitialInterval = INITIAL_INTERVAL
+	exponentialBackOff.MaxInterval = MAX_INTERVAL
+
+	waitForActiveOp := func() (interface{}, error) {
+		currentDLO, err := client.GetDataLakeObject(ctx, dataLakeObject.Name, nil, nil, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get DLO status: %w", err)
+		}
+
+		if currentDLO.IsActive() {
+			return currentDLO, nil
+		}
+
+		if currentDLO.IsError() {
+			return nil, backoff.Permanent(fmt.Errorf("DLO creation failed with error status"))
+		}
+
+		return nil, fmt.Errorf("DLO %s still in status %s, waiting for Active status", dataLakeObject.ID, currentDLO.Status)
+	}
+	result, err := backoff.Retry(ctx, waitForActiveOp,
+		backoff.WithBackOff(exponentialBackOff),
+		backoff.WithMaxElapsedTime(MAX_ELAPSED_TIME),
+		backoff.WithNotify(func(err error, duration time.Duration) {
+			log.Printf("🕒 DLO creation in progress, retrying in %v...\n", duration)
+		}))
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the active DLO
+	return result.(*DataLakeObject), nil
 }
 
 // If recreateIfExists is true, delete the existing data transform and create a new one before running it.
@@ -275,7 +309,14 @@ func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDl
 		backoff.WithNotify(func(err error, duration time.Duration) {
 			log.Printf("🕒 data transform run in progress, retrying in %v...\n", duration)
 		}))
+
 	if err != nil {
+		log.Printf("⚠️ data transform run failed, cancelling data transform %s\n", dataTransform.Name)
+		// Use background context for cancellation to ensure it completes even if parent ctx is cancelled
+		_, cancelErr := client.CancelDataTransform(context.Background(), dataTransform.Name)
+		if cancelErr != nil {
+			log.Printf("⚠️ data transform cancellation failed: %v", cancelErr)
+		}
 		return nil, err
 	}
 
