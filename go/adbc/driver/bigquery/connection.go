@@ -685,6 +685,19 @@ func sanitizeDataset(value string) (string, error) {
 	}
 }
 
+// Encode a value as a JSON string. Returns "" in case the value is empty or if there was
+// an error
+func encodeJson[S ~[]E | ~map[string]E, E any](v S) string {
+	ret := ""
+	if len(v) > 0 {
+		encoded, err := json.Marshal(v)
+		if err == nil {
+			ret = string(encoded)
+		}
+	}
+	return ret
+}
+
 func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *string, dbSchema *string, tableName string, columnName *string) (*arrow.Schema, error) {
 	if catalog == nil {
 		catalog = &c.catalog
@@ -703,6 +716,7 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 	metadata["Name"] = md.Name
 	metadata["Location"] = md.Location
 	metadata["Description"] = md.Description
+	// md.Schema: the table Schema is defined at the bottom using md.Schema
 	if md.MaterializedView != nil {
 		metadata["MaterializedView.EnableRefresh"] = strconv.FormatBool(md.MaterializedView.EnableRefresh)
 		metadata["MaterializedView.LastRefreshTime"] = md.MaterializedView.LastRefreshTime.Format(time.RFC3339Nano)
@@ -713,6 +727,9 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 			metadata["MaterializedView.MaxStaleness"] = md.MaxStaleness.String()
 		}
 	}
+	metadata["ViewQuery"] = md.ViewQuery
+	metadata["UseLegacySQL"] = strconv.FormatBool(md.UseLegacySQL)
+	metadata["UseStandardSQL"] = strconv.FormatBool(md.UseStandardSQL)
 	if md.TimePartitioning != nil {
 		// "DAY", "HOUR", "MONTH", "YEAR"
 		metadata["TimePartitioning.Type"] = string(md.TimePartitioning.Type)
@@ -733,17 +750,35 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 			metadata["RangePartitioning.Range.Interval"] = strconv.FormatInt(md.RangePartitioning.Range.Interval, 10)
 		}
 	}
-	if md.RequirePartitionFilter {
-		metadata["RequirePartitionFilter"] = strconv.FormatBool(md.RequirePartitionFilter)
+	metadata["RequirePartitionFilter"] = strconv.FormatBool(md.RequirePartitionFilter)
+	if md.Clustering != nil {
+		metadata["Clustering.Fields"] = encodeJson[[]string, string](md.Clustering.Fields)
 	}
-	labels := ""
-	if len(md.Labels) > 0 {
-		encodedLabel, err := json.Marshal(md.Labels)
-		if err == nil {
-			labels = string(encodedLabel)
+	metadata["ExpirationTime"] = md.ExpirationTime.Format(time.RFC3339Nano)
+	metadata["Labels"] = encodeJson[map[string]string, string](md.Labels)
+	// TODO: ExternalDataConfig
+	if md.ExternalDataConfig != nil {
+		metadata["ExternalDataConfig.SourceFormat"] = string(md.ExternalDataConfig.SourceFormat)
+		metadata["ExternalDataConfig.SourceURIs"] = encodeJson[[]string, string](md.ExternalDataConfig.SourceURIs)
+		// TODO: Schema
+		metadata["ExternalDataConfig.AutoDetect"] = strconv.FormatBool(md.ExternalDataConfig.AutoDetect)
+		metadata["ExternalDataConfig.Compression"] = string(md.ExternalDataConfig.Compression)
+		metadata["ExternalDataConfig.IgnoreUnknownValues"] = strconv.FormatBool(md.ExternalDataConfig.IgnoreUnknownValues)
+		metadata["ExternalDataConfig.MaxBadRecords"] = strconv.FormatInt(md.ExternalDataConfig.MaxBadRecords, 10)
+		// TODO: Options, do we need this? It looks like it contains the same thing as ExternalDataConfig?
+		if md.ExternalDataConfig.HivePartitioningOptions != nil {
+			metadata["ExternalDataConfig.HivePartitioningOptions.Mode"] = string(md.ExternalDataConfig.HivePartitioningOptions.Mode)
+			metadata["ExternalDataConfig.HivePartitioningOptions.SourceURIPrefix"] = md.ExternalDataConfig.HivePartitioningOptions.SourceURIPrefix
+			metadata["ExternalDataConfig.HivePartitioningOptions.RequirePartitionFilter"] = strconv.FormatBool(md.ExternalDataConfig.HivePartitioningOptions.RequirePartitionFilter)
 		}
+		metadata["ExternalDataConfig.DecimalTargetTypes"] = encodeJson[[]bigquery.DecimalTargetType, bigquery.DecimalTargetType](md.ExternalDataConfig.DecimalTargetTypes)
+		metadata["ExternalDataConfig.ConnectionID"] = md.ExternalDataConfig.ConnectionID
+		metadata["ExternalDataConfig.ReferenceFileSchemaURI"] = md.ExternalDataConfig.ReferenceFileSchemaURI
+		metadata["ExternalDataConfig.MetadataCacheMode"] = string(md.ExternalDataConfig.MetadataCacheMode)
 	}
-	metadata["Labels"] = labels
+	if md.EncryptionConfig != nil {
+		metadata["EncryptionConfig.KMSKeyName"] = md.EncryptionConfig.KMSKeyName
+	}
 	metadata["FullID"] = md.FullID
 	metadata["Type"] = string(md.Type)
 	metadata["CreationTime"] = md.CreationTime.Format(time.RFC3339Nano)
@@ -759,8 +794,20 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 		metadata["CloneDefinition.BaseTableReference"] = md.CloneDefinition.BaseTableReference.FullyQualifiedName()
 		metadata["CloneDefinition.CloneTime"] = md.CloneDefinition.CloneTime.Format(time.RFC3339Nano)
 	}
+	if md.StreamingBuffer != nil {
+		metadata["StreamingBuffer.EstimatedBytes"] = strconv.FormatUint(md.StreamingBuffer.EstimatedBytes, 10)
+		metadata["StreamingBuffer.EstimatedRows"] = strconv.FormatUint(md.StreamingBuffer.EstimatedRows, 10)
+		metadata["StreamingBuffer.OldestEntryTime"] = md.StreamingBuffer.OldestEntryTime.Format(time.RFC3339Nano)
+	}
 	metadata["ETag"] = md.ETag
 	metadata["DefaultCollation"] = md.DefaultCollation
+	if md.TableConstraints != nil {
+		if md.TableConstraints.PrimaryKey != nil {
+			metadata["TableConstraints.PrimaryKey.Columns"] = encodeJson[[]string, string](md.TableConstraints.PrimaryKey.Columns)
+		}
+		// TODO: TableConstraints.ForeignKeys, how do we represent list of structs?
+	}
+	metadata["ResourceTags"] = encodeJson[map[string]string, string](md.ResourceTags)
 	tableMetadata := arrow.MetadataFrom(metadata)
 
 	fields := make([]arrow.Field, len(md.Schema))
