@@ -165,6 +165,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 parameters.Add(DatabricksParameters.EnableDirectResults, testConfiguration.EnableDirectResults!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.MaxBytesPerFetchRequest))
+            {
+                parameters.Add(DatabricksParameters.MaxBytesPerFetchRequest, testConfiguration.MaxBytesPerFetchRequest!);
+            }
             if (testConfiguration.HttpOptions != null)
             {
                 if (testConfiguration.HttpOptions.Tls != null)

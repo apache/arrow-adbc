@@ -57,5 +57,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         [JsonPropertyName("enableDirectResults"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string EnableDirectResults { get; set; } = string.Empty;
+
+        [JsonPropertyName("maxBytesPerFetchRequest"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string MaxBytesPerFetchRequest { get; set; } = string.Empty;
     }
 }
