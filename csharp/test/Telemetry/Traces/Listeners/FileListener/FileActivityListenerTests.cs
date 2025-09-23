@@ -53,10 +53,10 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
                 for (int i = 0; i < numConnections; i++)
                 {
                     connections[i] = new TestConnection(new Dictionary<string, string>
-                {
-                    { ListenersOptions.Exporter, ListenersOptions.Exporters.AdbcFile },
-                    { TraceLocation, folderLocation },
-                });
+                    {
+                        { ListenersOptions.Exporter, ListenersOptions.Exporters.AdbcFile },
+                        { TraceLocation, folderLocation },
+                    });
                 }
 
                 Task[] tasks = new Task[numConnections];
@@ -116,7 +116,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
             {
                 properties.TryGetValue(TraceLocation, out string? tracesLocation);
                 properties.TryGetValue(ListenersOptions.Exporter, out string? exporterOption);
-                bool shouldListenTo(ActivitySource source) => source.Tags?.Any(t => t.Key == _traceId) == true;
+                bool shouldListenTo(ActivitySource source) => source.Tags?.Any(t => ReferenceEquals(t.Key, _traceId)) == true;
                 FileActivityListener.TryActivateFileListener(ActivitySourceName, exporterOption, out _fileListener, shouldListenTo, tracesLocation: tracesLocation);
             }
 

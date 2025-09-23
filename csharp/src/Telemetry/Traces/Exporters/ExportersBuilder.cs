@@ -138,21 +138,6 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters
             return true;
         }
 
-        /// <summary>
-        /// Determines whether the specified exporter option would activate an exporter.
-        /// </summary>
-        /// <param name="exporterOption">The value (name) of the exporter option, typically passed as option <see cref="ExportersOptions.Exporter"/>.</param>
-        /// <param name="exporterName">The actual exporter name when successfully activated.</param>
-        /// <returns></returns>
-        public bool WouldActivate(string? exporterOption, string environmentName = ExportersOptions.Environment.Exporter)
-        {
-            if (!TryGetExporterName(exporterOption, environmentName, out string? exporterName))
-            {
-                return false;
-            }
-            return _tracerProviderFactories.ContainsKey(exporterName!);
-        }
-
         public static TracerProvider NewAdbcFileTracerProvider(string sourceName, string? sourceVersion) =>
             Sdk.CreateTracerProviderBuilder()
                 .AddSource(sourceName)

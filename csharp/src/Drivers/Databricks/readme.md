@@ -185,16 +185,14 @@ The following table depicts how the Databricks ADBC driver converts a Databricks
 
 To enable tracing messages to be observed, a tracing exporter needs to be activated.
 Use either the environment variable `OTEL_TRACES_EXPORTER` or the parameter `adbc.traces.exporter` to select one of the
-supported exporters. The parameter has precedence over the environment variable.
+supported exporters. The parameter has precedence over the environment variable. The parameter must be set before
+the connection is initialized.
 
 The following exporters are supported:
 
 | Exporter | Description |
 | --- | --- |
 | `adbcfile` | Exports traces to rotating files in a folder. |
-
-Note: _The first connection to activate tracing will enable tracing for
-any later connections that are created in that process._ (This behavior may change in future implementations.)
 
 #### File Exporter (adbcfile)
 

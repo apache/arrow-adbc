@@ -301,12 +301,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
         }
 
-        private void TryInitTracerProvider(out FileActivityListener? fileActivityListener)
+        private bool TryInitTracerProvider(out FileActivityListener? fileActivityListener)
         {
             Properties.TryGetValue(ListenersOptions.Exporter, out string? exporterOption);
             // This listener will only listen for activity from this specific connection instance.
-            bool shouldListenTo(ActivitySource source) => source.Tags?.Any(t => t.Key == _traceInstanceId) == true;
-            FileActivityListener.TryActivateFileListener(AssemblyName, exporterOption, out fileActivityListener, shouldListenTo: shouldListenTo);
+            bool shouldListenTo(ActivitySource source) => source.Tags?.Any(t => ReferenceEquals(t.Key, _traceInstanceId)) == true;
+            return FileActivityListener.TryActivateFileListener(AssemblyName, exporterOption, out fileActivityListener, shouldListenTo: shouldListenTo);
         }
 
         public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
