@@ -27,6 +27,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Thrift;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
@@ -49,6 +51,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private readonly Lazy<string> _vendorVersion;
         private readonly Lazy<string> _vendorName;
         private bool _isDisposed;
+        // Note: this needs to be set before the constructor runs
+        private readonly string _traceInstanceId = Guid.NewGuid().ToString("N");
+        private readonly FileActivityListener? _fileActivityListener;
 
         readonly AdbcInfoCode[] infoSupportedCodes = [
             AdbcInfoCode.DriverName,
@@ -278,6 +283,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             Properties = properties;
 
+            TryInitTracerProvider(out _fileActivityListener);
+
             // Note: "LazyThreadSafetyMode.PublicationOnly" is thread-safe initialization where
             // the first successful thread sets the value. If an exception is thrown, initialization
             // will retry until it successfully returns a value without an exception.
@@ -293,6 +300,31 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
             }
         }
+
+        private bool TryInitTracerProvider(out FileActivityListener? fileActivityListener)
+        {
+            Properties.TryGetValue(ListenersOptions.Exporter, out string? exporterOption);
+            // This listener will only listen for activity from this specific connection instance.
+            bool shouldListenTo(ActivitySource source) => source.Tags?.Any(t => ReferenceEquals(t.Key, _traceInstanceId)) == true;
+            return FileActivityListener.TryActivateFileListener(AssemblyName, exporterOption, out fileActivityListener, shouldListenTo: shouldListenTo);
+        }
+
+        public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
+        {
+            IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
+            tags ??= [];
+            tags = tags.Concat([new(_traceInstanceId, null)]);
+            return tags;
+        }
+
+        /// <summary>
+        /// Conditional used to determines if it is safe to trace
+        /// </summary>
+        /// <remarks>
+        /// It is safe to write to some output types (ie, files) but not others (ie, a shared resource).
+        /// </remarks>
+        /// <returns></returns>
+        internal bool IsSafeToTrace => _fileActivityListener != null;
 
         internal TCLIService.IAsync Client
         {
@@ -732,6 +764,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             if (!_isDisposed && disposing)
             {
                 DisposeClient();
+                _fileActivityListener?.Dispose();
                 _isDisposed = true;
             }
             base.Dispose(disposing);
@@ -1540,7 +1573,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                             nullCount++;
                             break;
                     }
-                    ActivityExtensions.AddTag(activity, tagKey, tagValue);
+                    Tracing.ActivityExtensions.AddTag(activity, tagKey, tagValue);
                 }
 
                 StructType entryType = new StructType(

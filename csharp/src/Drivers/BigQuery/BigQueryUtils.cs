@@ -42,18 +42,5 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         internal static string GetAssemblyName(Type type) => type.Assembly.GetName().Name!;
 
         internal static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
-
-        /// <summary>
-        /// Conditional used to determines if it is safe to trace
-        /// </summary>
-        /// <remarks>
-        /// It is safe to write to some output types (ie, files) but not others (ie, a shared resource).
-        /// </remarks>
-        /// <returns></returns>
-        internal static bool IsSafeToTrace()
-        {
-            // TODO: Add logic to determine if a file writer is listening
-            return false;
-        }
     }
 }

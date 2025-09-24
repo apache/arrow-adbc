@@ -23,7 +23,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
+namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
 {
     /// <summary>
     /// Provides access to writing trace files, limiting the
@@ -32,10 +32,14 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
     internal class TracingFile : IDisposable
     {
         private const int KbInByes = 1024;
-        private static readonly string s_defaultTracePath = FileExporter.TracingLocationDefault;
+        private static readonly string s_defaultTracePath = FileActivityListener.TracingLocationDefault;
         private static readonly Random s_globalRandom = new();
         private static readonly ThreadLocal<Random> s_threadLocalRandom = new(NewRandom);
-        private static readonly Lazy<string> s_processId = new(() => Process.GetCurrentProcess().Id.ToString(), isThreadSafe: true);
+#if NET5_0_OR_GREATER
+        private static readonly Lazy<string> s_processId = new(static () => Environment.ProcessId.ToString(), isThreadSafe: true);
+#else
+        private static readonly Lazy<string> s_processId = new(static () => Process.GetCurrentProcess().Id.ToString(), isThreadSafe: true);
+#endif
         private readonly string _fileBaseName;
         private readonly DirectoryInfo _tracingDirectory;
         private FileInfo? _currentTraceFileInfo;
@@ -43,7 +47,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         private readonly long _maxFileSizeKb;
         private readonly int _maxTraceFiles;
 
-        internal TracingFile(string fileBaseName, string? traceDirectoryPath = default, long maxFileSizeKb = FileExporter.MaxFileSizeKbDefault, int maxTraceFiles = FileExporter.MaxTraceFilesDefault) :
+        internal TracingFile(string fileBaseName, string? traceDirectoryPath = default, long maxFileSizeKb = FileActivityListener.MaxFileSizeKbDefault, int maxTraceFiles = FileActivityListener.MaxTraceFilesDefault) :
             this(fileBaseName, ResolveTraceDirectory(traceDirectoryPath), maxFileSizeKb, maxTraceFiles)
         { }
 
@@ -79,9 +83,9 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
             }
             catch (Exception ex)
             {
-                this._currentTraceFileInfo = null;
-                this._currentFileStream?.Dispose();
-                this._currentFileStream = null;
+                _currentTraceFileInfo = null;
+                _currentFileStream?.Dispose();
+                _currentFileStream = null;
                 Trace.TraceError(ex.ToString());
             }
 
@@ -96,7 +100,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 string deleteSearchPattern = _fileBaseName + $"-trace-*.log";
                 IOrderedEnumerable<FileInfo> orderedFiles = await GetTracingFilesAsync(_tracingDirectory, deleteSearchPattern).ConfigureAwait(false);
                 // Avoid accidentally trying to delete the current file.
-                FileInfo[] tracingFiles = orderedFiles.Where(f => !f.FullName.Equals(_currentTraceFileInfo?.FullName))?.ToArray() ?? new FileInfo[0];
+                FileInfo[] tracingFiles = orderedFiles.Where(f => !f.FullName.Equals(_currentTraceFileInfo?.FullName))?.ToArray() ?? [];
                 if (tracingFiles.Length >= _maxTraceFiles)
                 {
                     int lastIndex = Math.Max(0, _maxTraceFiles - 1);
@@ -122,6 +126,8 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                 await OpenNewTracingFileAsync().ConfigureAwait(false);
             }
             await stream.CopyToAsync(_currentFileStream).ConfigureAwait(false);
+            // Flush for robustness to crashing
+            await stream.FlushAsync().ConfigureAwait(false);
         }
 
         private async Task OpenNewTracingFileAsync()
