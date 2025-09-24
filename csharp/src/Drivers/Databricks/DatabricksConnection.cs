@@ -403,7 +403,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 else
                 {
-                    throw new ArgumentException($"Parameter '{DatabricksParameters.DecimalColumnScale}' value '{decimalColumnScaleStr}' could not be parsed. Must be an integer between 0 and 38.");
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.DecimalColumnScale}' value '{decimalColumnScaleStr}' could not be parsed. Must be a positive integer.");
                 }
             }
         }
