@@ -16,10 +16,12 @@
   <ItemGroup>
     <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.12.0" />
+    <PackageReference Include="System.Threading.Channels" Version="9.0.8" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+    <ProjectReference Include="..\Listeners\Apache.Arrow.Adbc.Telemetry.Traces.Listeners.csproj" />
   </ItemGroup>
 
 </Project>

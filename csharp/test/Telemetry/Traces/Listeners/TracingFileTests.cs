@@ -15,15 +15,10 @@
  * limitations under the License.
  */
 
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener;
 
-namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
+namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
 {
     public class TracingFileTests
     {
@@ -40,12 +35,12 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
         [Fact]
         internal async Task TestMultipleConcurrentTracingFiles()
         {
-            CancellationTokenSource tokenSource = new CancellationTokenSource();
-            int concurrentCount = 5;
+            CancellationTokenSource tokenSource = new();
+            int concurrentCount = 50;
             Task[] tasks = new Task[concurrentCount];
             int[] lineCounts = new int[concurrentCount];
-            string sourceName = ExportersBuilderTests.NewName();
-            string customFolderName = ExportersBuilderTests.NewName();
+            string sourceName = NewName();
+            string customFolderName = NewName();
             string traceFolder = Path.Combine(s_localApplicationDataFolderPath, customFolderName);
             if (Directory.Exists(traceFolder)) Directory.Delete(traceFolder, true);
             try
@@ -56,7 +51,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
                 }
                 await Task.WhenAll(tasks);
 
-                foreach (var file in Directory.GetFiles(traceFolder))
+                foreach (string file in Directory.GetFiles(traceFolder))
                 {
                     foreach (string line in File.ReadLines(file))
                     {
@@ -80,8 +75,11 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
         private async Task Run(string sourceName, string traceFolder, CancellationToken cancellationToken)
         {
             int instanceNumber = Interlocked.Increment(ref _testInstance) - 1;
-            TracingFile tracingFile = new TracingFile(sourceName, traceFolder);
-            await tracingFile.WriteLinesAsync(GetLinesAsync(instanceNumber, 100, cancellationToken), cancellationToken);
+            using TracingFile tracingFile = new(sourceName, traceFolder);
+            await foreach (Stream stream in GetLinesAsync(instanceNumber, 100, cancellationToken))
+            {
+                await tracingFile.WriteLineAsync(stream, cancellationToken);
+            }
         }
 
         private static async IAsyncEnumerable<Stream> GetLinesAsync(int instanceNumber, int lineCount, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -90,8 +88,10 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
             {
                 if (cancellationToken.IsCancellationRequested) yield break;
                 yield return new MemoryStream(System.Text.Encoding.UTF8.GetBytes($"line{instanceNumber}" + Environment.NewLine));
-                await Task.Delay(10); // Simulate some delay
+                await Task.Delay(10, cancellationToken); // Simulate some delay
             }
         }
+
+        internal static string NewName() => Guid.NewGuid().ToString("N");
     }
 }

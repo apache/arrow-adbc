@@ -238,6 +238,7 @@ Why ADBC?
 
    driver/installation
    driver/status
+   driver/bigquery
    driver/duckdb
    driver/flight_sql
    driver/jdbc

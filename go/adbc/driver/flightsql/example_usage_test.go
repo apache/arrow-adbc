@@ -87,7 +87,7 @@ func FlightSQLExample(uri string) (err error) {
 	defer reader.Release()
 
 	for reader.Next() {
-		arr, ok := reader.Record().Column(0).(*array.Int64)
+		arr, ok := reader.RecordBatch().Column(0).(*array.Int64)
 		if !ok {
 			return fmt.Errorf("result data was not int64")
 		}

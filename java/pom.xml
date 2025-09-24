@@ -28,7 +28,7 @@
 
   <groupId>org.apache.arrow.adbc</groupId>
   <artifactId>arrow-adbc-java-root</artifactId>
-  <version>0.20.0-SNAPSHOT</version>
+  <version>0.21.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Arrow ADBC Java Root POM</name>
@@ -97,7 +97,7 @@
 
   <properties>
     <dep.arrow.version>18.0.0</dep.arrow.version>
-    <dep.org.checkerframework.version>3.49.5</dep.org.checkerframework.version>
+    <dep.org.checkerframework.version>3.51.0</dep.org.checkerframework.version>
     <!-- org.apache:apache overrides -->
     <minimalJavaBuildVersion>11</minimalJavaBuildVersion>
     <maven.compiler.target>11</maven.compiler.target>
@@ -159,7 +159,7 @@
       <dependency>
         <groupId>org.assertj</groupId>
         <artifactId>assertj-core</artifactId>
-        <version>3.27.4</version>
+        <version>3.27.6</version>
       </dependency>
       <dependency>
         <groupId>org.junit</groupId>
@@ -300,12 +300,12 @@
                 <path>
                   <groupId>com.google.errorprone</groupId>
                   <artifactId>error_prone_core</artifactId>
-                  <version>2.41.0</version>
+                  <version>2.42.0</version>
                 </path>
                 <path>
                   <groupId>com.uber.nullaway</groupId>
                   <artifactId>nullaway</artifactId>
-                  <version>0.12.9</version>
+                  <version>0.12.10</version>
                 </path>
                 <path>
                   <groupId>org.checkerframework</groupId>

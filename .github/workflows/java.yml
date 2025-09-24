@@ -25,6 +25,8 @@ on:
       - "java/**"
       - ".github/workflows/java.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "java/**"
       - ".github/workflows/java.yml"
@@ -130,7 +132,7 @@ jobs:
       - name: Install vcpkg
         run: |
           ./ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true

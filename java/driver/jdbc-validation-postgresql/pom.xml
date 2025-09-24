@@ -22,7 +22,7 @@
   <parent>
     <groupId>org.apache.arrow.adbc</groupId>
     <artifactId>arrow-adbc-java-root</artifactId>
-    <version>0.20.0-SNAPSHOT</version>
+    <version>0.21.0-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
@@ -50,7 +50,7 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>42.7.7</version>
+      <version>42.7.8</version>
       <scope>test</scope>
     </dependency>
 
