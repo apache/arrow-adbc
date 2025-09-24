@@ -83,6 +83,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Identity federation client ID for token exchange
         private string? _identityFederationClientId;
 
+        // Decimal column scale
+        private int _decimalColumnScale = 10;
+
         // Default namespace
         private TNamespace? _defaultNamespace;
 
@@ -386,6 +389,23 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _identityFederationClientId = identityFederationClientId;
             }
+
+            if (Properties.TryGetValue(DatabricksParameters.DecimalColumnScale, out string? decimalColumnScaleStr))
+            {
+                if (int.TryParse(decimalColumnScaleStr, out int decimalColumnScaleValue))
+                {
+                    if (decimalColumnScaleValue < 0)
+                    {
+                        throw new ArgumentOutOfRangeException(DatabricksParameters.DecimalColumnScale, decimalColumnScaleValue,
+                            "DecimalColumnScale must be positive. Default value is 10.");
+                    }
+                    _decimalColumnScale = decimalColumnScaleValue;
+                }
+                else
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.DecimalColumnScale}' value '{decimalColumnScaleStr}' could not be parsed. Must be an integer between 0 and 38.");
+                }
+            }
         }
 
         /// <summary>
@@ -447,6 +467,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Enable RunAsync flag in Thrift Operation
         /// </summary>
         public bool RunAsyncInThrift => _runAsyncInThrift;
+
+        /// <summary>
+        /// Gets the decimal column scale value.
+        /// </summary>
+        public int DecimalColumnScale => _decimalColumnScale;
 
         /// <summary>
         /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.

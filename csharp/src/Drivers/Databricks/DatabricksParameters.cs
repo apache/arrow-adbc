@@ -228,6 +228,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is false if not specified.
         /// </summary>
         public const string DriverConfigTakePrecedence = "adbc.databricks.driver_config_take_precedence";
+
+        /// <summary>
+        /// The scale for decimal columns.
+        /// Default value is 10 if not specified.
+        /// </summary>
+        public const string DecimalColumnScale = "adbc.databricks.decimal_column_scale";
     }
 
     /// <summary>
