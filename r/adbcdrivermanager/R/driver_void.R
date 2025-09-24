@@ -91,6 +91,7 @@ adbc_driver <- function(x, entrypoint = NULL, ...,
 #' @param driver An external pointer to an `AdbcDriver`
 #' @param version The version number corresponding to the `driver` supplied
 #' @param error An external pointer to an `AdbcError` or NULL
+#' @param additional_search_path_list A path list of additional locations to search for driver manifests
 #'
 #' @return An integer ADBC status code
 #' @export

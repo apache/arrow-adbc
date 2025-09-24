@@ -11,7 +11,8 @@ adbc_driver_load(
   driver,
   error,
   load_flags = adbc_load_flags(),
-  additional_search_path_list = NULL)
+  additional_search_path_list = NULL
+)
 }
 \arguments{
 \item{x, entrypoint}{An ADBC driver may be defined either as an init function
