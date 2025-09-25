@@ -74,10 +74,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
             AdbcDriver driver = NewDriver;
             AdbcDatabase database = driver.Open(parameters);
-            
+
             // This should not throw an exception
             using var connection = database.Connect(parameters);
-            
+
             // Verify the parameter was parsed correctly by creating a statement and checking the property
             using var statement = connection.CreateStatement();
             if (statement is DatabricksStatement databricksStatement)
@@ -100,10 +100,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
             AdbcDriver driver = NewDriver;
             AdbcDatabase database = driver.Open(parameters);
-            
+
             // This should not throw an exception
             using var connection = database.Connect(parameters);
-            
+
             // Verify the parameter was set correctly via test configuration
             using var statement = connection.CreateStatement();
             if (statement is DatabricksStatement databricksStatement)
