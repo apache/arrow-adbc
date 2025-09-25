@@ -48,6 +48,26 @@ Configure properties using a JSON file loaded via environment variables:
   "adbc.connection.db_schema": "my_schema"
 }
 ```
+## Note
+
+All values in the JSON configuration file **must be strings** (including numbers, booleans, and file paths). For example, use `"true"` instead of `true`, and `"4443"` instead of `4443`.
+
+### Example: Using mitmproxy to Inspect Thrift Traffic
+
+To inspect Thrift traffic using [mitmproxy](https://mitmproxy.org/), you can configure the Databricks driver to use a local proxy with TLS interception. Below is an example JSON configuration:
+```json
+{
+  "adbc.databricks.driver_config_take_precedence": "true",
+  "adbc.proxy_options.use_proxy" : "true",
+  "adbc.proxy_options.proxy_host" : "localhost",
+  "adbc.proxy_options.proxy_port" : "4443",
+  "adbc.http_options.tls.enabled": "true",
+  "adbc.http_options.tls.allow_self_signed" : "true",
+  "adbc.http_options.tls.disable_server_certificate_validation" : "true",
+  "adbc.http_options.tls.allow_hostname_mismatch" : "true",
+  "adbc.http_options.tls.trusted_certificate_path" : "C:\\your-path-to\\mitmproxy-ca-cert.pem"
+}
+```
 
 2. **Set the system environment variable** `DATABRICKS_CONFIG_FILE` to point to your JSON file:
    1. Open System Properties → Advanced → Environment Variables
