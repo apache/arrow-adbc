@@ -83,6 +83,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Identity federation client ID for token exchange
         private string? _identityFederationClientId;
 
+        // Heartbeat interval configuration
+        private int _fetchHeartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
+
+        // Request timeout configuration
+        private int _operationStatusRequestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
+
         // Default namespace
         private TNamespace? _defaultNamespace;
 
@@ -386,6 +392,40 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 _identityFederationClientId = identityFederationClientId;
             }
+
+            if (Properties.TryGetValue(DatabricksParameters.FetchHeartbeatInterval, out string? fetchHeartbeatIntervalStr))
+            {
+                if (!int.TryParse(fetchHeartbeatIntervalStr, out int fetchHeartbeatIntervalValue))
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.FetchHeartbeatInterval}' value '{fetchHeartbeatIntervalStr}' could not be parsed. Valid values are positive integers.");
+                }
+
+                if (fetchHeartbeatIntervalValue <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(Properties),
+                        fetchHeartbeatIntervalValue,
+                        $"Parameter '{DatabricksParameters.FetchHeartbeatInterval}' value must be a positive integer.");
+                }
+                _fetchHeartbeatIntervalSeconds = fetchHeartbeatIntervalValue;
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.OperationStatusRequestTimeout, out string? operationStatusRequestTimeoutStr))
+            {
+                if (!int.TryParse(operationStatusRequestTimeoutStr, out int operationStatusRequestTimeoutValue))
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.OperationStatusRequestTimeout}' value '{operationStatusRequestTimeoutStr}' could not be parsed. Valid values are positive integers.");
+                }
+
+                if (operationStatusRequestTimeoutValue <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(Properties),
+                        operationStatusRequestTimeoutValue,
+                        $"Parameter '{DatabricksParameters.OperationStatusRequestTimeout}' value must be a positive integer.");
+                }
+                _operationStatusRequestTimeoutSeconds = operationStatusRequestTimeoutValue;
+            }
         }
 
         /// <summary>
@@ -427,6 +467,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the default namespace to use for SQL queries.
         /// </summary>
         internal TNamespace? DefaultNamespace => _defaultNamespace;
+
+        /// <summary>
+        /// Gets the heartbeat interval in seconds for long-running operations.
+        /// </summary>
+        internal int FetchHeartbeatIntervalSeconds => _fetchHeartbeatIntervalSeconds;
+
+        /// <summary>
+        /// Gets the request timeout in seconds for operation status polling requests.
+        /// </summary>
+        internal int OperationStatusRequestTimeoutSeconds => _operationStatusRequestTimeoutSeconds;
 
         /// <summary>
         /// Gets whether multiple catalog is supported
