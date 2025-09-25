@@ -58,13 +58,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _enableMultipleCatalogSupport = true;
         private bool _enablePKFK = true;
         private bool _runAsyncInThrift = true;
-
-        internal static TSparkGetDirectResults defaultGetDirectResults = new()
-        {
-            MaxRows = 1000,
-            MaxBytes = DefaultMaxBytesPerFetchRequest 
-        };
-
+        private const int DefaultMaxRowsPerFetchRequest = 1000;
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
         private const int DefaultQueryTimeSeconds = 3 * 60 * 60; // 3 hours
@@ -425,10 +419,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             if (EnableDirectResults)
             {
-                // Use the configured MaxBytesPerFetchRequest for direct results
                 request.GetDirectResults = new TSparkGetDirectResults
                 {
-                    MaxRows = defaultGetDirectResults.MaxRows,
+                    MaxRows = DefaultMaxRowsPerFetchRequest,
                     MaxBytes = _maxBytesPerFetchRequest
                 };
                 return true;
@@ -746,7 +739,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <param name="value">The value to parse, e.g., "300MB", "1024KB", "1073741824"</param>
         /// <returns>The value in bytes</returns>
         /// <exception cref="FormatException">Thrown when the value cannot be parsed</exception>
-        private static long ParseBytesWithUnits(string value)
+        internal static long ParseBytesWithUnits(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
             {

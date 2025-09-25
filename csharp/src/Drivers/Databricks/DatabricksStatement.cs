@@ -169,7 +169,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 case DatabricksParameters.MaxBytesPerFetchRequest:
                     try
                     {
-                        long maxBytesPerFetchRequestValue = ParseBytesWithUnits(value);
+                        long maxBytesPerFetchRequestValue = DatabricksConnection.ParseBytesWithUnits(value);
                         this.maxBytesPerFetchRequest = maxBytesPerFetchRequestValue;
                     }
                     catch (FormatException)
@@ -695,61 +695,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 new StringArray.Builder().Build(), // IS_AUTO_INCREMENT
                 new StringArray.Builder().Build()  // BASE_TYPE_NAME
             ];
-        }
-
-        /// <summary>
-        /// Parses a byte value that may include unit suffixes (B, KB, MB, GB).
-        /// </summary>
-        /// <param name="value">The value to parse, e.g., "300MB", "1024KB", "1073741824"</param>
-        /// <returns>The value in bytes</returns>
-        /// <exception cref="FormatException">Thrown when the value cannot be parsed</exception>
-        private static long ParseBytesWithUnits(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                throw new FormatException("Value cannot be null or empty");
-            }
-
-            value = value.Trim().ToUpperInvariant();
-
-            // Check for unit suffixes
-            long multiplier = 1;
-            string numberPart = value;
-
-            if (value.EndsWith("GB"))
-            {
-                multiplier = 1024L * 1024L * 1024L;
-                numberPart = value.Substring(0, value.Length - 2);
-            }
-            else if (value.EndsWith("MB"))
-            {
-                multiplier = 1024L * 1024L;
-                numberPart = value.Substring(0, value.Length - 2);
-            }
-            else if (value.EndsWith("KB"))
-            {
-                multiplier = 1024L;
-                numberPart = value.Substring(0, value.Length - 2);
-            }
-            else if (value.EndsWith("B"))
-            {
-                multiplier = 1L;
-                numberPart = value.Substring(0, value.Length - 1);
-            }
-
-            if (!long.TryParse(numberPart.Trim(), out long number))
-            {
-                throw new FormatException($"Invalid number format: {numberPart}");
-            }
-
-            try
-            {
-                return checked(number * multiplier);
-            }
-            catch (OverflowException)
-            {
-                throw new FormatException($"Value {value} results in overflow when converted to bytes");
-            }
         }
 
         private QueryResult CreateExtendedColumnsResult(Schema columnMetadataSchema, DescTableExtendedResult descResult)
