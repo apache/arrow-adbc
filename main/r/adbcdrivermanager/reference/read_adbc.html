@@ -63,7 +63,7 @@ implementations).</p>
 <span>  <span class="va">db_or_con</span>,</span>
 <span>  <span class="va">target_table</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"default"</span>, <span class="st">"create"</span>, <span class="st">"append"</span><span class="op">)</span>,</span>
+<span>  mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"default"</span>, <span class="st">"create"</span>, <span class="st">"append"</span>, <span class="st">"replace"</span>, <span class="st">"create_append"</span><span class="op">)</span>,</span>
 <span>  temporary <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -101,8 +101,9 @@ or  <a href="https://arrow.apache.org/nanoarrow/latest/r/reference/as_nanoarrow_
 
 
 <dt id="arg-mode">mode<a class="anchor" aria-label="anchor" href="#arg-mode"></a></dt>
-<dd><p>One of "create", "append", or "default" (error if the schema
-is not compatible or append otherwise).</p></dd>
+<dd><p>One of <code>"create"</code>, <code>"append"</code>, <code>"replace"</code>, <code>"create_append"</code> (error if the schema
+is not compatible or append otherwise), or <code>"default"</code> (use the <code>adbc.ingest.mode</code>
+argument of <code><a href="adbc_statement_init.html">adbc_statement_init()</a></code>). The default is <code>"default"</code>.</p></dd>
 
 
 <dt id="arg-temporary">temporary<a class="anchor" aria-label="anchor" href="#arg-temporary"></a></dt>
