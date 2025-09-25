@@ -252,12 +252,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     public class DatabricksConstants
     {
         /// <summary>
-        /// Default heartbeat interval in seconds for long-running operations. 
+        /// Default heartbeat interval in seconds for long-running operations.
         /// </summary>
         public const int DefaultOperationStatusPollingIntervalSeconds = 60;
 
         /// <summary>
-        /// Default timeout in seconds for operation status polling requests. 
+        /// Default timeout in seconds for operation status polling requests.
         /// </summary>
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
 

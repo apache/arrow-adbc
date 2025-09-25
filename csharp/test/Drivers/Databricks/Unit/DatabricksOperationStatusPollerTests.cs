@@ -215,20 +215,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         public async Task UsesCustomRequestTimeout()
         {
             // Arrange
-            int customRequestTimeout = 5; 
+            int customRequestTimeout = 5;
             using var poller = new DatabricksOperationStatusPoller(_mockStatement.Object, _mockResponse.Object, _heartbeatIntervalSeconds, customRequestTimeout);
             var pollCount = 0;
-            
+
             _mockClient.Setup(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new TGetOperationStatusResp())
                 .Callback(() => pollCount++);
 
             // Act
             poller.Start();
-            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 2)); 
+            await Task.Delay(TimeSpan.FromSeconds(_heartbeatIntervalSeconds * 2));
 
             // Assert: This test verifies that the poller can be instantiated with a custom request timeout
-            
+
             Assert.True(pollCount > 0, "Should have polled at least once");
             _mockClient.Verify(c => c.GetOperationStatus(It.IsAny<TGetOperationStatusReq>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
