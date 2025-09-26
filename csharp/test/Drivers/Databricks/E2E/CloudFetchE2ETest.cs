@@ -46,7 +46,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             yield return new object[] { smallQuery, 1000, true, false };
             yield return new object[] { smallQuery, 1000, false, false };
 
-            string largeQuery = $"SELECT * FROM main.tpcds_sf10_delta.catalog_sales LIMIT 1000000";
+            string largeQuery = $"SELECT * FROM main.tpcds_sf1_delta.catalog_sales";
             yield return new object[] { largeQuery, 1000000, true, true };
             yield return new object[] { largeQuery, 1000000, false, true };
             yield return new object[] { largeQuery, 1000000, true, false };
@@ -65,12 +65,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 [DatabricksParameters.UseCloudFetch] = useCloudFetch.ToString(),
                 [DatabricksParameters.EnableDirectResults] = enableDirectResults.ToString(),
                 [DatabricksParameters.CanDecompressLz4] = "true",
-                [DatabricksParameters.MaxBytesPerFile] = "10485760", // 10MB
+                //[DatabricksParameters.MaxBytesPerFile] = "10485760", // 10MB
                 [DatabricksParameters.CloudFetchUrlExpirationBufferSeconds] = (15 * 60 - 2).ToString(),
             });
 
             // Execute a query that generates a large result set using range function
-            var statement = connection.CreateStatement();
+            using var statement = connection.CreateStatement();
             statement.SqlQuery = query;
 
             // Execute the query and get the result

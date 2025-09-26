@@ -69,6 +69,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const string CloudFetchUrlExpirationBufferSeconds = "adbc.databricks.cloudfetch.url_expiration_buffer_seconds";
 
         /// <summary>
+        /// Target batch size in rows for CloudFetch reader.
+        /// Controls how many rows are returned per ReadNextRecordBatchAsync call.
+        /// Default value is 50000 rows if not specified.
+        /// </summary>
+        public const string CloudFetchBatchSizeRows = "adbc.databricks.cloudfetch.batch_size_rows";
+
+        /// <summary>
         /// Maximum number of URL refresh attempts for CloudFetch downloads.
         /// Default value is 3 if not specified.
         /// </summary>
