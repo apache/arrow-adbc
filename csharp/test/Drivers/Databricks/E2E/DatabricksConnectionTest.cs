@@ -473,8 +473,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             using var connection = NewConnection(testConfig);
             // Create a mock request object
             var request = new TExecuteStatementReq();
-
-            // Act
             bool result = ((DatabricksConnection)Connection).TrySetGetDirectResults(request);
 
             // Assert
