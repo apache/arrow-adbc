@@ -59,12 +59,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _enablePKFK = true;
         private bool _runAsyncInThrift = true;
 
-        internal static TSparkGetDirectResults defaultGetDirectResults = new()
-        {
-            MaxRows = 2000000,
-            MaxBytes = 404857600
-        };
-
+        // DirectQuery configuration
+        private const long DefaultDirectResultMaxBytes = 10 * 1024 * 1024; // 10MB for direct query results size limit
+        private const long DefaultDirectResultMaxRows = 500 * 1000; // upper limit for 10MB result assume smallest 20 Byte column
+        private long _directResultMaxBytes = DefaultDirectResultMaxBytes;
+        private long _directResultMaxRows = DefaultDirectResultMaxRows;
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
         private const int DefaultQueryTimeSeconds = 3 * 60 * 60; // 3 hours
@@ -443,10 +442,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             if (EnableDirectResults)
             {
-                return base.TrySetGetDirectResults(request);
+                request.GetDirectResults = new()
+                {
+                    MaxRows = _directResultMaxRows,
+                    MaxBytes = _directResultMaxBytes
+                };
+                return true;
             }
             return false;
         }
+
+        /// <summary>
+        /// Gets the maximum bytes per fetch block for directResult
+        /// </summary>
+        internal long DirectResultMaxBytes => _directResultMaxBytes;
+
+        /// <summary>
+        /// Gets the maximum rows per fetch block for directResult
+        /// </summary>
+        internal long DirectResultMaxRows => _directResultMaxRows;
 
         /// <summary>
         /// Gets whether CloudFetch is enabled.
