@@ -519,6 +519,12 @@ func arrowDataTypeToTypeKind(field arrow.Field, value arrow.Array) (bigquery.Sta
 			TypeKind:   "STRUCT",
 			StructType: &structType,
 		}, nil
+	case arrow.INTERVAL_MONTHS, arrow.INTERVAL_DAY_TIME, arrow.INTERVAL_MONTH_DAY_NANO:
+		// "INTERVAL" is not yet documented in BigQuery docs, but it works in
+		// practice here for our puposes.
+		return bigquery.StandardSQLDataType{
+			TypeKind: "INTERVAL",
+		}, nil
 	default:
 		// todo: implement all other types
 		//
@@ -530,8 +536,6 @@ func arrowDataTypeToTypeKind(field arrow.Field, value arrow.Array) (bigquery.Sta
 		// - arrow.INTERVAL_MONTHS
 		// - arrow.INTERVAL_DAY_TIME
 		// - arrow.INTERVAL_MONTH_DAY_NANO
-		//   `DATETIME` could be a potential fit for all interval types, but
-		//   the issue is there's no rules about how many days are in a month.
 		//
 		// - arrow.RUN_END_ENCODED
 		// - arrow.SPARSE_UNION

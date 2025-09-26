@@ -955,9 +955,10 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 		}
 	case bigquery.JSONFieldType:
 		field.Type = arrow.BinaryTypes.String
+	case bigquery.IntervalFieldType:
+		field.Type = arrow.FixedWidthTypes.MonthDayNanoInterval
 	default:
 		// TODO: unsupported ones are:
-		// - bigquery.IntervalFieldType
 		// - bigquery.RangeFieldType
 		return arrow.Field{}, adbc.Error{
 			Code: adbc.StatusInvalidArgument,
