@@ -469,7 +469,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         [Fact]
         public void TrySetGetDirectResults_UsesDatabricksDefaultGetDirectResults()
         {
-
             var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
             using var connection = NewConnection(testConfig);
             // Create a mock request object
