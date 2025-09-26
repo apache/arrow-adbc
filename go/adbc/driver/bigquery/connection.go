@@ -29,6 +29,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -37,6 +38,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"golang.org/x/oauth2"
+	"google.golang.org/api/impersonate"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -55,6 +57,12 @@ type connectionImpl struct {
 
 	// the default location to use for all BigQuery requests
 	location string
+
+	impersonateTargetPrincipal string
+	impersonateDelegates       []string
+	impersonateScopes          []string
+	impersonateLifetime        time.Duration
+
 	// catalog is the same as the project id in BigQuery
 	catalog string
 	// dbSchema is the same as the dataset id in BigQuery
@@ -481,9 +489,59 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.dbSchema, nil
 	case OptionStringTableID:
 		return c.tableID, nil
+	case OptionStringImpersonateLifetime:
+		if c.impersonateLifetime == 0 {
+			// If no lifetime is set but impersonation is enabled, return the default
+			if c.hasImpersonationOptions() {
+				return (3600 * time.Second).String(), nil
+			}
+			return "", nil
+		}
+		return c.impersonateLifetime.String(), nil
 	default:
 		return c.ConnectionImplBase.GetOption(key)
 	}
+}
+
+func (c *connectionImpl) SetOption(key string, value string) error {
+	switch key {
+	case OptionStringAuthType:
+		c.authType = value
+	case OptionStringAuthCredentials:
+		c.credentials = value
+	case OptionStringAuthAccessToken:
+		c.accessToken = value
+	case OptionStringAuthClientID:
+		c.clientID = value
+	case OptionStringAuthClientSecret:
+		c.clientSecret = value
+	case OptionStringAuthRefreshToken:
+		c.refreshToken = value
+	case OptionStringProjectID:
+		c.catalog = value
+	case OptionStringDatasetID:
+		c.dbSchema = value
+	case OptionStringTableID:
+		c.tableID = value
+	case OptionStringImpersonateTargetPrincipal:
+		c.impersonateTargetPrincipal = value
+	case OptionStringImpersonateDelegates:
+		c.impersonateDelegates = strings.Split(value, ",")
+	case OptionStringImpersonateScopes:
+		c.impersonateScopes = strings.Split(value, ",")
+	case OptionStringImpersonateLifetime:
+		dur, err := time.ParseDuration(value)
+		if err != nil {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("Invalid duration string for %s: %s", OptionStringImpersonateLifetime, err.Error()),
+			}
+		}
+		c.impersonateLifetime = dur
+	default:
+		return c.ConnectionImplBase.SetOption(key, value)
+	}
+	return nil
 }
 
 func (c *connectionImpl) GetOptionInt(key string) (int64, error) {
@@ -517,91 +575,121 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			Msg:  "ProjectID is empty",
 		}
 	}
+	authOptions := []option.ClientOption{}
+	// First, establish base authentication
 	switch c.authType {
-	case OptionValueAuthTypeJSONCredentialFile,
-		OptionValueAuthTypeJSONCredentialString,
-		OptionValueAuthTypeUserAuthentication,
-		OptionValueAuthTypeTemporaryAccessToken:
-		var credentials option.ClientOption
-
-		switch c.authType {
-		case OptionValueAuthTypeJSONCredentialFile:
-			credentials = option.WithCredentialsFile(c.credentials)
-		case OptionValueAuthTypeJSONCredentialString:
-			credentials = option.WithCredentialsJSON([]byte(c.credentials))
-		case OptionValueAuthTypeUserAuthentication:
-			if c.clientID == "" {
-				return adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientID),
-				}
+	case OptionValueAuthTypeJSONCredentialFile:
+		authOptions = append(authOptions, option.WithCredentialsFile(c.credentials))
+	case OptionValueAuthTypeJSONCredentialString:
+		authOptions = append(authOptions, option.WithCredentialsJSON([]byte(c.credentials)))
+	case OptionValueAuthTypeUserAuthentication:
+		if c.clientID == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientID),
 			}
-			if c.clientSecret == "" {
-				return adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientSecret),
-				}
-			}
-			if c.refreshToken == "" {
-				return adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthRefreshToken),
-				}
-			}
-			if c.accessTokenEndpoint == "" || c.accessTokenEndpoint == DefaultAccessTokenEndpoint {
-				c.accessTokenEndpoint = DefaultAccessTokenEndpoint
-				if c.accessTokenServerName == "" {
-					c.accessTokenServerName = DefaultAccessTokenServerName
-				}
-			}
-			credentials = option.WithTokenSource(c)
-
-		case OptionValueAuthTypeTemporaryAccessToken:
-			if c.accessToken == "" {
-				return adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthAccessToken),
-				}
-			}
-			credentials = option.WithTokenSource(
-				oauth2.StaticTokenSource(&oauth2.Token{
-					AccessToken: c.accessToken,
-					TokenType:   "Bearer",
-				}),
-			)
 		}
-
-		client, err := bigquery.NewClient(ctx, c.catalog, credentials)
-		if err != nil {
-			return err
+		if c.clientSecret == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientSecret),
+			}
 		}
-
-		if c.location != "" {
-			client.Location = c.location
+		if c.refreshToken == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthRefreshToken),
+			}
 		}
-
-		err = client.EnableStorageReadClient(ctx, credentials)
-		if err != nil {
-			return err
+		if c.accessTokenEndpoint == "" || c.accessTokenEndpoint == DefaultAccessTokenEndpoint {
+			c.accessTokenEndpoint = DefaultAccessTokenEndpoint
+			if c.accessTokenServerName == "" {
+				c.accessTokenServerName = DefaultAccessTokenServerName
+			}
 		}
+		authOptions = append(authOptions, option.WithTokenSource(c))
 
-		c.client = client
-
+	case OptionValueAuthTypeTemporaryAccessToken:
+		if c.accessToken == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthAccessToken),
+			}
+		}
+		authOptions = append(authOptions, option.WithTokenSource(
+			oauth2.StaticTokenSource(&oauth2.Token{
+				AccessToken: c.accessToken,
+				TokenType:   "Bearer",
+			}),
+		))
+	case OptionValueAuthTypeAppDefaultCredentials:
+	case OptionValueAuthTypeDefault:
+		// Use Application Default Credentials (default behavior)
+		// No additional options needed - ADC is used by default
 	default:
-		client, err := bigquery.NewClient(ctx, c.catalog)
-		if err != nil {
-			return err
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("Unknown auth type: %s", c.authType),
 		}
-
-		err = client.EnableStorageReadClient(ctx)
-		if err != nil {
-			return err
-		}
-
-		c.client = client
 	}
 
+	// Then, apply impersonation if configured (as a credential transformation layer)
+	if c.hasImpersonationOptions() {
+		if c.impersonateTargetPrincipal == "" {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("The `%s` parameter is empty for impersonation", OptionStringImpersonateTargetPrincipal),
+			}
+		}
+
+		var lifetime time.Duration
+		if c.impersonateLifetime != 0 {
+			lifetime = c.impersonateLifetime
+		} else {
+			// Use default lifetime of 1 hour when impersonation is enabled but no lifetime is specified
+			lifetime = 3600 * time.Second
+		}
+
+		impCfg := impersonate.CredentialsConfig{
+			TargetPrincipal: c.impersonateTargetPrincipal,
+			Delegates:       c.impersonateDelegates,
+			Scopes:          c.impersonateScopes,
+			Lifetime:        lifetime,
+		}
+		tokenSource, err := impersonate.CredentialsTokenSource(ctx, impCfg)
+		if err != nil {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("failed to create impersonated token source: %s", err.Error()),
+			}
+		}
+		// Replace any existing token source with the impersonated one
+		authOptions = []option.ClientOption{option.WithTokenSource(tokenSource)}
+	}
+
+	client, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
+	if err != nil {
+		return err
+	}
+
+	if c.location != "" {
+		client.Location = c.location
+	}
+
+	err = client.EnableStorageReadClient(ctx, authOptions...)
+	if err != nil {
+		return err
+	}
+
+	c.client = client
+
 	return nil
+}
+
+func (c *connectionImpl) hasImpersonationOptions() bool {
+	return c.impersonateTargetPrincipal != "" ||
+		len(c.impersonateDelegates) > 0 ||
+		len(c.impersonateScopes) > 0
 }
 
 var (
