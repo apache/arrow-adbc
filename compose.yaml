@@ -102,6 +102,14 @@ services:
       - .:/adbc:delegated
     command: "/bin/bash -c 'env CMAKE_BUILD_TYPE=Release /adbc/ci/scripts/java_jni_build.sh /adbc /adbc/dist /adbc/local'"
 
+  ############################### Python #####################################
+
+  python-venv:
+    image: ${ARCH}/python:${PYTHON}
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c 'apt update && apt install -y libsqlite3-dev build-essential cmake git && git config --global --add safe.directory /adbc && env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ADBC_BUILD_TESTS=OFF ADBC_USE_ASAN=OFF ADBC_USE_UBSAN=OFF /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/venv && /adbc/ci/scripts/python_venv_test.sh /adbc /adbc/build/venv-test /adbc/build/venv/driver/sqlite/libadbc_driver_sqlite.so'"
+
   ############################ Python conda ##################################
 
   # Must be run as docker compose run -e HOST_USER_ID=$(id -u) python-conda
