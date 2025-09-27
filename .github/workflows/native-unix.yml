@@ -652,6 +652,13 @@ jobs:
       - name: Typecheck Python
         run: |
           ./ci/scripts/python_typecheck.sh "$(pwd)"
+      - name: Run Python Docker-based integration tests
+        if: runner.os == 'Linux'
+        run: |
+          # Self-contained tests using docker-compose
+
+          # Test that the driver manager can load manifests installed into a venv
+          docker compose run python-venv
 
   python-docs:
     name: "Documentation ${{ matrix.python }} (Conda/${{ matrix.os }})"

@@ -572,7 +572,7 @@ cdef class AdbcDatabase(_AdbcHandle):
         if sys.prefix != sys.base_prefix:
             # if we're in a venv, add the venv prefix to the search path list
             status = AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-                &self.database, _to_bytes(os.path.join(sys.prefix, 'etc/adbc'),
+                &self.database, _to_bytes(os.path.join(sys.prefix, "etc/adbc/drivers"),
                                           "sys.prefix"),
                 &c_error)
             check_error(status, &c_error)
