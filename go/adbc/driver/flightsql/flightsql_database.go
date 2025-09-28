@@ -494,6 +494,12 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			if err != nil {
 				d.Logger.Debug("failed to close client", "error", err.Error())
 			}
+		}).PurgeVisitorFunc(func(_ interface{}, client interface{}) {
+			conn := client.(*flightsql.Client)
+			err := conn.Close()
+			if err != nil {
+				d.Logger.Debug("failed to close client", "error", err.Error())
+			}
 		}).Build()
 
 	var cnxnSupport support
