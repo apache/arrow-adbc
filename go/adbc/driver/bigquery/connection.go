@@ -667,6 +667,10 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		authOptions = []option.ClientOption{option.WithTokenSource(tokenSource)}
 	}
 
+	if len(c.impersonateScopes) != 0 {
+		authOptions = append(authOptions, option.WithScopes(c.impersonateScopes...))
+	}
+
 	client, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
 	if err != nil {
 		return err
@@ -688,8 +692,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 
 func (c *connectionImpl) hasImpersonationOptions() bool {
 	return c.impersonateTargetPrincipal != "" ||
-		len(c.impersonateDelegates) > 0 ||
-		len(c.impersonateScopes) > 0
+		len(c.impersonateDelegates) > 0
 }
 
 var (
@@ -999,6 +1002,9 @@ func (c *connectionImpl) getAccessToken() (*bigQueryTokenResponse, error) {
 	params.Add("client_id", c.clientID)
 	params.Add("client_secret", c.clientSecret)
 	params.Add("refresh_token", c.refreshToken)
+	if len(c.impersonateScopes) > 0 {
+		params.Add("scope", strings.Join(c.impersonateScopes, " "))
+	}
 	req, err := http.NewRequest("POST", c.accessTokenEndpoint, bytes.NewBufferString(params.Encode()))
 	if err != nil {
 		return nil, err

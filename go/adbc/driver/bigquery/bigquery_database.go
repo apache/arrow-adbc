@@ -138,8 +138,7 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 
 func (d *databaseImpl) hasImpersonationOptions() bool {
 	return d.impersonateTargetPrincipal != "" ||
-		len(d.impersonateDelegates) > 0 ||
-		len(d.impersonateScopes) > 0
+		len(d.impersonateDelegates) > 0
 }
 
 func (d *databaseImpl) SetOption(key string, value string) error {
