@@ -139,3 +139,34 @@ The Collector can be configure to receive trace messages from the driver and exp
 Ensure to set the [environment variable](https://opentelemetry.io/docs/specs/otel/protocol/exporter/) `OTEL_EXPORTER_OTLP_INSECURE` to `true`, in this scenario.
 
 Ensure to follow [Collector configuration best practices](https://opentelemetry.io/docs/security/config-best-practices/).
+
+## Tracing
+
+### Tracing Exporters
+
+To enable tracing messages to be observed, a tracing exporter needs to be activated.
+Use either the environment variable `OTEL_TRACES_EXPORTER` or the parameter `adbc.traces.exporter` to select one of the
+supported exporters. The parameter has precedence over the environment variable. The parameter must be set before
+the connection is initialized.
+
+The following exporters are supported:
+
+| Exporter | Description |
+| --- | --- |
+| `adbcfile` | Exports traces to rotating files in a folder. |
+
+#### File Exporter (adbcfile)
+
+Rotating trace files are written to a folder. The file names are created with the following pattern:
+`apache.arrow.adbc.drivers.bigquery-<YYYY-MM-DD-HH-mm-ss-fff>-<process-id>.log`.
+
+The folder used depends on the platform.
+
+| Platform | Folder |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%/Apache.Arrow.Adbc/Traces` |
+| macOS   | `$HOME/Library/Application Support/Apache.Arrow.Adbc/Traces` |
+| Linux   | `$HOME/.local/share/Apache.Arrow.Adbc/Traces` |
+
+By default, up to 999 files of maximum size 1024 KB are written to
+the trace folder.

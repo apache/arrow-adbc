@@ -33,7 +33,7 @@ The default folder used is:
 | macOS   | `$HOME/Library/Application Support/Apache.Arrow.Adbc/Traces` |
 | Linux   | `$HOME/.local/share/Apache.Arrow.Adbc/Traces` |
 
-By default, up to 100 files of maximum size 1024 KB are written to
+By default, up to 999 files of maximum size 1024 KB are written to
 the trace folder.
 
 ## ExportersBuilder
@@ -49,6 +49,6 @@ The following exporters are supported:
 | Exporter | Description |
 | --- | --- |
 | `otlp` | Exports traces to an OpenTelemetry Collector or directly to an Open Telemetry Line Protocol (OTLP) endpoint. |
-| `file` | Exports traces to rotating files in a folder. |
+| `adbcfile` | Exports traces to rotating files in a folder. |
 | `console` | Exports traces to the console output. |
 | `none` | Disables trace exporting. |

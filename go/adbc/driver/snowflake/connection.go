@@ -510,7 +510,7 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 }
 
 func descToField(name, typ, isnull, primary string, comment sql.NullString, maxTimestampPrecision MaxTimestampPrecision) (field arrow.Field, err error) {
-	field.Name = strings.ToLower(name)
+	field.Name = name
 	if isnull == "Y" {
 		field.Nullable = true
 	}

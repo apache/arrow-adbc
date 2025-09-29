@@ -125,3 +125,22 @@ test_that("write_adbc() with temporary = TRUE works with sqlite databases", {
   adbcdrivermanager::adbc_connection_release(con)
   adbcdrivermanager::adbc_database_release(db)
 })
+
+test_that("write_adbc() supports mode replace/create_append", {
+  skip_if_not(packageVersion("adbcdrivermanager") >= "0.20.0.9000")
+
+  db <- adbc_database_init(adbcsqlite())
+  con <- adbc_connection_init(db)
+
+  df <- data.frame(x = as.double(1:10))
+
+  adbcdrivermanager::write_adbc(mtcars, con, "df")
+  adbcdrivermanager::write_adbc(df, con, "df", mode = "replace")
+
+  stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
+  expect_identical(as.data.frame(stream), df)
+
+  adbcdrivermanager::write_adbc(df, con, "df", mode = "create_append")
+  stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
+  expect_identical(as.data.frame(stream), rbind(df, df))
+})

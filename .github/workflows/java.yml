@@ -25,6 +25,8 @@ on:
       - "java/**"
       - ".github/workflows/java.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "java/**"
       - ".github/workflows/java.yml"

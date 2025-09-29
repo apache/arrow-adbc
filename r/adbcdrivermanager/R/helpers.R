@@ -27,8 +27,9 @@
 #' @param tbl A data.frame, [nanoarrow_array][nanoarrow::as_nanoarrow_array],
 #'   or  [nanoarrow_array_stream][nanoarrow::as_nanoarrow_array_stream].
 #' @param target_table A target table name to which `tbl` should be written.
-#' @param mode One of "create", "append", or "default" (error if the schema
-#'   is not compatible or append otherwise).
+#' @param mode One of `"create"`, `"append"`, `"replace"`, `"create_append"` (error if the schema
+#'   is not compatible or append otherwise), or `"default"` (use the `adbc.ingest.mode`
+#'   argument of [adbc_statement_init()]). The default is `"default"`.
 #' @param query An SQL query
 #' @param bind A data.frame, nanoarrow_array, or nanoarrow_array_stream of
 #'   bind parameters or NULL to skip the bind/prepare step.
@@ -67,7 +68,7 @@ execute_adbc <- function(db_or_con, query, ..., bind = NULL) {
 #' @rdname read_adbc
 #' @export
 write_adbc <- function(tbl, db_or_con, target_table, ...,
-                       mode = c("default", "create", "append"),
+                       mode = c("default", "create", "append", "replace", "create_append"),
                        temporary = FALSE) {
   UseMethod("write_adbc", db_or_con)
 }
@@ -111,7 +112,7 @@ execute_adbc.default <- function(db_or_con, query, ..., bind = NULL, stream = NU
 
 #' @export
 write_adbc.default <- function(tbl, db_or_con, target_table, ...,
-                               mode = c("default", "create", "append"),
+                               mode = c("default", "create", "append", "replace", "create_append"),
                                temporary = FALSE) {
   assert_adbc(db_or_con, c("adbc_database", "adbc_connection"))
   mode <- match.arg(mode)

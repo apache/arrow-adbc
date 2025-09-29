@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+    <ProjectReference Include="..\Listeners\Apache.Arrow.Adbc.Telemetry.Traces.Listeners.csproj" />
   </ItemGroup>
 
 </Project>

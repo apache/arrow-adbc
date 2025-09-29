@@ -249,15 +249,76 @@ jobs:
           path: |
             docs.tgz
 
+  java-jni:
+    name: "JNI Libraries/${{ matrix.os }} ${{ matrix.arch }}"
+    needs:
+      - source
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - { os: Linux, arch: amd64, runner: ubuntu-latest }
+          - { os: Linux, arch: arm64, runner: ubuntu-24.04-arm }
+          - { os: macOS, arch: arm64v8, runner: macos-latest }
+          - { os: Windows, arch: amd64, runner: windows-latest }
+
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: source
+      - name: Extract source archive
+        run: |
+          source_archive=$(echo apache-arrow-adbc-*.tar.gz)
+          VERSION=${source_archive#apache-arrow-adbc-}
+          VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+          tar xf apache-arrow-adbc-${VERSION}.tar.gz
+          mv apache-arrow-adbc-${VERSION} adbc
+      - name: Build JNI artifacts
+        working-directory: adbc
+        env:
+          ADBC_BUILD_STATIC: ON
+          ADBC_BUILD_TESTS: OFF
+          ADBC_USE_ASAN: OFF
+          ADBC_USE_UBSAN: OFF
+          BUILD_ALL: 0
+          BUILD_DRIVER_MANAGER: 1
+          CMAKE_BUILD_TYPE: release
+        run: |
+          ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build_driver_manager
+          ./ci/scripts/java_build.sh $(pwd)
+          ./ci/scripts/java_jni_build.sh $(pwd) $(pwd)/build_jni $(pwd)/build_driver_manager/local
+      - name: Assemble artifacts
+        run: |
+          mkdir artifacts
+          cp -r adbc/java/driver/jni/src/main/resources/ artifacts/jni
+          ls -laR artifacts
+          mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: |
+            artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz
+
   java:
     name: "Java 11"
     runs-on: ubuntu-latest
     needs:
       - source
+      - java-jni
     steps:
       - uses: actions/download-artifact@v5
         with:
           name: source
+
+      - uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+          pattern: jni-artifacts-*
+          merge-multiple: true
 
       - name: Extract source archive
         run: |
@@ -277,8 +338,16 @@ jobs:
 
       - name: Build and test
         run: |
+          set -x
+          pushd artifacts
+          for archive in artifacts*.tgz; do
+            tar xvf $archive
+          done
+          popd
+          cp -r artifacts/*/jni/adbc_driver_jni adbc/java/driver/jni/src/main/resources
+
           pushd adbc/
-          docker compose run java-dist
+          docker compose run -e BUILD_JNI=ON java-dist
           popd
           cp -a adbc/dist/ ./
 
@@ -346,7 +415,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0eb  # v1.257.0
+        uses: ruby/setup-ruby@0481980f17b760ef6bca5e8c55809102a0af1e5a  # v1.263.0
         with:
           ruby-version: ruby
 

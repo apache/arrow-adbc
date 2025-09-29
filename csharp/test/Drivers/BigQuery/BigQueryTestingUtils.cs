@@ -141,6 +141,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.AllowLargeResults, testEnvironment.AllowLargeResults.ToString());
             }
 
+            if (!string.IsNullOrEmpty(testEnvironment.ClientLocation))
+            {
+                parameters.Add(BigQueryParameters.DefaultClientLocation, testEnvironment.ClientLocation!);
+            }
+
             parameters.Add(BigQueryParameters.IncludeConstraintsWithGetObjects, testEnvironment.IncludeTableConstraints.ToString());
 
             parameters.Add(BigQueryParameters.IncludePublicProjectId, testEnvironment.IncludePublicProjectId.ToString());
