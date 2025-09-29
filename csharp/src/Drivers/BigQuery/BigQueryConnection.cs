@@ -226,6 +226,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     bigQueryClientBuilder.DefaultLocation = DefaultClientLocation;
                     activity?.AddBigQueryParameterTag(BigQueryParameters.DefaultClientLocation, DefaultClientLocation);
                 }
+                else
+                {
+                    activity?.AddBigQueryTag("client.default_location", null);
+                }
 
                 BigQueryClient client = bigQueryClientBuilder.Build();
 
