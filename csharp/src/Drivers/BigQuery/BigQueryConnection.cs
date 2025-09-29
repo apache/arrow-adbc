@@ -90,6 +90,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 RetryDelayMs = delay;
             }
+
+            if (this.properties.TryGetValue(BigQueryParameters.DefaultClientLocation, out string? location) &&
+                !string.IsNullOrEmpty(location) &&
+                BigQueryConstants.ValidLocations.Any(l => l.Equals(location, StringComparison.OrdinalIgnoreCase)))
+            {
+                DefaultClientLocation = location;
+            }
         }
 
         private bool TryInitTracerProvider(out FileActivityListener? fileActivityListener)
@@ -131,6 +138,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         internal int MaxRetryAttempts { get; private set; } = 5;
 
         internal int RetryDelayMs { get; private set; } = 200;
+
+        internal string DefaultClientLocation { get; private set; } = BigQueryConstants.DefaultClientLocation;
 
         public override string AssemblyVersion => BigQueryUtils.BigQueryAssemblyVersion;
 
@@ -200,6 +209,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     ProjectId = projectId,
                     QuotaProject = billingProjectId,
+                    DefaultLocation = DefaultClientLocation,
                     GoogleCredential = Credential
                 };
 

@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Xml.Linq;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
 {
@@ -40,6 +41,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string JsonCredential = "adbc.bigquery.auth_json_credential";
         public const string LargeDecimalsAsString = "adbc.bigquery.large_decimals_as_string";
         public const string LargeResultsDataset = "adbc.bigquery.large_results_dataset";
+        public const string DefaultClientLocation = "adbc.bigquery.default_client_location";
         public const string LargeResultsDestinationTable = "adbc.bigquery.large_results_destination_table";
         public const string MaxFetchConcurrency = "adbc.bigquery.max_fetch_concurrency";
         public const string MaximumRetryAttempts = "adbc.bigquery.maximum_retries";
@@ -54,7 +56,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         // these values are safe to log any time
         private static HashSet<string> safeToLog = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            AllowLargeResults, AuthenticationType, BillingProjectId, ClientId, ClientTimeout,
+            AllowLargeResults, AuthenticationType, BillingProjectId, ClientId, ClientTimeout, DefaultClientLocation, EvaluationKind, GetQueryResultsOptionsTimeout,
             EvaluationKind, GetQueryResultsOptionsTimeout, IncludeConstraintsWithGetObjects,
             IncludePublicProjectId, LargeDecimalsAsString, LargeResultsDataset, LargeResultsDestinationTable,
             MaxFetchConcurrency, MaximumRetryAttempts, ProjectId, RetryDelayMs, StatementIndex,
@@ -95,5 +97,63 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string DefaultLargeDatasetId = "_bqadbc_temp_tables";
 
         public const string PublicProjectId = "bigquery-public-data";
+
+        // this is what the BigQuery API uses as the default location
+        public const string DefaultClientLocation = "US";
+
+        // from https://cloud.google.com/bigquery/docs/locations#locations_and_regions as of Sept 28, 2025
+        public static IReadOnlyList<string> ValidLocations = new List<string>()
+        {
+            //multi-regions
+            "US",
+            "EU",
+            // Americas
+            "us-east5",
+            "us-south1",
+            "us-central1",
+            "us-west4",
+            "us-west2",
+            "northamerica-south1",
+            "northamerica-northeast1",
+            "us-east4",
+            "us-west1",
+            "us-west3",
+            "southamerica-east1",
+            "southamerica-west1",
+            "us-east1",
+            "northamerica-northeast2",
+            // Asia Pacific
+            "asia-south2",
+            "asia-east2",
+            "asia-southeast2",
+            "australia-southeast2",
+            "asia-south1",
+            "asia-northeast2",
+            "asia-northeast3",
+            "asia-southeast1",
+            "australia-southeast1",
+            "asia-east1",
+            "asia-northeast1",
+            // Europe
+            "europe-west1",
+            "europe-west10",
+            "europe-north1",
+            "europe-west3",
+            "europe-west2",
+            "europe-southwest1",
+            "europe-west8",
+            "europe-west4",
+            "europe-west9",
+            "europe-north2",
+            "europe-west12",
+            "europe-central2",
+            "europe-west6",
+            // Middle East
+            "me-central2",
+            "me-central1",
+            "me-west1",
+            // Africa
+            "africa-south1"
+        };
     }
 }

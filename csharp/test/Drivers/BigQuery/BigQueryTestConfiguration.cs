@@ -120,6 +120,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("evaluationKind")]
         public string EvaluationKind { get; set; } = string.Empty;
 
+        [JsonPropertyName("location")]
+        public string ClientLocation { get; set; } = "US";
+
+
         /// <summary>
         /// How structs should be handled by the ADO.NET client for this environment.
         /// </summary>

@@ -94,7 +94,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, this.bigQueryConnection.IsSafeToTrace);
 
                 BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
-
                 JobReference jobReference = job.Reference;
                 GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
@@ -489,6 +488,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     BigQueryDataset bigQueryDataset = new BigQueryDataset(this.Client, new Dataset()
                     {
                         DatasetReference = reference,
+                        //Location = this.Client.DefaultLocation,
                         DefaultTableExpirationMs = (long)TimeSpan.FromDays(1).TotalMilliseconds
                     });
 
