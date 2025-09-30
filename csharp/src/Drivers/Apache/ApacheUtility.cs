@@ -16,6 +16,9 @@
 */
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache
@@ -30,7 +33,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             Milliseconds
         }
 
+        public static CancellationTokenSource GetCancellationTokenSource(int timeout, TimeUnit timeUnit)
+        {
+            TimeSpan timeSpan = CalculateTimeSpan(timeout, timeUnit);
+            return new CancellationTokenSource(timeSpan);
+        }
+
         public static CancellationToken GetCancellationToken(int timeout, TimeUnit timeUnit)
+        {
+            TimeSpan timeSpan = CalculateTimeSpan(timeout, timeUnit);
+            var cts = new CancellationTokenSource(timeSpan);
+            return cts.Token;
+        }
+
+        private static TimeSpan CalculateTimeSpan(int timeout, TimeUnit timeUnit)
         {
             TimeSpan span;
 
@@ -52,13 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 }
             }
 
-            return GetCancellationToken(span);
-        }
-
-        private static CancellationToken GetCancellationToken(TimeSpan timeSpan)
-        {
-            var cts = new CancellationTokenSource(timeSpan);
-            return cts.Token;
+            return span;
         }
 
         public static bool QueryTimeoutIsValid(string key, string value, out int queryTimeoutSeconds)
@@ -149,5 +159,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             containedException = null;
             return false;
         }
+
+        internal static string FormatExceptionMessage(Exception exception)
+        {
+            if (exception is AggregateException aEx)
+            {
+                AggregateException flattenedEx = aEx.Flatten();
+                IEnumerable<string> messages = flattenedEx.InnerExceptions.Select((ex, index) => $"({index + 1}) {ex.Message}");
+                string fullMessage = $"{flattenedEx.Message}: {string.Join(", ", messages)}";
+                return fullMessage;
+            }
+
+            return exception.Message;
+        }
+
+        internal static string GetAssemblyName(Type type) => type.Assembly.GetName().Name!;
+
+        internal static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
     }
 }

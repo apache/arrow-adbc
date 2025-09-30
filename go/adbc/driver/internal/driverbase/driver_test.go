@@ -533,7 +533,7 @@ func (base *statement) Base() *driverbase.StatementImplBase {
 	return &base.StatementImplBase
 }
 
-func (base *statement) Bind(ctx context.Context, values arrow.Record) error {
+func (base *statement) Bind(ctx context.Context, values arrow.RecordBatch) error {
 	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Bind")
 }
 
@@ -551,6 +551,10 @@ func (base *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, ad
 
 func (base *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
 	return nil, 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteQuery")
+}
+
+func (base *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	return nil, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteSchema")
 }
 
 func (base *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
@@ -768,9 +772,9 @@ func messagesEqual(expected, actual logMessage) bool {
 func tableFromRecordReader(rdr array.RecordReader) arrow.Table {
 	defer rdr.Release()
 
-	recs := make([]arrow.Record, 0)
+	recs := make([]arrow.RecordBatch, 0)
 	for rdr.Next() {
-		rec := rdr.Record()
+		rec := rdr.RecordBatch()
 		rec.Retain()
 		defer rec.Release()
 		recs = append(recs, rec)

@@ -45,8 +45,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             AdbcDriver driver = NewDriver;
             AdbcDatabase database = driver.Open(test.Parameters);
-            Exception exeption = Assert.Throws(test.ExceptionType, () => database.Connect(test.Parameters));
-            OutputHelper?.WriteLine(exeption.Message);
+            Exception exception = Assert.Throws(test.ExceptionType, () => database.Connect(test.Parameters));
+            OutputHelper?.WriteLine(exception.Message);
         }
 
         /// <summary>
@@ -290,24 +290,45 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
         {
             public InvalidConnectionParametersTestData()
             {
+                string serverType = SparkServerTypeConstants.Standard;
                 Add(new([], typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.Type] = " " }, typeof(ArgumentOutOfRangeException)));
                 Add(new(new() { [SparkParameters.Type] = "xxx" }, typeof(ArgumentOutOfRangeException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Standard }, typeof(ArgumentOutOfRangeException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = " " }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "invalid!server.com" }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "http://valid.server.com" }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com" }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"unknown_auth_type" }, typeof(ArgumentOutOfRangeException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Basic}" }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Token}" }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Basic}", [SparkParameters.Token] = "abcdef" }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Token}", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword" }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user" }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Password] = "myPassword" }, typeof(ArgumentException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [SparkParameters.ConnectTimeoutMilliseconds] = ((long)int.MaxValue + 1).ToString() }, typeof(ArgumentOutOfRangeException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [SparkParameters.ConnectTimeoutMilliseconds] = "non-numeric" }, typeof(ArgumentOutOfRangeException)));
-                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [SparkParameters.ConnectTimeoutMilliseconds] = "" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Standard }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = " " }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "invalid!server.com" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "http://valid.server.com" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"unknown_auth_type" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Basic}" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Token}" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Basic}", [SparkParameters.Token] = "abcdef" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Token}", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Password] = "myPassword" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [SparkParameters.ConnectTimeoutMilliseconds] = ((long)int.MaxValue + 1).ToString() }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [SparkParameters.ConnectTimeoutMilliseconds] = "non-numeric" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [SparkParameters.ConnectTimeoutMilliseconds] = "" }, typeof(ArgumentException)));
+
+                serverType = SparkServerTypeConstants.Http;
+                Add(new([], typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = " " }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = "xxx" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Standard }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = " " }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "invalid!server.com" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "http://valid.server.com" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"unknown_auth_type" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Basic}" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Token}" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Basic}", [SparkParameters.Token] = "abcdef" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [SparkParameters.AuthType] = $"{SparkAuthTypeConstants.Token}", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Password] = "myPassword" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [SparkParameters.ConnectTimeoutMilliseconds] = ((long)int.MaxValue + 1).ToString() }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [SparkParameters.ConnectTimeoutMilliseconds] = "non-numeric" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = serverType, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [SparkParameters.ConnectTimeoutMilliseconds] = "" }, typeof(ArgumentOutOfRangeException)));
             }
         }
     }

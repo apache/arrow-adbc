@@ -1,17 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net472;net6.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net472;net8.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="ApacheThrift" Version="0.21.0" />
+  </ItemGroup>
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible($(TargetFramework), 'net6.0'))">
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+    <ProjectReference Include="..\..\Telemetry\Traces\Listeners\Apache.Arrow.Adbc.Telemetry.Traces.Listeners.csproj" />
   </ItemGroup>
 
 </Project>

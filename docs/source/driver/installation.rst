@@ -128,7 +128,7 @@ Python
 
 Install the appropriate driver package.
 
-.. note:: To use the DBAPI interface, ``pyarrow`` is also required.
+.. note:: To use the DBAPI interface, either ``pyarrow`` or ``polars`` must be installed.
 
 For example, from PyPI:
 
@@ -155,16 +155,25 @@ Install the appropriate driver package from CRAN:
    install.packages("adbcpostgresql")
    install.packages("duckdb")
 
-Drivers not yet available on CRAN can be installed from GitHub:
+Drivers not yet available on CRAN can be installed from R-multiverse:
 
 .. code-block:: r
 
-   # install.packages("pak")
-   pak::pak("apache/arrow-adbc/r/adbcflightsql")
-   pak::pak("apache/arrow-adbc/r/adbcsnowflake")
+   install.packages("adbcflightsql", repos = "https://community.r-multiverse.org")
+   install.packages("adbcsnowflake", repos = "https://community.r-multiverse.org")
 
 Ruby
 ====
 
 Install the appropriate driver package for C/C++. You can use it from
 Ruby.
+
+Rust
+====
+
+Add a dependency on ``adbc_core`` and any driver packages
+(e.g. ``adbc_datafusion``):
+
+.. code-block:: shell
+
+   cargo add adbc_core adbc_datafusion

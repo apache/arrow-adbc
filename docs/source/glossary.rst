@@ -45,16 +45,37 @@ Glossary
      PostgreSQL wire protocol.  The JDBC PostgreSQL driver uses the same wire
      protocol, but exposes the JDBC client API instead.
 
-   driver manager
-     A library that helps manage multiple drivers for a given client API.
-     For example, the JDBC driver manager can find a appropriate driver
-     implementation for a database URI.
+     ADBC drivers can be implemented as libraries in different languages
+     including C++, C#, Go, and Rust. A driver can be imported directly into an
+     application that's implemented in the same language, or it can be compiled
+     into a shared library (a ``.so`` file for Linux, a ``.dylib`` file for
+     macOS, or a ``.dll`` file for Windows) and dynamically loaded into an
+     application in any supported language using a :term:`driver manager`.
 
-     The ADBC driver manager in each language is similar.  In C/C++, it can
-     dynamically load drivers so that applications do not have to directly
-     link to them.  (Since all drivers expose the same API, their symbols
-     would collide otherwise.)  In Python, it loads drivers and provides
-     Python bindings on top.
+   driver manager
+     A library for loading and using :term:`drivers <driver>`. A driver manager
+     implements the ADBC API and delegates to dynamically-loaded drivers. It
+     simplifies using multiple drivers in a single application and makes it
+     possible to use drivers written in any language, regardless of the language
+     the application is written in.
+
+     The driver manager in each language is similar.  In C/C++, it can
+     dynamically load drivers so that applications do not have to directly link
+     to them.  (Since all drivers expose the same API, their symbols would
+     collide otherwise.)  In Python, it loads drivers and provides Python
+     bindings on top.
+
+   driver manifest
+     A file (in TOML format) describing a :term:`driver`. This file's structure
+     is part of the ADBC :doc:`specification <format/specification>`. A
+     :term:`driver manager` can load a driver from a which simplifies the
+     process for users.
+
+   entrypoint
+     The name of a function exported by a driver that the :term:`driver manager`
+     calls when a driver is loaded to perform any initialization required by the
+     driver. The name follows a convention which is outlined in
+     :c:type:`AdbcDriverInitFunc` but another name may be used.
 
    statement
      In ADBC, the statement object/struct holds state for executing a single

@@ -20,9 +20,9 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
-using System.IO;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Adbc.Tests.Xunit;
+using Apache.Arrow.Types;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
@@ -243,6 +243,125 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             }
         }
 
+        [SkippableFact, Order(6)]
+        public void VerifyTimestampPrecision()
+        {
+            string query = "SELECT " +
+                              "TO_TIMESTAMP('9999-12-31 00:00:00') December31_9999, " +
+                              "TO_TIMESTAMP('2001-09-11 13:46:00') As September11_2001, " +
+                              "TO_TIMESTAMP('33-04-03 15:00:00') as April3_0033";
+
+            List<ColumnNetTypeArrowTypeValue> expectedMicrosecondValues = new List<ColumnNetTypeArrowTypeValue>()
+            {
+                new ColumnNetTypeArrowTypeValue("DECEMBER31_9999", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(9999, 12, 31, 0, 0, 0), TimeSpan.Zero)),
+                new ColumnNetTypeArrowTypeValue("SEPTEMBER11_2001", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2001, 9, 11, 13, 46, 0), TimeSpan.Zero)),
+                new ColumnNetTypeArrowTypeValue("APRIL3_0033", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(0033, 4, 3, 15, 0, 0), TimeSpan.Zero)),
+            };
+
+            // if using microseconds as the max precision, everything returns correctly
+            ValidateTimestampPrecision(SnowflakeConstants.OptionValueMicroseconds, query, expectedMicrosecondValues);
+
+            List<ColumnNetTypeArrowTypeValue> expectedNanoseconddValues = new List<ColumnNetTypeArrowTypeValue>()
+            {
+                // 572833941680662774 ticks = 3/29/1816 5:56:08 AM +00:00 and not what we asked for :/
+                new ColumnNetTypeArrowTypeValue("DECEMBER31_9999", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(572833941680662774, TimeSpan.Zero)),
+
+                // within normal range, so the values return as expected
+                new ColumnNetTypeArrowTypeValue("SEPTEMBER11_2001", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(new DateTime(2001, 9, 11, 13, 46, 0), TimeSpan.Zero)),
+
+                // 563580782211286549 ticks = 12/1/1786 1:43:41 PM +00:00 and not what we asked for :/
+                new ColumnNetTypeArrowTypeValue("APRIL3_0033", typeof(DateTimeOffset), typeof(TimestampType), new DateTimeOffset(563580782211286549, TimeSpan.Zero)),
+            };
+
+            // if you use the default (nanoseconds) precision, the values are incorrect
+            ValidateTimestampPrecision(SnowflakeConstants.OptionValueNanoseconds, query, expectedNanoseconddValues);
+
+            // if `error on overflow` is enforced, then an error is thrown
+            Assert.Throws<Exception>(() => ValidateTimestampPrecision(SnowflakeConstants.OptionValueNanosecondsNoOverflow, query, expectedNanoseconddValues));
+        }
+
+        [SkippableFact, Order(6)]
+        public void VerifyTimestampPrecisionJson()
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            testConfiguration.MaxTimestampPrecision = "microseconds";
+
+            string tempTable = "pk_" + Guid.NewGuid().ToString().Replace("-", "");
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+                sampleDataBuilder.Samples.Add(
+                    new SampleData()
+                    {
+                        // create the table
+                        PreQueryCommands = new List<string> {
+                            @$"CREATE OR REPLACE TABLE {testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{tempTable}(
+                             id INT PRIMARY KEY,
+                             name STRING
+                            );"
+                        },
+                        // run the SHOW PRIMARY KEYS command, which returns data as json
+                        Query = $"SHOW PRIMARY KEYS IN TABLE {testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{tempTable}",
+                        ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
+                        {
+                            new ColumnNetTypeArrowTypeValue("created_on", typeof(DateTimeOffset), typeof(TimestampType), true,
+                                v =>
+                                {
+                                    if (v is DateTimeOffset createdOn)
+                                    {
+                                        // the key will have just been created, so just compare that the two times
+                                        // are only a few minutes apart
+                                        DateTimeOffset now = DateTimeOffset.UtcNow;
+                                        TimeSpan difference = now - createdOn;
+                                        return difference.Duration() < TimeSpan.FromMinutes(2);
+                                    }
+                                    else
+                                    {
+                                        return false;
+                                     }
+                                }),
+                            new ColumnNetTypeArrowTypeValue("database_name", typeof(string), typeof(StringType), testConfiguration.Metadata.Catalog),
+                            new ColumnNetTypeArrowTypeValue("schema_name", typeof(string), typeof(StringType), testConfiguration.Metadata.Schema),
+                            new ColumnNetTypeArrowTypeValue("table_name", typeof(string), typeof(StringType), tempTable.ToUpper()),
+                            new ColumnNetTypeArrowTypeValue("column_name", typeof(string), typeof(StringType), "ID"),
+                            new ColumnNetTypeArrowTypeValue("key_sequence", typeof(SqlDecimal), typeof(Decimal128Type), new SqlDecimal(1m)),
+
+                            // we dont control these, but also don't care about the value
+                            new ColumnNetTypeArrowTypeValue("constraint_name", typeof(string), typeof(StringType), true, v => { return true; }),
+                            new ColumnNetTypeArrowTypeValue("rely", typeof(string), typeof(StringType), true, v => { return true; }),
+                            new ColumnNetTypeArrowTypeValue("comment", typeof(string), typeof(StringType), null)
+                        },
+                        // drop the table
+                        PostQueryCommands = new List<string>() {
+                            $"DROP TABLE {testConfiguration.Metadata.Catalog}.{testConfiguration.Metadata.Schema}.{tempTable}"
+                        }
+                    });
+
+                Tests.ClientTests.VerifyTypesAndValues(adbcConnection, sampleDataBuilder);
+            }
+        }
+
+
+        private void ValidateTimestampPrecision(string precision, string query, List<ColumnNetTypeArrowTypeValue> expectedValues)
+        {
+            SnowflakeTestConfiguration testConfiguration = Utils.LoadTestConfiguration<SnowflakeTestConfiguration>(SnowflakeTestingUtils.SNOWFLAKE_TEST_CONFIG_VARIABLE);
+            testConfiguration.MaxTimestampPrecision = precision;
+
+            using (Adbc.Client.AdbcConnection adbcConnection = GetSnowflakeAdbcConnectionUsingConnectionString(testConfiguration))
+            {
+                SampleDataBuilder sampleDataBuilder = new SampleDataBuilder();
+                sampleDataBuilder.Samples.Add(
+                   new SampleData()
+                   {
+                       Query = query,
+                       ExpectedValues = expectedValues
+                   });
+
+                Tests.ClientTests.VerifyTypesAndValues(adbcConnection, sampleDataBuilder);
+            }
+        }
+
         [SkippableFact]
         public void VerifySchemaTables()
         {
@@ -297,6 +416,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
             builder[SnowflakeParameters.HOST] = testConfiguration.Host;
             builder[SnowflakeParameters.DATABASE] = testConfiguration.Database;
             builder[SnowflakeParameters.USERNAME] = testConfiguration.User;
+            builder[SnowflakeParameters.MAX_TIMESTAMP_PRECISION] = testConfiguration.MaxTimestampPrecision;
+
             if (authType == SnowflakeAuthentication.AuthJwt)
             {
                 string privateKey = testConfiguration.Authentication.SnowflakeJwt!.PrivateKey;

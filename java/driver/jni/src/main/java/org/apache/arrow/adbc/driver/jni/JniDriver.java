@@ -48,6 +48,16 @@ public class JniDriver implements AdbcDriver {
     Map<String, String> nativeParameters = new HashMap<>();
     nativeParameters.put("driver", driverName);
 
+    for (Map.Entry<String, Object> param : parameters.entrySet()) {
+      if (param.getKey().equals(PARAM_DRIVER.getKey())) continue;
+
+      if (param.getValue() instanceof String) {
+        nativeParameters.put(param.getKey(), (String) param.getValue());
+      } else {
+        throw AdbcException.invalidArgument("[jni] only String parameters are supported");
+      }
+    }
+
     NativeDatabaseHandle handle = JniLoader.INSTANCE.openDatabase(nativeParameters);
     return new JniDatabase(allocator, handle);
   }

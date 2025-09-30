@@ -17,12 +17,27 @@
 
 using System;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Types;
 using Xunit;
 
 namespace Apache.Arrow.Adbc.Tests
 {
     public class IArrowArrayExtensionsTests
     {
+        [Fact]
+        public void ValidateTimestamp()
+        {
+            DateTimeOffset theFuture = new DateTimeOffset(new DateTime(9999, 12, 31, 0, 0, 0), TimeSpan.Zero);
+            TimestampArray.Builder theFutureBuilder = new TimestampArray.Builder(TimestampType.Default);
+            theFutureBuilder.Append(theFuture);
+            TimestampArray tsFutureArray = theFutureBuilder.Build();
+
+            Assert.Equal(theFuture, tsFutureArray.GetTimestamp(0));
+
+            Assert.Equal(theFuture, tsFutureArray.ValueAt(0));
+            Assert.Equal(theFuture, tsFutureArray.Data.DataType.GetValueConverter().Invoke(tsFutureArray, 0));
+        }
+
         [Fact]
         public void ValidateTime32()
         {

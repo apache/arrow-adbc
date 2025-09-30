@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-using Apache.Hive.Service.Rpc.Thrift;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -25,6 +24,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
@@ -142,7 +142,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
             HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
-            httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
@@ -199,5 +198,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         }
 
         protected override HiveServer2TransportType Type => HiveServer2TransportType.Http;
+
+        protected override IEnumerable<TProtocolVersion> FallbackProtocolVersions   => new[]
+        {
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V10,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V8,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7
+        };
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

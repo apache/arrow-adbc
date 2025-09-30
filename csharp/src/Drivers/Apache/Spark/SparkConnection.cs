@@ -17,7 +17,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -33,11 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         protected override string GetProductVersionDefault() => ProductVersionDefault;
 
         internal static TSparkGetDirectResults sparkGetDirectResults = new TSparkGetDirectResults(1000);
-
-        internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
-        {
-            { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" }
-        };
 
         internal SparkConnection(IReadOnlyDictionary<string, string> properties)
             : base(properties)
@@ -61,7 +58,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return statement;
         }
 
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            GetResultSetMetadataAsync(response.OperationHandle!, Client, cancellationToken);
+        protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            FetchResultsAsync(response.OperationHandle!, cancellationToken: cancellationToken);
+
         protected internal override int PositionRequiredOffset => 1;
+
+        protected override int ColumnMapIndexOffset => 1;
 
         internal override void SetPrecisionScaleAndTypeName(
             short colType,
@@ -117,21 +121,49 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override bool IsColumnSizeValidForDecimal => false;
 
-        protected internal override bool AreResultsAvailableDirectly => true;
+        internal override SchemaParser SchemaParser { get; } = new HiveServer2SchemaParser();
 
-        protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = sparkGetDirectResults;
+        protected internal override bool TrySetGetDirectResults(IRequest request)
+        {
+            request.GetDirectResults = sparkGetDirectResults;
+            return true;
+        }
 
-        protected override void SetDirectResults(TGetCatalogsReq request) => request.GetDirectResults = sparkGetDirectResults;
+        protected internal override bool TryGetDirectResults(TSparkDirectResults? directResults, [MaybeNullWhen(false)] out QueryResult result)
+        {
+            if (directResults?.ResultSet?.Results == null)
+            {
+                result = null;
+                return false;
+            }
 
-        protected override void SetDirectResults(TGetSchemasReq request) => request.GetDirectResults = sparkGetDirectResults;
+            TGetResultSetMetadataResp resultSetMetadata = directResults.ResultSetMetadata;
+            Schema schema = SchemaParser.GetArrowSchema(resultSetMetadata.Schema, DataTypeConversion);
+            TRowSet rowSet = directResults.ResultSet.Results;
+            int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
+            int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
+            IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, DataTypeConversion);
 
-        protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = sparkGetDirectResults;
+            result = new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(schema, data));
+            return true;
+        }
 
-        protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = sparkGetDirectResults;
+        protected internal override bool TryGetDirectResults(
+            TSparkDirectResults? directResults,
+            [MaybeNullWhen(false)] out TGetResultSetMetadataResp metadata,
+            [MaybeNullWhen(false)] out TRowSet rowSet)
+        {
+            if (directResults?.ResultSet?.Results == null)
+            {
+                metadata = null;
+                rowSet = null;
+                return false;
+            }
 
-        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = sparkGetDirectResults;
-
-        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = sparkGetDirectResults;
+            metadata = directResults.ResultSetMetadata;
+            rowSet = directResults.ResultSet.Results;
+            return true;
+        }
 
         protected abstract void ValidateConnection();
         protected abstract void ValidateAuthentication();

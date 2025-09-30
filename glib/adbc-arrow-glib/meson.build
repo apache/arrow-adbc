@@ -21,17 +21,23 @@ sources = files('connection.c', 'statement.c')
 
 definition_headers = files('connection.h', 'statement.h')
 
-version_h_conf = configuration_data()
-version_h_conf.set('GADBC_ARROW_VERSION', meson.project_version())
-version_h_conf.set('GADBC_ARROW_VERSION_MAJOR', version_major)
-version_h_conf.set('GADBC_ARROW_VERSION_MINOR', version_minor)
-version_h_conf.set('GADBC_ARROW_VERSION_MICRO', version_micro)
 version_h = configure_file(
     input: 'version.h.in',
     output: 'version.h',
-    configuration: version_h_conf,
+    command: [
+        python3,
+        generate_version_header_py,
+        '--library',
+        'GADBC_ARROW',
+        '--version',
+        meson.project_version(),
+        '--input',
+        '@INPUT@',
+        '--output',
+        '@OUTPUT@',
+    ],
 )
-headers += version_h
+definition_headers += version_h
 
 headers = definition_headers
 headers += files('adbc-arrow-glib.h')

@@ -31,6 +31,8 @@ on:
       - "ruby/**"
       - ".github/workflows/native-unix.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "c/**"
       - "ci/**"
@@ -79,7 +81,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -95,7 +97,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -104,7 +106,7 @@ jobs:
         run: |
           ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -160,7 +162,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -173,7 +175,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -194,7 +196,10 @@ jobs:
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_POSTGRESQL: "1"
           BUILD_DRIVER_SQLITE: "1"
+          ADBC_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
         run: |
+          # Ensure the CONDA_PREFIX searching in driver manager is tested
+          export CONDA_BUILD=1
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test
         env:
@@ -214,7 +219,7 @@ jobs:
       matrix:
         os: ["ubuntu-latest"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -225,14 +230,14 @@ jobs:
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
       - name: Install Meson via Python
@@ -277,7 +282,7 @@ jobs:
     name: "clang-tidy"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -290,7 +295,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -323,7 +328,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -336,7 +341,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -352,7 +357,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -395,11 +400,11 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193  # v2.1.10
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -408,7 +413,7 @@ jobs:
       # the 'toolchain' parameter and staticcheck tends to need the latest Go
       - id: toolchain
         run: echo "GO_VERSION=$(sed -n 's/^toolchain go//p' go/adbc/go.mod)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ steps.toolchain.outputs.GO_VERSION }}
           check-latest: true
@@ -431,7 +436,7 @@ jobs:
           popd
       - name: Go Test
         env:
-          SNOWFLAKE_DATABASE: ADBC_TESTING
+          SNOWFLAKE_DATABASE: ARROW_OSS_DB
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
@@ -457,11 +462,11 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193  # v2.1.10
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -477,7 +482,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -491,7 +496,7 @@ jobs:
         run: |
           ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -501,7 +506,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -539,13 +544,13 @@ jobs:
     strategy:
       matrix:
         os: ["macos-13", "macos-latest", "ubuntu-latest"]
-        python: ["3.9", "3.12"]
+        python: ["3.9", "3.13"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -561,7 +566,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -576,14 +581,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -656,9 +661,9 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest"]
-        python: ["3.12"]
+        python: ["3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -671,7 +676,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -687,7 +692,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"

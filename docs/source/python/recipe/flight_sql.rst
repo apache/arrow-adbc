@@ -19,7 +19,7 @@
 Flight SQL Recipes
 ==================
 
-Some of these recipes are written againt a demo Flight SQL service backed by
+Some of these recipes are written against a demo Flight SQL service backed by
 SQLite.  You can run it yourself as follows:
 
 .. code-block:: shell

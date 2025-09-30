@@ -16,31 +16,26 @@
 # under the License.
 
 [package]
-name = "adbc_core"
-description = "Public abstract API, driver manager and driver exporter"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
 authors.workspace = true
-license.workspace = true
-readme = "../README.md"
-documentation.workspace = true
-homepage.workspace = true
-repository.workspace = true
-keywords.workspace = true
 categories.workspace = true
+description = "Public abstract API of ADBC"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "adbc_core"
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [features]
 default = []
-driver_manager = ["dep:libloading"]
 
 [dependencies]
 arrow-array.workspace = true
 arrow-schema.workspace = true
-libloading = { version = "0.8", optional = true }
-
-[dev-dependencies]
-arrow-select.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

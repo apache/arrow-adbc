@@ -32,8 +32,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -51,11 +50,12 @@ const (
 
 type statement struct {
 	driverbase.StatementImplBase
-	cnxn                *connectionImpl
-	alloc               memory.Allocator
-	queueSize           int
-	prefetchConcurrency int
-	useHighPrecision    bool
+	cnxn                  *connectionImpl
+	alloc                 memory.Allocator
+	queueSize             int
+	prefetchConcurrency   int
+	useHighPrecision      bool
+	maxTimestampPrecision MaxTimestampPrecision
 
 	query         string
 	targetTable   string
@@ -63,7 +63,7 @@ type statement struct {
 	ingestOptions *ingestOptions
 	queryTag      string
 
-	bound      arrow.Record
+	bound      arrow.RecordBatch
 	streamBind array.RecordReader
 }
 
@@ -83,11 +83,15 @@ func (st *statement) setQueryContext(ctx context.Context) context.Context {
 // and closes it (particularly if it is a prepared statement).
 //
 // A statement instance should not be used after Close is called.
-func (st *statement) Close() error {
+func (st *statement) Close() (err error) {
+	_, span := internal.StartSpan(context.Background(), "statement.Close", st)
+	defer internal.EndSpan(span, err)
+
 	if st.cnxn == nil {
-		return adbc.Error{
+		err = adbc.Error{
 			Msg:  "statement already closed",
 			Code: adbc.StatusInvalidState}
+		return err
 	}
 
 	if st.bound != nil {
@@ -98,7 +102,7 @@ func (st *statement) Close() error {
 		st.streamBind = nil
 	}
 	st.cnxn = nil
-	return nil
+	return err
 }
 
 func (st *statement) GetOption(key string) (string, error) {
@@ -467,7 +471,7 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 }
 
 // ExecuteQuery executes the current query or prepared statement
-// and returnes a RecordReader for the results along with the number
+// and returns a RecordReader for the results along with the number
 // of rows affected if known, otherwise it will be -1.
 //
 // This invalidates any prior result sets on this statement.
@@ -475,16 +479,13 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 	nRows = -1
 
 	var span trace.Span
-	ctx, span = st.StartSpan(ctx, "ExecuteQuery")
-	ctx = st.setQueryContext(ctx)
-
+	ctx, span = internal.StartSpan(ctx, "statement.ExecuteQuery", st)
 	defer func() {
-		if !internal.SetErrorOnSpan(span, err) {
-			span.SetAttributes(attribute.Int64("db.response.returned_rows", nRows))
-			span.SetStatus(codes.Ok, "")
-		}
-		span.End()
+		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(nRows))
+		internal.EndSpan(span, err)
 	}()
+
+	ctx = st.setQueryContext(ctx)
 
 	if st.targetTable != "" {
 		nRows, err = st.executeIngest(ctx)
@@ -505,11 +506,15 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 	if st.streamBind != nil || st.bound != nil {
 		bind := snowflakeBindReader{
 			doQuery: func(params []driver.NamedValue) (array.RecordReader, error) {
-				loader, err := st.cnxn.cn.QueryArrowStream(ctx, st.query, params...)
+				var loader gosnowflake.ArrowStreamLoader
+				loader, err = st.cnxn.cn.QueryArrowStream(ctx, st.query, params...)
 				if err != nil {
-					return nil, errToAdbcErr(adbc.StatusInternal, err)
+					err = errToAdbcErr(adbc.StatusInternal, err)
+					return nil, err
 				}
-				return newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+
+				reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
+				return reader, err
 			},
 			currentBatch: st.bound,
 			stream:       st.streamBind,
@@ -533,7 +538,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 		return
 	}
 
-	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision)
+	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
 	nRows = loader.TotalRows()
 	return
 }
@@ -541,17 +546,13 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err error) {
-	var span trace.Span
-	ctx, span = st.StartSpan(ctx, "ExecuteUpdate")
-	ctx = st.setQueryContext(ctx)
-
+	ctx, span := internal.StartSpan(ctx, "statement.ExecuteUpdate", st)
 	defer func() {
-		if !internal.SetErrorOnSpan(span, err) {
-			span.SetAttributes(attribute.Int64("db.response.returned_rows", numRows))
-			span.SetStatus(codes.Ok, codes.Ok.String())
-		}
-		span.End()
+		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(numRows))
+		internal.EndSpan(span, err)
 	}()
+
+	ctx = st.setQueryContext(ctx)
 
 	if st.targetTable != "" {
 		numRows, err = st.executeIngest(ctx)
@@ -598,7 +599,8 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 				numRows += n
 			}
 		}
-		return numRows, nil
+		err = nil
+		return numRows, err
 	}
 
 	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)
@@ -614,40 +616,49 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 		err = nil
 	}
 
-	return numRows, nil
+	return numRows, err
 }
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
-func (st *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+func (st *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
+	ctx, span := internal.StartSpan(ctx, "statement.ExecuteSchema", st)
+	defer internal.EndSpan(span, err)
+
 	ctx = st.setQueryContext(ctx)
 
 	if st.targetTable != "" {
-		return nil, adbc.Error{
+		err = adbc.Error{
 			Msg:  "cannot execute schema for ingestion",
 			Code: adbc.StatusInvalidState,
 		}
+		return nil, err
 	}
 
 	if st.query == "" {
-		return nil, adbc.Error{
+		err = adbc.Error{
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
 		}
+		return nil, err
 	}
 
 	if st.streamBind != nil || st.bound != nil {
-		return nil, adbc.Error{
+		err = adbc.Error{
 			Msg:  "executing schema with bound params not yet implemented",
 			Code: adbc.StatusNotImplemented,
 		}
+		return nil, err
 	}
 
-	loader, err := st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
+	var loader gosnowflake.ArrowStreamLoader
+	loader, err = st.cnxn.cn.QueryArrowStream(gosnowflake.WithDescribeOnly(ctx), st.query)
 	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusInternal, err)
+		err = errToAdbcErr(adbc.StatusInternal, err)
+		return nil, err
 	}
 
-	return rowTypesToArrowSchema(ctx, loader, st.useHighPrecision)
+	schema, err = rowTypesToArrowSchema(ctx, loader, st.useHighPrecision, st.maxTimestampPrecision)
+	return schema, err
 }
 
 // Prepare turns this statement into a prepared statement to be executed
@@ -685,7 +696,7 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 // The driver will call release on the passed in Record when it is done,
 // but it may not do this until the statement is closed or another
 // record is bound.
-func (st *statement) Bind(_ context.Context, values arrow.Record) error {
+func (st *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 	if st.streamBind != nil {
 		st.streamBind.Release()
 		st.streamBind = nil

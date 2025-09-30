@@ -17,7 +17,7 @@
 
 #![allow(refining_impl_trait)]
 
-use adbc_core::ffi::constants;
+use adbc_core::constants;
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::datasource::TableType;
 use datafusion::prelude::*;
@@ -954,4 +954,5 @@ impl Statement for DataFusionStatement {
     }
 }
 
-adbc_core::export_driver!(DataFusionDriverInit, DataFusionDriver);
+#[cfg(feature = "ffi")]
+adbc_ffi::export_driver!(DataFusionDriverInit, DataFusionDriver);

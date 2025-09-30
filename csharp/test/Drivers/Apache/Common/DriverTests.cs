@@ -305,12 +305,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         /// <summary>
         /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a pattern.
         /// </summary>
-        protected void GetObjectsTablesTest(string tableNamePattern)
+        protected void GetObjectsTablesTest(string tableNamePattern, string? expectedTableName = default)
         {
             // need to add the database
             string? databaseName = TestConfiguration.Metadata.Catalog;
             string? schemaName = TestConfiguration.Metadata.Schema;
-            string? tableName = TestConfiguration.Metadata.Table;
+            string? tableName = expectedTableName ?? TestConfiguration.Metadata.Table;
 
             using IArrowArrayStream stream = Connection.GetObjects(
                     depth: AdbcConnection.GetObjectsDepth.Tables,
@@ -604,10 +604,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
             using AdbcConnection adbcConnection = NewConnection();
             using AdbcStatement statement = adbcConnection.CreateStatement();
 
-            statement.SqlQuery = $"SELECT * from {TestConfiguration.Metadata.Table} WHERE FALSE";
+            statement.SqlQuery = $"SELECT * from {FormatTableName} WHERE FALSE";
             QueryResult queryResult = await statement.ExecuteQueryAsync();
 
             await Tests.DriverTests.CanExecuteQueryAsync(queryResult, 0);
         }
+
+        internal virtual string FormatTableName => TestConfiguration.Metadata.Table;
     }
 }

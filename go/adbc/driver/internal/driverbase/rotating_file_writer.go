@@ -257,7 +257,7 @@ func ensureCurrentWriter(base *rotatingFileWriterImpl) error {
 		// check for a candidate file that is not full
 		fullPathLastFile, ok := getCandidateLogFileName(base)
 		if ok {
-			// attempt to open exising candidate file
+			// attempt to open existing candidate file
 			currentWriter, err := os.OpenFile(fullPathLastFile, appendFlags, permissions)
 			if err == nil {
 				base.CurrentWriter = currentWriter
@@ -290,7 +290,7 @@ func getCandidateLogFileName(base *rotatingFileWriterImpl) (string, bool) {
 		return "", false
 	}
 
-	// Assume these file paths are ordered lexigraphically, as documented for filepath.Glob()
+	// Assume these file paths are ordered lexicographically, as documented for filepath.Glob()
 	candiateFilePath := logFiles[len(logFiles)-1]
 	fileSizeMaxBytes := base.FileSizeMaxKb * 1024
 	fileInfo, err := os.Stat(candiateFilePath)

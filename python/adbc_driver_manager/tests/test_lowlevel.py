@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pathlib
+
 import pyarrow
 import pytest
 
@@ -462,3 +464,14 @@ def test_pycapsule(sqlite):
         stmt.set_sql_query("SELECT * FROM foo")
         capsule = stmt.execute_query()[0].__arrow_c_stream__()
     del capsule
+
+
+def test_driver_path():
+    with pytest.raises(
+        adbc_driver_manager.ProgrammingError,
+        match="(dlopen|LoadLibraryExW).*failed:",
+    ):
+        with adbc_driver_manager.AdbcDatabase(
+            driver=pathlib.Path("/tmp/thisdriverdoesnotexist")
+        ):
+            pass

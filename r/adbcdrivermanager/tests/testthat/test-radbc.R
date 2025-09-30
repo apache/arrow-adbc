@@ -186,7 +186,7 @@ test_that("invalid external pointer inputs generate errors", {
   stmt <- adbc_statement_init(con)
 
   expect_error(
-    adbc_database_init(list(driver_init_func = character())),
+    adbc_database_init(list(driver_init_func = character(), load_flags = 0L)),
     "Expected external pointer with class 'adbc_driver_init_func'"
   )
 

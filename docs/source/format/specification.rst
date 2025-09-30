@@ -19,13 +19,17 @@
 ADBC API Standard
 =================
 
-This document summarizes the general featureset.
+This document summarizes the general featureset of the ADBC API and should be considered informative only.
+
+For authoritative definitions of the ADBC API, refer to the following sources:
 
 - For C/C++ details, see :external+cpp_adbc:doc:`adbc.h`.
 - For Go details, see the `source <https://github.com/apache/arrow-adbc/blob/main/go/adbc/adbc.go>`__.
 - For Java details, see the `source
   <https://github.com/apache/arrow-adbc/tree/main/java/core>`__, particularly
   the package :jpackage:`org.apache.arrow.adbc.core`.
+
+:external+cpp_adbc:doc:`adbc.h`. is considered canonical.
 
 Databases
 =========
@@ -245,7 +249,7 @@ new canonical options.
 :ref:`specification-rich-error-metadata` has been added, allowing clients to
 get additional error metadata.
 
-The ability to retrive table/column :ref:`statistics
+The ability to retrieve table/column :ref:`statistics
 <specification-statistics>` was added.  The goal here is to make ADBC work
 better in federation scenarios, where one query engine wants to read Arrow
 data from another database.

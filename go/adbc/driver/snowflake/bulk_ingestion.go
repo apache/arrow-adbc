@@ -85,7 +85,7 @@ type ingestOptions struct {
 	// Number of Parquet files to upload in parallel.
 	//
 	// Greater concurrency can smooth out TCP congestion and help make use of
-	// available network bandwith, but will increase memory utilization.
+	// available network bandwidth, but will increase memory utilization.
 	// Default is 8. If set to 0, default value is used. Cannot be negative.
 	uploadConcurrency uint
 	// Maximum number of COPY operations to run concurrently.
@@ -150,7 +150,7 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	g := errgroup.Group{}
 
 	// writeParquet takes a channel of Records, but we only have one Record to write
-	recordCh := make(chan arrow.Record, 1)
+	recordCh := make(chan arrow.RecordBatch, 1)
 	recordCh <- st.bound
 	close(recordCh)
 
@@ -243,7 +243,7 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	g, gCtx := errgroup.WithContext(ctx)
 
 	// Read records into channel
-	records := make(chan arrow.Record, st.ingestOptions.writerConcurrency)
+	records := make(chan arrow.RecordBatch, st.ingestOptions.writerConcurrency)
 	g.Go(func() error {
 		return readRecords(gCtx, st.streamBind, records)
 	})
@@ -308,11 +308,11 @@ func newWriterProps(mem memory.Allocator, opts *ingestOptions) (*parquet.WriterP
 	return parquetProps, arrowProps
 }
 
-func readRecords(ctx context.Context, rdr array.RecordReader, out chan<- arrow.Record) error {
+func readRecords(ctx context.Context, rdr array.RecordReader, out chan<- arrow.RecordBatch) error {
 	defer close(out)
 
 	for rdr.Next() {
-		rec := rdr.Record()
+		rec := rdr.RecordBatch()
 		rec.Retain()
 
 		select {
@@ -325,7 +325,7 @@ func readRecords(ctx context.Context, rdr array.RecordReader, out chan<- arrow.R
 	return rdr.Err()
 }
 
-func writeRecordToParquet(wr *pqarrow.FileWriter, rec arrow.Record) (int64, error) {
+func writeRecordToParquet(wr *pqarrow.FileWriter, rec arrow.RecordBatch) (int64, error) {
 	if rec.NumRows() == 0 {
 		rec.Release()
 		return 0, nil
@@ -343,7 +343,7 @@ func writeRecordToParquet(wr *pqarrow.FileWriter, rec arrow.Record) (int64, erro
 func writeParquet(
 	schema *arrow.Schema,
 	w io.Writer,
-	in <-chan arrow.Record,
+	in <-chan arrow.RecordBatch,
 	targetSize int,
 	parquetProps *parquet.WriterProperties,
 	arrowProps pqarrow.ArrowWriterProperties,
@@ -396,7 +396,7 @@ func runParallelParquetWriters(
 	parquetProps *parquet.WriterProperties,
 	arrowProps pqarrow.ArrowWriterProperties,
 	buffers *bufferPool,
-	in <-chan arrow.Record,
+	in <-chan arrow.RecordBatch,
 	out chan<- *bytes.Buffer,
 ) error {
 	var once sync.Once
@@ -488,7 +488,7 @@ func uploadAllStreams(
 		select {
 		case <-ctx.Done():
 			// The context is canceled on error, so we wait for graceful shutdown of in-progress uploads.
-			// The gosnowflake.snowflakeFileTransferAgent does not currently propogate context, so we
+			// The gosnowflake.snowflakeFileTransferAgent does not currently propagate context, so we
 			// have to wait for uploads to finish for proper shutdown. (https://github.com/snowflakedb/gosnowflake/issues/1028)
 			return g.Wait()
 		default:
@@ -546,6 +546,9 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 
 	ctx, cancel := context.WithCancel(ctx)
 	g, ctx := errgroup.WithContext(ctx)
+	if concurrency == 0 {
+		concurrency = -1 // if concurrency is 0, then treat it as unlimited
+	}
 	g.SetLimit(concurrency)
 
 	done := make(chan struct{})
@@ -558,7 +561,7 @@ func runCopyTasks(ctx context.Context, cn snowflakeConn, tableName string, concu
 		// keep track of each file uploaded to the stage, until it has been copied into the table successfully
 		filesToCopy.Add(filename)
 
-		// readyFn is a no-op if the shutdown signal has already been recieved
+		// readyFn is a no-op if the shutdown signal has already been received
 		select {
 		case _, ok := <-stopCh:
 			if !ok {

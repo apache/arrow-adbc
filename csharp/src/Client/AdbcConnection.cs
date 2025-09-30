@@ -42,7 +42,7 @@ namespace Apache.Arrow.Adbc.Client
         private AdbcTransaction? currentTransaction;
 
         /// <summary>
-        /// Overloaded. Intializes an <see cref="AdbcConnection"/>.
+        /// Overloaded. Initializes an <see cref="AdbcConnection"/>.
         /// </summary>
         public AdbcConnection()
         {
@@ -53,7 +53,7 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Overloaded. Intializes an <see cref="AdbcConnection"/>.
+        /// Overloaded. Initializes an <see cref="AdbcConnection"/>.
         /// <param name="connectionString">The connection string to use.</param>
         /// </summary>
         public AdbcConnection(string connectionString) : this()

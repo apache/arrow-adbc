@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Diagnostics;
 using Google;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
@@ -33,5 +34,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             return result;
         }
+
+        internal static string BigQueryAssemblyName = GetAssemblyName(typeof(BigQueryConnection));
+
+        internal static string BigQueryAssemblyVersion = GetAssemblyVersion(typeof(BigQueryConnection));
+
+        internal static string GetAssemblyName(Type type) => type.Assembly.GetName().Name!;
+
+        internal static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
     }
 }

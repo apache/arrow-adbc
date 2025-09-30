@@ -35,8 +35,10 @@ echo "=== (${PYTHON_VERSION}) Installing wheels ==="
 for component in ${COMPONENTS}; do
     if [[ "${component}" = "adbc_driver_manager" ]]; then
         PYTHON_TAG=cp$(python -c "import sysconfig; print(sysconfig.get_python_version().replace('.', ''))")
+        # We only want cp313-cp313 and not cp313-cp313t (for example)
+        PYTHON_TAG="${PYTHON_TAG}-${PYTHON_TAG}"
     else
-        PYTHON_TAG=py3
+        PYTHON_TAG=py3-none
     fi
 
     if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then

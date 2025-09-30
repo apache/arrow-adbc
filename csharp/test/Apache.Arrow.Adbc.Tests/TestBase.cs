@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         /// <summary>
-        /// Gets the test ouput helper.
+        /// Gets the test output helper.
         /// </summary>
         protected ITestOutputHelper? OutputHelper { get; }
 
@@ -121,7 +121,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// Gets the parameters from the test configuration that are passed to the driver as a dictionary.
         /// </summary>
         /// <param name="testConfiguration">The test configuration as input.</param>
-        /// <returns>Ditionary of parameters for the driver.</returns>
+        /// <returns>Dictionary of parameters for the driver.</returns>
         protected virtual Dictionary<string, string> GetDriverParameters(TConfig testConfiguration) => TestEnvironment.GetDriverParameters(testConfiguration);
 
         /// <summary>
@@ -195,7 +195,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert, select and delete.</param>
-        /// <param name="formattedValue">The formated value to insert, select and delete.</param>
+        /// <param name="formattedValue">The formatted value to insert, select and delete.</param>
         /// <returns></returns>
         protected async Task ValidateInsertSelectDeleteSingleValueAsync(string selectStatement, string tableName, string columnName, object value, string? formattedValue = null)
         {
@@ -211,7 +211,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert, select and delete.</param>
-        /// <param name="formattedValue">The formated value to insert, select and delete.</param>
+        /// <param name="formattedValue">The formatted value to insert, select and delete.</param>
         /// <returns></returns>
         protected async Task ValidateInsertSelectDeleteSingleValueAsync(string tableName, string columnName, object? value, string? formattedValue = null)
         {
@@ -227,7 +227,7 @@ namespace Apache.Arrow.Adbc.Tests
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="columnName">The name of the column.</param>
         /// <param name="value">The value to insert, select and delete.</param>
-        /// <param name="formattedValue">The formated value to insert, select and delete.</param>
+        /// <param name="formattedValue">The formatted value to insert, select and delete.</param>
         /// <returns></returns>
         protected async Task ValidateInsertSelectDeleteTwoValuesAsync(string tableName, string columnName, object? value, string? formattedValue = null)
         {
@@ -304,7 +304,7 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         /// <summary>
-        /// Gets the native SQL statment to insert a single value.
+        /// Gets the native SQL statement to insert a single value.
         /// </summary>
         /// <param name="tableName">The name of the table to use.</param>
         /// <param name="columnName">The name of the column.</param>
@@ -658,7 +658,7 @@ namespace Apache.Arrow.Adbc.Tests
             return name.Substring(1);
         }
 
-        protected void CreateNewTableName(out string tableName, out string fullTableName)
+        protected virtual void CreateNewTableName(out string tableName, out string fullTableName)
         {
             string catalogName = TestConfiguration.Metadata.Catalog;
             string schemaName = TestConfiguration.Metadata.Schema;

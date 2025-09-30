@@ -22,14 +22,14 @@ using System.Data.SqlTypes;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Ipc;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Reader : IArrowArrayStream
+    internal class HiveServer2Reader : TracingReader
     {
         private const byte AsciiZero = (byte)'0';
         private const int AsciiDigitMaxIndex = '9' - AsciiZero;
@@ -55,7 +55,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const int SecondSubsecondSepIndex = 19;
         private const int SubsecondIndex = 20;
         private const int MillisecondDecimalPlaces = 3;
-        private HiveServer2Statement? _statement;
+        private readonly IHiveServer2Statement _statement;
+        private readonly IResponse _response;
+        private bool _disposed;
+        private bool _hasNoMoreData = false;
         private readonly DataTypeConversion _dataTypeConversion;
         // Flag to enable/disable stopping reading based on batch size condition
         private readonly bool _enableBatchSizeStopCondition;
@@ -73,53 +76,64 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             };
 
         public HiveServer2Reader(
-            HiveServer2Statement statement,
+            IHiveServer2Statement statement,
             Schema schema,
+            IResponse response,
             DataTypeConversion dataTypeConversion,
-            bool enableBatchSizeStopCondition = true)
+            bool enableBatchSizeStopCondition = true) : base(statement)
         {
             _statement = statement;
             Schema = schema;
+            _response = response;
             _dataTypeConversion = dataTypeConversion;
             _enableBatchSizeStopCondition = enableBatchSizeStopCondition;
         }
 
-        public Schema Schema { get; }
+        public override Schema Schema { get; }
 
-        public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        public override string AssemblyName => HiveServer2Connection.s_assemblyName;
+
+        public override string AssemblyVersion => HiveServer2Connection.s_assemblyVersion;
+
+        public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            // All records have been exhausted
-            if (_statement == null)
+            return await this.TraceActivity(async activity =>
             {
-                return null;
-            }
-
-            try
-            {
-                // Await the fetch response
-                TFetchResultsResp response = await FetchNext(_statement, cancellationToken);
-
-                int columnCount = GetColumnCount(response.Results);
-                int rowCount = GetRowCount(response.Results, columnCount);
-                if ((_enableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+                // All records have been exhausted
+                if (_hasNoMoreData)
                 {
-                    // This is the last batch
-                    _statement = null;
+                    return null;
                 }
+                try
+                {
+                    // Await the fetch response
+                    TFetchResultsResp response = await FetchNext(_statement, _response, cancellationToken);
+                    HiveServer2Connection.HandleThriftResponse(response.Status, activity);
 
-                // Build the current batch, if any data exists
-                return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
-            }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
-            {
-                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
-            }
+                    int columnCount = GetColumnCount(response.Results);
+                    int rowCount = GetRowCount(response.Results, columnCount);
+                    activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, rowCount)]);
+
+                    if ((_enableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+                    {
+                        // This is the last batch
+                        _hasNoMoreData = true;
+                    }
+
+                    // Build the current batch, if any data exists
+                    return rowCount > 0 ? CreateBatch(response, columnCount, rowCount) : null;
+                }
+                catch (Exception ex)
+                    when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+                         (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+                {
+                    throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+                }
+            });
         }
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)
@@ -149,14 +163,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal static int GetRowCount(TRowSet response, int columnCount) =>
             columnCount > 0 ? GetArray(response.Columns[0]).Length : 0;
 
-        private static async Task<TFetchResultsResp> FetchNext(HiveServer2Statement statement, CancellationToken cancellationToken = default)
+        private static async Task<TFetchResultsResp> FetchNext(IHiveServer2Statement statement, IResponse response, CancellationToken cancellationToken = default)
         {
-            var request = new TFetchResultsReq(statement.OperationHandle!, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
+            var request = new TFetchResultsReq(response.OperationHandle!, TFetchOrientation.FETCH_NEXT, statement.BatchSize);
             return await statement.Connection.Client.FetchResults(request, cancellationToken);
-        }
-
-        public void Dispose()
-        {
         }
 
         private static IArrowArray GetArray(TColumn column, IArrowType? expectedArrowType = default)
@@ -390,6 +400,46 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
 
             return true;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                if (!_disposed)
+                {
+                    if (disposing)
+                    {
+                        _ = CloseOperationAsync(_statement, _response)
+                            .ConfigureAwait(false).GetAwaiter().GetResult();
+                    }
+                }
+            }
+            finally
+            {
+                base.Dispose(disposing);
+                _disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Closes the operation contained in the response.
+        /// </summary>
+        /// <param name="statement">The associated statement used for timeout properties.</param>
+        /// <param name="response">The response for the operation.</param>
+        /// <returns>The server response for the CloseOperation call.</returns>
+        /// <exception cref="HiveServer2Exception" />
+        internal static async Task<TCloseOperationResp?> CloseOperationAsync(IHiveServer2Statement statement, IResponse response)
+        {
+            if (response.DirectResults?.CloseOperation?.Status?.StatusCode != TStatusCode.SUCCESS_STATUS)
+            {
+                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(statement.QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                TCloseOperationReq request = new TCloseOperationReq(response.OperationHandle!);
+                TCloseOperationResp resp = await statement.Client.CloseOperation(request, cancellationToken);
+                HiveServer2Connection.HandleThriftResponse(resp.Status, activity: null);
+                return resp;
+            }
+            return null;
         }
     }
 }

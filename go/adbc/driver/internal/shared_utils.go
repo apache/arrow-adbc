@@ -27,8 +27,8 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -256,10 +256,10 @@ func (g *GetObjects) Release() {
 }
 
 func (g *GetObjects) Finish() (array.RecordReader, error) {
-	record := g.builder.NewRecord()
+	record := g.builder.NewRecordBatch()
 	defer record.Release()
 
-	result, err := array.NewRecordReader(g.builder.Schema(), []arrow.Record{record})
+	result, err := array.NewRecordReader(g.builder.Schema(), []arrow.RecordBatch{record})
 	if err != nil {
 		return nil, adbc.Error{
 			Msg:  err.Error(),
@@ -745,14 +745,32 @@ func ToXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
 	}
 }
 
-func SetErrorOnSpan(span trace.Span, err error) bool {
+// Starts a trace.Span with the given spanName for the tracing object with
+// the given ctx context.
+func StartSpan(ctx context.Context, spanName string, tracing adbc.OTelTracing, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	if tracing == nil {
+		return ctx, trace.SpanFromContext(ctx)
+	}
+
+	attrs := tracing.GetInitialSpanAttributes()
+	attrs = append(attrs, semconv.DBOperationName(spanName))
+	opts = append(opts, trace.WithAttributes(attrs...))
+
+	return tracing.StartSpan(ctx, spanName, opts...)
+}
+
+// Ends the given span. If err is not nil, then the
+// error is recorded and the status is set appropriately.
+// Otherwise, the status is set to Ok.
+func EndSpan(span trace.Span, err error, options ...trace.SpanEndOption) {
 	if err != nil {
 		span.RecordError(err)
 		if adbcError, ok := err.(adbc.Error); ok {
-			span.SetAttributes(attribute.String("error.type", adbcError.Code.String()))
+			span.SetAttributes(semconv.ErrorTypeKey.String(adbcError.Code.String()))
 		}
 		span.SetStatus(codes.Error, err.Error())
-		return true
+	} else {
+		span.SetStatus(codes.Ok, "")
 	}
-	return false
+	span.End(options...)
 }

@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -73,11 +71,15 @@ function build_drivers {
     echo "=== Setup VCPKG ==="
 
     pushd "${VCPKG_ROOT}"
-    # XXX: patch an odd issue where the path of some file is inconsistent between builds
-    patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-inconsistent-path.patch" || true
+    # XXX: work around lz4 CMakeLists being out of date
+    # https://github.com/lz4/lz4/issues/1550
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-lz4-CMake-https-github.com-lz4-lz4-issue.patch"
 
     # XXX: make vcpkg retry downloads https://github.com/microsoft/vcpkg/discussions/20583
-    patch -N -p1 < "${source_dir}/ci/vcpkg/0002-Retry-downloads.patch" || true
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0002-Retry-downloads.patch"
+
+    # XXX: backport fix for CMake 4 and macOS
+    patch -N -p1 < "${source_dir}/ci/vcpkg/0003-Fix-CMake-4-OSX.patch"
     popd
 
     # Need to install sqlite3 to make CMake be able to find it below
@@ -149,6 +151,10 @@ function setup_build_vars {
     fi
     # No PyPy, no Python 3.8
     export CIBW_SKIP="pp* cp38-* ${CIBW_SKIP}"
+    # Make sure our manylinux version doesn't creep up (this only matters for
+    # the driver manager)
+    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014"
+    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux2014"
 }
 
 function test_packages {
@@ -189,6 +195,7 @@ import $component.dbapi
         fi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
-        python -m pytest -vvx --import-mode append "${test_files[@]}"
+        # set env var so that we don't skip tests if we somehow accidentally installed pyarrow
+        env ADBC_NO_SKIP_TESTS=1 python -m pytest -vvx --import-mode append "${test_files[@]}"
     done
 }

@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-version: '3.9'
-
 services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
@@ -42,6 +40,8 @@ services:
         GO: ${GO}
     volumes:
       - .:/adbc:delegated
+    environment:
+      ADBC_CMAKE_ARGS: "-DADBC_CXXFLAGS=-Wdocumentation -DADBC_BUILD_WARNING_LEVEL=CHECKIN"
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/clang-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/clang-latest'"
 
   cpp-gcc-latest:
@@ -54,6 +54,8 @@ services:
         GO: ${GO}
     volumes:
       - .:/adbc:delegated
+    environment:
+      ADBC_CMAKE_ARGS: "-DADBC_BUILD_WARNING_LEVEL=CHECKIN"
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/gcc-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/gcc-latest'"
 
   # Build and dynamically load shared drivers missing the common entrypoints
@@ -87,10 +89,11 @@ services:
   ################################### Java ###################################
 
   java-dist:
-    image: ${ARCH}/maven:${MAVEN}-jdk-${JDK}
+    image: ${ARCH}/maven:${MAVEN}-eclipse-temurin-${JDK}
     volumes:
       - .:/adbc:delegated
-    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
+    # N.B. never run JNI tests as we won't have the drivers built
+    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && env BUILD_JNI=OFF /adbc/ci/scripts/java_test.sh /adbc'"
 
   # Build the JNI and driver libraries
   java-jni:
@@ -292,6 +295,20 @@ services:
       retries: 5
     ports:
       - "5432:5432"
+
+  spiceai-test:
+    container_name: adbc-spiceai
+    build:
+      context: .
+      dockerfile: ci/docker/spiceai-init.dockerfile
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8090/v1/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "50051:50051"
+      - "8090:8090"
 
   ################################ Verification ################################
 

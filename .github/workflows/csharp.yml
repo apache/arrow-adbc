@@ -51,14 +51,14 @@ jobs:
       fail-fast: false
       matrix:
         dotnet: ['8.0.x']
-        os: [ubuntu-latest, windows-2019, macos-13, macos-latest]
+        os: [ubuntu-latest, windows-2022, macos-13, macos-latest]
     steps:
       - name: Install C#
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ matrix.dotnet }}
       - name: Checkout ADBC
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           submodules: recursive

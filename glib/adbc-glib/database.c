@@ -23,6 +23,8 @@
 #include <adbc-glib/database-raw.h>
 #include <adbc-glib/error-raw.h>
 
+#include <arrow-adbc/adbc_driver_manager.h>
+
 /**
  * SECTION: database
  * @title: GADBCDatabase
@@ -135,6 +137,38 @@ gboolean gadbc_database_set_option(GADBCDatabase* database, const gchar* key,
   struct AdbcError adbc_error = {};
   AdbcStatusCode status_code =
       AdbcDatabaseSetOption(adbc_database, key, value, &adbc_error);
+  return gadbc_error_check(error, status_code, &adbc_error, context);
+}
+
+/**
+ * gadbc_database_set_load_flags:
+ * @database: A #GADBCDatabase.
+ * @flags: Flags to control the directories searched.
+ * @error: (nullable): Return location for a #GError or %NULL.
+ *
+ * This is an extension to the ADBC API. This function lets you set
+ * the load flags explicitly, for applications that can dynamically
+ * load drivers on their own.
+ *
+ * If this function isn't called, the default load flags are just to
+ * allow relative paths, disallowing the lookups of manifests.
+ *
+ * Flags must be set before gadbc_database_init().
+ *
+ * Returns: %TRUE if flags are set successfully, %FALSE otherwise.
+ *
+ * Since: 1.7.0
+ */
+gboolean gadbc_database_set_load_flags(GADBCDatabase* database, GADBCLoadFlags flags,
+                                       GError** error) {
+  const gchar* context = "[adbc][database][set-load-flags]";
+  struct AdbcDatabase* adbc_database = gadbc_database_get_raw(database, context, error);
+  if (!adbc_database) {
+    return FALSE;
+  }
+  struct AdbcError adbc_error = {};
+  AdbcStatusCode status_code =
+      AdbcDriverManagerDatabaseSetLoadFlags(adbc_database, flags, &adbc_error);
   return gadbc_error_check(error, status_code, &adbc_error, context);
 }
 

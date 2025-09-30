@@ -63,7 +63,7 @@ jobs:
     # For cron: only run on the main repo, not forks
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -103,7 +103,7 @@ jobs:
         os: ["ubuntu-latest", "windows-latest", "macos-13"]
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
@@ -121,7 +121,7 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -152,7 +152,7 @@ jobs:
       - go-binaries
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
@@ -172,7 +172,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           pattern: go-*
           path: adbc/go/adbc/pkg
@@ -207,7 +207,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
@@ -249,15 +249,76 @@ jobs:
           path: |
             docs.tgz
 
+  java-jni:
+    name: "JNI Libraries/${{ matrix.os }} ${{ matrix.arch }}"
+    needs:
+      - source
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - { os: Linux, arch: amd64, runner: ubuntu-latest }
+          - { os: Linux, arch: arm64, runner: ubuntu-24.04-arm }
+          - { os: macOS, arch: arm64v8, runner: macos-latest }
+          - { os: Windows, arch: amd64, runner: windows-latest }
+
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: source
+      - name: Extract source archive
+        run: |
+          source_archive=$(echo apache-arrow-adbc-*.tar.gz)
+          VERSION=${source_archive#apache-arrow-adbc-}
+          VERSION=${VERSION%.tar.gz}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+          tar xf apache-arrow-adbc-${VERSION}.tar.gz
+          mv apache-arrow-adbc-${VERSION} adbc
+      - name: Build JNI artifacts
+        working-directory: adbc
+        env:
+          ADBC_BUILD_STATIC: ON
+          ADBC_BUILD_TESTS: OFF
+          ADBC_USE_ASAN: OFF
+          ADBC_USE_UBSAN: OFF
+          BUILD_ALL: 0
+          BUILD_DRIVER_MANAGER: 1
+          CMAKE_BUILD_TYPE: release
+        run: |
+          ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build_driver_manager
+          ./ci/scripts/java_build.sh $(pwd)
+          ./ci/scripts/java_jni_build.sh $(pwd) $(pwd)/build_jni $(pwd)/build_driver_manager/local
+      - name: Assemble artifacts
+        run: |
+          mkdir artifacts
+          cp -r adbc/java/driver/jni/src/main/resources/ artifacts/jni
+          ls -laR artifacts
+          mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: |
+            artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz
+
   java:
     name: "Java 11"
     runs-on: ubuntu-latest
     needs:
       - source
+      - java-jni
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
+
+      - uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+          pattern: jni-artifacts-*
+          merge-multiple: true
 
       - name: Extract source archive
         run: |
@@ -277,8 +338,16 @@ jobs:
 
       - name: Build and test
         run: |
+          set -x
+          pushd artifacts
+          for archive in artifacts*.tgz; do
+            tar xvf $archive
+          done
+          popd
+          cp -r artifacts/*/jni/adbc_driver_jni adbc/java/driver/jni/src/main/resources
+
           pushd adbc/
-          docker compose run java-dist
+          docker compose run -e BUILD_JNI=ON java-dist
           popd
           cp -a adbc/dist/ ./
 
@@ -306,11 +375,11 @@ jobs:
           - ubuntu-jammy
           - ubuntu-noble
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: apache/arrow
           path: arrow
@@ -346,7 +415,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@c95ae3725f6ebdd095f2bd19caed7ebc14435ba5  # v1.243.0
+        uses: ruby/setup-ruby@0481980f17b760ef6bca5e8c55809102a0af1e5a  # v1.263.0
         with:
           ruby-version: ruby
 
@@ -358,7 +427,7 @@ jobs:
           restore-keys: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772  # v3.4.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef  # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -436,7 +505,7 @@ jobs:
         # TODO: "linux_aarch64_"
         arch: ["linux_64_"]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
@@ -502,7 +571,7 @@ jobs:
       run:
         shell: bash -l -eo pipefail {0}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
@@ -523,7 +592,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -573,7 +642,7 @@ jobs:
             platform: "linux/arm64/v8"
             runs_on: "ubuntu-24.04-arm"
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
@@ -684,7 +753,7 @@ jobs:
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
@@ -729,7 +798,7 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -751,6 +820,12 @@ jobs:
           sudo ci/scripts/install_python.sh macos 3.12
           sudo ci/scripts/install_python.sh macos 3.13
           popd
+
+      - name: Downgrade XCode
+        if: matrix.os == 'macos-latest'
+        run: |
+          # XXX(https://github.com/apache/arrow-adbc/issues/3382)
+          sudo xcode-select -s "/Applications/Xcode_16.app"
 
       - name: Build wheel
         env:
@@ -841,7 +916,7 @@ jobs:
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}\\vcpkg"
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
@@ -890,7 +965,7 @@ jobs:
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -898,15 +973,16 @@ jobs:
           cache-dependency-path: adbc/go/adbc/go.sum
 
       - name: Install Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
+          check-latest: true
           python-version: ${{ matrix.python_version }}
 
       - name: Build wheel
         shell: cmd
         run: |
           where python.exe
-          CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+          CALL "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
           pushd adbc
           set SETUPTOOLS_SCM_PRETEND_VERSION=%VERSION%
           .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build
@@ -942,7 +1018,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: source
 
@@ -1007,7 +1083,7 @@ jobs:
       - python-sdist
     steps:
       - name: Get All Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: release-artifacts
       - name: Release
@@ -1060,16 +1136,16 @@ jobs:
       run:
         shell: bash -l -eo pipefail {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: true
           submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: conda-packages
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -1092,24 +1168,44 @@ jobs:
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
 
+  # This takes a while due to sleeping to avoid rate limits, so run it first
+  # and in parallel with the builds
+  clean-gemfury:
+    name: "Remove old Gemfury packages"
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'main' && (github.event.schedule || inputs.upload_artifacts)
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Clean
+        run: |
+          pip install requests
+          ./ci/scripts/gemfury_clean.py
+        env:
+          GEMFURY_API_TOKEN: ${{ secrets.GEMFURY_API_TOKEN }}
+
   upload-gemfury:
     name: "Upload packages to Gemfury"
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
     needs:
+      - clean-gemfury
       - java
       - python-manylinux
       - python-macos
       - python-windows
       - python-sdist
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: true
           submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: nightly-artifacts
       - name: Upload

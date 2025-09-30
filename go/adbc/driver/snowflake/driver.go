@@ -73,6 +73,16 @@ const (
 	// with a scale of 0 will be returned as Int64 columns, and a non-zero
 	// scale will return a Float64 column.
 	OptionUseHighPrecision = "adbc.snowflake.sql.client_option.use_high_precision"
+	// OptionMaxTimestampPrecision controls the behavior of Timestamp values with
+	// Nanosecond precision. Native Go behavior is these values will overflow to an
+	// unpredictable value when the year is before year 1677 or after 2262. This option
+	// can control the behavior of the `timestamp_ltz`, `timestamp_ntz`, and `timestamp_tz` types.
+	//
+	// Valid values are
+	// `nanoseconds`: Use default behavior for nanoseconds.
+	// `nanoseconds_error_on_overflow`: Throws an error when the value will overflow to enforce integrity of the data.
+	// `microseconds`: Limits the max Timestamp precision to microseconds, which is safe for all values.
+	OptionMaxTimestampPrecision = "adbc.snowflake.sql.client_option.max_timestamp_precision"
 
 	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
 	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"
@@ -103,6 +113,9 @@ const (
 	// When true, the ID token is cached in the credential manager. True by default
 	// on Windows/OSX, false for Linux
 	OptionClientStoreTempCred = "adbc.snowflake.sql.client_option.store_temp_creds"
+	// Specify the identity provider to utilize for generating a workload identity
+	// federation attestation. Must be set when using OptionValueAuthWIF.
+	OptionIdentityProvider = "adbc.snowflake.sql.client_option.identity_provider"
 
 	// auth types are implemented by the Snowflake driver in gosnowflake
 	// general username password authentication
@@ -117,6 +130,24 @@ const (
 	OptionValueAuthJwt = "auth_jwt"
 	// use a username and password with mfa
 	OptionValueAuthUserPassMFA = "auth_mfa"
+	// use a programmatic access token
+	OptionValueAuthPat = "auth_pat"
+	// use Workload Identity Federation for auth, must also use option to specify the provider
+	OptionValueAuthWIF = "auth_wif"
+
+	// Use default behavior for nanoseconds.
+	OptionValueNanoseconds = "nanoseconds"
+	// throws an error when the value will overflow to enforce integrity of the data.
+	OptionValueNanosecondsNoOverflow = "nanoseconds_error_on_overflow"
+	// use a max of microseconds precision for timestamps
+	OptionValueMicroseconds = "microseconds"
+)
+
+// SQLSTATE codes
+// https://learn.microsoft.com/en-us/sql/odbc/reference/appendixes/appendix-a-odbc-error-codes
+const (
+	// Base table or view not found
+	SQLStateTableOrViewNotFound = "42S02"
 )
 
 var (
@@ -154,7 +185,7 @@ func errToAdbcErr(code adbc.Status, err error) error {
 		var sqlstate [5]byte
 		copy(sqlstate[:], []byte(sferr.SQLState))
 
-		if sferr.SQLState == "42S02" {
+		if sferr.SQLState == SQLStateTableOrViewNotFound {
 			code = adbc.StatusNotFound
 		}
 
@@ -255,9 +286,10 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(
 	defaultAppName := "[ADBC][Go-" + driverVersion + "]"
 
 	db := &databaseImpl{
-		DatabaseImplBase: dbBase,
-		useHighPrecision: true,
-		defaultAppName:   defaultAppName,
+		DatabaseImplBase:      dbBase,
+		useHighPrecision:      true,
+		defaultAppName:        defaultAppName,
+		maxTimestampPrecision: Nanoseconds,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err

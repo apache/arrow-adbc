@@ -25,6 +25,8 @@ on:
       - "java/**"
       - ".github/workflows/java.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "java/**"
       - ".github/workflows/java.yml"
@@ -48,12 +50,12 @@ jobs:
       matrix:
         java: ['11', '17', '21', '24']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           cache: "maven"
           distribution: "temurin"
@@ -74,12 +76,12 @@ jobs:
       matrix:
         java: ['17', '21']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           cache: "maven"
           distribution: "temurin"
@@ -114,11 +116,11 @@ jobs:
     env:
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           cache: "maven"
           distribution: "temurin"
@@ -130,7 +132,7 @@ jobs:
       - name: Install vcpkg
         run: |
           ./ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -146,6 +148,9 @@ jobs:
       - name: Build artifacts (macOS)
         if: matrix.os == 'macOS'
         run: |
+          # XXX(https://github.com/apache/arrow-adbc/issues/3382)
+          sudo xcode-select -s "/Applications/Xcode_16.app"
+
           export ADBC_BUILD_STATIC=ON
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
@@ -173,6 +178,18 @@ jobs:
           retention-days: 7
           path: |
             artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz
+      - name: Assemble logs
+        if: failure()
+        run: |
+          mkdir ~/logs
+          find "$VCPKG_ROOT" -name 'build-*.log' -exec cp '{}' ~/logs ';'
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: ~/logs
 
   java-jni:
     name: "Java ${{ matrix.java }} JNI/${{ matrix.os }} ${{ matrix.arch }}"
@@ -186,17 +203,17 @@ jobs:
           - { os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
           - { os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: artifacts
           pattern: jni-artifacts-*
           merge-multiple: true
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           cache: "maven"
           distribution: "temurin"

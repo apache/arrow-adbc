@@ -30,4 +30,15 @@ class DatabaseTest < Test::Unit::TestCase
       database.release
     end
   end
+
+  def test_set_load_flags
+    database = ADBC::Database.new
+    database.load_flags = [
+      :search_env,
+      :search_user,
+      :search_system,
+      :allow_relative_paths,
+    ]
+    database.load_flags = ADBC::LOAD_FLAGS_DEFAULT
+  end
 end

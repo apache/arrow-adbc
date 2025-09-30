@@ -62,7 +62,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         /// <summary>
-        /// Validates the behvior of a long running operation using Entra token.
+        /// Validates the behavior of a long running operation using Entra token.
         /// </summary>
         /// <param name="withRefresh">
         /// Indicates if a refresh should be performed. If true, the operation should succeed.

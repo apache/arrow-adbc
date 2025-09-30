@@ -169,7 +169,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 // Reset the integer and fractional span
                 fractionalSpan = tempSignificant.Slice(int_length, frac_length);
                 integerSpan = tempSignificant.Slice(0, int_length);
-                // Trim leading zeros fron new integer span
+                // Trim leading zeros from new integer span
                 while (integerSpan.Length > 0 && integerSpan[0] == AsciiZero)
                 {
                     integerSpan = integerSpan.Slice(1);

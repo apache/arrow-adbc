@@ -1,0 +1,28 @@
+{
+    "driverPath": "../../../../../go/adbc/pkg/libadbc_driver_flightsql.so",
+    "driverEntryPoint": "FlightSqlDriverInit",
+    "testEnvironments": [
+        "SpiceAI_Local"
+    ],
+    "environments": {
+        "SpiceAI_Local": {
+            "uri": "grpc://127.0.0.1:50051",
+            "type": "SpiceAI",
+            "sslSkipVerify": true,
+            "supportsWriteUpdate": false,
+            "supportsCatalogs": true,
+            "caseSensitive": true,
+            "tableTypes": [
+                "BASE TABLE"
+            ],
+            "metadata": {
+                "catalog": "spice",
+                "schema": "public",
+                "table": "nation",
+                "expectedColumnCount": 4
+            },
+            "query": "select * from nation limit 5",
+            "expectedResults": 5
+        }
+    }
+}

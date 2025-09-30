@@ -19,6 +19,8 @@
 Driver Manager
 ==============
 
+This document describes the installation of the Java :term:`driver manager`.
+
 Installation
 ============
 

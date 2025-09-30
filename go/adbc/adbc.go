@@ -644,7 +644,7 @@ type Statement interface {
 	SetSqlQuery(query string) error
 
 	// ExecuteQuery executes the current query or prepared statement
-	// and returnes a RecordReader for the results along with the number
+	// and returns a RecordReader for the results along with the number
 	// of rows affected if known, otherwise it will be -1.
 	//
 	// This invalidates any prior result sets on this statement.
@@ -678,7 +678,7 @@ type Statement interface {
 	// The driver will call release on the passed in Record when it is done,
 	// but it may not do this until the statement is closed or another
 	// record is bound.
-	Bind(ctx context.Context, values arrow.Record) error
+	Bind(ctx context.Context, values arrow.RecordBatch) error
 
 	// BindStream uses a record batch stream to bind parameters for this
 	// query. This can be used for bulk inserts or prepared statements.

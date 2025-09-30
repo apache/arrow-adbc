@@ -36,6 +36,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         {
             AllowLargeResults = false;
             IncludeTableConstraints = true;
+            ParallelQueries = new List<ParallelQuery>();
         }
 
         [JsonPropertyName("projectId")]
@@ -70,6 +71,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("allowLargeResults")]
         public bool AllowLargeResults { get; set; }
+
+        [JsonPropertyName("largeResultsDataset")]
+        public string LargeResultsDataset { get; set; } = string.Empty;
 
         [JsonPropertyName("largeResultsDestinationTable")]
         public string LargeResultsDestinationTable { get; set; } = string.Empty;
@@ -116,6 +120,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("evaluationKind")]
         public string EvaluationKind { get; set; } = string.Empty;
 
+        [JsonPropertyName("location")]
+        public string? ClientLocation { get; set; }
+
         /// <summary>
         /// How structs should be handled by the ADO.NET client for this environment.
         /// </summary>
@@ -127,6 +134,30 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("entraConfiguration")]
         public EntraConfiguration? EntraConfiguration { get; set; }
+
+        /// <summary>
+        /// The number of times to repeat the parallel runs.
+        /// </summary>
+        [JsonPropertyName("numberOfParallelRuns")]
+        public int NumberOfParallelRuns { get; set; }
+
+        [JsonPropertyName("queries")]
+        public List<ParallelQuery> ParallelQueries { get; set; }
+    }
+
+    class ParallelQuery
+    {
+        /// <summary>
+        /// The query to run.
+        /// </summary>
+        [JsonPropertyName("query")]
+        public string Query { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The number of expected results from the query.
+        /// </summary>
+        [JsonPropertyName("expectedResults")]
+        public long ExpectedResultsCount { get; set; }
     }
 
     class EntraConfiguration

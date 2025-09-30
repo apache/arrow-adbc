@@ -32,6 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             this.properties = properties;
         }
+
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
             IReadOnlyDictionary<string, string> mergedProperties = options == null

@@ -291,3 +291,14 @@ cdef object convert_error(CAdbcStatusCode status, CAdbcError* error)
 
 cdef extern from "arrow-adbc/adbc_driver_manager.h":
     const char* CAdbcStatusCodeMessage"AdbcStatusCodeMessage"(CAdbcStatusCode code)
+
+    ctypedef uint32_t CAdbcLoadFlags"AdbcLoadFlags"
+    cdef CAdbcLoadFlags CAdbcLoadFlagDefault"ADBC_LOAD_FLAG_DEFAULT"
+    CAdbcStatusCode AdbcDriverManagerDatabaseSetLoadFlags(
+        CAdbcDatabase* database,
+        CAdbcLoadFlags flags,
+        CAdbcError* error)
+    CAdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+        CAdbcDatabase* database,
+        const char* path_list,
+        CAdbcError* error)

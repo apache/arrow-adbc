@@ -426,7 +426,7 @@ func (s *statement) SetSqlQuery(query string) error {
 }
 
 // ExecuteQuery executes the current query or prepared statement
-// and returnes a RecordReader for the results along with the number
+// and returns a RecordReader for the results along with the number
 // of rows affected if known, otherwise it will be -1.
 //
 // This invalidates any prior result sets on this statement.
@@ -520,7 +520,7 @@ func (s *statement) SetSubstraitPlan(plan []byte) error {
 // The driver will call release on the passed in Record when it is done,
 // but it may not do this until the statement is closed or another
 // record is bound.
-func (s *statement) Bind(_ context.Context, values arrow.Record) error {
+func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 	// TODO: handle bulk insert situation
 
 	if s.prepared == nil {

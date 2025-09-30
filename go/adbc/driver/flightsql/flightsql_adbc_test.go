@@ -173,7 +173,7 @@ func writeTo(arr arrow.Array, idx int, w io.Writer) {
 	}
 }
 
-func (s *FlightSQLQuirks) CreateSampleTable(tableName string, r arrow.Record) error {
+func (s *FlightSQLQuirks) CreateSampleTable(tableName string, r arrow.RecordBatch) error {
 	var b strings.Builder
 	b.WriteString("CREATE TABLE ")
 	b.WriteString(tableName)
@@ -1011,10 +1011,10 @@ func (suite *ConnectionTests) TestGetInfo() {
 	driverVersion := false
 	driverArrowVersion := false
 	for reader.Next() {
-		code := reader.Record().Column(0).(*array.Uint32)
-		values := reader.Record().Column(1).(*array.DenseUnion)
+		code := reader.RecordBatch().Column(0).(*array.Uint32)
+		values := reader.RecordBatch().Column(1).(*array.DenseUnion)
 		stringValues := values.Field(0).(*array.String)
-		for i := 0; i < int(reader.Record().NumRows()); i++ {
+		for i := 0; i < int(reader.RecordBatch().NumRows()); i++ {
 			switch adbc.InfoCode(code.Value(i)) {
 			case adbc.InfoDriverName:
 				{
