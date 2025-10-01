@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -42,8 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     class BigQueryStatement : TracingStatement, ITokenProtectedResource, IDisposable
     {
         readonly BigQueryConnection bigQueryConnection;
-        readonly object cancellationTokenSourceLock;
-        CancellationTokenSource? cancellationTokenSource;
+        readonly CancellationRegistry cancellationRegistry;
 
         public BigQueryStatement(BigQueryConnection bigQueryConnection) : base(bigQueryConnection)
         {
@@ -53,7 +53,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             UpdateToken = bigQueryConnection.UpdateToken;
 
             this.bigQueryConnection = bigQueryConnection;
-            this.cancellationTokenSourceLock = new object();
+            this.cancellationRegistry = new CancellationRegistry();
         }
 
         public Func<Task>? UpdateToken { get; set; }
@@ -108,15 +108,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     activity?.AddBigQueryParameterTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
                 }
 
+                JobCancellationContext cancellationContext = new JobCancellationContext(cancellationRegistry, job);
                 // We can't checkJobStatus, Otherwise, the timeout in QueryResultsOptions is meaningless.
                 // When encountering a long-running job, it should be controlled by the timeout in the Google SDK instead of blocking in a while loop.
                 Func<Task<BigQueryResults>> getJobResults = async () =>
                 {
-                    return await ExecuteCancellableJobAsync(job, activity, async (context) =>
+                    return await ExecuteCancellableJobAsync(cancellationContext, activity, async (context) =>
                     {
                         // if the authentication token was reset, then we need a new job with the latest token
-                        context.Job = await Client.GetJobAsync(jobReference, cancellationToken: context.Token).ConfigureAwait(false);
-                        return await context.Job.GetQueryResultsAsync(getQueryResultsOptions, cancellationToken: context.Token).ConfigureAwait(false);
+                        context.Job = await Client.GetJobAsync(jobReference, cancellationToken: context.CancellationToken).ConfigureAwait(false);
+                        return await context.Job.GetQueryResultsAsync(getQueryResultsOptions, cancellationToken: context.CancellationToken).ConfigureAwait(false);
                     }).ConfigureAwait(false);
                 };
 
@@ -170,9 +171,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                                     throw new ArgumentOutOfRangeException($"The specified index {statementIndex} is out of range. There are {joblist.Count} jobs available.");
                                 }
                                 BigQueryJob indexedJob = joblist[statementIndex - 1];
-                                return await ExecuteCancellableJobAsync(indexedJob, activity, async (context) =>
+                                cancellationContext.Job = indexedJob;
+                                return await ExecuteCancellableJobAsync(cancellationContext, activity, async (context) =>
                                 {
-                                    return await indexedJob.GetQueryResultsAsync(getQueryResultsOptions, cancellationToken: context.Token).ConfigureAwait(false);
+                                    return await indexedJob.GetQueryResultsAsync(getQueryResultsOptions, cancellationToken: context.CancellationToken).ConfigureAwait(false);
                                 }).ConfigureAwait(false);
                             }
 
@@ -206,15 +208,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 Func<Task<IEnumerable<IArrowReader>>> getArrowReadersFunc = async () =>
                 {
-                    return await ExecuteCancellableJobAsync(null, activity, async (context) =>
+                    return await ExecuteCancellableJobAsync(cancellationContext, activity, async (context) =>
                     {
                         // Cancelling this step may leave the server with unread streams.
-                        return await GetArrowReaders(clientMgr, table, results.TableReference.ProjectId, maxStreamCount, activity, context.Token).ConfigureAwait(false);
+                        return await GetArrowReaders(clientMgr, table, results.TableReference.ProjectId, maxStreamCount, activity, context.CancellationToken).ConfigureAwait(false);
                     }).ConfigureAwait(false);
                 };
                 IEnumerable<IArrowReader> readers = await ExecuteWithRetriesAsync(getArrowReadersFunc, activity).ConfigureAwait(false);
 
-                IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers);
+                // Note: MultiArrowReader must dispose the cancellationContext.
+                IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers, cancellationContext);
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, totalRows);
                 return new QueryResult(totalRows, stream);
             });
@@ -249,16 +252,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             this.TraceActivity(_ =>
             {
-                lock (this.cancellationTokenSourceLock)
-                {
-                    this.cancellationTokenSource?.Cancel();
-                }
+                this.cancellationRegistry.CancelAll();
             });
         }
 
         public override void Dispose()
         {
-            ClearCancellationTokenSource();
+            this.cancellationRegistry.Dispose();
             base.Dispose();
         }
 
@@ -278,13 +278,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, this.bigQueryConnection.IsSafeToTrace);
 
+                using JobCancellationContext context = new(cancellationRegistry);
                 // Cannot set destination table in jobs with DDL statements, otherwise an error will be prompted
                 Func<Task<BigQueryResults?>> getQueryResultsAsyncFunc = async () =>
                 {
-                    return await ExecuteCancellableJobAsync(null, activity, async (context) =>
+                    return await ExecuteCancellableJobAsync(context, activity, async (context) =>
                     {
-                        context.Job = await this.Client.CreateQueryJobAsync(SqlQuery, null, null, context.Token).ConfigureAwait(false);
-                        return await context.Job.GetQueryResultsAsync(getQueryResultsOptions, context.Token).ConfigureAwait(false);
+                        context.Job = await this.Client.CreateQueryJobAsync(SqlQuery, null, null, context.CancellationToken).ConfigureAwait(false);
+                        return await context.Job.GetQueryResultsAsync(getQueryResultsOptions, context.CancellationToken).ConfigureAwait(false);
                     }).ConfigureAwait(false);
                 };
                 BigQueryResults? result = await ExecuteWithRetriesAsync(getQueryResultsAsyncFunc, activity);
@@ -566,54 +567,66 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
 
-        private CancellationTokenSource NewCancellationTokenSource()
+        private class CancellationContext : IDisposable
         {
-            lock (this.cancellationTokenSourceLock)
+            private readonly CancellationRegistry cancellationRegistry;
+            private readonly CancellationTokenSource cancellationTokenSource;
+
+            private bool _disposedValue;
+
+            public CancellationContext(CancellationRegistry cancellationRegistry)
             {
-                if (this.cancellationTokenSource != null)
+                cancellationTokenSource = new CancellationTokenSource();
+                this.cancellationRegistry = cancellationRegistry;
+                this.cancellationRegistry.Register(this);
+            }
+
+            public CancellationToken CancellationToken => cancellationTokenSource.Token;
+
+            public void Cancel()
+            {
+                cancellationTokenSource.Cancel();
+            }
+
+            protected virtual void Dispose(bool disposing)
+            {
+                if (!_disposedValue)
                 {
-                    throw new InvalidOperationException("CancellationTokenSource already exists");
+                    if (disposing)
+                    {
+                        cancellationRegistry.Unregister(this);
+                        cancellationTokenSource.Dispose();
+                    }
+                    _disposedValue = true;
                 }
-
-                this.cancellationTokenSource = new CancellationTokenSource();
-                return this.cancellationTokenSource;
             }
-        }
 
-        private void ClearCancellationTokenSource()
-        {
-            lock (this.cancellationTokenSourceLock)
+            public void Dispose()
             {
-                this.cancellationTokenSource?.Dispose();
-                this.cancellationTokenSource = null;
+                // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+                Dispose(disposing: true);
+                GC.SuppressFinalize(this);
             }
         }
 
-        private class BigQueryJobContext
+        private class JobCancellationContext : CancellationContext
         {
-            public BigQueryJobContext(BigQueryJob? job, CancellationToken token)
+            public JobCancellationContext(CancellationRegistry cancellationRegistry, BigQueryJob? job = default)
+                : base(cancellationRegistry)
             {
                 Job = job;
-                Token = token;
             }
 
             public BigQueryJob? Job { get; set; }
-
-            public CancellationToken Token { get; }
         }
 
         private async Task<T> ExecuteCancellableJobAsync<T>(
-            BigQueryJob? job,
+            JobCancellationContext context,
             Activity? activity,
-            Func<BigQueryJobContext, Task<T>> func)
+            Func<JobCancellationContext, Task<T>> func)
         {
-            CancellationTokenSource? tokenSource = null;
-            BigQueryJobContext? context = null;
             try
             {
-                tokenSource = NewCancellationTokenSource();
-                context = new BigQueryJobContext(job, tokenSource.Token);
-
                 return await func(context).ConfigureAwait(false);
             }
             catch (OperationCanceledException cancelledEx)
@@ -624,7 +637,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     if (context?.Job != null)
                     {
                         activity?.AddBigQueryTag("job.cancel", context.Job.Reference.JobId);
-                        context.Job.CancelAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                        await context.Job.CancelAsync().ConfigureAwait(false);
                     }
                 }
                 catch (Exception ex)
@@ -635,7 +648,49 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
             finally
             {
-                ClearCancellationTokenSource();
+                // Job is no longer in context after completion or cancellation
+                context.Job = null;
+            }
+        }
+
+        private sealed class CancellationRegistry : IDisposable
+        {
+            private readonly ConcurrentDictionary<CancellationContext, byte> contexts = new();
+
+            public CancellationContext Register(CancellationContext context)
+            {
+                contexts.TryAdd(context, 0);
+                return context;
+            }
+
+            public CancellationContext Register()
+            {
+                CancellationContext context = new(this);
+                return Register(context);
+            }
+
+            public bool Unregister(CancellationContext context)
+            {
+                bool isRemoved = contexts.TryRemove(context, out _);
+                context.Dispose();
+                return isRemoved;
+            }
+
+            public void CancelAll()
+            {
+                foreach (CancellationContext context in contexts.Keys)
+                {
+                    context.Cancel();
+                }
+            }
+
+            public void Dispose()
+            {
+                foreach (CancellationContext context in contexts.Keys)
+                {
+                    context.Dispose();
+                }
+                contexts.Clear();
             }
         }
 
@@ -645,13 +700,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             private static readonly string s_assemblyVersion = BigQueryUtils.GetAssemblyVersion(typeof(BigQueryStatement));
 
             readonly Schema schema;
+            readonly CancellationContext cancellationContext;
             IEnumerator<IArrowReader>? readers;
             IArrowReader? reader;
 
-            public MultiArrowReader(BigQueryStatement statement, Schema schema, IEnumerable<IArrowReader> readers) : base(statement)
+            public MultiArrowReader(BigQueryStatement statement, Schema schema, IEnumerable<IArrowReader> readers, CancellationContext cancellationContext) : base(statement)
             {
                 this.schema = schema;
                 this.readers = readers.GetEnumerator();
+                this.cancellationContext = cancellationContext;
             }
 
             public override Schema Schema { get { return this.schema; } }
@@ -664,6 +721,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 return await this.TraceActivityAsync(async activity =>
                 {
+                    using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, this.cancellationContext.CancellationToken);
                     if (this.readers == null)
                     {
                         return null;
@@ -681,7 +739,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                             this.reader = this.readers.Current;
                         }
 
-                        RecordBatch result = await this.reader.ReadNextRecordBatchAsync(cancellationToken);
+                        RecordBatch result = await this.reader.ReadNextRecordBatchAsync(linkedCts.Token).ConfigureAwait(false);
 
                         if (result != null)
                         {
@@ -702,6 +760,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         this.readers.Dispose();
                         this.readers = null;
                     }
+                    this.cancellationContext.Dispose();
                 }
 
                 base.Dispose(disposing);
