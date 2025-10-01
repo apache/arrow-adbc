@@ -567,6 +567,39 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
 
+        private async Task<T> ExecuteCancellableJobAsync<T>(
+            JobCancellationContext context,
+            Activity? activity,
+            Func<JobCancellationContext, Task<T>> func)
+        {
+            try
+            {
+                return await func(context).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (BigQueryUtils.ContainsException(ex, out OperationCanceledException? cancelledEx))
+            {
+                activity?.AddException(cancelledEx!);
+                try
+                {
+                    if (context?.Job != null)
+                    {
+                        activity?.AddBigQueryTag("job.cancel", context.Job.Reference.JobId);
+                        await context.Job.CancelAsync().ConfigureAwait(false);
+                    }
+                }
+                catch (Exception e)
+                {
+                    activity?.AddException(e);
+                }
+                throw;
+            }
+            finally
+            {
+                // Job is no longer in context after completion or cancellation
+                context.Job = null;
+            }
+        }
+
         private class CancellationContext : IDisposable
         {
             private readonly CancellationRegistry cancellationRegistry;
@@ -618,39 +651,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
 
             public BigQueryJob? Job { get; set; }
-        }
-
-        private async Task<T> ExecuteCancellableJobAsync<T>(
-            JobCancellationContext context,
-            Activity? activity,
-            Func<JobCancellationContext, Task<T>> func)
-        {
-            try
-            {
-                return await func(context).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (BigQueryUtils.ContainsException(ex, out OperationCanceledException? cancelledEx))
-            {
-                activity?.AddException(cancelledEx!);
-                try
-                {
-                    if (context?.Job != null)
-                    {
-                        activity?.AddBigQueryTag("job.cancel", context.Job.Reference.JobId);
-                        await context.Job.CancelAsync().ConfigureAwait(false);
-                    }
-                }
-                catch (Exception e)
-                {
-                    activity?.AddException(e);
-                }
-                throw;
-            }
-            finally
-            {
-                // Job is no longer in context after completion or cancellation
-                context.Job = null;
-            }
         }
 
         private sealed class CancellationRegistry : IDisposable
