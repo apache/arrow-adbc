@@ -96,7 +96,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, this.bigQueryConnection.IsSafeToTrace);
 
                 BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
-
                 JobReference jobReference = job.Reference;
                 GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
@@ -526,8 +525,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 try
                 {
                     activity?.AddBigQueryTag("large_results.dataset.try_create", datasetId);
+                    activity?.AddBigQueryTag("large_results.dataset.try_create_region", this.Client.DefaultLocation);
                     DatasetReference reference = this.Client.GetDatasetReference(datasetId);
 
+                    // The location is not set here because it will use the DefaultLocation from the client.
+                    // Similar to the DefaultLocation for the client, if the caller attempts to use a public
+                    // dataset from a multi-region but set the destination to a specific location,
+                    // a similar permission error is thrown.
                     BigQueryDataset bigQueryDataset = new BigQueryDataset(this.Client, new Dataset()
                     {
                         DatasetReference = reference,
@@ -540,7 +544,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 catch (Exception ex)
                 {
                     activity?.AddException(ex);
-                    throw new AdbcException($"Could not create dataset {datasetId}", ex);
+                    throw new AdbcException($"Could not create dataset {datasetId} in {this.Client.DefaultLocation}", ex);
                 }
             }
 

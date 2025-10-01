@@ -49,6 +49,6 @@ To write an ADBC driver in Rust you have to:
 
 1. Create a new library crate with `crate-type = ["lib", "cdylib"]`.
 1. Implement the abstract API which consists of the traits `Driver`, `Database`, `Connection` and `Statement`.
-1. Export your driver to C with the macro `adbc_core::export_driver!`.
+1. Export your driver to C with the macro `adbc_ffi::export_driver!`.
 
 The resulting object file can then be loaded by other languages through their own driver manager.

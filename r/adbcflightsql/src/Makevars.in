@@ -16,7 +16,7 @@
 # under the License.
 
 PKG_CPPFLAGS=-I$(CURDIR)/src -DADBC_EXPORT=""
-PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_flightsql -lresolv @libs@
+PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_flightsql @libs@
 
 CGO_CC = @cc@
 CGO_CXX = @cxx@

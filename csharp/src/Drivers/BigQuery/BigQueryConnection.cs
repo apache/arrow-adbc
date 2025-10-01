@@ -90,6 +90,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 RetryDelayMs = delay;
             }
+
+            if (this.properties.TryGetValue(BigQueryParameters.DefaultClientLocation, out string? location) &&
+                !string.IsNullOrEmpty(location) &&
+                BigQueryConstants.ValidLocations.Any(l => l.Equals(location, StringComparison.OrdinalIgnoreCase)))
+            {
+                DefaultClientLocation = location;
+            }
         }
 
         private bool TryInitTracerProvider(out FileActivityListener? fileActivityListener)
@@ -131,6 +138,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         internal int MaxRetryAttempts { get; private set; } = 5;
 
         internal int RetryDelayMs { get; private set; } = 200;
+
+        // if this value is null, the BigQuery API chooses the location (typically the `US` multi-region)
+        internal string? DefaultClientLocation { get; private set; }
 
         public override string AssemblyVersion => BigQueryUtils.BigQueryAssemblyVersion;
 
@@ -202,6 +212,24 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     QuotaProject = billingProjectId,
                     GoogleCredential = Credential
                 };
+
+                if (!string.IsNullOrEmpty(DefaultClientLocation))
+                {
+                    // If the user selects a public dataset (from a multi-region) but sets this
+                    // value to a specific location like us-east4, then there is an error produced
+                    // that the caller doesn't have permission to call to the public dataset.
+                    // Example:
+                    //    Access Denied: Table bigquery-public-data:blockchain_analytics_ethereum_mainnet_us.accounts:
+                    //    User does not have permission to query table bigquery-public-data:blockchain_analytics_ethereum_mainnet_us.accounts,
+                    //    or perhaps it does not exist.'
+
+                    bigQueryClientBuilder.DefaultLocation = DefaultClientLocation;
+                    activity?.AddBigQueryParameterTag(BigQueryParameters.DefaultClientLocation, DefaultClientLocation);
+                }
+                else
+                {
+                    activity?.AddBigQueryTag("client.default_location", null);
+                }
 
                 BigQueryClient client = bigQueryClientBuilder.Build();
 
