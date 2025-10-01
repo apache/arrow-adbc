@@ -629,9 +629,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 return await func(context).ConfigureAwait(false);
             }
-            catch (OperationCanceledException cancelledEx)
+            catch (Exception ex) when (BigQueryUtils.ContainsException(ex, out OperationCanceledException? cancelledEx))
             {
-                activity?.AddException(cancelledEx);
+                activity?.AddException(cancelledEx!);
                 try
                 {
                     if (context?.Job != null)
@@ -640,9 +640,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         await context.Job.CancelAsync().ConfigureAwait(false);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    activity?.AddException(ex);
+                    activity?.AddException(e);
                 }
                 throw;
             }

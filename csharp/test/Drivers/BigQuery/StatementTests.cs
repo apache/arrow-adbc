@@ -150,9 +150,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
                         Assert.Fail("Expecting OperationCanceledException to be thrown.");
                     }
-                    catch (Exception ex) when (
-                        ex is OperationCanceledException ||
-                        ex is RpcException rpcException && rpcException.InnerException is OperationCanceledException)
+                    catch (Exception ex) when (BigQueryUtils.ContainsException(ex, out OperationCanceledException? _))
                     {
                         _outputHelper?.WriteLine($"Received expected OperationCanceledException: {ex.Message}");
                     }
