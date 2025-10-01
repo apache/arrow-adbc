@@ -21,7 +21,6 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Apache.Arrow.Ipc;
-using Grpc.Core;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
