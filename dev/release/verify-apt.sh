@@ -118,11 +118,11 @@ if [ "${TYPE}" = "local" ]; then
   if [ -f "${keys}" ]; then
     gpg \
       --no-default-keyring \
-      --keyring /tmp.kbx \
+      --keyring /tmp/apache-arrow-adbc-apt-source.kbx \
       --import "${keys}"
     gpg \
       --no-default-keyring \
-      --keyring /tmp/apache-arrow-apt-source.kbx \
+      --keyring /tmp/apache-arrow-adbc-apt-source.kbx \
       --armor \
       --export > /usr/share/keyrings/apache-arrow-adbc-apt-source.asc
   fi
