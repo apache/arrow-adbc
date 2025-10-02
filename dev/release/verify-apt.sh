@@ -76,17 +76,11 @@ case "${TYPE}" in
 esac
 
 case "${distribution}-${code_name}" in
-  debian-bookworm)
-    sed \
-      -i"" \
-      -e "s/ main$/ main contrib non-free/g" \
-      /etc/apt/sources.list.d/debian.sources
-    ;;
   debian-*)
     sed \
       -i"" \
       -e "s/ main$/ main contrib non-free/g" \
-      /etc/apt/sources.list
+      /etc/apt/sources.list.d/debian.sources
     ;;
 esac
 
@@ -117,15 +111,20 @@ fi
 if [ "${TYPE}" = "local" ]; then
   sed \
     -e "s,^URIs: .*$,URIs: file://${local_prefix}/apt/repositories/${distribution},g" \
-    -e "s,^Signed-By: .*$,Signed-By: /usr/share/keyrings/apache-arrow-adbc-apt-source.gpg,g" \
-    /etc/apt/sources.list.d/apache-arrow.sources > \
-    /etc/apt/sources.list.d/apache-arrow-adbc.sources
+    -e "s,^Signed-By: .*$,Signed-By: /usr/share/keyrings/apache-arrow-adbc-apt-source.asc,g" \
+    /etc/apt/sources.list.d/apache-arrow.sources |
+      tee /etc/apt/sources.list.d/apache-arrow-adbc.sources
   keys="${local_prefix}/KEYS"
   if [ -f "${keys}" ]; then
     gpg \
       --no-default-keyring \
-      --keyring /usr/share/keyrings/apache-arrow-adbc-apt-source.gpg \
+      --keyring /tmp.kbx \
       --import "${keys}"
+    gpg \
+      --no-default-keyring \
+      --keyring /tmp/apache-arrow-apt-source.kbx \
+      --armor \
+      --export > /usr/share/keyrings/apache-arrow-adbc-apt-source.asc
   fi
 else
   case "${TYPE}" in
