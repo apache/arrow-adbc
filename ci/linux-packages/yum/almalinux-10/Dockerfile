@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-ARG FROM=almalinux:9
+ARG FROM=almalinux:10
 FROM ${FROM}
 
 ARG DEBUG

@@ -141,9 +141,8 @@ class ADBCPackageTask < PackageTask
   def yum_targets_default
     [
       "almalinux-8",
-      # "almalinux-8-aarch64",
       "almalinux-9",
-      # "almalinux-9-aarch64",
+      "almalinux-10",
     ]
   end
 
