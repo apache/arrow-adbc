@@ -79,7 +79,7 @@ func getRecTransformer(sc *arrow.Schema, tr []colTransformer) recordTransformer 
 }
 
 func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighPrecision bool) (*arrow.Schema, recordTransformer) {
-	loc, types := ld.Location(), ld.RowTypes()
+	types := ld.RowTypes()
 
 	fields := make([]arrow.Field, len(sc.Fields()))
 	transformers := make([]func(context.Context, arrow.Array) (arrow.Array, error), len(sc.Fields()))
@@ -193,7 +193,7 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 				return tb.NewArray(), nil
 			}
 		case "TIMESTAMP_LTZ":
-			dt := &arrow.TimestampType{Unit: arrow.TimeUnit(srcMeta.Scale) / 3, TimeZone: loc.String()}
+			dt := &arrow.TimestampType{Unit: arrow.TimeUnit(srcMeta.Scale) / 3, TimeZone: "UTC"}
 			f.Type = dt
 			transformers[i] = func(ctx context.Context, a arrow.Array) (arrow.Array, error) {
 				pool := compute.GetAllocator(ctx)
@@ -351,7 +351,7 @@ func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, 
 			if loc == nil {
 				loc = ld.Location()
 			}
-			fields[i].Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+			fields[i].Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: "UTC"}
 		case "binary":
 			fields[i].Type = arrow.BinaryTypes.Binary
 		default:

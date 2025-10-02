@@ -30,7 +30,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
@@ -427,8 +426,6 @@ func (c *connectionImpl) SetAutocommit(enabled bool) error {
 	return err
 }
 
-var loc = time.Now().Location()
-
 func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Field {
 	field := arrow.Field{Name: columnInfo.ColumnName, Nullable: driverbase.ValueOrZero(columnInfo.XdbcNullable) != 0}
 
@@ -472,7 +469,7 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 	case "TIMESTAMP", "TIMESTAMP_NTZ":
 		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
 	case "TIMESTAMP_LTZ":
-		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: "UTC"}
 	case "TIMESTAMP_TZ":
 		field.Type = arrow.FixedWidthTypes.Timestamp_ns
 	case "GEOGRAPHY":
@@ -562,7 +559,7 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 	case "TIMESTAMP", "TIMESTAMP_NTZ":
 		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
 	case "TIMESTAMP_LTZ":
-		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: loc.String()}
+		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: "UTC"}
 	case "TIMESTAMP_TZ":
 		field.Type = arrow.FixedWidthTypes.Timestamp_ns
 	default:
