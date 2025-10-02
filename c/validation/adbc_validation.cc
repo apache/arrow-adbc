@@ -51,11 +51,12 @@ AdbcStatusCode DoIngestSampleTable(struct AdbcConnection* connection,
   Handle<struct ArrowSchema> schema;
   Handle<struct ArrowArray> array;
   struct ArrowError na_error;
-  CHECK_OK(MakeSchema(&schema.value, {{"int64s", NANOARROW_TYPE_INT64},
-                                      {"strings", NANOARROW_TYPE_STRING}}));
-  CHECK_OK((MakeBatch<int64_t, std::string>(&schema.value, &array.value, &na_error,
-                                            {42, -42, std::nullopt},
-                                            {"foo", std::nullopt, ""})));
+  CHECK_OK(static_cast<AdbcStatusCode>(MakeSchema(
+      &schema.value,
+      {{"int64s", NANOARROW_TYPE_INT64}, {"strings", NANOARROW_TYPE_STRING}})));
+  CHECK_OK((static_cast<AdbcStatusCode>(MakeBatch<int64_t, std::string>(
+      &schema.value, &array.value, &na_error, {42, -42, std::nullopt},
+      {"foo", std::nullopt, ""}))));
 
   Handle<struct AdbcStatement> statement;
   CHECK_OK(AdbcStatementNew(connection, &statement.value, error));
