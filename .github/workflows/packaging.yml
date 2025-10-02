@@ -373,6 +373,7 @@ jobs:
           - almalinux-9
           - almalinux-10
           - debian-bookworm
+          - debian-trixie
           - ubuntu-jammy
           - ubuntu-noble
     steps:
