@@ -21,7 +21,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Serialization;
 
-namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
+namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
 {
     /// <summary>
     /// Simplified version of <see cref="Activity"/> that excludes some properties, etc.

@@ -384,6 +384,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TracePropagationEnabled] = "notabool" }, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TraceParentHeaderName] = "" }, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TraceStateEnabled] = "notabool" }, typeof(ArgumentException)));
+
+                // Tests for fetch heartbeat interval parameter
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.FetchHeartbeatInterval] = "notanumber" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.FetchHeartbeatInterval] = "0" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.FetchHeartbeatInterval] = "-1" }, typeof(ArgumentOutOfRangeException)));
+
+                // Tests for operation status request timeout parameter
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.OperationStatusRequestTimeout] = "notanumber" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.OperationStatusRequestTimeout] = "0" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.OperationStatusRequestTimeout] = "-1" }, typeof(ArgumentOutOfRangeException)));
             }
         }
 
@@ -510,6 +520,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             OutputHelper?.WriteLine(
                 $"Connection created successfully with tracePropagationEnabled={tracePropagationEnabled}, " +
                 $"traceParentHeaderName={traceParentHeaderName}, traceStateEnabled={traceStateEnabled}");
+        }
+
+        /// <summary>
+        /// Tests that TrySetGetDirectResults uses DatabricksConnection's defaultGetDirectResults
+        /// </summary>
+        [Fact]
+        public void TrySetGetDirectResults_UsesDatabricksDefaultGetDirectResults()
+        {
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            using var connection = NewConnection(testConfig);
+            // Create a mock request object
+            var request = new TExecuteStatementReq();
+            bool result = ((DatabricksConnection)Connection).TrySetGetDirectResults(request);
+
+            // Assert
+            Assert.True(result, "TrySetGetDirectResults should return true when EnableDirectResults is true by default");
+            Assert.NotNull(request.GetDirectResults);
+            Assert.Equal(((DatabricksConnection)Connection).DirectResultMaxRows, request.GetDirectResults.MaxRows);
+            Assert.Equal(((DatabricksConnection)Connection).DirectResultMaxBytes, request.GetDirectResults.MaxBytes);
         }
     }
 }
