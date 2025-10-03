@@ -64,7 +64,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private const long DefaultDirectResultMaxRows = 500 * 1000; // upper limit for 10MB result assume smallest 20 Byte column
         private long _directResultMaxBytes = DefaultDirectResultMaxBytes;
         private long _directResultMaxRows = DefaultDirectResultMaxRows;
-        private const int DefaultMaxRowsPerFetchRequest = 1000;
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
         private const int DefaultQueryTimeSeconds = 3 * 60 * 60; // 3 hours
