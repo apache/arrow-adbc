@@ -140,6 +140,12 @@ func (st *statement) GetOption(key string) (string, error) {
 		return string(st.queryConfig.CreateDisposition), nil
 	case OptionStringQueryWriteDisposition:
 		return string(st.queryConfig.WriteDisposition), nil
+	case OptionStringQueryLabels:
+		encoded, err := json.Marshal(st.queryConfig.Labels)
+		if err != nil {
+			return "", err
+		}
+		return string(encoded), nil
 	case OptionBoolQueryDisableQueryCache:
 		return strconv.FormatBool(st.queryConfig.DisableQueryCache), nil
 	case OptionBoolDisableFlattenedResults:
@@ -227,6 +233,14 @@ func (st *statement) SetOption(key string, v string) error {
 		val, err := stringToTableWriteDisposition(v)
 		if err == nil {
 			st.queryConfig.WriteDisposition = val
+		} else {
+			return err
+		}
+	case OptionStringQueryLabels:
+		var labels map[string]string
+		err := json.Unmarshal([]byte(v), &labels)
+		if err == nil {
+			st.queryConfig.Labels = labels
 		} else {
 			return err
 		}

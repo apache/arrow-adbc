@@ -63,6 +63,7 @@ const (
 	OptionStringQueryDefaultDatasetID  = "adbc.bigquery.sql.query.default_dataset_id"
 	OptionStringQueryCreateDisposition = "adbc.bigquery.sql.query.create_disposition"
 	OptionStringQueryWriteDisposition  = "adbc.bigquery.sql.query.write_disposition"
+	OptionStringQueryLabels            = "adbc.bigquery.sql.query.labels"
 	OptionBoolQueryDisableQueryCache   = "adbc.bigquery.sql.query.disable_query_cache"
 	OptionBoolDisableFlattenedResults  = "adbc.bigquery.sql.query.disable_flattened_results"
 	OptionBoolQueryAllowLargeResults   = "adbc.bigquery.sql.query.allow_large_results"
@@ -90,7 +91,7 @@ const (
 	OptionJsonUpdateTableColumnsDescription = "adbc.bigquery.table.update_columns_description"
 	OptionJsonAuthorizeViewToDatasets       = "adbc.bigquery.dataset.authorize_view_to_datasets"
 
-		// WithAppDefaultCredentials instructs the driver to authenticate using
+	// WithAppDefaultCredentials instructs the driver to authenticate using
 	// Application Default Credentials (ADC).
 	OptionValueAuthTypeAppDefaultCredentials = "adbc.bigquery.sql.auth_type.app_default_credentials"
 
