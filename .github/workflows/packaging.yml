@@ -100,7 +100,7 @@ jobs:
 
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-13"]
+        os: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
 
     steps:
       - uses: actions/download-artifact@v5
@@ -558,7 +558,7 @@ jobs:
 
   python-conda-macos:
     name: "Python ${{ matrix.arch }} Conda"
-    runs-on: macos-13
+    runs-on: macos-15-intel
     # No need for Conda packages during release
     # TODO(apache/arrow-adbc#468): re-enable
     if: false
@@ -743,9 +743,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-13", "macos-latest"]
+        os: ["macos-15-intel", "macos-latest"]
         include:
-          - os: macos-13
+          - os: macos-15-intel
             arch: amd64
           - os: macos-latest
             arch: arm64v8
