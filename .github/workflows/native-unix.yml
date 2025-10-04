@@ -68,8 +68,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         include:
+          - os: macos-13
+            goarch: x64
           - os: macos-latest
             goarch: arm64
           - os: ubuntu-latest
@@ -154,7 +156,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -320,7 +322,7 @@ jobs:
       matrix:
         # N.B. no macos-latest here since conda-forge does not package
         # arrow-c-glib for M1
-        os: ["ubuntu-latest"]
+        os: ["macos-13", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -393,7 +395,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -446,8 +448,10 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         include:
+          - os: macos-13
+            goarch: x64
           - os: macos-latest
             goarch: arm64
           - os: ubuntu-latest
@@ -539,7 +543,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-latest", "ubuntu-latest"]
+        os: ["macos-13", "macos-latest", "ubuntu-latest"]
         python: ["3.9", "3.13"]
     env:
       # Required for macOS

@@ -100,7 +100,7 @@ jobs:
 
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        os: ["ubuntu-latest", "windows-latest", "macos-13"]
 
     steps:
       - uses: actions/download-artifact@v5
@@ -743,8 +743,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-latest"]
+        os: ["macos-13", "macos-latest"]
         include:
+          - os: macos-13
+            arch: amd64
           - os: macos-latest
             arch: arm64v8
     env:

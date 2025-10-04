@@ -46,6 +46,7 @@ jobs:
       matrix:
         # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
         os:
+          - macos-13
           - macos-latest
           - ubuntu-latest
           - windows-latest
@@ -145,6 +146,11 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
+      - name: Set dynamic linker path
+        if: matrix.os == 'macos-13'
+        run: |
+          echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
       - name: Set dynamic linker path
         if: runner.os == 'Windows'
