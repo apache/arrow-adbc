@@ -157,13 +157,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     }
                     break;
                 case DatabricksParameters.MaxBytesPerFile:
-                    if (long.TryParse(value, out long maxBytesPerFileValue))
+                    try
                     {
+                        long maxBytesPerFileValue = DatabricksConnection.ParseBytesWithUnits(value);
                         this.maxBytesPerFile = maxBytesPerFileValue;
                     }
-                    else
+                    catch (FormatException)
                     {
-                        throw new ArgumentException($"Invalid value for {key}: {value}. Expected a long value.");
+                        throw new ArgumentException($"Invalid value for {key}: {value}. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '20MB', '1024KB', '1073741824'.");
                     }
                     break;
                 case DatabricksParameters.MaxBytesPerFetchRequest:
@@ -174,7 +175,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     }
                     catch (FormatException)
                     {
-                        throw new ArgumentException($"Invalid value for {key}: {value}. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '300MB', '1024KB', '1073741824'.");
+                        throw new ArgumentException($"Invalid value for {key}: {value}. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '400MB', '1024KB', '1073741824'.");
                     }
                     break;
                 default:

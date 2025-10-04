@@ -70,7 +70,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
-        private const long DefaultMaxBytesPerFetchRequest = 300 * 1024 * 1024; // 300MB
+        private const long DefaultMaxBytesPerFetchRequest = 400 * 1024 * 1024; // 400MB
         private long _maxBytesPerFetchRequest = DefaultMaxBytesPerFetchRequest;
         private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
@@ -340,7 +340,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
                 catch (FormatException)
                 {
-                    throw new ArgumentException($"Parameter '{DatabricksParameters.MaxBytesPerFetchRequest}' value '{maxBytesPerFetchRequestStr}' could not be parsed. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '300MB', '1024KB', '1073741824'.");
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.MaxBytesPerFetchRequest}' value '{maxBytesPerFetchRequestStr}' could not be parsed. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '400MB', '1024KB', '1073741824'.");
                 }
             }
 
@@ -801,7 +801,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Parses a byte value that may include unit suffixes (B, KB, MB, GB).
         /// </summary>
-        /// <param name="value">The value to parse, e.g., "300MB", "1024KB", "1073741824"</param>
+        /// <param name="value">The value to parse, e.g., "400MB", "1024KB", "1073741824"</param>
         /// <returns>The value in bytes</returns>
         /// <exception cref="FormatException">Thrown when the value cannot be parsed</exception>
         internal static long ParseBytesWithUnits(string value)
