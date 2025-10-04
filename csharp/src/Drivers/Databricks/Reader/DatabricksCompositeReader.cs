@@ -123,6 +123,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 // Make a FetchResults call to get the initial result set
                 // and determine the reader based on the result set
                 TFetchResultsReq request = new TFetchResultsReq(_response.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
+
+                // Set MaxBytes from DatabricksStatement
+                if (this._statement is DatabricksStatement databricksStatement)
+                {
+                    request.MaxBytes = databricksStatement.MaxBytesPerFetchRequest;
+                }
+
                 TFetchResultsResp response = await this._statement.Client!.FetchResults(request, cancellationToken);
                 _activeReader = DetermineReader(response);
             }

@@ -280,6 +280,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             // Create fetch request
             TFetchResultsReq request = new TFetchResultsReq(_response.OperationHandle!, TFetchOrientation.FETCH_NEXT, _batchSize);
 
+            if (_statement is DatabricksStatement databricksStatement)
+            {
+                request.MaxBytes = databricksStatement.MaxBytesPerFetchRequest;
+            }
+
             // Set the start row offset
             long startOffset = offset ?? _startOffset;
             if (startOffset > 0)
