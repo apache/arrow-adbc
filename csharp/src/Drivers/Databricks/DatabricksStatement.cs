@@ -36,12 +36,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal class DatabricksStatement : SparkStatement, IHiveServer2Statement
     {
+        private const long DatabricksBatchSizeDefault = 2000000;
         private bool useCloudFetch;
         private bool canDecompressLz4;
         private long maxBytesPerFile;
         private bool enableMultipleCatalogSupport;
         private bool enablePKFK;
         private bool runAsyncInThrift;
+
+        public new long BatchSize { get; private set; } = DatabricksBatchSizeDefault;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -162,6 +165,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     else
                     {
                         throw new ArgumentException($"Invalid value for {key}: {value}. Expected a long value.");
+                    }
+                    break;
+                case ApacheParameters.BatchSize:
+                    if (long.TryParse(value, out long batchSize) && batchSize > 0)
+                    {
+                        this.BatchSize = batchSize;
+                    }
+                    else
+                    {
+                        throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
                     }
                     break;
                 default:
