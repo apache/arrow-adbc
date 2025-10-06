@@ -24,21 +24,22 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # v5.0.0
     hooks:
+    - id: check-shebang-scripts-are-executable
     - id: check-xml
     - id: check-yaml
       exclude: ci/conda/meta.yaml
     - id: end-of-file-fixer
-      exclude: "^r/.*?/_snaps/.*?.md$"
+      exclude: "^(r/.*?/_snaps/.*?.md)|(.*\\.patch)$"
     - id: mixed-line-ending
       name: "Mixed line endings (LF)"
       args: [--fix=lf]
-      exclude: '\.(bat|sln)$'
+      exclude: '\.(bat|sln|patch)$'
     - id: mixed-line-ending
       name: "Mixed line endings (CRLF)"
       args: [--fix=crlf]
       files: '\.(bat|sln)$'
     - id: trailing-whitespace
-      exclude: "^r/.*?/_snaps/.*?.md$"
+      exclude: "^(r/.*?/_snaps/.*?.md)|(.*\\.patch)$"
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: deec0115cd2847f837ac9180c4b7d1edb423fe02  # v18.1.7
     hooks:
@@ -115,6 +116,12 @@ repos:
       language: script
       pass_filenames: true
       files: '^c/include/arrow-adbc/[^/]*\.h$'
+      entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
+    - id: check-cgo-adbc-impl
+      name: Ensure CGO adbc_driver_manager.cc is syncd
+      language: script
+      pass_filenames: true
+      files: '^c/driver_manager/adbc_driver_manager\.cc$'
       entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
     # https://infra.apache.org/github-actions-policy.html
     - id: check-pin

@@ -1,0 +1,46 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+From f6c6f20913f2e97fdf452ee31dc878ba8611353b Mon Sep 17 00:00:00 2001
+From: David Li <li.davidm96@gmail.com>
+Date: Tue, 16 Sep 2025 09:38:57 +0900
+Subject: [PATCH] Fix CMake 4/OSX
+
+strega-nil/vcpkg@104314ad43f39af13f566d7e8272c0a1708832f7
+https://github.com/microsoft/vcpkg/issues/44697
+---
+ scripts/get_cmake_vars/CMakeLists.txt | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/scripts/get_cmake_vars/CMakeLists.txt b/scripts/get_cmake_vars/CMakeLists.txt
+index 934515dd18..a8ccee3ff9 100644
+--- a/scripts/get_cmake_vars/CMakeLists.txt
++++ b/scripts/get_cmake_vars/CMakeLists.txt
+@@ -133,7 +133,9 @@ macro(_vcpkg_adjust_flags flag_var)
+                     string(APPEND ${flag_var} " -arch ${arch}")
+                 endforeach()
+             endif()
+-            string(APPEND ${flag_var} " -isysroot ${CMAKE_OSX_SYSROOT}")
++            if(CMAKE_OSX_SYSROOT)
++                string(APPEND ${flag_var} " -isysroot ${CMAKE_OSX_SYSROOT}")
++            endif()
+             if (CMAKE_OSX_DEPLOYMENT_TARGET)
+                 list(GET VCPKG_LANGUAGES 0 lang)
+                 string(APPEND ${flag_var} " ${CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG}${CMAKE_OSX_DEPLOYMENT_TARGET}")
+-- 
+2.48.1
+

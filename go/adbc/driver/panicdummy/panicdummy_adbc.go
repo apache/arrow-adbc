@@ -165,7 +165,7 @@ func (s *statement) SetSubstraitPlan(plan []byte) error {
 	return nil
 }
 
-func (s *statement) Bind(_ context.Context, values arrow.Record) error {
+func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 	maybePanic("StatementBind")
 	values.Release()
 	return nil

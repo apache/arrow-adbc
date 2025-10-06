@@ -91,16 +91,17 @@ adbc_driver <- function(x, entrypoint = NULL, ...,
 #' @param driver An external pointer to an `AdbcDriver`
 #' @param version The version number corresponding to the `driver` supplied
 #' @param error An external pointer to an `AdbcError` or NULL
+#' @param additional_search_path_list A path list of additional locations to search for driver manifests
 #'
 #' @return An integer ADBC status code
 #' @export
 #'
 adbc_driver_load <- function(x, entrypoint, version, driver, error,
-                             load_flags = adbc_load_flags()) {
+                             load_flags = adbc_load_flags(), additional_search_path_list = NULL) {
   if (inherits(x, "adbc_driver_init_func")) {
     .Call(RAdbcLoadDriverFromInitFunc, x, version, driver, error)
   } else {
-    .Call(RAdbcLoadDriver, x, entrypoint, version, load_flags, driver, error)
+    .Call(RAdbcLoadDriver, x, entrypoint, version, load_flags, additional_search_path_list, driver, error)
   }
 }
 
@@ -108,12 +109,13 @@ adbc_driver_load <- function(x, entrypoint, version, driver, error,
 #'
 #' Options that indicate where to look for driver manifests. Manifests
 #' (.toml files) can be installed at the system level, the user level,
-#' and/or location(s) specified by the ADBC_CONFIG_PATH environment variable.
-#' See the ADBC documentation for details regarding the locations of the
-#' user and system paths on various platforms.
+#' in location(s) specified by the ADBC_DRIVER_PATH environment variable,
+#' and/or in a conda environment. See the ADBC documentation for details
+#' regarding the locations of the user and system paths on various platforms.
 #'
-#' @param search_env Search for manifest files in the directories specified by
-#'   the ADBC_CONFIG_PATH environment variable.
+#' @param search_env Search for manifest files in the directories specified in
+#'   the ADBC_DRIVER_PATH environment variable and (when installed with conda)
+#'   in the conda environment.
 #' @param search_user Search for manifest files in the designated directory
 #'   for user ADBC driver installs.
 #' @param search_system Search for manifest files in the designtaed directory

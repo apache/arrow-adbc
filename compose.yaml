@@ -40,6 +40,8 @@ services:
         GO: ${GO}
     volumes:
       - .:/adbc:delegated
+    environment:
+      ADBC_CMAKE_ARGS: "-DADBC_CXXFLAGS=-Wdocumentation -DADBC_BUILD_WARNING_LEVEL=CHECKIN"
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/clang-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/clang-latest'"
 
   cpp-gcc-latest:
@@ -52,6 +54,8 @@ services:
         GO: ${GO}
     volumes:
       - .:/adbc:delegated
+    environment:
+      ADBC_CMAKE_ARGS: "-DADBC_BUILD_WARNING_LEVEL=CHECKIN"
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/gcc-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/gcc-latest'"
 
   # Build and dynamically load shared drivers missing the common entrypoints
@@ -88,7 +92,8 @@ services:
     image: ${ARCH}/maven:${MAVEN}-eclipse-temurin-${JDK}
     volumes:
       - .:/adbc:delegated
-    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
+    # N.B. never run JNI tests as we won't have the drivers built
+    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && env BUILD_JNI=OFF /adbc/ci/scripts/java_test.sh /adbc'"
 
   # Build the JNI and driver libraries
   java-jni:
@@ -96,6 +101,14 @@ services:
     volumes:
       - .:/adbc:delegated
     command: "/bin/bash -c 'env CMAKE_BUILD_TYPE=Release /adbc/ci/scripts/java_jni_build.sh /adbc /adbc/dist /adbc/local'"
+
+  ############################### Python #####################################
+
+  python-venv:
+    image: ${ARCH}/python:${PYTHON}
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c 'apt update && apt install -y libsqlite3-dev build-essential cmake git && git config --global --add safe.directory /adbc && env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ADBC_BUILD_TESTS=OFF ADBC_USE_ASAN=OFF ADBC_USE_UBSAN=OFF /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/venv && /adbc/ci/scripts/python_venv_test.sh /adbc /adbc/build/venv-test /adbc/build/venv/driver/sqlite/libadbc_driver_sqlite.so'"
 
   ############################ Python conda ##################################
 

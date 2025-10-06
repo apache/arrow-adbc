@@ -141,6 +141,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             {
                 parameters.Add(ApacheParameters.QueryTimeoutSeconds, testConfiguration.QueryTimeoutSeconds!);
             }
+            if (!string.IsNullOrEmpty(testConfiguration.FetchHeartbeatInterval))
+            {
+                parameters.Add(DatabricksParameters.FetchHeartbeatInterval, testConfiguration.FetchHeartbeatInterval!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.OperationStatusRequestTimeout))
+            {
+                parameters.Add(DatabricksParameters.OperationStatusRequestTimeout, testConfiguration.OperationStatusRequestTimeout!);
+            }
             if (!string.IsNullOrEmpty(testConfiguration.EnableMultipleCatalogSupport))
             {
                 parameters.Add(DatabricksParameters.EnableMultipleCatalogSupport, testConfiguration.EnableMultipleCatalogSupport!);
@@ -156,6 +164,18 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             if (!string.IsNullOrEmpty(testConfiguration.TraceStateEnabled))
             {
                 parameters.Add(DatabricksParameters.TraceStateEnabled, testConfiguration.TraceStateEnabled!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.EnableRunAsyncInThriftOp))
+            {
+                parameters.Add(DatabricksParameters.EnableRunAsyncInThriftOp, testConfiguration.EnableRunAsyncInThriftOp!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.EnableDirectResults))
+            {
+                parameters.Add(DatabricksParameters.EnableDirectResults, testConfiguration.EnableDirectResults!);
+            }
+            if (!string.IsNullOrEmpty(testConfiguration.MaxBytesPerFetchRequest))
+            {
+                parameters.Add(DatabricksParameters.MaxBytesPerFetchRequest, testConfiguration.MaxBytesPerFetchRequest!);
             }
             if (testConfiguration.HttpOptions != null)
             {

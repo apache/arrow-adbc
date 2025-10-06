@@ -18,44 +18,24 @@
 [package]
 authors.workspace = true
 categories.workspace = true
-description = "Public abstract API, driver manager and driver exporter"
+description = "Public abstract API of ADBC"
 documentation.workspace = true
 edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
 name = "adbc_core"
-readme = "../README.md"
+readme.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
 [features]
 default = []
-driver_manager = ["dep:toml", "dep:libloading", "dep:windows-sys", "dep:windows-registry"]
-driver_manager_test_lib = ["driver_manager"]
-driver_manager_test_manifest_user = ["driver_manager_test_lib"]
 
 [dependencies]
 arrow-array.workspace = true
 arrow-schema.workspace = true
-libloading = {version = "0.8", optional = true}
-toml = { version = "0.9.2", default-features = false, features = [
-    "parse", "display"
-], optional = true }
-
-[dev-dependencies]
-temp-env = "0.3"
-arrow-select.workspace = true
-tempfile = "3.20.0"
 
 [package.metadata.docs.rs]
 all-features = true
-
-[target.'cfg(windows)'.dependencies]
-windows-sys = {version = ">= 0.59.0", features = [
-    "Win32_UI_Shell",
-    "Win32_Globalization",
-    "Win32_System_Com",
-], optional = true}
-windows-registry = {version = ">= 0.5.3", optional = true}

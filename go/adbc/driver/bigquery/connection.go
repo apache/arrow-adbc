@@ -58,6 +58,8 @@ type connectionImpl struct {
 	impersonateScopes          []string
 	impersonateLifetime        time.Duration
 
+	// the default location to use for all BigQuery requests
+	location string
 	// catalog is the same as the project id in BigQuery
 	catalog string
 	// dbSchema is the same as the dataset id in BigQuery
@@ -590,7 +592,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			}
 		}
 		authOptions = append(authOptions, option.WithTokenSource(c))
-	case OptionValueAuthTypeAppDefaultCredentials, "":
+	case OptionValueAuthTypeAppDefaultCredentials, OptionValueAuthTypeDefault, "":
 		// Use Application Default Credentials (default behavior)
 		// No additional options needed - ADC is used by default
 	default:
@@ -642,6 +644,10 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 	client, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
 	if err != nil {
 		return err
+	}
+
+	if c.location != "" {
+		client.Location = c.location
 	}
 
 	err = client.EnableStorageReadClient(ctx, authOptions...)
@@ -819,42 +825,25 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	case bigquery.BooleanFieldType:
 		field.Type = arrow.FixedWidthTypes.Boolean
 	case bigquery.TimestampFieldType:
-		field.Type = arrow.FixedWidthTypes.Timestamp_ms
+		field.Type = arrow.FixedWidthTypes.Timestamp_us
 	case bigquery.RecordFieldType:
-		if schema.Repeated {
-			if len(schema.Schema) == 1 {
-				arrayField, err := buildField(schema.Schema[0], level+1)
-				if err != nil {
-					return arrow.Field{}, err
-				}
-				field.Type = arrow.ListOf(arrayField.Type)
-				field.Metadata = arrayField.Metadata
-				field.Nullable = arrayField.Nullable
-			} else {
-				return arrow.Field{}, adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("Cannot create array schema for filed `%s`: len(schema.Schema) != 1", schema.Name),
-				}
+		// create an Arrow struct for BigQuery Record fields
+		nestedFields := make([]arrow.Field, len(schema.Schema))
+		for i, nestedFieldSchema := range schema.Schema {
+			f, err := buildField(nestedFieldSchema, level+1)
+			if err != nil {
+				return arrow.Field{}, err
 			}
-		} else {
-			nestedFields := make([]arrow.Field, len(schema.Schema))
-			for i, nestedSchema := range schema.Schema {
-				f, err := buildField(nestedSchema, level+1)
-				if err != nil {
-					return arrow.Field{}, err
-				}
-				nestedFields[i] = f
-			}
-			structType := arrow.StructOf(nestedFields...)
-			if structType == nil {
-				return arrow.Field{}, adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", schema.Name),
-				}
-			}
-			field.Type = structType
+			nestedFields[i] = f
 		}
-
+		structType := arrow.StructOf(nestedFields...)
+		if structType == nil {
+			return arrow.Field{}, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("Cannot create a struct schema for record `%s`", schema.Name),
+			}
+		}
+		field.Type = structType
 	case bigquery.DateFieldType:
 		field.Type = arrow.FixedWidthTypes.Date32
 	case bigquery.TimeFieldType:
@@ -862,17 +851,33 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	case bigquery.DateTimeFieldType:
 		field.Type = arrow.FixedWidthTypes.Timestamp_us
 	case bigquery.NumericFieldType:
+		precision := schema.Precision
+		scale := schema.Scale
+		// BigQuery NUMERIC defaults when precision is not explicitly specified
+		// https: //cloud.google.com/bigquery/docs/reference/standard-sql/data-types#decimal_types
+		if precision == 0 {
+			precision = 38
+			scale = 9
+		}
 		field.Type = &arrow.Decimal128Type{
-			Precision: int32(schema.Precision),
-			Scale:     int32(schema.Scale),
+			Precision: int32(precision),
+			Scale:     int32(scale),
 		}
 	case bigquery.GeographyFieldType:
 		// TODO: potentially we should consider using GeoArrow for this
 		field.Type = arrow.BinaryTypes.String
 	case bigquery.BigNumericFieldType:
+		precision := schema.Precision
+		scale := schema.Scale
+		// BigQuery BIGNUMERIC defaults when precision is not explicitly specified
+		// https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#decimal_types
+		if precision == 0 {
+			precision = 76
+			scale = 38
+		}
 		field.Type = &arrow.Decimal256Type{
-			Precision: int32(schema.Precision),
-			Scale:     int32(schema.Scale),
+			Precision: int32(precision),
+			Scale:     int32(scale),
 		}
 	case bigquery.JSONFieldType:
 		field.Type = arrow.BinaryTypes.String
@@ -884,6 +889,11 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 			Code: adbc.StatusInvalidArgument,
 			Msg:  fmt.Sprintf("Google SQL type `%s` is not supported yet", schema.Type),
 		}
+	}
+
+	// if the field is repeated, then it's a list of the type we just built
+	if schema.Repeated {
+		field.Type = arrow.ListOf(field.Type)
 	}
 
 	if level == 0 {

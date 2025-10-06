@@ -47,6 +47,7 @@ type databaseImpl struct {
 	// datasetID is the schema
 	datasetID string
 	tableID   string
+	location  string
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
@@ -65,6 +66,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		tableID:                    d.tableID,
 		catalog:                    d.projectID,
 		dbSchema:                   d.datasetID,
+		location:                   d.location,
 		resultRecordBufferSize:     defaultQueryResultBufferSize,
 		prefetchConcurrency:        defaultQueryPrefetchConcurrency,
 	}
@@ -104,6 +106,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return strings.Join(d.impersonateDelegates, ","), nil
 	case OptionStringImpersonateScopes:
 		return strings.Join(d.impersonateScopes, ","), nil
+	case OptionStringLocation:
+		return d.location, nil
 	case OptionStringProjectID:
 		return d.projectID, nil
 	case OptionStringDatasetID:
@@ -187,6 +191,8 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.datasetID = value
 	case OptionStringTableID:
 		d.tableID = value
+	case OptionStringLocation:
+		d.location = value
 	default:
 		return d.DatabaseImplBase.SetOption(key, value)
 	}

@@ -619,6 +619,7 @@ class Cursor(_Closeable):
         self._results: Optional["_RowIterator"] = None
         self._arraysize = 1
         self._rowcount = -1
+        self._bind_by_name = False
 
         if adbc_stmt_kwargs:
             self._stmt.set_options(**adbc_stmt_kwargs)
@@ -711,6 +712,17 @@ class Cursor(_Closeable):
             rb = self._conn._backend.convert_bind_parameters(parameters)
             self._bind(rb)
 
+            if isinstance(parameters, dict) and not self._bind_by_name:
+                self._stmt.set_options(
+                    **{adbc_driver_manager.StatementOptions.BIND_BY_NAME.value: "true"}
+                )
+                self._bind_by_name = True
+            elif not isinstance(parameters, dict) and self._bind_by_name:
+                self._stmt.set_options(
+                    **{adbc_driver_manager.StatementOptions.BIND_BY_NAME.value: "false"}
+                )
+                self._bind_by_name = False
+
     def execute(self, operation: Union[bytes, str], parameters=None) -> None:
         """
         Execute a query.
@@ -721,10 +733,17 @@ class Cursor(_Closeable):
             The query to execute.  Pass SQL queries as strings,
             (serialized) Substrait plans as bytes.
         parameters
-            Parameters to bind.  Can be a Python sequence (to provide
-            a single set of parameters), or an Arrow record batch,
-            table, or record batch reader (to provide multiple
-            parameters, which will each be bound in turn).
+            Parameters to bind.  Can be a Python sequence (to bind a single
+            set of parameters), a Python dictionary (to bind a single set of
+            parameters by name instead of position), or an Arrow record batch,
+            table, or record batch reader (to provide multiple parameters,
+            which will each be bound in turn).
+
+            To bind by name when providing Arrow data, explicitly toggle the
+            statement option "adbc.statement.bind_by_name".
+
+            Note that providing a list of tuples is not supported (this mode
+            of usage is deprecated in DBAPI-2.0; use executemany() instead).
         """
         self._clear()
         self._prepare_execute(operation, parameters)
@@ -746,10 +765,16 @@ class Cursor(_Closeable):
             The query to execute.  Pass SQL queries as strings,
             (serialized) Substrait plans as bytes.
         seq_of_parameters
-            Parameters to bind.  Can be a list of Python sequences, or
-            an Arrow record batch, table, or record batch reader.  If
-            None, then the query will be executed once, else it will
-            be executed once per row.
+            Parameters to bind.  Can be a list of Python sequences, or an
+            Arrow record batch, table, or record batch reader.  If None, then
+            the query will be executed once, else it will be executed once per
+            row.  (That implies that an empty sequence is equivalent to not
+            executing the query at all.)
+
+        Notes
+        -----
+        Allowing ``None`` for parameters is outside of the DB-API
+        specification.
         """
         self._clear()
         if operation != self._last_query:
@@ -757,17 +782,42 @@ class Cursor(_Closeable):
             self._stmt.set_sql_query(operation)
             self._stmt.prepare()
 
+        bind_by_name = None
         if _is_arrow_data(seq_of_parameters):
             arrow_parameters = seq_of_parameters
         elif seq_of_parameters:
-            arrow_parameters = self._conn._backend.convert_executemany_parameters(
-                seq_of_parameters
+            arrow_parameters, bind_by_name = (
+                self._conn._backend.convert_executemany_parameters(seq_of_parameters)
             )
         else:
             arrow_parameters = None
 
+        if bind_by_name is not None and bind_by_name != self._bind_by_name:
+            self._stmt.set_options(
+                **{
+                    adbc_driver_manager.StatementOptions.BIND_BY_NAME.value: (
+                        "true" if bind_by_name else "false"
+                    ),
+                }
+            )
+            self._bind_by_name = bind_by_name
+
         if arrow_parameters is not None:
             self._bind(arrow_parameters)
+        elif seq_of_parameters is not None:
+            # arrow_parameters is None and seq_of_parameters is not None =>
+            # empty list or sequence
+
+            # NOTE(https://github.com/apache/arrow-adbc/issues/3319): If there
+            # are no parameters, don't do anything.  (We could give this to
+            # the driver to handle, but it's easier to do it here, especially
+            # in the case that Python objects are given - we would have to
+            # figure out the schema and create temporary Arrow data just to do
+            # nothing.)  Note that for C Data objects, we can't check the
+            # length so the driver might end up having to handle them after
+            # all.
+            return
+
         self._rowcount = _blocking_call(
             self._stmt.execute_update, (), {}, self._stmt.cancel
         )

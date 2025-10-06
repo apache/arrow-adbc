@@ -18,9 +18,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
@@ -28,6 +30,7 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
+using Apache.Arrow.Adbc.Drivers.Databricks.Reader;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -39,24 +42,36 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal static new readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(DatabricksConnection));
         internal static new readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(DatabricksConnection));
 
+        /// <summary>
+        /// The environment variable name that contains the path to the default Databricks configuration file.
+        /// </summary>
+        public const string DefaultConfigEnvironmentVariable = "DATABRICKS_CONFIG_FILE";
+
+        public const string DefaultInitialSchema = "default";
+
+        internal static readonly Dictionary<string, string> timestampConfig = new Dictionary<string, string>
+        {
+            { "spark.thriftserver.arrowBasedRowSet.timestampAsString", "false" },
+        };
         private bool _applySSPWithQueries = false;
         private bool _enableDirectResults = true;
         private bool _enableMultipleCatalogSupport = true;
         private bool _enablePKFK = true;
-        private bool _runAsyncInThrift = false;
+        private bool _runAsyncInThrift = true;
 
-        internal static TSparkGetDirectResults defaultGetDirectResults = new()
-        {
-            MaxRows = 2000000,
-            MaxBytes = 404857600
-        };
-
+        // DirectQuery configuration
+        private const long DefaultDirectResultMaxBytes = 10 * 1024 * 1024; // 10MB for direct query results size limit
+        private const long DefaultDirectResultMaxRows = 500 * 1000; // upper limit for 10MB result assume smallest 20 Byte column
+        private long _directResultMaxBytes = DefaultDirectResultMaxBytes;
+        private long _directResultMaxRows = DefaultDirectResultMaxRows;
         // CloudFetch configuration
         private const long DefaultMaxBytesPerFile = 20 * 1024 * 1024; // 20MB
         private const int DefaultQueryTimeSeconds = 3 * 60 * 60; // 3 hours
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
+        private const long DefaultMaxBytesPerFetchRequest = 400 * 1024 * 1024; // 400MB
+        private long _maxBytesPerFetchRequest = DefaultMaxBytesPerFetchRequest;
         private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
         private bool _useDescTableExtended = true;
@@ -66,19 +81,131 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string _traceParentHeaderName = "traceparent";
         private bool _traceStateEnabled = false;
 
+        // Identity federation client ID for token exchange
+        private string? _identityFederationClientId;
+
+        // Heartbeat interval configuration
+        private int _fetchHeartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
+
+        // Request timeout configuration
+        private int _operationStatusRequestTimeoutSeconds = DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
+
         // Default namespace
         private TNamespace? _defaultNamespace;
 
         private HttpClient? _authHttpClient;
 
-        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
+        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(MergeWithDefaultEnvironmentConfig(properties))
         {
             ValidateProperties();
+        }
+
+        public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
+        {
+            IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
+            // TODO: Add any additional tags specific to Databricks connection
+            //tags ??= [];
+            //tags.Concat([new("key", "value")]);
+            return tags;
         }
 
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
         {
             return new ThreadSafeClient(new TCLIService.Client(protocol));
+        }
+
+        /// <summary>
+        /// Automatically merges properties from the default DATABRICKS_CONFIG_FILE environment variable with passed-in properties.
+        /// The merge priority is controlled by the "adbc.databricks.driver_config_take_precedence" property.
+        /// If DATABRICKS_CONFIG_FILE is not set or invalid, only passed-in properties are used.
+        /// </summary>
+        /// <param name="properties">Properties passed to constructor.</param>
+        /// <returns>Merged properties dictionary.</returns>
+        private static IReadOnlyDictionary<string, string> MergeWithDefaultEnvironmentConfig(IReadOnlyDictionary<string, string> properties)
+        {
+            // Try to load configuration from the default environment variable
+            var environmentConfig = DatabricksConfiguration.TryFromEnvironmentVariable(DefaultConfigEnvironmentVariable);
+
+            if (environmentConfig != null)
+            {
+                // Determine precedence setting - check passed-in properties first, then environment config
+                bool driverConfigTakesPrecedence = DetermineDriverConfigPrecedence(properties, environmentConfig.Properties);
+
+                if (driverConfigTakesPrecedence)
+                {
+                    // Environment config properties override passed-in properties
+                    return MergeProperties(properties, environmentConfig.Properties);
+                }
+                else
+                {
+                    // Passed-in properties override environment config properties (default behavior)
+                    return MergeProperties(environmentConfig.Properties, properties);
+                }
+            }
+
+            // No environment config available, use only passed-in properties
+            return properties;
+        }
+
+        /// <summary>
+        /// Determines whether driver configuration should take precedence based on the precedence property.
+        /// Checks passed-in properties first, then environment properties, defaulting to false.
+        /// </summary>
+        /// <param name="passedInProperties">Properties passed to constructor.</param>
+        /// <param name="environmentProperties">Properties loaded from environment configuration.</param>
+        /// <returns>True if driver config should take precedence, false otherwise.</returns>
+        private static bool DetermineDriverConfigPrecedence(IReadOnlyDictionary<string, string> passedInProperties, IReadOnlyDictionary<string, string> environmentProperties)
+        {
+            // Priority 1: Check passed-in properties for precedence setting
+            if (passedInProperties.TryGetValue(DatabricksParameters.DriverConfigTakePrecedence, out string? passedInValue))
+            {
+                if (bool.TryParse(passedInValue, out bool passedInPrecedence))
+                {
+                    return passedInPrecedence;
+                }
+            }
+
+            // Priority 2: Check environment config for precedence setting
+            if (environmentProperties.TryGetValue(DatabricksParameters.DriverConfigTakePrecedence, out string? environmentValue))
+            {
+                if (bool.TryParse(environmentValue, out bool environmentPrecedence))
+                {
+                    return environmentPrecedence;
+                }
+            }
+
+            // Default: Passed-in properties override environment config (current behavior)
+            return false;
+        }
+
+        /// <summary>
+        /// Merges two property dictionaries, with additional properties taking precedence.
+        /// </summary>
+        /// <param name="baseProperties">Base properties dictionary.</param>
+        /// <param name="additionalProperties">Additional properties to merge. These take precedence over base properties.</param>
+        /// <returns>Merged properties dictionary.</returns>
+        private static IReadOnlyDictionary<string, string> MergeProperties(IReadOnlyDictionary<string, string> baseProperties, IReadOnlyDictionary<string, string>? additionalProperties)
+        {
+            if (additionalProperties == null || additionalProperties.Count == 0)
+            {
+                return baseProperties;
+            }
+
+            var merged = new Dictionary<string, string>();
+
+            // Add base properties first
+            foreach (var kvp in baseProperties)
+            {
+                merged[kvp.Key] = kvp.Value;
+            }
+
+            // Additional properties override base properties
+            foreach (var kvp in additionalProperties)
+            {
+                merged[kvp.Key] = kvp.Value;
+            }
+
+            return merged;
         }
 
         private void ValidateProperties()
@@ -197,6 +324,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 _maxBytesPerFile = maxBytesPerFileValue;
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFetchRequest, out string? maxBytesPerFetchRequestStr))
+            {
+                try
+                {
+                    long maxBytesPerFetchRequestValue = ParseBytesWithUnits(maxBytesPerFetchRequestStr);
+                    if (maxBytesPerFetchRequestValue < 0)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            nameof(Properties),
+                            maxBytesPerFetchRequestValue,
+                            $"Parameter '{DatabricksParameters.MaxBytesPerFetchRequest}' value must be a non-negative integer. Use 0 for no limit.");
+                    }
+                    _maxBytesPerFetchRequest = maxBytesPerFetchRequestValue;
+                }
+                catch (FormatException)
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.MaxBytesPerFetchRequest}' value '{maxBytesPerFetchRequestStr}' could not be parsed. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '400MB', '1024KB', '1073741824'.");
+                }
+            }
+
             // Parse default namespace
             string? defaultCatalog = null;
             string? defaultSchema = null;
@@ -211,16 +358,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // In newer DBR versions with Unity Catalog, the default catalog is typically hive_metastore.
             // Passing null here allows the runtime to fall back to the workspace-defined default catalog for the session.
             defaultCatalog = HandleSparkCatalog(defaultCatalog);
+            var ns = new TNamespace();
 
-            if (!string.IsNullOrWhiteSpace(defaultCatalog) || !string.IsNullOrWhiteSpace(defaultSchema))
-            {
-                var ns = new TNamespace();
-                if (!string.IsNullOrWhiteSpace(defaultCatalog))
-                    ns.CatalogName = defaultCatalog!;
-                if (!string.IsNullOrWhiteSpace(defaultSchema))
-                    ns.SchemaName = defaultSchema;
-                _defaultNamespace = ns;
-            }
+            ns.SchemaName = string.IsNullOrWhiteSpace(defaultSchema) ? DefaultInitialSchema : defaultSchema;
+
+            if (!string.IsNullOrWhiteSpace(defaultCatalog))
+                ns.CatalogName = defaultCatalog!;
+            _defaultNamespace = ns;
 
             // Parse trace propagation options
             if (Properties.TryGetValue(DatabricksParameters.TracePropagationEnabled, out string? tracePropagationEnabledStr))
@@ -264,6 +408,45 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // Default QueryTimeSeconds in Hive2Connection is only 60s, which is too small for lots of long running query
                 QueryTimeoutSeconds = DefaultQueryTimeSeconds;
             }
+
+            if (Properties.TryGetValue(DatabricksParameters.IdentityFederationClientId, out string? identityFederationClientId))
+            {
+                _identityFederationClientId = identityFederationClientId;
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.FetchHeartbeatInterval, out string? fetchHeartbeatIntervalStr))
+            {
+                if (!int.TryParse(fetchHeartbeatIntervalStr, out int fetchHeartbeatIntervalValue))
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.FetchHeartbeatInterval}' value '{fetchHeartbeatIntervalStr}' could not be parsed. Valid values are positive integers.");
+                }
+
+                if (fetchHeartbeatIntervalValue <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(Properties),
+                        fetchHeartbeatIntervalValue,
+                        $"Parameter '{DatabricksParameters.FetchHeartbeatInterval}' value must be a positive integer.");
+                }
+                _fetchHeartbeatIntervalSeconds = fetchHeartbeatIntervalValue;
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.OperationStatusRequestTimeout, out string? operationStatusRequestTimeoutStr))
+            {
+                if (!int.TryParse(operationStatusRequestTimeoutStr, out int operationStatusRequestTimeoutValue))
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.OperationStatusRequestTimeout}' value '{operationStatusRequestTimeoutStr}' could not be parsed. Valid values are positive integers.");
+                }
+
+                if (operationStatusRequestTimeoutValue <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(Properties),
+                        operationStatusRequestTimeoutValue,
+                        $"Parameter '{DatabricksParameters.OperationStatusRequestTimeout}' value must be a positive integer.");
+                }
+                _operationStatusRequestTimeoutSeconds = operationStatusRequestTimeoutValue;
+            }
         }
 
         /// <summary>
@@ -275,6 +458,31 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets whether direct results are enabled.
         /// </summary>
         internal bool EnableDirectResults => _enableDirectResults;
+
+        /// <inheritdoc/>
+        protected internal override bool TrySetGetDirectResults(IRequest request)
+        {
+            if (EnableDirectResults)
+            {
+                request.GetDirectResults = new()
+                {
+                    MaxRows = _directResultMaxRows,
+                    MaxBytes = _directResultMaxBytes
+                };
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Gets the maximum bytes per fetch block for directResult
+        /// </summary>
+        internal long DirectResultMaxBytes => _directResultMaxBytes;
+
+        /// <summary>
+        /// Gets the maximum rows per fetch block for directResult
+        /// </summary>
+        internal long DirectResultMaxRows => _directResultMaxRows;
 
         /// <summary>
         /// Gets whether CloudFetch is enabled.
@@ -292,9 +500,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal long MaxBytesPerFile => _maxBytesPerFile;
 
         /// <summary>
+        /// Gets the maximum bytes per fetch request.
+        /// </summary>
+        internal long MaxBytesPerFetchRequest => _maxBytesPerFetchRequest;
+
+        /// <summary>
         /// Gets the default namespace to use for SQL queries.
         /// </summary>
         internal TNamespace? DefaultNamespace => _defaultNamespace;
+
+        /// <summary>
+        /// Gets the heartbeat interval in seconds for long-running operations.
+        /// </summary>
+        internal int FetchHeartbeatIntervalSeconds => _fetchHeartbeatIntervalSeconds;
+
+        /// <summary>
+        /// Gets the request timeout in seconds for operation status polling requests.
+        /// </summary>
+        internal int OperationStatusRequestTimeoutSeconds => _operationStatusRequestTimeoutSeconds;
 
         /// <summary>
         /// Gets whether multiple catalog is supported
@@ -345,86 +568,73 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout);
             }
 
-            Debug.Assert(_authHttpClient == null, "Auth HttpClient should not be initialized yet.");
-            _authHttpClient = new HttpClient(baseAuthHandler);
-
-            // Add OAuth client credentials handler if OAuth M2M authentication is being used
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
                 SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue) &&
-                authTypeValue == SparkAuthType.OAuth &&
-                Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr) &&
-                DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
-                grantType == DatabricksOAuthGrantType.ClientCredentials)
+                authTypeValue == SparkAuthType.OAuth)
             {
+                Debug.Assert(_authHttpClient == null, "Auth HttpClient should not be initialized yet.");
+                _authHttpClient = new HttpClient(baseAuthHandler);
+
                 string host = GetHost();
+                ITokenExchangeClient tokenExchangeClient = new TokenExchangeClient(_authHttpClient, host);
 
-                Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
-                Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
-                Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
+                // Mandatory token exchange should be the inner handler so that it happens
+                // AFTER the OAuth handlers (e.g. after M2M sets the access token)
+                baseHandler = new MandatoryTokenExchangeDelegatingHandler(
+                    baseHandler,
+                    tokenExchangeClient,
+                    _identityFederationClientId);
 
-                var tokenProvider = new OAuthClientCredentialsProvider(
-                    _authHttpClient,
-                    clientId!,
-                    clientSecret!,
-                    host!,
-                    scope: scope ?? "sql",
-                    timeoutMinutes: 1
-                );
-
-                baseHandler = new OAuthDelegatingHandler(baseHandler, tokenProvider);
-            }
-            // Add token exchange handler if token renewal is enabled and the auth type is OAuth access token
-            else if (Properties.TryGetValue(DatabricksParameters.TokenRenewLimit, out string? tokenRenewLimitStr) &&
-                int.TryParse(tokenRenewLimitStr, out int tokenRenewLimit) &&
-                tokenRenewLimit > 0 &&
-                Properties.TryGetValue(SparkParameters.AuthType, out string? authTypeForToken) &&
-                SparkAuthTypeParser.TryParse(authTypeForToken, out SparkAuthType authTypeValueForToken) &&
-                authTypeValueForToken == SparkAuthType.OAuth &&
-                Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
-            {
-                if (string.IsNullOrEmpty(accessToken))
+                // Add OAuth client credentials handler if OAuth M2M authentication is being used
+                if (Properties.TryGetValue(DatabricksParameters.OAuthGrantType, out string? grantTypeStr) &&
+                    DatabricksOAuthGrantTypeParser.TryParse(grantTypeStr, out DatabricksOAuthGrantType grantType) &&
+                    grantType == DatabricksOAuthGrantType.ClientCredentials)
                 {
-                    throw new ArgumentException("Access token is required for OAuth authentication with token renewal.");
+                    Properties.TryGetValue(DatabricksParameters.OAuthClientId, out string? clientId);
+                    Properties.TryGetValue(DatabricksParameters.OAuthClientSecret, out string? clientSecret);
+                    Properties.TryGetValue(DatabricksParameters.OAuthScope, out string? scope);
+
+                    var tokenProvider = new OAuthClientCredentialsProvider(
+                        _authHttpClient,
+                        clientId!,
+                        clientSecret!,
+                        host!,
+                        scope: scope ?? "sql",
+                        timeoutMinutes: 1
+                    );
+
+                    baseHandler = new OAuthDelegatingHandler(baseHandler, tokenProvider);
                 }
-
-                // Check if token is a JWT token by trying to decode it
-                if (JwtTokenDecoder.TryGetExpirationTime(accessToken, out DateTime expiryTime))
+                // Add token renewal handler for OAuth access token
+                else if (Properties.TryGetValue(DatabricksParameters.TokenRenewLimit, out string? tokenRenewLimitStr) &&
+                    int.TryParse(tokenRenewLimitStr, out int tokenRenewLimit) &&
+                    tokenRenewLimit > 0 &&
+                    Properties.TryGetValue(SparkParameters.AccessToken, out string? accessToken))
                 {
-                    string host = GetHost();
+                    if (string.IsNullOrEmpty(accessToken))
+                    {
+                        throw new ArgumentException("Access token is required for OAuth authentication with token renewal.");
+                    }
 
-                    var tokenExchangeClient = new TokenExchangeClient(_authHttpClient, host);
-
-                    baseHandler = new TokenExchangeDelegatingHandler(
-                        baseHandler,
-                        tokenExchangeClient,
-                        accessToken,
-                        expiryTime,
-                        tokenRenewLimit);
+                    // Check if token is a JWT token by trying to decode it
+                    if (JwtTokenDecoder.TryGetExpirationTime(accessToken, out DateTime expiryTime))
+                    {
+                        baseHandler = new TokenRefreshDelegatingHandler(
+                            baseHandler,
+                            tokenExchangeClient,
+                            accessToken,
+                            expiryTime,
+                            tokenRenewLimit);
+                    }
                 }
             }
 
             return baseHandler;
         }
 
-        protected internal override bool AreResultsAvailableDirectly => _enableDirectResults;
-
         protected override bool GetObjectsPatternsRequireLowerCase => true;
 
-        protected override void SetDirectResults(TGetColumnsReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetCatalogsReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetSchemasReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetTablesReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetTableTypesReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetPrimaryKeysReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        protected override void SetDirectResults(TGetCrossReferenceReq request) => request.GetDirectResults = defaultGetDirectResults;
-
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null)
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null)
         {
             bool isLz4Compressed = false;
 
@@ -440,7 +650,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 isLz4Compressed = metadataResp.Lz4Compressed;
             }
 
-            return new DatabricksCompositeReader(databricksStatement, schema, isLz4Compressed, TlsOptions, _proxyConfigurator);
+            HttpClient httpClient = new HttpClient(HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator));
+            return new DatabricksCompositeReader(databricksStatement, schema, response, isLz4Compressed, httpClient);
         }
 
         internal override SchemaParser SchemaParser => new DatabricksSchemaParser();
@@ -465,11 +676,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 req.InitialNamespace = _defaultNamespace;
             }
-
+            req.Configuration = new Dictionary<string, string>();
+            // merge timestampConfig with serverSideProperties
+            foreach (var kvp in timestampConfig)
+            {
+                req.Configuration[kvp.Key] = kvp.Value;
+            }
             // If not using queries to set server-side properties, include them in Configuration
             if (!_applySSPWithQueries)
             {
-                req.Configuration = new Dictionary<string, string>();
                 var serverSideProperties = GetServerSideProperties();
                 foreach (var property in serverSideProperties)
                 {
@@ -485,7 +700,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             if (session != null)
             {
                 var version = session.ServerProtocolVersion;
-                if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version)) {
+                if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version))
+                {
                     throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
                 }
                 _enablePKFK = _enablePKFK && FeatureVersionNegotiator.SupportsPKFK(version);
@@ -582,6 +798,61 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return "`" + value.Replace("`", "``") + "`";
         }
 
+        /// <summary>
+        /// Parses a byte value that may include unit suffixes (B, KB, MB, GB).
+        /// </summary>
+        /// <param name="value">The value to parse, e.g., "400MB", "1024KB", "1073741824"</param>
+        /// <returns>The value in bytes</returns>
+        /// <exception cref="FormatException">Thrown when the value cannot be parsed</exception>
+        internal static long ParseBytesWithUnits(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new FormatException("Value cannot be null or empty");
+            }
+
+            value = value.Trim().ToUpperInvariant();
+
+            // Check for unit suffixes
+            long multiplier = 1;
+            string numberPart = value;
+
+            if (value.EndsWith("GB"))
+            {
+                multiplier = 1024L * 1024L * 1024L;
+                numberPart = value.Substring(0, value.Length - 2);
+            }
+            else if (value.EndsWith("MB"))
+            {
+                multiplier = 1024L * 1024L;
+                numberPart = value.Substring(0, value.Length - 2);
+            }
+            else if (value.EndsWith("KB"))
+            {
+                multiplier = 1024L;
+                numberPart = value.Substring(0, value.Length - 2);
+            }
+            else if (value.EndsWith("B"))
+            {
+                multiplier = 1L;
+                numberPart = value.Substring(0, value.Length - 1);
+            }
+
+            if (!long.TryParse(numberPart.Trim(), out long number))
+            {
+                throw new FormatException($"Invalid number format: {numberPart}");
+            }
+
+            try
+            {
+                return checked(number * multiplier);
+            }
+            catch (OverflowException)
+            {
+                throw new FormatException($"Value {value} results in overflow when converted to bytes");
+            }
+        }
+
         protected override void ValidateOptions()
         {
             base.ValidateOptions();
@@ -617,29 +888,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
-        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSetMetadata);
+        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults!.ResultSetMetadata);
 
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
-        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            Task.FromResult(response.DirectResults.ResultSet.Results);
+        protected override Task<TRowSet> GetRowSetAsync(IResponse response, CancellationToken cancellationToken = default) =>
+            Task.FromResult(response.DirectResults!.ResultSet.Results);
 
         protected override AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
         {

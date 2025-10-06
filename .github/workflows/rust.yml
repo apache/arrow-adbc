@@ -46,7 +46,6 @@ jobs:
       matrix:
         # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
         os:
-          - macos-13
           - macos-latest
           - ubuntu-latest
           - windows-latest
@@ -63,7 +62,7 @@ jobs:
       CARGO_INCREMENTAL: 0
       RUSTFLAGS: "-Adead_code" # TODO(alexandreyc): remove this line when implementation is complete
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -72,7 +71,7 @@ jobs:
         working-directory: rust
         run: |
           rustup toolchain install nightly
-          cargo +nightly generate-lockfile -Z direct-minimal-versions
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +nightly generate-lockfile -Z direct-minimal-versions
       - name: Use stable Rust
         id: rust
         run: |
@@ -81,7 +80,7 @@ jobs:
       - name: Get required Go version
         run: |
           (. ./.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -131,6 +130,7 @@ jobs:
             -DADBC_DRIVER_SNOWFLAKE=ON \
             -DADBC_USE_ASAN=OFF \
             -DADBC_USE_UBSAN=OFF \
+            -DADBC_SQLITE_COMPILE_DEFINES=-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=../local \
             ../c
@@ -147,11 +147,6 @@ jobs:
           echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
       - name: Set dynamic linker path
-        if: matrix.os == 'macos-13'
-        run: |
-          echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
-          echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
-      - name: Set dynamic linker path
         if: runner.os == 'Windows'
         run: |
           echo "PATH=${{ github.workspace }}/local/bin;${{ github.workspace }}/local/lib;$PATH" >> "$GITHUB_ENV"
@@ -159,10 +154,17 @@ jobs:
       - name: Set search dir for Snowflake Go lib
         run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy
-        if: ${{ ! matrix.minimal-versions }}
+        if: runner.os != 'Linux' && ! matrix.minimal-versions
         working-directory: rust
         run: |
+          rustup component add clippy
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
+      - name: Clippy (nightly)
+        if: runner.os == 'Linux' && ! matrix.minimal-versions
+        working-directory: rust
+        run: |
+          rustup toolchain install nightly --component clippy
+          cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)'
       - name: Test
         working-directory: rust
         # TODO: enable snowflake tests on windows
@@ -173,7 +175,7 @@ jobs:
         # env:
         # ADBC_SNOWFLAKE_TESTS: 1
         # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
-        # ADBC_SNOWFLAKE_SQL_DB: ADBC_TESTING
+        # ADBC_SNOWFLAKE_SQL_DB: ARROW_OSS_DB
       - name: Doctests
         working-directory: rust
         # TODO: enable snowflake tests on windows
@@ -188,9 +190,8 @@ jobs:
           cargo doc --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
           ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
-      - name: Verify MSRV (Minimum Supported Rust Version)
-        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
-        working-directory: rust
+      - name: Install cargo-msrv
+        if: matrix.os == 'ubuntu-latest'
         run: |
           # Install cargo-msrv
           cargo_msrv_version="v0.18.4"
@@ -202,9 +203,35 @@ jobs:
           tar xz -f "${cargo_msrv_archive}" --wildcards --strip-components=1 -C "$HOME/.local/bin" "*/cargo-msrv"
           rm "${cargo_msrv_archive}"
 
-          # Verify MSRV for each package
-          find . -mindepth 2 -name Cargo.toml | while read -r dir
+      - name: Verify MSRV (Minimum Supported Rust Version) except adbc_datafusion
+        if: matrix.os == 'ubuntu-latest' && matrix.minimal-versions
+        working-directory: rust
+        run: |
+          # Verify MSRV for each package except adbc_datafusion which requires a newer Rust version
+          find . -mindepth 2 -name Cargo.toml -not -path "*/datafusion/*" | while read -r dir
           do
             echo "Checking package '$dir'"
             cargo msrv verify --manifest-path "$dir" || exit 1
           done
+
+      - name: Verify MSRV (Minimum Supported Rust Version) of adbc_datafusion
+        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
+        working-directory: rust
+        run: |
+          cargo msrv verify --manifest-path "./driver/datafusion/Cargo.toml" || exit 1
+
+      - name: Verify supports the latest arrow
+        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
+        working-directory: rust
+        run: |
+          # Update arrow to the latest version in the lock file
+          cargo update \
+            -p arrow-array \
+            -p arrow-buffer \
+            -p arrow-schema \
+            -p arrow-select
+
+          # If the lock file was updated, run the tests except for adbc_datafusion
+          if ! git diff --quiet Cargo.lock; then
+            cargo test --all-targets --all-features --workspace --exclude adbc_datafusion
+          fi

@@ -51,6 +51,7 @@ constexpr std::string_view kConnectionOptionLoadExtensionEntrypoint =
     "adbc.sqlite.load_extension.entrypoint";
 /// The batch size for query results (and for initial type inference)
 constexpr std::string_view kStatementOptionBatchRows = "adbc.sqlite.query.batch_rows";
+constexpr std::string_view kStatementOptionBindByName = "adbc.statement.bind_by_name";
 
 std::string_view GetColumnText(sqlite3_stmt* stmt, int index) {
   return {
@@ -763,11 +764,11 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
  public:
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[SQLite]";
 
-  Status BindImpl() {
+  Status BindImpl(bool ingest) {
     if (bind_parameters_.release) {
       struct AdbcError error = ADBC_ERROR_INIT;
-      if (AdbcStatusCode code =
-              InternalAdbcSqliteBinderSetArrayStream(&binder_, &bind_parameters_, &error);
+      if (AdbcStatusCode code = InternalAdbcSqliteBinderSetArrayStream(
+              &binder_, &bind_parameters_, !ingest && bind_by_name_, &error);
           code != ADBC_STATUS_OK) {
         return Status::FromAdbc(code, error);
       }
@@ -776,7 +777,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
   }
 
   Result<int64_t> ExecuteIngestImpl(IngestState& state) {
-    UNWRAP_STATUS(BindImpl());
+    UNWRAP_STATUS(BindImpl(true));
     if (!binder_.schema.release) {
       return status::InvalidState("must Bind() before bulk ingestion");
     }
@@ -975,7 +976,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
 
   Result<int64_t> ExecuteQueryImpl(ArrowArrayStream* stream) {
     struct AdbcError error = ADBC_ERROR_INIT;
-    UNWRAP_STATUS(BindImpl());
+    UNWRAP_STATUS(BindImpl(false));
 
     const int64_t expected = sqlite3_bind_parameter_count(stmt_);
     const int64_t actual = binder_.schema.n_children;
@@ -1003,7 +1004,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
   }
 
   Result<int64_t> ExecuteUpdateImpl() {
-    UNWRAP_STATUS(BindImpl());
+    UNWRAP_STATUS(BindImpl(false));
 
     const int64_t expected = sqlite3_bind_parameter_count(stmt_);
     const int64_t actual = binder_.schema.n_children;
@@ -1143,11 +1144,15 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       }
       batch_size_ = static_cast<int>(batch_size);
       return status::Ok();
+    } else if (key == kStatementOptionBindByName) {
+      UNWRAP_RESULT(bind_by_name_, value.AsBool());
+      return status::Ok();
     }
     return Base::SetOptionImpl(key, std::move(value));
   }
 
   int batch_size_ = 1024;
+  bool bind_by_name_ = false;
   AdbcSqliteBinder binder_;
   sqlite3* conn_ = nullptr;
   sqlite3_stmt* stmt_ = nullptr;

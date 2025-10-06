@@ -41,7 +41,7 @@ jobs:
     name: "Build Website"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -61,26 +61,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           path: site
           # NOTE: needed to push at the end
           persist-credentials: true
           ref: asf-site
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           path: scripts
           persist-credentials: false
       - name: Download docs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: docs
           path: temp
       # To use pip below, we need to install our own Python; the system Python's
       # pip won't let us install packages without a scary flag.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.x'
       - name: Build

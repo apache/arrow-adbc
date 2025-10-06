@@ -57,6 +57,62 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         }
 
         /// <summary>
+        /// Validates that MaxBytesPerFetchRequest parameter accepts valid values with unit suffixes.
+        /// </summary>
+        [SkippableTheory]
+        [InlineData("300MB", 300L * 1024L * 1024L)]
+        [InlineData("1GB", 1024L * 1024L * 1024L)]
+        [InlineData("512KB", 512L * 1024L)]
+        [InlineData("1024B", 1024L)]
+        [InlineData("1024", 1024L)]
+        [InlineData("0", 0L)]
+        internal void CanParseMaxBytesPerFetchRequestParameter(string parameterValue, long expectedBytes)
+        {
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            var parameters = TestEnvironment.GetDriverParameters(testConfig);
+            parameters[DatabricksParameters.MaxBytesPerFetchRequest] = parameterValue;
+
+            AdbcDriver driver = NewDriver;
+            AdbcDatabase database = driver.Open(parameters);
+
+            // This should not throw an exception
+            using var connection = database.Connect(parameters);
+
+            // Verify the parameter was parsed correctly by creating a statement and checking the property
+            using var statement = connection.CreateStatement();
+            if (statement is DatabricksStatement databricksStatement)
+            {
+                Assert.Equal(expectedBytes, databricksStatement.MaxBytesPerFetchRequest);
+            }
+        }
+
+        /// <summary>
+        /// Validates that MaxBytesPerFetchRequest parameter can be set via test configuration.
+        /// </summary>
+        [SkippableTheory]
+        [InlineData("500MB", 500L * 1024L * 1024L)]
+        [InlineData("2GB", 2L * 1024L * 1024L * 1024L)]
+        internal void CanSetMaxBytesPerFetchRequestViaTestConfiguration(string configValue, long expectedBytes)
+        {
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            testConfig.MaxBytesPerFetchRequest = configValue;
+            var parameters = TestEnvironment.GetDriverParameters(testConfig);
+
+            AdbcDriver driver = NewDriver;
+            AdbcDatabase database = driver.Open(parameters);
+
+            // This should not throw an exception
+            using var connection = database.Connect(parameters);
+
+            // Verify the parameter was set correctly via test configuration
+            using var statement = connection.CreateStatement();
+            if (statement is DatabricksStatement databricksStatement)
+            {
+                Assert.Equal(expectedBytes, databricksStatement.MaxBytesPerFetchRequest);
+            }
+        }
+
+        /// <summary>
         /// Tests connection timeout to establish a session with the backend.
         /// </summary>
         /// <param name="connectTimeoutMilliseconds">The timeout (in ms)</param>
@@ -304,6 +360,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [DatabricksParameters.CanDecompressLz4] = "notabool"}, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [DatabricksParameters.MaxBytesPerFile] = "notanumber" }, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [DatabricksParameters.MaxBytesPerFile] = "-100" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [DatabricksParameters.MaxBytesPerFetchRequest] = "notanumber" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [DatabricksParameters.MaxBytesPerFetchRequest] = "-100" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [DatabricksParameters.MaxBytesPerFetchRequest] = "invalid_unit" }, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [DatabricksParameters.EnableDirectResults] = "notabool" }, typeof(ArgumentException)));
                 Add(new(new() { /*[SparkParameters.Type] = SparkServerTypeConstants.Databricks,*/ [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Port] = "-1" }, typeof(ArgumentOutOfRangeException)));
                 Add(new(new() { /*[SparkParameters.Type] = SparkServerTypeConstants.Databricks,*/ [SparkParameters.HostName] = "valid.server.com", [SparkParameters.Token] = "abcdef", [SparkParameters.Port] = IPEndPoint.MinPort.ToString(CultureInfo.InvariantCulture) }, typeof(ArgumentOutOfRangeException)));
@@ -325,6 +384,16 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TracePropagationEnabled] = "notabool" }, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TraceParentHeaderName] = "" }, typeof(ArgumentException)));
                 Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.TraceStateEnabled] = "notabool" }, typeof(ArgumentException)));
+
+                // Tests for fetch heartbeat interval parameter
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.FetchHeartbeatInterval] = "notanumber" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.FetchHeartbeatInterval] = "0" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.FetchHeartbeatInterval] = "-1" }, typeof(ArgumentOutOfRangeException)));
+
+                // Tests for operation status request timeout parameter
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.OperationStatusRequestTimeout] = "notanumber" }, typeof(ArgumentException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.OperationStatusRequestTimeout] = "0" }, typeof(ArgumentOutOfRangeException)));
+                Add(new(new() { [SparkParameters.Type] = SparkServerTypeConstants.Http, [SparkParameters.HostName] = "valid.server.com", [AdbcOptions.Username] = "user", [AdbcOptions.Password] = "myPassword", [DatabricksParameters.OperationStatusRequestTimeout] = "-1" }, typeof(ArgumentOutOfRangeException)));
             }
         }
 
@@ -451,6 +520,25 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             OutputHelper?.WriteLine(
                 $"Connection created successfully with tracePropagationEnabled={tracePropagationEnabled}, " +
                 $"traceParentHeaderName={traceParentHeaderName}, traceStateEnabled={traceStateEnabled}");
+        }
+
+        /// <summary>
+        /// Tests that TrySetGetDirectResults uses DatabricksConnection's defaultGetDirectResults
+        /// </summary>
+        [Fact]
+        public void TrySetGetDirectResults_UsesDatabricksDefaultGetDirectResults()
+        {
+            var testConfig = (DatabricksTestConfiguration)TestConfiguration.Clone();
+            using var connection = NewConnection(testConfig);
+            // Create a mock request object
+            var request = new TExecuteStatementReq();
+            bool result = ((DatabricksConnection)Connection).TrySetGetDirectResults(request);
+
+            // Assert
+            Assert.True(result, "TrySetGetDirectResults should return true when EnableDirectResults is true by default");
+            Assert.NotNull(request.GetDirectResults);
+            Assert.Equal(((DatabricksConnection)Connection).DirectResultMaxRows, request.GetDirectResults.MaxRows);
+            Assert.Equal(((DatabricksConnection)Connection).DirectResultMaxBytes, request.GetDirectResults.MaxBytes);
         }
     }
 }

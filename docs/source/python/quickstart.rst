@@ -31,8 +31,8 @@ Installation
 DBAPI (PEP 249)-style API
 =========================
 
-If PyArrow is installed, ADBC provides a high-level API in the style
-of the DBAPI standard.
+If either PyArrow or Polars are installed, ADBC provides a high-level API in the
+style of the DBAPI standard.
 
 .. testcleanup:: dbapi
 

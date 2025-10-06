@@ -28,6 +28,8 @@ on:
       - "python/**"
       - ".github/workflows/integration.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "c/**"
       - "ci/**"
@@ -55,7 +57,7 @@ jobs:
     name: "DuckDB Integration Tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -102,7 +104,7 @@ jobs:
     name: "FlightSQL Integration Tests (Dremio and SQLite)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -129,7 +131,7 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
           pip install pytest-error-for-skips
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -174,7 +176,7 @@ jobs:
     name: "PostgreSQL Integration Tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -271,7 +273,7 @@ jobs:
     name: "Snowflake Integration Tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -300,7 +302,7 @@ jobs:
       - name: Work around ASAN issue (GH-1617)
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -328,14 +330,14 @@ jobs:
     name: "FlightSQL C# Interop"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true

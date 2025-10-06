@@ -151,7 +151,7 @@ func quoteTblName(name string) string {
 	return "\"" + strings.ReplaceAll(name, "\"", "\"\"") + "\""
 }
 
-func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.Record) (err error) {
+func (s *SnowflakeQuirks) CreateSampleTable(tableName string, r arrow.RecordBatch) (err error) {
 	var b strings.Builder
 	b.WriteString("CREATE OR REPLACE TABLE ")
 	b.WriteString(quoteTblName(tableName))
@@ -453,7 +453,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 	ibldr := bldr.Field(2).(*array.Int64Builder)
 	ibldr.AppendValues([]int64{-1, 25, 0}, []bool{true, true, false})
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
@@ -469,7 +469,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestamp() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 	suite.Truef(array.RecordEqual(rec, result), "expected: %s\ngot: %s", rec, result)
 	suite.False(rdr.Next())
 
@@ -552,10 +552,10 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 	bldr.Field(11).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
 	bldr.Field(12).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
-	stream, err := array.NewRecordReader(sc, []arrow.Record{rec})
+	stream, err := array.NewRecordReader(sc, []arrow.RecordBatch{rec})
 	suite.Require().NoError(err)
 	defer stream.Release()
 
@@ -572,7 +572,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	resultBind := rdr.Record()
+	resultBind := rdr.RecordBatch()
 
 	// New session to clean up TEMPORARY resources in Snowflake associated with the previous one
 	suite.NoError(suite.stmt.Close())
@@ -595,7 +595,7 @@ func (suite *SnowflakeTests) TestSqlIngestRecordAndStreamAreEquivalent() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	resultBindStream := rdr.Record()
+	resultBindStream := rdr.RecordBatch()
 
 	suite.Truef(array.RecordEqual(resultBind, resultBindStream), "expected: %s\ngot: %s", resultBind, resultBindStream)
 	suite.False(rdr.Next())
@@ -663,7 +663,7 @@ func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
 	bldr.Field(8).(*array.Time32Builder).AppendValues([]arrow.Time32{1, 2, 3}, nil)
 	bldr.Field(9).(*array.Time32Builder).AppendValues([]arrow.Time32{1, 2, 3}, nil)
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
@@ -679,7 +679,7 @@ func (suite *SnowflakeTests) TestSqlIngestRoundtripTypes() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 	suite.Truef(array.RecordEqual(rec, result), "expected: %s\ngot: %s", rec, result)
 	suite.False(rdr.Next())
 
@@ -736,7 +736,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 	bldr.Field(5).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
 	bldr.Field(6).(*array.TimestampBuilder).AppendValues([]arrow.Timestamp{1, 2, 3}, nil)
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
@@ -752,7 +752,7 @@ func (suite *SnowflakeTests) TestSqlIngestTimestampTypes() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
 		{
@@ -845,7 +845,7 @@ func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
 	bldr.Field(1).(*array.Date64Builder).AppendValues([]arrow.Date64{86400000, 172800000, 259200000}, nil) // 1,2,3 days of milliseconds
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
@@ -861,7 +861,7 @@ func (suite *SnowflakeTests) TestSqlIngestDate64Type() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
 		{
@@ -935,7 +935,7 @@ func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 	suite.Require().NoError(err)
 	bldr.Field(3).(*array.Decimal128Builder).AppendValues([]decimal128.Num{num1, num2, num3}, nil)
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
@@ -955,7 +955,7 @@ func (suite *SnowflakeTests) TestSqlIngestHighPrecision() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
 		{ // INT64 -> DECIMAL(38, 0) on roundtrip
@@ -1043,7 +1043,7 @@ func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
 	suite.Require().NoError(err)
 	bldr.Field(3).(*array.Decimal128Builder).AppendValues([]decimal128.Num{num1, num2, num3}, nil)
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
@@ -1060,7 +1060,7 @@ func (suite *SnowflakeTests) TestSqlIngestLowPrecision() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
 		{ // Preserved on roundtrip
@@ -1158,7 +1158,7 @@ func (suite *SnowflakeTests) TestSqlIngestStructType() {
 	struct3bldr.FieldBuilder(0).(*array.Int64Builder).AppendValues([]int64{1, 0, 3}, nil)
 	struct3bldr.FieldBuilder(1).(*array.BooleanBuilder).AppendValues([]bool{true, false, false}, nil)
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
@@ -1174,7 +1174,7 @@ func (suite *SnowflakeTests) TestSqlIngestStructType() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
 		{
@@ -1259,7 +1259,7 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 	keybldr.Append("key3")
 	itembldr.Append(3)
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
@@ -1275,7 +1275,7 @@ func (suite *SnowflakeTests) TestSqlIngestMapType() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
 		{
@@ -1345,7 +1345,7 @@ func (suite *SnowflakeTests) TestSqlIngestListType() {
 	listbldr.Append(true)
 	listvalbldr.Append("three")
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	suite.Require().NoError(suite.stmt.Bind(suite.ctx, rec))
@@ -1361,7 +1361,7 @@ func (suite *SnowflakeTests) TestSqlIngestListType() {
 
 	suite.EqualValues(3, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 
 	expectedSchema := arrow.NewSchema([]arrow.Field{
 		{
@@ -1413,7 +1413,7 @@ func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 	defer rdr.Release()
 
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	suite.Equal(n, rec.NumRows())
 
 	// Snowflake may add more columns to the result of this query in the future,
@@ -1444,7 +1444,6 @@ func (suite *SnowflakeTests) TestStatementEmptyResultSet() {
 		"failed",
 		"suspended",
 		"uuid",
-		"budget",
 		"owner_role_type",
 	}
 
@@ -1527,7 +1526,7 @@ func (suite *SnowflakeTests) TestMetadataGetObjectsColumnsXdbc() {
 
 	suite.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
 	suite.True(rdr.Next())
-	rec = rdr.Record()
+	rec = rdr.RecordBatch()
 	suite.Greater(rec.NumRows(), int64(0))
 	var (
 		foundExpected        = false
@@ -1694,7 +1693,7 @@ func (suite *SnowflakeTests) TestTimestampSnow() {
 	defer rdr.Release()
 
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	for _, f := range rec.Schema().Fields() {
 		st, ok := f.Metadata.GetValue("SNOWFLAKE_TYPE")
 		if !ok {
@@ -1756,7 +1755,7 @@ func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
 	suite.Require().NoError(err)
 
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 
 	suite.Equal(1, int(rec.NumRows()))
 
@@ -1861,7 +1860,7 @@ func (suite *SnowflakeTests) queryTimestamps(query string, expectedMicrosecondRe
 	suite.validateTimestamps(query, rec, nil) // dont expect any results
 }
 
-func (suite *SnowflakeTests) getTimestamps(query string, maxTimestampPrecision string) arrow.Record {
+func (suite *SnowflakeTests) getTimestamps(query string, maxTimestampPrecision string) arrow.RecordBatch {
 
 	// with max microseconds precision
 	opts := suite.Quirks.DatabaseOptions()
@@ -1887,12 +1886,12 @@ func (suite *SnowflakeTests) getTimestamps(query string, maxTimestampPrecision s
 	}
 
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 
 	return rec
 }
 
-func (suite *SnowflakeTests) validateTimestamps(query string, rec arrow.Record, expected []arrow.Timestamp) {
+func (suite *SnowflakeTests) validateTimestamps(query string, rec arrow.RecordBatch, expected []arrow.Timestamp) {
 	if expected != nil {
 		for i := 0; i < int(rec.NumCols()); i++ {
 			col := rec.Column(i).(*array.Timestamp)
@@ -1937,7 +1936,7 @@ func (suite *SnowflakeTests) TestUseHighPrecision() {
 	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
 	suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(1).Type), "expected float64, got %s", rdr.Schema().Field(1).Type)
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 
 	suite.Equal(1234567.89, rec.Column(1).(*array.Float64).Value(0))
 	suite.Equal(9876543210.99, rec.Column(1).(*array.Float64).Value(1))
@@ -1964,7 +1963,7 @@ func (suite *SnowflakeTests) TestDecimalHighPrecision() {
 				suite.EqualValues(1, n)
 				suite.Truef(arrow.TypeEqual(&arrow.Decimal128Type{Precision: int32(precision), Scale: int32(scale)}, rdr.Schema().Field(0).Type), "expected decimal(%d, %d), got %s", precision, scale, rdr.Schema().Field(0).Type)
 				suite.True(rdr.Next())
-				rec := rdr.Record()
+				rec := rdr.RecordBatch()
 
 				suite.Equal(number, rec.Column(0).(*array.Decimal128).Value(0))
 			}
@@ -1994,7 +1993,7 @@ func (suite *SnowflakeTests) TestNonIntDecimalLowPrecision() {
 			suite.EqualValues(1, n)
 			suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Float64, rdr.Schema().Field(0).Type), "expected float64, got %s", rdr.Schema().Field(0).Type)
 			suite.True(rdr.Next())
-			rec := rdr.Record()
+			rec := rdr.RecordBatch()
 
 			value := rec.Column(0).(*array.Float64).Value(0)
 			difference := math.Abs(number - value)
@@ -2029,7 +2028,7 @@ func (suite *SnowflakeTests) TestIntDecimalLowPrecision() {
 			suite.EqualValues(1, n)
 			suite.Truef(arrow.TypeEqual(arrow.PrimitiveTypes.Int64, rdr.Schema().Field(0).Type), "expected int64, got %s", rdr.Schema().Field(0).Type)
 			suite.True(rdr.Next())
-			rec := rdr.Record()
+			rec := rdr.RecordBatch()
 
 			value := rec.Column(0).(*array.Int64).Value(0)
 			suite.Equal(number, value)
@@ -2061,7 +2060,7 @@ func (suite *SnowflakeTests) TestAdditionalDriverInfo() {
 
 	var totalRows int64
 	for rdr.Next() {
-		rec := rdr.Record()
+		rec := rdr.RecordBatch()
 		totalRows += rec.NumRows()
 		code := rec.Column(0).(*array.Uint32)
 		info := rec.Column(1).(*array.DenseUnion)
@@ -2275,7 +2274,7 @@ func (suite *SnowflakeTests) TestMetadataOnlyQuery() {
 
 	recv := int64(0)
 	for rdr.Next() {
-		recv += rdr.Record().NumRows()
+		recv += rdr.RecordBatch().NumRows()
 	}
 
 	// verify that we got the expected number of rows if we sum up
@@ -2293,7 +2292,7 @@ func (suite *SnowflakeTests) TestEmptyResultSet() {
 
 	recv := int64(0)
 	for rdr.Next() {
-		recv += rdr.Record().NumRows()
+		recv += rdr.RecordBatch().NumRows()
 	}
 
 	// verify that we got the expected number of rows if we sum up
@@ -2315,17 +2314,17 @@ func (suite *SnowflakeTests) TestIngestEmptyChunk() {
 	bldr := array.NewRecordBuilder(suite.Quirks.Alloc(), sc)
 	defer bldr.Release()
 
-	emptyRec := bldr.NewRecord()
+	emptyRec := bldr.NewRecordBatch()
 	defer emptyRec.Release()
 
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 	defer rec.Release()
 
 	// See https://github.com/apache/arrow-adbc/issues/1847
 	// Snowflake does not properly handle empty row groups, so need to make sure we don't send any.
-	rdr, err := array.NewRecordReader(sc, []arrow.Record{emptyRec, rec})
+	rdr, err := array.NewRecordReader(sc, []arrow.RecordBatch{emptyRec, rec})
 	suite.Require().NoError(err)
 	defer rdr.Release()
 
@@ -2368,10 +2367,10 @@ func TestIngestCancelContext(t *testing.T) {
 
 		bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
 
-		rec := bldr.NewRecord()
+		rec := bldr.NewRecordBatch()
 		defer rec.Release()
 
-		rdr, err := array.NewRecordReader(sc, []arrow.Record{rec})
+		rdr, err := array.NewRecordReader(sc, []arrow.RecordBatch{rec})
 		require.NoError(t, err)
 		defer rdr.Release()
 
@@ -2570,7 +2569,7 @@ ORDER BY start_time;
 
 	suite.EqualValues(1, n)
 	suite.True(rdr.Next())
-	result := rdr.Record()
+	result := rdr.RecordBatch()
 	suite.Require().Equal("SELECT 1", result.Column(0).(*array.String).Value(0))
 	suite.False(rdr.Next())
 	suite.Require().NoError(rdr.Err())
@@ -2593,7 +2592,7 @@ func (suite *SnowflakeTests) TestGetObjectsVector() {
 	defer rdr.Release()
 
 	suite.Require().True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 
 	for i := 0; int64(i) < rec.NumRows(); i++ {
 		// list<db_schema_schema>

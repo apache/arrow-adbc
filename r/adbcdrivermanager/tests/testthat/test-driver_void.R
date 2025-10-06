@@ -61,13 +61,16 @@ test_that("drivers are loaded using load_flags", {
 
 test_that("drivers can be loaded by manifest path", {
   toml_content <- sprintf("
+manifest_version = 1
+
 name = 'Void Driver'
-entrypoint = 'AdbcTestVoidDriverInit'
 
 [ADBC]
 version = 'v1.1.0'
 
 [Driver]
+entrypoint = 'AdbcTestVoidDriverInit'
+
 [Driver.shared]
 %s = '%s'
 

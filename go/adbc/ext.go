@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"go.opentelemetry.io/otel/attribute"
@@ -158,4 +160,132 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 	}
 
 	return count, nil
+}
+
+// DriverInfo library info map keys for auxiliary information
+//
+// NOTE: If in the future any of these InfoCodes are promoted to top-level fields
+// in the DriverInfo struct, their values should still also be included in the
+// LibraryInfo map to maintain backward compatibility. This ensures older clients
+// relying on LibraryInfo won't break when new fields are introduced.
+const (
+	DriverInfoKeyDriverArrowVersion        = "driver_arrow_version"
+	DriverInfoKeyVendorArrowVersion        = "vendor_arrow_version"
+	DriverInfoKeyVendorSQLSupport          = "vendor_sql_support"
+	DriverInfoKeyVendorSubstraitSupport    = "vendor_substrait_support"
+	DriverInfoKeyVendorSubstraitMinVersion = "vendor_substrait_min_version"
+	DriverInfoKeyVendorSubstraitMaxVersion = "vendor_substrait_max_version"
+)
+
+// DriverInfo contains comprehensive driver and library version information.
+type DriverInfo struct {
+	DriverName        string            `json:"driver_name"`         // e.g., "ADBC PostgreSQL Driver"
+	DriverVersion     string            `json:"driver_version"`      // e.g., "1.7.0"
+	VendorName        string            `json:"vendor_name"`         // e.g., "PostgreSQL"
+	VendorVersion     string            `json:"vendor_version"`      // e.g., "15.3"
+	DriverADBCVersion int64             `json:"driver_adbc_version"` // ADBC API version number
+	LibraryInfo       map[string]string `json:"library_info"`        // Additional library versions, protocol info, etc.
+}
+
+// GetDriverInfo retrieves comprehensive driver version information from a connection.
+// This helper function encapsulates the complex process of querying driver info codes,
+// handling streaming record batches and union arrays, extracting and safely cloning
+// string values, and managing errors with fallback defaults.
+//
+// Returns detailed version information including driver name, version, and additional
+// library information such as Arrow version, vendor details, and ADBC version.
+//
+// This is not part of the ADBC API specification.
+func GetDriverInfo(ctx context.Context, cnxn Connection) (DriverInfo, error) {
+	stream, err := cnxn.GetInfo(ctx, nil)
+	if err != nil {
+		return DriverInfo{}, fmt.Errorf("error during GetInfo: %w", err)
+	}
+	defer stream.Release()
+
+	driverInfo := DriverInfo{
+		LibraryInfo: make(map[string]string),
+	}
+
+	for stream.Next() {
+		batch := stream.RecordBatch()
+		codeArr := batch.Column(0).(*array.Uint32)
+		unionArr := batch.Column(1).(*array.DenseUnion)
+
+		codes, offsets := codeArr.Values(), unionArr.RawValueOffsets()
+		for i := range int(batch.NumRows()) {
+			code, offset := InfoCode(codes[i]), int(offsets[i])
+			child := unionArr.Field(unionArr.ChildID(i))
+
+			if child.IsNull(offset) {
+				continue
+			}
+
+			// Handle different union types based on child ID (similar to validation tests)
+			switch unionArr.ChildID(i) {
+			case 0: // String values
+				strArray, ok := child.(*array.String)
+				if !ok {
+					continue
+				}
+				// Create a copy of the string to avoid memory corruption issues.
+				// Arrow strings reference memory owned by the record batch. When the batch
+				// is released, this memory becomes invalid, leading to potential crashes or
+				// data corruption when accessing the string later. Cloning ensures we have
+				// an independent copy that remains valid after batch cleanup.
+				val := strings.Clone(strArray.Value(offset))
+
+				switch code {
+				case InfoDriverName:
+					driverInfo.DriverName = val
+				case InfoDriverVersion:
+					driverInfo.DriverVersion = val
+				case InfoDriverArrowVersion:
+					driverInfo.LibraryInfo[DriverInfoKeyDriverArrowVersion] = val
+				case InfoVendorName:
+					driverInfo.VendorName = val
+				case InfoVendorVersion:
+					driverInfo.VendorVersion = val
+				case InfoVendorArrowVersion:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorArrowVersion] = val
+				case InfoVendorSubstraitMinVersion:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitMinVersion] = val
+				case InfoVendorSubstraitMaxVersion:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitMaxVersion] = val
+				}
+
+			case 1: // Boolean values
+				boolArray, ok := child.(*array.Boolean)
+				if !ok {
+					continue
+				}
+				val := boolArray.Value(offset)
+
+				switch code {
+				case InfoVendorSql:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorSQLSupport] = strconv.FormatBool(val)
+				case InfoVendorSubstrait:
+					driverInfo.LibraryInfo[DriverInfoKeyVendorSubstraitSupport] = strconv.FormatBool(val)
+				}
+
+			case 2: // Int64 values
+				int64Array, ok := child.(*array.Int64)
+				if !ok {
+					continue
+				}
+				val := int64Array.Value(offset)
+
+				switch code {
+				case InfoDriverADBCVersion:
+					driverInfo.DriverADBCVersion = val
+				}
+			}
+		}
+	}
+
+	if err := stream.Err(); err != nil {
+		return DriverInfo{}, fmt.Errorf("error reading info stream: %w", err)
+	}
+
+	return driverInfo, nil
 }

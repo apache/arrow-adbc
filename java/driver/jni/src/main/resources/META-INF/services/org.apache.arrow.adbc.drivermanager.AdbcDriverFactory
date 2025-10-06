@@ -15,4 +15,4 @@
 # specific language governing permissions and limitations
 # under the License.
 
-org.apache.arrow.adbc.driver.jni.NativeDriverFactory
+org.apache.arrow.adbc.driver.jni.JniDriverFactory

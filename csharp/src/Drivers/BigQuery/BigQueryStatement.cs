@@ -91,10 +91,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 QueryOptions queryOptions = ValidateOptions(activity);
 
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.IsSafeToTrace());
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, this.bigQueryConnection.IsSafeToTrace);
 
                 BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
-
                 JobReference jobReference = job.Reference;
                 GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
@@ -193,23 +192,34 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
                 }
 
-                ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
-
-                Func<Task<ReadSession>> createReadSession = () => clientMgr.ReadClient.CreateReadSessionAsync("projects/" + results.TableReference.ProjectId, rs, maxStreamCount);
-
-                ReadSession rrs = await ExecuteWithRetriesAsync<ReadSession>(createReadSession, activity);
-
                 long totalRows = results.TotalRows == null ? -1L : (long)results.TotalRows.Value;
 
-                var readers = rrs.Streams
-                                 .Select(s => ReadChunkWithRetries(clientMgr, s.Name, activity))
-                                 .Where(chunk => chunk != null)
-                                 .Cast<IArrowReader>();
+                Func<Task<IEnumerable<IArrowReader>>> func = () => GetArrowReaders(clientMgr, table, results.TableReference.ProjectId, maxStreamCount, activity);
+                IEnumerable<IArrowReader> readers = await ExecuteWithRetriesAsync<IEnumerable<IArrowReader>>(func, activity);
 
                 IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers);
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, totalRows);
                 return new QueryResult(totalRows, stream);
             });
+        }
+
+        private async Task<IEnumerable<IArrowReader>> GetArrowReaders(
+            TokenProtectedReadClientManger clientMgr,
+            string table,
+            string projectId,
+            int maxStreamCount,
+            Activity? activity)
+        {
+            ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
+            BigQueryReadClient bigQueryReadClient = clientMgr.ReadClient;
+            ReadSession rrs = await bigQueryReadClient.CreateReadSessionAsync("projects/" + projectId, rs, maxStreamCount);
+
+            var readers = rrs.Streams
+                             .Select(s => ReadChunk(bigQueryReadClient, s.Name, activity, this.bigQueryConnection.IsSafeToTrace))
+                             .Where(chunk => chunk != null)
+                             .Cast<IArrowReader>();
+
+            return readers;
         }
 
         public override UpdateResult ExecuteUpdate()
@@ -231,7 +241,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     activity?.AddBigQueryParameterTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
                 }
 
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, BigQueryUtils.IsSafeToTrace());
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, this.bigQueryConnection.IsSafeToTrace);
 
                 // Cannot set destination table in jobs with DDL statements, otherwise an error will be prompted
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(SqlQuery, null, null, getQueryResultsOptions);
@@ -329,22 +339,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return type;
         }
 
-        private IArrowReader? ReadChunkWithRetries(TokenProtectedReadClientManger clientMgr, string streamName, Activity? activity)
-        {
-            Func<Task<IArrowReader?>> func = () => Task.FromResult<IArrowReader?>(ReadChunk(clientMgr, streamName, activity));
-            return RetryManager.ExecuteWithRetriesAsync<IArrowReader?>(clientMgr, func, activity, MaxRetryAttempts, RetryDelayMs).GetAwaiter().GetResult();
-        }
-
-        private static IArrowReader? ReadChunk(TokenProtectedReadClientManger clientMgr, string streamName, Activity? activity)
-        {
-            return ReadChunk(clientMgr.ReadClient, streamName, activity);
-        }
-
-        private static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName, Activity? activity)
+        private static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName, Activity? activity, bool isSafeToTrace)
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
-            activity?.AddConditionalBigQueryTag("read_stream", streamName, BigQueryUtils.IsSafeToTrace());
+            activity?.AddConditionalBigQueryTag("read_stream", streamName, isSafeToTrace);
             BigQueryReadClient.ReadRowsStream readRowsStream = client.ReadRows(new ReadRowsRequest { ReadStream = streamName });
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator();
 
@@ -484,8 +483,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 try
                 {
                     activity?.AddBigQueryTag("large_results.dataset.try_create", datasetId);
+                    activity?.AddBigQueryTag("large_results.dataset.try_create_region", this.Client.DefaultLocation);
                     DatasetReference reference = this.Client.GetDatasetReference(datasetId);
 
+                    // The location is not set here because it will use the DefaultLocation from the client.
+                    // Similar to the DefaultLocation for the client, if the caller attempts to use a public
+                    // dataset from a multi-region but set the destination to a specific location,
+                    // a similar permission error is thrown.
                     BigQueryDataset bigQueryDataset = new BigQueryDataset(this.Client, new Dataset()
                     {
                         DatasetReference = reference,
@@ -498,7 +502,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 catch (Exception ex)
                 {
                     activity?.AddException(ex);
-                    throw new AdbcException($"Could not create dataset {datasetId}", ex);
+                    throw new AdbcException($"Could not create dataset {datasetId} in {this.Client.DefaultLocation}", ex);
                 }
             }
 
@@ -604,14 +608,19 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response)
             {
-                if (!response.MoveNextAsync().Result) { }
-
-                if (response.Current != null)
+                try
                 {
-                    this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
-                    this.hasRows = true;
+                    if (response.MoveNextAsync().Result && response.Current != null)
+                    {
+                        this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
+                        this.hasRows = true;
+                    }
+                    else
+                    {
+                        this.hasRows = false;
+                    }
                 }
-                else
+                catch (InvalidOperationException)
                 {
                     this.hasRows = false;
                 }
@@ -638,6 +647,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public override int Read(byte[] buffer, int offset, int count)
             {
+                if (!hasRows)
+                {
+                    return 0;
+                }
+
                 int remaining = this.currentBuffer.Length - this.position;
                 if (remaining == 0)
                 {

@@ -22,7 +22,7 @@
   <parent>
     <groupId>org.apache.arrow.adbc</groupId>
     <artifactId>arrow-adbc-java-root</artifactId>
-    <version>0.20.0-SNAPSHOT</version>
+    <version>0.21.0-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
@@ -33,7 +33,7 @@
 
   <properties>
     <maven.deploy.skip>true</maven.deploy.skip>
-    <dep.mssql-jdbc.version>13.1.0.jre11-preview</dep.mssql-jdbc.version>
+    <dep.mssql-jdbc.version>13.2.0.jre11</dep.mssql-jdbc.version>
   </properties>
 
   <dependencies>

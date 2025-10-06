@@ -510,7 +510,7 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 }
 
 func descToField(name, typ, isnull, primary string, comment sql.NullString, maxTimestampPrecision MaxTimestampPrecision) (field arrow.Field, err error) {
-	field.Name = strings.ToLower(name)
+	field.Name = name
 	if isnull == "Y" {
 		field.Nullable = true
 	}
@@ -680,6 +680,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	for {
 		if err = rows.Next(dest); err != nil {
 			if errors.Is(err, io.EOF) {
+				err = nil // don't return the io.EOF
 				break
 			}
 			err = errToAdbcErr(adbc.StatusIO, err)

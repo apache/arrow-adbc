@@ -51,5 +51,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
         [JsonPropertyName("isCITesting"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool IsCITesting { get; set; } = false;
+
+        [JsonPropertyName("enableRunAsyncInThriftOp"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string EnableRunAsyncInThriftOp { get; set; } = string.Empty;
+
+        [JsonPropertyName("fetchHeartbeatInterval"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string FetchHeartbeatInterval { get; set; } = string.Empty;
+
+        [JsonPropertyName("operationStatusRequestTimeout"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string OperationStatusRequestTimeout { get; set; } = string.Empty;
+
+        [JsonPropertyName("enableDirectResults"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string EnableDirectResults { get; set; } = string.Empty;
+
+        [JsonPropertyName("maxBytesPerFetchRequest"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public string MaxBytesPerFetchRequest { get; set; } = string.Empty;
     }
 }

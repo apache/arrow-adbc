@@ -19,7 +19,7 @@ project(
     'arrow-adbc',
     'c',
     'cpp',
-    version: '1.8.0-SNAPSHOT',
+    version: '1.9.0-SNAPSHOT',
     license: 'Apache-2.0',
     meson_version: '>=1.3.0',
     default_options: [

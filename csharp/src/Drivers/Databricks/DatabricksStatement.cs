@@ -24,7 +24,6 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
-using Apache.Arrow.Adbc.Drivers.Databricks.CloudFetch;
 using Apache.Arrow.Adbc.Drivers.Databricks.Result;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -40,6 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool useCloudFetch;
         private bool canDecompressLz4;
         private long maxBytesPerFile;
+        private long maxBytesPerFetchRequest;
         private bool enableMultipleCatalogSupport;
         private bool enablePKFK;
         private bool runAsyncInThrift;
@@ -62,6 +62,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             useCloudFetch = connection.UseCloudFetch;
             canDecompressLz4 = connection.CanDecompressLz4;
             maxBytesPerFile = connection.MaxBytesPerFile;
+            maxBytesPerFetchRequest = connection.MaxBytesPerFetchRequest;
             enableMultipleCatalogSupport = connection.EnableMultipleCatalogSupport;
             enablePKFK = connection.EnablePKFK;
 
@@ -96,12 +97,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Set Databricks-specific statement properties
             // TODO: Ensure this is set dynamically depending on server capabilities.
             statement.EnforceResultPersistenceMode = false;
-            statement.ResultPersistenceMode = TResultPersistenceMode.ALL_RESULTS;
             statement.CanReadArrowResult = true;
-
-#pragma warning disable CS0618 // Type or member is obsolete
-            statement.ConfOverlay = SparkConnection.timestampConfig;
-#pragma warning restore CS0618 // Type or member is obsolete
 
             statement.UseArrowNativeTypes = new TSparkArrowTypes
             {
@@ -121,25 +117,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             statement.MaxBytesPerFile = maxBytesPerFile;
             statement.RunAsync = runAsyncInThrift;
 
-            if (Connection.AreResultsAvailableDirectly)
-            {
-                statement.GetDirectResults = DatabricksConnection.defaultGetDirectResults;
-            }
-        }
-
-        /// <summary>
-        /// Checks if direct results are available.
-        /// </summary>
-        /// <returns>True if direct results are available and contain result data, false otherwise.</returns>
-        public bool HasDirectResults => DirectResults?.ResultSet != null && DirectResults?.ResultSetMetadata != null;
-
-        public TSparkDirectResults? DirectResults
-        {
-            get { return _directResults; }
+            Connection.TrySetGetDirectResults(statement);
         }
 
         // Cast the Client to IAsync for CloudFetch compatibility
         TCLIService.IAsync IHiveServer2Statement.Client => Connection.Client;
+
+        // Expose QueryTimeoutSeconds for IHiveServer2Statement
+        int IHiveServer2Statement.QueryTimeoutSeconds => base.QueryTimeoutSeconds;
+
+        // Expose BatchSize through the interface
+        long IHiveServer2Statement.BatchSize => BatchSize;
+
+        // Expose Connection through the interface
+        HiveServer2Connection IHiveServer2Statement.Connection => Connection;
 
         public override void SetOption(string key, string value)
         {
@@ -166,13 +157,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     }
                     break;
                 case DatabricksParameters.MaxBytesPerFile:
-                    if (long.TryParse(value, out long maxBytesPerFileValue))
+                    try
                     {
+                        long maxBytesPerFileValue = DatabricksConnection.ParseBytesWithUnits(value);
                         this.maxBytesPerFile = maxBytesPerFileValue;
                     }
-                    else
+                    catch (FormatException)
                     {
-                        throw new ArgumentException($"Invalid value for {key}: {value}. Expected a long value.");
+                        throw new ArgumentException($"Invalid value for {key}: {value}. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '20MB', '1024KB', '1073741824'.");
+                    }
+                    break;
+                case DatabricksParameters.MaxBytesPerFetchRequest:
+                    try
+                    {
+                        long maxBytesPerFetchRequestValue = DatabricksConnection.ParseBytesWithUnits(value);
+                        this.maxBytesPerFetchRequest = maxBytesPerFetchRequestValue;
+                    }
+                    catch (FormatException)
+                    {
+                        throw new ArgumentException($"Invalid value for {key}: {value}. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '400MB', '1024KB', '1073741824'.");
                     }
                     break;
                 default:
@@ -204,6 +207,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets whether LZ4 decompression is enabled.
         /// </summary>
         public bool CanDecompressLz4 => canDecompressLz4;
+
+        /// <summary>
+        /// Gets the maximum bytes per fetch request.
+        /// </summary>
+        public long MaxBytesPerFetchRequest => maxBytesPerFetchRequest;
 
         /// <summary>
         /// Sets whether the client can decompress LZ4 compressed results.
@@ -578,9 +586,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 descResult = await descStmt.ExecuteQueryAsync();
             }
-            catch (HiveServer2Exception ex) when (ex.SqlState == "42601")
+            catch (HiveServer2Exception ex) when (ex.SqlState == "42601" || ex.SqlState == "20000")
             {
                 // 42601 is error code of syntax error, which this command (DESC TABLE EXTENDED ... AS JSON) is not supported by current DBR
+                // Sometimes server may also return 20000 (internal error) if it fails to convert some data types of the table columns
                 // So we should fallback to base implementation
                 Debug.WriteLine($"[WARN] Failed to run {query} (reason={ex.Message}). Fallback to base::GetColumnsExtendedAsync.");
                 return await base.GetColumnsExtendedAsync(cancellationToken);
