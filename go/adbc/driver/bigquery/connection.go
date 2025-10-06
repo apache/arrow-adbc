@@ -51,6 +51,7 @@ type connectionImpl struct {
 	clientID     string
 	clientSecret string
 	refreshToken string
+	authScopes   []string
 
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
@@ -466,6 +467,14 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.clientSecret, nil
 	case OptionStringAuthRefreshToken:
 		return c.refreshToken, nil
+	case OptionStringAuthScopes:
+		return strings.Join(c.authScopes, ","), nil
+	case OptionStringImpersonateTargetPrincipal:
+		return c.impersonateTargetPrincipal, nil
+	case OptionStringImpersonateDelegates:
+		return strings.Join(c.impersonateDelegates, ","), nil
+	case OptionStringImpersonateScopes:
+		return strings.Join(c.impersonateScopes, ","), nil
 	case OptionStringProjectID:
 		return c.catalog, nil
 	case OptionStringDatasetID:
@@ -498,6 +507,8 @@ func (c *connectionImpl) SetOption(key string, value string) error {
 		c.clientSecret = value
 	case OptionStringAuthRefreshToken:
 		c.refreshToken = value
+	case OptionStringAuthScopes:
+		c.authScopes = strings.Split(value, ",")
 	case OptionStringImpersonateTargetPrincipal:
 		c.impersonateTargetPrincipal = value
 	case OptionStringImpersonateDelegates:
@@ -587,6 +598,11 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			Code: adbc.StatusInvalidArgument,
 			Msg:  fmt.Sprintf("Unknown auth type: %s", c.authType),
 		}
+	}
+
+	// Apply regular authentication scopes if specified (for non-impersonated auth)
+	if len(c.authScopes) > 0 && !c.hasImpersonationOptions() {
+		authOptions = append(authOptions, option.WithScopes(c.authScopes...))
 	}
 
 	// Then, apply impersonation if configured (as a credential transformation layer)

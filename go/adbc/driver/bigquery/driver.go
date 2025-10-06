@@ -109,6 +109,12 @@ const (
 	// OptionStringImpersonateLifetime instructs the driver to impersonate for the
 	// given duration (e.g. "3600s").
 	OptionStringImpersonateLifetime = "adbc.bigquery.sql.impersonate.lifetime"
+
+	// OptionStringAuthScopes instructs the driver to use the given comma-separated
+	// list of OAuth 2.0 scopes for regular (non-impersonated) authentication.
+	// This is used with Application Default Credentials, JSON credentials, etc.
+	// Example: "https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/cloud-platform"
+	OptionStringAuthScopes = "adbc.bigquery.sql.auth.scopes"
 )
 
 var (
