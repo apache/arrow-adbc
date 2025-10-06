@@ -70,6 +70,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
+        private const long DefaultMaxBytesPerFetchRequest = 400 * 1024 * 1024; // 400MB
+        private long _maxBytesPerFetchRequest = DefaultMaxBytesPerFetchRequest;
         private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
         private bool _useDescTableExtended = true;
@@ -322,6 +324,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 _maxBytesPerFile = maxBytesPerFileValue;
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFetchRequest, out string? maxBytesPerFetchRequestStr))
+            {
+                try
+                {
+                    long maxBytesPerFetchRequestValue = ParseBytesWithUnits(maxBytesPerFetchRequestStr);
+                    if (maxBytesPerFetchRequestValue < 0)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            nameof(Properties),
+                            maxBytesPerFetchRequestValue,
+                            $"Parameter '{DatabricksParameters.MaxBytesPerFetchRequest}' value must be a non-negative integer. Use 0 for no limit.");
+                    }
+                    _maxBytesPerFetchRequest = maxBytesPerFetchRequestValue;
+                }
+                catch (FormatException)
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.MaxBytesPerFetchRequest}' value '{maxBytesPerFetchRequestStr}' could not be parsed. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '400MB', '1024KB', '1073741824'.");
+                }
+            }
+
             // Parse default namespace
             string? defaultCatalog = null;
             string? defaultSchema = null;
@@ -476,6 +498,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the maximum bytes per file for CloudFetch.
         /// </summary>
         internal long MaxBytesPerFile => _maxBytesPerFile;
+
+        /// <summary>
+        /// Gets the maximum bytes per fetch request.
+        /// </summary>
+        internal long MaxBytesPerFetchRequest => _maxBytesPerFetchRequest;
 
         /// <summary>
         /// Gets the default namespace to use for SQL queries.
@@ -769,6 +796,61 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private string EscapeSqlString(string value)
         {
             return "`" + value.Replace("`", "``") + "`";
+        }
+
+        /// <summary>
+        /// Parses a byte value that may include unit suffixes (B, KB, MB, GB).
+        /// </summary>
+        /// <param name="value">The value to parse, e.g., "400MB", "1024KB", "1073741824"</param>
+        /// <returns>The value in bytes</returns>
+        /// <exception cref="FormatException">Thrown when the value cannot be parsed</exception>
+        internal static long ParseBytesWithUnits(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new FormatException("Value cannot be null or empty");
+            }
+
+            value = value.Trim().ToUpperInvariant();
+
+            // Check for unit suffixes
+            long multiplier = 1;
+            string numberPart = value;
+
+            if (value.EndsWith("GB"))
+            {
+                multiplier = 1024L * 1024L * 1024L;
+                numberPart = value.Substring(0, value.Length - 2);
+            }
+            else if (value.EndsWith("MB"))
+            {
+                multiplier = 1024L * 1024L;
+                numberPart = value.Substring(0, value.Length - 2);
+            }
+            else if (value.EndsWith("KB"))
+            {
+                multiplier = 1024L;
+                numberPart = value.Substring(0, value.Length - 2);
+            }
+            else if (value.EndsWith("B"))
+            {
+                multiplier = 1L;
+                numberPart = value.Substring(0, value.Length - 1);
+            }
+
+            if (!long.TryParse(numberPart.Trim(), out long number))
+            {
+                throw new FormatException($"Invalid number format: {numberPart}");
+            }
+
+            try
+            {
+                return checked(number * multiplier);
+            }
+            catch (OverflowException)
+            {
+                throw new FormatException($"Value {value} results in overflow when converted to bytes");
+            }
         }
 
         protected override void ValidateOptions()
