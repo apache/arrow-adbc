@@ -1,8 +1,8 @@
-pandoc: 3.8.1
+pandoc: 3.8.2
 pkgdown: 2.1.3
 pkgdown_sha: ~
 articles: {}
-last_built: 2025-10-06T02:17Z
+last_built: 2025-10-06T23:51Z
 urls:
   reference: https://arrow.apache.org/adbc/current/r/adbcpostgresql/reference
   article: https://arrow.apache.org/adbc/current/r/adbcpostgresql/articles
