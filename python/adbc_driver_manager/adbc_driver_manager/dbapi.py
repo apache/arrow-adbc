@@ -182,8 +182,9 @@ else:
 
 
 def connect(
-    *,
     driver: Union[str, pathlib.Path],
+    uri: Optional[str] = None,
+    *,
     entrypoint: Optional[str] = None,
     db_kwargs: Optional[Dict[str, Union[str, pathlib.Path]]] = None,
     conn_kwargs: Optional[Dict[str, str]] = None,
@@ -195,11 +196,26 @@ def connect(
     Parameters
     ----------
     driver
-        The driver name. For example, "adbc_driver_sqlite" will
-        attempt to load libadbc_driver_sqlite.so on Linux systems,
-        libadbc_driver_sqlite.dylib on MacOS, and
-        adbc_driver_sqlite.dll on Windows. This may also be a path to
-        the library to load.
+        The driver to use.  This can be one of several values:
+
+        - A driver name or manifest name.
+
+          For example, "adbc_driver_sqlite" will first attempt to load
+          adbc_driver_sqlite.toml from the various search paths.  Then, it
+          will try to load libadbc_driver_sqlite.so on Linux,
+          libadbc_driver_sqlite.dylib on MacOS, or adbc_driver_sqlite.dll on
+          Windows.  See :doc:`/format/driver_manifests.rst`.
+
+        - A full path to a shared library to load.
+
+        - Only a URI, in which case the URI scheme will be assumed to be the
+          driver name and will be loaded as above.  This will happen when
+          "://" is detected in the driver name.  (It is not assumed that the
+          URI is actually a valid URI.)
+    uri
+        The "uri" parameter to the database (if applicable).  This is
+        equivalent to passing it in ``db_kwargs`` but is slightly cleaner.
+        If given, takes precedence over any value in ``db_kwargs``.
     entrypoint
         The driver-specific entrypoint, if different than the default.
     db_kwargs
@@ -218,10 +234,14 @@ def connect(
 
     db_kwargs = dict(db_kwargs or {})
     db_kwargs["driver"] = driver
+    if uri:
+        db_kwargs["uri"] = uri
     if entrypoint:
         db_kwargs["entrypoint"] = entrypoint
     if conn_kwargs is None:
         conn_kwargs = {}
+    # N.B. treating uri = "postgresql://..." as driver = "postgresql", uri =
+    # "..." is handled at the C driver manager layer
 
     try:
         db = _lib.AdbcDatabase(**db_kwargs)
