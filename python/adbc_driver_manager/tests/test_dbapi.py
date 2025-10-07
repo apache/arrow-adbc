@@ -585,17 +585,14 @@ def test_connect(tmp_path: pathlib.Path, monkeypatch) -> None:
             assert cur.fetchone() == (1,)
 
     monkeypatch.setenv("ADBC_DRIVER_PATH", tmp_path)
-    with (tmp_path / "sqlite.toml").open("w") as f:
+    with (tmp_path / "foobar.toml").open("w") as f:
         f.write(
             """
 [Driver]
-shared = "adbc_driver_sqlite"
+shared = "adbc_driver_foobar"
         """
         )
-    # sqlite actually treats this as a filename (and also removes the
-    # slashes), but for the purposes of testing the driver name inference it
-    # should be fine
-    with dbapi.connect("sqlite://") as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1")
-            assert cur.fetchone() == (1,)
+    # Just check that the driver gets detected and loaded (should fail)
+    with pytest.raises(dbapi.ProgrammingError, match="NOT_FOUND"):
+        with dbapi.connect("foobar://localhost:5439"):
+            pass
