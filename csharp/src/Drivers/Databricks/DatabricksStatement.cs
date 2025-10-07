@@ -36,6 +36,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal class DatabricksStatement : SparkStatement, IHiveServer2Statement
     {
+        // Databricks CloudFetch supports much larger batch sizes than standard Arrow batches (1024MB vs 10MB limit).
+        // Using 2M rows significantly reduces round trips for medium/large result sets compared to the base 50K default,
+        // improving query performance by reducing the number of FetchResults calls needed.
+        private const long DatabricksBatchSizeDefault = 2000000;
         private bool useCloudFetch;
         private bool canDecompressLz4;
         private long maxBytesPerFile;
@@ -43,6 +47,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool enableMultipleCatalogSupport;
         private bool enablePKFK;
         private bool runAsyncInThrift;
+
+        public override long BatchSize { get; protected set; } = DatabricksBatchSizeDefault;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)
@@ -176,6 +182,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     catch (FormatException)
                     {
                         throw new ArgumentException($"Invalid value for {key}: {value}. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '400MB', '1024KB', '1073741824'.");
+                    }
+                    break;
+                case ApacheParameters.BatchSize:
+                    if (long.TryParse(value, out long batchSize) && batchSize > 0)
+                    {
+                        this.BatchSize = batchSize;
+                    }
+                    else
+                    {
+                        throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
                     }
                     break;
                 default:
