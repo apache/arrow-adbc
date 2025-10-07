@@ -904,6 +904,25 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
+      - name: Assemble logs
+        if: failure()
+        run: |
+          mkdir ~/logs
+          counter=0
+          for log in $(find "$VCPKG_ROOT" -name 'build-*.log' -or -name 'config-*.log'); do
+            echo cp "$log" ~/logs/$counter-$(basename "$log")
+            cp "$log" ~/logs/$counter-$(basename "$log")
+            counter=$((counter+1))
+          done
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vcpkg-logs-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: ~/logs
+
   python-windows:
     name: "Python ${{ matrix.python_version }} Windows"
     runs-on: windows-latest
