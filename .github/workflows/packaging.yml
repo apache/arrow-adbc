@@ -100,7 +100,7 @@ jobs:
 
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        os: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
 
     steps:
       - uses: actions/download-artifact@v5
@@ -558,7 +558,7 @@ jobs:
 
   python-conda-macos:
     name: "Python ${{ matrix.arch }} Conda"
-    runs-on: macos-13
+    runs-on: macos-15-intel
     # No need for Conda packages during release
     # TODO(apache/arrow-adbc#468): re-enable
     if: false
@@ -743,8 +743,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-latest"]
+        os: ["macos-15-intel", "macos-latest"]
         include:
+          - os: macos-15-intel
+            arch: amd64
           - os: macos-latest
             arch: arm64v8
     env:
@@ -901,6 +903,25 @@ jobs:
           export PYTHON_VERSION=3.13
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
+
+      - name: Assemble logs
+        if: failure()
+        run: |
+          mkdir ~/logs
+          counter=0
+          for log in $(find "$VCPKG_ROOT" -name 'build-*.log' -or -name 'config-*.log'); do
+            echo cp "$log" ~/logs/$counter-$(basename "$log")
+            cp "$log" ~/logs/$counter-$(basename "$log")
+            counter=$((counter+1))
+          done
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vcpkg-logs-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: ~/logs
 
   python-windows:
     name: "Python ${{ matrix.python_version }} Windows"
