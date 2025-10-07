@@ -44,7 +44,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool enablePKFK;
         private bool runAsyncInThrift;
 
-        public new long BatchSize { get; private set; } = DatabricksBatchSizeDefault;
+        public override long BatchSize { get; protected set; } = DatabricksBatchSizeDefault;
 
         public DatabricksStatement(DatabricksConnection connection)
             : base(connection)

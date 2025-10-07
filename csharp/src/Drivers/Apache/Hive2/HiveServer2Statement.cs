@@ -350,7 +350,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
 
-        public long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
+        public virtual long BatchSize { get; protected set; } = HiveServer2Connection.BatchSizeDefault;
 
         public int QueryTimeoutSeconds
         {
