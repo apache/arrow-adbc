@@ -241,6 +241,12 @@ jobs:
           persist-credentials: false
           submodules: recursive
 
+      - name: Clean up disk space
+        run: |
+          # Rust uses a lot of disk space, free up some space
+          # https://github.com/actions/runner-images/issues/2840
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
       - name: Verify
         env:
           OS: ${{ matrix.os }}
