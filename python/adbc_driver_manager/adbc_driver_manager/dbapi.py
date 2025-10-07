@@ -204,7 +204,7 @@ def connect(
           adbc_driver_sqlite.toml from the various search paths.  Then, it
           will try to load libadbc_driver_sqlite.so on Linux,
           libadbc_driver_sqlite.dylib on MacOS, or adbc_driver_sqlite.dll on
-          Windows.  See :doc:`/format/driver_manifests.rst`.
+          Windows.  See :doc:`/format/driver_manifests`.
 
         - A full path to a shared library to load.
 
