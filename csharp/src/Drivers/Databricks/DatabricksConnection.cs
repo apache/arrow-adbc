@@ -74,7 +74,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private long _maxBytesPerFetchRequest = DefaultMaxBytesPerFetchRequest;
         private const bool DefaultRetryOnUnavailable = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
-        private bool _useDescTableExtended = true;
+        private bool _useDescTableExtended = false;
 
         // Trace propagation configuration
         private bool _tracePropagationEnabled = true;
