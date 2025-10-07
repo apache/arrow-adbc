@@ -22,7 +22,7 @@ go 1.24.0
 toolchain go1.24.1
 
 require (
-	cloud.google.com/go/bigquery v1.70.0
+	cloud.google.com/go/bigquery v1.71.0
 	github.com/apache/arrow-go/v18 v18.4.1
 	github.com/bluele/gcache v0.0.2
 	github.com/golang/protobuf v1.5.4
