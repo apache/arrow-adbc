@@ -2053,7 +2053,7 @@ func (suite *SnowflakeTests) TestSchemaWithLowPrecision() {
 
 	// Check actual data types in the record
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 
 	// Verify INTEGER_COL is actually Int64
 	col0 := rec.Column(0)
