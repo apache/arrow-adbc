@@ -47,20 +47,6 @@ main() {
        --repo "${REPOSITORY}" \
        "${tag}"
 
-    pushd "${ARROW_ARTIFACTS_DIR}"
-    local base_dir=
-    for tar_gz in *.tar.gz; do
-        mkdir -p tmp
-        tar xf ${tar_gz} -C tmp
-        base_dir=${tar_gz%.tar.gz}
-        mkdir -p ${base_dir}
-        find tmp -type f -exec mv '{}' ${base_dir} ';'
-        rm -rf tmp
-	rm -f ${tar_gz}
-    done
-    popd
-
-    export DEB_PACKAGE_NAME=apache-arrow-adbc
     export UPLOAD_DEFAULT=0
     export UPLOAD_ALMALINUX=${UPLOAD_ALMALINUX:-1}
     export UPLOAD_DEBIAN=${UPLOAD_DEBIAN:-1}
