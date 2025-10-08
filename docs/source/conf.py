@@ -27,7 +27,7 @@ sys.path.append(str(Path("./ext").resolve()))
 
 project = "ADBC"
 copyright = """2022–2025 The Apache Software Foundation.  Apache Arrow, Arrow,
-Apache, the Apache feather logo, and the Apache Arrow project logo are either
+Apache, the Apache logo, and the Apache Arrow project logo are either
 registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
