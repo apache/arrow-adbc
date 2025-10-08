@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
@@ -130,6 +131,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
 
             AdbcDatabase database = driver.Open(parameters);
             AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
+            Assert.True(ApacheUtility.ContainsException(exception, out AdbcException? adbcException), $"Expect AdbcException. Actual type: {exception.GetType().Name}");
+            Assert.Equal(AdbcStatusCode.Unauthorized, adbcException!.Status);
             OutputHelper?.WriteLine(exception.Message);
         }
 
