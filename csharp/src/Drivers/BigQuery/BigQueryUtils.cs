@@ -45,18 +45,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public static bool ContainsException<T>(Exception exception, out T? containedException) where T : Exception
         {
-            if (exception is AggregateException aggregateException)
-            {
-                foreach (Exception? ex in aggregateException.InnerExceptions)
-                {
-                    if (ContainsException(ex, out T? inner))
-                    {
-                        containedException = inner;
-                        return true;
-                    }
-                }
-            }
-
             Exception? e = exception;
             while (e != null)
             {
@@ -64,6 +52,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     containedException = ce;
                     return true;
+                }
+                else if (e is AggregateException aggregateException)
+                {
+                    foreach (Exception? ex in aggregateException.InnerExceptions)
+                    {
+                        if (ContainsException(ex, out T? inner))
+                        {
+                            containedException = inner;
+                            return true;
+                        }
+                    }
                 }
                 e = e.InnerException;
             }

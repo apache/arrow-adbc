@@ -585,7 +585,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 activity?.AddException(cancelledEx!);
                 try
                 {
-                    if (context?.Job != null)
+                    if (context.Job != null)
                     {
                         activity?.AddBigQueryTag("job.cancel", context.Job.Reference.JobId);
                         await context.Job.CancelAsync().ConfigureAwait(false);
@@ -608,8 +608,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             private readonly CancellationRegistry cancellationRegistry;
             private readonly CancellationTokenSource cancellationTokenSource;
-
-            private bool _disposedValue;
+            private bool disposed;
 
             public CancellationContext(CancellationRegistry cancellationRegistry)
             {
@@ -625,24 +624,14 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 cancellationTokenSource.Cancel();
             }
 
-            protected virtual void Dispose(bool disposing)
+            public virtual void Dispose()
             {
-                if (!_disposedValue)
+                if (!disposed)
                 {
-                    if (disposing)
-                    {
-                        cancellationRegistry.Unregister(this);
-                        cancellationTokenSource.Dispose();
-                    }
-                    _disposedValue = true;
+                    cancellationRegistry.Unregister(this);
+                    cancellationTokenSource.Dispose();
+                    disposed = true;
                 }
-            }
-
-            public void Dispose()
-            {
-                // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-                Dispose(disposing: true);
-                GC.SuppressFinalize(this);
             }
         }
 
@@ -667,17 +656,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 return context;
             }
 
-            public CancellationContext Register()
-            {
-                CancellationContext context = new(this);
-                return Register(context);
-            }
-
             public bool Unregister(CancellationContext context)
             {
-                bool isRemoved = contexts.TryRemove(context, out _);
-                context.Dispose();
-                return isRemoved;
+                return contexts.TryRemove(context, out _);
             }
 
             public void CancelAll()
@@ -763,8 +744,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     {
                         this.readers.Dispose();
                         this.readers = null;
+                        this.cancellationContext.Dispose();
                     }
-                    this.cancellationContext.Dispose();
                 }
 
                 base.Dispose(disposing);
