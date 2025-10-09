@@ -20,6 +20,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -356,6 +358,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     {
                         session = await Client.OpenSession(request, cancellationToken);
                     }
+                    catch (TTransportException transportEx)
+                        when (ApacheUtility.ContainsException(transportEx, out HttpRequestException? httpEx) && IsUnauthorized(httpEx!))
+                    {
+                        throw new HiveServer2Exception(transportEx.Message, AdbcStatusCode.Unauthorized, transportEx);
+                    }
                     catch (Exception)
                     {
                         if (FallbackProtocolVersions.Any())
@@ -381,6 +388,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             });
         }
 
+        private static bool IsUnauthorized(HttpRequestException httpEx)
+        {
+#if NET5_0_OR_GREATER
+            return httpEx.StatusCode == HttpStatusCode.Unauthorized;
+#else
+            return httpEx.Message.IndexOf("unauthorized", StringComparison.OrdinalIgnoreCase) >= 0 || httpEx.Message.IndexOf("authenticat", StringComparison.OrdinalIgnoreCase) >= 0;
+#endif
+        }
+
         private async Task<TOpenSessionResp?> TryOpenSessionWithFallbackAsync(TOpenSessionReq originalRequest, CancellationToken cancellationToken)
         {
             Exception? lastException = null;
@@ -404,6 +420,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 catch (Exception ex) when (ExceptionHelper.IsOperationCanceledOrCancellationRequested(ex, cancellationToken))
                 {
                     throw new TimeoutException("The operation timed out while attempting to open a session. Please try increasing connect timeout.", ex);
+                }
+                catch (TTransportException transportEx)
+                    when (ApacheUtility.ContainsException(transportEx, out HttpRequestException? httpEx) && IsUnauthorized(httpEx!))
+                {
+                    throw new HiveServer2Exception(transportEx.Message, AdbcStatusCode.Unauthorized, transportEx);
                 }
                 catch (Exception ex)
                 {
