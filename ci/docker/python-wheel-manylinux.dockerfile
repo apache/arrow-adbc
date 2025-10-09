@@ -50,7 +50,7 @@ RUN mkdir -p /.cache/go-build                         \
     && chmod 777 /.gitconfig
 
 RUN if [[ ${TARGETPLATFORM} == "linux/amd64" ]]; then                                                           \
-      export ARCH="amd64" CMAKE_ARCH=x86_64;                                                                    \
+        export ARCH="amd64" CMAKE_ARCH=x86_64;                                                                  \
     elif [[ ${TARGETPLATFORM} == "linux/arm64" ]]; then                                                         \
         export ARCH="arm64" CMAKE_ARCH=aarch64;                                                                 \
     else                                                                                                        \
