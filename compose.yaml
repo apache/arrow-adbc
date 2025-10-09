@@ -171,32 +171,31 @@ services:
   # relocate on a separate image so that we can use a newer docker for cibuildwheel
 
   python-wheel-manylinux-build:
-    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
+    image: ghcr.io/apache/arrow-adbc:manylinux${MANYLINUX}-go${GO}-python${PYTHON}-vcpkg${VCPKG}
     build:
       context: .
-      cache_from:
-        - ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
       dockerfile: ci/docker/python-wheel-manylinux.dockerfile
       args:
-        ARCH: ${ARCH}
         GO: ${GO}
         MANYLINUX: ${MANYLINUX}
         PYTHON: ${PYTHON}
-        REPO: ${REPO}
         VCPKG: ${VCPKG}
+      platforms:
+        - linux/amd64
+        - linux/arm64
     volumes:
       - .:/adbc
     # Must set safe.directory so go/miniver won't error when calling git
     command: "'git config --global --add safe.directory /adbc && /adbc/ci/scripts/python_wheel_unix_build.sh ${ARCH} /adbc /adbc/build'"
 
   python-wheel-manylinux-relocate:
-    image: ${REPO}:adbc-python-${PYTHON}-wheel-relocate
-    platform: ${PLATFORM}
+    image: ghcr.io/apache/arrow-adbc:python${PYTHON}
     build:
       context: .
-      cache_from:
-        - ${REPO}:adbc-python-${PYTHON}-wheel-relocate
       dockerfile: ci/docker/python-wheel-manylinux-relocate.dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - .:/adbc
