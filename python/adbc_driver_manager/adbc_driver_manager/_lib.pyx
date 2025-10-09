@@ -479,6 +479,28 @@ cdef class ArrowArrayStreamHandle:
             self.stream.release(&self.stream)
             self.stream.release = NULL
 
+    def __arrow_c_schema__(self) -> object:
+        """Get a PyCapsule without consuming this object."""
+        cdef const char* err = NULL
+
+        if not self.is_valid:
+            raise ValueError("ArrowArrayStreamHandle already consumed")
+
+        cdef CArrowSchema* allocated = <CArrowSchema*> malloc(sizeof(CArrowSchema))
+        allocated.release = NULL
+        capsule = PyCapsule_New(
+            <void*>allocated, "arrow_schema", &pycapsule_schema_deleter,
+        )
+        rc = self.stream.get_schema(&self.stream, allocated)
+        if rc != 0:
+            err = self.stream.get_last_error(&self.stream)
+            if err == NULL:
+                raise RuntimeError(f"Failed to get schema: ({rc})")
+            else:
+                s = err.decode()
+                raise RuntimeError(f"Failed to get schema: ({rc}) {s}")
+        return capsule
+
     def __arrow_c_stream__(self, requested_schema=None) -> object:
         """Consume this object to get a PyCapsule."""
         if requested_schema is not None:

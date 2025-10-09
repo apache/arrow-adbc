@@ -244,6 +244,30 @@ def test_query_fetch_arrow(sqlite):
 
 
 @pytest.mark.sqlite
+def test_query_fetch_arrow_3543(sqlite):
+    # Regression test for https://github.com/apache/arrow-adbc/issues/3543
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
+
+        # This should not consume the result
+        assert cur.description == [
+            ("1", dbapi.NUMBER, None, None, None, None, None),
+            ("foo", dbapi.STRING, None, None, None, None, None),
+            ("2.0", dbapi.NUMBER, None, None, None, None, None),
+        ]
+
+        capsule = cur.fetch_arrow().__arrow_c_stream__()
+        reader = pyarrow.RecordBatchReader._import_from_c_capsule(capsule)
+        assert reader.read_all() == pyarrow.table(
+            {
+                "1": [1],
+                "foo": ["foo"],
+                "2.0": [2.0],
+            }
+        )
+
+
+@pytest.mark.sqlite
 def test_query_fetch_arrow_table(sqlite):
     with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
