@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.6" />
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="System.Text.Json" Version="9.0.9" />
     <PackageReference Include="System.Threading.Channels" Version="9.0.8" />
   </ItemGroup>
 
