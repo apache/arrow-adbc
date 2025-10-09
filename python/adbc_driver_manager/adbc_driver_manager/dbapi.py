@@ -370,7 +370,7 @@ class Connection(_Closeable):
         adbc_stmt_kwargs : dict, optional
           ADBC-specific options to pass to the underlying ADBC statement.
         """
-        return Cursor(self, adbc_stmt_kwargs)
+        return Cursor(self, adbc_stmt_kwargs, dbapi_backend=self._backend)
 
     def rollback(self) -> None:
         """Explicitly rollback."""
@@ -608,9 +608,12 @@ class Cursor(_Closeable):
         self,
         conn: Connection,
         adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+        *,
+        dbapi_backend: Optional[_dbapi_backend.DbapiBackend] = None,
     ) -> None:
         # Must be at top in case __init__ is interrupted and then __del__ is called
         self._closed = True
+        self._backend = dbapi_backend or _dbapi_backend.default_backend()
         self._conn = conn
         self._stmt = _lib.AdbcStatement(conn._conn)
         self._closed = False
@@ -751,7 +754,7 @@ class Cursor(_Closeable):
         handle, self._rowcount = _blocking_call(
             self._stmt.execute_query, (), {}, self._stmt.cancel
         )
-        self._results = _RowIterator(self._stmt, handle)
+        self._results = _RowIterator(self._stmt, handle, self._backend)
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
         """
@@ -1117,7 +1120,7 @@ class Cursor(_Closeable):
             self._conn._conn.read_partition, (partition,), {}, self._stmt.cancel
         )
         self._rowcount = -1
-        self._results = _RowIterator(self._stmt, handle)
+        self._results = _RowIterator(self._stmt, handle, self._backend)
 
     @property
     def adbc_statement(self) -> _lib.AdbcStatement:
@@ -1261,10 +1264,14 @@ class _RowIterator(_Closeable):
     """Track state needed to iterate over the result set."""
 
     def __init__(
-        self, stmt: _lib.AdbcStatement, handle: _lib.ArrowArrayStreamHandle
+        self,
+        stmt: _lib.AdbcStatement,
+        handle: _lib.ArrowArrayStreamHandle,
+        dbapi_backend: _dbapi_backend.DbapiBackend,
     ) -> None:
         self._stmt = stmt
         self._handle: Optional[_lib.ArrowArrayStreamHandle] = handle
+        self._backend = dbapi_backend
         self._reader: Optional["_reader.AdbcRecordBatchReader"] = None
         self._current_batch = None
         self._next_row = 0
@@ -1297,10 +1304,16 @@ class _RowIterator(_Closeable):
 
     @property
     def description(self) -> List[tuple]:
-        return [
-            (field.name, field.type, None, None, None, None, None)
-            for field in self.reader.schema
-        ]
+        if self._handle is None:
+            # Invalid state, or already imported into the reader
+            # (we assume PyArrow here for now)
+            return [
+                (field.name, field.type, None, None, None, None, None)
+                for field in self.reader.schema
+            ]
+        else:
+            # Not yet imported into the reader.  Do not force consumption
+            return self._backend.convert_description(self._handle.__arrow_c_schema__())
 
     def fetchone(self) -> Optional[tuple]:
         if self._current_batch is None or self._next_row >= len(self._current_batch):

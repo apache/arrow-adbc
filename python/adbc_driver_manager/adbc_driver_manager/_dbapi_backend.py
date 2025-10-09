@@ -28,6 +28,9 @@ import typing
 
 from . import _lib
 
+if typing.TYPE_CHECKING:
+    from typing_extensions import CapsuleType
+
 
 class DbapiBackend(abc.ABC):
     """
@@ -88,6 +91,27 @@ class DbapiBackend(abc.ABC):
         ...
 
     @abc.abstractmethod
+    def convert_description(self, schema: "CapsuleType") -> typing.List[typing.Tuple]:
+        """Convert a schema capsule into a DB-API description.
+
+        Parameters
+        ----------
+        schema
+            A PyCapsule of type "arrow_schema".
+
+        Returns
+        -------
+        description : list[tuple]
+            A DB-API description, as a list of 7-item tuples.
+
+        See Also
+        --------
+        https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html
+
+        """
+        ...
+
+    @abc.abstractmethod
     def import_array_stream(self, handle: _lib.ArrowArrayStreamHandle) -> typing.Any:
         """Import an Arrow stream."""
         ...
@@ -115,6 +139,12 @@ class _NoOpBackend(DbapiBackend):
     def convert_executemany_parameters(
         self, parameters: typing.Any
     ) -> typing.Tuple[typing.Any, bool]:
+        raise _lib.ProgrammingError(
+            "This API requires PyArrow or another suitable backend to be installed",
+            status_code=_lib.AdbcStatusCode.INVALID_STATE,
+        )
+
+    def convert_description(self, schema: "CapsuleType") -> typing.List[typing.Tuple]:
         raise _lib.ProgrammingError(
             "This API requires PyArrow or another suitable backend to be installed",
             status_code=_lib.AdbcStatusCode.INVALID_STATE,
@@ -174,6 +204,11 @@ try:
             cols, bind_by_name = param_iterable_to_dict(parameters)
             return polars.DataFrame(cols), bind_by_name
 
+        def convert_description(
+            self, schema: "CapsuleType"
+        ) -> typing.List[typing.Tuple]:
+            raise _lib.NotSupportedError("Polars does not support __arrow_c_schema__")
+
         def import_array_stream(
             self, handle: _lib.ArrowArrayStreamHandle
         ) -> typing.Any:
@@ -206,6 +241,14 @@ try:
         ) -> typing.Tuple[typing.Any, bool]:
             cols, bind_by_name = param_iterable_to_dict(parameters)
             return pyarrow.RecordBatch.from_pydict(cols), bind_by_name
+
+        def convert_description(
+            self, schema: "CapsuleType"
+        ) -> typing.List[typing.Tuple]:
+            s = pyarrow.Schema._import_from_c_capsule(schema)
+            return [
+                (field.name, field.type, None, None, None, None, None) for field in s
+            ]
 
         def import_array_stream(
             self, handle: _lib.ArrowArrayStreamHandle
