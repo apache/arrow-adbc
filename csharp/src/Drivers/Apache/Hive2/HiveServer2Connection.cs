@@ -424,7 +424,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 catch (TTransportException transportEx)
                     when (ApacheUtility.ContainsException(transportEx, out HttpRequestException? httpEx) && IsUnauthorized(httpEx!))
                 {
-                    throw new HiveServer2Exception("OpenAsync failed", AdbcStatusCode.Unauthorized);
+                    throw new HiveServer2Exception(transportEx.Message, AdbcStatusCode.Unauthorized, transportEx);
                 }
                 catch (Exception ex)
                 {
