@@ -242,6 +242,6 @@ Driver-specific options:
 Software Versions
 =================
 
-For Python wheels, the shipped version of SQLite is 3.40.1.  For conda-forge
+For Python wheels, the shipped version of SQLite is 3.50.4.  For conda-forge
 packages, the version of sqlite is the same as the version of sqlite in your
 Conda environment.
