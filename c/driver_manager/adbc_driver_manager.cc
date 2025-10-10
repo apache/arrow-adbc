@@ -1618,7 +1618,15 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
 
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (std::strcmp(key, "driver") == 0) {
-    args->driver = value;
+    std::string_view v{value};
+    std::string::size_type pos = v.find("://");
+    if (pos != std::string::npos) {
+      std::string_view d = v.substr(0, pos);
+      args->driver = std::string{d};
+      args->options["uri"] = std::string{v};
+    } else {
+      args->driver = value;
+    }
   } else if (std::strcmp(key, "entrypoint") == 0) {
     args->entrypoint = value;
   } else {
