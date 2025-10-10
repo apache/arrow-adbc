@@ -1131,6 +1131,7 @@ func (c *connectionImpl) Close() error {
 		}
 	}
 
+	c.clientCache.Purge()
 	err = c.cl.Close()
 	c.cl = nil
 	return adbcFromFlightStatus(err, "Close")
