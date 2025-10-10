@@ -46,6 +46,7 @@ const (
 	OptionStatementIngestTargetFileSize    = "adbc.snowflake.statement.ingest_target_file_size"
 	OptionStatementIngestCompressionCodec  = "adbc.snowflake.statement.ingest_compression_codec" // TODO(GH-1473): Implement option
 	OptionStatementIngestCompressionLevel  = "adbc.snowflake.statement.ingest_compression_level" // TODO(GH-1473): Implement option
+	OptionStatementVectorizedScanner       = "adbc.snowflake.statement.use_vectorized_scanner"
 )
 
 type statement struct {
@@ -228,6 +229,16 @@ func (st *statement) SetOption(key string, val string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
+	case OptionStatementVectorizedScanner:
+		vectorized, err := strconv.ParseBool(val)
+		if err != nil {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Snowflake] could not parse '%s' as bool for option '%s'", val, key),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		st.ingestOptions.vectorizedScanner = vectorized
+		return nil
 	default:
 		return st.Base().SetOption(key, val)
 	}
