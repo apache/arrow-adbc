@@ -49,7 +49,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     T result = await action();
                     return result;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!BigQueryUtils.ContainsException(ex, out OperationCanceledException? _))
                 {
                     activity?.AddBigQueryTag("retry_attempt", retryCount);
                     activity?.AddException(ex);
