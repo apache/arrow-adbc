@@ -555,3 +555,16 @@ def test_driver_path():
     ):
         with dbapi.connect(driver=pathlib.Path("/tmp/thisdriverdoesnotexist")):
             pass
+
+
+@pytest.mark.sqlite
+def test_dbapi_extensions(sqlite):
+    with sqlite.execute("SELECT ?", (1,)) as cur:
+        assert cur.fetchone() == (1,)
+        assert cur.fetchone() is None
+
+        assert cur.execute("SELECT 2").fetchall() == [(2,)]
+
+    with sqlite.cursor() as cur:
+        assert cur.execute("SELECT 1").fetchall() == [(1,)]
+        assert cur.execute("SELECT 42").fetchall() == [(42,)]
