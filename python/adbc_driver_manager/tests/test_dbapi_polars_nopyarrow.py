@@ -295,15 +295,15 @@ def test_query_double_capsule(sqlite: dbapi.Connection) -> None:
         polars.from_arrow(capsule)
 
 
-@pytest.mark.xfail(raises=dbapi.NotSupportedError)
 def test_get_table_schema(sqlite: dbapi.Connection) -> None:
     with sqlite.cursor() as cursor:
         cursor.execute("CREATE TABLE test_table_schema (a INT, b STRING)")
+        cursor.execute("INSERT INTO test_table_schema VALUES (1, 'hello')")
 
     schema = sqlite.adbc_get_table_schema("test_table_schema")
     assert schema == polars.Schema(
         [
-            ("a", polars.Int32),
+            ("a", polars.Int64),
             ("b", polars.String),
         ]
     )
