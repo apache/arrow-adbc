@@ -491,7 +491,7 @@ class Connection(_Closeable):
         *,
         catalog_filter: Optional[str] = None,
         db_schema_filter: Optional[str] = None,
-    ) -> "pyarrow.Schema":
+    ) -> "pyarrow.Schema | polars.Schema":
         """
         Get the Arrow schema of a table by name.
 
@@ -1027,16 +1027,16 @@ class Cursor(_Closeable):
         self,
         operation,
         parameters=None,
-    ) -> Tuple[List[bytes], "pyarrow.Schema"]:
+    ) -> Tuple[List[bytes], "pyarrow.Schema | polars.Schema"]:
         """
         Execute a query and get the partitions of a distributed result set.
 
         Returns
         -------
-        partitions : list of byte
+        partitions : list of bytes
             A list of partition descriptors, which can be read with
             read_partition.
-        schema : pyarrow.Schema or None
+        schema : pyarrow.Schema, polars.Schema or None
             The schema of the result set.  May be None if incremental query
             execution is enabled and the server has not returned a schema.
 
@@ -1055,13 +1055,15 @@ class Cursor(_Closeable):
             schema = None
         return partitions, schema
 
-    def adbc_execute_schema(self, operation, parameters=None) -> "pyarrow.Schema":
+    def adbc_execute_schema(
+        self, operation, parameters=None
+    ) -> "pyarrow.Schema | polars.Schema":
         """
         Get the schema of the result set of a query without executing it.
 
         Returns
         -------
-        pyarrow.Schema
+        pyarrow.Schema or polars.Schema
             The schema of the result set.
 
         Notes
@@ -1073,7 +1075,9 @@ class Cursor(_Closeable):
         schema = _blocking_call(self._stmt.execute_schema, (), {}, self._stmt.cancel)
         return self._conn._backend.import_schema(schema)
 
-    def adbc_prepare(self, operation: Union[bytes, str]) -> Optional["pyarrow.Schema"]:
+    def adbc_prepare(
+        self, operation: Union[bytes, str]
+    ) -> Optional["pyarrow.Schema | polars.Schema"]:
         """
         Prepare a query without executing it.
 
@@ -1083,7 +1087,7 @@ class Cursor(_Closeable):
 
         Returns
         -------
-        pyarrow.Schema or None
+        pyarrow.Schema, polars.Schema or None
             The schema of the bind parameters, or None if the schema
             could not be determined.
 
