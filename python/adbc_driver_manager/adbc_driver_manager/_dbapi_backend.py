@@ -180,18 +180,16 @@ try:
             return polars.from_arrow(handle)
 
         def import_schema(self, handle: _lib.ArrowSchemaHandle) -> polars.Schema:
-            def parse_version(version: str) -> tuple[int, ...]:
-                return tuple(int(v) for v in version.split("."))
-
             # The version that Polars added support to initialize a schema via the
             # __arrow_c_schema__ interface
-            required_version = "1.32.2"
+            required_version = (1, 32, 2)
             polars_version = polars.__version__
-            if parse_version(polars_version) >= parse_version(required_version):
+            if tuple(int(v) for v in polars_version.split(".")) >= required_version:
                 return polars.Schema(handle)
             msg = (
                 "Initializing Polars Schema from __arrow_c_schema__ interface requires "
-                f"version {required_version} or higher. Found {polars_version!r}"
+                f"version {'.'.join(str(m) for m in required_version)} or higher. "
+                f"Found {polars_version!r}"
             )
             raise _lib.NotSupportedError(msg)
 
