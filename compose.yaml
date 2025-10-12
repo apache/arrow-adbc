@@ -73,6 +73,26 @@ services:
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_static_test.sh /adbc /adbc/build/static-test/build /adbc/build/static-test/local'"
 
 
+  ############################### C/C++: musl (Alpine) ##########################
+
+  cpp-musl:
+    image: ${REPO}:${ARCH}-cpp-musl-adbc
+    build:
+      context: .
+      dockerfile: ci/docker/cpp-musl.alpine.dockerfile
+      args:
+        GO: ${GO}
+    volumes:
+      - .:/adbc:delegated
+    environment:
+      ADBC_CMAKE_ARGS: "-DADBC_BUILD_WARNING_LEVEL=CHECKIN"
+      # ADBC_CMAKE_ARGS: "-DADBC_BUILD_WARNING_LEVEL=CHECKIN -DADBC_BUILD_CXX=ON -DADBC_DRIVER_SQLITE=0"
+      # BUILD_ALL: "0"
+      # BUILD_DRIVER_SQLITE: "0"
+      # CC: gcc
+      # CXX: g++
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/musl && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/musl'"
+
   ############################ Documentation ###################################
 
   docs:
