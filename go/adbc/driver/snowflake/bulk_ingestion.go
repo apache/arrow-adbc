@@ -179,7 +179,12 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	})
 
 	// Create a temporary stage, we can't start uploading until it has been created
-	createTemporaryStageStmt := fmt.Sprintf(createTemporaryStageTmpl, "")
+	var createTemporaryStageStmt string
+	if st.ingestOptions.vectorizedScanner {
+		createTemporaryStageStmt = fmt.Sprintf(createTemporaryStageTmpl, vectorizedScannerOption)
+	} else {
+		createTemporaryStageStmt = fmt.Sprintf(createTemporaryStageTmpl, "")
+	}
 	_, err = st.cnxn.cn.ExecContext(ctx, createTemporaryStageStmt, nil)
 	if err != nil {
 		return

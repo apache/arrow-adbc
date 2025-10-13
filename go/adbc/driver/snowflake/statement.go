@@ -46,7 +46,7 @@ const (
 	OptionStatementIngestTargetFileSize    = "adbc.snowflake.statement.ingest_target_file_size"
 	OptionStatementIngestCompressionCodec  = "adbc.snowflake.statement.ingest_compression_codec" // TODO(GH-1473): Implement option
 	OptionStatementIngestCompressionLevel  = "adbc.snowflake.statement.ingest_compression_level" // TODO(GH-1473): Implement option
-	OptionStatementVectorizedScanner       = "adbc.snowflake.statement.use_vectorized_scanner"
+	OptionStatementVectorizedScanner       = "adbc.snowflake.statement.ingest_use_vectorized_scanner"
 )
 
 type statement struct {
