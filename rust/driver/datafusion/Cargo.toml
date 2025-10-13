@@ -36,8 +36,8 @@ adbc_ffi = { workspace = true, optional = true }
 arrow-array = "56.2.0"
 arrow-buffer = "56.2.0"
 arrow-schema = "56.2.0"
-datafusion = { version = "50.0.0", default-features = false }
-datafusion-substrait = { version = "50.0.0", default-features = false }
+datafusion = { version = "50.2.0", default-features = false }
+datafusion-substrait = { version = "50.2.0", default-features = false }
 tokio = { version = "1.47", features = ["rt-multi-thread"] }
 prost = "0.13.5"
 
