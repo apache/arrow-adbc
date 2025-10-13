@@ -40,7 +40,7 @@ adbc_ffi.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
 libloading = "0.8"
-toml = { version = "0.9.7", default-features = false, features = [
+toml = { version = "0.9.8", default-features = false, features = [
     "parse",
     "display",
 ] }
