@@ -84,12 +84,10 @@ graph TB
   - `POST /api/2.0/sql/statements/{statement_id}/cancel` - Cancel statement
 
 ### Key Advantages of Statement Execution API
-1. **Native Arrow Support**: `ARROW_STREAM` format directly compatible with ADBC
-2. **External Links**: Leverages Cloud Fetch technology (12x improvement over inline)
-3. **Simpler Protocol**: Standard REST/JSON vs complex Thrift binary protocol
-4. **Better Performance**: Optimized for large result sets with presigned S3/Azure URLs
-5. **Modern Authentication**: Built for OAuth 2.0 and service principals
-6. **Flexible Disposition**: INLINE (≤25 MiB) or EXTERNAL_LINKS (≤100 GiB)
+1. **Simpler Protocol**: Standard REST/JSON vs complex Thrift binary protocol
+2. **Better Performance**: Optimized for large result sets with presigned S3/Azure URLs
+3. **Modern Authentication**: Built for OAuth 2.0 and service principals
+4. **Flexible Disposition**: INLINE (≤25 MiB) or EXTERNAL_LINKS (≤100 GiB)
 
 ## Design Goals
 
