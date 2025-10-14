@@ -695,14 +695,6 @@ jobs:
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
-      - name: Test wheel 3.9
-        env:
-          ARCH: ${{ matrix.arch }}
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          pushd adbc
-          env PYTHON=3.9 docker compose run python-wheel-manylinux-test
-
       - name: Test wheel 3.10
         env:
           ARCH: ${{ matrix.arch }}
@@ -735,6 +727,14 @@ jobs:
           pushd adbc
           env PYTHON=3.13 docker compose run python-wheel-manylinux-test
 
+      # - name: Test wheel 3.14
+      #   env:
+      #     ARCH: ${{ matrix.arch }}
+      #     PLATFORM: ${{ matrix.platform }}
+      #   run: |
+      #     pushd adbc
+      #     env PYTHON=3.14 docker compose run python-wheel-manylinux-test
+
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
     runs-on: ${{ matrix.os }}
@@ -751,7 +751,7 @@ jobs:
             arch: arm64v8
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
-      PYTHON: "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10"
+      PYTHON: "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
@@ -807,13 +807,6 @@ jobs:
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
 
-      - name: Install Python (AMD64 only)
-        if: matrix.arch == 'amd64'
-        run: |
-          pushd adbc
-          sudo ci/scripts/install_python.sh macos 3.9
-          popd
-
       - name: Install Python
         run: |
           pushd adbc
@@ -821,6 +814,7 @@ jobs:
           sudo ci/scripts/install_python.sh macos 3.11
           sudo ci/scripts/install_python.sh macos 3.12
           sudo ci/scripts/install_python.sh macos 3.13
+          # sudo ci/scripts/install_python.sh macos 3.14
           popd
 
       - name: Downgrade XCode
@@ -852,17 +846,6 @@ jobs:
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
-
-      - name: Test wheel 3.9
-        if: matrix.arch == 'amd64'
-        run: |
-          pushd adbc
-
-          /Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9 -m venv test-env-39
-          source test-env-39/bin/activate
-          export PYTHON_VERSION=3.9
-          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
-          deactivate
 
       - name: Test wheel 3.10
         run: |
@@ -904,6 +887,16 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
+      # - name: Test wheel 3.14
+      #   run: |
+      #     pushd adbc
+
+      #     /Library/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -m venv test-env-314
+      #     source test-env-314/bin/activate
+      #     export PYTHON_VERSION=3.14
+      #     ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+      #     deactivate
+
       - name: Assemble logs
         if: failure()
         run: |
@@ -931,7 +924,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python_version: ["3.10", "3.11", "3.12", "3.13"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg

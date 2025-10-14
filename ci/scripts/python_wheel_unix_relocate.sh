@@ -56,7 +56,7 @@ fi
 echo "=== Relocating wheels ==="
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
-python -m pip install --upgrade pip auditwheel 'cibuildwheel>=2.21.2' delocate setuptools wheel
+python -m pip install --upgrade pip auditwheel 'cibuildwheel>3' delocate setuptools wheel
 
 # Build with Cython debug info
 export ADBC_BUILD_TYPE="debug"
