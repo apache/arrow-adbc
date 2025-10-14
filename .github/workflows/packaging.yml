@@ -735,6 +735,15 @@ jobs:
       #     pushd adbc
       #     env PYTHON=3.14 docker compose run python-wheel-manylinux-test
 
+      # TODO(lidavidm): once we support 3.14, only test 3.14t
+      - name: Test wheel 3.13t
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.13t docker compose run python-wheel-manylinux-freethreaded-test
+
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
     runs-on: ${{ matrix.os }}

@@ -18,21 +18,12 @@
 import pathlib
 
 import pandas
-import polars
-import polars.testing
 import pyarrow
 import pyarrow.dataset
 import pytest
 from pandas.testing import assert_frame_equal
 
 from adbc_driver_manager import dbapi
-
-
-@pytest.fixture
-def sqlite():
-    """Dynamically load the SQLite driver."""
-    with dbapi.connect(driver="adbc_driver_sqlite") as conn:
-        yield conn
 
 
 def test_type_objects():
@@ -272,22 +263,6 @@ def test_query_fetch_df(sqlite):
         assert_frame_equal(
             cur.fetch_df(),
             pandas.DataFrame(
-                {
-                    "1": [1],
-                    "foo": ["foo"],
-                    "2.0": [2.0],
-                }
-            ),
-        )
-
-
-@pytest.mark.sqlite
-def test_query_fetch_polars(sqlite):
-    with sqlite.cursor() as cur:
-        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
-        polars.testing.assert_frame_equal(
-            cur.fetch_polars(),
-            polars.DataFrame(
                 {
                     "1": [1],
                     "foo": ["foo"],

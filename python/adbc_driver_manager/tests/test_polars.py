@@ -15,31 +15,23 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# cython: language_level = 3
-# cython: freethreading_compatible=True
+import pytest
 
-"""
-For debugging, install crash handlers that print a backtrace.
-"""
-
-import threading
-
-cdef extern from "backward.hpp" nogil:
-    cdef struct CSignalHandling"backward::SignalHandling":
-        pass
+polars = pytest.importorskip("polars")
+polars.testing = pytest.importorskip("polars.testing")
 
 
-cdef class _SignalHandling:
-    cdef CSignalHandling _c_signal_handler
-
-
-_CRASH_HANDLER = None
-_CRASH_HANDLER_LOCK = threading.Lock()
-
-
-def _install_crash_handler():
-    global _CRASH_HANDLER
-    with _CRASH_HANDLER_LOCK:
-        if _CRASH_HANDLER:
-            return
-        _CRASH_HANDLER = _SignalHandling()
+@pytest.mark.sqlite
+def test_query_fetch_polars(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
+        polars.testing.assert_frame_equal(
+            cur.fetch_polars(),
+            polars.DataFrame(
+                {
+                    "1": [1],
+                    "foo": ["foo"],
+                    "2.0": [2.0],
+                }
+            ),
+        )
