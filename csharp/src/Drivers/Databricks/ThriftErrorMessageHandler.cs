@@ -62,10 +62,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         // Create a custom exception that includes both the HTTP status and the Thrift error message
                         string errorMessage = $"Thrift server error: {thriftErrorMessage} (HTTP {(int)response.StatusCode} {response.ReasonPhrase})";
 
+                        // Capture the status code before disposing
+                        var statusCode = response.StatusCode;
+
                         // Dispose the response before throwing
                         response.Dispose();
 
+#if NET5_0_OR_GREATER
+                        throw new HttpRequestException(errorMessage, null, statusCode);
+#else
                         throw new HttpRequestException(errorMessage);
+#endif
                     }
                 }
             }
