@@ -15,31 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# cython: language_level = 3
-# cython: freethreading_compatible=True
+import typing
 
-"""
-For debugging, install crash handlers that print a backtrace.
-"""
+import pytest
 
-import threading
-
-cdef extern from "backward.hpp" nogil:
-    cdef struct CSignalHandling"backward::SignalHandling":
-        pass
+from adbc_driver_manager import dbapi
 
 
-cdef class _SignalHandling:
-    cdef CSignalHandling _c_signal_handler
-
-
-_CRASH_HANDLER = None
-_CRASH_HANDLER_LOCK = threading.Lock()
-
-
-def _install_crash_handler():
-    global _CRASH_HANDLER
-    with _CRASH_HANDLER_LOCK:
-        if _CRASH_HANDLER:
-            return
-        _CRASH_HANDLER = _SignalHandling()
+@pytest.fixture
+def sqlite() -> typing.Generator[dbapi.Connection, None, None]:
+    with dbapi.connect(driver="adbc_driver_sqlite") as conn:
+        yield conn

@@ -209,6 +209,13 @@ services:
       - .:/adbc:delegated
     command: /adbc/ci/scripts/python_wheel_unix_test.sh /adbc
 
+  python-wheel-manylinux-freethreaded-test:
+    image: ghcr.io/astral-sh/uv:trixie-slim
+    platform: ${PLATFORM}
+    volumes:
+      - .:/adbc:delegated
+    command: bash -c 'uv venv --python ${PYTHON} && source ./.venv/bin/activate && python -m ensurepip && PYTHON_GIL=0 /adbc/ci/scripts/python_wheel_unix_test.sh /adbc'
+
   ###################### Test database environments ############################
 
   dremio:
