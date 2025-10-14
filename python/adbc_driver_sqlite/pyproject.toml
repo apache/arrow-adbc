@@ -22,7 +22,7 @@ authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = "Apache-2.0"
 license-files = ["LICENSE.txt", "NOTICE.txt"]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = ["version"]
 dependencies = [
     "adbc-driver-manager",
