@@ -554,6 +554,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
             HttpMessageHandler baseAuthHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
 
+            // Add Thrift error message handler first (innermost) to capture x-thriftserver-error-message headers
+            baseHandler = new ThriftErrorMessageHandler(baseHandler);
+            baseAuthHandler = new ThriftErrorMessageHandler(baseAuthHandler);
+
             // Add tracing handler to propagate W3C trace context if enabled
             if (_tracePropagationEnabled)
             {
