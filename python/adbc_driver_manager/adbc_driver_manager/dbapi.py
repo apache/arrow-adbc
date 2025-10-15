@@ -386,6 +386,22 @@ class Connection(_Closeable):
     # API Extensions
     # ------------------------------------------------------------
 
+    def execute(
+        self,
+        operation: Union[bytes, str],
+        parameters=None,
+        *,
+        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> "Cursor":
+        """
+        Execute a query on a new cursor.
+
+        This is a convenience for creating a new cursor and executing a query.
+        """
+        return self.cursor(adbc_stmt_kwargs=adbc_stmt_kwargs).execute(
+            operation, parameters
+        )
+
     def adbc_cancel(self) -> None:
         """
         Cancel any ongoing operations on this connection.
@@ -723,7 +739,7 @@ class Cursor(_Closeable):
                 )
                 self._bind_by_name = False
 
-    def execute(self, operation: Union[bytes, str], parameters=None) -> None:
+    def execute(self, operation: Union[bytes, str], parameters=None) -> "Self":
         """
         Execute a query.
 
@@ -744,6 +760,11 @@ class Cursor(_Closeable):
 
             Note that providing a list of tuples is not supported (this mode
             of usage is deprecated in DBAPI-2.0; use executemany() instead).
+
+        Returns
+        -------
+        Self
+            This cursor (to enable chaining).
         """
         self._clear()
         self._prepare_execute(operation, parameters)
@@ -752,6 +773,7 @@ class Cursor(_Closeable):
             self._stmt.execute_query, (), {}, self._stmt.cancel
         )
         self._results = _RowIterator(self._stmt, handle)
+        return self
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
         """
@@ -775,6 +797,8 @@ class Cursor(_Closeable):
         -----
         Allowing ``None`` for parameters is outside of the DB-API
         specification.
+
+        This does not return ``self`` as there is no result set.
         """
         self._clear()
         if operation != self._last_query:
