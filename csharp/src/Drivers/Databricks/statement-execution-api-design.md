@@ -623,53 +623,28 @@ Handles REST API communication:
 internal class StatementExecutionClient
 {
     private readonly HttpClient _httpClient;
-    private readonly string _baseUrl; // https://{workspace}.databricks.com
+    private readonly string _baseUrl;
 
     // Session Management
-
-    // Create session (POST /api/2.0/sql/sessions)
-    Task<CreateSessionResponse> CreateSessionAsync(
-        CreateSessionRequest request,
-        CancellationToken cancellationToken);
-
-    // Delete session (DELETE /api/2.0/sql/sessions/{session_id})
-    Task DeleteSessionAsync(
-        string sessionId,
-        CancellationToken cancellationToken);
+    Task<CreateSessionResponse> CreateSessionAsync(CreateSessionRequest request, ...);
+    Task DeleteSessionAsync(string sessionId, ...);
 
     // Statement Execution
-
-    // Execute statement (POST /api/2.0/sql/statements)
-    Task<ExecuteStatementResponse> ExecuteStatementAsync(
-        ExecuteStatementRequest request,
-        CancellationToken cancellationToken);
-
-    // Get statement status/results (GET /api/2.0/sql/statements/{id})
-    Task<GetStatementResponse> GetStatementAsync(
-        string statementId,
-        CancellationToken cancellationToken);
-
-    // Get result chunk - fetches external links for a specific chunk
-    // (GET /api/2.0/sql/statements/{id}/result/chunks/{index})
-    // Returns ResultData containing external_links for the chunk
-    Task<ResultData> GetResultChunkAsync(
-        string statementId,
-        long chunkIndex,
-        CancellationToken cancellationToken);
-
-    // Cancel statement (POST /api/2.0/sql/statements/{id}/cancel)
-    Task CancelStatementAsync(
-        string statementId,
-        CancellationToken cancellationToken);
-
-    // Close statement (DELETE /api/2.0/sql/statements/{id})
-    Task CloseStatementAsync(
-        string statementId,
-        CancellationToken cancellationToken);
+    Task<ExecuteStatementResponse> ExecuteStatementAsync(ExecuteStatementRequest request, ...);
+    Task<GetStatementResponse> GetStatementAsync(string statementId, ...);
+    Task<ResultData> GetResultChunkAsync(string statementId, long chunkIndex, ...);
+    Task CancelStatementAsync(string statementId, ...);
+    Task CloseStatementAsync(string statementId, ...);
 }
 ```
 
-**Request/Response Models:**
+**Key API Endpoints:**
+- `POST /api/2.0/sql/sessions` - Create session
+- `POST /api/2.0/sql/statements` - Execute statement
+- `GET /api/2.0/sql/statements/{id}` - Get status/results
+- `GET /api/2.0/sql/statements/{id}/result/chunks/{index}` - Get chunk (incremental fetching)
+
+**Key Models:**
 
 ```csharp
 // Session Management Models
@@ -2146,299 +2121,106 @@ private ICloudFetchDownloadManager CreateDownloadManager(
 
 ### Motivation
 
-Both `CloudFetchResultFetcher` (Thrift) and `StatementExecutionResultFetcher` (REST) share significant common logic:
+Both Thrift and REST result fetchers share common patterns:
+- Background task that populates download queue
+- Error handling and completion signaling
+- Queue management with `BlockingCollection<IDownloadResult>`
+- Memory management via `ICloudFetchMemoryBufferManager`
 
-| **Common Logic** | **Description** |
-|------------------|-----------------|
-| Background Task | Both run async background tasks to fetch results |
-| Queue Management | Both populate `BlockingCollection<IDownloadResult>` |
-| Error Handling | Both catch exceptions and signal completion |
-| Completion Signaling | Both add `EndOfResultsGuard` when done |
-| Memory Management | Both interact with `ICloudFetchMemoryBufferManager` |
+**Key Difference**: Only the *fetching mechanism* differs:
+- **Thrift**: Incremental RPC calls (`FetchNextResultBatchAsync`)
+- **REST**: Manifest iteration with on-demand chunk fetching (`GetResultChunkAsync`)
 
-The **only difference** is *how* they fetch results:
-- **Thrift**: Incremental RPC calls via `FetchNextResultBatchAsync()`
-- **REST**: Iterate through manifest, fetch chunks on-demand via `GetResultChunkAsync()`
+### Refactoring Approach
 
-### Refactoring Approach: Extract Base Class
-
-To eliminate code duplication and improve maintainability, we extract common fetching logic into a `BaseResultFetcher` abstract class:
+Extract common logic into `BaseResultFetcher` abstract base class:
 
 ```csharp
-/// <summary>
-/// Base class for result fetchers that incrementally fetch results and populate download queue.
-/// Handles common logic: background task, queue management, error handling, completion signaling.
-/// </summary>
 internal abstract class BaseResultFetcher : ICloudFetchResultFetcher
 {
     protected readonly BlockingCollection<IDownloadResult> _downloadQueue;
     protected readonly ICloudFetchMemoryBufferManager _memoryManager;
     protected volatile bool _isCompleted;
-    protected volatile bool _stopRequested;
     protected Exception? _error;
-    protected Task? _fetchTask;
-    protected CancellationTokenSource? _cancellationTokenSource;
 
-    protected BaseResultFetcher(
-        BlockingCollection<IDownloadResult> downloadQueue,
-        ICloudFetchMemoryBufferManager memoryManager)
+    public Task StartAsync(CancellationToken ct)
     {
-        _downloadQueue = downloadQueue;
-        _memoryManager = memoryManager;
+        // Start background task that calls FetchAllResultsAsync()
+        // Wrap with error handling and completion signaling
     }
 
-    // ICloudFetchResultFetcher implementation (common to both protocols)
-
-    public Task StartAsync(CancellationToken cancellationToken)
+    public Task StopAsync()
     {
-        _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _fetchTask = Task.Run(() => FetchResultsWithErrorHandlingAsync(_cancellationTokenSource.Token));
-        return Task.CompletedTask;
+        // Cancel background task and cleanup
     }
 
-    public async Task StopAsync()
+    // Protocol-specific: implemented by subclasses
+    protected abstract Task FetchAllResultsAsync(CancellationToken ct);
+
+    // Helper for subclasses
+    protected void AddDownloadResult(IDownloadResult result, CancellationToken ct)
     {
-        _stopRequested = true;
-        _cancellationTokenSource?.Cancel();
-
-        if (_fetchTask != null)
-        {
-            try
-            {
-                await _fetchTask;
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected on cancellation
-            }
-        }
-    }
-
-    public bool IsCompleted => _isCompleted;
-    public bool HasError => _error != null;
-    public Exception? Error => _error;
-
-    // Common error handling wrapper
-    private async Task FetchResultsWithErrorHandlingAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await FetchAllResultsAsync(cancellationToken);
-
-            // Add end of results guard
-            _downloadQueue.Add(EndOfResultsGuard.Instance, cancellationToken);
-            _isCompleted = true;
-        }
-        catch (OperationCanceledException) when (_stopRequested)
-        {
-            // Normal cancellation due to stop request
-            _isCompleted = true;
-            _downloadQueue.TryAdd(EndOfResultsGuard.Instance, 0);
-        }
-        catch (Exception ex)
-        {
-            _error = ex;
-            _isCompleted = true;
-            _downloadQueue.TryAdd(EndOfResultsGuard.Instance, 0);
-        }
-    }
-
-    // Protocol-specific implementation (must be overridden by subclasses)
-
-    /// <summary>
-    /// Fetch all results and add them to the download queue.
-    /// This method is protocol-specific and must be implemented by subclasses.
-    /// </summary>
-    protected abstract Task FetchAllResultsAsync(CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Helper method to add a download result to the queue with memory management.
-    /// </summary>
-    protected void AddDownloadResult(IDownloadResult downloadResult, CancellationToken cancellationToken)
-    {
-        _downloadQueue.Add(downloadResult, cancellationToken);
+        _downloadQueue.Add(result, ct);
     }
 }
 ```
 
-### Refactored Thrift Implementation
-
+**Thrift Implementation** (~60 lines, down from 200):
 ```csharp
-/// <summary>
-/// Thrift-based result fetcher using incremental RPC calls.
-/// </summary>
 internal class CloudFetchResultFetcher : BaseResultFetcher
 {
-    private readonly IHiveServer2Statement _statement;
-    private readonly TFetchResultsResp _initialResults;
-
-    public CloudFetchResultFetcher(
-        IHiveServer2Statement statement,
-        TFetchResultsResp initialResults,
-        BlockingCollection<IDownloadResult> downloadQueue,
-        ICloudFetchMemoryBufferManager memoryManager)
-        : base(downloadQueue, memoryManager)
-    {
-        _statement = statement;
-        _initialResults = initialResults;
-    }
-
-    protected override async Task FetchAllResultsAsync(CancellationToken cancellationToken)
+    protected override async Task FetchAllResultsAsync(CancellationToken ct)
     {
         // Process initial results
-        if (_initialResults.ResultLinks != null)
-        {
-            foreach (var link in _initialResults.ResultLinks)
-            {
-                var downloadResult = DownloadResult.FromThriftLink(link, _memoryManager);
-                AddDownloadResult(downloadResult, cancellationToken);
-            }
-        }
+        foreach (var link in _initialResults.ResultLinks)
+            AddDownloadResult(DownloadResult.FromThriftLink(link), ct);
 
-        // Fetch remaining batches incrementally
-        bool hasMoreResults = _initialResults.HasMoreRows;
+        // Loop: fetch more batches via RPC
         while (hasMoreResults && !_stopRequested)
         {
-            var batch = await _statement.FetchNextResultBatchAsync(cancellationToken);
-
-            if (batch.ResultLinks != null)
-            {
-                foreach (var link in batch.ResultLinks)
-                {
-                    var downloadResult = DownloadResult.FromThriftLink(link, _memoryManager);
-                    AddDownloadResult(downloadResult, cancellationToken);
-                }
-            }
-
-            hasMoreResults = batch.HasMoreRows;
+            var batch = await _statement.FetchNextResultBatchAsync(ct);
+            foreach (var link in batch.ResultLinks)
+                AddDownloadResult(DownloadResult.FromThriftLink(link), ct);
         }
     }
-
-    // Thrift-specific: URL refresh for expiring presigned URLs
-    public Task<TSparkArrowResultLink?> GetUrlAsync(long offset, CancellationToken cancellationToken)
-    {
-        return _statement.RefreshResultLinkAsync(offset, cancellationToken);
-    }
-
-    public bool HasMoreResults => !_isCompleted; // Thrift continuously fetches
 }
 ```
 
-### Refactored REST Implementation
-
+**REST Implementation** (~50 lines, down from 180):
 ```csharp
-/// <summary>
-/// REST-based result fetcher using manifest with optional incremental chunk fetching.
-/// </summary>
 internal class StatementExecutionResultFetcher : BaseResultFetcher
 {
-    private readonly StatementExecutionClient _client;
-    private readonly string _statementId;
-    private readonly ResultManifest _manifest;
-
-    public StatementExecutionResultFetcher(
-        StatementExecutionClient client,
-        string statementId,
-        ResultManifest manifest,
-        BlockingCollection<IDownloadResult> downloadQueue,
-        ICloudFetchMemoryBufferManager memoryManager)
-        : base(downloadQueue, memoryManager)
+    protected override async Task FetchAllResultsAsync(CancellationToken ct)
     {
-        _client = client;
-        _statementId = statementId;
-        _manifest = manifest;
-    }
-
-    protected override async Task FetchAllResultsAsync(CancellationToken cancellationToken)
-    {
-        // Process all chunks from manifest
+        // Iterate manifest chunks
         foreach (var chunk in _manifest.Chunks)
         {
-            if (_stopRequested)
-                break;
-
-            // Check if chunk has external links in manifest
-            if (chunk.ExternalLinks != null && chunk.ExternalLinks.Any())
+            if (chunk.ExternalLinks != null)
             {
-                // Links available upfront - use them directly
+                // Links in manifest - use directly
                 foreach (var link in chunk.ExternalLinks)
-                {
-                    var downloadResult = CreateDownloadResult(link, chunk);
-                    AddDownloadResult(downloadResult, cancellationToken);
-                }
+                    AddDownloadResult(CreateFromRestLink(link, chunk), ct);
             }
             else
             {
-                // Incremental chunk fetching: fetch external links on-demand
-                // This handles cases where manifest doesn't contain all links upfront
-                var resultData = await _client.GetResultChunkAsync(
-                    _statementId,
-                    chunk.ChunkIndex,
-                    cancellationToken);
-
-                if (resultData.ExternalLinks != null)
-                {
-                    foreach (var link in resultData.ExternalLinks)
-                    {
-                        var downloadResult = CreateDownloadResult(link, chunk);
-                        AddDownloadResult(downloadResult, cancellationToken);
-                    }
-                }
+                // Incremental fetch: get links for this chunk
+                var data = await _client.GetResultChunkAsync(_statementId, chunk.Index, ct);
+                foreach (var link in data.ExternalLinks)
+                    AddDownloadResult(CreateFromRestLink(link, chunk), ct);
             }
         }
     }
-
-    private DownloadResult CreateDownloadResult(ExternalLink link, ResultChunk chunk)
-    {
-        return new DownloadResult(
-            fileUrl: link.ExternalLinkUrl,
-            startRowOffset: chunk.RowOffset,
-            rowCount: chunk.RowCount,
-            byteCount: chunk.ByteCount,
-            expirationTime: DateTime.Parse(link.Expiration),
-            httpHeaders: link.HttpHeaders, // Pass custom headers if present
-            memoryManager: _memoryManager);
-    }
-
-    // REST-specific: No URL refresh needed (presigned URLs are long-lived)
-    public Task<TSparkArrowResultLink?> GetUrlAsync(long offset, CancellationToken cancellationToken)
-    {
-        throw new NotSupportedException("URL refresh not supported for Statement Execution API");
-    }
-
-    public bool HasMoreResults => false; // REST: All links known from manifest
 }
 ```
 
-### Benefits of Refactoring
+### Benefits
 
-| **Benefit** | **Description** |
-|-------------|-----------------|
-| **Code Reuse** | ~150 lines of common logic extracted to base class |
-| **Maintainability** | Changes to fetching logic only need to be made in one place |
-| **Consistency** | Both implementations handle errors, cancellation, and completion identically |
-| **Testability** | Base class can be unit tested independently with mock subclasses |
-| **Extensibility** | Easy to add future protocols (e.g., gRPC) by extending base class |
-
-### Comparison: Before vs After
-
-| **Aspect** | **Before Refactoring** | **After Refactoring** |
-|------------|------------------------|------------------------|
-| **Lines of Code** | Thrift: ~200 lines<br/>REST: ~180 lines | Base: ~80 lines<br/>Thrift: ~60 lines<br/>REST: ~50 lines |
-| **Duplication** | Queue management duplicated | Extracted to base class |
-| **Error Handling** | Duplicated try-catch blocks | Single implementation in base |
-| **Cancellation** | Duplicated cancellation logic | Single implementation in base |
-| **Testing** | Must test common logic twice | Test base class once |
-
-### Implementation Notes
-
-1. **Backward Compatibility**: Existing `CloudFetchResultFetcher` references remain compatible - just change inheritance from `ICloudFetchResultFetcher` to `BaseResultFetcher`
-
-2. **Interface Compliance**: `BaseResultFetcher` still implements `ICloudFetchResultFetcher`, so no changes needed to consumers
-
-3. **Abstract Method**: Only `FetchAllResultsAsync()` needs to be implemented by subclasses - everything else is inherited
-
-4. **Protocol-Specific Methods**: Methods like `GetUrlAsync()` and `HasMoreResults` remain protocol-specific (may throw `NotSupportedException` in REST)
+| **Metric** | **Before** | **After** | **Savings** |
+|------------|------------|-----------|-------------|
+| Lines of Code | Thrift: 200<br/>REST: 180 | Base: 80<br/>Thrift: 60<br/>REST: 50 | ~150 lines |
+| Duplication | High | None | All common logic in base |
+| Maintainability | Changes in 2 places | Changes in 1 place | 50% reduction |
+| Testability | Test both separately | Test base once | Fewer tests needed |
 
 ## Migration Path
 
