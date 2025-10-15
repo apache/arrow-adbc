@@ -31,6 +31,7 @@ using Apache.Arrow.Adbc.Drivers.Apache.Hive2.Client;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Drivers.Databricks.Auth;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift.Protocol;
@@ -100,6 +101,34 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             ValidateProperties();
         }
 
+        private void LogConnectionProperties(Activity? activity)
+        {
+            if (activity == null) return;
+
+            activity.AddEvent("connection.properties.start");
+
+            foreach (var kvp in Properties)
+            {
+                string key = kvp.Key;
+                string value = kvp.Value;
+
+                // Sanitize sensitive properties - only mask actual credentials/tokens, not configuration
+                bool isSensitive = key.IndexOf("password", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                   key.IndexOf("secret", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                   key.Equals(AdbcOptions.Password, StringComparison.OrdinalIgnoreCase) ||
+                                   key.Equals(SparkParameters.AccessToken, StringComparison.OrdinalIgnoreCase) ||
+                                   key.Equals(DatabricksParameters.OAuthClientSecret, StringComparison.OrdinalIgnoreCase);
+
+                string logValue = isSensitive ? "***" : value;
+
+                activity.SetTag(key, logValue);
+            }
+
+            activity.AddEvent("connection.properties.end", [
+                new("total_properties", Properties.Count)
+            ]);
+        }
+
         public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
         {
             IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
@@ -107,6 +136,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             //tags ??= [];
             //tags.Concat([new("key", "value")]);
             return tags;
+        }
+
+        internal new async Task OpenAsync()
+        {
+            await this.TraceActivity(async activity =>
+            {
+                // Log driver information at the beginning of the connection
+                activity?.AddEvent("connection.driver.info", [
+                    new("driver.name", "Apache Arrow ADBC Databricks Driver"),
+                    new("driver.version", s_assemblyVersion),
+                    new("driver.assembly", s_assemblyName)
+                ]);
+
+                // Log connection properties (sanitize sensitive values)
+                LogConnectionProperties(activity);
+
+                // Call base implementation to complete the connection
+                await ((HiveServer2Connection)this).OpenAsync();
+            }, "OpenAsync");
         }
 
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
@@ -675,10 +723,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 CanUseMultipleCatalogs = _enableMultipleCatalogSupport,
             };
 
+            // Log OpenSession request details
+            Activity.Current?.AddEvent("connection.open_session_request.creating");
+            Activity.Current?.SetTag("connection.client_protocol", req.Client_protocol.ToString());
+            Activity.Current?.SetTag("connection.client_protocol_version", (long)req.Client_protocol);
+            Activity.Current?.SetTag("connection.can_use_multiple_catalogs", _enableMultipleCatalogSupport);
+
             // Set default namespace if available
             if (_defaultNamespace != null)
             {
                 req.InitialNamespace = _defaultNamespace;
+                Activity.Current?.SetTag("connection.initial_namespace.catalog", _defaultNamespace.CatalogName ?? "(none)");
+                Activity.Current?.SetTag("connection.initial_namespace.schema", _defaultNamespace.SchemaName ?? "(none)");
             }
             req.Configuration = new Dictionary<string, string>();
             // merge timestampConfig with serverSideProperties
@@ -695,31 +751,95 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     req.Configuration[property.Key] = property.Value;
                 }
             }
+
+            Activity.Current?.SetTag("connection.configuration_count", req.Configuration.Count);
+            Activity.Current?.AddEvent("connection.open_session_request.created");
+
             return req;
         }
 
         protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
         {
+            activity?.AddEvent("connection.open_session_response.received");
+
             await base.HandleOpenSessionResponse(session, activity);
+
             if (session != null)
             {
                 var version = session.ServerProtocolVersion;
+
+                // Log server protocol version
+                activity?.SetTag("connection.server_protocol_version", version.ToString());
+                activity?.SetTag("connection.server_protocol_version_value", (int)version);
+
+                // Validate it's a Databricks server
                 if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version))
                 {
+                    activity?.SetTag("error.type", "InvalidServerProtocol");
+                    activity?.SetTag("error.message", "Non-Databricks server detected");
                     throw new DatabricksException("Attempted to use databricks driver with a non-databricks server");
                 }
-                _enablePKFK = _enablePKFK && FeatureVersionNegotiator.SupportsPKFK(version);
+
+                // Log protocol version capabilities (what the server supports)
+                bool protocolSupportsPKFK = FeatureVersionNegotiator.SupportsPKFK(version);
+                bool protocolSupportsDescTableExtended = FeatureVersionNegotiator.SupportsDESCTableExtended(version);
+
+                activity?.AddEvent("connection.protocol_capabilities", [
+                    new("protocol.supports_pk_fk", protocolSupportsPKFK),
+                    new("protocol.supports_desc_table_extended", protocolSupportsDescTableExtended)
+                ]);
+
+                // Apply protocol constraints to user settings
+                bool pkfkBefore = _enablePKFK;
+                _enablePKFK = _enablePKFK && protocolSupportsPKFK;
+
+                if (pkfkBefore && !_enablePKFK)
+                {
+                    activity?.AddEvent("connection.feature_downgrade.pk_fk", [
+                        new("reason", "Protocol version does not support PK/FK"),
+                        new("requested", pkfkBefore),
+                        new("actual", _enablePKFK)
+                    ]);
+                }
+
+                // Handle multiple catalog support from server response
                 _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
+
+                activity?.AddEvent("connection.final_feature_flags", [
+                    new(DatabricksParameters.EnablePKFK, _enablePKFK),
+                    new(DatabricksParameters.EnableMultipleCatalogSupport, _enableMultipleCatalogSupport),
+                    new(DatabricksParameters.EnableDirectResults, _enableDirectResults),
+                    new(DatabricksParameters.UseCloudFetch, _useCloudFetch),
+                    new(DatabricksParameters.UseDescTableExtended, _useDescTableExtended),
+                    new(DatabricksParameters.EnableRunAsyncInThriftOp, _runAsyncInThrift)
+                ]);
+
+                // Handle default namespace
                 if (session.__isset.initialNamespace)
                 {
                     _defaultNamespace = session.InitialNamespace;
+                    activity?.AddEvent("connection.namespace.set_from_server", [
+                        new("catalog", _defaultNamespace.CatalogName ?? "(none)"),
+                        new("schema", _defaultNamespace.SchemaName ?? "(none)")
+                    ]);
                 }
                 else if (_defaultNamespace != null && !string.IsNullOrEmpty(_defaultNamespace.SchemaName))
                 {
                     // catalog in namespace is introduced when SET CATALOG is introduced, so we don't need to fallback
                     // server version is too old. Explicitly set the schema using queries
+                    activity?.AddEvent("connection.namespace.fallback_to_use_schema", [
+                        new("schema_name", _defaultNamespace.SchemaName),
+                        new("reason", "Server does not support initialNamespace in OpenSessionResp")
+                    ]);
                     await SetSchema(_defaultNamespace.SchemaName);
                 }
+
+                activity?.AddEvent("connection.open_session_response.completed");
+            }
+            else
+            {
+                activity?.SetTag("error.type", "NullSessionResponse");
+                activity?.AddEvent("connection.open_session_response.null");
             }
         }
 
