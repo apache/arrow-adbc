@@ -432,6 +432,7 @@ may leak.  Cursors can be used as context managers to accomplish this.</p>
 <p>We can execute a query and get the results via the normal,
 row-oriented DBAPI interface:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1, 2.0, &#39;Hello, world!&#39;&quot;</span><span class="p">)</span>
+<span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
 <span class="go">(1, 2.0, &#39;Hello, world!&#39;)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
@@ -439,6 +440,7 @@ row-oriented DBAPI interface:</p>
 </div>
 <p>We can also get the results as Arrow data via a non-standard method:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1, 2.0, &#39;Hello, world!&#39;&quot;</span><span class="p">)</span>
+<span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">()</span>
 <span class="go">pyarrow.Table</span>
 <span class="go">1: int64</span>
@@ -455,6 +457,7 @@ row-oriented DBAPI interface:</p>
 <h3>Parameterized Queries<a class="headerlink" href="#parameterized-queries" title="Link to this heading">¶</a></h3>
 <p>We can bind parameters in our queries:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT ? + 1 AS the_answer&quot;</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">(</span><span class="mi">41</span><span class="p">,))</span>
+<span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">()</span>
 <span class="go">pyarrow.Table</span>
 <span class="go">the_answer: int64</span>
@@ -473,6 +476,7 @@ table of Arrow data into a new database table:</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span>
 <span class="go">2</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(DISTINCT ints) FROM sample&quot;</span><span class="p">)</span>
+<span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
 <span class="go">[(2,)]</span>
 </pre></div>
@@ -482,6 +486,7 @@ table of Arrow data into a new database table:</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">)</span>
 <span class="go">2</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(DISTINCT ints) FROM sample&quot;</span><span class="p">)</span>
+<span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
 <span class="go">[(3,)]</span>
 </pre></div>

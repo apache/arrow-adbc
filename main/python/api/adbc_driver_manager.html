@@ -1564,7 +1564,10 @@ cannot be disabled.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.cursor" title="adbc_driver_manager.dbapi.Connection.cursor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cursor</span></code></a>(*[, adbc_stmt_kwargs])</p></td>
 <td><p>Create a new cursor for querying the database.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.rollback" title="adbc_driver_manager.dbapi.Connection.rollback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rollback</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.execute" title="adbc_driver_manager.dbapi.Connection.execute"><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute</span></code></a>(operation[, parameters, ...])</p></td>
+<td><p>Execute a query on a new cursor.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.rollback" title="adbc_driver_manager.dbapi.Connection.rollback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rollback</span></code></a>()</p></td>
 <td><p>Explicitly rollback.</p></td>
 </tr>
 </tbody>
@@ -1709,6 +1712,13 @@ connections.</p>
 </dl>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Connection.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><span class="pre">bytes</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">adbc_stmt_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.dbapi.Cursor" title="adbc_driver_manager.dbapi.Cursor"><span class="pre">Cursor</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Connection.execute" title="Link to this definition">¶</a></dt>
+<dd><p>Execute a query on a new cursor.</p>
+<p>This is a convenience for creating a new cursor and executing a query.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1984,7 +1994,7 @@ could not be determined.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Cursor.execute">
-<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><span class="pre">bytes</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.execute" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><span class="pre">bytes</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Cursor.execute" title="Link to this definition">¶</a></dt>
 <dd><p>Execute a query.</p>
 <dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -2001,6 +2011,12 @@ which will each be bound in turn).</p>
 statement option “adbc.statement.bind_by_name”.</p>
 <p>Note that providing a list of tuples is not supported (this mode
 of usage is deprecated in DBAPI-2.0; use executemany() instead).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>Self</dt><dd><p>This cursor (to enable chaining).</p>
 </dd>
 </dl>
 </dd>
@@ -2030,6 +2046,7 @@ executing the query at all.)</p>
 <p class="rubric">Notes</p>
 <p>Allowing <code class="docutils literal notranslate"><span class="pre">None</span></code> for parameters is outside of the DB-API
 specification.</p>
+<p>This does not return <code class="docutils literal notranslate"><span class="pre">self</span></code> as there is no result set.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -2495,6 +2512,7 @@ United States and other countries.
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.close"><code class="docutils literal notranslate"><span class="pre">Connection.close()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.commit"><code class="docutils literal notranslate"><span class="pre">Connection.commit()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.cursor"><code class="docutils literal notranslate"><span class="pre">Connection.cursor()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.execute"><code class="docutils literal notranslate"><span class="pre">Connection.execute()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.rollback"><code class="docutils literal notranslate"><span class="pre">Connection.rollback()</span></code></a></li>
 </ul>
 </li>
