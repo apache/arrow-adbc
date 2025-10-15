@@ -124,9 +124,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 activity.SetTag(key, logValue);
             }
 
-            activity.AddEvent("connection.properties.end", [
-                new("total_properties", Properties.Count)
-            ]);
+            activity.AddEvent("connection.properties.end");
         }
 
         public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
@@ -726,7 +724,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Log OpenSession request details
             Activity.Current?.AddEvent("connection.open_session_request.creating");
             Activity.Current?.SetTag("connection.client_protocol", req.Client_protocol.ToString());
-            Activity.Current?.SetTag("connection.client_protocol_version", (long)req.Client_protocol);
             Activity.Current?.SetTag("connection.can_use_multiple_catalogs", _enableMultipleCatalogSupport);
 
             // Set default namespace if available
@@ -770,7 +767,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 // Log server protocol version
                 activity?.SetTag("connection.server_protocol_version", version.ToString());
-                activity?.SetTag("connection.server_protocol_version_value", (int)version);
 
                 // Validate it's a Databricks server
                 if (!FeatureVersionNegotiator.IsDatabricksProtocolVersion(version))
