@@ -78,16 +78,22 @@ graph TB
 ### Statement Execution API
 - RESTful HTTP API using JSON/Arrow formats
 - Endpoints:
-  - `POST /api/2.0/sql/statements` - Execute statement
-  - `GET /api/2.0/sql/statements/{statement_id}` - Get statement status/results
-  - `GET /api/2.0/sql/statements/{statement_id}/result/chunks/{chunk_index}` - Get result chunk
-  - `POST /api/2.0/sql/statements/{statement_id}/cancel` - Cancel statement
+  - **Session Management**:
+    - `POST /api/2.0/sql/sessions` - Create session
+    - `DELETE /api/2.0/sql/sessions/{session_id}` - Delete session
+  - **Statement Execution**:
+    - `POST /api/2.0/sql/statements` - Execute statement
+    - `GET /api/2.0/sql/statements/{statement_id}` - Get statement status/results
+    - `GET /api/2.0/sql/statements/{statement_id}/result/chunks/{chunk_index}` - Get result chunk
+    - `POST /api/2.0/sql/statements/{statement_id}/cancel` - Cancel statement
+    - `DELETE /api/2.0/sql/statements/{statement_id}` - Close statement
 
 ### Key Advantages of Statement Execution API
 1. **Simpler Protocol**: Standard REST/JSON vs complex Thrift binary protocol
 2. **Better Performance**: Optimized for large result sets with presigned S3/Azure URLs
 3. **Modern Authentication**: Built for OAuth 2.0 and service principals
-4. **Flexible Disposition**: INLINE (≤25 MiB) or EXTERNAL_LINKS (≤100 GiB)
+4. **Flexible Disposition**: INLINE (≤25 MiB), EXTERNAL_LINKS (≤100 GiB), or INLINE_OR_EXTERNAL_LINKS (hybrid)
+5. **Session Support**: Explicit session management with session-level configuration
 
 ## Design Goals
 
@@ -554,7 +560,8 @@ public const string Protocol = "adbc.databricks.protocol";
 /// Result disposition for Statement Execution API.
 /// Supported values:
 /// - "inline": Results returned directly in response (≤25 MiB)
-/// - "external_links": Results via presigned URLs (≤100 GiB, default)
+/// - "external_links": Results via presigned URLs (≤100 GiB)
+/// - "inline_or_external_links": Hybrid mode - server decides based on size (default, recommended)
 /// </summary>
 public const string ResultDisposition = "adbc.databricks.result_disposition";
 
@@ -568,18 +575,44 @@ public const string ResultDisposition = "adbc.databricks.result_disposition";
 public const string ResultFormat = "adbc.databricks.result_format";
 
 /// <summary>
+/// Result compression codec for Statement Execution API.
+/// Supported values:
+/// - "lz4": LZ4 compression (default for external_links)
+/// - "gzip": GZIP compression
+/// - "none": No compression (default for inline)
+/// </summary>
+public const string ResultCompression = "adbc.databricks.result_compression";
+
+/// <summary>
 /// Wait timeout for statement execution in seconds.
 /// - 0: Async mode, return immediately
 /// - 5-50: Sync mode up to timeout
 /// Default: 10 seconds
+/// Note: When enable_direct_results=true, this parameter is not set (server waits until complete)
 /// </summary>
 public const string WaitTimeout = "adbc.databricks.wait_timeout";
+
+/// <summary>
+/// Enable direct results mode for Statement Execution API.
+/// When true, server waits until query completes before returning (no polling needed).
+/// When false, may need to poll for completion based on wait_timeout.
+/// Default: false
+/// </summary>
+public const string EnableDirectResults = "adbc.databricks.enable_direct_results";
 
 /// <summary>
 /// Statement polling interval in milliseconds for async execution.
 /// Default: 1000ms (1 second)
 /// </summary>
 public const string PollingInterval = "adbc.databricks.polling_interval_ms";
+
+/// <summary>
+/// Enable session management for Statement Execution API.
+/// When true, creates and reuses session across statements in a connection.
+/// When false, each statement executes without session context.
+/// Default: true
+/// </summary>
+public const string EnableSessionManagement = "adbc.databricks.enable_session_management";
 ```
 
 #### 2. **StatementExecutionClient** (New)
@@ -592,6 +625,20 @@ internal class StatementExecutionClient
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl; // https://{workspace}.databricks.com
 
+    // Session Management
+
+    // Create session (POST /api/2.0/sql/sessions)
+    Task<CreateSessionResponse> CreateSessionAsync(
+        CreateSessionRequest request,
+        CancellationToken cancellationToken);
+
+    // Delete session (DELETE /api/2.0/sql/sessions/{session_id})
+    Task DeleteSessionAsync(
+        string sessionId,
+        CancellationToken cancellationToken);
+
+    // Statement Execution
+
     // Execute statement (POST /api/2.0/sql/statements)
     Task<ExecuteStatementResponse> ExecuteStatementAsync(
         ExecuteStatementRequest request,
@@ -602,14 +649,21 @@ internal class StatementExecutionClient
         string statementId,
         CancellationToken cancellationToken);
 
-    // Get result chunk (GET /api/2.0/sql/statements/{id}/result/chunks/{index})
-    Task<Stream> GetResultChunkAsync(
+    // Get result chunk - fetches external links for a specific chunk
+    // (GET /api/2.0/sql/statements/{id}/result/chunks/{index})
+    // Returns ResultData containing external_links for the chunk
+    Task<ResultData> GetResultChunkAsync(
         string statementId,
-        int chunkIndex,
+        long chunkIndex,
         CancellationToken cancellationToken);
 
     // Cancel statement (POST /api/2.0/sql/statements/{id}/cancel)
     Task CancelStatementAsync(
+        string statementId,
+        CancellationToken cancellationToken);
+
+    // Close statement (DELETE /api/2.0/sql/statements/{id})
+    Task CloseStatementAsync(
         string statementId,
         CancellationToken cancellationToken);
 }
@@ -618,10 +672,38 @@ internal class StatementExecutionClient
 **Request/Response Models:**
 
 ```csharp
-public class ExecuteStatementRequest
+// Session Management Models
+
+public class CreateSessionRequest
 {
     [JsonPropertyName("warehouse_id")]
     public string WarehouseId { get; set; }
+
+    [JsonPropertyName("catalog")]
+    public string? Catalog { get; set; }
+
+    [JsonPropertyName("schema")]
+    public string? Schema { get; set; }
+
+    [JsonPropertyName("session_confs")]
+    public Dictionary<string, string>? SessionConfigs { get; set; }
+}
+
+public class CreateSessionResponse
+{
+    [JsonPropertyName("session_id")]
+    public string SessionId { get; set; }
+}
+
+// Statement Execution Models
+
+public class ExecuteStatementRequest
+{
+    [JsonPropertyName("warehouse_id")]
+    public string? WarehouseId { get; set; }
+
+    [JsonPropertyName("session_id")]
+    public string? SessionId { get; set; }
 
     [JsonPropertyName("statement")]
     public string Statement { get; set; }
@@ -636,19 +718,25 @@ public class ExecuteStatementRequest
     public List<StatementParameter>? Parameters { get; set; }
 
     [JsonPropertyName("disposition")]
-    public string Disposition { get; set; } // "inline" or "external_links"
+    public string Disposition { get; set; } // "inline", "external_links", or "inline_or_external_links"
 
     [JsonPropertyName("format")]
     public string Format { get; set; } // "arrow_stream", "json_array", "csv"
 
-    [JsonPropertyName("wait_timeout")]
-    public string WaitTimeout { get; set; } // "10s"
+    [JsonPropertyName("result_compression")]
+    public string? ResultCompression { get; set; } // "lz4", "gzip", "none"
 
-    [JsonPropertyName("byte_limit")]
-    public long? ByteLimit { get; set; }
+    [JsonPropertyName("wait_timeout")]
+    public string? WaitTimeout { get; set; } // "10s" - omit for direct results mode
 
     [JsonPropertyName("on_wait_timeout")]
     public string? OnWaitTimeout { get; set; } // "CONTINUE" or "CANCEL"
+
+    [JsonPropertyName("row_limit")]
+    public long? RowLimit { get; set; }
+
+    [JsonPropertyName("byte_limit")]
+    public long? ByteLimit { get; set; }
 }
 
 public class ExecuteStatementResponse
@@ -694,6 +782,15 @@ public class ResultManifest
 
     [JsonPropertyName("total_byte_count")]
     public long TotalByteCount { get; set; }
+
+    [JsonPropertyName("result_compression")]
+    public string? ResultCompression { get; set; } // "lz4", "gzip", "none"
+
+    [JsonPropertyName("truncated")]
+    public bool? Truncated { get; set; } // true if results were truncated by row_limit or byte_limit
+
+    [JsonPropertyName("is_volume_operation")]
+    public bool? IsVolumeOperation { get; set; } // true for Unity Catalog Volume operations
 }
 
 public class ResultChunk
@@ -710,13 +807,24 @@ public class ResultChunk
     [JsonPropertyName("byte_count")]
     public long ByteCount { get; set; }
 
-    // For EXTERNAL_LINKS
+    // For EXTERNAL_LINKS disposition
     [JsonPropertyName("external_links")]
     public List<ExternalLink>? ExternalLinks { get; set; }
 
-    // For INLINE
+    // For INLINE disposition
     [JsonPropertyName("data_array")]
     public List<List<object>>? DataArray { get; set; }
+
+    // Binary attachment (for special result types)
+    [JsonPropertyName("attachment")]
+    public byte[]? Attachment { get; set; }
+
+    // Next chunk navigation
+    [JsonPropertyName("next_chunk_index")]
+    public long? NextChunkIndex { get; set; }
+
+    [JsonPropertyName("next_chunk_internal_link")]
+    public string? NextChunkInternalLink { get; set; }
 }
 
 public class ExternalLink
@@ -728,10 +836,22 @@ public class ExternalLink
     public string Expiration { get; set; } // ISO 8601 timestamp
 
     [JsonPropertyName("chunk_index")]
-    public int ChunkIndex { get; set; }
+    public long ChunkIndex { get; set; }
+
+    [JsonPropertyName("row_count")]
+    public long RowCount { get; set; }
+
+    [JsonPropertyName("row_offset")]
+    public long RowOffset { get; set; }
+
+    [JsonPropertyName("byte_count")]
+    public long ByteCount { get; set; }
+
+    [JsonPropertyName("http_headers")]
+    public Dictionary<string, string>? HttpHeaders { get; set; } // Required for some cloud storage auth
 
     [JsonPropertyName("next_chunk_index")]
-    public int? NextChunkIndex { get; set; }
+    public long? NextChunkIndex { get; set; }
 
     [JsonPropertyName("next_chunk_internal_link")]
     public string? NextChunkInternalLink { get; set; }
@@ -748,17 +868,58 @@ internal class StatementExecutionConnection : AdbcConnection
     private readonly StatementExecutionClient _client;
     private readonly DatabricksConfiguration _config;
     private readonly string _warehouseId;
+    private string? _sessionId;
+    private bool _enableSessionManagement;
 
     public StatementExecutionConnection(IReadOnlyDictionary<string, string> properties)
     {
         // Parse properties
+        _warehouseId = ParseWarehouseId(properties);
+        _enableSessionManagement = ParseEnableSessionManagement(properties); // default: true
+
         // Create HttpClient with existing handler chain (auth, retry, tracing)
         _client = new StatementExecutionClient(_httpClient, baseUrl);
+
+        // Create session if enabled
+        if (_enableSessionManagement)
+        {
+            var sessionRequest = new CreateSessionRequest
+            {
+                WarehouseId = _warehouseId,
+                Catalog = properties.GetValueOrDefault(DatabricksParameters.Catalog),
+                Schema = properties.GetValueOrDefault(DatabricksParameters.Schema),
+                SessionConfigs = ParseSessionConfigs(properties)
+            };
+
+            var sessionResponse = _client.CreateSessionAsync(sessionRequest, CancellationToken.None)
+                .GetAwaiter().GetResult();
+            _sessionId = sessionResponse.SessionId;
+        }
     }
 
     public override AdbcStatement CreateStatement()
     {
-        return new StatementExecutionStatement(this);
+        return new StatementExecutionStatement(this, _client, _sessionId);
+    }
+
+    public override void Dispose()
+    {
+        // Delete session if it was created
+        if (_enableSessionManagement && _sessionId != null)
+        {
+            try
+            {
+                _client.DeleteSessionAsync(_sessionId, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                // Log but don't throw on cleanup
+                Logger.Warn($"Failed to delete session {_sessionId}: {ex.Message}");
+            }
+        }
+
+        base.Dispose();
     }
 
     // ADBC metadata methods implemented via SQL queries
@@ -774,6 +935,8 @@ Executes queries via Statement Execution API:
 internal class StatementExecutionStatement : AdbcStatement
 {
     private readonly StatementExecutionConnection _connection;
+    private readonly StatementExecutionClient _client;
+    private readonly string? _sessionId;
     private string? _statementId;
     private ExecuteStatementResponse? _response;
 
@@ -783,24 +946,53 @@ internal class StatementExecutionStatement : AdbcStatement
         // Build ExecuteStatementRequest
         var request = new ExecuteStatementRequest
         {
-            WarehouseId = _connection.WarehouseId,
             Statement = SqlQuery,
-            Catalog = CatalogName,
-            Schema = SchemaName,
-            Disposition = _connection.ResultDisposition,
+            Disposition = _connection.ResultDisposition, // "inline", "external_links", or "inline_or_external_links"
             Format = _connection.ResultFormat,
-            WaitTimeout = _connection.WaitTimeout,
             Parameters = ConvertParameters()
         };
 
+        // Set warehouse_id or session_id (mutually exclusive)
+        if (_sessionId != null)
+        {
+            request.SessionId = _sessionId;
+        }
+        else
+        {
+            request.WarehouseId = _connection.WarehouseId;
+            request.Catalog = CatalogName;
+            request.Schema = SchemaName;
+        }
+
+        // Set compression (skip for inline results)
+        if (request.Disposition != "inline")
+        {
+            request.ResultCompression = _connection.ResultCompression ?? "lz4";
+        }
+
+        // Set wait_timeout (skip if direct results mode is enabled)
+        if (!_connection.EnableDirectResults)
+        {
+            request.WaitTimeout = _connection.WaitTimeout ?? "10s";
+            request.OnWaitTimeout = "CONTINUE";
+        }
+
+        // Set row/byte limits
+        if (MaxRows > 0)
+        {
+            request.RowLimit = MaxRows;
+        }
+        if (_connection.ByteLimit > 0)
+        {
+            request.ByteLimit = _connection.ByteLimit;
+        }
+
         // Execute statement
-        _response = await _connection.Client.ExecuteStatementAsync(
-            request, cancellationToken);
+        _response = await _client.ExecuteStatementAsync(request, cancellationToken);
         _statementId = _response.StatementId;
 
         // Poll until completion if async
-        if (_response.Status.State == "PENDING" ||
-            _response.Status.State == "RUNNING")
+        if (_response.Status.State == "PENDING" || _response.Status.State == "RUNNING")
         {
             _response = await PollUntilCompleteAsync(cancellationToken);
         }
@@ -809,13 +1001,18 @@ internal class StatementExecutionStatement : AdbcStatement
         if (_response.Status.State == "FAILED")
         {
             throw new DatabricksException(
-                _response.Status.Error.Message);
+                _response.Status.Error.Message,
+                _response.Status.Error.SqlState);
         }
 
-        // Create reader based on disposition
-        IArrowArrayStream reader = _connection.ResultDisposition == "inline"
-            ? CreateInlineReader(_response)
-            : CreateExternalLinksReader(_response);
+        // Check if results were truncated
+        if (_response.Manifest?.Truncated == true)
+        {
+            Logger.Warn($"Results truncated by row_limit or byte_limit for statement {_statementId}");
+        }
+
+        // Create reader based on actual disposition in response
+        IArrowArrayStream reader = CreateReader(_response);
 
         return new QueryResult(
             _response.Manifest.TotalRowCount,
@@ -825,20 +1022,81 @@ internal class StatementExecutionStatement : AdbcStatement
     private async Task<ExecuteStatementResponse> PollUntilCompleteAsync(
         CancellationToken cancellationToken)
     {
+        int pollCount = 0;
+
         while (true)
         {
-            await Task.Delay(_connection.PollingInterval, cancellationToken);
+            // First poll happens immediately (no delay)
+            if (pollCount > 0)
+            {
+                await Task.Delay(_connection.PollingInterval, cancellationToken);
+            }
 
-            var status = await _connection.Client.GetStatementAsync(
-                _statementId, cancellationToken);
+            // Check timeout
+            if (QueryTimeout > 0 && pollCount * _connection.PollingInterval > QueryTimeout * 1000)
+            {
+                await _client.CancelStatementAsync(_statementId, cancellationToken);
+                throw new DatabricksTimeoutException(
+                    $"Query timeout exceeded ({QueryTimeout}s) for statement {_statementId}");
+            }
+
+            var status = await _client.GetStatementAsync(_statementId, cancellationToken);
 
             if (status.Status.State == "SUCCEEDED" ||
                 status.Status.State == "FAILED" ||
-                status.Status.State == "CANCELED")
+                status.Status.State == "CANCELED" ||
+                status.Status.State == "CLOSED")
             {
                 return status;
             }
+
+            pollCount++;
         }
+    }
+
+    private IArrowArrayStream CreateReader(ExecuteStatementResponse response)
+    {
+        // Determine actual disposition from response
+        var hasExternalLinks = response.Manifest?.Chunks?
+            .Any(c => c.ExternalLinks != null && c.ExternalLinks.Any()) == true;
+        var hasInlineData = response.Manifest?.Chunks?
+            .Any(c => c.DataArray != null) == true;
+
+        if (hasExternalLinks)
+        {
+            // External links - use CloudFetch pipeline
+            return CreateExternalLinksReader(response);
+        }
+        else if (hasInlineData)
+        {
+            // Inline data - parse directly
+            return CreateInlineReader(response);
+        }
+        else
+        {
+            // Empty result set
+            return new EmptyArrowArrayStream(response.Manifest.Schema);
+        }
+    }
+
+    public override void Dispose()
+    {
+        // Close statement if it was created
+        if (_statementId != null)
+        {
+            try
+            {
+                _client.CloseStatementAsync(_statementId, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                // Log but don't throw on cleanup
+                Logger.Warn($"Failed to close statement {_statementId}: {ex.Message}");
+            }
+        }
+
+        base.Dispose();
     }
 }
 ```
@@ -851,27 +1109,37 @@ Reads results from EXTERNAL_LINKS:
 internal class StatementExecutionReader : IArrowArrayStream
 {
     private readonly StatementExecutionClient _client;
+    private readonly string _statementId;
     private readonly ResultManifest _manifest;
-    private readonly Queue<ExternalLink> _links;
     private readonly CloudFetchDownloadManager _downloadManager; // REUSE!
+    private readonly string? _compressionCodec;
 
     public StatementExecutionReader(
         StatementExecutionClient client,
-        ResultManifest manifest)
+        string statementId,
+        ResultManifest manifest,
+        DatabricksConfiguration config)
     {
         _client = client;
+        _statementId = statementId;
         _manifest = manifest;
+        _compressionCodec = manifest.ResultCompression;
 
-        // Collect all external links from all chunks
-        _links = new Queue<ExternalLink>(
-            manifest.Chunks.SelectMany(c => c.ExternalLinks));
+        // Create result fetcher (handles incremental chunk fetching if needed)
+        var fetcher = new StatementExecutionResultFetcher(
+            _client,
+            _statementId,
+            manifest);
 
-        // Initialize CloudFetch download manager with REST-based downloader
+        // Initialize CloudFetch download manager with REST-based fetcher
         _downloadManager = new CloudFetchDownloadManager(
-            new StatementExecutionDownloader(_client, _links),
-            new CloudFetchMemoryBufferManager(bufferSizeMb),
-            parallelDownloads,
-            prefetchCount);
+            fetcher,
+            new CloudFetchDownloader(_httpClient, config),
+            new CloudFetchMemoryBufferManager(config.CloudFetchMemoryBufferSizeMb),
+            config.CloudFetchParallelDownloads,
+            config.CloudFetchPrefetchCount);
+
+        _downloadManager.StartAsync().GetAwaiter().GetResult();
     }
 
     public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(
@@ -886,8 +1154,20 @@ internal class StatementExecutionReader : IArrowArrayStream
 
         try
         {
-            // Parse Arrow IPC stream from downloaded data
-            using var reader = new ArrowStreamReader(downloadResult.Stream);
+            Stream stream = downloadResult.DataStream;
+
+            // Decompress if needed
+            if (_compressionCodec == "lz4")
+            {
+                stream = new LZ4DecompressionStream(stream);
+            }
+            else if (_compressionCodec == "gzip")
+            {
+                stream = new GZipStream(stream, CompressionMode.Decompress);
+            }
+
+            // Parse Arrow IPC stream from downloaded/decompressed data
+            using var reader = new ArrowStreamReader(stream);
             return await reader.ReadNextRecordBatchAsync(cancellationToken);
         }
         finally
@@ -899,38 +1179,109 @@ internal class StatementExecutionReader : IArrowArrayStream
 }
 ```
 
-#### 6. **StatementExecutionDownloader** (New)
+#### 6. **StatementExecutionResultFetcher** (New)
 
-Adapts CloudFetch pipeline for REST API:
+Implements `ICloudFetchResultFetcher` for Statement Execution API:
 
 ```csharp
-internal class StatementExecutionDownloader : ICloudFetchDownloader
+internal class StatementExecutionResultFetcher : ICloudFetchResultFetcher
 {
     private readonly StatementExecutionClient _client;
-    private readonly Queue<ExternalLink> _links;
+    private readonly string _statementId;
+    private readonly ResultManifest _manifest;
+    private readonly BlockingCollection<IDownloadResult> _downloadQueue;
+    private readonly ICloudFetchMemoryBufferManager _memoryManager;
+    private bool _isCompleted;
+    private Exception? _error;
 
-    public async Task<DownloadResult> DownloadNextAsync(
+    public StatementExecutionResultFetcher(
+        StatementExecutionClient client,
+        string statementId,
+        ResultManifest manifest,
+        BlockingCollection<IDownloadResult> downloadQueue,
+        ICloudFetchMemoryBufferManager memoryManager)
+    {
+        _client = client;
+        _statementId = statementId;
+        _manifest = manifest;
+        _downloadQueue = downloadQueue;
+        _memoryManager = memoryManager;
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Process all chunks
+            foreach (var chunk in _manifest.Chunks)
+            {
+                // If chunk has external links in manifest, use them
+                if (chunk.ExternalLinks != null && chunk.ExternalLinks.Any())
+                {
+                    foreach (var link in chunk.ExternalLinks)
+                    {
+                        await AddDownloadResultAsync(link, cancellationToken);
+                    }
+                }
+                else
+                {
+                    // Incremental chunk fetching: fetch external links for this chunk
+                    // This handles cases where manifest doesn't contain all links upfront
+                    var resultData = await _client.GetResultChunkAsync(
+                        _statementId,
+                        chunk.ChunkIndex,
+                        cancellationToken);
+
+                    if (resultData.ExternalLinks != null)
+                    {
+                        foreach (var link in resultData.ExternalLinks)
+                        {
+                            await AddDownloadResultAsync(link, cancellationToken);
+                        }
+                    }
+                }
+            }
+
+            // Add end of results guard
+            _downloadQueue.Add(EndOfResultsGuard.Instance, cancellationToken);
+            _isCompleted = true;
+        }
+        catch (Exception ex)
+        {
+            _error = ex;
+            _isCompleted = true;
+            _downloadQueue.TryAdd(EndOfResultsGuard.Instance, 0);
+        }
+    }
+
+    private async Task AddDownloadResultAsync(
+        ExternalLink link,
         CancellationToken cancellationToken)
     {
-        if (!_links.TryDequeue(out var link))
-            return null;
+        // Create download result from REST API link
+        var downloadResult = new DownloadResult(
+            fileUrl: link.ExternalLink,
+            startRowOffset: link.RowOffset,
+            rowCount: link.RowCount,
+            byteCount: link.ByteCount,
+            expirationTime: DateTime.Parse(link.Expiration),
+            httpHeaders: link.HttpHeaders, // Pass custom headers if present
+            memoryManager: _memoryManager);
 
-        // Download from presigned URL
-        var response = await _client.HttpClient.GetAsync(
-            link.ExternalLinkUrl,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
+        _downloadQueue.Add(downloadResult, cancellationToken);
+    }
 
-        response.EnsureSuccessStatusCode();
+    public Task StopAsync() => Task.CompletedTask;
 
-        var stream = await response.Content.ReadAsStreamAsync();
+    public bool HasMoreResults => false; // All links available from manifest
+    public bool IsCompleted => _isCompleted;
+    public bool HasError => _error != null;
+    public Exception? Error => _error;
 
-        return new DownloadResult
-        {
-            Stream = stream,
-            ByteCount = link.ByteCount,
-            ChunkIndex = link.ChunkIndex
-        };
+    // URL refresh not needed for REST (presigned URLs are long-lived)
+    public Task<TSparkArrowResultLink?> GetUrlAsync(long offset, CancellationToken cancellationToken)
+    {
+        throw new NotSupportedException("URL refresh not supported for Statement Execution API");
     }
 }
 ```
@@ -1822,18 +2173,61 @@ private ICloudFetchDownloadManager CreateDownloadManager(
 
 ## Configuration Examples
 
-### Using Statement Execution API
+### Using Statement Execution API (Recommended Configuration)
 
 ```json
 {
   "adbc.databricks.protocol": "rest",
   "adbc.databricks.warehouse_id": "abc123def456",
-  "adbc.databricks.result_disposition": "external_links",
+  "adbc.databricks.result_disposition": "inline_or_external_links",
   "adbc.databricks.result_format": "arrow_stream",
+  "adbc.databricks.result_compression": "lz4",
+  "adbc.databricks.enable_session_management": "true",
+  "adbc.databricks.enable_direct_results": "false",
   "adbc.databricks.wait_timeout": "10",
   "adbc.databricks.polling_interval_ms": "1000",
+  "adbc.connection.catalog": "main",
+  "adbc.connection.db_schema": "default",
   "adbc.spark.auth_type": "oauth",
   "adbc.spark.oauth.access_token": "dapi..."
+}
+```
+
+### Advanced Configuration Options
+
+```json
+{
+  "adbc.databricks.protocol": "rest",
+  "adbc.databricks.warehouse_id": "abc123def456",
+
+  // Session management (recommended: true)
+  "adbc.databricks.enable_session_management": "true",
+
+  // Hybrid disposition - server chooses based on result size (recommended)
+  "adbc.databricks.result_disposition": "inline_or_external_links",
+
+  // Force external links for all results
+  // "adbc.databricks.result_disposition": "external_links",
+
+  // Force inline for all results (max 25 MiB)
+  // "adbc.databricks.result_disposition": "inline",
+
+  // Result compression (default: lz4 for external_links, none for inline)
+  "adbc.databricks.result_compression": "lz4",
+
+  // Direct results mode - server waits until complete (no polling)
+  "adbc.databricks.enable_direct_results": "false",
+
+  // Wait timeout (ignored if enable_direct_results=true)
+  "adbc.databricks.wait_timeout": "10",
+
+  // Polling interval for async queries
+  "adbc.databricks.polling_interval_ms": "1000",
+
+  // CloudFetch configuration
+  "adbc.databricks.cloudfetch.parallel_downloads": "3",
+  "adbc.databricks.cloudfetch.prefetch_count": "2",
+  "adbc.databricks.cloudfetch.memory_buffer_mb": "200"
 }
 ```
 
@@ -1873,22 +2267,36 @@ private ICloudFetchDownloadManager CreateDownloadManager(
 2. **Metadata Operations**:
    - Thrift has dedicated Thrift calls (GetSchemas, GetTables, etc.)
    - Statement Execution API needs SQL queries (SHOW TABLES, etc.)
-   - **Decision**: ✅ Implement metadata via SQL queries using SHOW commands (agreed)
+   - **Decision**: ✅ Implement metadata via SQL queries using SHOW commands
 
-3. **Direct Results**:
+3. **Session Management**:
+   - ~~Initially thought: Statement Execution API is stateless~~
+   - **CORRECTED**: API supports explicit session management via `/api/2.0/sql/sessions`
+   - **Decision**: ✅ Implement session creation/deletion with configurable enable_session_management parameter (default: true)
+
+4. **Direct Results Mode**:
    - Thrift has `GetDirectResults` in execute response
-   - Statement Execution API has `INLINE` disposition
-   - **Decision**: Map `enable_direct_results` to `INLINE` disposition
+   - Statement Execution API uses `wait_timeout` parameter behavior
+   - **Decision**: Add `enable_direct_results` parameter - when true, omit `wait_timeout` to let server wait until completion
 
-4. **Error Handling**:
+5. **Result Compression**:
+   - Statement Execution API supports `result_compression` (lz4, gzip, none)
+   - **Decision**: ✅ Support compression with default "lz4" for external_links, "none" for inline
+   - Reuse existing LZ4 decompression from CloudFetch
+
+6. **Hybrid Results Disposition**:
+   - API supports `inline_or_external_links` where server decides based on result size
+   - **Decision**: ✅ Use as default disposition (best practice from JDBC implementation)
+
+7. **Error Handling**:
    - Thrift has structured `TStatus` with SqlState
-   - Statement Execution API has JSON error objects
-   - **Decision**: Parse JSON errors, map to `DatabricksException` with SqlState extraction
+   - Statement Execution API has JSON error objects with SqlState field
+   - **Decision**: Parse JSON errors, extract SqlState directly from error response
 
-5. **Connection Pooling**:
-   - Statement Execution API is stateless (no session)
-   - Thrift maintains session via `TOpenSessionResp`
-   - **Decision**: No session management needed for REST API
+8. **Incremental Chunk Fetching**:
+   - Manifest may not contain all external links upfront for very large result sets
+   - API supports `GET /statements/{id}/result/chunks/{index}` to fetch links on-demand
+   - **Decision**: ✅ Support incremental fetching in StatementExecutionResultFetcher as fallback
 
 ## Testing Strategy
 
@@ -1936,7 +2344,8 @@ private ICloudFetchDownloadManager CreateDownloadManager(
 
 1. **`ICloudFetchInterfaces.cs`** (IDownloadResult.cs:30-87)
    - [ ] Update `IDownloadResult` interface to be protocol-agnostic
-   - [ ] Replace `TSparkArrowResultLink Link` with generic properties
+   - [ ] Replace `TSparkArrowResultLink Link` with generic properties: `FileUrl`, `RowOffset`, `RowCount`, `ByteCount`, `ExpirationTime`
+   - [ ] Add `HttpHeaders` property for custom headers
    - [ ] Update `UpdateWithRefreshedLink()` signature
 
 2. **`DownloadResult.cs`** (DownloadResult.cs:28-157)
@@ -1945,88 +2354,172 @@ private ICloudFetchDownloadManager CreateDownloadManager(
    - [ ] Add `FromThriftLink()` static factory method for backward compatibility
    - [ ] Update `IsExpiredOrExpiringSoon()` implementation
    - [ ] Update `UpdateWithRefreshedLink()` implementation
+   - [ ] Add support for `httpHeaders` parameter
 
 3. **`CloudFetchResultFetcher.cs`** (CloudFetchResultFetcher.cs:34-390)
    - [ ] Line 186: Use `DownloadResult.FromThriftLink()` instead of constructor
    - [ ] Line 325: Use `DownloadResult.FromThriftLink()` instead of constructor
    - [ ] Line 373: Use `DownloadResult.FromThriftLink()` instead of constructor
 
-4. **`DatabricksParameters.cs`**
+4. **`CloudFetchDownloader.cs`**
+   - [ ] Add support for custom HTTP headers from `IDownloadResult.HttpHeaders`
+   - [ ] Pass headers when downloading from presigned URLs
+
+5. **`DatabricksParameters.cs`**
    - [ ] Add `Protocol` parameter (thrift/rest)
-   - [ ] Add `ResultDisposition` parameter (inline/external_links)
+   - [ ] Add `ResultDisposition` parameter (inline/external_links/inline_or_external_links)
    - [ ] Add `ResultFormat` parameter (arrow_stream/json_array/csv)
+   - [ ] Add `ResultCompression` parameter (lz4/gzip/none)
+   - [ ] Add `EnableDirectResults` parameter
+   - [ ] Add `EnableSessionManagement` parameter
    - [ ] Add `WaitTimeout` parameter
    - [ ] Add `PollingInterval` parameter
    - [ ] Add `WarehouseId` parameter
 
-5. **`DatabricksConnection.cs`**
+6. **`DatabricksConnection.cs`**
    - [ ] Add protocol selection logic in constructor
    - [ ] Wire up `StatementExecutionConnection` for REST protocol
 
 ### Files to Create (New Implementation)
 
-6. **`StatementExecutionClient.cs`** (NEW)
+7. **`StatementExecutionClient.cs`** (NEW)
    - [ ] Implement REST API client
-   - [ ] `ExecuteStatementAsync()`
-   - [ ] `GetStatementAsync()`
-   - [ ] `GetResultChunkAsync()`
-   - [ ] `CancelStatementAsync()`
+   - [ ] Session management methods: `CreateSessionAsync()`, `DeleteSessionAsync()`
+   - [ ] Statement execution methods: `ExecuteStatementAsync()`, `GetStatementAsync()`
+   - [ ] Result fetching: `GetResultChunkAsync()` (for incremental chunk fetching)
+   - [ ] Statement control: `CancelStatementAsync()`, `CloseStatementAsync()`
 
-7. **`StatementExecutionModels.cs`** (NEW)
-   - [ ] `ExecuteStatementRequest`
-   - [ ] `ExecuteStatementResponse`
-   - [ ] `StatementStatus`
-   - [ ] `ResultManifest`
-   - [ ] `ResultChunk`
-   - [ ] `ExternalLink`
-   - [ ] `StatementParameter`
-   - [ ] `StatementError`
+8. **`StatementExecutionModels.cs`** (NEW)
+   - [ ] Session models: `CreateSessionRequest`, `CreateSessionResponse`
+   - [ ] Request models: `ExecuteStatementRequest`, `GetStatementRequest`
+   - [ ] Response models: `ExecuteStatementResponse`, `GetStatementResponse`
+   - [ ] Result models: `StatementStatus`, `StatementError`
+   - [ ] Manifest models: `ResultManifest`, `ResultChunk`, `ExternalLink`, `ResultData`
+   - [ ] Parameter models: `StatementParameter`
+   - [ ] **New fields in models**:
+     - `ResultManifest`: `result_compression`, `truncated`, `is_volume_operation`
+     - `ExternalLink`: `row_count`, `row_offset`, `byte_count`, `http_headers`
+     - `ResultChunk`: `attachment`, `next_chunk_index`, `next_chunk_internal_link`
+     - `ExecuteStatementRequest`: `session_id`, `result_compression`, `row_limit`
 
-8. **`StatementExecutionConnection.cs`** (NEW)
+9. **`StatementExecutionConnection.cs`** (NEW)
    - [ ] Implement `AdbcConnection` for REST protocol
+   - [ ] Session lifecycle management (create on connect, delete on dispose)
+   - [ ] Configurable session management via `enable_session_management`
    - [ ] Metadata operations via SQL queries
-   - [ ] Connection management
+   - [ ] Pass session_id to statements
 
-9. **`StatementExecutionStatement.cs`** (NEW)
-   - [ ] Implement `AdbcStatement` for REST protocol
-   - [ ] Query execution with polling
-   - [ ] Create readers based on disposition
+10. **`StatementExecutionStatement.cs`** (NEW)
+    - [ ] Implement `AdbcStatement` for REST protocol
+    - [ ] Query execution with compression support
+    - [ ] Polling with timeout handling (skip first delay optimization)
+    - [ ] Support direct results mode (omit wait_timeout when enabled)
+    - [ ] Create readers based on actual response disposition
+    - [ ] Handle truncated results warning
+    - [ ] Statement cleanup (close on dispose)
 
-10. **`Reader/CloudFetch/StatementExecutionResultFetcher.cs`** (NEW)
+11. **`Reader/CloudFetch/StatementExecutionResultFetcher.cs`** (NEW)
     - [ ] Implement `ICloudFetchResultFetcher`
     - [ ] Process manifest and populate download queue
-    - [ ] Much simpler than Thrift version!
+    - [ ] Support incremental chunk fetching via `GetResultChunkAsync()`
+    - [ ] Handle http_headers from ExternalLink
+    - [ ] Much simpler than Thrift version (all links from manifest)
 
-11. **`StatementExecutionReader.cs`** (NEW)
+12. **`StatementExecutionReader.cs`** (NEW)
     - [ ] Implement `IArrowArrayStream` for EXTERNAL_LINKS
     - [ ] Wire up CloudFetch download manager
+    - [ ] Support decompression (LZ4, GZIP)
     - [ ] Parse Arrow IPC streams
 
-12. **`StatementExecutionInlineReader.cs`** (NEW)
+13. **`StatementExecutionInlineReader.cs`** (NEW)
     - [ ] Implement `IArrowArrayStream` for INLINE disposition
-    - [ ] Parse inline Arrow data
+    - [ ] Parse inline Arrow data from data_array
+    - [ ] Handle inline JSON/CSV formats
 
 ### Test Files to Create
 
-13. **`StatementExecutionClientTests.cs`** (NEW)
+14. **`StatementExecutionClientTests.cs`** (NEW)
     - [ ] Unit tests with mocked HTTP responses
+    - [ ] Test session management
+    - [ ] Test incremental chunk fetching
 
-14. **`StatementExecutionStatementTests.cs`** (NEW)
+15. **`StatementExecutionStatementTests.cs`** (NEW)
     - [ ] Unit tests with fake client
+    - [ ] Test compression handling
+    - [ ] Test hybrid disposition handling
+    - [ ] Test truncation detection
 
-15. **`StatementExecutionE2ETests.cs`** (NEW)
+16. **`StatementExecutionE2ETests.cs`** (NEW)
     - [ ] E2E tests with live warehouse
+    - [ ] Test session reuse
+    - [ ] Test large result sets with compression
 
 ### Documentation to Update
 
-16. **`readme.md`**
-    - [ ] Document new configuration parameters
+17. **`readme.md`**
+    - [ ] Document all new configuration parameters
     - [ ] Add Statement Execution API usage examples
     - [ ] Add migration guide from Thrift
+    - [ ] Document session management
+    - [ ] Document compression options
 
-17. **`CLAUDE.md`** (root level)
+18. **`CLAUDE.md`** (root level)
     - [ ] Document Statement Execution API architecture
+    - [ ] Add session management details
 
 ---
 
-**Key Takeaway**: Thanks to the excellent abstraction of the existing CloudFetch pipeline, we can reuse most components instead of reimplementing them from scratch!
+## Key Insights from JDBC Implementation Review
+
+### ✅ **Critical Discoveries**
+
+1. **Session Management** - API DOES support sessions (initially missed)
+   - Enables connection pooling and session-level configuration
+   - Default catalog/schema context
+   - Better resource management
+
+2. **Hybrid Results Mode** - `inline_or_external_links` is the recommended default
+   - Server intelligently chooses based on result size
+   - Best practice from production JDBC implementation
+
+3. **Result Compression** - Essential for performance
+   - LZ4 compression for external_links (default)
+   - Already supported by existing CloudFetch decompression!
+
+4. **HTTP Headers in ExternalLink** - Required for some cloud storage scenarios
+   - Must be passed when downloading presigned URLs
+
+5. **Incremental Chunk Fetching** - Fallback for very large results
+   - `GET /statements/{id}/result/chunks/{index}` endpoint
+   - Handles cases where manifest doesn't contain all links upfront
+
+### 📋 **Important Model Enhancements**
+
+- **ResultManifest**: `result_compression`, `truncated`, `is_volume_operation`
+- **ExternalLink**: `row_count`, `row_offset`, `byte_count`, `http_headers`
+- **ResultChunk**: `attachment`, chunk navigation fields
+- **ExecuteStatementRequest**: `session_id`, `result_compression`, `row_limit`
+
+### 🎯 **Implementation Optimizations**
+
+- Skip delay on first poll (polling optimization)
+- Timeout handling during polling loop
+- Direct results mode to skip polling entirely
+- Compression detection and automatic decompression
+
+### 🔧 **CloudFetch Reuse Strategy**
+
+Thanks to excellent abstraction, we can reuse:
+- ✅ `CloudFetchDownloadManager` - No changes
+- ✅ `CloudFetchDownloader` - Minor enhancement for http_headers
+- ✅ `CloudFetchMemoryBufferManager` - No changes
+- ✅ LZ4 decompression - Already exists!
+- ✅ Prefetch pipeline - Full reuse
+
+Only need to implement:
+- 🆕 `StatementExecutionResultFetcher` (simpler than Thrift version)
+- 🔵 Refactor `IDownloadResult` (protocol-agnostic interface)
+
+---
+
+**Key Takeaway**: JDBC implementation revealed critical API features (sessions, compression, hybrid mode) that significantly improve the design. The CloudFetch abstraction proves its value - minimal changes needed for REST API support!
