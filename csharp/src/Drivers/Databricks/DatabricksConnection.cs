@@ -771,10 +771,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 bool protocolSupportsPKFK = FeatureVersionNegotiator.SupportsPKFK(version);
                 bool protocolSupportsDescTableExtended = FeatureVersionNegotiator.SupportsDESCTableExtended(version);
 
-                activity?.AddEvent("connection.protocol_capabilities", [
-                    new("protocol.supports_pk_fk", protocolSupportsPKFK),
-                    new("protocol.supports_desc_table_extended", protocolSupportsDescTableExtended)
-                ]);
+                activity?.SetTag("connection.protocol.supports_pk_fk", protocolSupportsPKFK);
+                activity?.SetTag("connection.protocol.supports_desc_table_extended", protocolSupportsDescTableExtended);
 
                 // Apply protocol constraints to user settings
                 bool pkfkBefore = _enablePKFK;
@@ -782,24 +780,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 if (pkfkBefore && !_enablePKFK)
                 {
-                    activity?.AddEvent("connection.feature_downgrade.pk_fk", [
-                        new("reason", "Protocol version does not support PK/FK"),
-                        new("requested", pkfkBefore),
-                        new("actual", _enablePKFK)
-                    ]);
+                    activity?.SetTag("connection.feature_downgrade.pk_fk", true);
+                    activity?.SetTag("connection.feature_downgrade.pk_fk.reason", "Protocol version does not support PK/FK");
                 }
 
                 // Handle multiple catalog support from server response
                 _enableMultipleCatalogSupport = session.__isset.canUseMultipleCatalogs ? session.CanUseMultipleCatalogs : false;
 
-                activity?.AddEvent("connection.final_feature_flags", [
-                    new(DatabricksParameters.EnablePKFK, _enablePKFK),
-                    new(DatabricksParameters.EnableMultipleCatalogSupport, _enableMultipleCatalogSupport),
-                    new(DatabricksParameters.EnableDirectResults, _enableDirectResults),
-                    new(DatabricksParameters.UseCloudFetch, _useCloudFetch),
-                    new(DatabricksParameters.UseDescTableExtended, _useDescTableExtended),
-                    new(DatabricksParameters.EnableRunAsyncInThriftOp, _runAsyncInThrift)
-                ]);
+                // Log final feature flags as tags
+                activity?.SetTag("connection.feature.enable_pk_fk", _enablePKFK);
+                activity?.SetTag("connection.feature.enable_multiple_catalog_support", _enableMultipleCatalogSupport);
+                activity?.SetTag("connection.feature.enable_direct_results", _enableDirectResults);
+                activity?.SetTag("connection.feature.use_cloud_fetch", _useCloudFetch);
+                activity?.SetTag("connection.feature.use_desc_table_extended", _useDescTableExtended);
+                activity?.SetTag("connection.feature.enable_run_async_in_thrift_op", _runAsyncInThrift);
 
                 // Handle default namespace
                 if (session.__isset.initialNamespace)
