@@ -48,9 +48,10 @@ graph TB
             Queue --> DM[CloudFetchDownloadManager]
             DM --> Down[CloudFetchDownloader]
             DM --> Mem[MemoryBufferManager]
+            DM --> Reader[CloudFetchReader<br/>REUSED!]
         end
 
-        Down --> Arrow[Arrow Record Batches]
+        Reader --> Arrow[Arrow Record Batches]
     end
 
     subgraph "Databricks Platform"
@@ -451,15 +452,14 @@ classDiagram
         +Dispose() void
     }
 
-    class StatementExecutionReader {
-        +StatementExecutionClient _client
-        +ResultManifest _manifest
+    class CloudFetchReader {
         +ICloudFetchDownloadManager _downloadManager
+        +string _compressionCodec
         +Schema Schema
         +ReadNextRecordBatchAsync() ValueTask~RecordBatch~
     }
 
-    class StatementExecutionInlineReader {
+    class InlineReader {
         +ResultManifest _manifest
         +List~ResultChunk~ _chunks
         +int _currentChunkIndex
@@ -467,28 +467,18 @@ classDiagram
         +ReadNextRecordBatchAsync() ValueTask~RecordBatch~
     }
 
-    class ThriftCloudFetchReader {
-        +ICloudFetchDownloadManager _downloadManager
-        +Schema Schema
-        +ReadNextRecordBatchAsync() ValueTask~RecordBatch~
-    }
+    IArrowArrayStream <|.. CloudFetchReader
+    IArrowArrayStream <|.. InlineReader
 
-    IArrowArrayStream <|.. StatementExecutionReader
-    IArrowArrayStream <|.. StatementExecutionInlineReader
-    IArrowArrayStream <|.. ThriftCloudFetchReader
+    CloudFetchReader --> ICloudFetchDownloadManager
 
-    StatementExecutionReader --> ICloudFetchDownloadManager
-    ThriftCloudFetchReader --> ICloudFetchDownloadManager
+    note for CloudFetchReader "REUSED for both Thrift and REST!\nWorks with any ICloudFetchDownloadManager\nSupports LZ4/GZIP decompression"
+    note for InlineReader "Parses inline Arrow data\nfor INLINE disposition\n(REST API only)"
 
-    note for StatementExecutionReader "Uses CloudFetch pipeline\nfor EXTERNAL_LINKS disposition"
-    note for StatementExecutionInlineReader "Parses inline Arrow data\nfor INLINE disposition"
-    note for ThriftCloudFetchReader "Existing Thrift reader\nusing CloudFetch pipeline"
-
-    %% Styling: Green for new readers, Gray for existing
+    %% Styling: Gray for reused, Green for new
     style IArrowArrayStream fill:#e8e8e8
-    style StatementExecutionReader fill:#c8f7c5
-    style StatementExecutionInlineReader fill:#c8f7c5
-    style ThriftCloudFetchReader fill:#e8e8e8
+    style CloudFetchReader fill:#e8e8e8
+    style InlineReader fill:#c8f7c5
 ```
 
 ### Class Diagram: Refactoring IDownloadResult
@@ -1076,82 +1066,50 @@ internal class StatementExecutionStatement : AdbcStatement
 }
 ```
 
-#### 5. **StatementExecutionReader** (New)
+#### 5. **CloudFetchReader** (Reuse Existing!)
 
-Reads results from EXTERNAL_LINKS:
+**Key Insight**: The existing `CloudFetchReader` is already protocol-agnostic! It just needs:
+- `ICloudFetchDownloadManager` - works with any fetcher
+- Compression codec - both protocols support this
+- Schema - both protocols provide this
+
+**No new reader needed!** Both Thrift and REST can use the same reader:
 
 ```csharp
-internal class StatementExecutionReader : IArrowArrayStream
+// Existing CloudFetchReader works for BOTH protocols
+internal class CloudFetchReader : IArrowArrayStream
 {
-    private readonly StatementExecutionClient _client;
-    private readonly string _statementId;
-    private readonly ResultManifest _manifest;
-    private readonly CloudFetchDownloadManager _downloadManager; // REUSE!
+    private readonly ICloudFetchDownloadManager _downloadManager;
     private readonly string? _compressionCodec;
 
-    public StatementExecutionReader(
-        StatementExecutionClient client,
-        string statementId,
-        ResultManifest manifest,
-        DatabricksConfiguration config)
+    // Works for both Thrift and REST!
+    public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(...)
     {
-        _client = client;
-        _statementId = statementId;
-        _manifest = manifest;
-        _compressionCodec = manifest.ResultCompression;
+        var downloadResult = await _downloadManager.GetNextDownloadedFileAsync(...);
 
-        // Create result fetcher (handles incremental chunk fetching if needed)
-        var fetcher = new StatementExecutionResultFetcher(
-            _client,
-            _statementId,
-            manifest);
+        // Decompress if needed (LZ4/GZIP)
+        Stream stream = Decompress(downloadResult.DataStream, _compressionCodec);
 
-        // Initialize CloudFetch download manager with REST-based fetcher
-        _downloadManager = new CloudFetchDownloadManager(
-            fetcher,
-            new CloudFetchDownloader(_httpClient, config),
-            new CloudFetchMemoryBufferManager(config.CloudFetchMemoryBufferSizeMb),
-            config.CloudFetchParallelDownloads,
-            config.CloudFetchPrefetchCount);
-
-        _downloadManager.StartAsync().GetAwaiter().GetResult();
-    }
-
-    public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(
-        CancellationToken cancellationToken = default)
-    {
-        // Get next downloaded file from prefetch pipeline
-        var downloadResult = await _downloadManager.GetNextDownloadedFileAsync(
-            cancellationToken);
-
-        if (downloadResult == null)
-            return null;
-
-        try
-        {
-            Stream stream = downloadResult.DataStream;
-
-            // Decompress if needed
-            if (_compressionCodec == "lz4")
-            {
-                stream = new LZ4DecompressionStream(stream);
-            }
-            else if (_compressionCodec == "gzip")
-            {
-                stream = new GZipStream(stream, CompressionMode.Decompress);
-            }
-
-            // Parse Arrow IPC stream from downloaded/decompressed data
-            using var reader = new ArrowStreamReader(stream);
-            return await reader.ReadNextRecordBatchAsync(cancellationToken);
-        }
-        finally
-        {
-            // Release memory
-            downloadResult.Dispose();
-        }
+        // Parse Arrow IPC
+        using var reader = new ArrowStreamReader(stream);
+        return await reader.ReadNextRecordBatchAsync(...);
     }
 }
+```
+
+**Usage for REST**:
+```csharp
+// In StatementExecutionStatement.CreateReader()
+var fetcher = new StatementExecutionResultFetcher(...); // REST-specific
+var downloadManager = new CloudFetchDownloadManager(fetcher, ...); // Reuse
+var reader = new CloudFetchReader(downloadManager, compressionCodec, schema); // Reuse!
+```
+
+**Usage for Thrift** (existing):
+```csharp
+var fetcher = new CloudFetchResultFetcher(...); // Thrift-specific
+var downloadManager = new CloudFetchDownloadManager(fetcher, ...); // Reuse
+var reader = new CloudFetchReader(downloadManager, compressionCodec, schema); // Reuse!
 ```
 
 #### 6. **StatementExecutionResultFetcher** (New)
@@ -2521,13 +2479,14 @@ internal class StatementExecutionResultFetcher : BaseResultFetcher
     - [ ] Handle http_headers from ExternalLink
     - [ ] Simpler than Thrift (manifest-based vs continuous fetching)
 
-12. **`StatementExecutionReader.cs`** (NEW)
-    - [ ] Implement `IArrowArrayStream` for EXTERNAL_LINKS
-    - [ ] Wire up CloudFetch download manager
-    - [ ] Support decompression (LZ4, GZIP)
-    - [ ] Parse Arrow IPC streams
+13. **`Reader/CloudFetchReader.cs`** (REUSE - No changes needed!)
+    - ✅ Already protocol-agnostic!
+    - ✅ Works with any `ICloudFetchDownloadManager`
+    - ✅ Supports LZ4/GZIP decompression
+    - ✅ Parses Arrow IPC streams
+    - **No new code needed** - just use existing reader for both Thrift and REST
 
-13. **`StatementExecutionInlineReader.cs`** (NEW)
+14. **`Reader/InlineReader.cs`** (NEW)
     - [ ] Implement `IArrowArrayStream` for INLINE disposition
     - [ ] Parse inline Arrow data from data_array
     - [ ] Handle inline JSON/CSV formats
@@ -2605,14 +2564,16 @@ internal class StatementExecutionResultFetcher : BaseResultFetcher
 
 ### 🔧 **CloudFetch Reuse Strategy**
 
-Thanks to excellent abstraction, we can reuse:
+Thanks to excellent abstraction, we can reuse almost everything:
 - ✅ `CloudFetchDownloadManager` - No changes
 - ✅ `CloudFetchDownloader` - Minor enhancement for http_headers
 - ✅ `CloudFetchMemoryBufferManager` - No changes
-- ✅ LZ4 decompression - Already exists!
+- ✅ `CloudFetchReader` - No changes, works for both protocols!
+- ✅ LZ4/GZIP decompression - Already exists!
 - ✅ Prefetch pipeline - Full reuse
 
 Only need to implement:
+- 🆕 `BaseResultFetcher` (extract common logic)
 - 🆕 `StatementExecutionResultFetcher` (simpler than Thrift version)
 - 🔵 Refactor `IDownloadResult` (protocol-agnostic interface)
 
