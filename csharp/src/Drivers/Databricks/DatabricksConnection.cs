@@ -136,25 +136,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return tags;
         }
 
-        internal new async Task OpenAsync()
-        {
-            await this.TraceActivity(async activity =>
-            {
-                // Log driver information at the beginning of the connection
-                activity?.AddEvent("connection.driver.info", [
-                    new("driver.name", "Apache Arrow ADBC Databricks Driver"),
-                    new("driver.version", s_assemblyVersion),
-                    new("driver.assembly", s_assemblyName)
-                ]);
-
-                // Log connection properties (sanitize sensitive values)
-                LogConnectionProperties(activity);
-
-                // Call base implementation to complete the connection
-                await ((HiveServer2Connection)this).OpenAsync();
-            }, "OpenAsync");
-        }
-
         protected override TCLIService.IAsync CreateTCLIServiceClient(TProtocol protocol)
         {
             return new ThreadSafeClient(new TCLIService.Client(protocol));
@@ -714,6 +695,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
+            // Log driver information at the beginning of the connection
+            Activity.Current?.AddEvent("connection.driver.info", [
+                new("driver.name", "Apache Arrow ADBC Databricks Driver"),
+                new("driver.version", s_assemblyVersion),
+                new("driver.assembly", s_assemblyName)
+            ]);
+
+            // Log connection properties (sanitize sensitive values)
+            LogConnectionProperties(Activity.Current);
+
             var req = new TOpenSessionReq
             {
                 Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
