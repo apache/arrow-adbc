@@ -1667,59 +1667,114 @@ sequenceDiagram
     participant Stmt as StatementExecutionStatement
     participant API as Statement Execution API
     participant Fetcher as StatementExecutionResultFetcher
+    participant Manager as CloudFetchDownloadManager
     participant Downloader as CloudFetchDownloader
+    participant Reader as CloudFetchReader
     participant Storage as Cloud Storage (S3/Azure/GCS)
 
     Client->>Stmt: ExecuteQueryAsync()
-    Stmt->>API: POST /api/2.0/sql/statements<br/>(warehouse_id, statement, disposition=external_links)
+    Stmt->>API: POST /api/2.0/sql/statements<br/>(disposition=external_links)
 
-    alt Sync Mode (wait_timeout > 0)
-        API-->>Stmt: 200 OK (status=SUCCEEDED, manifest with external_links)
-    else Async Mode (wait_timeout = 0)
-        API-->>Stmt: 200 OK (status=PENDING, statement_id)
+    alt Direct Results Mode
+        API-->>Stmt: 200 OK (status=SUCCEEDED, manifest)
+    else Polling Mode
+        API-->>Stmt: 200 OK (status=PENDING)
         loop Poll until complete
             Stmt->>API: GET /api/2.0/sql/statements/{id}
-            API-->>Stmt: 200 OK (status=RUNNING/SUCCEEDED)
+            API-->>Stmt: status=RUNNING/SUCCEEDED
         end
     end
 
-    Stmt->>Fetcher: StartAsync(manifest)
-    Note over Fetcher: All external links available<br/>from manifest upfront
+    Stmt->>Fetcher: Create with manifest
+    Stmt->>Manager: Create with Fetcher
+    Stmt->>Reader: Create with Manager
+    Stmt->>Manager: StartAsync()
 
-    loop For each external link
-        Fetcher->>Downloader: Add DownloadResult to queue
+    activate Fetcher
+    Note over Fetcher: Background task starts
+
+    loop For each chunk in manifest
+        alt Chunk has external links
+            Fetcher->>Manager: Add links to queue
+        else No links in manifest
+            Fetcher->>API: GET /statements/{id}/result/chunks/{index}<br/>(Incremental fetch)
+            API-->>Fetcher: External links for chunk
+            Fetcher->>Manager: Add links to queue
+        end
     end
 
-    loop Parallel downloads (configurable)
-        Downloader->>Storage: HTTP GET (presigned URL)
-        Storage-->>Downloader: Arrow IPC stream
-        Downloader->>Client: Record batches via IArrowArrayStream
+    Fetcher->>Manager: Signal completion
+    deactivate Fetcher
+
+    par Parallel Downloads
+        loop While downloads pending
+            Manager->>Downloader: Get next link from queue
+            Downloader->>Storage: HTTP GET (presigned URL + headers)
+            Storage-->>Downloader: Arrow IPC stream (compressed)
+            Downloader->>Manager: DownloadResult ready
+        end
     end
 
-    Note over Downloader: Prefetch & memory management<br/>handled by existing CloudFetch pipeline
+    Client->>Reader: ReadNextRecordBatchAsync()
+    Reader->>Manager: GetNextDownloadedFileAsync()
+    Manager-->>Reader: DownloadResult
+    Note over Reader: Decompress (LZ4/GZIP)<br/>Parse Arrow IPC
+    Reader-->>Client: RecordBatch
 ```
 
-### Comparison: Thrift vs REST Flow
+### Comparison: Thrift vs REST Fetching Patterns
 
 ```mermaid
-graph LR
-    subgraph "Thrift Flow"
-        T1[Execute Statement] --> T2[Get Direct Results<br/>or CloudFetch links]
-        T2 --> T3{More results?}
-        T3 -->|Yes| T4[Fetch next batch<br/>Incremental RPC]
-        T4 --> T2
-        T3 -->|No| T5[Complete]
+graph TB
+    subgraph "Thrift: Continuous Incremental Fetching"
+        T1[Execute Statement] --> T2[Get initial batch<br/>+ HasMoreRows flag]
+        T2 --> T3{HasMoreRows?}
+        T3 -->|Yes| T4[FetchNextResultBatchAsync<br/>RPC call]
+        T4 --> T5[Get next batch<br/>+ HasMoreRows flag]
+        T5 --> T3
+        T3 -->|No| T6[Complete]
     end
 
-    subgraph "REST Flow"
-        R1[Execute Statement] --> R2[Get Manifest<br/>ALL links upfront]
-        R2 --> R3[Process all links]
-        R3 --> R4[Complete]
+    subgraph "REST: Manifest-Based with On-Demand Fetching"
+        R1[Execute Statement] --> R2[Get Manifest<br/>with chunk list]
+        R2 --> R3[Iterate chunks]
+        R3 --> R4{Chunk has<br/>external links?}
+        R4 -->|Yes| R5[Use links from manifest]
+        R4 -->|No| R6[GetResultChunkAsync<br/>fetch links on-demand]
+        R5 --> R7{More chunks?}
+        R6 --> R7
+        R7 -->|Yes| R3
+        R7 -->|No| R8[Complete]
     end
+
+    subgraph "Common: Both use CloudFetch pipeline after fetching"
+        C1[Links added to queue] --> C2[CloudFetchDownloader]
+        C2 --> C3[Parallel downloads from S3/Azure]
+        C3 --> C4[CloudFetchReader]
+        C4 --> C5[Decompress + Parse Arrow]
+    end
+
+    T6 -.->|Links| C1
+    R8 -.->|Links| C1
 
     style T4 fill:#ffcccc
-    style R2 fill:#ccffcc
+    style R6 fill:#ffcccc
+    style C2 fill:#ccccff
+    style C4 fill:#ccccff
 ```
+
+**Key Takeaways**:
+
+| Aspect | Thrift | REST | Similarity |
+|--------|--------|------|------------|
+| **Fetching Pattern** | Always incremental (RPC loop) | Usually manifest, occasionally incremental | Both can fetch incrementally |
+| **Knows total upfront?** | No (HasMoreRows flag only) | Yes (manifest has chunk list) | Both discover links incrementally |
+| **Fetching Mechanism** | `FetchNextResultBatchAsync()` | `GetResultChunkAsync(chunkIndex)` | Different APIs, same concept |
+| **Result** | TSparkArrowResultLink objects | ExternalLink objects | Protocol-specific links |
+| **After Fetching** | → CloudFetch pipeline | → CloudFetch pipeline | **100% same** |
+| **Download** | CloudFetchDownloader | CloudFetchDownloader | **Reused** |
+| **Reader** | CloudFetchReader | CloudFetchReader | **Reused** |
+| **Decompression** | LZ4 | LZ4/GZIP | **Reused** |
 
 ## CloudFetch Pipeline Reuse
 
