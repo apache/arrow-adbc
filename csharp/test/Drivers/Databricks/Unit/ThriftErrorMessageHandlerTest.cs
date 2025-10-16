@@ -27,6 +27,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 {
     /// <summary>
     /// Tests for the ThriftErrorMessageHandler class.
+    ///
+    /// IMPORTANT: These tests verify Thrift error message extraction in isolation. In production,
+    /// ThriftErrorMessageHandler must be positioned OUTSIDE (farther from network) RetryHttpHandler
+    /// in the handler chain so that retryable errors (408, 502, 503, 504) are retried before
+    /// exceptions are thrown. See DatabricksConnection.CreateHttpHandler() for the correct handler
+    /// chain ordering and detailed explanation.
     /// </summary>
     public class ThriftErrorMessageHandlerTest
     {
