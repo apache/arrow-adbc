@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,6 +59,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// Gets the number of URL refresh attempts for this download.
         /// </summary>
         int RefreshAttempts { get; }
+
+        /// <summary>
+        /// Gets the Activity context captured when this download was created.
+        /// </summary>
+        Activity? Activity { get; }
 
         /// <summary>
         /// Sets the download as completed with the provided data stream.
