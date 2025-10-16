@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -33,7 +32,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private Stream? _dataStream;
         private bool _isDisposed;
         private long _size;
-        private readonly Activity? _activity;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DownloadResult"/> class.
@@ -46,8 +44,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             _memoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
             _downloadCompletionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             _size = link.BytesNum;
-            // Capture the current Activity context when this download is created
-            _activity = Activity.Current;
         }
 
         /// <inheritdoc />
@@ -80,9 +76,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// Gets the number of URL refresh attempts for this download.
         /// </summary>
         public int RefreshAttempts { get; private set; } = 0;
-
-        /// <inheritdoc />
-        public Activity? Activity => _activity;
 
         /// <summary>
         /// Checks if the URL is expired or about to expire.

@@ -90,6 +90,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
             var httpClient = new HttpClient(mockHttpMessageHandler.Object);
             var downloader = new CloudFetchDownloader(
+                _mockStatement.Object,
                 _downloadQueue,
                 _resultQueue,
                 _mockMemoryManager.Object,
@@ -147,6 +148,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             // Create the downloader and add the download to the queue
             var downloader = new CloudFetchDownloader(
+                _mockStatement.Object,
                 _downloadQueue,
                 _resultQueue,
                 _mockMemoryManager.Object,
@@ -229,6 +231,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             // Create the downloader and add the download to the queue
             var downloader = new CloudFetchDownloader(
+                _mockStatement.Object,
                 _downloadQueue,
                 _resultQueue,
                 _mockMemoryManager.Object,
@@ -302,6 +305,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             // Create the downloader
             var downloader = new CloudFetchDownloader(
+                _mockStatement.Object,
                 _downloadQueue,
                 _resultQueue,
                 _mockMemoryManager.Object,
@@ -392,6 +396,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             // Create the downloader and add the download to the queue
             var downloader = new CloudFetchDownloader(
+                _mockStatement.Object,
                 _downloadQueue,
                 _resultQueue,
                 _mockMemoryManager.Object,
@@ -486,6 +491,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             // Create the downloader
             var downloader = new CloudFetchDownloader(
+                _mockStatement.Object,
                 _downloadQueue,
                 _resultQueue,
                 _mockMemoryManager.Object,
@@ -590,6 +596,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             // Create the downloader and add the download to the queue
             var downloader = new CloudFetchDownloader(
+                _mockStatement.Object,
                 _downloadQueue,
                 _resultQueue,
                 _mockMemoryManager.Object,

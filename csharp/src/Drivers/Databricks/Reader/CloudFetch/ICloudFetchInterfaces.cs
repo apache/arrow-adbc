@@ -61,11 +61,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         int RefreshAttempts { get; }
 
         /// <summary>
-        /// Gets the Activity context captured when this download was created.
-        /// </summary>
-        Activity? Activity { get; }
-
-        /// <summary>
         /// Sets the download as completed with the provided data stream.
         /// </summary>
         /// <param name="dataStream">The stream containing the downloaded data.</param>

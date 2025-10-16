@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -57,9 +56,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
         /// <inheritdoc />
         public int RefreshAttempts => 0;
-
-        /// <inheritdoc />
-        public Activity? Activity => null;
 
         /// <inheritdoc />
         public void SetCompleted(Stream dataStream, long size) => throw new NotSupportedException("EndOfResultsGuard cannot be completed.");

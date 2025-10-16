@@ -208,6 +208,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
             // Initialize the downloader
             _downloader = new CloudFetchDownloader(
+                _statement,
                 _downloadQueue,
                 _resultQueue,
                 _memoryManager,
