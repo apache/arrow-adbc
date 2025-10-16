@@ -977,7 +977,7 @@ class PostgresStatementTest : public ::testing::Test,
 
         // $4::TIMESTAMP should map to timestamp and timestamp format
         ASSERT_STREQ("timestamp", schema->children[3]->name);
-        EXPECT_TRUE(strncmp("ts", schema->children[3]->format, 2) == 0);
+        EXPECT_EQ(0, strncmp("ts", schema->children[3]->format, 2));
       }
     }
 
