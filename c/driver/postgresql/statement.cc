@@ -762,7 +762,24 @@ AdbcStatusCode PostgresStatement::GetOptionInt(const char* key, int64_t* value,
 
 AdbcStatusCode PostgresStatement::GetParameterSchema(struct ArrowSchema* schema,
                                                      struct AdbcError* error) {
-  return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (query_.empty()) {
+    InternalAdbcSetError(error, "%s",
+                         "[libpq] Must SetSqlQuery before GetParameterSchema");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+
+  PqResultHelper helper(connection_->conn(), query_);
+  RAISE_STATUS(error, helper.Prepare());
+  RAISE_STATUS(error, helper.DescribePrepared());
+  PostgresType param_types;
+  RAISE_STATUS(error,
+               helper.ResolveParamTypes(*connection_->type_resolver(), &param_types));
+
+  ArrowSchemaInit(schema);
+
+  RAISE_NA(param_types.SetSchema(schema, std::string(connection_->VendorName())));
+
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresStatement::Prepare(struct AdbcError* error) {

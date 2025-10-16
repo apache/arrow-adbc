@@ -947,7 +947,90 @@ class PostgresStatementTest : public ::testing::Test,
   void TearDown() override { ASSERT_NO_FATAL_FAILURE(TearDownTest()); }
 
   void TestSqlPrepareErrorParamCountMismatch() { GTEST_SKIP() << "Not yet implemented"; }
-  void TestSqlPrepareGetParameterSchema() { GTEST_SKIP() << "Not yet implemented"; }
+
+  void TestSqlPrepareGetParameterSchema() {
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement,
+                    "SELECT $1::INTEGER, $2::TEXT, $3::BOOLEAN, $4::TIMESTAMP", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
+
+    {
+      adbc_validation::Handle<struct ArrowSchema> schema;
+      ASSERT_THAT(AdbcStatementGetParameterSchema(&statement, &schema.value, &error),
+                  IsOkStatus(&error));
+      if (schema->release != nullptr) {
+        ASSERT_EQ(4, schema->n_children);
+
+        // $1::INTEGER should map to int4 (PostgreSQL name) and int32 format
+        ASSERT_STREQ("int4", schema->children[0]->name);
+        EXPECT_STREQ("i", schema->children[0]->format);
+
+        // $2::TEXT should map to text and string format
+        ASSERT_STREQ("text", schema->children[1]->name);
+        EXPECT_STREQ("u", schema->children[1]->format);
+
+        // $3::BOOLEAN should map to bool and bool format
+        ASSERT_STREQ("bool", schema->children[2]->name);
+        EXPECT_STREQ("b", schema->children[2]->format);
+
+        // $4::TIMESTAMP should map to timestamp and timestamp format
+        ASSERT_STREQ("timestamp", schema->children[3]->name);
+        EXPECT_TRUE(strncmp("ts", schema->children[3]->format, 2) == 0);
+      }
+    }
+
+    // Test with complex PostgreSQL types
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                         "SELECT $1::JSONB, $2::UUID, $3::INET", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
+
+    {
+      adbc_validation::Handle<struct ArrowSchema> schema;
+      ASSERT_THAT(AdbcStatementGetParameterSchema(&statement, &schema.value, &error),
+                  IsOkStatus(&error));
+      if (schema->release != nullptr) {
+        ASSERT_EQ(3, schema->n_children);
+
+        // $1::JSONB should map to jsonb with string format
+        ASSERT_STREQ("jsonb", schema->children[0]->name);
+        EXPECT_STREQ("u", schema->children[0]->format);
+
+        // $2::UUID should map to uuid with binary format
+        ASSERT_STREQ("uuid", schema->children[1]->name);
+        EXPECT_STREQ("z", schema->children[1]->format);
+
+        // $3::INET should map to inet with binary format
+        ASSERT_STREQ("inet", schema->children[2]->name);
+        EXPECT_STREQ("z", schema->children[2]->format);
+      }
+    }
+
+    // Test with no parameters
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 42", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
+
+    {
+      adbc_validation::Handle<struct ArrowSchema> schema;
+      ASSERT_THAT(AdbcStatementGetParameterSchema(&statement, &schema.value, &error),
+                  IsOkStatus(&error));
+      ASSERT_EQ(0, schema->n_children);
+    }
+
+    // Test error condition: GetParameterSchema without SetSqlQuery
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+    {
+      adbc_validation::Handle<struct ArrowSchema> schema;
+      ASSERT_THAT(AdbcStatementGetParameterSchema(&statement, &schema.value, &error),
+                  IsStatus(ADBC_STATUS_INVALID_STATE, &error));
+      ASSERT_THAT(error.message,
+                  ::testing::HasSubstr("Must SetSqlQuery before GetParameterSchema"));
+    }
+  }
+
   void TestSqlPrepareSelectParams() { GTEST_SKIP() << "Not yet implemented"; }
 
   void TestConcurrentStatements() {
