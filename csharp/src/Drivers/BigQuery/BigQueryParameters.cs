@@ -52,14 +52,33 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string StatementType = "adbc.bigquery.multiple_statement.statement_type";
         public const string UseLegacySQL = "adbc.bigquery.use_legacy_sql";
 
+        /// <summary>
+        /// Indicates whether the driver should create the dataset specified in the
+        /// <see cref="LargeResultsDataset"/> parameter if it does not already exist.
+        /// </summary>
+        public const string CreateLargeResultsDataset = "adbc.bigquery.create_large_results_dataset";
+
+
+        /// <summary>
+        /// The indicator of whether the <c>AdbcStatement.ExecuteQuery[Async]</c> should execute a metadata command query.
+        /// In the case this indicator is set to <c>True</c>, the method will execute a metadata command using the native API where
+        /// the name of the command is given in the <c>AdbcStatement.SqlQuery</c> property value.
+        /// </summary>
+        public const string IsMetadataCommand = "adbc.bigquery.statement.is_metadata_command";
+
+        /// <summary>
+        /// Indicates whether the driver should attempt to detect a location for jobs if no <see cref="DefaultClientLocation"/>"/> is specified.
+        /// </summary>
+        public const string DetectJobLocation = "adbc.bigquery.detect_job_location";
+
         // these values are safe to log any time
         private static HashSet<string> safeToLog = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             AllowLargeResults, AuthenticationType, BillingProjectId, ClientId, ClientTimeout, DefaultClientLocation, EvaluationKind, GetQueryResultsOptionsTimeout,
             EvaluationKind, GetQueryResultsOptionsTimeout, IncludeConstraintsWithGetObjects,
-            IncludePublicProjectId, LargeDecimalsAsString, LargeResultsDataset, LargeResultsDestinationTable,
+            IncludePublicProjectId, LargeDecimalsAsString, CreateLargeResultsDataset, LargeResultsDataset, LargeResultsDestinationTable,
             MaxFetchConcurrency, MaximumRetryAttempts, ProjectId, RetryDelayMs, StatementIndex,
-            StatementType, UseLegacySQL
+            StatementType, UseLegacySQL, IsMetadataCommand
         };
 
         public static bool IsSafeToLog(string name)
@@ -96,9 +115,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public const string DefaultLargeDatasetId = "_bqadbc_temp_tables";
 
         public const string PublicProjectId = "bigquery-public-data";
-
-        // this is what the BigQuery API uses as the default location
-        public const string DefaultClientLocation = "US";
 
         // from https://cloud.google.com/bigquery/docs/locations#locations_and_regions as of Sept 28, 2025
         public static IReadOnlyList<string> ValidLocations = new List<string>()

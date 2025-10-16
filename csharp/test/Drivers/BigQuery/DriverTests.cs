@@ -18,8 +18,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
+using Apache.Arrow.Adbc.Extensions;
 using Apache.Arrow.Adbc.Tests.Metadata;
 using Apache.Arrow.Adbc.Tests.Xunit;
 using Apache.Arrow.Ipc;
@@ -327,6 +329,62 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     });
                 });
             }
+        }
+
+        /// <summary>
+        /// Validates if the driver can connect to a live server and
+        /// parse the results.
+        /// </summary>
+        [SkippableFact, Order(7)]
+        public void CanExecuteMetadataQuery()
+        {
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                if (environment.IsMetadataCommand)
+                {
+                    AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
+
+                    AdbcStatement statement = adbcConnection.CreateStatement();
+                    statement.SqlQuery = environment.Query;
+
+                    QueryResult queryResult = statement.ExecuteQuery();
+
+                    RecordBatch? recordBatch = queryResult.Stream?.ReadNextRecordBatchAsync().Result;
+
+                    Assert.NotNull(recordBatch);
+
+                    string json = RecordBatchToJson(recordBatch);
+
+                    Assert.True(environment.ExpectedMetadataResultJson?.Equals(json, StringComparison.Ordinal), "Expected results do not match");
+                }
+            }
+        }
+
+        private static string RecordBatchToJson(RecordBatch recordBatch)
+        {
+            List<Dictionary<string, object?>> rows = new List<Dictionary<string, object?>>();
+
+            for (int rowIndex = 0; rowIndex < recordBatch.Length; rowIndex++)
+            {
+                Dictionary<string, object?> row = new Dictionary<string, object?>();
+
+                for (int colIndex = 0; colIndex < recordBatch.ColumnCount; colIndex++)
+                {
+                    IArrowArray column = recordBatch.Column(colIndex);
+                    string fieldName = recordBatch.Schema.GetFieldByIndex(colIndex).Name;
+
+                    object? value = column.ValueAt(rowIndex);
+                    row[fieldName] = value;
+                }
+
+                rows.Add(row);
+            }
+
+            return JsonSerializer.Serialize(rows, new JsonSerializerOptions
+            {
+                WriteIndented = false,
+                PropertyNamingPolicy = null
+            });
         }
 
         private AdbcConnection GetAdbcConnection(string? environmentName)

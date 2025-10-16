@@ -142,6 +142,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         // if this value is null, the BigQuery API chooses the location (typically the `US` multi-region)
         internal string? DefaultClientLocation { get; private set; }
 
+        internal bool CreateLargeResultsDataset { get; private set; } = true;
+
         public override string AssemblyVersion => BigQueryUtils.BigQueryAssemblyVersion;
 
         public override string AssemblyName => BigQueryUtils.BigQueryAssemblyName;
@@ -202,6 +204,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     clientTimeout = TimeSpan.FromSeconds(seconds);
                     activity?.AddBigQueryParameterTag(BigQueryParameters.ClientTimeout, seconds);
+                }
+
+                if (this.properties.TryGetValue(BigQueryParameters.CreateLargeResultsDataset, out string? sCreateLargeResultDataset) &&
+                    bool.TryParse(sCreateLargeResultDataset, out bool createLargeResultDataset))
+                {
+                    CreateLargeResultsDataset = createLargeResultDataset;
+                    activity?.AddBigQueryParameterTag(BigQueryParameters.CreateLargeResultsDataset, createLargeResultDataset);
                 }
 
                 SetCredential();
@@ -1314,7 +1323,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.MaxFetchConcurrency,
                 BigQueryParameters.StatementType,
                 BigQueryParameters.StatementIndex,
-                BigQueryParameters.EvaluationKind
+                BigQueryParameters.EvaluationKind,
+                BigQueryParameters.IsMetadataCommand
             };
 
             foreach (string key in statementOptions)

@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -44,6 +45,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
     {
         readonly BigQueryConnection bigQueryConnection;
         readonly CancellationRegistry cancellationRegistry;
+
+        private const string GetDatasetCommandName = "datasetexists";
 
         public BigQueryStatement(BigQueryConnection bigQueryConnection) : base(bigQueryConnection)
         {
@@ -72,6 +75,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override string AssemblyName => BigQueryUtils.BigQueryAssemblyName;
 
+        private bool IsMetadataCommand()
+        {
+            bool result = false;
+            if (Options?.TryGetValue(BigQueryParameters.IsMetadataCommand, out string? isMetadataString) == true)
+            {
+                result = bool.TryParse(isMetadataString, out bool isMetadata) && isMetadata;
+            }
+            return result;
+        }
+
         public override void SetOption(string key, string value)
         {
             if (Options == null)
@@ -84,6 +97,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override QueryResult ExecuteQuery()
         {
+            if (IsMetadataCommand())
+            {
+                return ExecuteMetadataCommandQuery();
+            }
+
             return ExecuteQueryInternalAsync().GetAwaiter().GetResult();
         }
 
@@ -438,6 +456,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 return options;
 
             string largeResultDatasetId = BigQueryConstants.DefaultLargeDatasetId;
+            bool detectJobLocation = false;
 
             foreach (KeyValuePair<string, string> keyValuePair in Options)
             {
@@ -450,6 +469,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     case BigQueryParameters.LargeResultsDataset:
                         largeResultDatasetId = keyValuePair.Value;
                         activity?.AddBigQueryParameterTag(BigQueryParameters.LargeResultsDataset, largeResultDatasetId);
+                        break;
+                    case BigQueryParameters.DetectJobLocation:
+                        detectJobLocation = true ? keyValuePair.Value.Equals("true", StringComparison.OrdinalIgnoreCase) : false;
                         break;
                     case BigQueryParameters.LargeResultsDestinationTable:
                         string destinationTable = keyValuePair.Value;
@@ -488,6 +510,20 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
             }
 
+            // if no DefaultLocation was specified for the client, but a dataset is specified, then use its location for the jobs
+            // to avoid errors like:
+            //    Cannot execute<ExecuteQueryInternalAsync>b__1 after 5 tries.Last exception: The service bigquery has thrown an exception. No HttpStatusCode was specified.
+            //    Job gcp-pro-******-****/US/job_2cdc3c18_c36a_4b51_aeac_************ contained 2 error(s).First error message: Not found: Dataset gcp-pro-******-****:view_*************_*******
+            //    was not found in location US
+            // because the default location for the client is US if not specified
+            if (string.IsNullOrEmpty(this.Client.DefaultLocation) &&
+                detectJobLocation &&
+                !string.IsNullOrEmpty(largeResultDatasetId)
+                && DatasetExists(largeResultDatasetId, out BigQueryDataset? dataset))
+            {
+                options.JobLocation = dataset?.Resource.Location;
+            }
+
             if (options.AllowLargeResults == true && options.DestinationTable == null)
             {
                 options.DestinationTable = TryGetLargeDestinationTableReference(largeResultDatasetId, activity);
@@ -505,22 +541,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             BigQueryDataset? dataset = null;
 
-            try
-            {
-                activity?.AddBigQueryTag("large_results.dataset.try_find", datasetId);
-                dataset = this.Client.GetDataset(datasetId);
-                activity?.AddBigQueryTag("large_results.dataset.found", datasetId);
-            }
-            catch (GoogleApiException gaEx)
-            {
-                if (gaEx.HttpStatusCode != System.Net.HttpStatusCode.NotFound)
-                {
-                    activity?.AddException(gaEx);
-                    throw new AdbcException($"Failure trying to retrieve dataset {datasetId}", gaEx);
-                }
-            }
-
-            if (dataset == null)
+            if ((!DatasetExists(datasetId, out dataset) || dataset == null) && bigQueryConnection.CreateLargeResultsDataset)
             {
                 try
                 {
@@ -571,6 +592,34 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
 
+        public bool DatasetExists(string datasetId, out BigQueryDataset? dataset)
+        {
+            BigQueryDataset? tempDataset = null;
+            bool result = this.TraceActivity(activity =>
+            {
+                try
+                {
+                    activity?.AddBigQueryTag("large_results.dataset.try_find", datasetId);
+                    tempDataset = this.Client.GetDataset(datasetId);
+                    activity?.AddBigQueryTag("large_results.dataset.found", datasetId);
+                    return true;
+                }
+                catch (GoogleApiException gaEx)
+                {
+                    if (gaEx.HttpStatusCode != System.Net.HttpStatusCode.NotFound)
+                    {
+                        activity?.AddException(gaEx);
+                        throw new AdbcException($"Failure trying to retrieve dataset {datasetId}", gaEx);
+                    }
+                    tempDataset = null;
+                    return false;
+                }
+            });
+
+            dataset = tempDataset;
+            return result;
+        }
+
         private async Task<T> ExecuteCancellableJobAsync<T>(
             JobCancellationContext context,
             Activity? activity,
@@ -601,6 +650,94 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 // Job is no longer in context after completion or cancellation
                 context.Job = null;
+            }
+        }
+
+        /// <summary>
+        /// Allows sending a function name as the SqlQuery to execute a function and return the result.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="NotSupportedException"></exception>
+        private QueryResult ExecuteMetadataCommandQuery()
+        {
+            return SqlQuery?.ToLowerInvariant() switch
+            {
+                GetDatasetCommandName => ExecuteDatasetExistsCommand(),
+                null or "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {GetDatasetCommandName}"),
+                _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {GetDatasetCommandName}"),
+            };
+        }
+
+        private QueryResult ExecuteDatasetExistsCommand()
+        {
+            KeyValuePair<string, string>? option = Options != null ? Options.Where(x => x.Key == BigQueryParameters.LargeResultsDataset).FirstOrDefault() : null;
+
+            if (option == null || string.IsNullOrEmpty(option?.Value))
+            {
+                throw new ArgumentNullException(nameof(Options), $"The option '{BigQueryParameters.LargeResultsDataset}' must be set to the dataset name.");
+            }
+
+            bool exists = DatasetExists(option?.Value!, out BigQueryDataset? dataset);
+
+            Schema schema = new Schema(new List<Field>
+            {
+                new Field("name", StringType.Default, false),
+                new Field("exists", BooleanType.Default, false),
+                new Field("location", StringType.Default, false)
+            }, null);
+
+            StringArray datasetNameArray = new StringArray.Builder()
+                .Append(option?.Value!)
+                .Build();
+
+            BooleanArray datasetExistsArray = new BooleanArray.Builder()
+                .Append(exists)
+                .Build();
+
+            StringArray locationArray = (exists && dataset != null) ?
+                new StringArray.Builder().Append(dataset.Resource.Location).Build() :
+                new StringArray.Builder().AppendNull().Build();
+
+            RecordBatch recordBatch = new RecordBatch(
+                schema,
+                new IArrowArray[] { datasetNameArray, datasetExistsArray, locationArray },
+                1
+            );
+
+            // Create a simple array stream using the existing MultiArrowReader pattern
+            MultiArrowReader stream = new MultiArrowReader(this, schema, new[] { new SingleRecordBatchReader(recordBatch) }, new CancellationContext(cancellationRegistry));
+
+            return new QueryResult(1, stream);
+        }
+
+        // Simple reader that yields a single record batch
+        private class SingleRecordBatchReader : IArrowReader
+        {
+            private readonly RecordBatch _batch;
+            private bool _hasBeenRead = false;
+
+            public SingleRecordBatchReader(RecordBatch batch)
+            {
+                _batch = batch;
+            }
+
+            public Schema Schema => _batch.Schema;
+
+            public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            {
+                if (_hasBeenRead)
+                {
+                    return new ValueTask<RecordBatch?>(result: null);
+                }
+
+                _hasBeenRead = true;
+                return new ValueTask<RecordBatch?>(_batch);
+            }
+
+            public void Dispose()
+            {
+                _batch?.Dispose();
             }
         }
 
