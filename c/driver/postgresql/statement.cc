@@ -763,8 +763,7 @@ AdbcStatusCode PostgresStatement::GetOptionInt(const char* key, int64_t* value,
 AdbcStatusCode PostgresStatement::GetParameterSchema(struct ArrowSchema* schema,
                                                      struct AdbcError* error) {
   if (query_.empty()) {
-    InternalAdbcSetError(error, "%s",
-                         "[libpq] Must SetSqlQuery before GetParameterSchema");
+    InternalAdbcSetError(error, "[libpq] Must SetSqlQuery before GetParameterSchema");
     return ADBC_STATUS_INVALID_STATE;
   }
 
