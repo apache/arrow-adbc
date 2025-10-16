@@ -24,6 +24,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
@@ -42,6 +43,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private readonly ConcurrentDictionary<long, IDownloadResult> _urlsByOffset = new ConcurrentDictionary<long, IDownloadResult>();
         private readonly int _expirationBufferSeconds;
         private readonly IClock _clock;
+        private readonly Activity? _parentActivity;
         private long _startOffset;
         private bool _hasMoreResults;
         private bool _isCompleted;
@@ -59,6 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="batchSize">The number of rows to fetch in each batch.</param>
         /// <param name="expirationBufferSeconds">Buffer time in seconds before URL expiration to trigger refresh.</param>
         /// <param name="clock">Clock implementation for time operations. If null, uses system clock.</param>
+        /// <param name="parentActivity">Optional parent Activity for tracing.</param>
         public CloudFetchResultFetcher(
             IHiveServer2Statement statement,
             IResponse response,
@@ -67,7 +70,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             BlockingCollection<IDownloadResult> downloadQueue,
             long batchSize,
             int expirationBufferSeconds = 60,
-            IClock? clock = null)
+            IClock? clock = null,
+            Activity? parentActivity = null)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _response = response;
@@ -77,6 +81,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             _batchSize = batchSize;
             _expirationBufferSeconds = expirationBufferSeconds;
             _clock = clock ?? new SystemClock();
+            _parentActivity = parentActivity;
             _hasMoreResults = true;
             _isCompleted = false;
         }
@@ -180,7 +185,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     var refreshedLink = response.Results.ResultLinks.FirstOrDefault(l => l.StartRowOffset == offset);
                     if (refreshedLink != null)
                     {
-                        Trace.TraceInformation($"Successfully fetched URL for offset {offset}");
+                        _parentActivity?.AddEvent("cloudfetch.url_fetched", [
+                            new("offset", offset),
+                            new("url_length", refreshedLink.FileLink?.Length ?? 0)
+                        ]);
 
                         // Create a download result for the refreshed link
                         var downloadResult = new DownloadResult(refreshedLink, _memoryManager);
@@ -190,7 +198,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     }
                 }
 
-                Trace.TraceWarning($"Failed to fetch URL for offset {offset}");
+                _parentActivity?.AddEvent("cloudfetch.url_fetch_failed", [new("offset", offset)]);
                 return null;
             }
             finally

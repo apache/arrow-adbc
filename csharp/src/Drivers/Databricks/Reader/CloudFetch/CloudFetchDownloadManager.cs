@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,13 +59,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="statement">The HiveServer2 statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
+        /// <param name="parentActivity">Optional parent Activity for tracing.</param>
         public CloudFetchDownloadManager(
             IHiveServer2Statement statement,
             Schema schema,
             IResponse response,
             TFetchResultsResp? initialResults,
             bool isLz4Compressed,
-            HttpClient httpClient)
+            HttpClient httpClient,
+            Activity? parentActivity = null)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
@@ -195,7 +198,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             _httpClient = httpClient;
             _httpClient.Timeout = TimeSpan.FromMinutes(timeoutMinutes);
 
-            // Initialize the result fetcher with URL management capabilities
+            // Initialize the result fetcher with URL management capabilities and Activity context
             _resultFetcher = new CloudFetchResultFetcher(
                 _statement,
                 response,
@@ -203,9 +206,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 _memoryManager,
                 _downloadQueue,
                 _statement.BatchSize,
-                urlExpirationBufferSeconds);
+                urlExpirationBufferSeconds,
+                null,
+                parentActivity);
 
-            // Initialize the downloader
+            // Initialize the downloader with Activity context
             _downloader = new CloudFetchDownloader(
                 _downloadQueue,
                 _resultQueue,
@@ -217,7 +222,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 maxRetries,
                 retryDelayMs,
                 maxUrlRefreshAttempts,
-                urlExpirationBufferSeconds);
+                urlExpirationBufferSeconds,
+                parentActivity);
         }
 
         /// <summary>
