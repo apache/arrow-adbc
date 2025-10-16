@@ -59,15 +59,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="statement">The HiveServer2 statement.</param>
         /// <param name="schema">The Arrow schema.</param>
         /// <param name="isLz4Compressed">Whether the results are LZ4 compressed.</param>
-        /// <param name="parentActivity">Optional parent Activity for tracing.</param>
         public CloudFetchDownloadManager(
             IHiveServer2Statement statement,
             Schema schema,
             IResponse response,
             TFetchResultsResp? initialResults,
             bool isLz4Compressed,
-            HttpClient httpClient,
-            Activity? parentActivity = null)
+            HttpClient httpClient)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
@@ -198,7 +196,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             _httpClient = httpClient;
             _httpClient.Timeout = TimeSpan.FromMinutes(timeoutMinutes);
 
-            // Initialize the result fetcher with URL management capabilities and Activity context
+            // Initialize the result fetcher with URL management capabilities
             _resultFetcher = new CloudFetchResultFetcher(
                 _statement,
                 response,
@@ -206,11 +204,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 _memoryManager,
                 _downloadQueue,
                 _statement.BatchSize,
-                urlExpirationBufferSeconds,
-                null,
-                parentActivity);
+                urlExpirationBufferSeconds);
 
-            // Initialize the downloader with Activity context
+            // Initialize the downloader
             _downloader = new CloudFetchDownloader(
                 _downloadQueue,
                 _resultQueue,
@@ -222,8 +218,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 maxRetries,
                 retryDelayMs,
                 maxUrlRefreshAttempts,
-                urlExpirationBufferSeconds,
-                parentActivity);
+                urlExpirationBufferSeconds);
         }
 
         /// <summary>

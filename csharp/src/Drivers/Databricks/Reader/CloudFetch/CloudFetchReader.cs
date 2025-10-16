@@ -68,17 +68,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
             }
 
-            // Initialize the download manager with Activity context for tracing
+            // Initialize the download manager
+            // Activity context will be captured dynamically by CloudFetch components when events are logged
             if (isPrefetchEnabled)
             {
-                downloadManager = new CloudFetchDownloadManager(statement, schema, response, initialResults, isLz4Compressed, httpClient, Activity.Current);
+                downloadManager = new CloudFetchDownloadManager(statement, schema, response, initialResults, isLz4Compressed, httpClient);
                 downloadManager.StartAsync().Wait();
             }
             else
             {
                 // For now, we only support the prefetch implementation
                 // This flag is reserved for future use if we need to support a non-prefetch mode
-                downloadManager = new CloudFetchDownloadManager(statement, schema, response, initialResults, isLz4Compressed, httpClient, Activity.Current);
+                downloadManager = new CloudFetchDownloadManager(statement, schema, response, initialResults, isLz4Compressed, httpClient);
                 downloadManager.StartAsync().Wait();
             }
         }

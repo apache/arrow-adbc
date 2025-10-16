@@ -43,7 +43,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private readonly ConcurrentDictionary<long, IDownloadResult> _urlsByOffset = new ConcurrentDictionary<long, IDownloadResult>();
         private readonly int _expirationBufferSeconds;
         private readonly IClock _clock;
-        private readonly Activity? _parentActivity;
         private long _startOffset;
         private bool _hasMoreResults;
         private bool _isCompleted;
@@ -61,7 +60,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="batchSize">The number of rows to fetch in each batch.</param>
         /// <param name="expirationBufferSeconds">Buffer time in seconds before URL expiration to trigger refresh.</param>
         /// <param name="clock">Clock implementation for time operations. If null, uses system clock.</param>
-        /// <param name="parentActivity">Optional parent Activity for tracing.</param>
         public CloudFetchResultFetcher(
             IHiveServer2Statement statement,
             IResponse response,
@@ -70,8 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             BlockingCollection<IDownloadResult> downloadQueue,
             long batchSize,
             int expirationBufferSeconds = 60,
-            IClock? clock = null,
-            Activity? parentActivity = null)
+            IClock? clock = null)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _response = response;
@@ -81,7 +78,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             _batchSize = batchSize;
             _expirationBufferSeconds = expirationBufferSeconds;
             _clock = clock ?? new SystemClock();
-            _parentActivity = parentActivity;
             _hasMoreResults = true;
             _isCompleted = false;
         }
@@ -185,7 +181,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     var refreshedLink = response.Results.ResultLinks.FirstOrDefault(l => l.StartRowOffset == offset);
                     if (refreshedLink != null)
                     {
-                        _parentActivity?.AddEvent("cloudfetch.url_fetched", [
+                        Activity.Current?.AddEvent("cloudfetch.url_fetched", [
                             new("offset", offset),
                             new("url_length", refreshedLink.FileLink?.Length ?? 0)
                         ]);
@@ -198,7 +194,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     }
                 }
 
-                _parentActivity?.AddEvent("cloudfetch.url_fetch_failed", [new("offset", offset)]);
+                Activity.Current?.AddEvent("cloudfetch.url_fetch_failed", [new("offset", offset)]);
                 return null;
             }
             finally
