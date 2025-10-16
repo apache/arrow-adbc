@@ -365,18 +365,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
         private async Task DownloadFileAsync(IDownloadResult downloadResult, CancellationToken cancellationToken)
         {
-            string url = downloadResult.Link.FileLink;
-            string sanitizedUrl = SanitizeUrl(downloadResult.Link.FileLink);
-            byte[]? fileData = null;
+            await this.TraceActivityAsync(async activity =>
+            {
+                string url = downloadResult.Link.FileLink;
+                string sanitizedUrl = SanitizeUrl(downloadResult.Link.FileLink);
+                byte[]? fileData = null;
 
-            // Use the size directly from the download result
-            long size = downloadResult.Size;
+                // Use the size directly from the download result
+                long size = downloadResult.Size;
 
-            // Create a stopwatch to track download time
-            var stopwatch = Stopwatch.StartNew();
+                // Add tags to the Activity for filtering/searching
+                activity?.SetTag("cloudfetch.offset", downloadResult.Link.StartRowOffset);
+                activity?.SetTag("cloudfetch.sanitized_url", sanitizedUrl);
+                activity?.SetTag("cloudfetch.expected_size_bytes", size);
 
-            // Log download start
-            Activity.Current?.AddEvent("cloudfetch.download_start", [
+                // Create a stopwatch to track download time
+                var stopwatch = Stopwatch.StartNew();
+
+                // Log download start
+                activity?.AddEvent("cloudfetch.download_start", [
                 new("offset", downloadResult.Link.StartRowOffset),
                 new("sanitized_url", sanitizedUrl),
                 new("expected_size_bytes", size),
@@ -416,7 +423,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                             url = refreshedLink.FileLink;
                             sanitizedUrl = SanitizeUrl(url);
 
-                            Activity.Current?.AddEvent("cloudfetch.url_refreshed_after_auth_error", [
+                            activity?.AddEvent("cloudfetch.url_refreshed_after_auth_error", [
                                 new("offset", refreshedLink.StartRowOffset),
                                 new("sanitized_url", sanitizedUrl)
                             ]);
@@ -437,7 +444,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     long? contentLength = response.Content.Headers.ContentLength;
                     if (contentLength.HasValue && contentLength.Value > 0)
                     {
-                        Activity.Current?.AddEvent("cloudfetch.content_length", [
+                        activity?.AddEvent("cloudfetch.content_length", [
                             new("offset", downloadResult.Link.StartRowOffset),
                             new("sanitized_url", sanitizedUrl),
                             new("content_length_bytes", contentLength.Value),
@@ -452,7 +459,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 catch (Exception ex) when (retry < _maxRetries - 1 && !cancellationToken.IsCancellationRequested)
                 {
                     // Log the error and retry
-                    Activity.Current?.AddEvent("cloudfetch.download_retry", [
+                    activity?.AddEvent("cloudfetch.download_retry", [
                         new("offset", downloadResult.Link.StartRowOffset),
                         new("sanitized_url", SanitizeUrl(url)),
                         new("attempt", retry + 1),
@@ -467,7 +474,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             if (fileData == null)
             {
                 stopwatch.Stop();
-                Activity.Current?.AddEvent("cloudfetch.download_failed_all_retries", [
+                activity?.AddEvent("cloudfetch.download_failed_all_retries", [
                     new("offset", downloadResult.Link.StartRowOffset),
                     new("sanitized_url", sanitizedUrl),
                     new("max_retries", _maxRetries),
@@ -498,7 +505,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     dataStream.Position = 0;
                     decompressStopwatch.Stop();
 
-                    Activity.Current?.AddEvent("cloudfetch.decompression_complete", [
+                    activity?.AddEvent("cloudfetch.decompression_complete", [
                         new("offset", downloadResult.Link.StartRowOffset),
                         new("sanitized_url", sanitizedUrl),
                         new("decompression_time_ms", decompressStopwatch.ElapsedMilliseconds),
@@ -514,7 +521,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 catch (Exception ex)
                 {
                     stopwatch.Stop();
-                    Activity.Current?.AddEvent("cloudfetch.decompression_error", [
+                    activity?.AddEvent("cloudfetch.decompression_error", [
                         new("offset", downloadResult.Link.StartRowOffset),
                         new("sanitized_url", sanitizedUrl),
                         new("error_message", ex.Message),
@@ -534,7 +541,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             // Stop the stopwatch and log download completion
             stopwatch.Stop();
             double throughputMBps = (actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0);
-            Activity.Current?.AddEvent("cloudfetch.download_complete", [
+            activity?.AddEvent("cloudfetch.download_complete", [
                 new("offset", downloadResult.Link.StartRowOffset),
                 new("sanitized_url", sanitizedUrl),
                 new("actual_size_bytes", actualSize),
@@ -545,6 +552,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
             // Set the download as completed with the original size
             downloadResult.SetCompleted(dataStream, size);
+            }, activityName: "DownloadFile");
         }
 
         private void SetError(Exception ex)
