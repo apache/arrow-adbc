@@ -128,7 +128,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
             command.CommandText = "select ?, ?";
             command.Prepare();
             Assert.Equal(2, command.Parameters.Count);
-            Assert.Equal("0", command.Parameters[0].ParameterName);
+            Assert.Equal(string.Empty, command.Parameters[0].ParameterName);
             Assert.Equal(DbType.Object, command.Parameters[0].DbType);
             Assert.Equal("1", command.Parameters[1].ParameterName);
             Assert.Equal(DbType.Object, command.Parameters[1].DbType);
