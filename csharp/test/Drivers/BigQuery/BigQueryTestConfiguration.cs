@@ -147,9 +147,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("isMetadata")]
         public bool IsMetadataCommand { get; set; } = false;
 
-        [JsonPropertyName("detectJobLocation")]
-        public bool DetectJobLocation { get; set; } = false;
-
         [JsonPropertyName("expectedMetadataResultJson")]
         public string? ExpectedMetadataResultJson { get; set; }
     }

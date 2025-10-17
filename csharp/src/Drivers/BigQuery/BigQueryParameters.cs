@@ -58,18 +58,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// </summary>
         public const string CreateLargeResultsDataset = "adbc.bigquery.create_large_results_dataset";
 
-
         /// <summary>
         /// The indicator of whether the <c>AdbcStatement.ExecuteQuery[Async]</c> should execute a metadata command query.
         /// In the case this indicator is set to <c>True</c>, the method will execute a metadata command using the native API where
         /// the name of the command is given in the <c>AdbcStatement.SqlQuery</c> property value.
         /// </summary>
         public const string IsMetadataCommand = "adbc.bigquery.statement.is_metadata_command";
-
-        /// <summary>
-        /// Indicates whether the driver should attempt to detect a location for jobs if no <see cref="DefaultClientLocation"/>"/> is specified.
-        /// </summary>
-        public const string DetectJobLocation = "adbc.bigquery.detect_job_location";
 
         // these values are safe to log any time
         private static HashSet<string> safeToLog = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

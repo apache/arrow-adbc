@@ -456,7 +456,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 return options;
 
             string largeResultDatasetId = BigQueryConstants.DefaultLargeDatasetId;
-            bool detectJobLocation = false;
 
             foreach (KeyValuePair<string, string> keyValuePair in Options)
             {
@@ -469,9 +468,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     case BigQueryParameters.LargeResultsDataset:
                         largeResultDatasetId = keyValuePair.Value;
                         activity?.AddBigQueryParameterTag(BigQueryParameters.LargeResultsDataset, largeResultDatasetId);
-                        break;
-                    case BigQueryParameters.DetectJobLocation:
-                        detectJobLocation = true ? keyValuePair.Value.Equals("true", StringComparison.OrdinalIgnoreCase) : false;
                         break;
                     case BigQueryParameters.LargeResultsDestinationTable:
                         string destinationTable = keyValuePair.Value;
@@ -508,20 +504,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         activity?.AddBigQueryParameterTag(BigQueryParameters.UseLegacySQL, options.UseLegacySql);
                         break;
                 }
-            }
-
-            // if no DefaultLocation was specified for the client, but a dataset is specified, then use its location for the jobs
-            // to avoid errors like:
-            //    Cannot execute<ExecuteQueryInternalAsync>b__1 after 5 tries.Last exception: The service bigquery has thrown an exception. No HttpStatusCode was specified.
-            //    Job gcp-pro-******-****/US/job_2cdc3c18_c36a_4b51_aeac_************ contained 2 error(s).First error message: Not found: Dataset gcp-pro-******-****:view_*************_*******
-            //    was not found in location US
-            // because the default location for the client is US if not specified
-            if (string.IsNullOrEmpty(this.Client.DefaultLocation) &&
-                detectJobLocation &&
-                !string.IsNullOrEmpty(largeResultDatasetId)
-                && DatasetExists(largeResultDatasetId, out BigQueryDataset? dataset))
-            {
-                options.JobLocation = dataset?.Resource.Location;
             }
 
             if (options.AllowLargeResults == true && options.DestinationTable == null)
