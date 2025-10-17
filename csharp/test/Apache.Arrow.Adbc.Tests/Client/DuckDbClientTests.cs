@@ -16,6 +16,7 @@
 */
 
 using System.Data;
+using System.Runtime.InteropServices;
 using Apache.Arrow.Adbc.Client;
 using Apache.Arrow.Types;
 using Xunit;
@@ -128,7 +129,14 @@ namespace Apache.Arrow.Adbc.Tests.Client
             command.CommandText = "select ?, ?";
             command.Prepare();
             Assert.Equal(2, command.Parameters.Count);
-            Assert.Equal(string.Empty, command.Parameters[0].ParameterName);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                Assert.Equal(string.Empty, command.Parameters[0].ParameterName);
+            }
+            else
+            {
+                Assert.Equal("0", command.Parameters[0].ParameterName);
+            }
             Assert.Equal(DbType.Object, command.Parameters[0].DbType);
             Assert.Equal("1", command.Parameters[1].ParameterName);
             Assert.Equal(DbType.Object, command.Parameters[1].DbType);
