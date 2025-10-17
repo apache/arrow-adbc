@@ -17,9 +17,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -351,14 +349,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ReadRowsStream stream = new ReadRowsStream(enumerator);
             activity?.AddBigQueryTag("read_stream.has_rows", stream.HasRows);
 
-            if (stream.HasRows)
-            {
-                return new ArrowStreamReader(stream);
-            }
-            else
-            {
-                return null;
-            }
+            return stream.HasRows ? stream : null;
         }
 
         private QueryOptions ValidateOptions(Activity? activity)
@@ -594,13 +585,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
         }
 
-        sealed class ReadRowsStream : Stream
+        sealed class ReadRowsStream : IArrowArrayStream
         {
-            IAsyncEnumerator<ReadRowsResponse> response;
-            ReadOnlyMemory<byte> currentBuffer;
-            bool first;
-            int position;
-            bool hasRows;
+            readonly Schema? schema;
+            readonly IAsyncEnumerator<ReadRowsResponse> response;
+            bool done;
+            bool disposed;
 
             public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response)
             {
@@ -608,91 +598,38 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     if (response.MoveNextAsync().Result && response.Current != null)
                     {
-                        this.currentBuffer = response.Current.ArrowSchema.SerializedSchema.Memory;
-                        this.hasRows = true;
-                    }
-                    else
-                    {
-                        this.hasRows = false;
+                        this.schema = ArrowSerializationHelpers.DeserializeSchema(response.Current.ArrowSchema.SerializedSchema.Memory);
                     }
                 }
                 catch (InvalidOperationException)
                 {
-                    this.hasRows = false;
                 }
 
                 this.response = response;
-                this.first = true;
             }
 
-            public bool HasRows => this.hasRows;
+            public Schema Schema => this.schema ?? throw new InvalidOperationException("Stream has no rows");
+            public bool HasRows => this.schema != null;
 
-            public override bool CanRead => true;
-
-            public override bool CanSeek => false;
-
-            public override bool CanWrite => false;
-
-            public override long Length => throw new NotSupportedException();
-
-            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-
-            public override void Flush()
+            public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken)
             {
-            }
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                if (!hasRows)
+                if (this.done || !await this.response.MoveNextAsync())
                 {
-                    return 0;
+                    this.done = true;
+                    return null;
                 }
 
-                int remaining = this.currentBuffer.Length - this.position;
-                if (remaining == 0)
+                return ArrowSerializationHelpers.DeserializeRecordBatch(this.schema, this.response.Current.ArrowRecordBatch.SerializedRecordBatch.Memory);
+            }
+
+            public void Dispose()
+            {
+                if (!this.disposed)
                 {
-                    if (this.first)
-                    {
-                        this.first = false;
-                    }
-                    else if (!this.response.MoveNextAsync().Result)
-                    {
-                        return 0;
-                    }
-                    this.currentBuffer = this.response.Current.ArrowRecordBatch.SerializedRecordBatch.Memory;
-                    this.position = 0;
-                    remaining = this.currentBuffer.Length - this.position;
+                    this.response.DisposeAsync().GetAwaiter().GetResult();
+                    this.disposed = true;
+                    this.done = true;
                 }
-
-                int bytes = Math.Min(remaining, count);
-                this.currentBuffer.Slice(this.position, bytes).CopyTo(new Memory<byte>(buffer, offset, bytes));
-                this.position += bytes;
-                return bytes;
-            }
-
-            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                return base.ReadAsync(buffer, offset, count, cancellationToken);
-            }
-
-            public override int ReadByte()
-            {
-                return base.ReadByte();
-            }
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                throw new NotSupportedException();
             }
         }
     }
