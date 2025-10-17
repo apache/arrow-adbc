@@ -254,6 +254,58 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Must be a positive integer value.
         /// </summary>
         public const string OperationStatusRequestTimeout = "adbc.databricks.operation_status_request_timeout";
+
+        // Statement Execution API configuration parameters
+
+        /// <summary>
+        /// The protocol to use for statement execution.
+        /// Supported values:
+        /// - "thrift": Use Thrift/HiveServer2 protocol (default)
+        /// - "rest": Use Statement Execution REST API
+        /// </summary>
+        public const string Protocol = "adbc.databricks.protocol";
+
+        /// <summary>
+        /// Result disposition for Statement Execution API.
+        /// Supported values:
+        /// - "inline": Results returned directly in response (≤25 MiB)
+        /// - "external_links": Results via presigned URLs (≤100 GiB)
+        /// - "inline_or_external_links": Hybrid mode - server decides based on size (default, recommended)
+        /// </summary>
+        public const string ResultDisposition = "adbc.databricks.result_disposition";
+
+        /// <summary>
+        /// Result format for Statement Execution API.
+        /// Supported values:
+        /// - "arrow_stream": Apache Arrow IPC format (default, recommended)
+        /// - "json_array": JSON array format
+        /// - "csv": CSV format
+        /// </summary>
+        public const string ResultFormat = "adbc.databricks.result_format";
+
+        /// <summary>
+        /// Result compression codec for Statement Execution API.
+        /// Supported values:
+        /// - "lz4": LZ4 compression (default for external_links)
+        /// - "gzip": GZIP compression
+        /// - "none": No compression (default for inline)
+        /// </summary>
+        public const string ResultCompression = "adbc.databricks.result_compression";
+
+        /// <summary>
+        /// Wait timeout for statement execution in seconds.
+        /// - 0: Async mode, return immediately
+        /// - 5-50: Sync mode up to timeout
+        /// Default: 10 seconds
+        /// Note: When enable_direct_results=true, this parameter is not set (server waits until complete)
+        /// </summary>
+        public const string WaitTimeout = "adbc.databricks.wait_timeout";
+
+        /// <summary>
+        /// Statement polling interval in milliseconds for async execution.
+        /// Default: 1000ms (1 second)
+        /// </summary>
+        public const string PollingInterval = "adbc.databricks.polling_interval_ms";
     }
 
     /// <summary>
@@ -270,6 +322,95 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default timeout in seconds for operation status polling requests.
         /// </summary>
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
+
+        /// <summary>
+        /// Default wait timeout in seconds for statement execution.
+        /// </summary>
+        public const int DefaultWaitTimeoutSeconds = 10;
+
+        /// <summary>
+        /// Default polling interval in milliseconds for async statement execution.
+        /// </summary>
+        public const int DefaultPollingIntervalMs = 1000;
+
+        /// <summary>
+        /// Protocol type constants
+        /// </summary>
+        public static class ProtocolTypes
+        {
+            /// <summary>
+            /// Use Thrift/HiveServer2 protocol for statement execution.
+            /// </summary>
+            public const string Thrift = "thrift";
+
+            /// <summary>
+            /// Use Statement Execution REST API for statement execution.
+            /// </summary>
+            public const string Rest = "rest";
+        }
+
+        /// <summary>
+        /// Result disposition constants for Statement Execution API
+        /// </summary>
+        public static class ResultDispositions
+        {
+            /// <summary>
+            /// Results returned directly in response (≤25 MiB).
+            /// </summary>
+            public const string Inline = "inline";
+
+            /// <summary>
+            /// Results via presigned URLs (≤100 GiB).
+            /// </summary>
+            public const string ExternalLinks = "external_links";
+
+            /// <summary>
+            /// Hybrid mode - server decides based on size (recommended).
+            /// </summary>
+            public const string InlineOrExternalLinks = "inline_or_external_links";
+        }
+
+        /// <summary>
+        /// Result format constants for Statement Execution API
+        /// </summary>
+        public static class ResultFormats
+        {
+            /// <summary>
+            /// Apache Arrow IPC format (recommended).
+            /// </summary>
+            public const string ArrowStream = "arrow_stream";
+
+            /// <summary>
+            /// JSON array format.
+            /// </summary>
+            public const string JsonArray = "json_array";
+
+            /// <summary>
+            /// CSV format.
+            /// </summary>
+            public const string Csv = "csv";
+        }
+
+        /// <summary>
+        /// Result compression codec constants for Statement Execution API
+        /// </summary>
+        public static class ResultCompressions
+        {
+            /// <summary>
+            /// LZ4 compression (default for external_links).
+            /// </summary>
+            public const string Lz4 = "lz4";
+
+            /// <summary>
+            /// GZIP compression.
+            /// </summary>
+            public const string Gzip = "gzip";
+
+            /// <summary>
+            /// No compression (default for inline).
+            /// </summary>
+            public const string None = "none";
+        }
 
         /// <summary>
         /// OAuth grant type constants
