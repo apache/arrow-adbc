@@ -748,7 +748,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             readonly Schema? schema;
             readonly IAsyncEnumerator<ReadRowsResponse> response;
-            bool done;
+            bool first;
             bool disposed;
 
             public ReadRowsStream(IAsyncEnumerator<ReadRowsResponse> response)
@@ -765,6 +765,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 }
 
                 this.response = response;
+                this.first = true;
             }
 
             public Schema Schema => this.schema ?? throw new InvalidOperationException("Stream has no rows");
@@ -772,9 +773,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken)
             {
-                if (this.done || !await this.response.MoveNextAsync())
+                if (this.first)
                 {
-                    this.done = true;
+                    this.first = false;
+                }
+                else if (this.disposed || !await this.response.MoveNextAsync())
+                {
                     return null;
                 }
 
@@ -787,7 +791,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     this.response.DisposeAsync().GetAwaiter().GetResult();
                     this.disposed = true;
-                    this.done = true;
                 }
             }
         }

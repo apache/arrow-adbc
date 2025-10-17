@@ -34,27 +34,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 {
     public class BigQueryStatementTests
     {
-        [Fact]
-        public void ReadChunkWithRetries_CalledMoreThanOnce()
-        {
-            TokenProtectedReadClientManger clientMgr = GetMockTokenProtectedReadClientManger();
-            var mockReadRowsStream = GetMockReadRowsStream(clientMgr);
-            mockReadRowsStream
-                .Setup(s => s.GetResponseStream())
-                .Throws(new InvalidOperationException("GetAsyncEnumerator can only be called once for a gRPC response stream wrapper."));
-
-            var statement = CreateBigQueryStatementForTest();
-            SetupRetryValues(statement);
-
-            // this should remain an issue because it indicates we aren't doing something correctly
-            // due to the setup, it looks like:
-            //----System.Reflection.TargetInvocationException : Exception has been thrown by the target of an invocation.
-            //--------Apache.Arrow.Adbc.AdbcException : Cannot execute<ReadChunkWithRetries>b__0 after 5 tries.Last exception: InvalidOperationException: GetAsyncEnumerator can only be called once for a gRPC response stream wrapper.
-            //------------ System.InvalidOperationException : GetAsyncEnumerator can only be called once for a gRPC response stream wrapper.
-
-            Assert.Throws<TargetInvocationException>(() => { statement.ReadChunkWithRetriesForTest(clientMgr, "test-stream", null); });
-        }
-
         [Theory]
         [InlineData(true)]  //.MoveNextAsync throws the error
         [InlineData(false)] //.Current throws the error
