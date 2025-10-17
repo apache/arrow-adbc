@@ -19,7 +19,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="1.3.0" GeneratePathProperty="true" />
+    <PackageReference Include="DuckDB.NET.Bindings.Full" Version="1.4.1" GeneratePathProperty="true" />
     <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
   </ItemGroup>
 
