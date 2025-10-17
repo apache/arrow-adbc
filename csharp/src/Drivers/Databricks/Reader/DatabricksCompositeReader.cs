@@ -80,7 +80,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             }
             if (_response.DirectResults?.ResultSet?.HasMoreRows ?? true)
             {
-                operationStatusPoller = operationPoller ?? new DatabricksOperationStatusPoller(_statement, response);
+                operationStatusPoller = operationPoller ?? new DatabricksOperationStatusPoller(_statement, response, GetHeartbeatIntervalFromConnection(), GetRequestTimeoutFromConnection());
                 operationStatusPoller.Start();
             }
         }
@@ -123,6 +123,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 // Make a FetchResults call to get the initial result set
                 // and determine the reader based on the result set
                 TFetchResultsReq request = new TFetchResultsReq(_response.OperationHandle!, TFetchOrientation.FETCH_NEXT, this._statement.BatchSize);
+
+                // Set MaxBytes from DatabricksStatement
+                if (this._statement is DatabricksStatement databricksStatement)
+                {
+                    request.MaxBytes = databricksStatement.MaxBytesPerFetchRequest;
+                }
+
                 TFetchResultsResp response = await this._statement.Client!.FetchResults(request, cancellationToken);
                 _activeReader = DetermineReader(response);
             }
@@ -196,6 +203,42 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
             operationStatusPoller?.Stop();
             operationStatusPoller?.Dispose();
             operationStatusPoller = null;
+        }
+
+        /// <summary>
+        /// Gets the heartbeat interval from the statement's connection.
+        /// </summary>
+        /// <returns>The heartbeat interval in seconds, or default if not available.</returns>
+        private int GetHeartbeatIntervalFromConnection()
+        {
+            if (_statement is DatabricksStatement databricksStatement)
+            {
+                var connection = databricksStatement.Connection;
+                if (connection is DatabricksConnection databricksConnection)
+                {
+                    return databricksConnection.FetchHeartbeatIntervalSeconds;
+                }
+            }
+
+            return DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
+        }
+
+        /// <summary>
+        /// Gets the request timeout from the statement's connection.
+        /// </summary>
+        /// <returns>The request timeout in seconds, or default if not available.</returns>
+        private int GetRequestTimeoutFromConnection()
+        {
+            if (_statement is DatabricksStatement databricksStatement)
+            {
+                var connection = databricksStatement.Connection;
+                if (connection is DatabricksConnection databricksConnection)
+                {
+                    return databricksConnection.OperationStatusRequestTimeoutSeconds;
+                }
+            }
+
+            return DatabricksConstants.DefaultOperationStatusRequestTimeoutSeconds;
         }
     }
 }

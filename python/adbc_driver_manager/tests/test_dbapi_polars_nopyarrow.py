@@ -18,11 +18,12 @@
 import os
 import typing
 
-import polars
-import polars.testing
 import pytest
 
 from adbc_driver_manager import dbapi
+
+polars = pytest.importorskip("polars")
+polars.testing = pytest.importorskip("polars.testing")
 
 pytestmark = pytest.mark.pyarrowless
 
@@ -37,12 +38,6 @@ def no_pyarrow() -> None:
     else:
         assert not no_skip, "pyarrow is installed, but ADBC_NO_SKIP_TESTS is set"
         pytest.skip("Skipping because pyarrow is installed")
-
-
-@pytest.fixture
-def sqlite() -> typing.Generator[dbapi.Connection, None, None]:
-    with dbapi.connect(driver="adbc_driver_sqlite") as conn:
-        yield conn
 
 
 @pytest.mark.parametrize(

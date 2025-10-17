@@ -22,10 +22,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <stdlib.h>
 #include <algorithm>
+#include <cstdlib>
 #include <filesystem>  // NOLINT [build/c++17]
-#include <memory>
+#include <iostream>
 #include <string>
 #include <toml++/toml.hpp>
 #include <vector>
@@ -1000,7 +1000,65 @@ TEST_F(DriverManifest, LoadSystemLevelManifest) {
 }
 #endif
 
-// TEST CASES
-// manifest not found on given paths
+TEST_F(DriverManifest, CondaPrefix) {
+#if ADBC_CONDA_BUILD
+  constexpr bool is_conda_build = true;
+#else
+  constexpr bool is_conda_build = false;
+#endif  // ADBC_CONDA_BUILD
+
+  std::cerr << "ADBC_CONDA_BUILD: " << (is_conda_build ? "defined" : "not defined")
+            << std::endl;
+
+  auto filepath = temp_dir / "etc" / "adbc" / "drivers" / "sqlite.toml";
+  std::filesystem::create_directories(filepath.parent_path());
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << simple_manifest;
+  test_manifest_file.close();
+
+#ifdef _WIN32
+  ASSERT_EQ(0, ::_wputenv_s(L"CONDA_PREFIX", temp_dir.native().c_str()));
+#else
+  ASSERT_EQ(0, ::setenv("CONDA_PREFIX", temp_dir.native().c_str(), 1));
+#endif  // _WIN32
+
+  AdbcStatusCode result =
+      AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, ADBC_LOAD_FLAG_DEFAULT,
+                         nullptr, &driver, &error);
+
+  if constexpr (is_conda_build) {
+    ASSERT_THAT(result, IsOkStatus(&error));
+  } else {
+    ASSERT_THAT(result, IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+    ASSERT_THAT(error.message,
+                ::testing::HasSubstr("not enabled at build time: Conda prefix"));
+  }
+}
+
+TEST_F(DriverManifest, ImplicitUri) {
+  auto filepath = temp_dir / "postgresql.toml";
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << R"([Driver]
+shared = "adbc_driver_postgresql")";
+  test_manifest_file.close();
+
+  // Should attempt to load the "postgresql" driver by inferring from the URI
+  std::string uri = "postgresql://a:b@localhost:9999/nonexistent";
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", uri.c_str(), &error),
+              IsOkStatus(&error));
+  std::string search_path = temp_dir.string();
+  ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                  &database.value, search_path.data(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_IO, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Failed to connect"));
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
 
 }  // namespace adbc

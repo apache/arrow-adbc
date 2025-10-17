@@ -16,6 +16,7 @@
 # under the License.
 
 # cython: language_level = 3
+# cython: freethreading_compatible=True
 
 import pyarrow
 from cython.operator cimport dereference as deref

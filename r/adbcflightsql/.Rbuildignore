@@ -12,4 +12,3 @@
 ^cran-comments\.md$
 ^src/\.go-cache$
 ^src/\.go-path$
-^configure\.win$

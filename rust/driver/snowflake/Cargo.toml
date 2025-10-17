@@ -48,7 +48,7 @@ adbc_driver_manager.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
 dotenvy = { version = "0.15.7", default-features = false, optional = true }
-regex = { version = "1.11.2", default-features = false, optional = true }
+regex = { version = "1.12.2", default-features = false, optional = true }
 url = "2.5.7"
 
 [dev-dependencies]

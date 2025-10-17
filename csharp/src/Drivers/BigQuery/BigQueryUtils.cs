@@ -43,16 +43,31 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         internal static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
 
-        /// <summary>
-        /// Conditional used to determines if it is safe to trace
-        /// </summary>
-        /// <remarks>
-        /// It is safe to write to some output types (ie, files) but not others (ie, a shared resource).
-        /// </remarks>
-        /// <returns></returns>
-        internal static bool IsSafeToTrace()
+        public static bool ContainsException<T>(Exception exception, out T? containedException) where T : Exception
         {
-            // TODO: Add logic to determine if a file writer is listening
+            Exception? e = exception;
+            while (e != null)
+            {
+                if (e is T ce)
+                {
+                    containedException = ce;
+                    return true;
+                }
+                else if (e is AggregateException aggregateException)
+                {
+                    foreach (Exception? ex in aggregateException.InnerExceptions)
+                    {
+                        if (ContainsException(ex, out T? inner))
+                        {
+                            containedException = inner;
+                            return true;
+                        }
+                    }
+                }
+                e = e.InnerException;
+            }
+
+            containedException = null;
             return false;
         }
     }

@@ -46,7 +46,7 @@ jobs:
       matrix:
         # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
         os:
-          - macos-13
+          - macos-15-intel
           - macos-latest
           - ubuntu-latest
           - windows-latest
@@ -72,7 +72,7 @@ jobs:
         working-directory: rust
         run: |
           rustup toolchain install nightly
-          cargo +nightly generate-lockfile -Z direct-minimal-versions
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +nightly generate-lockfile -Z direct-minimal-versions
       - name: Use stable Rust
         id: rust
         run: |
@@ -148,7 +148,7 @@ jobs:
           echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
       - name: Set dynamic linker path
-        if: matrix.os == 'macos-13'
+        if: matrix.os == 'macos-15-intel'
         run: |
           echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
@@ -163,6 +163,7 @@ jobs:
         if: runner.os != 'Linux' && ! matrix.minimal-versions
         working-directory: rust
         run: |
+          rustup component add clippy
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
       - name: Clippy (nightly)
         if: runner.os == 'Linux' && ! matrix.minimal-versions
@@ -195,9 +196,8 @@ jobs:
           cargo doc --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
           ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
-      - name: Verify MSRV (Minimum Supported Rust Version)
-        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
-        working-directory: rust
+      - name: Install cargo-msrv
+        if: matrix.os == 'ubuntu-latest'
         run: |
           # Install cargo-msrv
           cargo_msrv_version="v0.18.4"
@@ -209,12 +209,22 @@ jobs:
           tar xz -f "${cargo_msrv_archive}" --wildcards --strip-components=1 -C "$HOME/.local/bin" "*/cargo-msrv"
           rm "${cargo_msrv_archive}"
 
-          # Verify MSRV for each package
-          find . -mindepth 2 -name Cargo.toml | while read -r dir
+      - name: Verify MSRV (Minimum Supported Rust Version) except adbc_datafusion
+        if: matrix.os == 'ubuntu-latest' && matrix.minimal-versions
+        working-directory: rust
+        run: |
+          # Verify MSRV for each package except adbc_datafusion which requires a newer Rust version
+          find . -mindepth 2 -name Cargo.toml -not -path "*/datafusion/*" | while read -r dir
           do
             echo "Checking package '$dir'"
             cargo msrv verify --manifest-path "$dir" || exit 1
           done
+
+      - name: Verify MSRV (Minimum Supported Rust Version) of adbc_datafusion
+        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
+        working-directory: rust
+        run: |
+          cargo msrv verify --manifest-path "./driver/datafusion/Cargo.toml" || exit 1
 
       - name: Verify supports the latest arrow
         if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions

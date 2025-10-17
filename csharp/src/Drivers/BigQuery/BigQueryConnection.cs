@@ -25,6 +25,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners;
+using Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
@@ -45,6 +47,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         bool includePublicProjectIds = false;
         const string infoDriverName = "ADBC BigQuery Driver";
         const string infoVendorName = "BigQuery";
+        // Note: this needs to be set before the constructor runs
+        private readonly string _traceInstanceId = Guid.NewGuid().ToString("N");
+        private readonly FileActivityListener? _fileActivityListener;
 
         private readonly string infoDriverArrowVersion = BigQueryUtils.GetAssemblyVersion(typeof(IArrowArray));
 
@@ -66,6 +71,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 this.properties = properties.ToDictionary(k => k.Key, v => v.Value);
             }
 
+            TryInitTracerProvider(out _fileActivityListener);
+
             // add the default value for now and set to true until C# has a BigDecimal
             this.properties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
             this.httpClient = new HttpClient();
@@ -83,7 +90,39 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 RetryDelayMs = delay;
             }
+
+            if (this.properties.TryGetValue(BigQueryParameters.DefaultClientLocation, out string? location) &&
+                !string.IsNullOrEmpty(location) &&
+                BigQueryConstants.ValidLocations.Any(l => l.Equals(location, StringComparison.OrdinalIgnoreCase)))
+            {
+                DefaultClientLocation = location;
+            }
         }
+
+        private bool TryInitTracerProvider(out FileActivityListener? fileActivityListener)
+        {
+            properties.TryGetValue(ListenersOptions.Exporter, out string? exporterOption);
+            // This listener will only listen for activity from this specific connection instance.
+            bool shouldListenTo(ActivitySource source) => source.Tags?.Any(t => ReferenceEquals(t.Key, _traceInstanceId)) == true;
+            return FileActivityListener.TryActivateFileListener(AssemblyName, exporterOption, out fileActivityListener, shouldListenTo: shouldListenTo);
+        }
+
+        public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
+        {
+            IEnumerable<KeyValuePair<string, object?>>? tags = base.GetActivitySourceTags(properties);
+            tags ??= [];
+            tags = tags.Concat([new(_traceInstanceId, null)]);
+            return tags;
+        }
+
+        /// <summary>
+        /// Conditional used to determines if it is safe to trace
+        /// </summary>
+        /// <remarks>
+        /// It is safe to write to some output types (ie, files) but not others (ie, a shared resource).
+        /// </remarks>
+        /// <returns></returns>
+        internal bool IsSafeToTrace => _fileActivityListener != null;
 
         /// <summary>
         /// The function to call when updating the token.
@@ -99,6 +138,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         internal int MaxRetryAttempts { get; private set; } = 5;
 
         internal int RetryDelayMs { get; private set; } = 200;
+
+        // if this value is null, the BigQuery API chooses the location (typically the `US` multi-region)
+        internal string? DefaultClientLocation { get; private set; }
 
         public override string AssemblyVersion => BigQueryUtils.BigQueryAssemblyVersion;
 
@@ -170,6 +212,24 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     QuotaProject = billingProjectId,
                     GoogleCredential = Credential
                 };
+
+                if (!string.IsNullOrEmpty(DefaultClientLocation))
+                {
+                    // If the user selects a public dataset (from a multi-region) but sets this
+                    // value to a specific location like us-east4, then there is an error produced
+                    // that the caller doesn't have permission to call to the public dataset.
+                    // Example:
+                    //    Access Denied: Table bigquery-public-data:blockchain_analytics_ethereum_mainnet_us.accounts:
+                    //    User does not have permission to query table bigquery-public-data:blockchain_analytics_ethereum_mainnet_us.accounts,
+                    //    or perhaps it does not exist.'
+
+                    bigQueryClientBuilder.DefaultLocation = DefaultClientLocation;
+                    activity?.AddBigQueryParameterTag(BigQueryParameters.DefaultClientLocation, DefaultClientLocation);
+                }
+                else
+                {
+                    activity?.AddBigQueryTag("client.default_location", null);
+                }
 
                 BigQueryClient client = bigQueryClientBuilder.Build();
 
@@ -470,7 +530,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             return this.TraceActivity(activity =>
             {
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, BigQueryUtils.IsSafeToTrace());
+                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, sql, IsSafeToTrace);
 
                 Func<Task<BigQueryResults?>> func = () => Client.ExecuteQueryAsync(sql, parameters ?? Enumerable.Empty<BigQueryParameter>(), queryOptions, resultsOptions);
                 BigQueryResults? result = ExecuteWithRetriesAsync<BigQueryResults?>(func, activity).GetAwaiter().GetResult();
@@ -1273,6 +1333,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             Client?.Dispose();
             Client = null;
             this.httpClient?.Dispose();
+            this._fileActivityListener?.Dispose();
         }
 
         private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");

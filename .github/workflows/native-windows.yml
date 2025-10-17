@@ -254,7 +254,7 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        python: ["3.9", "3.13"]
+        python: ["3.10", "3.13"]
     steps:
       - uses: actions/checkout@v5
         with:

@@ -24,6 +24,7 @@ having to send the signal, so this tests the handler itself instead.
 
 import os
 import signal
+import sys
 import threading
 import time
 
@@ -96,6 +97,15 @@ def test_blocking_raise():
 
 def test_cancel_raise():
     event = threading.Event()
+
+    def _blocking(event):
+        _send_sigint()
+        event.wait()
+        # Under freethreaded python, _blocking ends before _cancel finishes
+        # and raises the exception, so the exception ends up getting thrown
+        # away; sleep a bit to prevent that
+        if hasattr(sys, "_is_gil_enabled") and not getattr(sys, "_is_gil_enabled")():
+            time.sleep(5)
 
     def _cancel():
         event.set()

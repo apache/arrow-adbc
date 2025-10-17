@@ -15,20 +15,23 @@
 # specific language governing permissions and limitations
 # under the License.
 
-PKG_CPPFLAGS=-I$(CURDIR) -DADBC_EXPORT=""
-PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_flightsql
+import pytest
 
-CGO_CC = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CC`
-CGO_CXX = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CXX`
-CGO_CFLAGS = $(ALL_CPPFLAGS)
-GO_BIN = $(CURDIR)/go/tmp/go/bin/go.exe
+polars = pytest.importorskip("polars")
+polars.testing = pytest.importorskip("polars.testing")
 
-.PHONY: all gostatic gobin
-all: $(SHLIB)
-$(SHLIB): gostatic
 
-gostatic: gobin
-		(cd "$(CURDIR)/go/adbc"; CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" "$(GO_BIN)" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_flightsql.a -buildmode=c-archive "./pkg/flightsql")
-
-gobin:
-		(cd ..; "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" "tools/download-go.R")
+@pytest.mark.sqlite
+def test_query_fetch_polars(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
+        polars.testing.assert_frame_equal(
+            cur.fetch_polars(),
+            polars.DataFrame(
+                {
+                    "1": [1],
+                    "foo": ["foo"],
+                    "2.0": [2.0],
+                }
+            ),
+        )

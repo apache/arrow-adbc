@@ -12,6 +12,5 @@
 ^cran-comments\.md$
 ^src/\.go-cache$
 ^src/\.go-path$
-^configure\.win$
 ^\.cache$
 ^compile_commands\.json$

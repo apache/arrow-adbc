@@ -116,7 +116,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -240,6 +240,12 @@ jobs:
           path: arrow-adbc
           persist-credentials: false
           submodules: recursive
+
+      - name: Clean up disk space
+        run: |
+          # Rust uses a lot of disk space, free up some space
+          # https://github.com/actions/runner-images/issues/2840
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
       - name: Verify
         env:

@@ -40,6 +40,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Maximum bytes per file for CloudFetch.
+        /// The value can be specified with unit suffixes: B (bytes), KB (kilobytes), MB (megabytes), GB (gigabytes).
+        /// If no unit is specified, the value is treated as bytes.
         /// Default value is 20MB if not specified.
         /// </summary>
         public const string MaxBytesPerFile = "adbc.databricks.cloudfetch.max_bytes_per_file";
@@ -130,6 +132,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string CloudFetchPrefetchEnabled = "adbc.databricks.cloudfetch.prefetch_enabled";
+
+        /// <summary>
+        /// Maximum bytes per fetch request when retrieving query results from servers.
+        /// The value can be specified with unit suffixes: B (bytes), KB (kilobytes), MB (megabytes), GB (gigabytes).
+        /// If no unit is specified, the value is treated as bytes.
+        /// Default value is 400MB if not specified.
+        /// </summary>
+        public const string MaxBytesPerFetchRequest = "adbc.databricks.max_bytes_per_fetch_request";
 
         /// <summary>
         /// The OAuth grant type to use for authentication.
@@ -228,6 +238,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is false if not specified.
         /// </summary>
         public const string DriverConfigTakePrecedence = "adbc.databricks.driver_config_take_precedence";
+
+        /// <summary>
+        /// The interval in seconds for heartbeat polling during long-running operations.
+        /// This prevents queries from timing out by periodically checking operation status.
+        /// Default value is 60 seconds if not specified.
+        /// Must be a positive integer value.
+        /// </summary>
+        public const string FetchHeartbeatInterval = "adbc.databricks.fetch_heartbeat_interval";
+
+        /// <summary>
+        /// The timeout in seconds for operation status polling requests.
+        /// This controls how long to wait for each individual polling request to complete.
+        /// Default value is 30 seconds if not specified.
+        /// Must be a positive integer value.
+        /// </summary>
+        public const string OperationStatusRequestTimeout = "adbc.databricks.operation_status_request_timeout";
     }
 
     /// <summary>
@@ -236,12 +262,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     public class DatabricksConstants
     {
         /// <summary>
-        /// Default heartbeat interval in seconds for long-running operations. TODO: make this user-configurable
+        /// Default heartbeat interval in seconds for long-running operations.
         /// </summary>
         public const int DefaultOperationStatusPollingIntervalSeconds = 60;
 
         /// <summary>
-        /// Default timeout in seconds for operation status polling requests. TODO: make this user-configurable
+        /// Default timeout in seconds for operation status polling requests.
         /// </summary>
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
 

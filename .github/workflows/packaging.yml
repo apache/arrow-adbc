@@ -100,7 +100,7 @@ jobs:
 
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-13"]
+        os: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
 
     steps:
       - uses: actions/download-artifact@v5
@@ -277,7 +277,7 @@ jobs:
           mv apache-arrow-adbc-${VERSION} adbc
       - name: Build JNI artifacts
         working-directory: adbc
-        emv:
+        env:
           ADBC_BUILD_STATIC: ON
           ADBC_BUILD_TESTS: OFF
           ADBC_USE_ASAN: OFF
@@ -371,7 +371,9 @@ jobs:
         target:
           - almalinux-8
           - almalinux-9
+          - almalinux-10
           - debian-bookworm
+          - debian-trixie
           - ubuntu-jammy
           - ubuntu-noble
     steps:
@@ -415,7 +417,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@44511735964dcb71245e7e55f72539531f7bc0eb  # v1.257.0
+        uses: ruby/setup-ruby@ab177d40ee5483edb974554986f56b33477e21d0  # v1.265.0
         with:
           ruby-version: ruby
 
@@ -427,7 +429,7 @@ jobs:
           restore-keys: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1  # v3.5.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef  # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -556,7 +558,7 @@ jobs:
 
   python-conda-macos:
     name: "Python ${{ matrix.arch }} Conda"
-    runs-on: macos-13
+    runs-on: macos-15-intel
     # No need for Conda packages during release
     # TODO(apache/arrow-adbc#468): re-enable
     if: false
@@ -693,14 +695,6 @@ jobs:
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
-      - name: Test wheel 3.9
-        env:
-          ARCH: ${{ matrix.arch }}
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          pushd adbc
-          env PYTHON=3.9 docker compose run python-wheel-manylinux-test
-
       - name: Test wheel 3.10
         env:
           ARCH: ${{ matrix.arch }}
@@ -733,6 +727,23 @@ jobs:
           pushd adbc
           env PYTHON=3.13 docker compose run python-wheel-manylinux-test
 
+      # - name: Test wheel 3.14
+      #   env:
+      #     ARCH: ${{ matrix.arch }}
+      #     PLATFORM: ${{ matrix.platform }}
+      #   run: |
+      #     pushd adbc
+      #     env PYTHON=3.14 docker compose run python-wheel-manylinux-test
+
+      # TODO(lidavidm): once we support 3.14, only test 3.14t
+      - name: Test wheel 3.13t
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.13t docker compose run python-wheel-manylinux-freethreaded-test
+
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
     runs-on: ${{ matrix.os }}
@@ -741,15 +752,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-13", "macos-latest"]
+        os: ["macos-15-intel", "macos-latest"]
         include:
-          - os: macos-13
+          - os: macos-15-intel
             arch: amd64
           - os: macos-latest
             arch: arm64v8
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
-      PYTHON: "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10"
+      PYTHON: "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
@@ -805,13 +816,6 @@ jobs:
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
 
-      - name: Install Python (AMD64 only)
-        if: matrix.arch == 'amd64'
-        run: |
-          pushd adbc
-          sudo ci/scripts/install_python.sh macos 3.9
-          popd
-
       - name: Install Python
         run: |
           pushd adbc
@@ -819,6 +823,7 @@ jobs:
           sudo ci/scripts/install_python.sh macos 3.11
           sudo ci/scripts/install_python.sh macos 3.12
           sudo ci/scripts/install_python.sh macos 3.13
+          # sudo ci/scripts/install_python.sh macos 3.14
           popd
 
       - name: Downgrade XCode
@@ -850,17 +855,6 @@ jobs:
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
-
-      - name: Test wheel 3.9
-        if: matrix.arch == 'amd64'
-        run: |
-          pushd adbc
-
-          /Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9 -m venv test-env-39
-          source test-env-39/bin/activate
-          export PYTHON_VERSION=3.9
-          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
-          deactivate
 
       - name: Test wheel 3.10
         run: |
@@ -902,6 +896,35 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
+      # - name: Test wheel 3.14
+      #   run: |
+      #     pushd adbc
+
+      #     /Library/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -m venv test-env-314
+      #     source test-env-314/bin/activate
+      #     export PYTHON_VERSION=3.14
+      #     ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+      #     deactivate
+
+      - name: Assemble logs
+        if: failure()
+        run: |
+          mkdir ~/logs
+          counter=0
+          for log in $(find "$VCPKG_ROOT" -name 'build-*.log' -or -name 'config-*.log'); do
+            echo cp "$log" ~/logs/$counter-$(basename "$log")
+            cp "$log" ~/logs/$counter-$(basename "$log")
+            counter=$((counter+1))
+          done
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vcpkg-logs-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: ~/logs
+
   python-windows:
     name: "Python ${{ matrix.python_version }} Windows"
     runs-on: windows-latest
@@ -910,7 +933,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python_version: ["3.10", "3.11", "3.12", "3.13"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg

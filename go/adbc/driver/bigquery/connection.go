@@ -835,17 +835,33 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	case bigquery.DateTimeFieldType:
 		field.Type = arrow.FixedWidthTypes.Timestamp_us
 	case bigquery.NumericFieldType:
+		precision := schema.Precision
+		scale := schema.Scale
+		// BigQuery NUMERIC defaults when precision is not explicitly specified
+		// https: //cloud.google.com/bigquery/docs/reference/standard-sql/data-types#decimal_types
+		if precision == 0 {
+			precision = 38
+			scale = 9
+		}
 		field.Type = &arrow.Decimal128Type{
-			Precision: int32(schema.Precision),
-			Scale:     int32(schema.Scale),
+			Precision: int32(precision),
+			Scale:     int32(scale),
 		}
 	case bigquery.GeographyFieldType:
 		// TODO: potentially we should consider using GeoArrow for this
 		field.Type = arrow.BinaryTypes.String
 	case bigquery.BigNumericFieldType:
+		precision := schema.Precision
+		scale := schema.Scale
+		// BigQuery BIGNUMERIC defaults when precision is not explicitly specified
+		// https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#decimal_types
+		if precision == 0 {
+			precision = 76
+			scale = 38
+		}
 		field.Type = &arrow.Decimal256Type{
-			Precision: int32(schema.Precision),
-			Scale:     int32(schema.Scale),
+			Precision: int32(precision),
+			Scale:     int32(scale),
 		}
 	case bigquery.JSONFieldType:
 		field.Type = arrow.BinaryTypes.String

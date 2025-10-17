@@ -15,7 +15,7 @@ write_adbc(
   db_or_con,
   target_table,
   ...,
-  mode = c("default", "create", "append"),
+  mode = c("default", "create", "append", "replace", "create_append"),
   temporary = FALSE
 )
 }
@@ -36,8 +36,9 @@ or  \link[nanoarrow:as_nanoarrow_array_stream]{nanoarrow_array_stream}.}
 
 \item{target_table}{A target table name to which \code{tbl} should be written.}
 
-\item{mode}{One of "create", "append", or "default" (error if the schema
-is not compatible or append otherwise).}
+\item{mode}{One of \code{"create"}, \code{"append"}, \code{"replace"}, \code{"create_append"} (error if the schema
+is not compatible or append otherwise), or \code{"default"} (use the \code{adbc.ingest.mode}
+argument of \code{\link[=adbc_statement_init]{adbc_statement_init()}}). The default is \code{"default"}.}
 
 \item{temporary}{Use TRUE to create a table as a temporary table.}
 }

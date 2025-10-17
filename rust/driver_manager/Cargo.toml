@@ -40,7 +40,7 @@ adbc_ffi.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
 libloading = "0.8"
-toml = { version = "0.9.5", default-features = false, features = [
+toml = { version = "0.9.8", default-features = false, features = [
     "parse",
     "display",
 ] }
@@ -56,4 +56,4 @@ windows-registry = { version = ">= 0.5.3", optional = true }
 [dev-dependencies]
 arrow-select.workspace = true
 temp-env = "0.3"
-tempfile = "3.22"
+tempfile = "3.23"

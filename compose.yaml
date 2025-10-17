@@ -102,6 +102,14 @@ services:
       - .:/adbc:delegated
     command: "/bin/bash -c 'env CMAKE_BUILD_TYPE=Release /adbc/ci/scripts/java_jni_build.sh /adbc /adbc/dist /adbc/local'"
 
+  ############################### Python #####################################
+
+  python-venv:
+    image: ${ARCH}/python:${PYTHON}
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c 'apt update && apt install -y libsqlite3-dev build-essential cmake git && git config --global --add safe.directory /adbc && env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ADBC_BUILD_TESTS=OFF ADBC_USE_ASAN=OFF ADBC_USE_UBSAN=OFF /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/venv && /adbc/ci/scripts/python_venv_test.sh /adbc /adbc/build/venv-test /adbc/build/venv/driver/sqlite/libadbc_driver_sqlite.so'"
+
   ############################ Python conda ##################################
 
   # Must be run as docker compose run -e HOST_USER_ID=$(id -u) python-conda
@@ -163,32 +171,31 @@ services:
   # relocate on a separate image so that we can use a newer docker for cibuildwheel
 
   python-wheel-manylinux-build:
-    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
+    image: ghcr.io/apache/arrow-adbc:manylinux${MANYLINUX}-go${GO}-python${PYTHON}-vcpkg${VCPKG}
     build:
       context: .
-      cache_from:
-        - ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
       dockerfile: ci/docker/python-wheel-manylinux.dockerfile
       args:
-        ARCH: ${ARCH}
         GO: ${GO}
         MANYLINUX: ${MANYLINUX}
         PYTHON: ${PYTHON}
-        REPO: ${REPO}
         VCPKG: ${VCPKG}
+      platforms:
+        - linux/amd64
+        - linux/arm64
     volumes:
       - .:/adbc
     # Must set safe.directory so go/miniver won't error when calling git
     command: "'git config --global --add safe.directory /adbc && /adbc/ci/scripts/python_wheel_unix_build.sh ${ARCH} /adbc /adbc/build'"
 
   python-wheel-manylinux-relocate:
-    image: ${REPO}:adbc-python-${PYTHON}-wheel-relocate
-    platform: ${PLATFORM}
+    image: ghcr.io/apache/arrow-adbc:python${PYTHON}
     build:
       context: .
-      cache_from:
-        - ${REPO}:adbc-python-${PYTHON}-wheel-relocate
       dockerfile: ci/docker/python-wheel-manylinux-relocate.dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - .:/adbc
@@ -201,6 +208,13 @@ services:
     volumes:
       - .:/adbc:delegated
     command: /adbc/ci/scripts/python_wheel_unix_test.sh /adbc
+
+  python-wheel-manylinux-freethreaded-test:
+    image: ghcr.io/astral-sh/uv:trixie-slim
+    platform: ${PLATFORM}
+    volumes:
+      - .:/adbc:delegated
+    command: bash -c 'uv venv --python ${PYTHON} && source ./.venv/bin/activate && python -m ensurepip && PYTHON_GIL=0 /adbc/ci/scripts/python_wheel_unix_test.sh /adbc'
 
   ###################### Test database environments ############################
 
