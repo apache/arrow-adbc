@@ -146,6 +146,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
  <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/CallOption.html" title="class or interface in org.apache.arrow.flight" class="external-link">CallOption</a>...&nbsp;options)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/FlightInfo.html" title="class or interface in org.apache.arrow.flight" class="external-link">FlightInfo</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executePrepared(org.apache.arrow.flight.sql.FlightSqlClient.PreparedStatement,org.apache.arrow.flight.CallOption...)" class="member-name-link">executePrepared</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.sql/org/apache/arrow/flight/sql/FlightSqlClient.PreparedStatement.html" title="class or interface in org.apache.arrow.flight.sql" class="external-link">FlightSqlClient.PreparedStatement</a>&nbsp;statement,
+ <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/CallOption.html" title="class or interface in org.apache.arrow.flight" class="external-link">CallOption</a>...&nbsp;options)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executePreparedUpdate(org.apache.arrow.flight.sql.FlightSqlClient.PreparedStatement,org.apache.arrow.flight.CallOption...)" class="member-name-link">executePreparedUpdate</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.sql/org/apache/arrow/flight/sql/FlightSqlClient.PreparedStatement.html" title="class or interface in org.apache.arrow.flight.sql" class="external-link">FlightSqlClient.PreparedStatement</a>&nbsp;statement,
+ <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/CallOption.html" title="class or interface in org.apache.arrow.flight" class="external-link">CallOption</a>...&nbsp;options)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/FlightInfo.html" title="class or interface in org.apache.arrow.flight" class="external-link">FlightInfo</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executeSubstrait(org.apache.arrow.flight.sql.FlightSqlClient.SubstraitPlan,org.apache.arrow.flight.CallOption...)" class="member-name-link">executeSubstrait</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.sql/org/apache/arrow/flight/sql/FlightSqlClient.SubstraitPlan.html" title="class or interface in org.apache.arrow.flight.sql" class="external-link">FlightSqlClient.SubstraitPlan</a>&nbsp;plan,
  <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/CallOption.html" title="class or interface in org.apache.arrow.flight" class="external-link">CallOption</a>...&nbsp;options)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
@@ -369,6 +377,13 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 </section>
 </li>
 <li>
+<section class="detail" id="executePrepared(org.apache.arrow.flight.sql.FlightSqlClient.PreparedStatement,org.apache.arrow.flight.CallOption...)">
+<h3>executePrepared</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/FlightInfo.html" title="class or interface in org.apache.arrow.flight" class="external-link">FlightInfo</a></span>&nbsp;<span class="element-name">executePrepared</span><wbr><span class="parameters">(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.sql/org/apache/arrow/flight/sql/FlightSqlClient.PreparedStatement.html" title="class or interface in org.apache.arrow.flight.sql" class="external-link">FlightSqlClient.PreparedStatement</a>&nbsp;statement,
+ <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/CallOption.html" title="class or interface in org.apache.arrow.flight" class="external-link">CallOption</a>...&nbsp;options)</span></div>
+</section>
+</li>
+<li>
 <section class="detail" id="executeSubstrait(org.apache.arrow.flight.sql.FlightSqlClient.SubstraitPlan,org.apache.arrow.flight.CallOption...)">
 <h3>executeSubstrait</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/FlightInfo.html" title="class or interface in org.apache.arrow.flight" class="external-link">FlightInfo</a></span>&nbsp;<span class="element-name">executeSubstrait</span><wbr><span class="parameters">(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.sql/org/apache/arrow/flight/sql/FlightSqlClient.SubstraitPlan.html" title="class or interface in org.apache.arrow.flight.sql" class="external-link">FlightSqlClient.SubstraitPlan</a>&nbsp;plan,
@@ -425,6 +440,13 @@ implements <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base
 <h3>executeUpdate</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">executeUpdate</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.sql/org/apache/arrow/flight/sql/FlightSqlClient.Transaction.html" title="class or interface in org.apache.arrow.flight.sql" class="external-link">FlightSqlClient.Transaction</a>&nbsp;transaction,
+ <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/CallOption.html" title="class or interface in org.apache.arrow.flight" class="external-link">CallOption</a>...&nbsp;options)</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="executePreparedUpdate(org.apache.arrow.flight.sql.FlightSqlClient.PreparedStatement,org.apache.arrow.flight.CallOption...)">
+<h3>executePreparedUpdate</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">executePreparedUpdate</span><wbr><span class="parameters">(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.sql/org/apache/arrow/flight/sql/FlightSqlClient.PreparedStatement.html" title="class or interface in org.apache.arrow.flight.sql" class="external-link">FlightSqlClient.PreparedStatement</a>&nbsp;statement,
  <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.flight.core/org/apache/arrow/flight/CallOption.html" title="class or interface in org.apache.arrow.flight" class="external-link">CallOption</a>...&nbsp;options)</span></div>
 </section>
 </li>
