@@ -168,7 +168,7 @@ public class FlightSqlStatement implements AdbcStatement {
     try {
       try {
         statement.setParameters(new NonOwningRoot(bindParams));
-        statement.executeUpdate();
+        client.executePreparedUpdate(statement);
       } finally {
         statement.close();
       }
@@ -218,7 +218,7 @@ public class FlightSqlStatement implements AdbcStatement {
       throw AdbcException.invalidState("[Flight SQL] Must setSqlQuery() before execute");
     }
     final String query = sqlQuery;
-    return execute(FlightSqlClient.PreparedStatement::execute, (client) -> client.execute(query));
+    return execute(client::executePrepared, (client) -> client.execute(query));
   }
 
   @Override
@@ -277,7 +277,7 @@ public class FlightSqlStatement implements AdbcStatement {
             (preparedStatement) -> {
               // XXX(ARROW-17199): why does this throw SQLException?
               try {
-                return preparedStatement.executeUpdate();
+                return client.executePreparedUpdate(preparedStatement);
               } catch (FlightRuntimeException e) {
                 throw FlightSqlDriverUtil.fromFlightException(e);
               }
