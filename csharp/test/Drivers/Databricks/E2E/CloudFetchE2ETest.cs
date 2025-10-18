@@ -58,7 +58,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         /// </summary>
         [Theory]
         [MemberData(nameof(TestCases))]
-        private async Task TestRealDatabricksCloudFetch(string query, int rowCount, bool useCloudFetch, bool enableDirectResults)
+        public async Task TestRealDatabricksCloudFetch(string query, int rowCount, bool useCloudFetch, bool enableDirectResults)
         {
             var connection = NewConnection(TestConfiguration, new Dictionary<string, string>
             {

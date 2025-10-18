@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
@@ -125,8 +124,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                     dataToUse = Lz4Utilities.DecompressLz4(batch.Batch);
                 }
 
-                // Always use ChunkStream which ensures proper schema handling
-                this.reader = new ArrowStreamReader(new ChunkStream(this.schema, dataToUse));
+                this.reader = new SingleBatch(ArrowSerializationHelpers.DeserializeRecordBatch(this.schema, dataToUse));
             }
             catch (Exception ex)
             {
@@ -139,6 +137,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 throw new AdbcException(errorMessage, ex);
             }
             this.index++;
+        }
+
+        sealed class SingleBatch : IArrowReader
+        {
+            private RecordBatch? _recordBatch;
+
+            public SingleBatch(RecordBatch recordBatch) => _recordBatch = recordBatch;
+
+            public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            {
+                RecordBatch? result = _recordBatch;
+                _recordBatch = null;
+                return new ValueTask<RecordBatch?>(result);
+            }
         }
     }
 }
