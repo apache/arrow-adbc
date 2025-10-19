@@ -73,6 +73,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             enablePKFK = connection.EnablePKFK;
 
             runAsyncInThrift = connection.RunAsyncInThrift;
+
+            if (!connection.Properties.ContainsKey(ApacheParameters.PollTimeMilliseconds))
+            {
+                SetOption(ApacheParameters.PollTimeMilliseconds, connection.AsyncExecPollIntervalMs.ToString());
+            }
         }
 
         /// <summary>

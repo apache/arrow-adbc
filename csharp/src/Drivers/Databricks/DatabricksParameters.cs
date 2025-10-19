@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using System.Collections.Generic;
 
@@ -254,6 +255,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Must be a positive integer value.
         /// </summary>
         public const string OperationStatusRequestTimeout = "adbc.databricks.operation_status_request_timeout";
+
+        /// <summary>
+        /// The interval in milliseconds between polls while waiting for query execution to complete.
+        /// This controls how frequently the driver checks if an executing query has finished.
+        /// Uses the Apache base parameter (adbc.apache.statement.polltime_ms) but with Databricks-specific default.
+        /// Default value is 100 milliseconds if not specified.
+        /// Must be a positive integer value.
+        /// </summary>
+        public const string AsyncExecPollInterval = ApacheParameters.PollTimeMilliseconds;
     }
 
     /// <summary>
@@ -270,6 +280,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default timeout in seconds for operation status polling requests.
         /// </summary>
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
+
+        /// <summary>
+        /// Default async execution poll interval in milliseconds.
+        /// </summary>
+        public const int DefaultAsyncExecPollIntervalMs = 100;
 
         /// <summary>
         /// OAuth grant type constants
