@@ -581,11 +581,32 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
             HttpMessageHandler baseAuthHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
 
-            // Add Thrift error message handler first (innermost) to capture x-thriftserver-error-message headers
-            baseHandler = new ThriftErrorMessageHandler(baseHandler);
-            baseAuthHandler = new ThriftErrorMessageHandler(baseAuthHandler);
+            // IMPORTANT: Handler Order Matters!
+            //
+            // HTTP delegating handlers form a chain where execution flows from outermost to innermost
+            // on the request, and then innermost to outermost on the response.
+            //
+            // Request flow (outer → inner):  Handler1 → Handler2 → Handler3 → Network
+            // Response flow (inner → outer): Network → Handler3 → Handler2 → Handler1
+            //
+            // Current chain order (outermost to innermost):
+            // 1. OAuth handlers (OAuthDelegatingHandler, etc.) - only on baseHandler for API requests
+            // 2. ThriftErrorMessageHandler - extracts x-thriftserver-error-message and throws descriptive exceptions
+            // 3. RetryHttpHandler - retries 408, 502, 503, 504 with Retry-After support
+            // 4. TracingDelegatingHandler - propagates W3C trace context
+            // 5. Base HTTP handler - actual network communication
+            //
+            // Why this order:
+            // - TracingDelegatingHandler must be innermost (closest to network) to capture full request timing
+            // - RetryHttpHandler must be INSIDE ThriftErrorMessageHandler so it can retry 503 responses
+            //   (e.g., during cluster auto-start) before ThriftErrorMessageHandler throws an exception
+            // - ThriftErrorMessageHandler must be OUTSIDE RetryHttpHandler so it only processes final
+            //   error responses after all retry attempts are exhausted
+            // - OAuth handlers are outermost since they modify request headers and don't need retry logic
+            //
+            // DO NOT change this order without understanding the implications!
 
-            // Add tracing handler to propagate W3C trace context if enabled
+            // Add tracing handler to propagate W3C trace context if enabled (INNERMOST - closest to network)
             if (_tracePropagationEnabled)
             {
                 baseHandler = new TracingDelegatingHandler(baseHandler, this, _traceParentHeaderName, _traceStateEnabled);
@@ -594,10 +615,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             if (TemporarilyUnavailableRetry)
             {
-                // Add retry handler for 503 responses
+                // Add retry handler for 408, 502, 503, 504 responses with Retry-After support
+                // This must be INSIDE ThriftErrorMessageHandler so retries happen before exceptions are thrown
                 baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
                 baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout);
             }
+
+            // Add Thrift error message handler AFTER retry handler (OUTSIDE in the chain)
+            // This ensures retryable status codes (408, 502, 503, 504) are retried by RetryHttpHandler
+            // before ThriftErrorMessageHandler throws exceptions with Thrift error messages
+            baseHandler = new ThriftErrorMessageHandler(baseHandler);
+            baseAuthHandler = new ThriftErrorMessageHandler(baseAuthHandler);
 
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
                 SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue) &&

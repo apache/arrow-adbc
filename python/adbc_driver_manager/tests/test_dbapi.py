@@ -244,6 +244,30 @@ def test_query_fetch_arrow(sqlite):
 
 
 @pytest.mark.sqlite
+def test_query_fetch_arrow_3543(sqlite):
+    # Regression test for https://github.com/apache/arrow-adbc/issues/3543
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
+
+        # This should not consume the result
+        assert cur.description == [
+            ("1", dbapi.NUMBER, None, None, None, None, None),
+            ("foo", dbapi.STRING, None, None, None, None, None),
+            ("2.0", dbapi.NUMBER, None, None, None, None, None),
+        ]
+
+        capsule = cur.fetch_arrow().__arrow_c_stream__()
+        reader = pyarrow.RecordBatchReader._import_from_c_capsule(capsule)
+        assert reader.read_all() == pyarrow.table(
+            {
+                "1": [1],
+                "foo": ["foo"],
+                "2.0": [2.0],
+            }
+        )
+
+
+@pytest.mark.sqlite
 def test_query_fetch_arrow_table(sqlite):
     with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
@@ -543,3 +567,44 @@ def test_dbapi_extensions(sqlite):
     with sqlite.cursor() as cur:
         assert cur.execute("SELECT 1").fetchall() == [(1,)]
         assert cur.execute("SELECT 42").fetchall() == [(42,)]
+
+
+@pytest.mark.sqlite
+def test_connect(tmp_path: pathlib.Path, monkeypatch) -> None:
+    with dbapi.connect(driver="adbc_driver_sqlite") as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            assert cur.fetchone() == (1,)
+
+    # https://github.com/apache/arrow-adbc/issues/3517: allow positional
+    # argument
+    with dbapi.connect("adbc_driver_sqlite") as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            assert cur.fetchone() == (1,)
+
+    # https://github.com/apache/arrow-adbc/issues/3517: allow URI argument
+    db = tmp_path / "test.db"
+    with dbapi.connect("adbc_driver_sqlite", db.as_uri()) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE foo (a)")
+            cur.execute("INSERT INTO foo VALUES (1)")
+        conn.commit()
+
+    with dbapi.connect(driver="adbc_driver_sqlite", uri=db.as_uri()) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM foo")
+            assert cur.fetchone() == (1,)
+
+    monkeypatch.setenv("ADBC_DRIVER_PATH", tmp_path)
+    with (tmp_path / "foobar.toml").open("w") as f:
+        f.write(
+            """
+[Driver]
+shared = "adbc_driver_foobar"
+        """
+        )
+    # Just check that the driver gets detected and loaded (should fail)
+    with pytest.raises(dbapi.ProgrammingError, match="NOT_FOUND"):
+        with dbapi.connect("foobar://localhost:5439"):
+            pass
