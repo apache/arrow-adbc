@@ -80,7 +80,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             bool result = false;
             if (Options?.TryGetValue(BigQueryParameters.IsMetadataCommand, out string? isMetadataString) == true)
             {
-                result = bool.TryParse(isMetadataString, out bool isMetadata) && isMetadata;
+                if (bool.TryParse(isMetadataString, out bool isMetadata))
+                {
+                    result = isMetadata;
+                }
             }
             return result;
         }
@@ -97,12 +100,18 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override QueryResult ExecuteQuery()
         {
-            if (IsMetadataCommand())
+            return this.TraceActivity(activity =>
             {
-                return ExecuteMetadataCommandQuery();
-            }
+                bool isMetadataCommand = IsMetadataCommand();
+                activity?.AddBigQueryParameterTag(BigQueryParameters.IsMetadataCommand, isMetadataCommand);
 
-            return ExecuteQueryInternalAsync().GetAwaiter().GetResult();
+                if (isMetadataCommand)
+                {
+                    return ExecuteMetadataCommandQuery();
+                }
+
+                return ExecuteQueryInternalAsync().GetAwaiter().GetResult();
+            });
         }
 
         private async Task<QueryResult> ExecuteQueryInternalAsync()
@@ -169,34 +178,34 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }
 
                     Func<Task<BigQueryResults>> getMultiJobResults = async () =>
+                    {
+                        // To get the results of all statements in a multi-statement query, enumerate the child jobs. Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements.
+                        // Can filter by StatementType and EvaluationKind. Related public docs: https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobstatistics2, https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#evaluationkind
+                        ListJobsOptions listJobsOptions = new ListJobsOptions();
+                        listJobsOptions.ParentJobId = results.JobReference.JobId;
+                        var joblist = Client.ListJobs(listJobsOptions)
+                            .Select(job => Client.GetJob(job.Reference))
+                            .Where(job => string.IsNullOrEmpty(evaluationKind) || job.Statistics.ScriptStatistics.EvaluationKind.Equals(evaluationKind, StringComparison.OrdinalIgnoreCase))
+                            .Where(job => string.IsNullOrEmpty(statementType) || job.Statistics.Query.StatementType.Equals(statementType, StringComparison.OrdinalIgnoreCase))
+                            .OrderBy(job => job.Resource.Statistics.CreationTime)
+                            .ToList();
+
+                        if (joblist.Count > 0)
                         {
-                            // To get the results of all statements in a multi-statement query, enumerate the child jobs. Related public docs: https://cloud.google.com/bigquery/docs/multi-statement-queries#get_all_executed_statements.
-                            // Can filter by StatementType and EvaluationKind. Related public docs: https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobstatistics2, https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#evaluationkind
-                            ListJobsOptions listJobsOptions = new ListJobsOptions();
-                            listJobsOptions.ParentJobId = results.JobReference.JobId;
-                            var joblist = Client.ListJobs(listJobsOptions)
-                                .Select(job => Client.GetJob(job.Reference))
-                                .Where(job => string.IsNullOrEmpty(evaluationKind) || job.Statistics.ScriptStatistics.EvaluationKind.Equals(evaluationKind, StringComparison.OrdinalIgnoreCase))
-                                .Where(job => string.IsNullOrEmpty(statementType) || job.Statistics.Query.StatementType.Equals(statementType, StringComparison.OrdinalIgnoreCase))
-                                .OrderBy(job => job.Resource.Statistics.CreationTime)
-                                .ToList();
-
-                            if (joblist.Count > 0)
+                            if (statementIndex < 1 || statementIndex > joblist.Count)
                             {
-                                if (statementIndex < 1 || statementIndex > joblist.Count)
-                                {
-                                    throw new ArgumentOutOfRangeException($"The specified index {statementIndex} is out of range. There are {joblist.Count} jobs available.");
-                                }
-                                BigQueryJob indexedJob = joblist[statementIndex - 1];
-                                cancellationContext.Job = indexedJob;
-                                return await ExecuteCancellableJobAsync(cancellationContext, activity, async (context) =>
-                                {
-                                    return await indexedJob.GetQueryResultsAsync(getQueryResultsOptions, cancellationToken: context.CancellationToken).ConfigureAwait(false);
-                                }).ConfigureAwait(false);
+                                throw new ArgumentOutOfRangeException($"The specified index {statementIndex} is out of range. There are {joblist.Count} jobs available.");
                             }
+                            BigQueryJob indexedJob = joblist[statementIndex - 1];
+                            cancellationContext.Job = indexedJob;
+                            return await ExecuteCancellableJobAsync(cancellationContext, activity, async (context) =>
+                            {
+                                return await indexedJob.GetQueryResultsAsync(getQueryResultsOptions, cancellationToken: context.CancellationToken).ConfigureAwait(false);
+                            }).ConfigureAwait(false);
+                        }
 
-                            throw new AdbcException($"Unable to obtain result from statement [{statementIndex}]", AdbcStatusCode.InvalidData);
-                        };
+                        throw new AdbcException($"Unable to obtain result from statement [{statementIndex}]", AdbcStatusCode.InvalidData);
+                    };
 
                     results = await ExecuteWithRetriesAsync(getMultiJobResults, activity).ConfigureAwait(false);
                 }
@@ -423,34 +432,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         private QueryOptions ValidateOptions(Activity? activity)
         {
             QueryOptions options = new QueryOptions();
-
-            if (Client.ProjectId == BigQueryConstants.DetectProjectId)
-            {
-                activity?.AddBigQueryTag("client_project_id", BigQueryConstants.DetectProjectId);
-
-                // An error occurs when calling CreateQueryJob without the ID set,
-                // so use the first one that is found. This does not prevent from calling
-                // to other 'project IDs' (catalogs) with a query.
-                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () => Task.Run(() =>
-                {
-                    return Client?.ListProjects();
-                });
-
-                PagedEnumerable<ProjectList, CloudProject>? projects = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func, activity).GetAwaiter().GetResult();
-
-                if (projects != null)
-                {
-                    string? firstProjectId = projects.Select(x => x.ProjectId).FirstOrDefault();
-
-                    if (firstProjectId != null)
-                    {
-                        options.ProjectId = firstProjectId;
-                        activity?.AddBigQueryTag("detected_client_project_id", firstProjectId);
-                        // need to reopen the Client with the projectId specified
-                        this.bigQueryConnection.Open(firstProjectId);
-                    }
-                }
-            }
+            options.ProjectId = EnsureProjectIdIsConfigured(activity);
 
             if (Options == null || Options.Count == 0)
                 return options;
@@ -512,6 +494,41 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             }
 
             return options;
+        }
+
+        private string EnsureProjectIdIsConfigured(Activity? activity)
+        {
+            string projectId = Client.ProjectId;
+
+            if (Client.ProjectId == BigQueryConstants.DetectProjectId)
+            {
+                activity?.AddBigQueryTag("client_project_id", BigQueryConstants.DetectProjectId);
+
+                // An error occurs when calling CreateQueryJob without the ID set,
+                // so use the first one that is found. This does not prevent from calling
+                // to other 'project IDs' (catalogs) with a query.
+                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () => Task.Run(() =>
+                {
+                    return Client?.ListProjects();
+                });
+
+                PagedEnumerable<ProjectList, CloudProject>? projects = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func, activity).GetAwaiter().GetResult();
+
+                if (projects != null)
+                {
+                    string? firstProjectId = projects.Select(x => x.ProjectId).FirstOrDefault();
+
+                    if (firstProjectId != null)
+                    {
+                        projectId = firstProjectId;
+                        activity?.AddBigQueryTag("detected_client_project_id", firstProjectId);
+                        // need to reopen the Client with the projectId specified
+                        this.bigQueryConnection.Open(firstProjectId);
+                    }
+                }
+            }
+
+            return projectId;
         }
 
         /// <summary>
@@ -581,9 +598,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 try
                 {
+                    EnsureProjectIdIsConfigured(activity);
                     activity?.AddBigQueryTag("large_results.dataset.try_find", datasetId);
                     tempDataset = this.Client.GetDataset(datasetId);
                     activity?.AddBigQueryTag("large_results.dataset.found", datasetId);
+                    activity?.AddBigQueryTag("large_results.dataset.found_region", tempDataset.Resource.Location);
                     return true;
                 }
                 catch (GoogleApiException gaEx)
@@ -653,44 +672,48 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private QueryResult ExecuteDatasetExistsCommand()
         {
-            KeyValuePair<string, string>? option = Options != null ? Options.Where(x => x.Key == BigQueryParameters.LargeResultsDataset).FirstOrDefault() : null;
-
-            if (option == null || string.IsNullOrEmpty(option?.Value))
+            return this.TraceActivity(activity =>
             {
-                throw new ArgumentNullException(nameof(Options), $"The option '{BigQueryParameters.LargeResultsDataset}' must be set to the dataset name.");
-            }
+                activity?.AddBigQueryTag("metadata_command.execute", GetDatasetCommandName);
+                KeyValuePair<string, string>? option = Options != null ? Options.Where(x => x.Key == BigQueryParameters.LargeResultsDataset).FirstOrDefault() : null;
 
-            bool exists = DatasetExists(option?.Value!, out BigQueryDataset? dataset);
+                if (option == null || string.IsNullOrEmpty(option?.Value))
+                {
+                    throw new ArgumentNullException(nameof(Options), $"The option '{BigQueryParameters.LargeResultsDataset}' must be set to the dataset name.");
+                }
 
-            Schema schema = new Schema(new List<Field>
+                bool exists = DatasetExists(option?.Value!, out BigQueryDataset? dataset);
+
+                Schema schema = new Schema(new List<Field>
             {
                 new Field("name", StringType.Default, false),
                 new Field("exists", BooleanType.Default, false),
                 new Field("location", StringType.Default, false)
             }, null);
 
-            StringArray datasetNameArray = new StringArray.Builder()
-                .Append(option?.Value!)
-                .Build();
+                StringArray datasetNameArray = new StringArray.Builder()
+                    .Append(option?.Value!)
+                    .Build();
 
-            BooleanArray datasetExistsArray = new BooleanArray.Builder()
-                .Append(exists)
-                .Build();
+                BooleanArray datasetExistsArray = new BooleanArray.Builder()
+                    .Append(exists)
+                    .Build();
 
-            StringArray locationArray = (exists && dataset != null) ?
-                new StringArray.Builder().Append(dataset.Resource.Location).Build() :
-                new StringArray.Builder().AppendNull().Build();
+                StringArray locationArray = (exists && dataset != null) ?
+                    new StringArray.Builder().Append(dataset.Resource.Location).Build() :
+                    new StringArray.Builder().AppendNull().Build();
 
-            RecordBatch recordBatch = new RecordBatch(
-                schema,
-                new IArrowArray[] { datasetNameArray, datasetExistsArray, locationArray },
-                1
-            );
+                RecordBatch recordBatch = new RecordBatch(
+                    schema,
+                    new IArrowArray[] { datasetNameArray, datasetExistsArray, locationArray },
+                    1
+                );
 
-            // Create a simple array stream using the existing MultiArrowReader pattern
-            MultiArrowReader stream = new MultiArrowReader(this, schema, new[] { new SingleRecordBatchReader(recordBatch) }, new CancellationContext(cancellationRegistry));
+                // Create a simple array stream using the existing MultiArrowReader pattern
+                MultiArrowReader stream = new MultiArrowReader(this, schema, new[] { new SingleRecordBatchReader(recordBatch) }, new CancellationContext(cancellationRegistry));
 
-            return new QueryResult(1, stream);
+                return new QueryResult(1, stream);
+            });
         }
 
         // Simple reader that yields a single record batch
@@ -825,11 +848,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 return await this.TraceActivityAsync(async activity =>
                 {
-                    using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, this.cancellationContext.CancellationToken);
                     if (this.readers == null)
                     {
                         return null;
                     }
+
+                    CancellationToken effectiveToken = GetSafeCancellationToken(cancellationToken);
 
                     while (true)
                     {
@@ -843,7 +867,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                             this.reader = this.readers.Current;
                         }
 
-                        RecordBatch result = await this.reader.ReadNextRecordBatchAsync(linkedCts.Token).ConfigureAwait(false);
+                        RecordBatch result = await this.reader.ReadNextRecordBatchAsync(effectiveToken).ConfigureAwait(false);
 
                         if (result != null)
                         {
@@ -853,6 +877,22 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         this.reader = null;
                     }
                 });
+            }
+
+            private CancellationToken GetSafeCancellationToken(CancellationToken userToken)
+            {
+                try
+                {
+                    CancellationToken contextToken = this.cancellationContext.CancellationToken;
+
+                    using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(userToken, contextToken);
+                    return linkedCts.Token;
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Fall back to user token if context is disposed
+                    return userToken;
+                }
             }
 
             protected override void Dispose(bool disposing)

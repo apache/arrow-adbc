@@ -72,7 +72,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             EvaluationKind, GetQueryResultsOptionsTimeout, IncludeConstraintsWithGetObjects,
             IncludePublicProjectId, LargeDecimalsAsString, CreateLargeResultsDataset, LargeResultsDataset, LargeResultsDestinationTable,
             MaxFetchConcurrency, MaximumRetryAttempts, ProjectId, RetryDelayMs, StatementIndex,
-            StatementType, UseLegacySQL, IsMetadataCommand
+            StatementType, UseLegacySQL, IsMetadataCommand, DefaultClientLocation
         };
 
         public static bool IsSafeToLog(string name)
