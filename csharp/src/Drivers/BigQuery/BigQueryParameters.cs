@@ -105,6 +105,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         // default value per https://pkg.go.dev/cloud.google.com/go/bigquery#section-readme
         public const string DetectProjectId = "*detect-project-id*";
 
+        // if a location is not specified, use this value to auto-detect based on the most commonly
+        // found location for the datasets in the project
+        public const string AutoDetectLocation = "*detect-location*";
+
         // matches the pattern for odbc, but for adbc
         public const string DefaultLargeDatasetId = "_bqadbc_temp_tables";
 

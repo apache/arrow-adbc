@@ -496,39 +496,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return options;
         }
 
-        private string EnsureProjectIdIsConfigured(Activity? activity)
+        internal string EnsureProjectIdIsConfigured(Activity? activity)
         {
-            string projectId = Client.ProjectId;
-
-            if (Client.ProjectId == BigQueryConstants.DetectProjectId)
-            {
-                activity?.AddBigQueryTag("client_project_id", BigQueryConstants.DetectProjectId);
-
-                // An error occurs when calling CreateQueryJob without the ID set,
-                // so use the first one that is found. This does not prevent from calling
-                // to other 'project IDs' (catalogs) with a query.
-                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () => Task.Run(() =>
-                {
-                    return Client?.ListProjects();
-                });
-
-                PagedEnumerable<ProjectList, CloudProject>? projects = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func, activity).GetAwaiter().GetResult();
-
-                if (projects != null)
-                {
-                    string? firstProjectId = projects.Select(x => x.ProjectId).FirstOrDefault();
-
-                    if (firstProjectId != null)
-                    {
-                        projectId = firstProjectId;
-                        activity?.AddBigQueryTag("detected_client_project_id", firstProjectId);
-                        // need to reopen the Client with the projectId specified
-                        this.bigQueryConnection.Open(firstProjectId);
-                    }
-                }
-            }
-
-            return projectId;
+            return this.bigQueryConnection.EnsureProjectIdIsConfigured(activity);
         }
 
         /// <summary>
@@ -591,7 +561,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
 
-        public bool DatasetExists(string datasetId, out BigQueryDataset? dataset)
+        private bool DatasetExists(string datasetId, out BigQueryDataset? dataset)
         {
             BigQueryDataset? tempDataset = null;
             bool result = this.TraceActivity(activity =>
