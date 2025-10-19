@@ -1358,22 +1358,22 @@ void StatementTest::TestSqlIngestTemporaryAppend() {
     ASSERT_THAT((MakeBatch<int64_t>(&schema.value, &array.value, &na_error, {0, 1, 2})),
                 IsOkErrno());
 
-    Handle<struct AdbcStatement> statement;
-    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+    Handle<struct AdbcStatement> append_statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &append_statement.value, &error),
                 IsOkStatus(&error));
 
-    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TEMPORARY,
                                        ADBC_OPTION_VALUE_ENABLED, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_MODE,
+    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_MODE,
                                        ADBC_INGEST_OPTION_MODE_APPEND, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
                                        name.c_str(), &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+    ASSERT_THAT(AdbcStatementBind(&append_statement.value, &array.value, &schema.value, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+    ASSERT_THAT(AdbcStatementExecuteQuery(&append_statement.value, nullptr, nullptr, &error),
                 IsOkStatus(&error));
   }
 
@@ -1533,22 +1533,22 @@ void StatementTest::TestSqlIngestTemporaryReplace() {
                                                  {"foo", "bar", std::nullopt})),
                 IsOkErrno());
 
-    Handle<struct AdbcStatement> statement;
-    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+    Handle<struct AdbcStatement> append_statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &append_statement.value, &error),
                 IsOkStatus(&error));
 
-    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TEMPORARY,
                                        ADBC_OPTION_VALUE_ENABLED, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_MODE,
+    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_MODE,
                                        ADBC_INGEST_OPTION_MODE_APPEND, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementSetOption(&statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
                                        name.c_str(), &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementBind(&statement.value, &array.value, &schema.value, &error),
+    ASSERT_THAT(AdbcStatementBind(&append_statement.value, &array.value, &schema.value, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+    ASSERT_THAT(AdbcStatementExecuteQuery(&append_statement.value, nullptr, nullptr, &error),
                 IsOkStatus(&error));
   }
 
