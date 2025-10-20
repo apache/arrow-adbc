@@ -343,7 +343,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
-            await this.TraceActivity(async activity =>
+            await this.TraceActivityAsync(async activity =>
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
                 try

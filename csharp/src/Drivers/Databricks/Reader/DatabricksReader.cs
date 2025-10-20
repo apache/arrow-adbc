@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivity(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 ThrowIfDisposed();
 

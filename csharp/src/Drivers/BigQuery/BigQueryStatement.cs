@@ -88,7 +88,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<QueryResult> ExecuteQueryInternalAsync()
         {
-            return await this.TraceActivity(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 QueryOptions queryOptions = ValidateOptions(activity);
 
@@ -262,7 +262,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<UpdateResult> ExecuteUpdateInternalAsync()
         {
-            return await this.TraceActivity(async activity =>
+            return await this.TraceActivityAsync(async activity =>
             {
                 GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
