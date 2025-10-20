@@ -1362,19 +1362,23 @@ void StatementTest::TestSqlIngestTemporaryAppend() {
     ASSERT_THAT(AdbcStatementNew(&connection, &append_statement.value, &error),
                 IsOkStatus(&error));
 
-    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TEMPORARY,
-                                       ADBC_OPTION_VALUE_ENABLED, &error),
-                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                               ADBC_OPTION_VALUE_ENABLED, &error),
+        IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_MODE,
                                        ADBC_INGEST_OPTION_MODE_APPEND, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                       name.c_str(), &error),
-                IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementBind(&append_statement.value, &array.value, &schema.value, &error),
-                IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&append_statement.value, nullptr, nullptr, &error),
-                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                               name.c_str(), &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementBind(&append_statement.value, &array.value, &schema.value, &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&append_statement.value, nullptr, nullptr, &error),
+        IsOkStatus(&error));
   }
 
   // Append to the normal table
@@ -1537,19 +1541,23 @@ void StatementTest::TestSqlIngestTemporaryReplace() {
     ASSERT_THAT(AdbcStatementNew(&connection, &append_statement.value, &error),
                 IsOkStatus(&error));
 
-    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TEMPORARY,
-                                       ADBC_OPTION_VALUE_ENABLED, &error),
-                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TEMPORARY,
+                               ADBC_OPTION_VALUE_ENABLED, &error),
+        IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_MODE,
                                        ADBC_INGEST_OPTION_MODE_APPEND, &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
-                                       name.c_str(), &error),
-                IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementBind(&append_statement.value, &array.value, &schema.value, &error),
-                IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&append_statement.value, nullptr, nullptr, &error),
-                IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementSetOption(&append_statement.value, ADBC_INGEST_OPTION_TARGET_TABLE,
+                               name.c_str(), &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementBind(&append_statement.value, &array.value, &schema.value, &error),
+        IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&append_statement.value, nullptr, nullptr, &error),
+        IsOkStatus(&error));
   }
 
   {
