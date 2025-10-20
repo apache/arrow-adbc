@@ -572,7 +572,7 @@ public const string Protocol = "adbc.databricks.protocol";
 /// - "external_links": Results via presigned URLs (≤100 GiB)
 /// - "inline_or_external_links": Hybrid mode - server decides based on size (default, recommended)
 /// </summary>
-public const string ResultDisposition = "adbc.databricks.result_disposition";
+public const string ResultDisposition = "adbc.databricks.rest.result_disposition";
 
 /// <summary>
 /// Result format for Statement Execution API.
@@ -581,7 +581,7 @@ public const string ResultDisposition = "adbc.databricks.result_disposition";
 /// - "json_array": JSON array format
 /// - "csv": CSV format
 /// </summary>
-public const string ResultFormat = "adbc.databricks.result_format";
+public const string ResultFormat = "adbc.databricks.rest.result_format";
 
 /// <summary>
 /// Result compression codec for Statement Execution API.
@@ -590,7 +590,7 @@ public const string ResultFormat = "adbc.databricks.result_format";
 /// - "gzip": GZIP compression
 /// - "none": No compression (default for inline)
 /// </summary>
-public const string ResultCompression = "adbc.databricks.result_compression";
+public const string ResultCompression = "adbc.databricks.rest.result_compression";
 
 /// <summary>
 /// Wait timeout for statement execution in seconds.
@@ -599,7 +599,7 @@ public const string ResultCompression = "adbc.databricks.result_compression";
 /// Default: 10 seconds
 /// Note: When enable_direct_results=true, this parameter is not set (server waits until complete)
 /// </summary>
-public const string WaitTimeout = "adbc.databricks.wait_timeout";
+public const string WaitTimeout = "adbc.databricks.rest.wait_timeout";
 
 /// <summary>
 /// Enable direct results mode for Statement Execution API.
@@ -613,7 +613,7 @@ public const string EnableDirectResults = "adbc.databricks.enable_direct_results
 /// Statement polling interval in milliseconds for async execution.
 /// Default: 1000ms (1 second)
 /// </summary>
-public const string PollingInterval = "adbc.databricks.polling_interval_ms";
+public const string PollingInterval = "adbc.databricks.rest.polling_interval_ms";
 
 /// <summary>
 /// Enable session management for Statement Execution API.
@@ -2294,13 +2294,13 @@ internal class StatementExecutionResultFetcher : BaseResultFetcher
 {
   "adbc.databricks.protocol": "rest",
   "adbc.databricks.warehouse_id": "abc123def456",
-  "adbc.databricks.result_disposition": "inline_or_external_links",
-  "adbc.databricks.result_format": "arrow_stream",
-  "adbc.databricks.result_compression": "lz4",
+  "adbc.databricks.rest.result_disposition": "inline_or_external_links",
+  "adbc.databricks.rest.result_format": "arrow_stream",
+  "adbc.databricks.rest.result_compression": "lz4",
   "adbc.databricks.enable_session_management": "true",
   "adbc.databricks.enable_direct_results": "false",
-  "adbc.databricks.wait_timeout": "10",
-  "adbc.databricks.polling_interval_ms": "1000",
+  "adbc.databricks.rest.wait_timeout": "10",
+  "adbc.databricks.rest.polling_interval_ms": "1000",
   "adbc.connection.catalog": "main",
   "adbc.connection.db_schema": "default",
   "adbc.spark.auth_type": "oauth",
@@ -2319,25 +2319,25 @@ internal class StatementExecutionResultFetcher : BaseResultFetcher
   "adbc.databricks.enable_session_management": "true",
 
   // Hybrid disposition - server chooses based on result size (recommended)
-  "adbc.databricks.result_disposition": "inline_or_external_links",
+  "adbc.databricks.rest.result_disposition": "inline_or_external_links",
 
   // Force external links for all results
-  // "adbc.databricks.result_disposition": "external_links",
+  // "adbc.databricks.rest.result_disposition": "external_links",
 
   // Force inline for all results (max 25 MiB)
-  // "adbc.databricks.result_disposition": "inline",
+  // "adbc.databricks.rest.result_disposition": "inline",
 
   // Result compression (default: lz4 for external_links, none for inline)
-  "adbc.databricks.result_compression": "lz4",
+  "adbc.databricks.rest.result_compression": "lz4",
 
   // Direct results mode - server waits until complete (no polling)
   "adbc.databricks.enable_direct_results": "false",
 
   // Wait timeout (ignored if enable_direct_results=true)
-  "adbc.databricks.wait_timeout": "10",
+  "adbc.databricks.rest.wait_timeout": "10",
 
   // Polling interval for async queries
-  "adbc.databricks.polling_interval_ms": "1000",
+  "adbc.databricks.rest.polling_interval_ms": "1000",
 
   // CloudFetch configuration
   "adbc.databricks.cloudfetch.parallel_downloads": "3",

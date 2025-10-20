@@ -33,11 +33,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         {
             // Assert - Verify all parameter constants are defined
             Assert.Equal("adbc.databricks.protocol", DatabricksParameters.Protocol);
-            Assert.Equal("adbc.databricks.result_disposition", DatabricksParameters.ResultDisposition);
-            Assert.Equal("adbc.databricks.result_format", DatabricksParameters.ResultFormat);
-            Assert.Equal("adbc.databricks.result_compression", DatabricksParameters.ResultCompression);
-            Assert.Equal("adbc.databricks.wait_timeout", DatabricksParameters.WaitTimeout);
-            Assert.Equal("adbc.databricks.polling_interval_ms", DatabricksParameters.PollingInterval);
+            Assert.Equal("adbc.databricks.rest.result_disposition", DatabricksParameters.ResultDisposition);
+            Assert.Equal("adbc.databricks.rest.result_format", DatabricksParameters.ResultFormat);
+            Assert.Equal("adbc.databricks.rest.result_compression", DatabricksParameters.ResultCompression);
+            Assert.Equal("adbc.databricks.rest.wait_timeout", DatabricksParameters.WaitTimeout);
+            Assert.Equal("adbc.databricks.rest.polling_interval_ms", DatabricksParameters.PollingInterval);
         }
 
         /// <summary>
@@ -156,13 +156,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
         [Fact]
         public void Parameters_FollowNamingConvention()
         {
-            // Assert - All parameters should start with "adbc.databricks."
+            // Assert - Protocol parameter should start with "adbc.databricks."
             Assert.StartsWith("adbc.databricks.", DatabricksParameters.Protocol);
-            Assert.StartsWith("adbc.databricks.", DatabricksParameters.ResultDisposition);
-            Assert.StartsWith("adbc.databricks.", DatabricksParameters.ResultFormat);
-            Assert.StartsWith("adbc.databricks.", DatabricksParameters.ResultCompression);
-            Assert.StartsWith("adbc.databricks.", DatabricksParameters.WaitTimeout);
-            Assert.StartsWith("adbc.databricks.", DatabricksParameters.PollingInterval);
+
+            // Assert - REST-specific parameters should start with "adbc.databricks.rest."
+            Assert.StartsWith("adbc.databricks.rest.", DatabricksParameters.ResultDisposition);
+            Assert.StartsWith("adbc.databricks.rest.", DatabricksParameters.ResultFormat);
+            Assert.StartsWith("adbc.databricks.rest.", DatabricksParameters.ResultCompression);
+            Assert.StartsWith("adbc.databricks.rest.", DatabricksParameters.WaitTimeout);
+            Assert.StartsWith("adbc.databricks.rest.", DatabricksParameters.PollingInterval);
         }
 
         /// <summary>
