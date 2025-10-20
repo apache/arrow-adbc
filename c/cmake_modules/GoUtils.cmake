@@ -27,7 +27,8 @@ if(WIN32)
     message(STATUS "Found gendef: ${GENDEF_BIN}")
     message(STATUS "Found dlltool: ${DLLTOOL_BIN}")
   else()
-    message(WARNING "gendef and/or dlltool not found - Go driver import libraries won't be automatically created")
+    message(WARNING "gendef and/or dlltool not found - Go driver import libraries won't be automatically created"
+    )
     message(WARNING "Install MinGW64 and add it to your PATH to make them available")
   endif()
 endif()
@@ -204,7 +205,8 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
       set(GO_OUTPUT_LIB "${LIBOUT_SHARED}")
       set(GO_OUTPUT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/${GO_LIBNAME}.h")
       set(LIBIMPLIB_SHARED
-          "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_IMPORT_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_IMPORT_LIBRARY_SUFFIX}")
+          "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_IMPORT_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_IMPORT_LIBRARY_SUFFIX}"
+      )
       set(LIBDEF_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${GO_LIBNAME}.def")
     else()
       # On Unix-like systems, use version suffixes
@@ -214,9 +216,8 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
 
     # Common Go build command
     set(GO_BUILD_COMMAND
-        ${CMAKE_COMMAND} -E env ${GO_ENV_VARS} ${GO_BIN} build
-        ${GO_BUILD_TAGS} "${GO_BUILD_FLAGS}" -o ${GO_OUTPUT_LIB}
-        -buildmode=c-shared ${GO_LDFLAGS} .)
+        ${CMAKE_COMMAND} -E env ${GO_ENV_VARS} ${GO_BIN} build ${GO_BUILD_TAGS}
+        "${GO_BUILD_FLAGS}" -o ${GO_OUTPUT_LIB} -buildmode=c-shared ${GO_LDFLAGS} .)
 
     if(WIN32)
       if(GENDEF_BIN AND DLLTOOL_BIN)
@@ -225,8 +226,10 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                            WORKING_DIRECTORY ${GO_MOD_DIR}
                            DEPENDS ${ARG_SOURCES}
                            COMMAND ${GO_BUILD_COMMAND}
-                           COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR} ${GENDEF_BIN} ${GO_OUTPUT_LIB} -a
-                           COMMAND ${DLLTOOL_BIN} --input-def ${LIBDEF_OUTPUT} --dllname ${LIB_NAME_SHARED} --output-lib ${LIBIMPLIB_SHARED}
+                           COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR}
+                                   ${GENDEF_BIN} ${GO_OUTPUT_LIB} -a
+                           COMMAND ${DLLTOOL_BIN} --input-def ${LIBDEF_OUTPUT} --dllname
+                                   ${LIB_NAME_SHARED} --output-lib ${LIBIMPLIB_SHARED}
                            COMMAND ${CMAKE_COMMAND} -E remove -f "${GO_OUTPUT_HEADER}"
                            COMMENT "Building Go Shared lib ${GO_LIBNAME}"
                            COMMAND_EXPAND_LISTS)
@@ -260,7 +263,8 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                          COMMAND ${CMAKE_COMMAND} -E create_symlink
                                  "${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
                                  "${LIB_NAME_SHARED}")
-      set(TARGET_DEPENDS "${GO_OUTPUT_LIB}" "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" "${LIBOUT_SHARED}")
+      set(TARGET_DEPENDS "${GO_OUTPUT_LIB}" "${LIBOUT_SHARED}.${ADBC_SO_VERSION}"
+                         "${LIBOUT_SHARED}")
     endif()
 
     # Create custom target with platform-specific dependencies

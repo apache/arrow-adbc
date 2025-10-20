@@ -71,12 +71,16 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
 
   # On Windows, install sqlite3.dll alongside the driver
   if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL "3.21")
-    install(RUNTIME_DEPENDENCY_SET ${LIB_TARGET}_runtime_deps
-            PRE_EXCLUDE_REGEXES "api-ms-" "ext-ms-"
-            POST_EXCLUDE_REGEXES ".*system32/.*\\.dll"
-            DESTINATION ${RUNTIME_INSTALL_DIR})
-    install(TARGETS ${LIB_TARGET}
-            RUNTIME_DEPENDENCY_SET ${LIB_TARGET}_runtime_deps)
+    install(RUNTIME_DEPENDENCY_SET
+            ${LIB_TARGET}_runtime_deps
+            PRE_EXCLUDE_REGEXES
+            "api-ms-"
+            "ext-ms-"
+            POST_EXCLUDE_REGEXES
+            ".*system32/.*\\.dll"
+            DESTINATION
+            ${RUNTIME_INSTALL_DIR})
+    install(TARGETS ${LIB_TARGET} RUNTIME_DEPENDENCY_SET ${LIB_TARGET}_runtime_deps)
   endif()
 endforeach()
 
