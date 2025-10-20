@@ -93,7 +93,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             if (this.properties.TryGetValue(BigQueryParameters.DefaultClientLocation, out string? location) &&
                 !string.IsNullOrEmpty(location) &&
-                BigQueryConstants.ValidLocations.Any(l => l.Equals(location, StringComparison.OrdinalIgnoreCase)))
+                (location.Equals(BigQueryConstants.AutoDetectLocation, StringComparison.OrdinalIgnoreCase) ||
+                BigQueryConstants.ValidLocations.Any(l => l.Equals(location, StringComparison.OrdinalIgnoreCase))))
             {
                 DefaultClientLocation = location;
             }
@@ -141,6 +142,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         // if this value is null, the BigQuery API chooses the location (typically the `US` multi-region)
         internal string? DefaultClientLocation { get; private set; }
+
+        internal bool CreateLargeResultsDataset { get; private set; } = true;
 
         public override string AssemblyVersion => BigQueryUtils.BigQueryAssemblyVersion;
 
@@ -204,6 +207,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     activity?.AddBigQueryParameterTag(BigQueryParameters.ClientTimeout, seconds);
                 }
 
+                if (this.properties.TryGetValue(BigQueryParameters.CreateLargeResultsDataset, out string? sCreateLargeResultDataset) &&
+                    bool.TryParse(sCreateLargeResultDataset, out bool createLargeResultDataset))
+                {
+                    CreateLargeResultsDataset = createLargeResultDataset;
+                    activity?.AddBigQueryParameterTag(BigQueryParameters.CreateLargeResultsDataset, createLargeResultDataset);
+                }
+
                 SetCredential();
 
                 BigQueryClientBuilder bigQueryClientBuilder = new BigQueryClientBuilder()
@@ -223,7 +233,30 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     //    User does not have permission to query table bigquery-public-data:blockchain_analytics_ethereum_mainnet_us.accounts,
                     //    or perhaps it does not exist.'
 
-                    bigQueryClientBuilder.DefaultLocation = DefaultClientLocation;
+                    if (DefaultClientLocation!.Equals(BigQueryConstants.AutoDetectLocation, StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        // get a temporary client to detect the location
+                        Client = bigQueryClientBuilder.Build();
+
+                        string ensuredProjectId = EnsureProjectIdIsConfigured(activity);
+                        string? detectedLocation = DetectLocation(ensuredProjectId);
+
+                        if (!string.IsNullOrEmpty(detectedLocation))
+                        {
+                            DefaultClientLocation = detectedLocation;
+                            bigQueryClientBuilder.DefaultLocation = DefaultClientLocation;
+                            activity?.AddBigQueryTag("client.detected_location", detectedLocation);
+                        }
+                        else
+                        {
+                            activity?.AddBigQueryTag("client.detected_location", null);
+                        }
+                    }
+                    else
+                    {
+                        bigQueryClientBuilder.DefaultLocation = DefaultClientLocation;
+                    }
+
                     activity?.AddBigQueryParameterTag(BigQueryParameters.DefaultClientLocation, DefaultClientLocation);
                 }
                 else
@@ -241,6 +274,105 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 Client = client;
                 return client;
             });
+        }
+
+        private string? DetectLocation(string projectId)
+        {
+            return this.TraceActivity(activity =>
+            {
+                ListDatasetsOptions options = new ListDatasetsOptions()
+                {
+                    IncludeHidden = true
+                };
+
+                Func<Task<PagedEnumerable<DatasetList, BigQueryDataset>?>> func = () => Task.Run(() =>
+                {
+                    return Client?.ListDatasets(options);
+                });
+
+                PagedEnumerable<DatasetList, BigQueryDataset>? datasets = ExecuteWithRetriesAsync<PagedEnumerable<DatasetList, BigQueryDataset>?>(func, activity).GetAwaiter().GetResult();
+
+                if (datasets == null) return null;
+
+                // the ListDatasets call doesn't include the Location value so we have to
+                // grab the details of N number of datasets to determine the most common location
+                Dictionary<string, int> locationCounts = new Dictionary<string, int>();
+
+                foreach (BigQueryDataset ds in datasets.Take(20))
+                {
+                    try
+                    {
+                        Func<Task<BigQueryDataset?>> getDatasetFunc = () => Task.Run(() =>
+                        {
+                            return Client?.GetDataset(ds.Reference.DatasetId);
+                        });
+
+                        BigQueryDataset? fullDataset = ExecuteWithRetriesAsync<BigQueryDataset?>(getDatasetFunc, activity).GetAwaiter().GetResult();// Client?.GetDataset(ds.Reference.DatasetId);
+                        string? location = fullDataset?.Resource.Location;
+                        if (!string.IsNullOrEmpty(location))
+                        {
+                            if (locationCounts.TryGetValue(location!, out int currentCount))
+                            {
+                                locationCounts[location!] = currentCount + 1;
+                            }
+                            else
+                            {
+                                locationCounts[location!] = 1;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        activity?.AddException(ex);
+                    }
+                }
+
+                // Return the most common location
+                return locationCounts
+                    .OrderByDescending(kvp => kvp.Value)
+                    .Select(kvp => kvp.Key)
+                    .FirstOrDefault();
+            });
+        }
+
+        internal string EnsureProjectIdIsConfigured(Activity? activity)
+        {
+            string? projectId = Client?.ProjectId;
+
+            if (Client?.ProjectId == BigQueryConstants.DetectProjectId)
+            {
+                activity?.AddBigQueryTag("client_project_id", BigQueryConstants.DetectProjectId);
+
+                // An error occurs when calling CreateQueryJob without the ID set,
+                // so use the first one that is found. This does not prevent from calling
+                // to other 'project IDs' (catalogs) with a query.
+                Func<Task<PagedEnumerable<ProjectList, CloudProject>?>> func = () => Task.Run(() =>
+                {
+                    return Client?.ListProjects();
+                });
+
+                PagedEnumerable<ProjectList, CloudProject>? projects = ExecuteWithRetriesAsync<PagedEnumerable<ProjectList, CloudProject>?>(func, activity).GetAwaiter().GetResult();
+
+                if (projects != null)
+                {
+                    string? firstProjectId = projects.Select(x => x.ProjectId).FirstOrDefault();
+
+                    if (firstProjectId != null)
+                    {
+                        projectId = firstProjectId;
+                        activity?.AddBigQueryTag("detected_client_project_id", firstProjectId);
+                        // need to reopen the Client with the projectId specified
+                        this.Open(firstProjectId);
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(projectId))
+            {
+                throw new ArgumentException("A valid project ID could not be determined. Please specify a project ID using the adbc.bigquery.project_id parameter.");
+            }
+
+            return projectId!;
         }
 
         internal void SetCredential()
@@ -1314,7 +1446,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryParameters.MaxFetchConcurrency,
                 BigQueryParameters.StatementType,
                 BigQueryParameters.StatementIndex,
-                BigQueryParameters.EvaluationKind
+                BigQueryParameters.EvaluationKind,
+                BigQueryParameters.IsMetadataCommand
             };
 
             foreach (string key in statementOptions)

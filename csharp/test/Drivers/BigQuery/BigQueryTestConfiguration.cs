@@ -143,6 +143,12 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
         [JsonPropertyName("queries")]
         public List<ParallelQuery> ParallelQueries { get; set; }
+
+        [JsonPropertyName("isMetadata")]
+        public bool IsMetadataCommand { get; set; } = false;
+
+        [JsonPropertyName("expectedMetadataResultJson")]
+        public string? ExpectedMetadataResultJson { get; set; }
     }
 
     class ParallelQuery

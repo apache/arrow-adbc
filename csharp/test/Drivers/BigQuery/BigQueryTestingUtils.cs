@@ -195,6 +195,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 parameters.Add(BigQueryParameters.EvaluationKind, testEnvironment.EvaluationKind);
             }
 
+            if (testEnvironment.IsMetadataCommand)
+            {
+                parameters.Add(BigQueryParameters.IsMetadataCommand, testEnvironment.IsMetadataCommand.ToString());
+            }
+
             return parameters;
         }
 
