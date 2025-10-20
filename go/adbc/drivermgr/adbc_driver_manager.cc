@@ -449,8 +449,8 @@ SearchPaths GetEnvPaths(const char_type* env_var) {
   std::string path(path_var);
 #endif  // _WIN32
   SearchPaths paths;
-  for (auto path : InternalAdbcParsePath(path)) {
-    paths.emplace_back(SearchPathSource::kEnv, path);
+  for (auto search_path : InternalAdbcParsePath(path)) {
+    paths.emplace_back(SearchPathSource::kEnv, search_path);
   }
   return paths;
 }
@@ -1451,7 +1451,7 @@ std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver
     // if pos == npos this is the entire filename
     std::string token = filename.substr(prev, pos - prev);
     // capitalize first letter
-    token[0] = std::toupper(static_cast<unsigned char>(token[0]));
+    token[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(token[0])));
 
     entrypoint += token;
 
