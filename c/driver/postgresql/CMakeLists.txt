@@ -62,6 +62,16 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   if(NOT ADBC_DEFINE_COMMON_ENTRYPOINTS)
     target_compile_definitions(${LIB_TARGET} PRIVATE ${ADBC_TARGET_COMPILE_DEFINITIONS})
   endif()
+
+  # On Windows, install libpq.dll and its dependencies alongside the driver
+  if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL "3.21")
+    install(RUNTIME_DEPENDENCY_SET ${LIB_TARGET}_runtime_deps
+            PRE_EXCLUDE_REGEXES "api-ms-" "ext-ms-"
+            POST_EXCLUDE_REGEXES ".*system32/.*\\.dll"
+            DESTINATION ${RUNTIME_INSTALL_DIR})
+    install(TARGETS ${LIB_TARGET}
+            RUNTIME_DEPENDENCY_SET ${LIB_TARGET}_runtime_deps)
+  endif()
 endforeach()
 
 if(ADBC_TEST_LINKAGE STREQUAL "shared")

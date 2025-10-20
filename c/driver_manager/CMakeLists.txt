@@ -98,9 +98,15 @@ if(ADBC_BUILD_TESTS)
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
 
   if(ADBC_DRIVER_SQLITE)
-    target_compile_definitions(adbc-driver-manager-test
-                               PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/libadbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
-    )
+    if(WIN32)
+      target_compile_definitions(adbc-driver-manager-test
+                                PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/adbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
+      )
+    else()
+      target_compile_definitions(adbc-driver-manager-test
+                                PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/libadbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
+      )
+    endif()
   endif()
   if(ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL)
     target_compile_definitions(adbc-driver-manager-test

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "arrow-adbc",
+  "version-string": "1.9.0-SNAPSHOT",
+  "dependencies": [
+    "libpq",
+    "sqlite3"
+  ],
+  "$comment": "We can update builtin-baseline by 'vcpkg x-update-baseline'",
+  "builtin-baseline": "9e4b86d4871c47f125e9f631de07d963fcd38389"
+}
