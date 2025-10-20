@@ -295,7 +295,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 if (datasets == null) return null;
 
                 // the ListDatasets call doesn't include the Location value so we have to
-                // grab the details of N number to determine the most common location
+                // grab the details of N number of datasets to determine the most common location
                 Dictionary<string, int> locationCounts = new Dictionary<string, int>();
 
                 foreach (BigQueryDataset ds in datasets.Take(20))
