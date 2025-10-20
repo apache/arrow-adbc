@@ -24,6 +24,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
@@ -180,7 +181,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     var refreshedLink = response.Results.ResultLinks.FirstOrDefault(l => l.StartRowOffset == offset);
                     if (refreshedLink != null)
                     {
-                        Trace.TraceInformation($"Successfully fetched URL for offset {offset}");
+                        Activity.Current?.AddEvent("cloudfetch.url_fetched", [
+                            new("offset", offset),
+                            new("url_length", refreshedLink.FileLink?.Length ?? 0)
+                        ]);
 
                         // Create a download result for the refreshed link
                         var downloadResult = new DownloadResult(refreshedLink, _memoryManager);
@@ -190,7 +194,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     }
                 }
 
-                Trace.TraceWarning($"Failed to fetch URL for offset {offset}");
+                Activity.Current?.AddEvent("cloudfetch.url_fetch_failed", [new("offset", offset)]);
                 return null;
             }
             finally

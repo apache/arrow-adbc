@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -207,6 +208,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
             // Initialize the downloader
             _downloader = new CloudFetchDownloader(
+                _statement,
                 _downloadQueue,
                 _resultQueue,
                 _memoryManager,
