@@ -1712,6 +1712,110 @@ TEST_F(PostgresStatementTest, ExecuteParameterizedQueryWithRowsAffected) {
   }
 }
 
+// Test for making sure empty string/binary parameters are inserted correct
+TEST_F(PostgresStatementTest, EmptyStringAndBinaryParameter) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  // Create test table with both TEXT and BYTEA columns
+  {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement,
+                    "CREATE TABLE adbc_test (text_data TEXT, binary_data BYTEA)", &error),
+                IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
+        IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
+  // Insert empty string and binary via parameters
+  {
+    nanoarrow::UniqueSchema schema_bind;
+    ArrowSchemaInit(schema_bind.get());
+    ASSERT_THAT(ArrowSchemaSetTypeStruct(schema_bind.get(), 2),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetType(schema_bind->children[0], NANOARROW_TYPE_STRING),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowSchemaSetType(schema_bind->children[1], NANOARROW_TYPE_BINARY),
+                adbc_validation::IsOkErrno());
+
+    nanoarrow::UniqueArray bind;
+    ASSERT_THAT(ArrowArrayInitFromSchema(bind.get(), schema_bind.get(), nullptr),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowArrayStartAppending(bind.get()), adbc_validation::IsOkErrno());
+
+    // Add one row with empty string and empty binary parameters
+    ASSERT_THAT(ArrowArrayAppendString(bind->children[0], ArrowCharView("")),
+                adbc_validation::IsOkErrno());
+    ArrowBufferView empty_buffer = {{nullptr}, 0};
+    ASSERT_THAT(ArrowArrayAppendBytes(bind->children[1], empty_buffer),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowArrayFinishElement(bind.get()), adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowArrayFinishBuildingDefault(bind.get(), nullptr),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                         "INSERT INTO adbc_test VALUES ($1, $2)", &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementBind(&statement, bind.get(), schema_bind.get(), &error),
+                IsOkStatus(&error));
+
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
+        IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
+  // Verify empty values were inserted correctly (not as NULL)
+  {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement, "SELECT text_data, binary_data FROM adbc_test", &error),
+                IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
+        IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(reader.array->release, nullptr);
+    ASSERT_EQ(reader.array->length, 1);
+
+    // Row should contain empty values, not NULL
+    ASSERT_EQ(reader.array->children[0]->null_count, 0);  // text_data
+    ASSERT_EQ(reader.array->children[1]->null_count, 0);  // binary_data
+
+    // Check that both values are empty (string and binary)
+    struct ArrowArrayView array_view;
+    ASSERT_THAT(ArrowArrayViewInitFromSchema(&array_view, &reader.schema.value, nullptr),
+                adbc_validation::IsOkErrno());
+    ASSERT_THAT(ArrowArrayViewSetArray(&array_view, &reader.array.value, nullptr),
+                adbc_validation::IsOkErrno());
+
+    // Check the single row
+    ASSERT_FALSE(ArrowArrayViewIsNull(array_view.children[0], 0));
+    struct ArrowBufferView string_view =
+        ArrowArrayViewGetBytesUnsafe(array_view.children[0], 0);
+    ASSERT_EQ(string_view.size_bytes, 0);  // Empty string should have size 0
+
+    ASSERT_FALSE(ArrowArrayViewIsNull(array_view.children[1], 0));
+    struct ArrowBufferView binary_view =
+        ArrowArrayViewGetBytesUnsafe(array_view.children[1], 0);
+    ASSERT_EQ(binary_view.size_bytes, 0);  // Empty binary should have size 0
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(reader.array->release, nullptr);
+  }
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
 TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutputError) {
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
