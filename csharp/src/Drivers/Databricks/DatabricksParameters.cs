@@ -256,14 +256,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         public const string OperationStatusRequestTimeout = "adbc.databricks.operation_status_request_timeout";
 
-        /// <summary>
-        /// The interval in milliseconds between polls while waiting for query execution to complete.
-        /// This controls how frequently the driver checks if an executing query has finished.
-        /// Uses the Apache base parameter (adbc.apache.statement.polltime_ms) but with Databricks-specific default.
-        /// Default value is 100 milliseconds if not specified.
-        /// Must be a positive integer value.
-        /// </summary>
-        public const string AsyncExecPollInterval = ApacheParameters.PollTimeMilliseconds;
     }
 
     /// <summary>

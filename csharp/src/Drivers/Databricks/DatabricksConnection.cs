@@ -417,12 +417,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 _identityFederationClientId = identityFederationClientId;
             }
 
-            // Parse async execution poll interval (uses Apache base parameter)
-            if (Properties.TryGetValue(DatabricksParameters.AsyncExecPollInterval, out string? asyncExecPollIntervalStr))
+            if (Properties.TryGetValue(ApacheParameters.PollTimeMilliseconds, out string? asyncExecPollIntervalStr))
             {
                 if (!int.TryParse(asyncExecPollIntervalStr, out int asyncExecPollIntervalValue))
                 {
-                    throw new ArgumentException($"Parameter '{DatabricksParameters.AsyncExecPollInterval}' value '{asyncExecPollIntervalStr}' could not be parsed. Valid values are positive integers.");
+                    throw new ArgumentException($"Parameter '{ApacheParameters.PollTimeMilliseconds}' value '{asyncExecPollIntervalStr}' could not be parsed. Valid values are positive integers.");
                 }
 
                 if (asyncExecPollIntervalValue <= 0)
@@ -430,7 +429,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     throw new ArgumentOutOfRangeException(
                         nameof(Properties),
                         asyncExecPollIntervalValue,
-                        $"Parameter '{DatabricksParameters.AsyncExecPollInterval}' value must be a positive integer.");
+                        $"Parameter '{ApacheParameters.PollTimeMilliseconds}' value must be a positive integer.");
                 }
                 _asyncExecPollIntervalMs = asyncExecPollIntervalValue;
             }
