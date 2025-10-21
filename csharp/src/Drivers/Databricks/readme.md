@@ -129,6 +129,7 @@ CloudFetch is Databricks' high-performance result retrieval system that download
 | `adbc.databricks.enable_run_async_thrift` | Whether to enable RunAsync flag in Thrift operations | `true` |
 | `adbc.databricks.driver_config_take_precedence` | Whether driver configuration overrides passed-in properties during configuration merging | `false` |
 | `adbc.apache.statement.batch_size` | Sets the maximum number of rows to retrieve in a single batch request | `2000000` |
+| `adbc.apache.connection.polltime_ms` | The time in milliseconds between each poll for query execution status. Databricks default is 100ms (Apache default: 500ms) | `100` |
 
 ### Tracing Properties
 

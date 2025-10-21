@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using System.Collections.Generic;
 
@@ -254,6 +255,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Must be a positive integer value.
         /// </summary>
         public const string OperationStatusRequestTimeout = "adbc.databricks.operation_status_request_timeout";
+
     }
 
     /// <summary>
@@ -270,6 +272,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default timeout in seconds for operation status polling requests.
         /// </summary>
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
+
+        /// <summary>
+        /// Default async execution poll interval in milliseconds.
+        /// </summary>
+        public const int DefaultAsyncExecPollIntervalMs = 100;
 
         /// <summary>
         /// OAuth grant type constants
