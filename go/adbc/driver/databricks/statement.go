@@ -32,10 +32,9 @@ import (
 )
 
 type statementImpl struct {
-	conn       *connectionImpl
-	query      string
-	parameters []interface{}
-	prepared   *sql.Stmt
+	conn     *connectionImpl
+	query    string
+	prepared *sql.Stmt
 }
 
 func (s *statementImpl) Close() error {
@@ -119,12 +118,6 @@ func (s *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, i
 		// Convert parameters to driver.NamedValue slice
 		queryerCtx := driverConn.(driver.QueryerContext)
 		var driverArgs []driver.NamedValue
-		for i, param := range s.parameters {
-			driverArgs = append(driverArgs, driver.NamedValue{
-				Ordinal: i + 1,
-				Value:   param,
-			})
-		}
 		driverRows, err = queryerCtx.QueryContext(ctx, s.query, driverArgs)
 		return err
 	})
@@ -170,9 +163,9 @@ func (s *statementImpl) ExecuteUpdate(ctx context.Context) (int64, error) {
 	var err error
 
 	if s.prepared != nil {
-		result, err = s.prepared.ExecContext(ctx, s.parameters...)
+		result, err = s.prepared.ExecContext(ctx)
 	} else if s.query != "" {
-		result, err = s.conn.conn.ExecContext(ctx, s.query, s.parameters...)
+		result, err = s.conn.conn.ExecContext(ctx, s.query)
 	} else {
 		return -1, adbc.Error{
 			Code: adbc.StatusInvalidState,
