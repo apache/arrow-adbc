@@ -6,11 +6,11 @@
     <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Apache.Arrow" Version="22.1.0" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.6" />
+    <PackageReference Include="Apache.Arrow" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" />
   </ItemGroup>
   <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible($(TargetFramework), 'net6.0'))">
-    <PackageReference Include="System.Text.Json" Version="9.0.9" />
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
   <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible($(TargetFramework), 'net6.0'))">
     <Compile Remove="C\NativeLibrary.cs" />
