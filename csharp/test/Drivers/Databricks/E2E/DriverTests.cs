@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using Apache.Arrow.Adbc.Tests.Drivers.Apache.Common;
 using Xunit;
@@ -97,7 +98,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             }
 
             AdbcDatabase database = driver.Open(parameters);
-            AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
+            AdbcException exception = Assert.ThrowsAny<AdbcException>(() => database.Connect(parameters));
             OutputHelper?.WriteLine(exception.Message);
         }
 
@@ -129,8 +130,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks
             }
 
             AdbcDatabase database = driver.Open(parameters);
-            AggregateException exception = Assert.ThrowsAny<AggregateException>(() => database.Connect(parameters));
-            OutputHelper?.WriteLine(exception.Message);
+            AdbcException adbcException = Assert.ThrowsAny<AdbcException>(() => database.Connect(parameters));
+            Assert.Equal(AdbcStatusCode.Unauthorized, adbcException.Status);
+            OutputHelper?.WriteLine(adbcException.Message);
         }
 
         protected override IReadOnlyList<int> GetUpdateExpectedResults()

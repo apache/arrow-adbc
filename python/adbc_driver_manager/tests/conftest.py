@@ -15,20 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-PKG_CPPFLAGS=-I$(CURDIR) -DADBC_EXPORT=""
-PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_bigquery
+import typing
 
-CGO_CC = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CC`
-CGO_CXX = `"${R_HOME}/bin${R_ARCH_BIN}/R.exe" CMD config CXX`
-CGO_CFLAGS = $(ALL_CPPFLAGS)
-GO_BIN = $(CURDIR)/go/tmp/go/bin/go.exe
+import pytest
 
-.PHONY: all gostatic gobin
-all: $(SHLIB)
-$(SHLIB): gostatic
+from adbc_driver_manager import dbapi
 
-gostatic: gobin
-		(cd "$(CURDIR)/go/adbc"; CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" "$(GO_BIN)" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_bigquery.a -buildmode=c-archive "./pkg/bigquery")
 
-gobin:
-		(cd ..; "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" "tools/download-go.R")
+@pytest.fixture
+def sqlite() -> typing.Generator[dbapi.Connection, None, None]:
+    with dbapi.connect(driver="adbc_driver_sqlite") as conn:
+        yield conn

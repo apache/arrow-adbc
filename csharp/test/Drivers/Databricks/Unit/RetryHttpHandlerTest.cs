@@ -26,6 +26,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 {
     /// <summary>
     /// Tests for the RetryHttpHandler class.
+    ///
+    /// IMPORTANT: These tests verify retry behavior in isolation. In production, RetryHttpHandler
+    /// must be positioned INSIDE (closer to network) ThriftErrorMessageHandler in the handler chain
+    /// so that retries happen before exceptions are thrown. See DatabricksConnection.CreateHttpHandler()
+    /// for the correct handler chain ordering and detailed explanation.
     /// </summary>
     public class RetryHttpHandlerTest
     {

@@ -19,6 +19,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using OpenTelemetry;
@@ -118,7 +120,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             testClass.MethodWithActivityRecursive(nameof(TraceProducer.MethodWithActivityRecursive), recurseCount);
 
             int lineCount = 0;
-            foreach(var exportedActivity in exportedActivities)
+            foreach (var exportedActivity in exportedActivities)
             {
                 lineCount++;
                 Assert.NotNull(exportedActivity);
@@ -225,6 +227,32 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 testClass.MethodWithActivity();
             }
             Assert.Single(exportedActivities);
+        }
+
+        [Fact]
+        internal async Task CanDetectInvalidAsyncCall()
+        {
+            string activitySourceName = NewName();
+            Queue<Activity> exportedActivities = new();
+            var testClass = new MyTracingConnection(new Dictionary<string, string>(), activitySourceName);
+            using (ActivityListener activityListener = new()
+            {
+                ShouldListenTo = source =>
+                {
+                    return source.Name == testClass.ActivitySourceName
+                        && source.Tags?.Any(t => t.Key == SourceTagName && t.Value?.Equals(SourceTagValue) == true) == true;
+                },
+                Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
+                ActivityStopped = activity => exportedActivities.Enqueue(activity)
+            })
+            {
+                ActivitySource.AddActivityListener(activityListener);
+                await Assert.ThrowsAnyAsync<InvalidOperationException>(testClass.MethodWithInvalidAsyncTraceActivity1);
+                await Assert.ThrowsAnyAsync<InvalidOperationException>(testClass.MethodWithInvalidAsyncTraceActivity2);
+                await Assert.ThrowsAnyAsync<InvalidOperationException>(async () => await testClass.MethodWithInvalidAsyncTraceActivity3());
+                await Assert.ThrowsAnyAsync<InvalidOperationException>(async () => await testClass.MethodWithInvalidAsyncTraceActivity4());
+                await Assert.ThrowsAnyAsync<InvalidOperationException>(testClass.MethodWithInvalidAsyncTraceActivity5);
+            }
         }
 
         internal static string NewName() => Guid.NewGuid().ToString().Replace("-", "").ToLower();
@@ -344,6 +372,77 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                         .AddEvent("exampleEvent", [new KeyValuePair<string, object?>("eventTag", "eventValue")])
                         .AddLink(TraceParent, [new KeyValuePair<string, object?>("linkTag", "linkValue")]);
                 });
+            }
+
+            public async Task<bool> MethodWithInvalidAsyncTraceActivity1()
+            {
+                // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
+                return await this.TraceActivity(async activity =>
+                {
+                    await Task.Delay(1);
+                    return true;
+                });
+            }
+
+            public async Task MethodWithInvalidAsyncTraceActivity2()
+            {
+                // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
+                await this.TraceActivity(async activity =>
+                {
+                    await Task.Delay(1);
+                    return;
+                });
+            }
+
+            public async ValueTask<bool> MethodWithInvalidAsyncTraceActivity3()
+            {
+                // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
+                return await this.TraceActivity(async activity =>
+                {
+                    await Task.Delay(1);
+                    return true;
+                });
+            }
+
+            public async ValueTask MethodWithInvalidAsyncTraceActivity4()
+            {
+                // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
+                await this.TraceActivity(async activity =>
+                {
+                    await Task.Delay(1);
+                    return;
+                });
+            }
+
+            public async Task<bool> MethodWithInvalidAsyncTraceActivity5()
+            {
+                // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
+                return await this.TraceActivity(async activity =>
+                {
+                    await Task.Delay(1);
+                    return await new AwaitableBool();
+                });
+            }
+
+            public class AwaitableBool
+            {
+                public BoolAwaiter GetAwaiter()
+                {
+                    return new BoolAwaiter();
+                }
+
+                public class BoolAwaiter : INotifyCompletion
+                {
+                    public bool IsCompleted => throw new NotImplementedException();
+                    public bool GetResult()
+                    {
+                        throw new NotImplementedException();
+                    }
+                    public void OnCompleted(Action continuation)
+                    {
+                        throw new NotImplementedException();
+                    }
+                }
             }
 
             public override AdbcStatement CreateStatement() => throw new NotImplementedException();

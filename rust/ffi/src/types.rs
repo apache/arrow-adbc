@@ -36,12 +36,12 @@ pub type FFI_AdbcDriverInitFunc =
 #[repr(C)]
 #[derive(Debug)]
 pub struct FFI_AdbcError {
-    message: *mut c_char,
-    vendor_code: i32,
-    sqlstate: [c_char; 5],
-    release: Option<unsafe extern "C" fn(*mut Self)>,
+    pub message: *mut c_char,
+    pub vendor_code: i32,
+    pub sqlstate: [c_char; 5],
+    pub release: Option<unsafe extern "C" fn(*mut Self)>,
     /// Added in ADBC 1.1.0.
-    pub(crate) private_data: *mut c_void,
+    pub private_data: *mut c_void,
     /// Added in ADBC 1.1.0.
     pub private_driver: *const FFI_AdbcDriver,
 }
@@ -50,11 +50,11 @@ pub struct FFI_AdbcError {
 #[derive(Debug)]
 pub struct FFI_AdbcErrorDetail {
     /// The metadata key.
-    pub(crate) key: *const c_char,
+    pub key: *const c_char,
     /// The binary metadata value.
-    pub(crate) value: *const u8,
+    pub value: *const u8,
     /// The length of the metadata value.
-    pub(crate) value_length: usize,
+    pub value_length: usize,
 }
 
 #[repr(C)]
@@ -62,9 +62,9 @@ pub struct FFI_AdbcErrorDetail {
 pub struct FFI_AdbcDatabase {
     /// Opaque implementation-defined state.
     /// This field is NULLPTR iff the connection is uninitialized/freed.
-    pub(crate) private_data: *mut c_void,
+    pub private_data: *mut c_void,
     /// The associated driver (used by the driver manager to help track state).
-    pub(crate) private_driver: *const FFI_AdbcDriver,
+    pub private_driver: *const FFI_AdbcDriver,
 }
 
 unsafe impl Send for FFI_AdbcDatabase {}
@@ -74,9 +74,9 @@ unsafe impl Send for FFI_AdbcDatabase {}
 pub struct FFI_AdbcConnection {
     /// Opaque implementation-defined state.
     /// This field is NULLPTR iff the connection is uninitialized/freed.
-    pub(crate) private_data: *mut c_void,
+    pub private_data: *mut c_void,
     /// The associated driver (used by the driver manager to help track state).
-    pub(crate) private_driver: *const FFI_AdbcDriver,
+    pub private_driver: *const FFI_AdbcDriver,
 }
 
 unsafe impl Send for FFI_AdbcConnection {}
@@ -86,9 +86,9 @@ unsafe impl Send for FFI_AdbcConnection {}
 pub struct FFI_AdbcStatement {
     /// Opaque implementation-defined state.
     /// This field is NULLPTR iff the connection is uninitialized/freed.
-    pub(crate) private_data: *mut c_void,
+    pub private_data: *mut c_void,
     /// The associated driver (used by the driver manager to help track state).
-    pub(crate) private_driver: *const FFI_AdbcDriver,
+    pub private_driver: *const FFI_AdbcDriver,
 }
 
 unsafe impl Send for FFI_AdbcStatement {}
@@ -97,28 +97,28 @@ unsafe impl Send for FFI_AdbcStatement {}
 #[derive(Debug)]
 pub struct FFI_AdbcPartitions {
     /// The number of partitions.
-    num_partitions: usize,
+    pub num_partitions: usize,
 
     /// The partitions of the result set, where each entry (up to
     /// num_partitions entries) is an opaque identifier that can be
     /// passed to AdbcConnectionReadPartition.
     // It's defined as a const const pointer in C but we need to release it so it
     // probably needs to be mutable.
-    partitions: *mut *mut u8,
+    pub partitions: *mut *mut u8,
 
     /// The length of each corresponding entry in partitions.
     // It's defined as a const pointer in C but we need to release it so it
     // probably needs to be mutable.
-    partition_lengths: *mut usize,
+    pub partition_lengths: *mut usize,
 
     /// Opaque implementation-defined state.
     /// This field is NULLPTR iff the connection is uninitialized/freed.
-    pub(crate) private_data: *mut c_void,
+    pub private_data: *mut c_void,
 
     /// Release the contained partitions.
     /// Unlike other structures, this is an embedded callback to make it
     /// easier for the driver manager and driver to cooperate.
-    release: Option<unsafe extern "C" fn(*mut Self)>,
+    pub release: Option<unsafe extern "C" fn(*mut Self)>,
 }
 
 #[repr(C)]
@@ -127,12 +127,12 @@ pub struct FFI_AdbcDriver {
     /// Opaque driver-defined state.
     /// This field is NULL if the driver is uninitialized/freed (but
     /// it need not have a value even if the driver is initialized).
-    pub(crate) private_data: *mut c_void,
+    pub private_data: *mut c_void,
     /// Opaque driver manager-defined state.
     /// This field is NULL if the driver is uninitialized/freed (but
     /// it need not have a value even if the driver is initialized).
-    pub(crate) private_manager: *const c_void,
-    pub(crate) release: Option<
+    pub private_manager: *const c_void,
+    pub release: Option<
         unsafe extern "C" fn(driver: *mut Self, error: *mut FFI_AdbcError) -> AdbcStatusCode,
     >,
     pub DatabaseInit: Option<methods::FuncDatabaseInit>,

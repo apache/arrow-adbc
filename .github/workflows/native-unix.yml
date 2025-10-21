@@ -68,9 +68,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
         include:
-          - os: macos-13
+          - os: macos-15-intel
             goarch: x64
           - os: macos-latest
             goarch: arm64
@@ -156,7 +156,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -322,7 +322,7 @@ jobs:
       matrix:
         # N.B. no macos-latest here since conda-forge does not package
         # arrow-c-glib for M1
-        os: ["macos-13", "ubuntu-latest"]
+        os: ["macos-15-intel", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -395,7 +395,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -448,9 +448,9 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
         include:
-          - os: macos-13
+          - os: macos-15-intel
             goarch: x64
           - os: macos-latest
             goarch: arm64
@@ -543,8 +543,8 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest"]
-        python: ["3.9", "3.13"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
+        python: ["3.10", "3.13"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -652,6 +652,13 @@ jobs:
       - name: Typecheck Python
         run: |
           ./ci/scripts/python_typecheck.sh "$(pwd)"
+      - name: Run Python Docker-based integration tests
+        if: runner.os == 'Linux'
+        run: |
+          # Self-contained tests using docker-compose
+
+          # Test that the driver manager can load manifests installed into a venv
+          docker compose run python-venv
 
   python-docs:
     name: "Documentation ${{ matrix.python }} (Conda/${{ matrix.os }})"
@@ -737,7 +744,8 @@ jobs:
             docs/source/python/recipe/*.py
       - name: Test Recipes (Python)
         run: |
-          docker compose up --detach --wait dremio dremio-init flightsql-sqlite-test postgres-test
+          docker compose up --detach --wait dremio flightsql-sqlite-test postgres-test
+          docker compose run --rm dremio-init
           export ADBC_CPP_RECIPE_BIN=~/local/bin
           # Needed for the combined C++/Python driver example
           export LD_LIBRARY_PATH=~/local/lib

@@ -9,7 +9,7 @@
     <PackageReference Include="Google.Cloud.BigQuery.V2" Version="3.11.0" />
   </ItemGroup>
   <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible($(TargetFramework), 'net6.0'))">
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="System.Text.Json" Version="9.0.9" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />

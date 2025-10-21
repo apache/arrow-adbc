@@ -44,6 +44,7 @@ namespace Apache.Arrow.Adbc
         public AdbcException(string message, AdbcStatusCode statusCode, Exception innerException)
            : base(message, innerException)
         {
+            _statusCode = statusCode;
         }
 
         public AdbcException(string message, Exception innerException)

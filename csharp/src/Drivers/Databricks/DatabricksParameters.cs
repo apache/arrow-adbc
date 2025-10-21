@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using System.Collections.Generic;
 
@@ -40,6 +41,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Maximum bytes per file for CloudFetch.
+        /// The value can be specified with unit suffixes: B (bytes), KB (kilobytes), MB (megabytes), GB (gigabytes).
+        /// If no unit is specified, the value is treated as bytes.
         /// Default value is 20MB if not specified.
         /// </summary>
         public const string MaxBytesPerFile = "adbc.databricks.cloudfetch.max_bytes_per_file";
@@ -130,6 +133,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string CloudFetchPrefetchEnabled = "adbc.databricks.cloudfetch.prefetch_enabled";
+
+        /// <summary>
+        /// Maximum bytes per fetch request when retrieving query results from servers.
+        /// The value can be specified with unit suffixes: B (bytes), KB (kilobytes), MB (megabytes), GB (gigabytes).
+        /// If no unit is specified, the value is treated as bytes.
+        /// Default value is 400MB if not specified.
+        /// </summary>
+        public const string MaxBytesPerFetchRequest = "adbc.databricks.max_bytes_per_fetch_request";
 
         /// <summary>
         /// The OAuth grant type to use for authentication.
@@ -244,6 +255,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Must be a positive integer value.
         /// </summary>
         public const string OperationStatusRequestTimeout = "adbc.databricks.operation_status_request_timeout";
+
     }
 
     /// <summary>
@@ -260,6 +272,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default timeout in seconds for operation status polling requests.
         /// </summary>
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
+
+        /// <summary>
+        /// Default async execution poll interval in milliseconds.
+        /// </summary>
+        public const int DefaultAsyncExecPollIntervalMs = 100;
 
         /// <summary>
         /// OAuth grant type constants

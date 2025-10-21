@@ -32,9 +32,9 @@ cdef extern from "arrow-adbc/adbc.h" nogil:
     cdef struct CArrowArray"ArrowArray":
         CArrowArrayRelease release
 
-    ctypedef int (*CArrowArrayStreamGetLastError)(void*)
+    ctypedef char* (*CArrowArrayStreamGetLastError)(void*)
     ctypedef int (*CArrowArrayStreamGetNext)(void*, CArrowArray*)
-    ctypedef char* (*CArrowArrayStreamGetSchema)(void*, CArrowSchema*)
+    ctypedef int (*CArrowArrayStreamGetSchema)(void*, CArrowSchema*)
     ctypedef void (*CArrowArrayStreamRelease)(void*)
 
     cdef struct CArrowArrayStream"ArrowArrayStream":

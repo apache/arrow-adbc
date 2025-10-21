@@ -16,6 +16,7 @@
 # under the License.
 
 # cython: language_level = 3
+# cython: freethreading_compatible=True
 
 """
 For debugging, install crash handlers that print a backtrace.

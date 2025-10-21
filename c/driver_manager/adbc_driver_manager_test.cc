@@ -1036,4 +1036,29 @@ TEST_F(DriverManifest, CondaPrefix) {
   }
 }
 
+TEST_F(DriverManifest, ImplicitUri) {
+  auto filepath = temp_dir / "postgresql.toml";
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << R"([Driver]
+shared = "adbc_driver_postgresql")";
+  test_manifest_file.close();
+
+  // Should attempt to load the "postgresql" driver by inferring from the URI
+  std::string uri = "postgresql://a:b@localhost:9999/nonexistent";
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", uri.c_str(), &error),
+              IsOkStatus(&error));
+  std::string search_path = temp_dir.string();
+  ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                  &database.value, search_path.data(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_IO, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Failed to connect"));
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
 }  // namespace adbc
