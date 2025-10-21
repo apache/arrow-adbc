@@ -1809,6 +1809,8 @@ TEST_F(PostgresStatementTest, EmptyStringAndBinaryParameter) {
         ArrowArrayViewGetBytesUnsafe(array_view.children[1], 0);
     ASSERT_EQ(binary_view.size_bytes, 0);  // Empty binary should have size 0
 
+    ArrowArrayViewReset(&array_view);
+
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
   }
