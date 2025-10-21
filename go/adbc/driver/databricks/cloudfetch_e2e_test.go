@@ -68,7 +68,6 @@ func TestCloudFetchE2E_BasicConnection(t *testing.T) {
 	defer reader.Release()
 
 	assert.True(t, reader.Next(), "Expected at least one record")
-	t.Logf("✅ Connection successful (CloudFetch handled automatically by driver)")
 }
 
 // TestCloudFetchE2E_SmallQueries tests CloudFetch with small result sets
@@ -125,7 +124,6 @@ func TestCloudFetchE2E_SmallQueries(t *testing.T) {
 			err = stmt.SetSqlQuery(q.query)
 			require.NoError(t, err)
 
-			startTime := time.Now()
 			reader, _, err := stmt.ExecuteQuery(ctx)
 			require.NoError(t, err)
 			defer reader.Release()
@@ -138,13 +136,10 @@ func TestCloudFetchE2E_SmallQueries(t *testing.T) {
 				totalRows += record.NumRows()
 				batchCount++
 			}
-			duration := time.Since(startTime)
 
 			// Note: Databricks may apply row limits, so we check for at least some rows
 			// rather than exact counts
 			assert.Greater(t, totalRows, int64(0), "Expected to receive some rows")
-			t.Logf("Query '%s': %d rows (requested %d) in %d batches, duration: %v",
-				q.name, totalRows, q.rowCount, batchCount, duration)
 		})
 	}
 }
