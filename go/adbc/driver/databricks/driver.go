@@ -63,7 +63,7 @@ const (
 	OptionOAuthRefreshToken = "adbc.databricks.oauth.refresh_token"
 
 	// Default values
-	DefaultPort    = "443"
+	DefaultPort    = 443
 	DefaultSSLMode = "require"
 )
 

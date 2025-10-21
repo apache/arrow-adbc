@@ -36,9 +36,11 @@ import (
 	dbsql "github.com/databricks/databricks-sql-go"
 )
 
-const DEFAULT_PORT = 443
-const DEFAULT_RETRY_WAIT_MIN = 1 * time.Second
-const DEFAULT_RETRY_WAIT_MAX = 30 * time.Second
+const (
+	DEFAULT_PORT           = 443
+	DEFAULT_RETRY_WAIT_MIN = 1 * time.Second
+	DEFAULT_RETRY_WAIT_MAX = 30 * time.Second
+)
 
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
@@ -51,7 +53,7 @@ type databaseImpl struct {
 	serverHostname string
 	httpPath       string
 	accessToken    string
-	port           string
+	port           int
 	catalog        string
 	schema         string
 
@@ -64,6 +66,8 @@ type databaseImpl struct {
 	// TLS/SSL options
 	sslMode     string
 	sslRootCert string
+	sslCertPool *x509.CertPool
+	sslInsecure bool
 
 	// OAuth options (for future expansion)
 	oauthClientID     string
@@ -102,15 +106,8 @@ func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
 
 	// Validate and set custom port
 	// Defaults to 443
-	if d.port != "" {
-		port, err := strconv.Atoi(d.port)
-		if err != nil || port < 1 || port > 65535 {
-			return nil, adbc.Error{
-				Code: adbc.StatusInvalidArgument,
-				Msg:  "invalid port number",
-			}
-		}
-		opts = append(opts, dbsql.WithPort(port))
+	if d.port != 0 {
+		opts = append(opts, dbsql.WithPort(d.port))
 	} else {
 		opts = append(opts, dbsql.WithPort(DEFAULT_PORT))
 	}
@@ -135,61 +132,23 @@ func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
 	}
 
 	// TLS/SSL handling
-	if d.sslMode != "" || d.sslRootCert != "" {
-		var tlsConfig *tls.Config
-
-		// Handle custom root certificate
-		if d.sslRootCert != "" {
-			caCert, err := os.ReadFile(d.sslRootCert)
-			if err != nil {
-				return nil, adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("failed to read SSL root certificate: %v", err),
-				}
-			}
-
-			caCertPool := x509.NewCertPool()
-			if !caCertPool.AppendCertsFromPEM(caCert) {
-				return nil, adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  "failed to parse SSL root certificate",
-				}
-			}
-
-			tlsConfig = &tls.Config{
-				RootCAs:    caCertPool,
-				MinVersion: tls.VersionTLS12,
-			}
+	if d.sslCertPool != nil || d.sslInsecure {
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
 		}
 
-		// Handle SSL mode
-		if d.sslMode != "" {
-			switch strings.ToLower(d.sslMode) {
-			case "insecure":
-				if tlsConfig == nil {
-					tlsConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-				}
-				tlsConfig.InsecureSkipVerify = true
-			case "require":
-				// Default behavior - full TLS verification
-				if tlsConfig == nil {
-					tlsConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-				}
-			default:
-				return nil, adbc.Error{
-					Code: adbc.StatusInvalidArgument,
-					Msg:  fmt.Sprintf("invalid SSL mode: %s (supported: 'require', 'insecure')", d.sslMode),
-				}
-			}
+		if d.sslCertPool != nil {
+			tlsConfig.RootCAs = d.sslCertPool
 		}
 
-		// Apply custom TLS config if we have one
-		if tlsConfig != nil {
-			transport := &http.Transport{
-				TLSClientConfig: tlsConfig,
-			}
-			opts = append(opts, dbsql.WithTransport(transport))
+		if d.sslInsecure {
+			tlsConfig.InsecureSkipVerify = true
 		}
+
+		transport := &http.Transport{
+			TLSClientConfig: tlsConfig,
+		}
+		opts = append(opts, dbsql.WithTransport(transport))
 	}
 
 	return opts, nil
@@ -234,7 +193,10 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 
 		// Close the existing connection pool
 		if d.db != nil {
-			d.db.Close()
+			err = d.db.Close()
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		d.db = db
@@ -278,7 +240,7 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 	case OptionAccessToken:
 		return d.accessToken, nil
 	case OptionPort:
-		return d.port, nil
+		return strconv.Itoa(d.port), nil
 	case OptionCatalog:
 		return d.catalog, nil
 	case OptionSchema:
@@ -341,7 +303,14 @@ func (d *databaseImpl) SetOption(key, value string) error {
 	case OptionAccessToken:
 		d.accessToken = value
 	case OptionPort:
-		d.port = value
+		port, err := strconv.Atoi(value)
+		if err != nil || port < 1 || port > 65535 {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  "invalid port number",
+			}
+		}
+		d.port = port
 	case OptionCatalog:
 		d.catalog = value
 	case OptionSchema:
@@ -391,9 +360,52 @@ func (d *databaseImpl) SetOption(key, value string) error {
 			d.downloadThreadCount = threadCount
 		}
 	case OptionSSLMode:
-		d.sslMode = value
+		if value != "" {
+			lowerValue := strings.ToLower(value)
+			switch lowerValue {
+			case "insecure":
+				d.sslMode = lowerValue
+				d.sslInsecure = true
+			case "require":
+				d.sslMode = lowerValue
+				d.sslInsecure = false
+			default:
+				return adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("invalid SSL mode: %s (supported: 'require', 'insecure')", value),
+				}
+			}
+		} else {
+			d.sslMode = value
+			d.sslInsecure = false
+		}
 	case OptionSSLRootCert:
-		d.sslRootCert = value
+		if value != "" {
+			// Validate that the certificate file exists and can be read.
+			// Then, store valid cert.
+
+			caCert, err := os.ReadFile(value)
+			if err != nil {
+				return adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("failed to read SSL root certificate: %v", err),
+				}
+			}
+
+			caCertPool := x509.NewCertPool()
+			if !caCertPool.AppendCertsFromPEM(caCert) {
+				return adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  "failed to parse SSL root certificate",
+				}
+			}
+
+			d.sslRootCert = value
+			d.sslCertPool = caCertPool
+		} else {
+			d.sslRootCert = value
+			d.sslCertPool = nil
+		}
 	case OptionOAuthClientID:
 		d.oauthClientID = value
 	case OptionOAuthClientSecret:
