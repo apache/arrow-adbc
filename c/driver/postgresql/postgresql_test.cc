@@ -1792,24 +1792,16 @@ TEST_F(PostgresStatementTest, EmptyStringAndBinaryParameter) {
     ASSERT_EQ(reader.array->children[1]->null_count, 0);  // binary_data
 
     // Check that both values are empty (string and binary)
-    struct ArrowArrayView array_view;
-    ASSERT_THAT(ArrowArrayViewInitFromSchema(&array_view, &reader.schema.value, nullptr),
-                adbc_validation::IsOkErrno());
-    ASSERT_THAT(ArrowArrayViewSetArray(&array_view, &reader.array.value, nullptr),
-                adbc_validation::IsOkErrno());
-
     // Check the single row
-    ASSERT_FALSE(ArrowArrayViewIsNull(array_view.children[0], 0));
+    ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], 0));
     struct ArrowBufferView string_view =
-        ArrowArrayViewGetBytesUnsafe(array_view.children[0], 0);
+        ArrowArrayViewGetBytesUnsafe(reader.array_view->children[0], 0);
     ASSERT_EQ(string_view.size_bytes, 0);  // Empty string should have size 0
 
-    ASSERT_FALSE(ArrowArrayViewIsNull(array_view.children[1], 0));
+    ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[1], 0));
     struct ArrowBufferView binary_view =
-        ArrowArrayViewGetBytesUnsafe(array_view.children[1], 0);
+        ArrowArrayViewGetBytesUnsafe(reader.array_view->children[1], 0);
     ASSERT_EQ(binary_view.size_bytes, 0);  // Empty binary should have size 0
-
-    ArrowArrayViewReset(&array_view);
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(reader.array->release, nullptr);
