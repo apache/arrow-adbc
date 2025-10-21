@@ -74,9 +74,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             runAsyncInThrift = connection.RunAsyncInThrift;
 
+            // Override the Apache base default (500ms) with Databricks-specific poll interval (100ms)
             if (!connection.Properties.ContainsKey(ApacheParameters.PollTimeMilliseconds))
             {
-                SetOption(ApacheParameters.PollTimeMilliseconds, connection.AsyncExecPollIntervalMs.ToString());
+                SetOption(ApacheParameters.PollTimeMilliseconds, DatabricksConstants.DefaultAsyncExecPollIntervalMs.ToString());
             }
         }
 

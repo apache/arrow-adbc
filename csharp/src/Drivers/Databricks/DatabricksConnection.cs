@@ -84,9 +84,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         // Identity federation client ID for token exchange
         private string? _identityFederationClientId;
 
-        // Async execution poll interval configuration
-        private int _asyncExecPollIntervalMs = DatabricksConstants.DefaultAsyncExecPollIntervalMs;
-
         // Heartbeat interval configuration
         private int _fetchHeartbeatIntervalSeconds = DatabricksConstants.DefaultOperationStatusPollingIntervalSeconds;
 
@@ -417,23 +414,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 _identityFederationClientId = identityFederationClientId;
             }
 
-            if (Properties.TryGetValue(ApacheParameters.PollTimeMilliseconds, out string? asyncExecPollIntervalStr))
-            {
-                if (!int.TryParse(asyncExecPollIntervalStr, out int asyncExecPollIntervalValue))
-                {
-                    throw new ArgumentException($"Parameter '{ApacheParameters.PollTimeMilliseconds}' value '{asyncExecPollIntervalStr}' could not be parsed. Valid values are positive integers.");
-                }
-
-                if (asyncExecPollIntervalValue <= 0)
-                {
-                    throw new ArgumentOutOfRangeException(
-                        nameof(Properties),
-                        asyncExecPollIntervalValue,
-                        $"Parameter '{ApacheParameters.PollTimeMilliseconds}' value must be a positive integer.");
-                }
-                _asyncExecPollIntervalMs = asyncExecPollIntervalValue;
-            }
-
             if (Properties.TryGetValue(DatabricksParameters.FetchHeartbeatInterval, out string? fetchHeartbeatIntervalStr))
             {
                 if (!int.TryParse(fetchHeartbeatIntervalStr, out int fetchHeartbeatIntervalValue))
@@ -528,13 +508,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Gets the default namespace to use for SQL queries.
         /// </summary>
         internal TNamespace? DefaultNamespace => _defaultNamespace;
-
-        /// <summary>
-        /// Gets the async execution poll interval in milliseconds for query execution status checks.
-        /// This is the Databricks-specific default (100ms) that will be used if the user hasn't
-        /// explicitly configured the Apache base parameter.
-        /// </summary>
-        internal int AsyncExecPollIntervalMs => _asyncExecPollIntervalMs;
 
         /// <summary>
         /// Gets the heartbeat interval in seconds for long-running operations.
