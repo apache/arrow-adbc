@@ -58,6 +58,12 @@ namespace Apache.Arrow.Adbc.Tracing
         /// </remarks>
         public static T TraceActivity<T>(this IActivityTracer tracer, Func<Activity?, T> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
+            Type type = typeof(T);
+            if (type == typeof(Task) || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Task<>)))
+            {
+                throw new InvalidOperationException($"Invalid return type ('{type.Name}') for synchronous method call. Please use {nameof(TraceActivityAsync)}");
+            }
+
             return tracer.Trace.TraceActivity(call, activityName, traceParent ?? tracer.TraceParent);
         }
 
