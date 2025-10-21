@@ -64,9 +64,8 @@ func (c *connectionImpl) SetAutocommit(autocommit bool) error {
 			Code: adbc.StatusNotImplemented,
 			Msg:  fmt.Sprintf("disabling autocommit is not supported"),
 		}
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // CurrentNamespacer interface implementation
@@ -85,17 +84,18 @@ func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 			Msg:  "catalog cannot be empty",
 		}
 	}
-	if c.conn != nil {
-		escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
-		_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE CATALOG `%s`", escapedCatalog))
-		if err != nil {
-			return adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  fmt.Sprintf("failed to set catalog: %v", err),
-			}
-		}
-		c.catalog = catalog
+	if c.conn == nil {
+		return nil
 	}
+	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
+	_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE CATALOG `%s`", escapedCatalog))
+	if err != nil {
+		return adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to set catalog: %v", err),
+		}
+	}
+	c.catalog = catalog
 	return nil
 }
 
@@ -106,17 +106,18 @@ func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 			Msg:  "schema cannot be empty",
 		}
 	}
-	if c.conn != nil {
-		escapedSchema := strings.ReplaceAll(schema, "`", "``")
-		_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA `%s`", escapedSchema))
-		if err != nil {
-			return adbc.Error{
-				Code: adbc.StatusInternal,
-				Msg:  fmt.Sprintf("failed to set schema: %v", err),
-			}
-		}
-		c.dbSchema = schema
+	if c.conn == nil {
+		return nil
 	}
+	escapedSchema := strings.ReplaceAll(schema, "`", "``")
+	_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA `%s`", escapedSchema))
+	if err != nil {
+		return adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to set schema: %v", err),
+		}
+	}
+	c.dbSchema = schema
 	return nil
 }
 
@@ -129,12 +130,15 @@ func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
 // Transaction methods (Databricks has limited transaction support)
 func (c *connectionImpl) Commit(ctx context.Context) error {
 	// Most operations are auto-committed.
-	return nil
+	return adbc.Error{
+		Code: adbc.StatusNotImplemented,
+		Msg:  fmt.Sprintf("Commit is not supported"),
+	}
 }
 
 func (c *connectionImpl) Rollback(ctx context.Context) error {
 	// Databricks SQL doesn't support explicit transactions in the traditional sense.
-	// Most operations are auto-committed. We'll track state but not perform any operation.
+	// Most operations are auto-committed.
 	return adbc.Error{
 		Code: adbc.StatusNotImplemented,
 		Msg:  fmt.Sprintf("rollback is not supported"),
