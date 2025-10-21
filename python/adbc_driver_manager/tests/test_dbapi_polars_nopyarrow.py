@@ -83,7 +83,7 @@ def test_query(sqlite: dbapi.Connection) -> None:
     with sqlite.cursor() as cursor:
         cursor.execute("SELECT 1 AS theresult")
         capsule = cursor.fetch_arrow()
-        df = typing.cast(polars.DataFrame, polars.from_arrow(capsule))
+        df = polars.from_arrow(capsule)
         polars.testing.assert_frame_equal(
             df,
             polars.DataFrame(
