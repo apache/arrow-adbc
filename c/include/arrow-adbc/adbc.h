@@ -519,6 +519,14 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \since ADBC API revision 1.1.0
 #define ADBC_VERSION_1_1_0 1001000
 
+/// \brief ADBC revision 1.2.0.
+///
+/// When passed to an AdbcDriverInitFunc(), the driver parameter must
+/// point to an AdbcDriver.
+///
+/// \since ADBC API revision 1.2.0
+#define ADBC_VERSION_1_2_0 1002000
+
 /// \brief Canonical option value for enabling an option.
 ///
 /// For use as the value in SetOption calls.
