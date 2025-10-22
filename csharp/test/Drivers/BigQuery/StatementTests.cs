@@ -138,6 +138,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     results[i] = statement.ExecuteQuery();
                 }
                 statement.Cancel();
+                statement.Dispose();
                 for (int index = 0; index < iterations; index++)
                 {
                     try
@@ -167,8 +168,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
             foreach (BigQueryTestEnvironment environment in _environments)
             {
                 using AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
-
-                AdbcStatement statement = adbcConnection.CreateStatement();
+                using AdbcStatement statement = adbcConnection.CreateStatement();
 
                 // Execute the query/cancel multiple times to validate consistent behavior
                 const int iterations = 3;
@@ -186,7 +186,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     results[i] = statement.ExecuteQuery();
                 }
                 statement.Cancel();
-                statement.Dispose();
                 for (int index = 0; index < iterations; index++)
                 {
                     try
