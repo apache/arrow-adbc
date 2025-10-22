@@ -39,6 +39,20 @@ with adbc_driver_postgresql.dbapi.connect(uri) as conn:
         print(cur.fetch_arrow_table())
 ```
 
+### Autocommit
+
+You can enable autocommit mode by passing the `autocommit` parameter:
+
+```python
+import adbc_driver_postgresql.dbapi
+
+uri = "postgresql://postgres:password@localhost:5432/postgres"
+with adbc_driver_postgresql.dbapi.connect(uri, autocommit=True) as conn:
+    with conn.cursor() as cur:
+        cur.execute("INSERT INTO my_table VALUES (1, 'data')")
+        # Transaction is automatically committed
+```
+
 
 ## Building
 
