@@ -114,7 +114,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [Fact]
-        public async Task CanCancelStreamFromStatement()
+        public async Task CanCancelStreamAndDisposeStatement()
         {
             foreach (BigQueryTestEnvironment environment in _environments)
             {
@@ -162,7 +162,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [Fact]
-        public async Task CanCancelStreamAndDisposeStatement()
+        public async Task CanCancelStreamFromStatement()
         {
             foreach (BigQueryTestEnvironment environment in _environments)
             {
