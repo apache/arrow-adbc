@@ -106,7 +106,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     activity?.AddBigQueryParameterTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
                 }
 
-                JobCancellationContext cancellationContext = new JobCancellationContext(cancellationRegistry, job);
+                using JobCancellationContext cancellationContext = new JobCancellationContext(cancellationRegistry, job);
+
                 // We can't checkJobStatus, Otherwise, the timeout in QueryResultsOptions is meaningless.
                 // When encountering a long-running job, it should be controlled by the timeout in the Google SDK instead of blocking in a while loop.
                 Func<Task<BigQueryResults>> getJobResults = async () =>
@@ -215,7 +216,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 IEnumerable<IArrowReader> readers = await ExecuteWithRetriesAsync(getArrowReadersFunc, activity).ConfigureAwait(false);
 
                 // Note: MultiArrowReader must dispose the cancellationContext.
-                IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers, cancellationContext);
+                IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers, new CancellationContext(cancellationRegistry));
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, totalRows);
                 return new QueryResult(totalRows, stream);
             });
@@ -663,10 +664,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public void Dispose()
             {
-                foreach (CancellationContext context in contexts.Keys)
-                {
-                    context.Dispose();
-                }
+                // Clear the registry and let holder of the contexts dispose themselves
                 contexts.Clear();
             }
         }
@@ -706,6 +704,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                     while (true)
                     {
+                        linkedCts.Token.ThrowIfCancellationRequested();
                         if (this.reader == null)
                         {
                             if (!this.readers.MoveNext())
@@ -738,6 +737,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         this.readers = null;
                         this.cancellationContext.Dispose();
                     }
+                    this.cancellationContext.Dispose();
                 }
 
                 base.Dispose(disposing);
