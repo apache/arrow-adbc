@@ -201,7 +201,7 @@ struct ArrowDeviceArray {
 #define ARROW_C_ASYNC_STREAM_INTERFACE
 
 struct ArrowAsyncTask {
-  int (*extract_data)(struct ArrowArrayTask* self, struct ArrowDeviceArray* out);
+  int (*extract_data)(struct ArrowAsyncTask* self, struct ArrowDeviceArray* out);
 
   void* private_data;
 };
