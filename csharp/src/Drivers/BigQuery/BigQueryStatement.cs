@@ -642,20 +642,27 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         private sealed class CancellationRegistry : IDisposable
         {
             private readonly ConcurrentDictionary<CancellationContext, byte> contexts = new();
+            private bool disposed;
 
             public CancellationContext Register(CancellationContext context)
             {
+                if (disposed) throw new ObjectDisposedException(nameof(CancellationRegistry));
+
                 contexts.TryAdd(context, 0);
                 return context;
             }
 
             public bool Unregister(CancellationContext context)
             {
+                if (disposed) return false;
+
                 return contexts.TryRemove(context, out _);
             }
 
             public void CancelAll()
             {
+                if (disposed) throw new ObjectDisposedException(nameof(CancellationRegistry));
+
                 foreach (CancellationContext context in contexts.Keys)
                 {
                     context.Cancel();
@@ -664,8 +671,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public void Dispose()
             {
-                // Clear the registry and let holder of the contexts dispose themselves
-                contexts.Clear();
+                if (!disposed)
+                {
+                    contexts.Clear();
+                    disposed = true;
+                }
             }
         }
 
