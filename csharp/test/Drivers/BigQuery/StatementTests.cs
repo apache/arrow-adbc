@@ -114,13 +114,61 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         }
 
         [Fact]
+        public async Task CanCancelStreamAndDisposeStatement()
+        {
+            foreach (BigQueryTestEnvironment environment in _environments)
+            {
+                using AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
+
+                AdbcStatement statement = adbcConnection.CreateStatement();
+
+                // Execute the query/cancel multiple times to validate consistent behavior
+                const int iterations = 3;
+                QueryResult[] results = new QueryResult[iterations];
+                for (int i = 0; i < iterations; i++)
+                {
+                    _outputHelper?.WriteLine($"Iteration {i + 1} of {iterations}");
+                    // Generate unique column names so query will not be served from cache
+                    string columnName1 = Guid.NewGuid().ToString("N");
+                    string columnName2 = Guid.NewGuid().ToString("N");
+                    statement.SqlQuery = $"SELECT `{columnName2}` AS `{columnName1}` FROM UNNEST(GENERATE_ARRAY(1, 100)) AS `{columnName2}`";
+                    _outputHelper?.WriteLine($"Query: {statement.SqlQuery}");
+
+                    // Expect this to take about 10 seconds without cancellation
+                    results[i] = statement.ExecuteQuery();
+                }
+                statement.Cancel();
+                statement.Dispose();
+                for (int index = 0; index < iterations; index++)
+                {
+                    try
+                    {
+                        QueryResult queryResult = results[index];
+                        using IArrowArrayStream? stream = queryResult.Stream;
+                        Assert.NotNull(stream);
+                        RecordBatch batch = await stream.ReadNextRecordBatchAsync();
+
+                        Assert.Fail("Expecting OperationCanceledException to be thrown.");
+                    }
+                    catch (Exception ex) when (BigQueryUtils.ContainsException(ex, out OperationCanceledException? _))
+                    {
+                        _outputHelper?.WriteLine($"Received expected OperationCanceledException: {ex.Message}");
+                    }
+                    catch (Exception ex) when (ex is not FailException)
+                    {
+                        Assert.Fail($"Expecting OperationCanceledException to be thrown. Instead, received {ex.GetType().Name}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        [Fact]
         public async Task CanCancelStreamFromStatement()
         {
             foreach (BigQueryTestEnvironment environment in _environments)
             {
-                AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
-
-                AdbcStatement statement = adbcConnection.CreateStatement();
+                using AdbcConnection adbcConnection = GetAdbcConnection(environment.Name);
+                using AdbcStatement statement = adbcConnection.CreateStatement();
 
                 // Execute the query/cancel multiple times to validate consistent behavior
                 const int iterations = 3;
@@ -143,7 +191,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                     try
                     {
                         QueryResult queryResult = results[index];
-                        IArrowArrayStream? stream = queryResult.Stream;
+                        using IArrowArrayStream? stream = queryResult.Stream;
                         Assert.NotNull(stream);
                         RecordBatch batch = await stream.ReadNextRecordBatchAsync();
 

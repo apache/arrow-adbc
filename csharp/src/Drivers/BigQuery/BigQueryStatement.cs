@@ -106,7 +106,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     activity?.AddBigQueryParameterTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
                 }
 
-                JobCancellationContext cancellationContext = new JobCancellationContext(cancellationRegistry, job);
+                using JobCancellationContext cancellationContext = new JobCancellationContext(cancellationRegistry, job);
+
                 // We can't checkJobStatus, Otherwise, the timeout in QueryResultsOptions is meaningless.
                 // When encountering a long-running job, it should be controlled by the timeout in the Google SDK instead of blocking in a while loop.
                 Func<Task<BigQueryResults>> getJobResults = async () =>
@@ -215,7 +216,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 IEnumerable<IArrowReader> readers = await ExecuteWithRetriesAsync(getArrowReadersFunc, activity).ConfigureAwait(false);
 
                 // Note: MultiArrowReader must dispose the cancellationContext.
-                IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers, cancellationContext);
+                IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers, new CancellationContext(cancellationRegistry));
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, totalRows);
                 return new QueryResult(totalRows, stream);
             });
@@ -641,20 +642,27 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         private sealed class CancellationRegistry : IDisposable
         {
             private readonly ConcurrentDictionary<CancellationContext, byte> contexts = new();
+            private bool disposed;
 
             public CancellationContext Register(CancellationContext context)
             {
+                if (disposed) throw new ObjectDisposedException(nameof(CancellationRegistry));
+
                 contexts.TryAdd(context, 0);
                 return context;
             }
 
             public bool Unregister(CancellationContext context)
             {
+                if (disposed) return false;
+
                 return contexts.TryRemove(context, out _);
             }
 
             public void CancelAll()
             {
+                if (disposed) throw new ObjectDisposedException(nameof(CancellationRegistry));
+
                 foreach (CancellationContext context in contexts.Keys)
                 {
                     context.Cancel();
@@ -663,11 +671,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public void Dispose()
             {
-                foreach (CancellationContext context in contexts.Keys)
+                if (!disposed)
                 {
-                    context.Dispose();
+                    contexts.Clear();
+                    disposed = true;
                 }
-                contexts.Clear();
             }
         }
 
@@ -706,6 +714,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                     while (true)
                     {
+                        linkedCts.Token.ThrowIfCancellationRequested();
                         if (this.reader == null)
                         {
                             if (!this.readers.MoveNext())
