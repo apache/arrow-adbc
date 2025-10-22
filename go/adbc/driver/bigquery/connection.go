@@ -778,12 +778,21 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 
 func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	field := arrow.Field{Name: schema.Name}
-	metadata := make(map[string]string)
-	metadata["Description"] = schema.Description
-	metadata["Repeated"] = strconv.FormatBool(schema.Repeated)
-	metadata["Required"] = strconv.FormatBool(schema.Required)
 	field.Nullable = !schema.Required
+
+	metadata := make(map[string]string)
+
+	metadata["Description"] = schema.Description
+	metadata["BIGQUERY:description"] = schema.Description
+
+	metadata["Repeated"] = strconv.FormatBool(schema.Repeated)
+	metadata["BIGQUERY:repeated"] = strconv.FormatBool(schema.Repeated)
+
+	metadata["Required"] = strconv.FormatBool(schema.Required)
+	metadata["BIGQUERY:required"] = strconv.FormatBool(schema.Required)
+
 	metadata["Type"] = string(schema.Type)
+	metadata["BIGQUERY:raw_type"] = string(schema.Type)
 
 	richSqlType := string(schema.Type)
 
@@ -793,16 +802,22 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 			return arrow.Field{}, err
 		}
 		metadata["PolicyTags"] = string(policyTagList)
+		metadata["BIGQUERY:policy_tags"] = string(policyTagList)
 	}
 
 	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
 	switch schema.Type {
 	case bigquery.StringFieldType:
 		metadata["MaxLength"] = strconv.FormatInt(schema.MaxLength, 10)
+		metadata["BIGQUERY:max_length"] = strconv.FormatInt(schema.MaxLength, 10)
+
 		metadata["Collation"] = schema.Collation
+		metadata["BIGQUERY:collation"] = schema.Collation
+
 		field.Type = arrow.BinaryTypes.String
 	case bigquery.BytesFieldType:
 		metadata["MaxLength"] = strconv.FormatInt(schema.MaxLength, 10)
+		metadata["BIGQUERY:max_length"] = strconv.FormatInt(schema.MaxLength, 10)
 		field.Type = arrow.BinaryTypes.Binary
 	case bigquery.IntegerFieldType:
 		field.Type = arrow.PrimitiveTypes.Int64
@@ -895,6 +910,7 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 
 	if level == 0 {
 		metadata["DefaultValueExpression"] = schema.DefaultValueExpression
+		metadata["BIGQUERY:default_value_expression"] = schema.DefaultValueExpression
 	}
 	field.Metadata = arrow.MetadataFrom(metadata)
 	return field, nil
