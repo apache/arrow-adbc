@@ -747,7 +747,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         this.readers = null;
                         this.cancellationContext.Dispose();
                     }
-                    this.cancellationContext.Dispose();
                 }
 
                 base.Dispose(disposing);
