@@ -115,7 +115,7 @@ def connect(
         Connection-specific parameters.  (ADBC differentiates between
         a 'database' object shared between multiple 'connection'
         objects.)
-    autocommit : bool, optional
+    autocommit : bool
         Enable autocommit mode. If True, transactions are automatically
         committed after each statement. Defaults to False.
     **kwargs
