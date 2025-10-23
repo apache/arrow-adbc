@@ -349,12 +349,12 @@ func TestIPCStreamIntegration(t *testing.T) {
 	// Create connection
 	conn, err := db.Open(ctx)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create statement
 	stmt, err := conn.NewStatement()
 	require.NoError(t, err)
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	// Test 1: Simple query with various data types
 	t.Run("SimpleQuery", func(t *testing.T) {
@@ -570,7 +570,7 @@ func TestIPCStreamPerformance(t *testing.T) {
 	dsn := fmt.Sprintf("token:%s@%s:%s%s", token, host, port, httpPath)
 	sqlDB, err := sql.Open("databricks", dsn)
 	require.NoError(t, err)
-	defer sqlDB.Close()
+	defer func() { _ = sqlDB.Close() }()
 
 	ctx := context.Background()
 
@@ -578,7 +578,7 @@ func TestIPCStreamPerformance(t *testing.T) {
 	t.Run("StandardSQL", func(t *testing.T) {
 		rows, err := sqlDB.QueryContext(ctx, "SELECT id, id * 2 as doubled FROM range(0, 100000)")
 		require.NoError(t, err)
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 
 		count := 0
 		for rows.Next() {
@@ -604,11 +604,11 @@ func TestIPCStreamPerformance(t *testing.T) {
 
 		conn, err := db.Open(ctx)
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		stmt, err := conn.NewStatement()
 		require.NoError(t, err)
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		err = stmt.SetSqlQuery("SELECT id, id * 2 as doubled FROM range(0, 100000)")
 		require.NoError(t, err)
@@ -644,11 +644,11 @@ func TestE2E_QueryWithTypes(t *testing.T) {
 
 	conn, err := db.Open(ctx)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	stmt, err := conn.NewStatement()
 	require.NoError(t, err)
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	// Test various data types
 	err = stmt.SetSqlQuery(`

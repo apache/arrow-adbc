@@ -152,14 +152,14 @@ func (c *connectionImpl) Rollback(ctx context.Context) error {
 }
 
 // DbObjectsEnumerator interface implementation
-func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error) {
+func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) (catalogs []string, err error) {
 	query := "SHOW CATALOGS"
 	if catalogFilter != nil {
 		escapedFilter := strings.ReplaceAll(*catalogFilter, "'", "''")
 		query += fmt.Sprintf(" LIKE '%s'", escapedFilter)
 	}
-
-	rows, err := c.conn.QueryContext(ctx, query)
+	var rows *sql.Rows
+	rows, err = c.conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
@@ -170,7 +170,6 @@ func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string)
 		err = errors.Join(err, rows.Close())
 	}()
 
-	var catalogs []string
 	for rows.Next() {
 		var catalog string
 		if err := rows.Scan(&catalog); err != nil {
@@ -185,7 +184,7 @@ func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string)
 	return catalogs, errors.Join(err, rows.Err())
 }
 
-func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error) {
+func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) (schemas []string, err error) {
 	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
 	query := fmt.Sprintf("SHOW SCHEMAS IN `%s`", escapedCatalog)
 	if schemaFilter != nil {
@@ -193,7 +192,8 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 		query += fmt.Sprintf(" LIKE '%s'", escapedFilter)
 	}
 
-	rows, err := c.conn.QueryContext(ctx, query)
+	var rows *sql.Rows
+	rows, err = c.conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
@@ -203,8 +203,6 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 	defer func() {
 		err = errors.Join(err, rows.Close())
 	}()
-
-	var schemas []string
 	for rows.Next() {
 		var schema string
 		if err := rows.Scan(&schema); err != nil {
@@ -220,7 +218,7 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 	return schemas, err
 }
 
-func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
+func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) (tables []driverbase.TableInfo, err error) {
 	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
 	escapedSchema := strings.ReplaceAll(schema, "`", "``")
 	query := fmt.Sprintf("SHOW TABLES IN `%s`.`%s`", escapedCatalog, escapedSchema)
@@ -229,7 +227,8 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 		query += fmt.Sprintf(" LIKE '%s'", escapedFilter)
 	}
 
-	rows, err := c.conn.QueryContext(ctx, query)
+	var rows *sql.Rows
+	rows, err = c.conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
@@ -239,8 +238,6 @@ func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog strin
 	defer func() {
 		err = errors.Join(err, rows.Close())
 	}()
-
-	var tables []driverbase.TableInfo
 	for rows.Next() {
 		var database, tableName, isTemporary string
 		if err := rows.Scan(&database, &tableName, &isTemporary); err != nil {

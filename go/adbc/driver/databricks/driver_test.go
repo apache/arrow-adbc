@@ -106,19 +106,19 @@ func (d *DatabricksQuirks) CreateSampleTable(tableName string, r arrow.RecordBat
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	cnxn, err := db.Open(context.Background())
 	if err != nil {
 		return err
 	}
-	defer cnxn.Close()
+	defer func() { _ = cnxn.Close() }()
 
 	stmt, err := cnxn.NewStatement()
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	var b strings.Builder
 	b.WriteString("CREATE OR REPLACE TABLE ")
