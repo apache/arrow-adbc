@@ -1262,19 +1262,58 @@ struct ADBC_EXPORT AdbcDriver {
   ///
   /// @{
 
+  AdbcStatusCode (*ConnectionGetInfoAsync)(struct AdbcConnection*, const uint32_t*,
+                                           size_t, struct ArrowAsyncDeviceStreamHandler*,
+                                           struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetObjectsAsync)(struct AdbcConnection*, int, const char*,
+                                              const char*, const char*, const char**,
+                                              const char*,
+                                              struct ArrowAsyncDeviceStreamHandler*,
+                                              struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetTableSchemaAsync)(struct AdbcConnection*, const char*,
+                                                  const char*, const char*,
+                                                  struct ArrowAsyncDeviceStreamHandler*,
+                                                  struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetTableTypesAsync)(struct AdbcConnection*,
+                                                 struct ArrowAsyncDeviceStreamHandler*,
+                                                 struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetStatisticsAsync)(struct AdbcConnection*, const char*,
+                                                 const char*, const char*, char,
+                                                 struct ArrowAsyncDeviceStreamHandler*,
+                                                 struct AdbcError*);
+  AdbcStatusCode (*ConnectionGetStatisticNamesAsync)(
+      struct AdbcConnection*, struct ArrowAsyncDeviceStreamHandler*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionReadPartitionAsync)(struct AdbcConnection*, const uint8_t*,
+                                                 size_t,
+                                                 struct ArrowAsyncDeviceStreamHandler*,
+                                                 struct AdbcError*);
+
+  AdbcStatusCode (*StatementExecuteSchemaAsync)(struct AdbcStatement*,
+                                                void (*callback)(struct AdbcStatement*,
+                                                                 struct ArrowSchema*,
+                                                                 struct AdbcError*),
+                                                struct AdbcError*);
+  AdbcStatusCode (*StatementNextResultSetSchema)(struct AdbcStatement*,
+                                                 struct ArrowSchema*, struct AdbcError*);
+  AdbcStatusCode (*StatementNextResultSetSchemaAsync)(
+      struct AdbcStatement*,
+      void (*callback)(struct AdbcStatement*, struct ArrowSchema*, struct AdbcError*),
+      struct AdbcError*);
+
+  AdbcStatusCode (*StatementExecutePartitionsAsync)(
+      struct AdbcStatement*,
+      void (*callback)(struct AdbcStatement*, struct ArrowSchema*, struct AdbcPartitions*,
+                       int64_t*, struct AdbcError*),
+      struct AdbcError*);
   AdbcStatusCode (*StatementNextResultSet)(struct AdbcStatement*,
                                            struct ArrowArrayStream*, int64_t*,
                                            struct AdbcError*);
   AdbcStatusCode (*StatementExecuteQueryAsync)(struct AdbcStatement*,
                                                struct ArrowAsyncDeviceStreamHandler*,
-                                               int64_t*, struct AdbcError*);
+                                               struct AdbcError*);
   AdbcStatusCode (*StatementNextResultSetAsync)(struct AdbcStatement*,
                                                 struct ArrowAsyncDeviceStreamHandler*,
-                                                int64_t*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionReadPartitionAsync)(struct AdbcConnection*, const uint8_t*,
-                                                 size_t,
-                                                 struct ArrowAsyncDeviceStreamHandler*,
-                                                 struct AdbcError*);
+                                                struct AdbcError*);
 
   /// @}
 };
@@ -1695,6 +1734,29 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
                                      struct ArrowArrayStream* out,
                                      struct AdbcError* error);
 
+/// \brief Asynchronous version of AdbcConnectionGetInfo.
+///
+/// See the documentation for AdbcConnectionGetInfo for details. The
+/// AdbcConnection must outlive the populated ArrowAsyncDeviceStreamHandler.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// \param[in] connection The connection to query.
+/// \param[in] info_codes A list of metadata codes to fetch, or NULL
+///   to fetch all.
+/// \param[in] info_codes_length The length of the info_codes
+///   parameter.  Ignored if info_codes is NULL.
+/// \param[in] out_handler The result set handler.
+/// \param[out] error Error details, if an error occurs.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support async
+///   execution, ADBC_STATUS_OK on success, or another error code on failure.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetInfoAsync(
+    struct AdbcConnection* connection, const uint32_t* info_codes,
+    size_t info_codes_length, struct ArrowAsyncDeviceStreamHandler* out_handler,
+    struct AdbcError* error);
+
 /// \brief Get a hierarchical view of all catalogs, database schemas,
 ///   tables, and columns.
 ///
@@ -1806,6 +1868,49 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         const char* column_name,
                                         struct ArrowArrayStream* out,
                                         struct AdbcError* error);
+
+/// \brief Asynchronous version of AdbcConnectionGetObjects to retrieve
+///   metadata about catalogs, database schemas, tables, and columns.
+///
+/// See documentation for AdbcConnectionGetObjects for details about
+/// the result schema.
+///
+/// This AdbcConnection must outlive the populated ArrowAsyncDeviceStreamHandler.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// \param[in] connection The database connection
+/// \param[in] depth The level of nesting to display. If 0, display
+///   all levels. If 1, display only catalogs (i.e.  catalog_schemas
+///   will be null). If 2, display only catalogs and schemas
+///   (i.e. db_schema_tables will be null), and so on.
+/// \param[in] catalog Only show tables in the given catalog. If NULL,
+///   do not filter by catalog. If an empty string, only show tables
+///   without a catalog.  May be a search pattern (see section
+///   documentation).
+/// \param[in] db_schema Only show tables in the given database schema. If
+///   NULL, do not filter by database schema. If an empty string, only show
+///   tables without a database schema. May be a search pattern (see section
+///   documentation).
+/// \param[in] table_name Only show tables with the given name. If NULL, do not
+///   filter by name. May be a search pattern (see section documentation).
+/// \param[in] table_type Only show tables matching one of the given table
+///   types. If NULL, show tables of any type. Valid table types can be fetched
+///   from GetTableTypes.  Terminate the list with a NULL entry.
+/// \param[in] column_name Only show columns with the given name. If
+///   NULL, do not filter by name.  May be a search pattern (see
+///   section documentation).
+/// \param[in] handler The async stream handler.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if async execution is not implemented,
+///   ADBC_STATUS_OK if successful.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetObjectsAsync(
+    struct AdbcConnection* connection, int depth, const char* catalog,
+    const char* db_schema, const char* table_name, const char** table_type,
+    const char* column_name, struct ArrowAsyncDeviceStreamHandler* handler,
+    struct AdbcError* error);
 
 /// \brief Get a string option of the connection.
 ///
@@ -1995,6 +2100,39 @@ AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error);
 
+/// \brief Asynchronous version of AdbcConnectionGetStatistics to
+///   retrieve statistics about the data distribution of table(s).
+///
+/// See documentation for AdbcConnectionGetStatistics for details about
+/// the result schema.
+///
+/// This AdbcConnection must outlive the populated ArrowAsyncDeviceStreamHandler.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// \param[in] connection The database connection.
+/// \param[in] catalog The catalog (or nullptr).  May be a search
+///   pattern (see section documentation).
+/// \param[in] db_schema The database schema (or nullptr).  May be a
+///   search pattern (see section documentation).
+/// \param[in] table_name The table name (or nullptr).  May be a
+///   search pattern (see section documentation).
+/// \param[in] approximate If zero, request exact values of
+///   statistics, else allow for best-effort, approximate, or cached
+///   values.  The database may return approximate values regardless,
+///   as indicated in the result.  Requesting exact values may be
+///   expensive or unsupported.
+/// \param[in] handler The async stream handler.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if async execution is not implemented,
+///   ADBC_STATUS_OK if successful.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetStatisticsAsync(
+    struct AdbcConnection* connection, const char* catalog, const char* db_schema,
+    const char* table_name, char approximate,
+    struct ArrowAsyncDeviceStreamHandler* handler, struct AdbcError* error);
+
 /// \brief Get the names of statistics specific to this driver.
 ///
 /// The result is an Arrow dataset with the following schema:
@@ -2012,6 +2150,27 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
                                                struct ArrowArrayStream* out,
                                                struct AdbcError* error);
+
+/// \brief Asynchronous version of AdbcConnectionGetStatisticNames to
+///   retrieve the names of statistics specific to this driver.
+///
+/// See documentation for AdbcConnectionGetStatisticNames for details about
+/// the result schema.
+///
+/// This AdbcConnection must outlive the populated ArrowAsyncDeviceStreamHandler.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// \param[in] connection The database connection.
+/// \param[in] handler The async stream handler.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if async execution is not implemented,
+///   ADBC_STATUS_OK if successful.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetStatisticNamesAsync(
+    struct AdbcConnection* connection, struct ArrowAsyncDeviceStreamHandler* handler,
+    struct AdbcError* error);
 
 /// \brief Get the Arrow schema of a table.
 ///
@@ -2045,6 +2204,26 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
                                            struct ArrowArrayStream* out,
                                            struct AdbcError* error);
+
+/// \brief Asynchronous version of AdbcConnectionGetTableTypes to
+///   retrieve a list of table types in the database.
+///
+/// See documentation for AdbcConnectionGetTableTypes for details about
+/// the result schema.
+///
+/// This AdbcConnection must outlive the populated ArrowAsyncDeviceStreamHandler.
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] connection The database connection.
+/// \param[in] handler The async stream handler.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if async execution is not implemented,
+///   ADBC_STATUS_OK if successful.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetTableTypesAsync(
+    struct AdbcConnection* connection, struct ArrowAsyncDeviceStreamHandler* handler,
+    struct AdbcError* error);
 
 /// @}
 
@@ -2086,7 +2265,12 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
 ///
 /// A partition can be retrieved from AdbcPartitions.
 ///
-/// This AdbcConnection must outlive the ArrowAsyncDeviceStreamHandler.
+/// This AdbcConnection must stay valid until after the callbacks in the
+/// ArrowAsyncDeviceStreamHandler are invoked (or it is cancelled) and
+/// it is released.
+///
+/// The serialized_partition only needs to remain valid until the first
+/// callback is invoked.
 ///
 /// \since ADBC API revision 1.2.0
 ///
@@ -2216,8 +2400,6 @@ AdbcStatusCode AdbcStatementNextResultSet(struct AdbcStatement* statement,
 /// \param[in] statement The statement to execute.
 /// \param[in] handler The async stream handler whose callbacks to use
 ///   to deliver results.
-/// \param[out] rows_affected The number of rows affected if known, else -1. Pass
-///   NULL if the client does not want this information.
 /// \param[out] error An optional location to return an error message if necessary.
 ///
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support async execution,
@@ -2225,7 +2407,7 @@ AdbcStatusCode AdbcStatementNextResultSet(struct AdbcStatement* statement,
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecuteQueryAsync(
     struct AdbcStatement* statement, struct ArrowAsyncDeviceStreamHandler* handler,
-    int64_t* rows_affected, struct AdbcError* error);
+    struct AdbcError* error);
 
 /// \brief Retrieve the next result set from a multi-statement execution
 ///   asynchronously.
@@ -2247,7 +2429,7 @@ AdbcStatusCode AdbcStatementExecuteQueryAsync(
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementNextResultSetAsync(
     struct AdbcStatement* statement, struct ArrowAsyncDeviceStreamHandler* handler,
-    int64_t* rows_affected, struct AdbcError* error);
+    struct AdbcError* error);
 
 /// \brief Get the schema of the result set of a query without
 ///   executing it.
@@ -2269,6 +2451,78 @@ ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
                                           struct ArrowSchema* schema,
                                           struct AdbcError* error);
+
+/// \brief Retrieve the schema of the next result set from a
+///   multi-statement query passed to AdbcStatementExecuteSchema.
+///
+/// This invalidates any prior result sets.
+///
+/// Depending on the driver, this may require first executing
+/// AdbcStatementPrepare.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// \param[in] statement The statement to retrieve the next result set schema from.
+/// \param[out] schema The result schema.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support
+///   multi-result set execution, ADBC_STATUS_OK if next result set schema is
+///   being returned successfully.  ADBC_STATUS_NOT_FOUND is returned
+///   when there are no more result sets.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementNextResultSetSchema(struct AdbcStatement* statement,
+                                                struct ArrowSchema* schema,
+                                                struct AdbcError* error);
+
+/// \brief Asynchronous version of AdbcStatementNextResultSetSchema to
+///   retrieve the schema of the next result set from a
+///   multi-statement query passed to AdbcStatementExecuteSchema.
+///
+/// This invalidates any prior result sets.
+///
+/// Depending on the driver, this may require first executing
+/// AdbcStatementPrepare.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// \param[in] statement The statement to retrieve the next result set schema from.
+/// \param[in] callback The callback to invoke with the result schema
+///   once it is available.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support multi-result
+///  set execution, ADBC_STATUS_OK if next result set schema is being returned
+///  successfully. ADBC_STATUS_NOT_FOUND is returned when there are no more result sets.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementNextResultSetSchemaAsync(
+    struct AdbcStatement* statement,
+    void (*callback)(struct AdbcStatement*, struct ArrowSchema*, struct AdbcError*),
+    struct AdbcError* error);
+
+/// \brief Asynchronous version of AdbcStatementExecuteSchema to get
+///   the schema of the result set of a query without executing it.
+///
+/// This invalidates any prior result sets.
+///
+/// Depending on the driver, this may require first executing
+/// AdbcStatementPrepare.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// \param[in] statement The statement to execute.
+/// \param[in] callback The callback to invoke with the result schema
+///   once it is available.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support this.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementExecuteSchemaAsync(struct AdbcStatement* statement,
+                                               void (*callback)(struct AdbcStatement*,
+                                                                struct ArrowSchema*,
+                                                                struct AdbcError*),
+                                               struct AdbcError* error);
 
 /// \brief Turn this statement into a prepared statement to be
 ///   executed multiple times.
@@ -2598,6 +2852,24 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               struct AdbcPartitions* partitions,
                                               int64_t* rows_affected,
                                               struct AdbcError* error);
+
+/// \brief Asynchronous version of AdbcStatementExecutePartitions to
+///   get the results as a partitioned result set.
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] statement The statement to execute.
+/// \param[in] callback The callback to invoke with the result schema and
+///   partitions once they are available.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support
+///   partitioned results
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementExecutePartitionsAsync(
+    struct AdbcStatement* statement,
+    void (*callback)(struct AdbcStatement*, struct ArrowSchema*, struct AdbcPartitions*,
+                     int64_t, struct AdbcError*),
+    struct AdbcError* error);
 
 /// @}
 
