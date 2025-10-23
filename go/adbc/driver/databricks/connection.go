@@ -62,7 +62,7 @@ func (c *connectionImpl) SetAutocommit(autocommit bool) error {
 	if !autocommit {
 		return adbc.Error{
 			Code: adbc.StatusNotImplemented,
-			Msg:  fmt.Sprintf("disabling autocommit is not supported"),
+			Msg:  "disabling autocommit is not supported",
 		}
 	}
 	return nil
@@ -87,7 +87,7 @@ func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 	if c.conn == nil {
 		return adbc.Error{
 			Code: adbc.StatusInvalidState,
-			Msg:  fmt.Sprint("failed to set catalog: connection is nil"),
+			Msg:  "failed to set catalog: connection is nil",
 		}
 	}
 	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
@@ -112,7 +112,7 @@ func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 	if c.conn == nil {
 		return adbc.Error{
 			Code: adbc.StatusInvalidState,
-			Msg:  fmt.Sprint("failed to set db schema: connection is nil"),
+			Msg:  "failed to set db schema: connection is nil",
 		}
 	}
 	escapedSchema := strings.ReplaceAll(schema, "`", "``")
@@ -138,7 +138,7 @@ func (c *connectionImpl) Commit(ctx context.Context) error {
 	// Most operations are auto-committed.
 	return adbc.Error{
 		Code: adbc.StatusNotImplemented,
-		Msg:  fmt.Sprintf("Commit is not supported"),
+		Msg:  "Commit is not supported",
 	}
 }
 
@@ -147,7 +147,7 @@ func (c *connectionImpl) Rollback(ctx context.Context) error {
 	// Most operations are auto-committed.
 	return adbc.Error{
 		Code: adbc.StatusNotImplemented,
-		Msg:  fmt.Sprintf("rollback is not supported"),
+		Msg:  "rollback is not supported",
 	}
 }
 

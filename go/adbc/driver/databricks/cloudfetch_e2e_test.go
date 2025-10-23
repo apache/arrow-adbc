@@ -132,7 +132,7 @@ func TestCloudFetchE2E_SmallQueries(t *testing.T) {
 			totalRows := int64(0)
 			batchCount := 0
 			for reader.Next() {
-				record := reader.Record()
+				record := reader.RecordBatch()
 				totalRows += record.NumRows()
 				batchCount++
 			}
@@ -223,7 +223,7 @@ func TestCloudFetchE2E_LargeQueries(t *testing.T) {
 			maxBatchSize := int64(0)
 
 			for reader.Next() {
-				record := reader.Record()
+				record := reader.RecordBatch()
 				batchSize := record.NumRows()
 				totalRows += batchSize
 				batchCount++
@@ -312,7 +312,7 @@ func TestCloudFetchE2E_DataTypes(t *testing.T) {
 
 	totalRows := int64(0)
 	for reader.Next() {
-		record := reader.Record()
+		record := reader.RecordBatch()
 		totalRows += record.NumRows()
 
 		// Verify schema has all expected columns
@@ -478,7 +478,7 @@ func runPerformanceTest(t *testing.T, host, token, httpPath, query string) time.
 	// Read all data
 	totalRows := int64(0)
 	for reader.Next() {
-		record := reader.Record()
+		record := reader.RecordBatch()
 		totalRows += record.NumRows()
 	}
 

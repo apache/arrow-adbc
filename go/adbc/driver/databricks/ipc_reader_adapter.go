@@ -150,7 +150,7 @@ func (r *ipcReaderAdapter) Next() bool {
 
 	// Try to get next record from current reader
 	if r.currentReader != nil && r.currentReader.Next() {
-		r.currentRecord = r.currentReader.Record()
+		r.currentRecord = r.currentReader.RecordBatch()
 		r.currentRecord.Retain()
 		return true
 	}
@@ -164,7 +164,7 @@ func (r *ipcReaderAdapter) Next() bool {
 
 	// Try again with new reader
 	if r.currentReader != nil && r.currentReader.Next() {
-		r.currentRecord = r.currentReader.Record()
+		r.currentRecord = r.currentReader.RecordBatch()
 		r.currentRecord.Retain()
 		return true
 	}

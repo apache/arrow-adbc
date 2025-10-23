@@ -143,7 +143,7 @@ func TestE2E_SimpleQuery(t *testing.T) {
 
 	// Verify we got a result
 	assert.True(t, reader.Next(), "Expected at least one record")
-	record := reader.Record()
+	record := reader.RecordBatch()
 	assert.Equal(t, int64(1), record.NumCols(), "Expected 1 column")
 	assert.Equal(t, int64(1), record.NumRows(), "Expected 1 row")
 
@@ -181,7 +181,7 @@ func TestE2E_MetadataOperations(t *testing.T) {
 
 		count := 0
 		for reader.Next() {
-			record := reader.Record()
+			record := reader.RecordBatch()
 			count += int(record.NumRows())
 			t.Logf("Table types record: %d rows", record.NumRows())
 		}
@@ -204,7 +204,7 @@ func TestE2E_MetadataOperations(t *testing.T) {
 
 		catalogCount := 0
 		for reader.Next() {
-			record := reader.Record()
+			record := reader.RecordBatch()
 			catalogCount += int(record.NumRows())
 			t.Logf("Catalogs record: %d rows", record.NumRows())
 		}
@@ -227,7 +227,7 @@ func TestE2E_MetadataOperations(t *testing.T) {
 
 		schemaCount := 0
 		for reader.Next() {
-			record := reader.Record()
+			record := reader.RecordBatch()
 			schemaCount += int(record.NumRows())
 			t.Logf("Schemas record: %d rows", record.NumRows())
 		}
@@ -250,7 +250,7 @@ func TestE2E_MetadataOperations(t *testing.T) {
 
 		tableCount := 0
 		for reader.Next() {
-			record := reader.Record()
+			record := reader.RecordBatch()
 			tableCount += int(record.NumRows())
 			t.Logf("Tables record: %d rows", record.NumRows())
 		}
@@ -386,7 +386,7 @@ func TestIPCStreamIntegration(t *testing.T) {
 		hasData := reader.Next()
 		assert.True(t, hasData)
 
-		record := reader.Record()
+		record := reader.RecordBatch()
 		assert.Equal(t, int64(1), record.NumRows())
 		assert.Equal(t, int64(5), record.NumCols())
 
@@ -449,7 +449,7 @@ func TestIPCStreamIntegration(t *testing.T) {
 		batchCount := 0
 
 		for reader.Next() {
-			record := reader.Record()
+			record := reader.RecordBatch()
 			totalRows += record.NumRows()
 			batchCount++
 
@@ -541,7 +541,7 @@ func TestIPCStreamIntegration(t *testing.T) {
 		hasData := reader.Next()
 		assert.True(t, hasData)
 
-		record := reader.Record()
+		record := reader.RecordBatch()
 		stringCol := record.Column(0).(*array.String)
 		binaryCol := record.Column(1).(*array.Binary)
 
@@ -619,7 +619,7 @@ func TestIPCStreamPerformance(t *testing.T) {
 
 		totalRows := int64(0)
 		for reader.Next() {
-			record := reader.Record()
+			record := reader.RecordBatch()
 			totalRows += record.NumRows()
 		}
 		// Note: Databricks may limit the number of rows returned
@@ -676,7 +676,7 @@ func TestE2E_QueryWithTypes(t *testing.T) {
 	defer reader.Release()
 
 	assert.True(t, reader.Next())
-	record := reader.Record()
+	record := reader.RecordBatch()
 
 	// Log the schema
 	schema := record.Schema()

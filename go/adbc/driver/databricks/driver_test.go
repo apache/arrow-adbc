@@ -28,7 +28,6 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/driver/databricks"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
-	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,52 +98,6 @@ func (d *DatabricksQuirks) getSqlTypeFromArrowType(dt arrow.DataType) string {
 
 func quoteTblName(name string) string {
 	return "`" + strings.ReplaceAll(name, "`", "``") + "`"
-}
-
-func getArr(arr arrow.Array) interface{} {
-	switch arr := arr.(type) {
-	case *array.Int8:
-		v := arr.Int8Values()
-		return &v
-	case *array.Uint8:
-		v := arr.Uint8Values()
-		return &v
-	case *array.Int16:
-		v := arr.Int16Values()
-		return &v
-	case *array.Uint16:
-		v := arr.Uint16Values()
-		return &v
-	case *array.Int32:
-		v := arr.Int32Values()
-		return &v
-	case *array.Uint32:
-		v := arr.Uint32Values()
-		return &v
-	case *array.Int64:
-		v := arr.Int64Values()
-		return &v
-	case *array.Uint64:
-		v := arr.Uint64Values()
-		return &v
-	case *array.Float32:
-		v := arr.Float32Values()
-		return &v
-	case *array.Float64:
-		v := arr.Float64Values()
-		return &v
-	case *array.String:
-		v := make([]string, arr.Len())
-		for i := 0; i < arr.Len(); i++ {
-			if arr.IsNull(i) {
-				continue
-			}
-			v[i] = arr.Value(i)
-		}
-		return &v
-	default:
-		panic(fmt.Errorf("unimplemented type %s", arr.DataType()))
-	}
 }
 
 func (d *DatabricksQuirks) CreateSampleTable(tableName string, r arrow.RecordBatch) error {
@@ -463,7 +416,7 @@ func (suite *DatabricksTests) TestConnectionOptions() {
 
 	_ = n
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	suite.Equal(int64(1), rec.NumRows())
 	suite.Equal(int64(1), rec.NumCols())
 	suite.Equal("test_col", rec.ColumnName(0))
@@ -473,7 +426,7 @@ func (suite *DatabricksTests) TestConnectionOptions() {
 
 func (suite *DatabricksTests) TestBasicDataTypes() {
 	suite.Require().NoError(suite.stmt.SetSqlQuery(`
-		SELECT 
+		SELECT
 			CAST(42 AS BIGINT) as bigint_col,
 			CAST(3.14 AS DOUBLE) as double_col,
 			CAST('hello' AS STRING) as string_col,
@@ -486,7 +439,7 @@ func (suite *DatabricksTests) TestBasicDataTypes() {
 
 	suite.checkRowCount(1, n)
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 
 	suite.Equal(int64(4), rec.NumCols())
 	suite.Equal("bigint_col", rec.ColumnName(0))
@@ -597,8 +550,8 @@ func (suite *DatabricksTests) TestConcurrentStatements() {
 	suite.True(rdr1.Next())
 	suite.True(rdr2.Next())
 
-	rec1 := rdr1.Record()
-	rec2 := rdr2.Record()
+	rec1 := rdr1.RecordBatch()
+	rec2 := rdr2.RecordBatch()
 
 	suite.Equal("col1", rec1.ColumnName(0))
 	suite.Equal("col2", rec2.ColumnName(0))
@@ -614,7 +567,7 @@ func (suite *DatabricksTests) TestLargeResultSet() {
 
 	var totalRows int64
 	for rdr.Next() {
-		totalRows += rdr.Record().NumRows()
+		totalRows += rdr.RecordBatch().NumRows()
 	}
 
 	suite.Greater(totalRows, int64(0), "Should receive at least some rows")
@@ -768,7 +721,7 @@ func (suite *DatabricksTests) TestTimestampPrecision() {
 
 	suite.checkRowCount(1, n)
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 
 	suite.Equal(int64(1), rec.NumCols())
 	suite.Equal("ts_col", rec.ColumnName(0))
@@ -790,7 +743,7 @@ func (suite *DatabricksTests) TestDecimalTypes() {
 
 	suite.checkRowCount(1, n)
 	suite.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 
 	// Verify we got decimal columns
 	suite.Equal(int64(2), rec.NumCols())

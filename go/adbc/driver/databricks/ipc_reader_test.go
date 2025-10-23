@@ -97,7 +97,7 @@ func TestIPCReaderAdapter(t *testing.T) {
 	builder.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2, 3}, nil)
 	builder.Field(1).(*array.StringBuilder).AppendValues([]string{"alice", "bob", "charlie"}, nil)
 
-	record := builder.NewRecord()
+	record := builder.NewRecordBatch()
 	defer record.Release()
 
 	// Serialize to IPC format
@@ -144,7 +144,7 @@ func TestIPCReaderAdapter(t *testing.T) {
 	hasData := reader.Next()
 	assert.True(t, hasData)
 
-	readRecord := reader.Record()
+	readRecord := reader.RecordBatch()
 	assert.Equal(t, int64(3), readRecord.NumRows())
 
 	// Verify values
@@ -191,7 +191,7 @@ func TestIPCReaderAdapterMultipleStreams(t *testing.T) {
 		}
 		builder.Field(0).(*array.Int32Builder).AppendValues(values, nil)
 
-		record := builder.NewRecord()
+		record := builder.NewRecordBatch()
 
 		// Serialize to IPC
 		var buf bytes.Buffer
@@ -236,7 +236,7 @@ func TestIPCReaderAdapterMultipleStreams(t *testing.T) {
 	batchCount := 0
 
 	for reader.Next() {
-		record := reader.Record()
+		record := reader.RecordBatch()
 		rowCount += int(record.NumRows())
 		batchCount++
 
