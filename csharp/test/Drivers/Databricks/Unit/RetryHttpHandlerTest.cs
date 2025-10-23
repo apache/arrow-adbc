@@ -321,7 +321,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         {
             // Create a mock handler that returns a TooManyRequests (429) response with a Retry-After header
             var mockHandler = new MockHttpMessageHandler(
-                new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+                new HttpResponseMessage((HttpStatusCode)429)
                 {
                     Headers = { { "Retry-After", "1" } },
                     Content = new StringContent("Too Many Requests")
@@ -356,7 +356,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
         {
             // Create a mock handler that always returns a TooManyRequests (429) response with a Retry-After header
             var mockHandler = new MockHttpMessageHandler(
-                new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+                new HttpResponseMessage((HttpStatusCode)429)
                 {
                     Headers = { { "Retry-After", "2" } },
                     Content = new StringContent("Too Many Requests")

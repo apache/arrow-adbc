@@ -136,7 +136,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 request.Content = null;
 
                 // Check if we would exceed the timeout after waiting, based on error type
-                bool isTooManyRequests = response.StatusCode == HttpStatusCode.TooManyRequests;
+                bool isTooManyRequests = response.StatusCode == (HttpStatusCode)429;
                 if (isTooManyRequests)
                 {
                     // Check 429 rate limit timeout
@@ -181,7 +181,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool IsRetryableStatusCode(HttpStatusCode statusCode)
         {
             // Check too many requests separately
-            if (statusCode == HttpStatusCode.TooManyRequests)         // 429
+            if (statusCode == (HttpStatusCode)429)         // 429 Too Many Requests
                 return _rateLimitRetryEnabled;
 
             // Check other retryable codes
