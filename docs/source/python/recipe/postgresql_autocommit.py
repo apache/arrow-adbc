@@ -21,11 +21,6 @@
 #: You can enable autocommit mode by passing the ``autocommit`` parameter
 #: to the ``connect`` function. When autocommit is enabled, each statement
 #: is automatically committed without needing to call ``commit()`` explicitly.
-#:
-#: .. code-block:: python
-#:
-#:    conn = adbc_driver_postgresql.dbapi.connect(uri, autocommit=True)
-#:
 #: This is useful for operations that cannot be run inside a transaction,
 #: or when you want each statement to be committed immediately.
 
