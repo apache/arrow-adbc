@@ -73,7 +73,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private const long DefaultMaxBytesPerFetchRequest = 400 * 1024 * 1024; // 400MB
         private long _maxBytesPerFetchRequest = DefaultMaxBytesPerFetchRequest;
         private const bool DefaultRetryOnUnavailable = true;
+        private const bool DefaultRateLimitRetry = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
+        private const int DefaultRateLimitRetryTimeout = 120;
         private bool _useDescTableExtended = false;
 
         // Trace propagation configuration
@@ -540,14 +542,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public bool RunAsyncInThrift => _runAsyncInThrift;
 
         /// <summary>
-        /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
+        /// Gets a value indicating whether to retry requests that receive retryable responses (408, 502, 503, 504) .
         /// </summary>
         protected bool TemporarilyUnavailableRetry { get; private set; } = DefaultRetryOnUnavailable;
 
         /// <summary>
-        /// Gets the maximum total time in seconds to retry 503 responses before failing.
+        /// Gets the maximum total time in seconds to retry retryable responses (408, 502, 503, 504) before failing.
         /// </summary>
         protected int TemporarilyUnavailableRetryTimeout { get; private set; } = DefaultTemporarilyUnavailableRetryTimeout;
+
+        /// <summary>
+        /// Gets a value indicating whether to retry requests that receive HTTP 429 responses.
+        /// </summary>
+        protected bool RateLimitRetry { get; private set; } = DefaultRateLimitRetry;
+
+        /// <summary>
+        /// Gets the number of seconds to wait before stopping an attempt to retry HTTP 429 responses.
+        /// </summary>
+        protected int RateLimitRetryTimeout { get; private set; } = DefaultRateLimitRetryTimeout;
 
         protected override HttpMessageHandler CreateHttpHandler()
         {
@@ -565,7 +577,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             // Current chain order (outermost to innermost):
             // 1. OAuth handlers (OAuthDelegatingHandler, etc.) - only on baseHandler for API requests
             // 2. ThriftErrorMessageHandler - extracts x-thriftserver-error-message and throws descriptive exceptions
-            // 3. RetryHttpHandler - retries 408, 502, 503, 504 with Retry-After support
+            // 3. RetryHttpHandler - retries 408, 429, 502, 503, 504 with Retry-After support
             // 4. TracingDelegatingHandler - propagates W3C trace context
             // 5. Base HTTP handler - actual network communication
             //
@@ -586,16 +598,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 baseAuthHandler = new TracingDelegatingHandler(baseAuthHandler, this, _traceParentHeaderName, _traceStateEnabled);
             }
 
-            if (TemporarilyUnavailableRetry)
+            if (TemporarilyUnavailableRetry || RateLimitRetry)
             {
-                // Add retry handler for 408, 502, 503, 504 responses with Retry-After support
+                // Add retry handler for 408, 429, 502, 503, 504 responses with Retry-After support
                 // This must be INSIDE ThriftErrorMessageHandler so retries happen before exceptions are thrown
-                baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
-                baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout);
+                baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout, RateLimitRetryTimeout, TemporarilyUnavailableRetry, RateLimitRetry);
+                baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout, RateLimitRetryTimeout, TemporarilyUnavailableRetry, RateLimitRetry);
             }
 
             // Add Thrift error message handler AFTER retry handler (OUTSIDE in the chain)
-            // This ensures retryable status codes (408, 502, 503, 504) are retried by RetryHttpHandler
+            // This ensures retryable status codes (408, 429, 502, 503, 504) are retried by RetryHttpHandler
             // before ThriftErrorMessageHandler throws exceptions with Thrift error messages
             baseHandler = new ThriftErrorMessageHandler(baseHandler);
             baseAuthHandler = new ThriftErrorMessageHandler(baseAuthHandler);
@@ -900,6 +912,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 TemporarilyUnavailableRetry = tempUnavailableRetryValue;
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.RateLimitRetry, out string? rateLimitRetryStr))
+            {
+                if (!bool.TryParse(rateLimitRetryStr, out bool rateLimitRetryValue))
+                {
+                    throw new ArgumentOutOfRangeException(DatabricksParameters.RateLimitRetry, rateLimitRetryStr,
+                        $"must be a value of false (disabled) or true (enabled). Default is true.");
+                }
+
+                RateLimitRetry = rateLimitRetryValue;
+            }
 
             if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
             {
@@ -910,6 +932,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         $"must be a value of 0 (retry indefinitely) or a positive integer representing seconds. Default is 900 seconds (15 minutes).");
                 }
                 TemporarilyUnavailableRetryTimeout = tempUnavailableRetryTimeoutValue;
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.RateLimitRetryTimeout, out string? rateLimitRetryTimeoutStr))
+            {
+                if (!int.TryParse(rateLimitRetryTimeoutStr, out int rateLimitRetryTimeoutValue) ||
+                    rateLimitRetryTimeoutValue < 0)
+                {
+                    throw new ArgumentOutOfRangeException(DatabricksParameters.RateLimitRetryTimeout, rateLimitRetryTimeoutStr,
+                        $"must be a value of 0 (retry indefinitely) or a positive integer representing seconds. Default is 120 seconds (2 minutes).");
+                }
+                RateLimitRetryTimeout = rateLimitRetryTimeoutValue;
             }
 
             // When TemporarilyUnavailableRetry is enabled, we need to make sure connection timeout (which is used to cancel the HttpConnection) is equal
