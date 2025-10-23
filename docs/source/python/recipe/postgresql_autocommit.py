@@ -43,7 +43,8 @@ with conn.cursor() as cur:
     cur.execute("CREATE TEMP TABLE IF NOT EXISTS autocommit_test (id INTEGER)")
     cur.execute("INSERT INTO autocommit_test VALUES (1)")
 
-    # Verify the data was committed
+# Verify the data was committed
+with conn.cursor() as cur:
     cur.execute("SELECT * FROM autocommit_test")
     assert cur.fetchone() == (1,)
 
