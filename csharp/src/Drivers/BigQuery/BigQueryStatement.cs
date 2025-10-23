@@ -688,6 +688,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             readonly CancellationContext cancellationContext;
             IEnumerator<IArrowReader>? readers;
             IArrowReader? reader;
+            bool disposed;
 
             public MultiArrowReader(BigQueryStatement statement, Schema schema, IEnumerable<IArrowReader> readers, CancellationContext cancellationContext) : base(statement)
             {
@@ -706,11 +707,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 return await this.TraceActivityAsync(async activity =>
                 {
-                    using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, this.cancellationContext.CancellationToken);
                     if (this.readers == null)
                     {
                         return null;
                     }
+
+                    using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, this.cancellationContext.CancellationToken);
 
                     while (true)
                     {
@@ -719,7 +721,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         {
                             if (!this.readers.MoveNext())
                             {
-                                Dispose(); // TODO: Remove this line
+                                this.readers.Dispose();
+                                this.readers = null;
                                 return null;
                             }
                             this.reader = this.readers.Current;
@@ -741,11 +744,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 if (disposing)
                 {
-                    if (this.readers != null)
+                    if (!this.disposed)
                     {
-                        this.readers.Dispose();
-                        this.readers = null;
+                        if (this.readers != null)
+                        {
+                            this.readers.Dispose();
+                            this.readers = null;
+                        }
                         this.cancellationContext.Dispose();
+                        this.disposed = true;
                     }
                 }
 
