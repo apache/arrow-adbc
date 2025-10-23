@@ -85,7 +85,10 @@ func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
 		}
 	}
 	if c.conn == nil {
-		return nil
+		return adbc.Error{
+			Code: adbc.StatusInvalidState,
+			Msg:  fmt.Sprint("failed to set catalog: connection is nil"),
+		}
 	}
 	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
 	_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE CATALOG `%s`", escapedCatalog))
@@ -107,7 +110,10 @@ func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
 		}
 	}
 	if c.conn == nil {
-		return nil
+		return adbc.Error{
+			Code: adbc.StatusInvalidState,
+			Msg:  fmt.Sprint("failed to set db schema: connection is nil"),
+		}
 	}
 	escapedSchema := strings.ReplaceAll(schema, "`", "``")
 	_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA `%s`", escapedSchema))
