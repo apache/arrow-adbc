@@ -430,9 +430,40 @@ for full details.</p>
 </div>
 </div>
 </section>
+<section id="enable-autocommit-mode">
+<h2>Enable autocommit mode<a class="headerlink" href="#enable-autocommit-mode" title="Link to this heading">¶</a></h2>
+<p id="index-1">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_autocommit.py">postgresql_autocommit.py</a></p>
+<p>You can enable autocommit mode by passing the <code class="docutils literal notranslate"><span class="pre">autocommit</span></code> parameter
+to the <code class="docutils literal notranslate"><span class="pre">connect</span></code> function. When autocommit is enabled, each statement
+is automatically committed without needing to call <code class="docutils literal notranslate"><span class="pre">commit()</span></code> explicitly.
+This is useful for operations that cannot be run inside a transaction,
+or when you want each statement to be committed immediately.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">27</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos">28</span>
+<span class="linenos">29</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">30</span>
+<span class="linenos">31</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
+<span class="linenos">32</span>
+<span class="linenos">33</span><span class="c1"># Enable autocommit mode</span>
+<span class="linenos">34</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">autocommit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="linenos">35</span>
+<span class="linenos">36</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">37</span>    <span class="c1"># In autocommit mode, this statement is automatically committed</span>
+<span class="linenos">38</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TEMP TABLE IF NOT EXISTS autocommit_test (id INTEGER)&quot;</span><span class="p">)</span>
+<span class="linenos">39</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO autocommit_test VALUES (1)&quot;</span><span class="p">)</span>
+<span class="linenos">40</span>
+<span class="linenos">41</span><span class="c1"># Verify the data was committed</span>
+<span class="linenos">42</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">43</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM autocommit_test&quot;</span><span class="p">)</span>
+<span class="linenos">44</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+<span class="linenos">45</span>
+<span class="linenos">46</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
 <section id="create-append-to-a-table-from-an-arrow-dataset">
 <span id="recipe-postgresql-create-append"></span><h2>Create/append to a table from an Arrow dataset<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-dataset" title="Link to this heading">¶</a></h2>
-<p id="index-1">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_dataset_table.py">postgresql_create_dataset_table.py</a></p>
+<p id="index-2">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_dataset_table.py">postgresql_create_dataset_table.py</a></p>
 <p>ADBC makes it easy to load PyArrow datasets into your datastore.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">25</span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
@@ -610,7 +641,7 @@ PostgreSQL, though.</p>
 </section>
 <section id="create-append-to-a-table-from-an-arrow-table">
 <h2>Create/append to a table from an Arrow table<a class="headerlink" href="#create-append-to-a-table-from-an-arrow-table" title="Link to this heading">¶</a></h2>
-<p id="index-2">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_append_table.py">postgresql_create_append_table.py</a></p>
+<p id="index-3">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_append_table.py">postgresql_create_append_table.py</a></p>
 <p>ADBC allows creating and appending to database tables using Arrow
 tables.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
@@ -705,7 +736,7 @@ append.</p>
 </section>
 <section id="create-append-to-a-temporary-table">
 <h2>Create/append to a temporary table<a class="headerlink" href="#create-append-to-a-temporary-table" title="Link to this heading">¶</a></h2>
-<p id="index-3">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_temp_table.py">postgresql_create_temp_table.py</a></p>
+<p id="index-4">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_create_temp_table.py">postgresql_create_temp_table.py</a></p>
 <p>ADBC allows creating and appending to temporary tables as well.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">23</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">24</span>
@@ -785,7 +816,7 @@ If we reconnect, the table won’t exist; we’ll see only the ‘normal’ tabl
 </section>
 <section id="execute-a-statement-with-bind-parameters">
 <h2>Execute a statement with bind parameters<a class="headerlink" href="#execute-a-statement-with-bind-parameters" title="Link to this heading">¶</a></h2>
-<p id="index-4">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_execute_bind.py">postgresql_execute_bind.py</a></p>
+<p id="index-5">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_execute_bind.py">postgresql_execute_bind.py</a></p>
 <p>ADBC allows using Python and Arrow values as bind parameters.
 Right now, the PostgreSQL driver only supports bind parameters
 for queries that don’t generate result sets.</p>
@@ -841,7 +872,7 @@ is not supported—only the PostgreSQL-native <code class="docutils literal notr
 </section>
 <section id="execute-a-statement-without-copy">
 <span id="recipe-postgresql-statement-nocopy"></span><h2>Execute a statement without COPY<a class="headerlink" href="#execute-a-statement-without-copy" title="Link to this heading">¶</a></h2>
-<p id="index-5">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_execute_nocopy.py">postgresql_execute_nocopy.py</a></p>
+<p id="index-6">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_execute_nocopy.py">postgresql_execute_nocopy.py</a></p>
 <p>The ADBC driver tries to execute queries with COPY by default since it is
 faster for large result sets.  PostgreSQL does not support <code class="docutils literal notranslate"><span class="pre">COPY</span></code> for all
 kinds of queries, however.  For example, <code class="docutils literal notranslate"><span class="pre">SHOW</span></code> queries will not work.
@@ -902,7 +933,7 @@ description: string
 </section>
 <section id="get-the-arrow-schema-of-a-table">
 <h2>Get the Arrow schema of a table<a class="headerlink" href="#get-the-arrow-schema-of-a-table" title="Link to this heading">¶</a></h2>
-<p id="index-6">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_table_schema.py">postgresql_get_table_schema.py</a></p>
+<p id="index-7">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_table_schema.py">postgresql_get_table_schema.py</a></p>
 <p>ADBC lets you get the schema of a table as an Arrow schema.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">25</span>
@@ -961,7 +992,7 @@ decimals do not map onto Arrow decimals.</p>
 </section>
 <section id="get-the-arrow-schema-of-a-query">
 <h2>Get the Arrow schema of a query<a class="headerlink" href="#get-the-arrow-schema-of-a-query" title="Link to this heading">¶</a></h2>
-<p id="index-7">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_query_schema.py">postgresql_get_query_schema.py</a></p>
+<p id="index-8">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_get_query_schema.py">postgresql_get_query_schema.py</a></p>
 <p>ADBC lets you get the schema of a result set, without executing the query.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">25</span>
@@ -1004,7 +1035,7 @@ decimals do not map onto Arrow decimals.</p>
 </section>
 <section id="list-catalogs-schemas-and-tables">
 <h2>List catalogs, schemas, and tables<a class="headerlink" href="#list-catalogs-schemas-and-tables" title="Link to this heading">¶</a></h2>
-<p id="index-8">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_list_catalogs.py">postgresql_list_catalogs.py</a></p>
+<p id="index-9">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_list_catalogs.py">postgresql_list_catalogs.py</a></p>
 <p>ADBC allows listing tables, catalogs, and schemas in the database.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">25</span>
@@ -1048,7 +1079,7 @@ decimals do not map onto Arrow decimals.</p>
 </section>
 <section id="connection-pooling-with-sqlalchemy">
 <h2>Connection pooling with SQLAlchemy<a class="headerlink" href="#connection-pooling-with-sqlalchemy" title="Link to this heading">¶</a></h2>
-<p id="index-9">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pool.py">postgresql_pool.py</a></p>
+<p id="index-10">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pool.py">postgresql_pool.py</a></p>
 <p>ADBC does not implement connection pooling, as this is not generally a
 feature of DBAPI drivers.  Instead, use a third party connection pool
 like the one built into <a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/pooling.html">SQLAlchemy</a>.</p>
@@ -1097,7 +1128,7 @@ protocol, unlike the underlying ADBC connection.</p>
 </section>
 <section id="using-pandas-and-adbc">
 <h2>Using Pandas and ADBC<a class="headerlink" href="#using-pandas-and-adbc" title="Link to this heading">¶</a></h2>
-<p id="index-10">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pandas.py">postgresql_pandas.py</a></p>
+<p id="index-11">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pandas.py">postgresql_pandas.py</a></p>
 <p>ADBC is integrated into <a class="reference external" href="https://pandas.pydata.org/">pandas</a>, a popular dataframe library.  Pandas can
 use ADBC to exchange data with PostgreSQL and other databases.  Compared to
 using SQLAlchemy or other options, using ADBC with pandas can have better
@@ -1140,7 +1171,7 @@ level API, especially for those already using pandas.</p>
 </section>
 <section id="using-polars-and-adbc">
 <h2>Using Polars and ADBC<a class="headerlink" href="#using-polars-and-adbc" title="Link to this heading">¶</a></h2>
-<p id="index-11">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_polars.py">postgresql_polars.py</a></p>
+<p id="index-12">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_polars.py">postgresql_polars.py</a></p>
 <p>ADBC can be used with <a class="reference external" href="https://pola.rs/">Polars</a>, a dataframe library written in Rust.  As per
 its documentation:</p>
 <blockquote>
@@ -1240,6 +1271,7 @@ United States and other countries.
             <ul>
 <li><a class="reference internal" href="#">PostgreSQL Recipes</a><ul>
 <li><a class="reference internal" href="#authenticate-with-a-username-and-password">Authenticate with a username and password</a></li>
+<li><a class="reference internal" href="#enable-autocommit-mode">Enable autocommit mode</a></li>
 <li><a class="reference internal" href="#create-append-to-a-table-from-an-arrow-dataset">Create/append to a table from an Arrow dataset</a><ul>
 <li><a class="reference internal" href="#generating-sample-data">Generating sample data</a></li>
 <li><a class="reference internal" href="#loading-csv-files-into-postgresql">Loading CSV Files into PostgreSQL</a></li>
