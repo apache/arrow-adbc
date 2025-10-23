@@ -45,7 +45,10 @@ func (s *statementImpl) Close() error {
 		}
 	}
 	if s.prepared != nil {
-		return s.prepared.Close()
+		if err := s.prepared.Close(); err != nil {
+			return err
+		}
+		s.prepared = nil
 	}
 	s.conn = nil
 	return nil
