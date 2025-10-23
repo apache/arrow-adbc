@@ -40,27 +40,27 @@ import (
 
 const (
 	// Connection options
-	OptionServerHostname = "adbc.databricks.server_hostname"
-	OptionHTTPPath       = "adbc.databricks.http_path"
-	OptionAccessToken    = "adbc.databricks.access_token"
-	OptionPort           = "adbc.databricks.port"
-	OptionCatalog        = "adbc.databricks.catalog"
-	OptionSchema         = "adbc.databricks.schema"
+	OptionServerHostname = "databricks.server_hostname"
+	OptionHTTPPath       = "databricks.http_path"
+	OptionAccessToken    = "databricks.access_token"
+	OptionPort           = "databricks.port"
+	OptionCatalog        = "databricks.catalog"
+	OptionSchema         = "databricks.schema"
 
 	// Query options
-	OptionQueryTimeout        = "adbc.databricks.query.timeout"
-	OptionMaxRows             = "adbc.databricks.query.max_rows"
-	OptionQueryRetryCount     = "adbc.databricks.query.retry_count"
-	OptionDownloadThreadCount = "adbc.databricks.download_thread_count"
+	OptionQueryTimeout        = "databricks.query.timeout"
+	OptionMaxRows             = "databricks.query.max_rows"
+	OptionQueryRetryCount     = "databricks.query.retry_count"
+	OptionDownloadThreadCount = "databricks.download_thread_count"
 
 	// TLS/SSL options
-	OptionSSLMode     = "adbc.databricks.ssl_mode"
-	OptionSSLRootCert = "adbc.databricks.ssl_root_cert"
+	OptionSSLMode     = "databricks.ssl_mode"
+	OptionSSLRootCert = "databricks.ssl_root_cert"
 
 	// OAuth options (for future expansion)
-	OptionOAuthClientID     = "adbc.databricks.oauth.client_id"
-	OptionOAuthClientSecret = "adbc.databricks.oauth.client_secret"
-	OptionOAuthRefreshToken = "adbc.databricks.oauth.refresh_token"
+	OptionOAuthClientID     = "databricks.oauth.client_id"
+	OptionOAuthClientSecret = "databricks.oauth.client_secret"
+	OptionOAuthRefreshToken = "databricks.oauth.refresh_token"
 
 	// Default values
 	DefaultPort    = 443
