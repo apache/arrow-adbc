@@ -1288,6 +1288,10 @@ struct ADBC_EXPORT AdbcDriver {
                                                  struct ArrowAsyncDeviceStreamHandler*,
                                                  struct AdbcError*);
 
+  AdbcStatusCode (*StatementPrepareAsync)(struct AdbcStatement*,
+                                          void (*callback)(struct AdbcStatement*,
+                                                           struct AdbcError*),
+                                          struct AdbcError*);
   AdbcStatusCode (*StatementExecuteSchemaAsync)(struct AdbcStatement*,
                                                 void (*callback)(struct AdbcStatement*,
                                                                  struct ArrowSchema*,
@@ -2531,6 +2535,24 @@ AdbcStatusCode AdbcStatementExecuteSchemaAsync(struct AdbcStatement* statement,
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
                                     struct AdbcError* error);
+
+/// \brief Asynchronous version of AdbcStatementPrepare to turn this
+///   statement into a prepared statement to be executed multiple times.
+///
+/// This invalidates any prior result sets.
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] statement The statement to prepare.
+/// \param[in] callback The callback to invoke once preparation is complete.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support async
+///   execution, ADBC_STATUS_OK if the preparation has started successfully.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementPrepareAsync(struct AdbcStatement* statement,
+                                         void (*callback)(struct AdbcStatement*,
+                                                          struct AdbcError*),
+                                         struct AdbcError* error);
 
 /// \defgroup adbc-statement-sql SQL Semantics
 /// Functions for executing SQL queries, or querying SQL-related
