@@ -122,6 +122,10 @@ const (
 	// OptionStringImpersonateLifetime instructs the driver to impersonate for the
 	// given duration (e.g. "3600s").
 	OptionStringImpersonateLifetime = "adbc.bigquery.sql.impersonate.lifetime"
+
+	// OptionBoolQueryLinkFailedJob instructs the driver to construct a link to the
+	// query job if it fails to run.
+	OptionBoolQueryLinkFailedJob = "adbc.bigquery.sql.query.link_failed_job"
 )
 
 var (

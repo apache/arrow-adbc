@@ -70,6 +70,9 @@ type statement struct {
 
 	// Field that contains the JSON string to authorize a view to source datasets
 	authorizeViewToDatasets string
+
+	// Wrap errors with a link to failed job
+	linkFailedJob bool
 }
 
 func (st *statement) GetOptionBytes(key string) ([]byte, error) {
@@ -160,6 +163,8 @@ func (st *statement) GetOption(key string) (string, error) {
 		return strconv.FormatBool(st.queryConfig.DryRun), nil
 	case OptionBoolQueryCreateSession:
 		return strconv.FormatBool(st.queryConfig.CreateSession), nil
+	case OptionBoolQueryLinkFailedJob:
+		return strconv.FormatBool(st.linkFailedJob), nil
 	case OptionStringIngestFileDelimiter:
 		return st.ingestFileDelimiter, nil
 	case OptionStringIngestPath:
@@ -301,6 +306,13 @@ func (st *statement) SetOption(key string, v string) error {
 		st.updateTableColumnsDescription = v
 	case OptionJsonAuthorizeViewToDatasets:
 		st.authorizeViewToDatasets = v
+	case OptionBoolQueryLinkFailedJob:
+		val, err := strconv.ParseBool(v)
+		if err == nil {
+			st.linkFailedJob = val
+		} else {
+			return err
+		}
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -373,7 +385,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return nil, -1, err
 	}
 
-	return newRecordReader(ctx, st.query(), rdr, st.parameterMode, st.cnxn.Alloc, st.resultRecordBufferSize, st.prefetchConcurrency)
+	return newRecordReader(ctx, st.query(), rdr, st.parameterMode, st.cnxn.Alloc, st.resultRecordBufferSize, st.prefetchConcurrency, st.linkFailedJob)
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
@@ -385,7 +397,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	}
 
 	if boundParameters == nil {
-		_, totalRows, err := runQuery(ctx, st.query(), true)
+		_, totalRows, err := runQuery(ctx, st.query(), true, st.linkFailedJob)
 		if err != nil {
 			return -1, err
 		}
@@ -403,7 +415,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 					st.queryConfig.Parameters = parameters
 				}
 
-				_, currentRows, err := runQuery(ctx, st.query(), true)
+				_, currentRows, err := runQuery(ctx, st.query(), true, st.linkFailedJob)
 				if err != nil {
 					return -1, err
 				}

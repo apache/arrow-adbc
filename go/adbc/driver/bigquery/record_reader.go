@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"sync/atomic"
 
@@ -56,7 +57,7 @@ func checkContext(ctx context.Context, maybeErr error) error {
 	return ctx.Err()
 }
 
-func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool) (bigquery.ArrowIterator, int64, error) {
+func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool, linkFailedJob bool) (bigquery.ArrowIterator, int64, error) {
 	job, err := query.Run(ctx)
 	if err != nil {
 		return nil, -1, err
@@ -65,14 +66,24 @@ func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool) (b
 		return nil, 0, nil
 	}
 
+	// The project id, location, and job id are all URL-safe:
+	// Project id and job id can only contain URL safe characters: https://cloud.google.com/bigquery/docs/reference/rest/v2/JobReference
+	// Locations are also URL-safe, listed here: https://cloud.google.com/bigquery/docs/locations
+	jobLink := fmt.Sprintf("https://console.cloud.google.com/bigquery?project=%s&j=bq:%s:%s&page=queryresults", job.ProjectID(), job.Location(), job.ID())
 	iter, err := job.Read(ctx)
 	if err != nil {
+		if linkFailedJob {
+			return nil, -1, fmt.Errorf("%w (Query: %s)", err, jobLink)
+		}
 		return nil, -1, err
 	}
 
 	var arrowIterator bigquery.ArrowIterator
 	if iter.TotalRows > 0 {
 		if arrowIterator, err = iter.ArrowIterator(); err != nil {
+			if linkFailedJob {
+				return nil, -1, fmt.Errorf("%w (Query: %s)", err, jobLink)
+			}
 			return nil, -1, err
 		}
 	} else {
@@ -104,8 +115,8 @@ func getQueryParameter(values arrow.Record, row int, parameterMode string) ([]bi
 	return parameters, nil
 }
 
-func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allocator, resultRecordBufferSize int) (bigqueryRdr *reader, totalRows int64, err error) {
-	arrowIterator, totalRows, err := runQuery(ctx, query, false)
+func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allocator, resultRecordBufferSize int, linkFailedJob bool) (bigqueryRdr *reader, totalRows int64, err error) {
+	arrowIterator, totalRows, err := runQuery(ctx, query, false, linkFailedJob)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -149,7 +160,7 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 	return bigqueryRdr, totalRows, nil
 }
 
-func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, query *bigquery.Query, rec arrow.Record, ch chan arrow.Record, parameterMode string, alloc memory.Allocator, rdrSchema func(schema *arrow.Schema)) (int64, error) {
+func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, query *bigquery.Query, rec arrow.Record, ch chan arrow.Record, parameterMode string, alloc memory.Allocator, rdrSchema func(schema *arrow.Schema), linkFailedJob bool) (int64, error) {
 	totalRows := int64(-1)
 	for i := 0; i < int(rec.NumRows()); i++ {
 		parameters, err := getQueryParameter(rec, i, parameterMode)
@@ -160,7 +171,7 @@ func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, q
 			query.Parameters = parameters
 		}
 
-		arrowIterator, rows, err := runQuery(ctx, query, false)
+		arrowIterator, rows, err := runQuery(ctx, query, false, linkFailedJob)
 		if err != nil {
 			return -1, err
 		}
@@ -185,9 +196,9 @@ func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, q
 
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
-func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters array.RecordReader, parameterMode string, alloc memory.Allocator, resultRecordBufferSize, prefetchConcurrency int) (bigqueryRdr *reader, totalRows int64, err error) {
+func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters array.RecordReader, parameterMode string, alloc memory.Allocator, resultRecordBufferSize, prefetchConcurrency int, linkFailedJob bool) (bigqueryRdr *reader, totalRows int64, err error) {
 	if boundParameters == nil {
-		return runPlainQuery(ctx, query, alloc, resultRecordBufferSize)
+		return runPlainQuery(ctx, query, alloc, resultRecordBufferSize, linkFailedJob)
 	}
 	defer boundParameters.Release()
 
@@ -225,7 +236,7 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 		// we don't need to call rec.Retain() here and call call rec.Release() in queryRecordWithSchemaCallback
 		batchRows, err := queryRecordWithSchemaCallback(ctx, group, query, rec, ch, parameterMode, alloc, func(schema *arrow.Schema) {
 			bigqueryRdr.schema = schema
-		})
+		}, linkFailedJob)
 		if err != nil {
 			return nil, -1, err
 		}
