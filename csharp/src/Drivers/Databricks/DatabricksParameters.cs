@@ -99,16 +99,30 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         public const string ServerSidePropertyPrefix = "adbc.databricks.ssp_";
 
-        /// Controls whether to retry requests that receive a 503 response with a Retry-After header.
+        /// <summary>
+        /// Controls whether to retry requests that receive retryable responses (408, 502, 503, 504).
         /// Default value is true (enabled). Set to false to disable retry behavior.
         /// </summary>
         public const string TemporarilyUnavailableRetry = "adbc.spark.temporarily_unavailable_retry";
 
         /// <summary>
-        /// Maximum total time in seconds to retry 503 responses before failing.
+        /// Maximum total time in seconds to retry retryable responses (408, 502, 503, 504) before failing.
         /// Default value is 900 seconds (15 minutes). Set to 0 to retry indefinitely.
         /// </summary>
         public const string TemporarilyUnavailableRetryTimeout = "adbc.spark.temporarily_unavailable_retry_timeout";
+
+        /// <summary>
+        /// Controls whether to retry requests that receive HTTP 429 (TooManyRequests) response.
+        /// Default value is true. Set to false to disable rate limit retry behavior.
+        /// </summary>
+        public const string RateLimitRetry = "adbc.databricks.rate_limit_retry";
+
+        /// <summary>
+        /// The number of seconds that the connector waits before stopping an attempt to retry an operation
+        /// when the operation receives an HTTP 429 response.
+        /// Default value is 120 seconds. Set to 0 to retry indefinitely.
+        /// </summary>
+        public const string RateLimitRetryTimeout = "adbc.databricks.rate_limit_retry_timeout";
 
         /// <summary>
         /// Maximum number of parallel downloads for CloudFetch operations.

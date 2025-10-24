@@ -25,12 +25,15 @@ using System.IO;
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
-    /// HTTP handler that implements retry behavior for 408, 502, 503, and 504 responses.
+    /// HTTP handler that implements retry behavior for 408, 429, 502, 503, and 504 responses.
     /// Uses Retry-After header if present, otherwise uses exponential backoff.
     /// </summary>
     internal class RetryHttpHandler : DelegatingHandler
     {
         private readonly int _retryTimeoutSeconds;
+        private readonly int _rateLimitRetryTimeoutSeconds;
+        private readonly bool _retryTemporarilyUnavailableEnabled;
+        private readonly bool _rateLimitRetryEnabled;
         private readonly int _initialBackoffSeconds = 1;
         private readonly int _maxBackoffSeconds = 32;
 
@@ -38,11 +41,28 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Initializes a new instance of the <see cref="RetryHttpHandler"/> class.
         /// </summary>
         /// <param name="innerHandler">The inner handler to delegate to.</param>
-        /// <param name="retryTimeoutSeconds">Maximum total time in seconds to retry before failing.</param>
-        public RetryHttpHandler(HttpMessageHandler innerHandler, int retryTimeoutSeconds)
+        /// <param name="retryTimeoutSeconds">Maximum total time in seconds to retry retryable responses (408, 502, 503, 504) before failing.</param>
+        /// <param name="rateLimitRetryTimeoutSeconds">Maximum total time in seconds to retry HTTP 429 responses before failing.</param>
+        public RetryHttpHandler(HttpMessageHandler innerHandler, int retryTimeoutSeconds, int rateLimitRetryTimeoutSeconds)
+            : this(innerHandler, retryTimeoutSeconds, rateLimitRetryTimeoutSeconds, true, true)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RetryHttpHandler"/> class.
+        /// </summary>
+        /// <param name="innerHandler">The inner handler to delegate to.</param>
+        /// <param name="retryTimeoutSeconds">Maximum total time in seconds to retry retryable responses (408, 502, 503, 504) before failing.</param>
+        /// <param name="rateLimitRetryTimeoutSeconds">Maximum total time in seconds to retry 429 (rate limit) responses before failing.</param>
+        /// <param name="retryTemporarilyUnavailableEnabled">Whether to retry temporarily unavailable (408, 502, 503, 504) responses.</param>
+        /// <param name="rateLimitRetryEnabled">Whether to retry HTTP 429 responses.</param>
+        public RetryHttpHandler(HttpMessageHandler innerHandler, int retryTimeoutSeconds, int rateLimitRetryTimeoutSeconds, bool retryTemporarilyUnavailableEnabled, bool rateLimitRetryEnabled)
             : base(innerHandler)
         {
             _retryTimeoutSeconds = retryTimeoutSeconds;
+            _rateLimitRetryTimeoutSeconds = rateLimitRetryTimeoutSeconds;
+            _retryTemporarilyUnavailableEnabled = retryTemporarilyUnavailableEnabled;
+            _rateLimitRetryEnabled = rateLimitRetryEnabled;
         }
 
         /// <summary>
@@ -59,10 +79,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             HttpResponseMessage response;
             string? lastErrorMessage = null;
-            DateTime startTime = DateTime.UtcNow;
             int attemptCount = 0;
             int currentBackoffSeconds = _initialBackoffSeconds;
-            int totalRetrySeconds = 0;
+            int totalServiceUnavailableRetrySeconds = 0;
+            int totalTooManyRequestsRetrySeconds = 0;
 
             do
             {
@@ -81,14 +101,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
 
                 attemptCount++;
-
-                // Check if we've exceeded the timeout
-                TimeSpan elapsedTime = DateTime.UtcNow - startTime;
-                if (_retryTimeoutSeconds > 0 && elapsedTime.TotalSeconds > _retryTimeoutSeconds)
-                {
-                    // We've exceeded the timeout, so break out of the loop
-                    break;
-                }
 
                 int waitSeconds;
 
@@ -123,12 +135,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // Reset the request content for the next attempt
                 request.Content = null;
 
-                // Update total retry time
-                totalRetrySeconds += waitSeconds;
-                if (_retryTimeoutSeconds > 0 && totalRetrySeconds > _retryTimeoutSeconds)
+                // Check if we would exceed the timeout after waiting, based on error type
+                bool isTooManyRequests = response.StatusCode == (HttpStatusCode)429;
+                if (isTooManyRequests)
                 {
-                    // We've exceeded the timeout, so break out of the loop
-                    break;
+                    // Check 429 rate limit timeout
+                    if (_rateLimitRetryTimeoutSeconds > 0 && totalTooManyRequestsRetrySeconds + waitSeconds > _rateLimitRetryTimeoutSeconds)
+                    {
+                        // We've exceeded the rate limit retry timeout, so break out of the loop
+                        break;
+                    }
+                    totalTooManyRequestsRetrySeconds += waitSeconds;
+                }
+                else
+                {
+                    // Check service unavailable timeout for other retryable errors (408, 502, 503, 504)
+                    if (_retryTimeoutSeconds > 0 && totalServiceUnavailableRetrySeconds + waitSeconds > _retryTimeoutSeconds)
+                    {
+                        // We've exceeded the retry timeout, so break out of the loop
+                        break;
+                    }
+                    totalServiceUnavailableRetrySeconds += waitSeconds;
                 }
 
                 // Wait for the calculated time
@@ -153,10 +180,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         private bool IsRetryableStatusCode(HttpStatusCode statusCode)
         {
-            return statusCode == HttpStatusCode.RequestTimeout ||      // 408
-                   statusCode == HttpStatusCode.BadGateway ||          // 502
-                   statusCode == HttpStatusCode.ServiceUnavailable ||  // 503
-                   statusCode == HttpStatusCode.GatewayTimeout;        // 504
+            // Check too many requests separately
+            if (statusCode == (HttpStatusCode)429)         // 429 Too Many Requests
+                return _rateLimitRetryEnabled;
+
+            // Check other retryable codes
+            if (statusCode == HttpStatusCode.RequestTimeout ||        // 408
+                statusCode == HttpStatusCode.BadGateway ||            // 502
+                statusCode == HttpStatusCode.ServiceUnavailable ||    // 503
+                statusCode == HttpStatusCode.GatewayTimeout)          // 504
+                return _retryTemporarilyUnavailableEnabled;
+
+            return false;
         }
 
         /// <summary>
