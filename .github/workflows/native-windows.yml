@@ -177,6 +177,65 @@ jobs:
         run: .\ci\scripts\cpp_test.ps1 $pwd\build
 
   # ------------------------------------------------------------
+  # C/C++ build w/ vcpkg (builds and tests)
+  # ------------------------------------------------------------
+  drivers-build-vcpkg:
+    name: "C/C++ (vcpkg/${{ matrix.os }}/${{ matrix.arch }}/${{ matrix.config }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["windows-latest"]
+        arch: ["x64"]
+        config: ["Debug"]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
+
+      - name: Clone vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          git checkout 9e4b86d4871c47f125e9f631de07d963fcd38389
+          .\bootstrap-vcpkg.bat
+
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg/packages
+            ${{ github.workspace }}/vcpkg/installed
+            ~\AppData\Local\vcpkg\archives
+          key: vcpkg-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('c/vcpkg.json', 'c/driver/*/vcpkg.json') }}
+
+      - name: Install vcpkg dependencies
+        working-directory: c
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        run: |
+          ${{ github.workspace }}/vcpkg/vcpkg.exe install --triplet ${{ matrix.arch }}-windows
+
+      - name: Build
+        env:
+          BUILD_ALL: "1"
+          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
+          CMAKE_BUILD_TYPE: ${{ matrix.config }}
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
+
+      - name: Test
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
+          BUILD_DRIVER_SQLITE: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build
+
+  # ------------------------------------------------------------
   # Go build
   # ------------------------------------------------------------
   go-conda:
