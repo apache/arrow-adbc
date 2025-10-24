@@ -778,12 +778,23 @@ func (c *connectionImpl) getTableSchemaWithFilter(ctx context.Context, catalog *
 
 func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	field := arrow.Field{Name: schema.Name}
-	metadata := make(map[string]string)
-	metadata["Description"] = schema.Description
-	metadata["Repeated"] = strconv.FormatBool(schema.Repeated)
-	metadata["Required"] = strconv.FormatBool(schema.Required)
 	field.Nullable = !schema.Required
+
+	metadata := make(map[string]string)
+
+	metadata["Description"] = schema.Description
+	metadata["BIGQUERY:description"] = schema.Description
+
+	metadata["Repeated"] = strconv.FormatBool(schema.Repeated)
+	metadata["BIGQUERY:repeated"] = strconv.FormatBool(schema.Repeated)
+
+	metadata["Required"] = strconv.FormatBool(schema.Required)
+	metadata["BIGQUERY:required"] = strconv.FormatBool(schema.Required)
+
 	metadata["Type"] = string(schema.Type)
+	metadata["BIGQUERY:raw_type"] = string(schema.Type)
+
+	richSqlType := string(schema.Type)
 
 	if schema.PolicyTags != nil {
 		policyTagList, err := json.Marshal(schema.PolicyTags)
@@ -791,16 +802,22 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 			return arrow.Field{}, err
 		}
 		metadata["PolicyTags"] = string(policyTagList)
+		metadata["BIGQUERY:policy_tags"] = string(policyTagList)
 	}
 
 	// https://cloud.google.com/bigquery/docs/reference/storage#arrow_schema_details
 	switch schema.Type {
 	case bigquery.StringFieldType:
 		metadata["MaxLength"] = strconv.FormatInt(schema.MaxLength, 10)
+		metadata["BIGQUERY:max_length"] = strconv.FormatInt(schema.MaxLength, 10)
+
 		metadata["Collation"] = schema.Collation
+		metadata["BIGQUERY:collation"] = schema.Collation
+
 		field.Type = arrow.BinaryTypes.String
 	case bigquery.BytesFieldType:
 		metadata["MaxLength"] = strconv.FormatInt(schema.MaxLength, 10)
+		metadata["BIGQUERY:max_length"] = strconv.FormatInt(schema.MaxLength, 10)
 		field.Type = arrow.BinaryTypes.Binary
 	case bigquery.IntegerFieldType:
 		field.Type = arrow.PrimitiveTypes.Int64
@@ -813,14 +830,21 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	case bigquery.RecordFieldType:
 		// create an Arrow struct for BigQuery Record fields
 		nestedFields := make([]arrow.Field, len(schema.Schema))
+		nestedRichSqlTypes := make([]string, len(schema.Schema))
 		for i, nestedFieldSchema := range schema.Schema {
 			f, err := buildField(nestedFieldSchema, level+1)
 			if err != nil {
 				return arrow.Field{}, err
 			}
 			nestedFields[i] = f
+
+			fieldRichSqlType, found := f.Metadata.GetValue("BIGQUERY:type")
+			if found {
+				nestedRichSqlTypes[i] = fmt.Sprintf("`%s` %s", f.Name, fieldRichSqlType)
+			}
 		}
 		structType := arrow.StructOf(nestedFields...)
+		richSqlType = fmt.Sprintf("STRUCT<%s>", strings.Join(nestedRichSqlTypes, ", "))
 		if structType == nil {
 			return arrow.Field{}, adbc.Error{
 				Code: adbc.StatusInvalidArgument,
@@ -878,10 +902,15 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	// if the field is repeated, then it's a list of the type we just built
 	if schema.Repeated {
 		field.Type = arrow.ListOf(field.Type)
+		richSqlType = fmt.Sprintf("ARRAY<%s>", richSqlType)
 	}
+
+	// derive the standard type string from the field
+	metadata["BIGQUERY:type"] = richSqlType
 
 	if level == 0 {
 		metadata["DefaultValueExpression"] = schema.DefaultValueExpression
+		metadata["BIGQUERY:default_value_expression"] = schema.DefaultValueExpression
 	}
 	field.Metadata = arrow.MetadataFrom(metadata)
 	return field, nil
