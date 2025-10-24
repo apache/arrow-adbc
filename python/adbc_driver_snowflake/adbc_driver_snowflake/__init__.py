@@ -29,7 +29,7 @@ __all__ = ["DatabaseOptions", "StatementOptions", "connect"]
 
 
 class DatabaseOptions(enum.Enum):
-    """Database options specific to the Flight SQL driver."""
+    """Database options specific to the Snowflake driver."""
 
     ACCOUNT = "adbc.snowflake.sql.account"
     APPLICATION_NAME = "adbc.snowflake.sql.client_option.app_name"

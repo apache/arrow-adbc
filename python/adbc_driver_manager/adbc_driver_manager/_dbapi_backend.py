@@ -214,8 +214,19 @@ try:
         ) -> typing.Any:
             return polars.from_arrow(handle)
 
-        def import_schema(self, handle: _lib.ArrowSchemaHandle) -> typing.Any:
-            raise _lib.NotSupportedError("Polars does not support __arrow_c_schema__")
+        def import_schema(self, handle: _lib.ArrowSchemaHandle) -> polars.Schema:
+            # The version that Polars added support to initialize a schema via the
+            # __arrow_c_schema__ interface
+            required_version = (1, 32, 2)
+            polars_version = polars.__version__
+            if tuple(int(v) for v in polars_version.split(".")) >= required_version:
+                return polars.Schema(handle)
+            msg = (
+                "Initializing Polars Schema from __arrow_c_schema__ interface requires "
+                f"version {'.'.join(str(m) for m in required_version)} or higher. "
+                f"Found {polars_version!r}"
+            )
+            raise _lib.NotSupportedError(msg)
 
     _ALL_BACKENDS.append(_PolarsBackend())
 except ImportError:
