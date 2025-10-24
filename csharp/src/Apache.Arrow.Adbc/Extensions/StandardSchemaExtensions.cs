@@ -22,7 +22,7 @@ using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Extensions
 {
-    internal static class StandardSchemaExtensions
+    public static class StandardSchemaExtensions
     {
 
         /// <summary>
