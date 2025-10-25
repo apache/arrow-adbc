@@ -16,11 +16,13 @@
  */
 
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -52,6 +54,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            Activity? activity = Activity.Current;
+
             // Clone the request content if it's not null so we can reuse it for retries
             var requestContentClone = request.Content != null
                 ? await CloneHttpContentAsync(request.Content)
@@ -77,10 +81,34 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // If it's not a retryable status code, return immediately
                 if (!IsRetryableStatusCode(response.StatusCode))
                 {
-                    return response;
+                    // Only log retry summary if retries occurred
+                    if (attemptCount > 0)
+                    {
+                        activity?.SetTag("http.retry.total_attempts", attemptCount);
+                        activity?.SetTag("http.retry.total_wait_seconds", totalRetrySeconds);
+                        activity?.SetTag("http.retry.total_elapsed_seconds",
+                            (DateTime.UtcNow - startTime).TotalSeconds);
+                        activity?.SetTag("http.response.status_code", (int)response.StatusCode);
+                    }
+                    return response; // Clean exit - no logging for normal success
+                }
+
+                // Retry path - log details when we first enter retry path
+                if (attemptCount == 0)
+                {
+                    activity?.SetTag("http.retry.max_timeout_seconds", _retryTimeoutSeconds);
+                    activity?.SetTag("http.request.uri", SanitizeUri(request.RequestUri));
+                    activity?.AddEvent("http.retry.start", [
+                        new("status_code", (int)response.StatusCode)
+                    ]);
                 }
 
                 attemptCount++;
+
+                activity?.AddEvent("http.retry.attempt_failed", [
+                    new("attempt_number", attemptCount),
+                    new("status_code", (int)response.StatusCode)
+                ]);
 
                 // Check if we've exceeded the timeout
                 TimeSpan elapsedTime = DateTime.UtcNow - startTime;
@@ -101,12 +129,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     {
                         // Use the Retry-After value
                         waitSeconds = retryAfterSeconds;
+                        activity?.AddEvent("http.retry.using_server_retry_after", [
+                            new("wait_seconds", waitSeconds),
+                            new("attempt_number", attemptCount)
+                        ]);
+                        activity?.SetTag("http.retry.backoff_strategy", "server_retry_after");
                         lastErrorMessage = $"Service temporarily unavailable (HTTP {(int)response.StatusCode}). Using server-specified retry after {waitSeconds} seconds. Attempt {attemptCount}.";
                     }
                     else
                     {
                         // Invalid Retry-After value, use exponential backoff
                         waitSeconds = CalculateBackoffWithJitter(currentBackoffSeconds);
+                        activity?.AddEvent("http.retry.invalid_retry_after_header", [
+                            new("retry_after_value", retryAfterValue),
+                            new("fallback_strategy", "exponential_backoff")
+                        ]);
+                        activity?.AddEvent("http.retry.using_exponential_backoff", [
+                            new("wait_seconds", waitSeconds),
+                            new("attempt_number", attemptCount)
+                        ]);
+                        activity?.SetTag("http.retry.backoff_strategy", "exponential");
                         lastErrorMessage = $"Service temporarily unavailable (HTTP {(int)response.StatusCode}). Invalid Retry-After header, using exponential backoff of {waitSeconds} seconds. Attempt {attemptCount}.";
                     }
                 }
@@ -114,6 +156,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     // No Retry-After header, use exponential backoff
                     waitSeconds = CalculateBackoffWithJitter(currentBackoffSeconds);
+                    activity?.AddEvent("http.retry.using_exponential_backoff", [
+                        new("wait_seconds", waitSeconds),
+                        new("attempt_number", attemptCount)
+                    ]);
+                    activity?.SetTag("http.retry.backoff_strategy", "exponential");
                     lastErrorMessage = $"Service temporarily unavailable (HTTP {(int)response.StatusCode}). Using exponential backoff of {waitSeconds} seconds. Attempt {attemptCount}.";
                 }
 
@@ -131,19 +178,44 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     break;
                 }
 
+                activity?.AddEvent("http.retry.waiting", [
+                    new("wait_seconds", waitSeconds),
+                    new("attempt_number", attemptCount)
+                ]);
+
                 // Wait for the calculated time
                 await Task.Delay(TimeSpan.FromSeconds(waitSeconds), cancellationToken);
+
+                // Update metrics tags
+                activity?.SetTag("http.retry.attempt_count", attemptCount);
+                activity?.SetTag("http.retry.total_wait_seconds", totalRetrySeconds);
 
                 // Increase backoff for next attempt (exponential backoff)
                 currentBackoffSeconds = Math.Min(currentBackoffSeconds * 2, _maxBackoffSeconds);
             } while (!cancellationToken.IsCancellationRequested);
 
+            // Set final summary tags (only reached if retries exhausted)
+            activity?.SetTag("http.retry.total_attempts", attemptCount);
+            activity?.SetTag("http.retry.total_elapsed_seconds",
+                (DateTime.UtcNow - startTime).TotalSeconds);
+            activity?.SetTag("http.response.status_code", (int)response.StatusCode);
+
             // If we get here, we've either exceeded the timeout or been cancelled
             if (cancellationToken.IsCancellationRequested)
             {
+                activity?.AddEvent("http.retry.cancelled", [
+                    new("total_attempts", attemptCount)
+                ]);
+                activity?.SetTag("http.retry.outcome", "cancelled");
                 throw new OperationCanceledException("Request cancelled during retry wait", cancellationToken);
             }
 
+            // Timeout exceeded
+            activity?.AddEvent("http.retry.timeout_exceeded", [
+                new("total_attempts", attemptCount),
+                new("configured_timeout_seconds", _retryTimeoutSeconds)
+            ]);
+            activity?.SetTag("http.retry.outcome", "timeout_exceeded");
             throw new DatabricksException(lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded", AdbcStatusCode.IOError)
                 .SetSqlState("08001");
         }
@@ -190,6 +262,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 }
             }
             return clone;
+        }
+
+        /// <summary>
+        /// Sanitizes a URI for logging by removing query parameters and sensitive information.
+        /// </summary>
+        private static string SanitizeUri(Uri? uri)
+        {
+            if (uri == null) return "(null)";
+            // Return only scheme, host, port, and path
+            return $"{uri.Scheme}://{uri.Host}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}{uri.AbsolutePath}";
         }
     }
 }
