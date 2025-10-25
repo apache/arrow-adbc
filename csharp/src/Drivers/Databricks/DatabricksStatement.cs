@@ -860,7 +860,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     throw new FormatException($"Invalid json result of {query}: result is null or empty");
                 }
-                var result = JsonSerializer.Deserialize<DescTableExtendedResult>(resultJson);
+                var result = JsonSerializer.Deserialize<DescTableExtendedResult>(resultJson!);
                 if (result == null)
                 {
                     throw new FormatException($"Invalid json result of {query}.Result={resultJson}");
