@@ -922,4 +922,32 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
   ASSERT_DOUBLE_EQ(data_buffer2[2], 0);
 }
 
+// TODO: can we do this test without needing 2GiB of memory?
+TEST(PostgresCopyUtilsTest, BinaryOverflow) {
+  constexpr int32_t field_size_bytes = 1024 * 1024 * 4;
+  std::vector<uint8_t> buffer(field_size_bytes);
+  ArrowBufferView data;
+  data.size_bytes = static_cast<int64_t>(buffer.size());
+  data.data.data = buffer.data();
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(NANOARROW_OK, ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_BINARY));
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_BINARY));
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayStartAppending(array.get()));
+
+  PostgresCopyBinaryFieldReader reader;
+  ASSERT_EQ(NANOARROW_OK, reader.InitSchema(schema.get()));
+  ASSERT_EQ(NANOARROW_OK, reader.InitArray(array.get()));
+  for (int i = 0; i < 511; i++) {
+    data.size_bytes = static_cast<int64_t>(buffer.size());
+    data.data.data = buffer.data();
+    ASSERT_EQ(NANOARROW_OK, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+  }
+  data.size_bytes = static_cast<int64_t>(buffer.size());
+  data.data.data = buffer.data();
+  ASSERT_EQ(EOVERFLOW, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+}
+
 }  // namespace adbcpq
