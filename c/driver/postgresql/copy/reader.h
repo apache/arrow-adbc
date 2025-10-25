@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include <portable-snippets/safe-math.h>
 #include <nanoarrow/nanoarrow.hpp>
 
 #include "../postgres_type.h"
@@ -317,6 +318,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
     if (!special_value.empty()) {
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppend(data_, special_value.data(), special_value.size()));
+      // TODO: overflow
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, data_->size_bytes));
       return AppendValid(array);
     }
@@ -393,6 +395,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
 
     // Update data buffer size and add offsets
     data_->size_bytes += actual_chars_required;
+    // TODO: overflow
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, data_->size_bytes));
     return AppendValid(array);
   }
@@ -431,13 +434,16 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
       return EINVAL;
     }
 
+    int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
+    int32_t next_offset = 0;
+    if (!psnip_safe_int32_add(&next_offset, offsets[array->length], field_size_bytes)) {
+      return EOVERFLOW;
+    }
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, next_offset));
+
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, data->data.data, field_size_bytes));
     data->data.as_uint8 += field_size_bytes;
     data->size_bytes -= field_size_bytes;
-
-    int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
-    NANOARROW_RETURN_NOT_OK(
-        ArrowBufferAppendInt32(offsets_, offsets[array->length] + field_size_bytes));
 
     return AppendValid(array);
   }
@@ -477,8 +483,11 @@ class PostgresCopyJsonbFieldReader : public PostgresCopyFieldReader {
     data->size_bytes -= field_size_bytes;
 
     int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
-    NANOARROW_RETURN_NOT_OK(
-        ArrowBufferAppendInt32(offsets_, offsets[array->length] + field_size_bytes));
+    int32_t next_offset = 0;
+    if (!psnip_safe_int32_add(&next_offset, offsets[array->length], field_size_bytes)) {
+      return EOVERFLOW;
+    }
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, next_offset));
 
     return AppendValid(array);
   }
