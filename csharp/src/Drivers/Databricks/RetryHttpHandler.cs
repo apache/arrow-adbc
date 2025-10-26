@@ -23,7 +23,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 
-
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
     /// <summary>
@@ -207,6 +206,5 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
             return clone;
         }
-
     }
 }
