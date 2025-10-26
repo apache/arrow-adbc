@@ -22,7 +22,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
-using Apache.Arrow.Adbc.Tracing;
+
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -63,6 +63,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
             HttpResponseMessage response;
             string? lastErrorMessage = null;
+            DateTime startTime = DateTime.UtcNow;
             int attemptCount = 0;
             int currentBackoffSeconds = _initialBackoffSeconds;
             int totalRetrySeconds = 0;
@@ -91,8 +92,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 attemptCount++;
 
-                // Check if we've exceeded the total wait time
-                if (_retryTimeoutSeconds > 0 && totalRetrySeconds > _retryTimeoutSeconds)
+                // Check if we've exceeded the timeout
+                TimeSpan elapsedTime = DateTime.UtcNow - startTime;
+                if (_retryTimeoutSeconds > 0 && elapsedTime.TotalSeconds > _retryTimeoutSeconds)
                 {
                     // We've exceeded the timeout, so break out of the loop
                     break;
@@ -109,20 +111,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     {
                         // Use the Retry-After value
                         waitSeconds = retryAfterSeconds;
-                        lastErrorMessage = $"Service temporarily unavailable (HTTP {(int)response.StatusCode}). Attempt {attemptCount}.";
+                        lastErrorMessage = $"Service temporarily unavailable (HTTP {(int)response.StatusCode}). Using server-specified retry after {waitSeconds} seconds. Attempt {attemptCount}.";
                     }
                     else
                     {
                         // Invalid Retry-After value, use exponential backoff
                         waitSeconds = CalculateBackoffWithJitter(currentBackoffSeconds);
-                        lastErrorMessage = $"Service temporarily unavailable (HTTP {(int)response.StatusCode}). Attempt {attemptCount}.";
+                        lastErrorMessage = $"Service temporarily unavailable (HTTP {(int)response.StatusCode}). Invalid Retry-After header, using exponential backoff of {waitSeconds} seconds. Attempt {attemptCount}.";
                     }
                 }
                 else
                 {
                     // No Retry-After header, use exponential backoff
                     waitSeconds = CalculateBackoffWithJitter(currentBackoffSeconds);
-                    lastErrorMessage = $"Service temporarily unavailable (HTTP {(int)response.StatusCode}). Attempt {attemptCount}.";
+                    lastErrorMessage = $"Service temporarily unavailable (HTTP {(int)response.StatusCode}). Using exponential backoff of {waitSeconds} seconds. Attempt {attemptCount}.";
                 }
 
                 // Dispose the response before retrying
