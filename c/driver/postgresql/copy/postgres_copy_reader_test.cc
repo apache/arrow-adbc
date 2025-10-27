@@ -16,6 +16,7 @@
 // under the License.
 
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
@@ -921,5 +922,60 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
   ASSERT_DOUBLE_EQ(data_buffer2[1], 345.678);
   ASSERT_DOUBLE_EQ(data_buffer2[2], 0);
 }
+
+TEST(PostgresCopyUtilsTest, BinaryOverflow) {
+  constexpr int32_t field_size_bytes = 1024 * 1024 * 4;
+  std::vector<uint8_t> buffer(field_size_bytes);
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(NANOARROW_OK, ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_BINARY));
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_BINARY));
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayStartAppending(array.get()));
+
+  PostgresCopyBinaryFieldReader reader;
+  ASSERT_EQ(NANOARROW_OK, reader.InitSchema(schema.get()));
+  ASSERT_EQ(NANOARROW_OK, reader.InitArray(array.get()));
+  for (int i = 0; i < 511; i++) {
+    ArrowBufferView data;
+    data.size_bytes = static_cast<int64_t>(buffer.size());
+    data.data.data = buffer.data();
+    ASSERT_EQ(NANOARROW_OK, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+  }
+  ArrowBufferView data;
+  data.size_bytes = static_cast<int64_t>(buffer.size());
+  data.data.data = buffer.data();
+  ASSERT_EQ(EOVERFLOW, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+}
+
+TEST(PostgresCopyUtilsTest, JsonbOverflow) {
+  constexpr int32_t field_size_bytes = 1024 * 1024 * 4;
+  std::vector<uint8_t> buffer(field_size_bytes, 1);
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(NANOARROW_OK, ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_BINARY));
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_BINARY));
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayStartAppending(array.get()));
+
+  PostgresCopyJsonbFieldReader reader;
+  ASSERT_EQ(NANOARROW_OK, reader.InitSchema(schema.get()));
+  ASSERT_EQ(NANOARROW_OK, reader.InitArray(array.get()));
+  for (int i = 0; i < 512; i++) {
+    ArrowBufferView data;
+    data.size_bytes = static_cast<int64_t>(buffer.size());
+    data.data.data = buffer.data();
+    ASSERT_EQ(NANOARROW_OK, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+  }
+  ArrowBufferView data;
+  data.size_bytes = static_cast<int64_t>(buffer.size());
+  data.data.data = buffer.data();
+  ASSERT_EQ(EOVERFLOW, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+}
+
+// N.B. unfortunately testing with NUMERIC is difficult since we can't add all
+// that much to the buffer on each iteration, so the unit test takes too long
 
 }  // namespace adbcpq
