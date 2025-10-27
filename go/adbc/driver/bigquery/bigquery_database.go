@@ -35,6 +35,7 @@ type databaseImpl struct {
 	clientID     string
 	clientSecret string
 	refreshToken string
+	authScopes   []string
 
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
@@ -57,6 +58,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		clientID:                   d.clientID,
 		clientSecret:               d.clientSecret,
 		refreshToken:               d.refreshToken,
+		authScopes:                 d.authScopes,
 		impersonateTargetPrincipal: d.impersonateTargetPrincipal,
 		impersonateDelegates:       d.impersonateDelegates,
 		impersonateScopes:          d.impersonateScopes,
@@ -96,6 +98,14 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.clientSecret, nil
 	case OptionStringAuthRefreshToken:
 		return d.refreshToken, nil
+	case OptionStringAuthScopes:
+		return strings.Join(d.authScopes, ","), nil
+	case OptionStringImpersonateTargetPrincipal:
+		return d.impersonateTargetPrincipal, nil
+	case OptionStringImpersonateDelegates:
+		return strings.Join(d.impersonateDelegates, ","), nil
+	case OptionStringImpersonateScopes:
+		return strings.Join(d.impersonateScopes, ","), nil
 	case OptionStringLocation:
 		return d.location, nil
 	case OptionStringProjectID:
@@ -158,6 +168,8 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.clientSecret = value
 	case OptionStringAuthRefreshToken:
 		d.refreshToken = value
+	case OptionStringAuthScopes:
+		d.authScopes = strings.Split(value, ",")
 	case OptionStringImpersonateTargetPrincipal:
 		d.impersonateTargetPrincipal = value
 	case OptionStringImpersonateDelegates:
