@@ -18,10 +18,6 @@ This document outlines an **Activity-based telemetry design** that leverages the
 - **Privacy-first**: No PII or query data collected
 - **Server-controlled**: Feature flag support for enable/disable
 
-**Key Difference from Original Design:**
-- ❌ **OLD**: Separate TelemetryCollector + TelemetryExporter alongside Activity
-- ✅ **NEW**: Activity-based with custom ActivityListener + aggregation
-
 ---
 
 ## Table of Contents
@@ -36,7 +32,7 @@ This document outlines an **Activity-based telemetry design** that leverages the
 8. [Error Handling](#8-error-handling)
 9. [Testing Strategy](#9-testing-strategy)
 10. [Migration & Rollout](#10-migration--rollout)
-11. [Comparison with Separate Telemetry System](#11-comparison-with-separate-telemetry-system)
+11. [Alternatives Considered](#11-alternatives-considered)
 
 ---
 
@@ -50,21 +46,23 @@ The Databricks ADBC driver already has:
 - ✅ **W3C Trace Context**: Distributed tracing support
 - ✅ **ActivityTrace utility**: Helper for creating activities
 
-### 1.2 The Problem
+### 1.2 Design Opportunity
 
-The original design proposed creating a separate telemetry system alongside Activity infrastructure:
-- ❌ Duplicate instrumentation in driver code
-- ❌ Two data models (Activity vs TelemetryEvent)
-- ❌ Two export mechanisms
-- ❌ Maintenance burden
+The driver already has comprehensive Activity instrumentation for distributed tracing. This presents an opportunity to:
+- Leverage existing Activity infrastructure for both tracing and metrics
+- Avoid duplicate instrumentation points in the driver code
+- Use a single data model (Activity) for both observability concerns
+- Maintain automatic correlation between traces and metrics
+- Reduce overall system complexity and maintenance burden
 
-### 1.3 The Solution
+### 1.3 The Approach
 
-**Extend Activity infrastructure** instead of creating parallel system:
+**Extend Activity infrastructure** with metrics collection:
 - ✅ Single instrumentation point (Activity)
 - ✅ Custom ActivityListener for metrics aggregation
 - ✅ Export aggregated data to Databricks service
 - ✅ Reuse Activity context, correlation, and timing
+- ✅ Seamless integration with OpenTelemetry ecosystem
 
 ---
 
@@ -123,35 +121,6 @@ sequenceDiagram
         Ex->>Service: POST /telemetry-ext
     end
 ```
-
-### 2.3 Comparison with Existing Activity Usage
-
-**Before (Tracing Only)**:
-```csharp
-using var activity = ActivityTrace.Start("ExecuteQuery");
-try {
-    // operation
-    activity?.SetTag("success", true);
-} catch {
-    activity?.SetTag("error", true);
-}
-```
-
-**After (Tracing + Metrics)**:
-```csharp
-using var activity = ActivityTrace.Start("ExecuteQuery");
-try {
-    // operation
-    activity?.SetTag("result_format", resultFormat);  // ← Picked up by listener
-    activity?.SetTag("chunk_count", chunkCount);       // ← Picked up by listener
-    activity?.SetTag("success", true);
-} catch {
-    activity?.SetTag("error", errorCode);
-}
-// Listener automatically aggregates metrics from activity
-```
-
-**No duplicate instrumentation - same code path!**
 
 ---
 
@@ -734,91 +703,123 @@ Compare:
 
 ---
 
-## 11. Comparison with Separate Telemetry System
+## 11. Alternatives Considered
 
-### 11.1 Side-by-Side Comparison
+### 11.1 Alternative 1: Separate Telemetry System
 
-| Aspect | **Separate Telemetry** (Original) | **Activity-Based** (This Design) |
-|--------|----------------------------------|----------------------------------|
-| **Instrumentation** | Duplicate: Activity + TelemetryCollector.Record*() | Single: Activity only |
-| **Data Model** | Two: Activity + TelemetryEvent | One: Activity tags |
-| **Correlation** | Manual correlation between systems | Built-in via Activity context |
-| **Code Changes** | New instrumentation points | Add tags to existing activities |
-| **Maintenance** | Two systems to maintain | One system |
-| **Complexity** | Higher | Lower |
-| **Performance Overhead** | Activity + Telemetry overhead | Activity + Listener overhead |
-| **OpenTelemetry Compat** | Parallel systems | Seamless integration |
+**Description**: Create a dedicated telemetry collection system parallel to Activity infrastructure, with explicit TelemetryCollector and TelemetryExporter classes.
 
-### 11.2 Code Comparison
+**Approach**:
+- Add `TelemetryCollector.RecordXXX()` calls at each driver operation
+- Maintain separate `TelemetryEvent` data model
+- Export via dedicated `TelemetryExporter`
+- Manual correlation with distributed traces
 
-**Separate Telemetry Approach**:
-```csharp
-// Instrumentation point
-using var activity = ActivityTrace.Start("ExecuteQuery");  // For tracing
-var sw = Stopwatch.StartNew();                            // For telemetry
+**Pros**:
+- Independent from Activity API
+- Direct control over data collection
+- Matches JDBC driver design pattern
 
-try
-{
-    var result = await ExecuteAsync();
+**Cons**:
+- Duplicate instrumentation at every operation point
+- Two parallel data models (Activity + TelemetryEvent)
+- Manual correlation between traces and metrics required
+- Higher maintenance burden (two systems)
+- Increased code complexity
 
-    activity?.SetTag("success", true);                    // For tracing
-    _telemetryCollector?.RecordStatementExecute(          // For telemetry
-        statementId, sw.Elapsed, resultFormat);
-}
-catch (Exception ex)
-{
-    activity?.SetTag("error", true);                      // For tracing
-    _telemetryCollector?.RecordError(                     // For telemetry
-        ex.GetType().Name, ex.Message, statementId);
-}
-```
+**Why Not Chosen**: The driver already has comprehensive Activity instrumentation. Creating a parallel system would duplicate this effort and increase maintenance complexity without providing significant benefits.
 
-**Activity-Based Approach**:
-```csharp
-// Single instrumentation point
-using var activity = ActivityTrace.Start("ExecuteQuery");
+---
 
-try
-{
-    var result = await ExecuteAsync();
+### 11.2 Alternative 2: OpenTelemetry Metrics API Directly
 
-    // Tags automatically picked up by listener for metrics
-    activity?.SetTag("result.format", resultFormat);
-    activity?.SetTag("statement.id", statementId);
-    activity?.SetTag("success", true);
-}
-catch (Exception ex)
-{
-    activity?.SetTag("error.type", ex.GetType().Name);
-}
-// Listener automatically extracts metrics from activity
-```
+**Description**: Use OpenTelemetry's Metrics API (`Meter` and `Counter`/`Histogram`) directly in driver code.
 
-### 11.3 Pros and Cons
+**Approach**:
+- Create `Meter` instance for the driver
+- Add `Counter.Add()` and `Histogram.Record()` calls at each operation
+- Export via OpenTelemetry SDK to Databricks backend
 
-**Activity-Based Approach Pros**:
-- ✅ **Less Code**: No duplicate instrumentation
-- ✅ **Single Source of Truth**: Activity is the only data model
-- ✅ **Better Correlation**: Activity context automatically propagates
-- ✅ **Standards-Based**: Activity is the .NET standard for instrumentation
-- ✅ **Easier Maintenance**: One system instead of two
-- ✅ **OpenTelemetry Ready**: Works with any OTEL exporter
+**Pros**:
+- Industry standard metrics API
+- Built-in aggregation and export
+- Native OTEL ecosystem support
 
-**Activity-Based Approach Cons**:
-- ⚠️ **Activity Dependency**: Coupled to Activity API (but it's standard .NET)
-- ⚠️ **Tag Limits**: Activities have tag size limits (but adequate for metrics)
-- ⚠️ **Learning Curve**: Team needs to understand Activity API (but simpler than two systems)
+**Cons**:
+- Still requires separate instrumentation alongside Activity
+- Introduces new dependency (OpenTelemetry.Api.Metrics)
+- Metrics and traces remain separate systems
+- Manual correlation still needed
+- Databricks export requires custom OTLP exporter
 
-**Separate Telemetry Approach Pros**:
-- ✅ **Independent**: Not coupled to Activity
-- ✅ **JDBC Parity**: Matches JDBC driver design
+**Why Not Chosen**: This still creates duplicate instrumentation points. The Activity-based approach allows us to derive metrics from existing Activity data, avoiding code duplication.
 
-**Separate Telemetry Approach Cons**:
-- ❌ **Duplicate Code**: Two instrumentation points
-- ❌ **Two Data Models**: Activity + TelemetryEvent
-- ❌ **Harder to Correlate**: Manual correlation needed
-- ❌ **More Maintenance**: Two systems to maintain
-- ❌ **More Complexity**: Understanding both systems
+---
+
+### 11.3 Alternative 3: Log-Based Metrics
+
+**Description**: Write structured logs at key operations and extract metrics from logs.
+
+**Approach**:
+- Use `ILogger` to log structured events
+- Include metric-relevant fields (latency, result format, etc.)
+- Backend log processor extracts metrics from log entries
+
+**Pros**:
+- Simple implementation (just logging)
+- No new infrastructure needed
+- Flexible data collection
+
+**Cons**:
+- High log volume (every operation logged)
+- Backend processing complexity
+- Delayed metrics (log ingestion lag)
+- No built-in aggregation
+- Difficult to correlate with distributed traces
+- Privacy concerns (logs may contain sensitive data)
+
+**Why Not Chosen**: Log-based metrics are inefficient and lack the structure needed for real-time aggregation. They also complicate privacy compliance.
+
+---
+
+### 11.4 Why Activity-Based Approach Was Chosen
+
+The Activity-based design was selected because it:
+
+**1. Leverages Existing Infrastructure**
+- Driver already has comprehensive Activity instrumentation
+- No new instrumentation points needed
+- Reuses Activity's built-in timing and correlation
+
+**2. Single Source of Truth**
+- Activity serves as the data model for both traces and metrics
+- Automatic correlation between distributed traces and telemetry metrics
+- Consistent data across all observability signals
+
+**3. Minimal Code Changes**
+- Only requires adding tags to existing activities
+- No duplicate instrumentation code
+- Lower maintenance burden
+
+**4. Standards-Based**
+- Activity is .NET's standard distributed tracing API
+- Works seamlessly with OpenTelemetry ecosystem
+- Compatible with existing APM tools
+
+**5. Performance Efficient**
+- ActivityListener has minimal overhead
+- No duplicate timing or data collection
+- Non-blocking by design
+
+**6. Simplicity**
+- Easier to understand (one system vs two)
+- Easier to test (single instrumentation path)
+- Easier to maintain (single codebase)
+
+**Trade-offs Accepted**:
+- Coupling to Activity API (acceptable - it's .NET standard)
+- Activity tag size limits (adequate for our metrics needs)
+- Requires understanding Activity API (but provides better developer experience overall)
 
 ---
 
@@ -906,12 +907,12 @@ This ensures compatibility with OTEL ecosystem.
 
 ## Summary
 
-This **Activity-based design** provides a cleaner, simpler approach to telemetry by:
+This **Activity-based telemetry design** provides an efficient approach to collecting driver metrics by:
 
-1. **Leveraging existing infrastructure** instead of building parallel systems
-2. **Single instrumentation point** via Activity
-3. **Standard .NET patterns** (Activity/ActivityListener)
-4. **Less code to maintain** (no duplicate instrumentation)
-5. **Better compatibility** with OpenTelemetry and APM tools
+1. **Leveraging existing infrastructure**: Extends the driver's comprehensive Activity instrumentation
+2. **Single instrumentation point**: Uses Activity as the unified data model for both tracing and metrics
+3. **Standard .NET patterns**: Built on Activity/ActivityListener APIs that are platform standards
+4. **Minimal code changes**: Only requires adding tags to existing activities
+5. **Seamless integration**: Works natively with OpenTelemetry and APM tools
 
-**Recommendation**: Use this Activity-based approach unless there's a compelling reason to maintain separate systems.
+This design enables the Databricks ADBC driver to collect valuable usage metrics while maintaining code simplicity, high performance, and full compatibility with the .NET observability ecosystem.
