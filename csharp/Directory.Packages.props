@@ -28,7 +28,7 @@
     <PackageVersion Include="Apache.Arrow.Adbc.Drivers.Interop.Snowflake" Version="[$(Version)]" />
     <PackageVersion Include="Apache.Arrow.Flight" Version="20.0.0" />
     <PackageVersion Include="ApacheThrift" Version="0.22.0" />
-    <PackageVersion Include="Azure.Identity" Version="1.14.2" />
+    <PackageVersion Include="Azure.Identity" Version="1.17.0" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.4" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="DuckDB.NET.Bindings.Full" Version="1.4.1" />
