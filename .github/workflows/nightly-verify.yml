@@ -98,7 +98,7 @@ jobs:
           shasum --algorithm 512 \
             apache-arrow-adbc-${VERSION}.tar.gz > apache-arrow-adbc-${VERSION}.tar.gz.sha512
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: source
           retention-days: 7
