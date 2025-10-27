@@ -2034,6 +2034,31 @@ AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
                                           struct ArrowSchema* schema,
                                           struct AdbcError* error);
 
+/// \brief Request the schema of the next statement execution
+///
+/// Allows the caller to request a specific schema based on prior
+/// information or user input. This may be used to ensure a
+/// consistent schema when executing queries against a database
+/// with row-based types (e.g., SQLite) or a database whose types
+/// are implemented with row-based parameters where Arrow prefers
+/// type-level parameters (e.g., NUMERIC for PostgreSQL). Callers
+/// may also use a transformation of the schema provided by
+/// AdbcStatementExecuteSchema to request specific Arrow type
+/// variants such as string views or list views.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// \param[in] statement The statement to execute.
+/// \param[in] schema The requested schema.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support this.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementRequestSchema(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcError* error);
+
 /// \brief Turn this statement into a prepared statement to be
 ///   executed multiple times.
 ///
