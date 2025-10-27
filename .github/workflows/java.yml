@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['11', '17', '21', '24']
+        java: ['11', '17', '21', '25']
     steps:
       - uses: actions/checkout@v5
         with:
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['17', '21']
+        java: ['21', '25']
     steps:
       - uses: actions/checkout@v5
         with:
@@ -198,7 +198,7 @@ jobs:
       - java-jni-artifacts
     strategy:
       matrix:
-        java: ['11', '24']
+        java: ['11', '25']
         include:
           - { os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
           - { os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
