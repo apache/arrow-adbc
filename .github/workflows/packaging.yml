@@ -727,22 +727,21 @@ jobs:
           pushd adbc
           env PYTHON=3.13 docker compose run python-wheel-manylinux-test
 
-      # - name: Test wheel 3.14
-      #   env:
-      #     ARCH: ${{ matrix.arch }}
-      #     PLATFORM: ${{ matrix.platform }}
-      #   run: |
-      #     pushd adbc
-      #     env PYTHON=3.14 docker compose run python-wheel-manylinux-test
-
-      # TODO(lidavidm): once we support 3.14, only test 3.14t
-      - name: Test wheel 3.13t
+      - name: Test wheel 3.14
         env:
           ARCH: ${{ matrix.arch }}
           PLATFORM: ${{ matrix.platform }}
         run: |
           pushd adbc
-          env PYTHON=3.13t docker compose run python-wheel-manylinux-freethreaded-test
+          env PYTHON=3.14 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.14t
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.14t docker compose run python-wheel-manylinux-freethreaded-test
 
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
@@ -760,7 +759,7 @@ jobs:
             arch: arm64v8
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
-      PYTHON: "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13"
+      PYTHON: "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3.14"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
@@ -823,7 +822,7 @@ jobs:
           sudo ci/scripts/install_python.sh macos 3.11
           sudo ci/scripts/install_python.sh macos 3.12
           sudo ci/scripts/install_python.sh macos 3.13
-          # sudo ci/scripts/install_python.sh macos 3.14
+          sudo ci/scripts/install_python.sh macos 3.14
           popd
 
       - name: Downgrade XCode
@@ -896,15 +895,15 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
-      # - name: Test wheel 3.14
-      #   run: |
-      #     pushd adbc
+      - name: Test wheel 3.14
+        run: |
+          pushd adbc
 
-      #     /Library/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -m venv test-env-314
-      #     source test-env-314/bin/activate
-      #     export PYTHON_VERSION=3.14
-      #     ./ci/scripts/python_wheel_unix_test.sh $(pwd)
-      #     deactivate
+          /Library/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -m venv test-env-314
+          source test-env-314/bin/activate
+          export PYTHON_VERSION=3.14
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
 
       - name: Assemble logs
         if: failure()
@@ -933,7 +932,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.10", "3.11", "3.12", "3.13"]
+        python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg
