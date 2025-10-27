@@ -105,8 +105,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             if (activity == null) return;
 
-            activity.AddEvent("connection.properties.start");
-
             foreach (var kvp in Properties)
             {
                 string key = kvp.Key;
@@ -123,8 +121,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
                 activity.SetTag(key, logValue);
             }
-
-            activity.AddEvent("connection.properties.end");
         }
 
         public override IEnumerable<KeyValuePair<string, object?>>? GetActivitySourceTags(IReadOnlyDictionary<string, string> properties)
@@ -741,9 +737,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             };
 
             // Log OpenSession request details
-            Activity.Current?.AddEvent("connection.open_session_request.creating");
             Activity.Current?.SetTag("connection.client_protocol", req.Client_protocol.ToString());
-            Activity.Current?.SetTag("connection.can_use_multiple_catalogs", _enableMultipleCatalogSupport);
 
             // Set default namespace if available
             if (_defaultNamespace != null)
@@ -769,14 +763,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             }
 
             Activity.Current?.SetTag("connection.configuration_count", req.Configuration.Count);
-            Activity.Current?.AddEvent("connection.open_session_request.created");
 
             return req;
         }
 
         protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
         {
-            activity?.AddEvent("connection.open_session_response.received");
 
             await base.HandleOpenSessionResponse(session, activity);
 
@@ -843,12 +835,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     await SetSchema(_defaultNamespace.SchemaName);
                 }
 
-                activity?.AddEvent("connection.open_session_response.completed");
             }
             else
             {
                 activity?.SetTag("error.type", "NullSessionResponse");
-                activity?.AddEvent("connection.open_session_response.null");
             }
         }
 
