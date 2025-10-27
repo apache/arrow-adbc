@@ -1134,6 +1134,10 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*StatementSetOptionInt)(struct AdbcStatement*, const char*, int64_t,
                                           struct AdbcError*);
 
+  // ADBC 1.2
+  AdbcStatusCode (*StatementRequestSchema)(struct AdbcStatement*, struct ArrowSchema*,
+                                           struct AdbcError*);
+
   /// @}
 };
 
@@ -2045,6 +2049,14 @@ AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
 /// may also use a transformation of the schema provided by
 /// AdbcStatementExecuteSchema to request specific Arrow type
 /// variants such as string views or list views.
+///
+/// The provided schema is a request and not a guarantee (i.e.,
+/// callers must use the schema provided by the output stream to
+/// interpret the result).
+///
+/// Calling AdbcStatementRequestSchema() must not affect the result
+/// of AdbcStatementExecuteSchema (which always infers its result
+/// from the input query).
 ///
 /// \since ADBC API revision 1.2.0
 ///
