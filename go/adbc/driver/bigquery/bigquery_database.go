@@ -39,6 +39,7 @@ type databaseImpl struct {
 	accessTokenEndpoint   string
 	accessTokenServerName string
 	location              string
+	quotaProject          string
 
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
@@ -73,6 +74,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		location:                   d.location,
 		resultRecordBufferSize:     defaultQueryResultBufferSize,
 		prefetchConcurrency:        defaultQueryPrefetchConcurrency,
+		quotaProject:               d.quotaProject,
 	}
 
 	err := conn.newClient(ctx)
@@ -104,6 +106,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.accessToken, nil
 	case OptionStringAuthRefreshToken:
 		return d.refreshToken, nil
+	case OptionStringAuthQuotaProject:
+		return d.quotaProject, nil
 	case OptionStringLocation:
 		return d.location, nil
 	case OptionStringProjectID:
@@ -177,6 +181,8 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.accessTokenEndpoint = value
 	case OptionStringAuthAccessTokenServerName:
 		d.accessTokenServerName = value
+	case OptionStringAuthQuotaProject:
+		d.quotaProject = value
 	case OptionStringLocation:
 		d.location = value
 	case OptionStringImpersonateTargetPrincipal:

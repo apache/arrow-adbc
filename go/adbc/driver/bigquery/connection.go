@@ -54,6 +54,7 @@ type connectionImpl struct {
 	refreshToken          string
 	accessTokenEndpoint   string
 	accessTokenServerName string
+	quotaProject          string
 
 	// the default location to use for all BigQuery requests
 	location string
@@ -483,6 +484,8 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.clientSecret, nil
 	case OptionStringAuthRefreshToken:
 		return c.refreshToken, nil
+	case OptionStringAuthQuotaProject:
+		return c.quotaProject, nil
 	case OptionStringProjectID:
 		return c.catalog, nil
 	case OptionStringDatasetID:
@@ -517,6 +520,8 @@ func (c *connectionImpl) SetOption(key string, value string) error {
 		c.clientSecret = value
 	case OptionStringAuthRefreshToken:
 		c.refreshToken = value
+	case OptionStringAuthQuotaProject:
+		c.quotaProject = value
 	case OptionStringProjectID:
 		c.catalog = value
 	case OptionStringDatasetID:
@@ -631,6 +636,11 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			Code: adbc.StatusInvalidArgument,
 			Msg:  fmt.Sprintf("Unknown auth type: %s", c.authType),
 		}
+	}
+
+	// Set quota project id if configured
+	if c.quotaProject != "" {
+		authOptions = append(authOptions, option.WithQuotaProject(c.quotaProject))
 	}
 
 	// Then, apply impersonation if configured (as a credential transformation layer)
