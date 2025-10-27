@@ -719,52 +719,55 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            // Log driver information at the beginning of the connection
-            Activity.Current?.AddEvent("connection.driver.info", [
-                new("driver.name", "Apache Arrow ADBC Databricks Driver"),
-                new("driver.version", s_assemblyVersion),
-                new("driver.assembly", s_assemblyName)
-            ]);
-
-            // Log connection properties (sanitize sensitive values)
-            LogConnectionProperties(Activity.Current);
-
-            var req = new TOpenSessionReq
+            return this.TraceActivity(activity =>
             {
-                Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
-                Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
-                CanUseMultipleCatalogs = _enableMultipleCatalogSupport,
-            };
+                // Log driver information at the beginning of the connection
+                activity?.AddEvent("connection.driver.info", [
+                    new("driver.name", "Apache Arrow ADBC Databricks Driver"),
+                    new("driver.version", s_assemblyVersion),
+                    new("driver.assembly", s_assemblyName)
+                ]);
 
-            // Log OpenSession request details
-            Activity.Current?.SetTag("connection.client_protocol", req.Client_protocol.ToString());
+                // Log connection properties (sanitize sensitive values)
+                LogConnectionProperties(activity);
 
-            // Set default namespace if available
-            if (_defaultNamespace != null)
-            {
-                req.InitialNamespace = _defaultNamespace;
-                Activity.Current?.SetTag("connection.initial_namespace.catalog", _defaultNamespace.CatalogName ?? "(none)");
-                Activity.Current?.SetTag("connection.initial_namespace.schema", _defaultNamespace.SchemaName ?? "(none)");
-            }
-            req.Configuration = new Dictionary<string, string>();
-            // merge timestampConfig with serverSideProperties
-            foreach (var kvp in timestampConfig)
-            {
-                req.Configuration[kvp.Key] = kvp.Value;
-            }
-            // If not using queries to set server-side properties, include them in Configuration
-            if (!_applySSPWithQueries)
-            {
-                var serverSideProperties = GetServerSideProperties();
-                foreach (var property in serverSideProperties)
+                var req = new TOpenSessionReq
                 {
-                    req.Configuration[property.Key] = property.Value;
+                    Client_protocol = TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
+                    Client_protocol_i64 = (long)TProtocolVersion.SPARK_CLI_SERVICE_PROTOCOL_V7,
+                    CanUseMultipleCatalogs = _enableMultipleCatalogSupport,
+                };
+
+                // Log OpenSession request details
+                activity?.SetTag("connection.client_protocol", req.Client_protocol.ToString());
+
+                // Set default namespace if available
+                if (_defaultNamespace != null)
+                {
+                    req.InitialNamespace = _defaultNamespace;
+                    activity?.SetTag("connection.initial_namespace.catalog", _defaultNamespace.CatalogName ?? "(none)");
+                    activity?.SetTag("connection.initial_namespace.schema", _defaultNamespace.SchemaName ?? "(none)");
                 }
-            }
+                req.Configuration = new Dictionary<string, string>();
+                // merge timestampConfig with serverSideProperties
+                foreach (var kvp in timestampConfig)
+                {
+                    req.Configuration[kvp.Key] = kvp.Value;
+                }
+                // If not using queries to set server-side properties, include them in Configuration
+                if (!_applySSPWithQueries)
+                {
+                    var serverSideProperties = GetServerSideProperties();
+                    foreach (var property in serverSideProperties)
+                    {
+                        req.Configuration[property.Key] = property.Value;
+                    }
+                }
 
-            Activity.Current?.SetTag("connection.configuration_count", req.Configuration.Count);
+                activity?.SetTag("connection.configuration_count", req.Configuration.Count);
 
-            return req;
+                return req;
+            });
         }
 
         protected override async Task HandleOpenSessionResponse(TOpenSessionResp? session, Activity? activity = default)
