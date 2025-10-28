@@ -62,6 +62,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private Task? _stragglerMonitoringTask;
         private CancellationTokenSource? _stragglerMonitoringCts;
         private volatile bool _hasTriggeredSequentialDownloadFallback;
+        private readonly SemaphoreSlim _sequentialSemaphore = new SemaphoreSlim(1, 1);
+        private volatile bool _isSequentialMode;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloader"/> class.
@@ -224,6 +226,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     }
                     _perFileDownloadCancellationTokens.Clear();
                 }
+
+                // Cleanup sequential semaphore
+                _sequentialSemaphore?.Dispose();
             }
         }
 
@@ -351,11 +356,23 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         // Acquire a download slot
                         await _downloadSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
+                        // Acquire sequential slot if in sequential mode
+                        bool acquiredSequential = false;
+                        if (_isSequentialMode)
+                        {
+                            await _sequentialSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                            acquiredSequential = true;
+                        }
+
                         // Start the download task
                         Task downloadTask = DownloadFileAsync(downloadResult, cancellationToken)
                             .ContinueWith(t =>
                             {
-                                // Release the download slot
+                                // Release in reverse order
+                                if (acquiredSequential)
+                                {
+                                    _sequentialSemaphore.Release();
+                                }
                                 _downloadSemaphore.Release();
 
                                 // Remove the task from the dictionary
@@ -764,13 +781,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         // Check for fallback condition
                         if (_stragglerDetector.ShouldFallbackToSequentialDownloads && !_hasTriggeredSequentialDownloadFallback)
                         {
+                            _isSequentialMode = true;
                             _hasTriggeredSequentialDownloadFallback = true;
                             activity?.AddEvent("cloudfetch.sequential_fallback_triggered", [
                                 new("total_stragglers_in_query", _stragglerDetector.GetTotalStragglersDetectedInQuery()),
                                 new("new_parallelism", 1)
                             ]);
-                            // Note: Actual fallback would require modifying _downloadSemaphore dynamically
-                            // For now, we just log the event
                         }
 
                         // Get snapshot of active downloads
