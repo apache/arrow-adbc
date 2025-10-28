@@ -26,7 +26,7 @@
     <PackageVersion Include="Apache.Arrow.Adbc.Drivers.BigQuery" Version="[$(Version)]" />
     <PackageVersion Include="Apache.Arrow.Adbc.Drivers.Interop.FlightSql" Version="[$(Version)]" />
     <PackageVersion Include="Apache.Arrow.Adbc.Drivers.Interop.Snowflake" Version="[$(Version)]" />
-    <PackageVersion Include="Apache.Arrow.Flight" Version="20.0.0" />
+    <PackageVersion Include="Apache.Arrow.Flight" Version="22.1.0" />
     <PackageVersion Include="ApacheThrift" Version="0.22.0" />
     <PackageVersion Include="Azure.Identity" Version="1.14.2" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.4" />
