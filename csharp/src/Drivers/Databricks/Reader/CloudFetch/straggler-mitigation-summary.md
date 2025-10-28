@@ -243,6 +243,20 @@ Wrapped methods using `this.TraceActivityAsync()`:
 - Fallback is opt-in via separate flag
 - Monitoring errors logged but don't stop downloads
 
+### Edge Case Protection: Last Retry Cannot Be Cancelled
+
+**Problem:** If all downloads are legitimately slow due to network congestion or global cloud storage issues, straggler detection might cancel downloads that would eventually succeed. Cancelling the last retry attempt would cause unnecessary failures.
+
+**Solution:** The condition `retry < _maxRetries - 1` ensures the last retry attempt cannot be cancelled and will run to completion.
+
+**Example:** With `maxRetries = 3` (attempts 0, 1, 2):
+- Straggler cancellation can occur on attempts 0 and 1
+- Last attempt (2) is protected and will complete even if slow
+- Prevents failures when all downloads are legitimately slow
+
+**Alternative Considered:** "Hedged request" pattern (run cancelled + new retry in parallel, take first success)
+- **Rejected:** Increased complexity, double resource usage, marginal benefit
+
 ---
 
 ## Key Design Decisions

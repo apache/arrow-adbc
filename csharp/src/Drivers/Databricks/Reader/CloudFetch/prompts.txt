@@ -67,3 +67,7 @@ Why are we just using a single retry upon straggle identification. Instead we sh
 Prompt 8:
 ---------
 Now add testing details to both the docs as well. Follow the structure from the current repo. Also remember to take care of the comments on this PR https://github.com/apache/arrow-adbc/pull/3624 and follow the right practises. I see there are two comments saying: "we don't need this level of detail in a design doc, in stead we should focus more on interface/contract between different class objects". "Focus on adding more class diagram and sequence diagram, etc, instead of putting big block of code into the design doc." Are we following these in our design docs? If not modify to follow this pattern
+
+Prompt 9:
+---------
+I got a comment on the design doc suggesting make sure that we handle a corner case, that if all the download tries are just taking long, it will cause this chunk download failures, maybe we need some protections that. for the last retry, don't do straggler cancel or we keep one download already running when we do straggler retries, and which ever success earlier to take result from that. Think properly and add it to the docs in concise manner

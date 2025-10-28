@@ -261,7 +261,43 @@ sequenceDiagram
     DT->>DT: Remove from _activeDownloadMetrics
 ```
 
-### 3.3 Straggler Detection Flow
+### 3.3 Edge Case: Last Retry Protection
+
+**Problem:**
+If all downloads are legitimately slow (e.g., network congestion, global cloud storage slowdown), straggler detection might cancel downloads that would eventually succeed. Cancelling the last retry attempt would cause unnecessary download failures.
+
+**Solution:**
+The last retry attempt is protected from straggler cancellation via the condition `retry < _maxRetries - 1` in the exception handler:
+
+```csharp
+catch (OperationCanceledException) when (
+    perFileCancellationTokenSource?.IsCancellationRequested == true
+    && !globalCancellationToken.IsCancellationRequested
+    && retry < _maxRetries - 1)  // ← Only cancel if NOT last attempt
+{
+    // Straggler cancelled - this counts as one retry
+    activity?.AddEvent("cloudfetch.straggler_cancelled", [...]);
+    // ... retry logic ...
+}
+```
+
+**Behavior:**
+- If `maxRetries = 3` (attempts: 0, 1, 2)
+- Straggler cancellation can trigger on attempts 0 and 1
+- Last attempt (2) **cannot be cancelled** - will run to completion
+- Prevents download failures when all downloads are legitimately slow
+
+**Alternative Considered - "Hedged Request" Pattern:**
+Run cancelled download + new retry in parallel, take whichever succeeds first.
+
+**Rejected because:**
+- Increased complexity in coordination logic
+- Double resource usage (network, memory)
+- Double memory allocation for same file
+- Marginal benefit over last-retry protection
+- Added risk of race conditions in result handling
+
+### 3.4 Straggler Detection Flow
 
 ```mermaid
 flowchart TD
