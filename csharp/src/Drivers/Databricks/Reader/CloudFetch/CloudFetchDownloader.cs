@@ -364,16 +364,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                             acquiredSequential = true;
                         }
 
-                        // Start the download task
-                        Task downloadTask = DownloadFileAsync(downloadResult, cancellationToken)
-                            .ContinueWith(t =>
-                            {
-                                // Release in reverse order
-                                if (acquiredSequential)
+                        Task downloadTask;
+                        try
+                        {
+                            // Start the download task
+                            downloadTask = DownloadFileAsync(downloadResult, cancellationToken)
+                                .ContinueWith(t =>
                                 {
-                                    _sequentialSemaphore.Release();
-                                }
-                                _downloadSemaphore.Release();
+                                    // Release in reverse order
+                                    if (acquiredSequential)
+                                    {
+                                        _sequentialSemaphore.Release();
+                                    }
+                                    _downloadSemaphore.Release();
 
                                 // Remove the task from the dictionary
                                 downloadTasks.TryRemove(t, out _);
@@ -406,8 +409,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                                 }
                             }, cancellationToken);
 
-                        // Add the task to the dictionary
-                        downloadTasks[downloadTask] = downloadResult;
+                            // Add the task to the dictionary
+                            downloadTasks[downloadTask] = downloadResult;
+                        }
+                        catch
+                        {
+                            // If task creation fails, release semaphores to prevent leak
+                            if (acquiredSequential)
+                            {
+                                _sequentialSemaphore.Release();
+                            }
+                            _downloadSemaphore.Release();
+                            throw;
+                        }
 
                         // Add the result to the result queue add the result here to assure the download sequence.
                         _resultQueue.Add(downloadResult, cancellationToken);
@@ -496,6 +510,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     _perFileDownloadCancellationTokens[offset] = perFileCancellationTokenSource;
                 }
 
+            try
+            {
                 // Retry logic for downloading files
                 for (int retry = 0; retry < _maxRetries; retry++)
                 {
@@ -578,7 +594,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     catch (OperationCanceledException) when (
                         perFileCancellationTokenSource?.IsCancellationRequested == true
                         && !cancellationToken.IsCancellationRequested
-                        && retry < _maxRetries - 1)  // Edge case protection: don't cancel last retry
+                        && retry < _maxRetries - 1  // Edge case protection: don't cancel last retry
+                        && fileData == null)  // Race condition check: only retry if download didn't complete
                     {
                         // Straggler cancelled - this counts as one retry
                         activity?.AddEvent("cloudfetch.straggler_cancelled", [
@@ -613,6 +630,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                                 activity?.AddEvent("cloudfetch.url_refreshed_for_straggler_retry", [
                                     new("offset", refreshedLink.StartRowOffset),
                                     new("sanitized_url", sanitizedUrl)
+                                ]);
+                            }
+                            else
+                            {
+                                // URL refresh failed, log warning and continue with existing URL
+                                activity?.AddEvent("cloudfetch.url_refresh_failed_for_straggler_retry", [
+                                    new("offset", downloadResult.Link.StartRowOffset),
+                                    new("sanitized_url", sanitizedUrl),
+                                    new("warning", "Failed to refresh expired URL, continuing with existing URL")
                                 ]);
                             }
                         }
@@ -704,13 +730,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 // Set the download as completed with the original size
                 downloadResult.SetCompleted(dataStream, size);
 
-                // Mark download as completed and cleanup
+                // Mark download as completed
                 if (downloadMetrics != null)
                 {
                     downloadMetrics.MarkDownloadCompleted();
                 }
-
-                // Cleanup per-file cancellation token
+            }
+            finally
+            {
+                // Cleanup per-file cancellation token (always runs, even on exception)
                 long fileOffset = downloadResult.Link.StartRowOffset;
                 if (_perFileDownloadCancellationTokens != null)
                 {
@@ -721,14 +749,23 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
 
                 // Remove from active metrics after a short delay to allow final detection cycle
+                // Use fire-and-forget with exception handling to prevent unobserved task exceptions
                 if (_activeDownloadMetrics != null)
                 {
                     _ = Task.Run(async () =>
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(3));
-                        _activeDownloadMetrics.TryRemove(fileOffset, out _);
+                        try
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(3), CancellationToken.None);
+                            _activeDownloadMetrics.TryRemove(fileOffset, out _);
+                        }
+                        catch
+                        {
+                            // Ignore exceptions in cleanup task
+                        }
                     });
                 }
+            }
             }, activityName: "DownloadFile");
         }
 
