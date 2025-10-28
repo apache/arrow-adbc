@@ -16,6 +16,7 @@
 */
 
 using System.Collections.Generic;
+using System.Reflection;
 using Apache.Arrow.Adbc.Drivers.BigQuery;
 using Xunit;
 using Xunit.Abstractions;
@@ -52,7 +53,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
                 statement.SetOption(BigQueryParameters.AllowLargeResults, "true");
 
                 // BigQuery is currently on ADBC 1.0, so it doesn't have the GetOption interface. Therefore, use reflection to validate the value is set correctly.
-                IReadOnlyDictionary<string, string>? options = statement.GetType().GetProperty("Options")!.GetValue(statement) as IReadOnlyDictionary<string, string>;
+                IReadOnlyDictionary<string, string>? options = statement.GetType().GetProperty("Options", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(statement) as IReadOnlyDictionary<string, string>;
                 Assert.True(options != null);
                 Assert.True(options[BigQueryParameters.AllowLargeResults] == "true");
             }
