@@ -135,6 +135,42 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const string CloudFetchPrefetchEnabled = "adbc.databricks.cloudfetch.prefetch_enabled";
 
         /// <summary>
+        /// Whether to enable straggler download detection and mitigation for CloudFetch operations.
+        /// Default value is false if not specified.
+        /// </summary>
+        public const string CloudFetchStragglerMitigationEnabled = "adbc.databricks.cloudfetch.straggler_mitigation_enabled";
+
+        /// <summary>
+        /// Multiplier used to determine straggler threshold based on median throughput.
+        /// Default value is 1.5 if not specified.
+        /// </summary>
+        public const string CloudFetchStragglerMultiplier = "adbc.databricks.cloudfetch.straggler_multiplier";
+
+        /// <summary>
+        /// Fraction of downloads that must complete before straggler detection begins.
+        /// Valid range: 0.0 to 1.0. Default value is 0.6 (60%) if not specified.
+        /// </summary>
+        public const string CloudFetchStragglerQuantile = "adbc.databricks.cloudfetch.straggler_quantile";
+
+        /// <summary>
+        /// Extra buffer time in seconds added to the straggler threshold calculation.
+        /// Default value is 5 seconds if not specified.
+        /// </summary>
+        public const string CloudFetchStragglerPaddingSeconds = "adbc.databricks.cloudfetch.straggler_padding_seconds";
+
+        /// <summary>
+        /// Maximum number of stragglers detected per query before triggering sequential download fallback.
+        /// Default value is 10 if not specified.
+        /// </summary>
+        public const string CloudFetchMaxStragglersPerQuery = "adbc.databricks.cloudfetch.max_stragglers_per_query";
+
+        /// <summary>
+        /// Whether to automatically fall back to sequential downloads when max stragglers threshold is exceeded.
+        /// Default value is false if not specified.
+        /// </summary>
+        public const string CloudFetchSynchronousFallbackEnabled = "adbc.databricks.cloudfetch.synchronous_fallback_enabled";
+
+        /// <summary>
         /// Maximum bytes per fetch request when retrieving query results from servers.
         /// The value can be specified with unit suffixes: B (bytes), KB (kilobytes), MB (megabytes), GB (gigabytes).
         /// If no unit is specified, the value is treated as bytes.
