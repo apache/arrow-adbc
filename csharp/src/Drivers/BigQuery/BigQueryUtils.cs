@@ -42,33 +42,5 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         internal static string GetAssemblyName(Type type) => type.Assembly.GetName().Name!;
 
         internal static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
-
-        public static bool ContainsException<T>(Exception exception, out T? containedException) where T : Exception
-        {
-            Exception? e = exception;
-            while (e != null)
-            {
-                if (e is T ce)
-                {
-                    containedException = ce;
-                    return true;
-                }
-                else if (e is AggregateException aggregateException)
-                {
-                    foreach (Exception? ex in aggregateException.InnerExceptions)
-                    {
-                        if (ContainsException(ex, out T? inner))
-                        {
-                            containedException = inner;
-                            return true;
-                        }
-                    }
-                }
-                e = e.InnerException;
-            }
-
-            containedException = null;
-            return false;
-        }
     }
 }
