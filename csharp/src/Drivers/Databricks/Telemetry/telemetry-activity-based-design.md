@@ -31,8 +31,10 @@ This document outlines an **Activity-based telemetry design** that leverages the
 7. [Privacy & Compliance](#7-privacy--compliance)
 8. [Error Handling](#8-error-handling)
 9. [Testing Strategy](#9-testing-strategy)
-10. [Migration & Rollout](#10-migration--rollout)
-11. [Alternatives Considered](#11-alternatives-considered)
+10. [Alternatives Considered](#10-alternatives-considered)
+11. [Implementation Checklist](#11-implementation-checklist)
+12. [Open Questions](#12-open-questions)
+13. [References](#13-references)
 
 ---
 
@@ -236,16 +238,29 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 
 ```mermaid
 flowchart TD
-    A[Activity Stopped] --> B{Activity.OperationName}
-    B -->|Connection.Open| C[Emit Connection Event]
-    B -->|Statement.Execute| D[Aggregate by statement_id]
-    B -->|CloudFetch.Download| D
-    B -->|Statement.Complete| E[Emit Statement Event]
+    A[Activity Stopped] --> B{Determine EventType}
+    B -->|Connection.Open*| C[Map to ConnectionOpen]
+    B -->|Statement.*| D[Map to StatementExecution]
+    B -->|error.type tag present| E[Map to Error]
 
-    D --> F{Batch Size Reached?}
-    F -->|Yes| G[Flush to Exporter]
-    F -->|No| H[Continue Buffering]
+    C --> F[Emit Connection Event Immediately]
+    D --> G[Aggregate by statement_id]
+    E --> H[Emit Error Event Immediately]
+
+    G --> I{Statement Complete?}
+    I -->|Yes| J[Emit Aggregated Statement Event]
+    I -->|No| K[Continue Buffering]
+
+    J --> L{Batch Size Reached?}
+    L -->|Yes| M[Flush Batch to Exporter]
+    L -->|No| K
 ```
+
+**Key Behaviors:**
+- **Connection events**: Emitted immediately (no aggregation needed)
+- **Statement events**: Aggregated by `statement_id` until statement completes
+- **Error events**: Emitted immediately
+- **Child activities** (CloudFetch.Download, etc.): Metrics rolled up to parent statement activity
 
 #### Contracts
 
@@ -305,13 +320,341 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 
 ## 4. Data Collection
 
-### 4.1 Activity Tags for Metrics
+### 4.1 Tag Definition System
 
-**Standard Activity Tags** (already exist):
-- `operation.name`: e.g., "Connection.Open", "Statement.Execute"
-- `db.operation`: SQL operation type
-- `db.statement`: Statement ID (not query text)
-- `server.address`: Databricks workspace host
+To ensure maintainability and explicit control over what data is collected and exported, all Activity tags are defined in a centralized tag definition system.
+
+#### Tag Definition Structure
+
+**Location**: `Telemetry/TagDefinitions/`
+
+```
+Telemetry/
+└── TagDefinitions/
+    ├── TelemetryTag.cs              # Tag metadata and annotations
+    ├── TelemetryEvent.cs            # Event definitions with associated tags
+    ├── ConnectionOpenEvent.cs       # Connection event tag definitions
+    ├── StatementExecutionEvent.cs   # Statement event tag definitions
+    └── ErrorEvent.cs                # Error event tag definitions
+```
+
+#### TelemetryTag Annotation
+
+**File**: `TagDefinitions/TelemetryTag.cs`
+
+```csharp
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
+{
+    /// <summary>
+    /// Defines export scope for telemetry tags.
+    /// </summary>
+    [Flags]
+    internal enum TagExportScope
+    {
+        None = 0,
+        ExportLocal = 1,      // Export to local diagnostics (file listener, etc.)
+        ExportDatabricks = 2, // Export to Databricks telemetry service
+        ExportAll = ExportLocal | ExportDatabricks
+    }
+
+    /// <summary>
+    /// Attribute to annotate Activity tag definitions.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+    internal sealed class TelemetryTagAttribute : Attribute
+    {
+        public string TagName { get; }
+        public TagExportScope ExportScope { get; set; }
+        public string? Description { get; set; }
+        public bool Required { get; set; }
+
+        public TelemetryTagAttribute(string tagName)
+        {
+            TagName = tagName;
+            ExportScope = TagExportScope.ExportAll;
+        }
+    }
+}
+```
+
+#### Event Tag Definitions
+
+**File**: `TagDefinitions/ConnectionOpenEvent.cs`
+
+```csharp
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
+{
+    /// <summary>
+    /// Tag definitions for Connection.Open events.
+    /// </summary>
+    internal static class ConnectionOpenEvent
+    {
+        public const string EventName = "Connection.Open";
+
+        // Standard tags
+        [TelemetryTag("workspace.id",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Databricks workspace ID",
+            Required = true)]
+        public const string WorkspaceId = "workspace.id";
+
+        [TelemetryTag("session.id",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Connection session ID",
+            Required = true)]
+        public const string SessionId = "session.id";
+
+        // Driver configuration tags
+        [TelemetryTag("driver.version",
+            ExportScope = TagExportScope.ExportAll,
+            Description = "ADBC driver version")]
+        public const string DriverVersion = "driver.version";
+
+        [TelemetryTag("driver.os",
+            ExportScope = TagExportScope.ExportAll,
+            Description = "Operating system")]
+        public const string DriverOS = "driver.os";
+
+        [TelemetryTag("driver.runtime",
+            ExportScope = TagExportScope.ExportAll,
+            Description = ".NET runtime version")]
+        public const string DriverRuntime = "driver.runtime";
+
+        // Feature flags
+        [TelemetryTag("feature.cloudfetch",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "CloudFetch enabled")]
+        public const string FeatureCloudFetch = "feature.cloudfetch";
+
+        [TelemetryTag("feature.lz4",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "LZ4 compression enabled")]
+        public const string FeatureLz4 = "feature.lz4";
+
+        // Sensitive tags - NOT exported to Databricks
+        [TelemetryTag("server.address",
+            ExportScope = TagExportScope.ExportLocal,
+            Description = "Workspace host (local diagnostics only)")]
+        public const string ServerAddress = "server.address";
+
+        /// <summary>
+        /// Get all tags that should be exported to Databricks.
+        /// </summary>
+        public static IReadOnlySet<string> GetDatabricksExportTags()
+        {
+            return new HashSet<string>
+            {
+                WorkspaceId,
+                SessionId,
+                DriverVersion,
+                DriverOS,
+                DriverRuntime,
+                FeatureCloudFetch,
+                FeatureLz4
+            };
+        }
+    }
+}
+```
+
+**File**: `TagDefinitions/StatementExecutionEvent.cs`
+
+```csharp
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
+{
+    /// <summary>
+    /// Tag definitions for Statement execution events.
+    /// </summary>
+    internal static class StatementExecutionEvent
+    {
+        public const string EventName = "Statement.Execute";
+
+        // Statement identification
+        [TelemetryTag("statement.id",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Statement execution ID",
+            Required = true)]
+        public const string StatementId = "statement.id";
+
+        [TelemetryTag("session.id",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Connection session ID",
+            Required = true)]
+        public const string SessionId = "session.id";
+
+        // Result format tags
+        [TelemetryTag("result.format",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Result format: inline, cloudfetch")]
+        public const string ResultFormat = "result.format";
+
+        [TelemetryTag("result.chunk_count",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Number of CloudFetch chunks")]
+        public const string ResultChunkCount = "result.chunk_count";
+
+        [TelemetryTag("result.bytes_downloaded",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Total bytes downloaded")]
+        public const string ResultBytesDownloaded = "result.bytes_downloaded";
+
+        [TelemetryTag("result.compression_enabled",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Compression enabled for results")]
+        public const string ResultCompressionEnabled = "result.compression_enabled";
+
+        // Polling metrics
+        [TelemetryTag("poll.count",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Number of status poll requests")]
+        public const string PollCount = "poll.count";
+
+        [TelemetryTag("poll.latency_ms",
+            ExportScope = TagExportScope.ExportDatabricks,
+            Description = "Total polling latency")]
+        public const string PollLatencyMs = "poll.latency_ms";
+
+        // Sensitive tags - NOT exported to Databricks
+        [TelemetryTag("db.statement",
+            ExportScope = TagExportScope.ExportLocal,
+            Description = "SQL query text (local diagnostics only)")]
+        public const string DbStatement = "db.statement";
+
+        /// <summary>
+        /// Get all tags that should be exported to Databricks.
+        /// </summary>
+        public static IReadOnlySet<string> GetDatabricksExportTags()
+        {
+            return new HashSet<string>
+            {
+                StatementId,
+                SessionId,
+                ResultFormat,
+                ResultChunkCount,
+                ResultBytesDownloaded,
+                ResultCompressionEnabled,
+                PollCount,
+                PollLatencyMs
+            };
+        }
+    }
+}
+```
+
+#### Tag Registry
+
+**File**: `TagDefinitions/TelemetryTagRegistry.cs`
+
+```csharp
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
+{
+    /// <summary>
+    /// Central registry for all telemetry tags and events.
+    /// </summary>
+    internal static class TelemetryTagRegistry
+    {
+        /// <summary>
+        /// Get all tags allowed for Databricks export by event type.
+        /// </summary>
+        public static IReadOnlySet<string> GetDatabricksExportTags(TelemetryEventType eventType)
+        {
+            return eventType switch
+            {
+                TelemetryEventType.ConnectionOpen => ConnectionOpenEvent.GetDatabricksExportTags(),
+                TelemetryEventType.StatementExecution => StatementExecutionEvent.GetDatabricksExportTags(),
+                TelemetryEventType.Error => ErrorEvent.GetDatabricksExportTags(),
+                _ => new HashSet<string>()
+            };
+        }
+
+        /// <summary>
+        /// Check if a tag should be exported to Databricks for a given event type.
+        /// </summary>
+        public static bool ShouldExportToDatabricks(TelemetryEventType eventType, string tagName)
+        {
+            var allowedTags = GetDatabricksExportTags(eventType);
+            return allowedTags.Contains(tagName);
+        }
+    }
+}
+```
+
+#### Usage in Activity Tag Filtering
+
+The `MetricsAggregator` uses the tag registry for filtering:
+
+```csharp
+private TelemetryMetric ProcessActivity(Activity activity)
+{
+    var eventType = DetermineEventType(activity);
+    var metric = new TelemetryMetric
+    {
+        EventType = eventType,
+        Timestamp = activity.StartTimeUtc
+    };
+
+    // Filter tags using the registry
+    foreach (var tag in activity.Tags)
+    {
+        if (TelemetryTagRegistry.ShouldExportToDatabricks(eventType, tag.Key))
+        {
+            // Export this tag
+            SetMetricProperty(metric, tag.Key, tag.Value);
+        }
+        // Tags not in registry are silently dropped
+    }
+
+    return metric;
+}
+```
+
+#### Benefits
+
+1. **Centralized Control**: All tags defined in one place
+2. **Explicit Export Scope**: Clear annotation of what goes where
+3. **Type Safety**: Constants prevent typos
+4. **Self-Documenting**: Descriptions embedded in code
+5. **Easy Auditing**: Simple to review what data is exported
+6. **Future-Proof**: New tags just require adding to definition files
+
+### 4.2 Activity Tags by Event Type
+
+#### Activity Operation Name to MetricType Mapping
+
+The `ActivityListener` maps Activity operation names to Databricks `TelemetryEventType` enum:
+
+| Activity Operation Name | TelemetryEventType | Notes |
+|------------------------|-------------------|-------|
+| `Connection.Open` | `ConnectionOpen` | Emitted immediately when connection opens |
+| `Connection.OpenAsync` | `ConnectionOpen` | Same as above |
+| `Statement.Execute` | `StatementExecution` | Main statement execution activity |
+| `Statement.ExecuteQuery` | `StatementExecution` | Query execution variant |
+| `Statement.ExecuteUpdate` | `StatementExecution` | Update execution variant |
+| `CloudFetch.Download` | _(aggregated into parent)_ | Child activity, metrics rolled up to statement |
+| `CloudFetch.ChunkDownload` | _(aggregated into parent)_ | Child activity, metrics rolled up to statement |
+| `Results.Fetch` | _(aggregated into parent)_ | Child activity, metrics rolled up to statement |
+| _(any activity with `error.type` tag)_ | `Error` | Error events based on tag presence |
+
+**Mapping Logic** (in `MetricsAggregator`):
+```csharp
+private TelemetryEventType DetermineEventType(Activity activity)
+{
+    // Check for errors first
+    if (activity.GetTagItem("error.type") != null)
+        return TelemetryEventType.Error;
+
+    // Map based on operation name
+    var operationName = activity.OperationName;
+    if (operationName.StartsWith("Connection."))
+        return TelemetryEventType.ConnectionOpen;
+
+    if (operationName.StartsWith("Statement."))
+        return TelemetryEventType.StatementExecution;
+
+    // Default for unknown operations
+    return TelemetryEventType.StatementExecution;
+}
+```
 
 **New Tags for Metrics** (add to existing activities):
 - `result.format`: "inline" | "cloudfetch"
@@ -511,35 +854,47 @@ flowchart TD
 
 ### 7.2 Activity Tag Filtering
 
-The listener filters which tags to export:
+The listener filters tags using the centralized tag definition system:
 
 ```csharp
-private static readonly HashSet<string> AllowedTags = new()
+private TelemetryMetric ProcessActivity(Activity activity)
 {
-    "result.format",
-    "result.chunk_count",
-    "result.bytes_downloaded",
-    "poll.count",
-    "error.type",
-    "feature.cloudfetch",
-    // ... safe tags only
-};
-
-private void ProcessActivity(Activity activity)
-{
-    var metrics = new TelemetryMetric();
+    var eventType = DetermineEventType(activity);
+    var metric = new TelemetryMetric { EventType = eventType };
 
     foreach (var tag in activity.Tags)
     {
-        if (AllowedTags.Contains(tag.Key))
+        // Use tag registry to determine if tag should be exported
+        if (TelemetryTagRegistry.ShouldExportToDatabricks(eventType, tag.Key))
         {
             // Export this tag
-            metrics.AddTag(tag.Key, tag.Value);
+            SetMetricProperty(metric, tag.Key, tag.Value);
         }
-        // Sensitive tags silently dropped
+        // Tags not in registry are silently dropped for Databricks export
+        // But may still be exported to local diagnostics if marked ExportLocal
     }
+
+    return metric;
 }
 ```
+
+**Tag Export Examples:**
+
+| Tag Name | ExportLocal | ExportDatabricks | Reason |
+|----------|-------------|------------------|--------|
+| `statement.id` | ✅ | ✅ | Safe UUID, needed for correlation |
+| `result.format` | ✅ | ✅ | Safe enum value |
+| `result.chunk_count` | ✅ | ✅ | Numeric metric |
+| `driver.version` | ✅ | ✅ | Safe version string |
+| `server.address` | ✅ | ❌ | May contain PII (workspace host) |
+| `db.statement` | ✅ | ❌ | SQL query text (sensitive) |
+| `user.name` | ❌ | ❌ | Personal information |
+
+This approach ensures:
+- **Compile-time safety**: Tag names are constants
+- **Explicit control**: Each tag's export scope is clearly defined
+- **Easy auditing**: Single file to review for compliance
+- **Future-proof**: New tags must be added to definitions (prevents accidental leaks)
 
 ### 7.3 Compliance
 
@@ -646,66 +1001,9 @@ Compare:
 
 ---
 
-## 10. Migration & Rollout
+## 10. Alternatives Considered
 
-### 10.1 Rollout Phases
-
-#### Phase 1: Implementation (Weeks 1-2)
-
-**Goals**:
-- Implement ActivityListener, MetricsAggregator, Exporter
-- Add necessary tags to existing activities
-- Unit tests with 90%+ coverage
-
-**Key Activities**:
-- Identify which activities need additional tags
-- Implement listener with filtering logic
-- Implement aggregator with batching
-- Add feature flag integration
-
-#### Phase 2: Internal Testing (Week 3)
-
-**Goals**:
-- Deploy to internal Databricks environments
-- Validate metrics in Lumberjack
-- Performance testing
-
-**Success Criteria**:
-- < 1% performance overhead
-- Metrics appear in Lumberjack table
-- No driver failures due to telemetry
-
-#### Phase 3: Beta Rollout (Weeks 4-5)
-
-**Goals**:
-- Enable for 10% of workspaces via feature flag
-- Monitor error rates and performance
-- Collect feedback
-
-#### Phase 4: Full Rollout (Week 6)
-
-**Goals**:
-- Enable for 100% of workspaces
-- Monitor at scale
-
-### 10.2 Backward Compatibility
-
-**Guarantees**:
-- ✅ Existing Activity-based tracing continues to work
-- ✅ OpenTelemetry exporters still receive activities
-- ✅ W3C Trace Context propagation unchanged
-- ✅ No breaking API changes
-
-**Migration Path**:
-- No migration needed for applications
-- Listener is transparent to existing code
-- Only adds tags to existing activities
-
----
-
-## 11. Alternatives Considered
-
-### 11.1 Alternative 1: Separate Telemetry System
+### 10.1 Alternative 1: Separate Telemetry System
 
 **Description**: Create a dedicated telemetry collection system parallel to Activity infrastructure, with explicit TelemetryCollector and TelemetryExporter classes.
 
@@ -731,7 +1029,7 @@ Compare:
 
 ---
 
-### 11.2 Alternative 2: OpenTelemetry Metrics API Directly
+### 10.2 Alternative 2: OpenTelemetry Metrics API Directly
 
 **Description**: Use OpenTelemetry's Metrics API (`Meter` and `Counter`/`Histogram`) directly in driver code.
 
@@ -756,7 +1054,7 @@ Compare:
 
 ---
 
-### 11.3 Alternative 3: Log-Based Metrics
+### 10.3 Alternative 3: Log-Based Metrics
 
 **Description**: Write structured logs at key operations and extract metrics from logs.
 
@@ -782,7 +1080,7 @@ Compare:
 
 ---
 
-### 11.4 Why Activity-Based Approach Was Chosen
+### 10.4 Why Activity-Based Approach Was Chosen
 
 The Activity-based design was selected because it:
 
@@ -823,30 +1121,37 @@ The Activity-based design was selected because it:
 
 ---
 
-## 12. Implementation Checklist
+## 11. Implementation Checklist
 
-### Phase 1: Core Implementation
+### Phase 1: Tag Definition System
+- [ ] Create `TagDefinitions/TelemetryTag.cs` (attribute and enums)
+- [ ] Create `TagDefinitions/ConnectionOpenEvent.cs` (connection tag definitions)
+- [ ] Create `TagDefinitions/StatementExecutionEvent.cs` (statement tag definitions)
+- [ ] Create `TagDefinitions/ErrorEvent.cs` (error tag definitions)
+- [ ] Create `TagDefinitions/TelemetryTagRegistry.cs` (central registry)
+- [ ] Add unit tests for tag registry
+
+### Phase 2: Core Implementation
 - [ ] Create `DatabricksActivityListener` class
-- [ ] Create `MetricsAggregator` class
+- [ ] Create `MetricsAggregator` class (using tag registry for filtering)
 - [ ] Create `DatabricksTelemetryExporter` class (reuse from original design)
-- [ ] Add necessary tags to existing activities
-- [ ] Implement activity tag filtering (allowlist)
+- [ ] Add necessary tags to existing activities (using defined constants)
 - [ ] Add feature flag integration
 
-### Phase 2: Integration
+### Phase 3: Integration
 - [ ] Initialize listener in `DatabricksConnection.OpenAsync()`
 - [ ] Stop listener in `DatabricksConnection.CloseAsync()`
 - [ ] Add configuration parsing from connection string
 - [ ] Add server feature flag check
 
-### Phase 3: Testing
+### Phase 4: Testing
 - [ ] Unit tests for ActivityListener
 - [ ] Unit tests for MetricsAggregator
 - [ ] Integration tests with real activities
 - [ ] Performance tests (overhead measurement)
 - [ ] Compatibility tests with OpenTelemetry
 
-### Phase 4: Documentation
+### Phase 5: Documentation
 - [ ] Update Activity instrumentation docs
 - [ ] Document new activity tags
 - [ ] Update configuration guide
@@ -854,9 +1159,9 @@ The Activity-based design was selected because it:
 
 ---
 
-## 13. Open Questions
+## 12. Open Questions
 
-### 13.1 Activity Tag Naming Conventions
+### 12.1 Activity Tag Naming Conventions
 
 **Question**: Should we use OpenTelemetry semantic conventions for tag names?
 
@@ -867,7 +1172,7 @@ The Activity-based design was selected because it:
 
 This ensures compatibility with OTEL ecosystem.
 
-### 13.2 Statement Completion Detection
+### 12.2 Statement Completion Detection
 
 **Question**: How do we know when a statement is complete for aggregation?
 
@@ -878,7 +1183,7 @@ This ensures compatibility with OTEL ecosystem.
 
 **Recommendation**: Use activity completion - cleaner and automatic.
 
-### 13.3 Performance Impact on Existing Activity Users
+### 12.3 Performance Impact on Existing Activity Users
 
 **Question**: Will adding tags impact applications that already use Activity for tracing?
 
@@ -889,15 +1194,15 @@ This ensures compatibility with OTEL ecosystem.
 
 ---
 
-## 14. References
+## 13. References
 
-### 14.1 Related Documentation
+### 13.1 Related Documentation
 
 - [.NET Activity API](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/distributed-tracing)
 - [OpenTelemetry .NET](https://opentelemetry.io/docs/languages/net/)
 - [ActivityListener Documentation](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.activitylistener)
 
-### 14.2 Existing Code References
+### 13.2 Existing Code References
 
 - `ActivityTrace.cs`: Existing Activity helper
 - `DatabricksAdbcActivitySource`: Existing ActivitySource
