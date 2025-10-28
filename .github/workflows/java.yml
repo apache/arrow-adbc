@@ -198,9 +198,11 @@ jobs:
       - java-jni-artifacts
     strategy:
       matrix:
-        java: ['11', '25']
         include:
-          - { os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { java: '11', os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { java: '25', os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { java: '11', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
+          - { java: '25', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
     steps:
       - uses: actions/checkout@v5
         with:
