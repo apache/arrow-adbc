@@ -524,10 +524,7 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 		case "BOOLEAN":
 			field.Type = arrow.FixedWidthTypes.Boolean
 		default:
-			err = adbc.Error{
-				Msg:  fmt.Sprintf("Snowflake Data Type %s not implemented", typ),
-				Code: adbc.StatusNotImplemented,
-			}
+			field.Type = arrow.BinaryTypes.String
 		}
 		return
 	}
@@ -563,10 +560,7 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 	case "TIMESTAMP_TZ":
 		field.Type = arrow.FixedWidthTypes.Timestamp_ns
 	default:
-		err = adbc.Error{
-			Msg:  fmt.Sprintf("Snowflake Data Type %s not implemented", typ),
-			Code: adbc.StatusNotImplemented,
-		}
+		field.Type = arrow.BinaryTypes.String
 	}
 	return
 }
