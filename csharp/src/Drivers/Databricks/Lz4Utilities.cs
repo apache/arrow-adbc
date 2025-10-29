@@ -17,6 +17,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using K4os.Compression.LZ4.Streams;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
@@ -27,6 +29,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     internal static class Lz4Utilities
     {
         /// <summary>
+        /// Default buffer size for LZ4 decompression operations (80KB).
+        /// </summary>
+        private const int DefaultBufferSize = 81920;
+
+        /// <summary>
         /// Decompresses LZ4 compressed data into memory.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
@@ -34,18 +41,70 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
         public static ReadOnlyMemory<byte> DecompressLz4(byte[] compressedData)
         {
+            return DecompressLz4(compressedData, DefaultBufferSize);
+        }
+
+        /// <summary>
+        /// Decompresses LZ4 compressed data into memory with a specified buffer size.
+        /// </summary>
+        /// <param name="compressedData">The compressed data bytes.</param>
+        /// <param name="bufferSize">The buffer size to use for decompression operations.</param>
+        /// <returns>A ReadOnlyMemory containing the decompressed data.</returns>
+        /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
+        public static ReadOnlyMemory<byte> DecompressLz4(byte[] compressedData, int bufferSize)
+        {
             try
             {
-                var outputStream = new MemoryStream();
-                using (var inputStream = new MemoryStream(compressedData))
-                using (var decompressor = LZ4Stream.Decode(inputStream))
+                using (var outputStream = new MemoryStream())
                 {
-                    decompressor.CopyTo(outputStream);
+                    using (var inputStream = new MemoryStream(compressedData))
+                    using (var decompressor = LZ4Stream.Decode(inputStream))
+                    {
+                        decompressor.CopyTo(outputStream, bufferSize);
+                    }
+
+                    // Get the underlying buffer and its valid length without copying
+                    // The buffer remains valid after MemoryStream disposal since we hold a reference to it
+                    byte[] buffer = outputStream.GetBuffer();
+                    return new ReadOnlyMemory<byte>(buffer, 0, (int)outputStream.Length);
                 }
-                // Get the underlying buffer and its valid length without copying
-                return new ReadOnlyMemory<byte>(outputStream.GetBuffer(), 0, (int)outputStream.Length);
-                // Note: We're not disposing the outputStream here because we're returning its buffer.
-                // The memory will be reclaimed when the ReadOnlyMemory is no longer referenced.
+            }
+            catch (Exception ex)
+            {
+                throw new AdbcException($"Failed to decompress LZ4 data: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously decompresses LZ4 compressed data into memory with a specified buffer size.
+        /// Returns the buffer and length as a tuple for efficient wrapping in a MemoryStream.
+        /// </summary>
+        /// <param name="compressedData">The compressed data bytes.</param>
+        /// <param name="bufferSize">The buffer size to use for decompression operations.</param>
+        /// <param name="cancellationToken">Cancellation token for the async operation.</param>
+        /// <returns>A tuple containing the decompressed buffer and its valid length.</returns>
+        /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
+        public static async Task<(byte[] buffer, int length)> DecompressLz4Async(
+            byte[] compressedData,
+            int bufferSize,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using (var outputStream = new MemoryStream())
+                {
+                    using (var inputStream = new MemoryStream(compressedData))
+                    using (var decompressor = LZ4Stream.Decode(inputStream))
+                    {
+                        await decompressor.CopyToAsync(outputStream, bufferSize, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    // Get the underlying buffer and its valid length without copying
+                    // The buffer remains valid after MemoryStream disposal since we hold a reference to it
+                    byte[] buffer = outputStream.GetBuffer();
+                    int length = (int)outputStream.Length;
+                    return (buffer, length);
+                }
             }
             catch (Exception ex)
             {
