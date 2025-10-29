@@ -544,7 +544,7 @@ jobs:
     strategy:
       matrix:
         os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
-        python: ["3.10", "3.13"]
+        python: ["3.10", "3.14"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -668,7 +668,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest"]
-        python: ["3.13"]
+        python: ["3.14"]
     steps:
       - uses: actions/checkout@v5
         with:
