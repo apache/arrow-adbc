@@ -59,10 +59,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private readonly StragglerDownloadDetector? _stragglerDetector;
         private readonly ConcurrentDictionary<long, FileDownloadMetrics>? _activeDownloadMetrics;
         private readonly ConcurrentDictionary<long, CancellationTokenSource>? _perFileDownloadCancellationTokens;
+        private readonly ConcurrentDictionary<long, bool>? _alreadyCountedStragglers;  // Prevents duplicate counting of same file
         private Task? _stragglerMonitoringTask;
         private CancellationTokenSource? _stragglerMonitoringCts;
         private volatile bool _hasTriggeredSequentialDownloadFallback;
-        private readonly SemaphoreSlim _sequentialSemaphore = new SemaphoreSlim(1, 1);
+        private SemaphoreSlim _sequentialSemaphore = new SemaphoreSlim(1, 1);  // Not disposed - lightweight, safe to leave allocated
         private volatile bool _isSequentialMode;
 
         /// <summary>
@@ -130,6 +131,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
                 _activeDownloadMetrics = new ConcurrentDictionary<long, FileDownloadMetrics>();
                 _perFileDownloadCancellationTokens = new ConcurrentDictionary<long, CancellationTokenSource>();
+                _alreadyCountedStragglers = new ConcurrentDictionary<long, bool>();
                 _hasTriggeredSequentialDownloadFallback = false;
             }
         }
@@ -227,8 +229,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     _perFileDownloadCancellationTokens.Clear();
                 }
 
-                // Cleanup sequential semaphore
-                _sequentialSemaphore?.Dispose();
+                // Note: _sequentialSemaphore is intentionally not disposed to support restart scenarios
+                // Semaphores are lightweight and safe to leave allocated
             }
         }
 
@@ -356,9 +358,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         // Acquire a download slot
                         await _downloadSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                        // Acquire sequential slot if in sequential mode
+                        // Capture mode atomically to avoid TOCTOU race with monitor thread
+                        bool shouldAcquireSequential = _isSequentialMode;
                         bool acquiredSequential = false;
-                        if (_isSequentialMode)
+                        if (shouldAcquireSequential)
                         {
                             await _sequentialSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
                             acquiredSequential = true;
@@ -496,22 +499,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 // Acquire memory before downloading
                 await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
 
-                // Initialize straggler tracking if enabled
+                // Declare variables for cleanup in finally block
                 FileDownloadMetrics? downloadMetrics = null;
                 CancellationTokenSource? perFileCancellationTokenSource = null;
-
-                if (_isStragglerMitigationEnabled && _activeDownloadMetrics != null && _perFileDownloadCancellationTokens != null)
-                {
-                    long offset = downloadResult.Link.StartRowOffset;
-                    downloadMetrics = new FileDownloadMetrics(offset, size);
-                    _activeDownloadMetrics[offset] = downloadMetrics;
-
-                    perFileCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    _perFileDownloadCancellationTokens[offset] = perFileCancellationTokenSource;
-                }
+                long fileOffset = downloadResult.Link.StartRowOffset;
 
             try
             {
+                // Initialize straggler tracking if enabled (inside try block for proper cleanup)
+                if (_isStragglerMitigationEnabled && _activeDownloadMetrics != null && _perFileDownloadCancellationTokens != null)
+                {
+                    downloadMetrics = new FileDownloadMetrics(fileOffset, size);
+                    _activeDownloadMetrics[fileOffset] = downloadMetrics;
+
+                    perFileCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    _perFileDownloadCancellationTokens[fileOffset] = perFileCancellationTokenSource;
+                }
+
+
                 // Retry logic for downloading files
                 for (int retry = 0; retry < _maxRetries; retry++)
                 {
@@ -609,12 +614,31 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
                         downloadMetrics?.MarkCancelledAsStragler();
 
-                        // Create fresh cancellation token for retry
-                        perFileCancellationTokenSource?.Dispose();
-                        perFileCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        // Create fresh cancellation token for retry atomically
+                        var newCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                         if (_perFileDownloadCancellationTokens != null)
                         {
-                            _perFileDownloadCancellationTokens[downloadResult.Link.StartRowOffset] = perFileCancellationTokenSource;
+                            var oldCts = _perFileDownloadCancellationTokens.AddOrUpdate(
+                                downloadResult.Link.StartRowOffset,
+                                newCts,
+                                (key, existing) =>
+                                {
+                                    existing?.Dispose();  // Dispose old one atomically
+                                    return newCts;
+                                });
+
+                            // If this was an add (not update), oldCts == newCts, so don't dispose
+                            if (oldCts != newCts)
+                            {
+                                perFileCancellationTokenSource?.Dispose();
+                            }
+
+                            perFileCancellationTokenSource = newCts;
+                        }
+                        else
+                        {
+                            perFileCancellationTokenSource?.Dispose();
+                            perFileCancellationTokenSource = newCts;
                         }
 
                         // Check if URL needs refresh (expired or expiring soon)
@@ -739,7 +763,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             finally
             {
                 // Cleanup per-file cancellation token (always runs, even on exception)
-                long fileOffset = downloadResult.Link.StartRowOffset;
                 if (_perFileDownloadCancellationTokens != null)
                 {
                     if (_perFileDownloadCancellationTokens.TryRemove(fileOffset, out var cts))
@@ -756,12 +779,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     {
                         try
                         {
-                            await Task.Delay(TimeSpan.FromSeconds(3), CancellationToken.None);
-                            _activeDownloadMetrics.TryRemove(fileOffset, out _);
+                            // Use cancellationToken to respect shutdown - removes immediately if cancelled
+                            await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+                            _activeDownloadMetrics?.TryRemove(fileOffset, out _);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Shutdown requested - remove immediately
+                            _activeDownloadMetrics?.TryRemove(fileOffset, out _);
                         }
                         catch
                         {
-                            // Ignore exceptions in cleanup task
+                            // Ignore other exceptions in cleanup task
                         }
                     });
                 }
@@ -829,8 +858,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         // Get snapshot of active downloads
                         var metricsSnapshot = _activeDownloadMetrics.Values.ToList();
 
-                        // Identify stragglers
-                        var stragglerOffsets = _stragglerDetector.IdentifyStragglerDownloads(metricsSnapshot, DateTime.UtcNow);
+                        // Identify stragglers (pass tracking dict to prevent duplicate counting)
+                        var stragglerOffsets = _stragglerDetector.IdentifyStragglerDownloads(
+                            metricsSnapshot,
+                            DateTime.UtcNow,
+                            _alreadyCountedStragglers);
                         var stragglerList = stragglerOffsets.ToList();
 
                         if (stragglerList.Count > 0)

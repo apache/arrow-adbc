@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -31,7 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private readonly double _minimumCompletionQuantile;
         private readonly TimeSpan _stragglerDetectionPadding;
         private readonly int _maxStragglersBeforeFallback;
-        private int _totalStragglersDetectedInQuery;
+        private long _totalStragglersDetectedInQuery;  // Use long to prevent overflow (max ~9 quintillion)
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StragglerDownloadDetector"/> class.
@@ -97,10 +98,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// </summary>
         /// <param name="allDownloadMetrics">All download metrics for the current batch.</param>
         /// <param name="currentTime">The current time for elapsed time calculations.</param>
+        /// <param name="alreadyCounted">Dictionary to track already counted stragglers (prevents duplicate counting).</param>
         /// <returns>Collection of file offsets identified as stragglers.</returns>
         public IEnumerable<long> IdentifyStragglerDownloads(
             IReadOnlyList<FileDownloadMetrics> allDownloadMetrics,
-            DateTime currentTime)
+            DateTime currentTime,
+            ConcurrentDictionary<long, bool>? alreadyCounted = null)
         {
             if (allDownloadMetrics == null || allDownloadMetrics.Count == 0)
             {
@@ -148,7 +151,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 if (elapsedSeconds > expectedSeconds)
                 {
                     stragglers.Add(download.FileOffset);
-                    Interlocked.Increment(ref _totalStragglersDetectedInQuery);
+
+                    // Only increment counter if not already counted (prevents duplicate counting on retries)
+                    if (alreadyCounted == null || alreadyCounted.TryAdd(download.FileOffset, true))
+                    {
+                        Interlocked.Increment(ref _totalStragglersDetectedInQuery);
+                    }
                 }
             }
 
@@ -159,9 +167,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// Gets the total number of stragglers detected in the current query.
         /// </summary>
         /// <returns>The total straggler count.</returns>
-        public int GetTotalStragglersDetectedInQuery()
+        public long GetTotalStragglersDetectedInQuery()
         {
-            return Interlocked.CompareExchange(ref _totalStragglersDetectedInQuery, 0, 0);
+            return Interlocked.Read(ref _totalStragglersDetectedInQuery);
         }
 
         /// <summary>

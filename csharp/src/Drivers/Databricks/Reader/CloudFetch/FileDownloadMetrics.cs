@@ -34,6 +34,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="fileSizeBytes">The size of the file in bytes.</param>
         public FileDownloadMetrics(long fileOffset, long fileSizeBytes)
         {
+            if (fileSizeBytes <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(fileSizeBytes),
+                    fileSizeBytes,
+                    "File size must be positive");
+            }
+
             FileOffset = fileOffset;
             FileSizeBytes = fileSizeBytes;
             DownloadStartTime = DateTime.UtcNow;

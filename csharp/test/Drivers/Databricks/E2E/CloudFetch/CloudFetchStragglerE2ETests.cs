@@ -126,7 +126,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
             var stragglers = detector.IdentifyStragglerDownloads(metrics, System.DateTime.UtcNow.AddSeconds(10));
 
             // Assert - Counter should increment for detected stragglers
-            int count = detector.GetTotalStragglersDetectedInQuery();
+            long count = detector.GetTotalStragglersDetectedInQuery();
             Assert.True(count >= 0); // Counter should be non-negative
         }
     }
