@@ -87,7 +87,6 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
         [JsonPropertyName("largeDecimalAsString")]
         public bool LargeDecimalAsString { get; set; } = true;
 
-
         /// <summary>
         /// Sets the query timeout (in minutes).
         /// </summary>
