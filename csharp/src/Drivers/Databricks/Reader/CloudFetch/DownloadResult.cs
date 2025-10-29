@@ -29,7 +29,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
     {
         private readonly TaskCompletionSource<bool> _downloadCompletionSource;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
-        private Stream? _dataStream;
+        private ReadOnlyMemory<byte> _data;
         private bool _isDisposed;
         private long _size;
 
@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         public TSparkArrowResultLink Link { get; private set; }
 
         /// <inheritdoc />
-        public Stream DataStream
+        public ReadOnlyMemory<byte> Data
         {
             get
             {
@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 {
                     throw new InvalidOperationException("Download has not completed yet.");
                 }
-                return _dataStream!;
+                return _data;
             }
         }
 
@@ -103,10 +103,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         }
 
         /// <inheritdoc />
-        public void SetCompleted(Stream dataStream, long size)
+        public void SetCompleted(ReadOnlyMemory<byte> data, long size)
         {
             ThrowIfDisposed();
-            _dataStream = dataStream ?? throw new ArgumentNullException(nameof(dataStream));
+            if (data.Length == 0)
+            {
+                throw new ArgumentException("Data cannot be empty.", nameof(data));
+            }
+            _data = data;
             _downloadCompletionSource.TrySetResult(true);
             _size = size;
         }
@@ -126,11 +130,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 return;
             }
 
-            if (_dataStream != null)
+            if (_data.Length > 0)
             {
-                _dataStream.Dispose();
-                _dataStream = null;
-
                 // Release memory back to the manager
                 if (_size > 0)
                 {

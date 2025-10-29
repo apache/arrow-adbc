@@ -483,7 +483,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
 
                 // Process the downloaded file data
-                MemoryStream dataStream;
+                Memory<byte> data;
                 long actualSize = fileData.Length;
 
                 // If the data is LZ4 compressed, decompress it
@@ -492,15 +492,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     try
                     {
                         var decompressStopwatch = Stopwatch.StartNew();
-
-                        // Use shared Lz4Utilities for decompression (consolidates logic with non-CloudFetch path)
-                        var (buffer, length) = await Lz4Utilities.DecompressLz4Async(
-                            fileData,
-                            cancellationToken).ConfigureAwait(false);
-
-                        // Create the dataStream from the decompressed buffer
-                        dataStream = new MemoryStream(buffer, 0, length, writable: false, publiclyVisible: true);
-                        dataStream.Position = 0;
+                        var dataStream = new MemoryStream();
+                        using (var inputStream = new MemoryStream(fileData))
+                        using (var decompressor = LZ4Stream.Decode(inputStream))
+                        {
+                            await decompressor.CopyToAsync(dataStream, 81920, cancellationToken).ConfigureAwait(false);
+                        }
+                        data = new Memory<byte>(dataStream.GetBuffer(), 0, (int)dataStream.Length);
                         decompressStopwatch.Stop();
 
                         // Calculate throughput metrics
@@ -536,7 +534,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
                 else
                 {
-                    dataStream = new MemoryStream(fileData);
+                    data = fileData;
                 }
 
                 // Stop the stopwatch and log download completion
@@ -552,7 +550,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 ]);
 
                 // Set the download as completed with the original size
-                downloadResult.SetCompleted(dataStream, size);
+                downloadResult.SetCompleted(data, size);
             }, activityName: "DownloadFile");
         }
 
