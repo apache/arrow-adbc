@@ -136,13 +136,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
             mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
 
-            // Capture the stream and size passed to SetCompleted
-            Stream? capturedStream = null;
+            // Capture the date and size passed to SetCompleted
+            ReadOnlyMemory<byte> capturedData = default;
             long capturedSize = 0;
-            mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()))
-                .Callback<Stream, long>((stream, size) =>
+            mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<long>()))
+                .Callback<ReadOnlyMemory<byte>, long>((stream, size) =>
                 {
-                    capturedStream = stream;
+                    capturedData = stream;
                     capturedSize = size;
                 });
 
@@ -176,11 +176,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             Assert.Same(mockDownloadResult.Object, result);
 
             // Verify SetCompleted was called
-            mockDownloadResult.Verify(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()), Times.Once);
+            mockDownloadResult.Verify(r => r.SetCompleted(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<long>()), Times.Once);
 
             // Verify the content of the stream
-            Assert.NotNull(capturedStream);
-            using (var reader = new StreamReader(capturedStream))
+            Assert.NotEqual(0, capturedData.Length);
+            using (var reader = new StreamReader(new MemoryStream(capturedData.ToArray())))
             {
                 string content = reader.ReadToEnd();
                 Assert.Equal(testContent, content);
@@ -484,7 +484,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
                 mockDownloadResult.Setup(r => r.Size).Returns(100);
                 mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
                 mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
-                mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()))
+                mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<long>()))
                     .Callback<Stream, long>((_, _) => { });
                 downloadResults[i] = mockDownloadResult.Object;
             }

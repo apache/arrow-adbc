@@ -483,7 +483,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
 
                 // Process the downloaded file data
-                MemoryStream dataStream;
+                Memory<byte> data;
                 long actualSize = fileData.Length;
 
                 // If the data is LZ4 compressed, decompress it
@@ -492,13 +492,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     try
                     {
                         var decompressStopwatch = Stopwatch.StartNew();
-                        dataStream = new MemoryStream();
+                        var dataStream = new MemoryStream();
                         using (var inputStream = new MemoryStream(fileData))
                         using (var decompressor = LZ4Stream.Decode(inputStream))
                         {
                             await decompressor.CopyToAsync(dataStream, 81920, cancellationToken).ConfigureAwait(false);
                         }
-                        dataStream.Position = 0;
+                        data = new Memory<byte>(dataStream.GetBuffer(), 0, (int)dataStream.Length);
                         decompressStopwatch.Stop();
 
                         activity?.AddEvent("cloudfetch.decompression_complete", [
@@ -531,7 +531,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
                 else
                 {
-                    dataStream = new MemoryStream(fileData);
+                    data = fileData;
                 }
 
                 // Stop the stopwatch and log download completion
@@ -547,7 +547,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 ]);
 
                 // Set the download as completed with the original size
-                downloadResult.SetCompleted(dataStream, size);
+                downloadResult.SetCompleted(data, size);
             }, activityName: "DownloadFile");
         }
 
