@@ -76,6 +76,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         }
 
         /// <summary>
+        /// Asynchronously decompresses LZ4 compressed data into memory.
+        /// Returns the buffer and length as a tuple for efficient wrapping in a MemoryStream.
+        /// </summary>
+        /// <param name="compressedData">The compressed data bytes.</param>
+        /// <param name="cancellationToken">Cancellation token for the async operation.</param>
+        /// <returns>A tuple containing the decompressed buffer and its valid length.</returns>
+        /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
+        public static Task<(byte[] buffer, int length)> DecompressLz4Async(
+            byte[] compressedData,
+            CancellationToken cancellationToken = default)
+        {
+            return DecompressLz4Async(compressedData, DefaultBufferSize, cancellationToken);
+        }
+
+        /// <summary>
         /// Asynchronously decompresses LZ4 compressed data into memory with a specified buffer size.
         /// Returns the buffer and length as a tuple for efficient wrapping in a MemoryStream.
         /// </summary>

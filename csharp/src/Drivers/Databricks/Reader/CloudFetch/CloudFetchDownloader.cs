@@ -496,7 +496,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         // Use shared Lz4Utilities for decompression (consolidates logic with non-CloudFetch path)
                         var (buffer, length) = await Lz4Utilities.DecompressLz4Async(
                             fileData,
-                            81920,
                             cancellationToken).ConfigureAwait(false);
 
                         // Create the dataStream from the decompressed buffer
