@@ -1000,6 +1000,24 @@ TEST_F(DriverManifest, LoadSystemLevelManifest) {
 }
 #endif
 
+TEST_F(DriverManifest, AllDisabled) {
+  // Test that if the user doesn't set load flags, we properly flag this
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, 0,
+                                 nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: ADBC_DRIVER_PATH (enable "
+                                   "ADBC_LOAD_FLAG_SEARCH_ENV)"));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: user config dir /home"));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_USER)"));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: system config dir /"));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_SYSTEM)"));
+}
+
 TEST_F(DriverManifest, CondaPrefix) {
 #if ADBC_CONDA_BUILD
   constexpr bool is_conda_build = true;
