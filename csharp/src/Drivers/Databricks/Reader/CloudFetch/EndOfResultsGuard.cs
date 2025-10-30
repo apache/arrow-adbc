@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.IO;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -43,7 +42,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         public TSparkArrowResultLink Link => throw new NotSupportedException("EndOfResultsGuard does not have a link.");
 
         /// <inheritdoc />
-        public Stream DataStream => throw new NotSupportedException("EndOfResultsGuard does not have a data stream.");
+        public ReadOnlyMemory<byte> Data => throw new NotSupportedException("EndOfResultsGuard does not have data.");
 
         /// <inheritdoc />
         public long Size => 0;
@@ -58,7 +57,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         public int RefreshAttempts => 0;
 
         /// <inheritdoc />
-        public void SetCompleted(Stream dataStream, long size) => throw new NotSupportedException("EndOfResultsGuard cannot be completed.");
+        public void SetCompleted(ReadOnlyMemory<byte> data, long size) => throw new NotSupportedException("EndOfResultsGuard cannot be completed.");
 
         /// <inheritdoc />
         public void SetFailed(Exception exception) => throw new NotSupportedException("EndOfResultsGuard cannot fail.");
