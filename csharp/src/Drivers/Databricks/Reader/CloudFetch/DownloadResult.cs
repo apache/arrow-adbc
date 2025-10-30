@@ -102,7 +102,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         }
 
         /// <inheritdoc />
-        public void SetCompleted(ReadOnlyMemory<byte> data)
+        public void SetCompleted(ReadOnlyMemory<byte> data, long size)
         {
             ThrowIfDisposed();
             if (data.Length == 0)
@@ -111,7 +111,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             }
             _data = data;
             _downloadCompletionSource.TrySetResult(true);
-            _size = data.Length;
+            _size = size;
         }
 
         /// <inheritdoc />
@@ -131,6 +131,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
             if (_data.Length > 0)
             {
+                _data = default;
+
                 // Release memory back to the manager
                 if (_size > 0)
                 {

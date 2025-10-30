@@ -61,7 +61,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// Sets the download as completed with the provided data stream.
         /// </summary>
         /// <param name="data">The downloaded data.</param>
-        void SetCompleted(ReadOnlyMemory<byte> data);
+        /// <param name="size">The size of the downloaded data in bytes.</param>
+        void SetCompleted(ReadOnlyMemory<byte> data, long size);
 
         /// <summary>
         /// Sets the download as failed with the specified exception.
