@@ -25,6 +25,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Moq.Protected;
@@ -46,6 +47,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
             _mockMemoryManager = new Mock<ICloudFetchMemoryBufferManager>();
             _mockStatement = new Mock<IHiveServer2Statement>();
+            _mockStatement.SetupGet(x => x.Trace).Returns(new ActivityTrace());
             _mockResultFetcher = new Mock<ICloudFetchResultFetcher>();
 
             // Set up memory manager defaults
@@ -140,9 +142,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             ReadOnlyMemory<byte> capturedData = default;
             long capturedSize = 0;
             mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<long>()))
-                .Callback<ReadOnlyMemory<byte>, long>((stream, size) =>
+                .Callback<ReadOnlyMemory<byte>, long>((data, size) =>
                 {
-                    capturedData = stream;
+                    capturedData = data;
                     capturedSize = size;
                 });
 
@@ -485,7 +487,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
                 mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
                 mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
                 mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<long>()))
-                    .Callback<Stream, long>((_, _) => { });
+                    .Callback<ReadOnlyMemory<byte>, long>((_, _) => { });
                 downloadResults[i] = mockDownloadResult.Object;
             }
 
