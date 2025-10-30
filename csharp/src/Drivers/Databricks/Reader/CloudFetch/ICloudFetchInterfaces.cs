@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -62,8 +61,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// Sets the download as completed with the provided data stream.
         /// </summary>
         /// <param name="data">The downloaded data.</param>
-        /// <param name="size">The size of the downloaded data in bytes.</param>
-        void SetCompleted(ReadOnlyMemory<byte> data, long size);
+        void SetCompleted(ReadOnlyMemory<byte> data);
 
         /// <summary>
         /// Sets the download as failed with the specified exception.

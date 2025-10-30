@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.IO;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -103,7 +102,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         }
 
         /// <inheritdoc />
-        public void SetCompleted(ReadOnlyMemory<byte> data, long size)
+        public void SetCompleted(ReadOnlyMemory<byte> data)
         {
             ThrowIfDisposed();
             if (data.Length == 0)
@@ -112,7 +111,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             }
             _data = data;
             _downloadCompletionSource.TrySetResult(true);
-            _size = size;
+            _size = data.Length;
         }
 
         /// <inheritdoc />
