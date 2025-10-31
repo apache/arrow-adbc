@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -52,6 +53,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            Activity? activity = Activity.Current;
+
             // Clone the request content if it's not null so we can reuse it for retries
             var requestContentClone = request.Content != null
                 ? await CloneHttpContentAsync(request.Content)
@@ -77,10 +80,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // If it's not a retryable status code, return immediately
                 if (!IsRetryableStatusCode(response.StatusCode))
                 {
+                    // Only log retry summary if retries occurred
+                    if (attemptCount > 0)
+                    {
+                        activity?.SetTag("http.retry.total_attempts", attemptCount);
+                        activity?.SetTag("http.response.status_code", (int)response.StatusCode);
+                    }
                     return response;
                 }
 
                 attemptCount++;
+
+                activity?.SetTag("http.retry.attempt", attemptCount);
+                activity?.SetTag("http.response.status_code", (int)response.StatusCode);
 
                 // Check if we've exceeded the timeout
                 TimeSpan elapsedTime = DateTime.UtcNow - startTime;
@@ -138,14 +150,30 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 currentBackoffSeconds = Math.Min(currentBackoffSeconds * 2, _maxBackoffSeconds);
             } while (!cancellationToken.IsCancellationRequested);
 
+            activity?.SetTag("http.retry.total_attempts", attemptCount);
+            activity?.SetTag("http.response.status_code", (int)response.StatusCode);
+
             // If we get here, we've either exceeded the timeout or been cancelled
             if (cancellationToken.IsCancellationRequested)
             {
-                throw new OperationCanceledException("Request cancelled during retry wait", cancellationToken);
+                activity?.SetTag("http.retry.outcome", "cancelled");
+                var cancelEx = new OperationCanceledException("Request cancelled during retry wait", cancellationToken);
+                activity?.AddException(cancelEx, [
+                    new("error.context", "http.retry.cancelled"),
+                    new("attempts", attemptCount)
+                ]);
             }
 
-            throw new DatabricksException(lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded", AdbcStatusCode.IOError)
-                .SetSqlState("08001");
+            // Timeout exceeded
+            activity?.SetTag("http.retry.outcome", "timeout_exceeded");
+            var exception = new DatabricksException(lastErrorMessage ?? "Service temporarily unavailable and retry timeout exceeded", AdbcStatusCode.IOError).SetSqlState("08001");
+            activity?.AddException(exception, [
+                new("error.context", "http.retry.timeout_exceeded"),
+                new("attempts", attemptCount),
+                new("total_retry_seconds", totalRetrySeconds),
+                new("timeout_seconds", _retryTimeoutSeconds)
+            ]);
+            throw exception;
         }
 
         /// <summary>
