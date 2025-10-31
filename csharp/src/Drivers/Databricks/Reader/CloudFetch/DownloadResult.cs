@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
 
@@ -28,7 +29,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
     {
         private readonly TaskCompletionSource<bool> _downloadCompletionSource;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
-        private ReadOnlyMemory<byte> _data;
+        private Stream? _dataStream;
         private bool _isDisposed;
         private long _size;
 
@@ -49,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         public TSparkArrowResultLink Link { get; private set; }
 
         /// <inheritdoc />
-        public ReadOnlyMemory<byte> Data
+        public Stream DataStream
         {
             get
             {
@@ -58,7 +59,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 {
                     throw new InvalidOperationException("Download has not completed yet.");
                 }
-                return _data;
+                return _dataStream!;
             }
         }
 
@@ -102,14 +103,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         }
 
         /// <inheritdoc />
-        public void SetCompleted(ReadOnlyMemory<byte> data, long size)
+        public void SetCompleted(Stream dataStream, long size)
         {
             ThrowIfDisposed();
-            if (data.Length == 0)
-            {
-                throw new ArgumentException("Data cannot be empty.", nameof(data));
-            }
-            _data = data;
+            _dataStream = dataStream ?? throw new ArgumentNullException(nameof(dataStream));
             _downloadCompletionSource.TrySetResult(true);
             _size = size;
         }
@@ -129,9 +126,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 return;
             }
 
-            if (_data.Length > 0)
+            if (_dataStream != null)
             {
-                _data = default;
+                _dataStream.Dispose();
+                _dataStream = null;
 
                 // Release memory back to the manager
                 if (_size > 0)
