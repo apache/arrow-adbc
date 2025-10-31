@@ -22,7 +22,9 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tracing;
+using K4os.Compression.LZ4.Streams;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 {
@@ -481,7 +483,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
 
                 // Process the downloaded file data
-                Memory<byte> data;
+                MemoryStream dataStream;
                 long actualSize = fileData.Length;
 
                 // If the data is LZ4 compressed, decompress it
@@ -496,11 +498,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                             fileData,
                             cancellationToken).ConfigureAwait(false);
 
-                        data = new Memory<byte>(buffer, 0, length);
+                        // Create the dataStream from the decompressed buffer
+                        dataStream = new MemoryStream(buffer, 0, length, writable: false, publiclyVisible: true);
+                        dataStream.Position = 0;
                         decompressStopwatch.Stop();
 
                         // Calculate throughput metrics
-                        double compressionRatio = (double)length / actualSize;
+                        double compressionRatio = (double)dataStream.Length / actualSize;
 
                         activity?.AddEvent("cloudfetch.decompression_complete", [
                             new("offset", downloadResult.Link.StartRowOffset),
@@ -508,12 +512,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                             new("decompression_time_ms", decompressStopwatch.ElapsedMilliseconds),
                             new("compressed_size_bytes", actualSize),
                             new("compressed_size_kb", actualSize / 1024.0),
-                            new("decompressed_size_bytes", length),
-                            new("decompressed_size_kb", length / 1024.0),
+                            new("decompressed_size_bytes", dataStream.Length),
+                            new("decompressed_size_kb", dataStream.Length / 1024.0),
                             new("compression_ratio", compressionRatio)
                         ]);
 
-                        actualSize = length;
+                        actualSize = dataStream.Length;
                     }
                     catch (Exception ex)
                     {
@@ -532,7 +536,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
                 else
                 {
-                    data = fileData;
+                    dataStream = new MemoryStream(fileData);
                 }
 
                 // Stop the stopwatch and log download completion
@@ -548,7 +552,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 ]);
 
                 // Set the download as completed with the original size
-                downloadResult.SetCompleted(data, size);
+                downloadResult.SetCompleted(dataStream, size);
             }, activityName: "DownloadFile");
         }
 
