@@ -18,6 +18,8 @@
 ARG FROM=debian:trixie
 FROM ${FROM}
 
+ENV IMAGE_VERSION=2025-10-31
+
 RUN \
   echo "debconf debconf/frontend select Noninteractive" | \
     debconf-set-selections
