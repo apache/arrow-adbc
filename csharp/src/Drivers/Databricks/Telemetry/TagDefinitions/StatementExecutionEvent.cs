@@ -27,37 +27,37 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
         public const string EventName = "Statement.Execute";
 
         // Identity
-        [TelemetryTag("statement.id", ExportScope = TagExportScope.ExportDatabricks, Required = true, Description = "Statement ID")]
+        [TelemetryTag("statement.id", ExportScope = TagExportScope.ExportAll, Required = true, Description = "Statement ID")]
         public const string StatementId = "statement.id";
 
-        [TelemetryTag("session.id", ExportScope = TagExportScope.ExportDatabricks, Required = true, Description = "Session ID")]
+        [TelemetryTag("session.id", ExportScope = TagExportScope.ExportAll, Required = true, Description = "Session ID")]
         public const string SessionId = "session.id";
 
         // Result Metrics
-        [TelemetryTag("result.format", ExportScope = TagExportScope.ExportDatabricks, Description = "Result format")]
+        [TelemetryTag("result.format", ExportScope = TagExportScope.ExportAll, Description = "Result format")]
         public const string ResultFormat = "result.format";
 
-        [TelemetryTag("result.chunk_count", ExportScope = TagExportScope.ExportDatabricks, Description = "Chunk count")]
+        [TelemetryTag("result.chunk_count", ExportScope = TagExportScope.ExportAll, Description = "Chunk count")]
         public const string ResultChunkCount = "result.chunk_count";
 
-        [TelemetryTag("result.bytes_downloaded", ExportScope = TagExportScope.ExportDatabricks, Description = "Bytes downloaded")]
+        [TelemetryTag("result.bytes_downloaded", ExportScope = TagExportScope.ExportAll, Description = "Bytes downloaded")]
         public const string ResultBytesDownloaded = "result.bytes_downloaded";
 
-        [TelemetryTag("result.compression_enabled", ExportScope = TagExportScope.ExportDatabricks, Description = "Compression enabled")]
+        [TelemetryTag("result.compression_enabled", ExportScope = TagExportScope.ExportAll, Description = "Compression enabled")]
         public const string ResultCompressionEnabled = "result.compression_enabled";
 
-        [TelemetryTag("result.row_count", ExportScope = TagExportScope.ExportDatabricks, Description = "Row count")]
+        [TelemetryTag("result.row_count", ExportScope = TagExportScope.ExportAll, Description = "Row count")]
         public const string ResultRowCount = "result.row_count";
 
         // Polling Metrics
-        [TelemetryTag("poll.count", ExportScope = TagExportScope.ExportDatabricks, Description = "Poll count")]
+        [TelemetryTag("poll.count", ExportScope = TagExportScope.ExportAll, Description = "Poll count")]
         public const string PollCount = "poll.count";
 
-        [TelemetryTag("poll.latency_ms", ExportScope = TagExportScope.ExportDatabricks, Description = "Poll latency")]
+        [TelemetryTag("poll.latency_ms", ExportScope = TagExportScope.ExportAll, Description = "Poll latency")]
         public const string PollLatencyMs = "poll.latency_ms";
 
         // Operation Type
-        [TelemetryTag("db.operation", ExportScope = TagExportScope.ExportDatabricks, Description = "Operation type")]
+        [TelemetryTag("db.operation", ExportScope = TagExportScope.ExportAll, Description = "Operation type")]
         public const string DbOperation = "db.operation";
 
         [TelemetryTag("db.statement", ExportScope = TagExportScope.ExportLocal, Description = "SQL statement")]

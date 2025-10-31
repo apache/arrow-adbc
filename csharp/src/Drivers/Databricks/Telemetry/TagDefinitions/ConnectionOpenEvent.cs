@@ -27,10 +27,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
         public const string EventName = "Connection.Open";
 
         // Identity
-        [TelemetryTag("workspace.id", ExportScope = TagExportScope.ExportDatabricks, Required = true, Description = "Workspace ID")]
+        [TelemetryTag("workspace.id", ExportScope = TagExportScope.ExportAll, Required = true, Description = "Workspace ID")]
         public const string WorkspaceId = "workspace.id";
 
-        [TelemetryTag("session.id", ExportScope = TagExportScope.ExportDatabricks, Required = true, Description = "Session ID")]
+        [TelemetryTag("session.id", ExportScope = TagExportScope.ExportAll, Required = true, Description = "Session ID")]
         public const string SessionId = "session.id";
 
         // Driver Configuration
@@ -44,19 +44,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
         public const string DriverRuntime = "driver.runtime";
 
         // Feature Flags
-        [TelemetryTag("feature.cloudfetch", ExportScope = TagExportScope.ExportDatabricks, Description = "CloudFetch enabled")]
+        [TelemetryTag("feature.cloudfetch", ExportScope = TagExportScope.ExportAll, Description = "CloudFetch enabled")]
         public const string FeatureCloudFetch = "feature.cloudfetch";
 
-        [TelemetryTag("feature.lz4", ExportScope = TagExportScope.ExportDatabricks, Description = "LZ4 compression enabled")]
+        [TelemetryTag("feature.lz4", ExportScope = TagExportScope.ExportAll, Description = "LZ4 compression enabled")]
         public const string FeatureLz4 = "feature.lz4";
 
-        [TelemetryTag("feature.direct_results", ExportScope = TagExportScope.ExportDatabricks, Description = "Direct results enabled")]
+        [TelemetryTag("feature.direct_results", ExportScope = TagExportScope.ExportAll, Description = "Direct results enabled")]
         public const string FeatureDirectResults = "feature.direct_results";
 
-        [TelemetryTag("feature.multiple_catalog", ExportScope = TagExportScope.ExportDatabricks, Description = "Multiple catalog enabled")]
+        [TelemetryTag("feature.multiple_catalog", ExportScope = TagExportScope.ExportAll, Description = "Multiple catalog enabled")]
         public const string FeatureMultipleCatalog = "feature.multiple_catalog";
 
-        [TelemetryTag("feature.trace_propagation", ExportScope = TagExportScope.ExportDatabricks, Description = "Trace propagation enabled")]
+        [TelemetryTag("feature.trace_propagation", ExportScope = TagExportScope.ExportAll, Description = "Trace propagation enabled")]
         public const string FeatureTracePropagation = "feature.trace_propagation";
 
         [TelemetryTag("server.address", ExportScope = TagExportScope.ExportLocal, Description = "Server address")]

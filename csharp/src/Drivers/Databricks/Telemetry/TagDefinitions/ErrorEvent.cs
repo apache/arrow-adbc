@@ -27,22 +27,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
         public const string EventName = "Error";
 
         // Error Classification
-        [TelemetryTag("error.type", ExportScope = TagExportScope.ExportDatabricks, Required = true, Description = "Error type")]
+        [TelemetryTag("error.type", ExportScope = TagExportScope.ExportAll, Required = true, Description = "Error type")]
         public const string ErrorType = "error.type";
 
-        [TelemetryTag("http.status_code", ExportScope = TagExportScope.ExportDatabricks, Description = "HTTP status code")]
+        [TelemetryTag("http.status_code", ExportScope = TagExportScope.ExportAll, Description = "HTTP status code")]
         public const string HttpStatusCode = "http.status_code";
 
-        [TelemetryTag("db.sql_state", ExportScope = TagExportScope.ExportDatabricks, Description = "SQL state")]
+        [TelemetryTag("db.sql_state", ExportScope = TagExportScope.ExportAll, Description = "SQL state")]
         public const string DbSqlState = "db.sql_state";
 
-        [TelemetryTag("error.operation", ExportScope = TagExportScope.ExportDatabricks, Description = "Failed operation")]
+        [TelemetryTag("error.operation", ExportScope = TagExportScope.ExportAll, Description = "Failed operation")]
         public const string ErrorOperation = "error.operation";
 
-        [TelemetryTag("error.retried", ExportScope = TagExportScope.ExportDatabricks, Description = "Was retried")]
+        [TelemetryTag("error.retried", ExportScope = TagExportScope.ExportAll, Description = "Was retried")]
         public const string ErrorRetried = "error.retried";
 
-        [TelemetryTag("error.retry_count", ExportScope = TagExportScope.ExportDatabricks, Description = "Retry count")]
+        [TelemetryTag("error.retry_count", ExportScope = TagExportScope.ExportAll, Description = "Retry count")]
         public const string ErrorRetryCount = "error.retry_count";
 
         [TelemetryTag("error.message", ExportScope = TagExportScope.ExportLocal, Description = "Error message")]

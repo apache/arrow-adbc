@@ -25,6 +25,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
         /// <summary>
         /// Gets tags allowed for Databricks export (privacy whitelist).
         /// </summary>
+        // TODO: Explore alternate approaches to avoid maintaining separate GetDatabricksExportTags methods in each event class.
         public static IReadOnlyCollection<string> GetDatabricksExportTags(TelemetryEventType eventType)
         {
             return eventType switch

@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TagDefinitions
         public TelemetryTagAttribute(string tagName)
         {
             TagName = tagName ?? throw new ArgumentNullException(nameof(tagName));
-            ExportScope = TagExportScope.ExportAll;
+            ExportScope = TagExportScope.ExportLocal;
         }
     }
 }
