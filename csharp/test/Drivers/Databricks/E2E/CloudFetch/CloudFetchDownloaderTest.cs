@@ -25,6 +25,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Moq.Protected;
@@ -46,6 +47,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             _resultQueue = new BlockingCollection<IDownloadResult>(new ConcurrentQueue<IDownloadResult>(), 10);
             _mockMemoryManager = new Mock<ICloudFetchMemoryBufferManager>();
             _mockStatement = new Mock<IHiveServer2Statement>();
+            _mockStatement.SetupGet(x => x.Trace).Returns(new ActivityTrace());
             _mockResultFetcher = new Mock<ICloudFetchResultFetcher>();
 
             // Set up memory manager defaults
@@ -136,13 +138,13 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
             mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
 
-            // Capture the stream and size passed to SetCompleted
-            Stream? capturedStream = null;
+            // Capture the date and size passed to SetCompleted
+            ReadOnlyMemory<byte> capturedData = default;
             long capturedSize = 0;
-            mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()))
-                .Callback<Stream, long>((stream, size) =>
+            mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<long>()))
+                .Callback<ReadOnlyMemory<byte>, long>((data, size) =>
                 {
-                    capturedStream = stream;
+                    capturedData = data;
                     capturedSize = size;
                 });
 
@@ -176,11 +178,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
             Assert.Same(mockDownloadResult.Object, result);
 
             // Verify SetCompleted was called
-            mockDownloadResult.Verify(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()), Times.Once);
+            mockDownloadResult.Verify(r => r.SetCompleted(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<long>()), Times.Once);
 
             // Verify the content of the stream
-            Assert.NotNull(capturedStream);
-            using (var reader = new StreamReader(capturedStream))
+            Assert.NotEqual(0, capturedData.Length);
+            using (var reader = new StreamReader(new MemoryStream(capturedData.ToArray())))
             {
                 string content = reader.ReadToEnd();
                 Assert.Equal(testContent, content);
@@ -484,8 +486,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
                 mockDownloadResult.Setup(r => r.Size).Returns(100);
                 mockDownloadResult.Setup(r => r.RefreshAttempts).Returns(0);
                 mockDownloadResult.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
-                mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()))
-                    .Callback<Stream, long>((_, _) => { });
+                mockDownloadResult.Setup(r => r.SetCompleted(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<long>()))
+                    .Callback<ReadOnlyMemory<byte>, long>((_, _) => { });
                 downloadResults[i] = mockDownloadResult.Object;
             }
 

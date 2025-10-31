@@ -145,7 +145,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                             // Create a new reader for the downloaded file
                             try
                             {
-                                this.currentReader = new ArrowStreamReader(this.currentDownloadResult.DataStream);
+                                this.currentReader = new ArrowStreamReader(this.currentDownloadResult.Data);
                                 continue;
                             }
                             catch (Exception ex)

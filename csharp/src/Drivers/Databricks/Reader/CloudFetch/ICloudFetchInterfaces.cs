@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -34,9 +33,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         TSparkArrowResultLink Link { get; }
 
         /// <summary>
-        /// Gets the stream containing the downloaded data.
+        /// Gets the memory containing the downloaded data.
         /// </summary>
-        Stream DataStream { get; }
+        ReadOnlyMemory<byte> Data { get; }
 
         /// <summary>
         /// Gets the size of the downloaded data in bytes.
@@ -61,9 +60,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <summary>
         /// Sets the download as completed with the provided data stream.
         /// </summary>
-        /// <param name="dataStream">The stream containing the downloaded data.</param>
+        /// <param name="data">The downloaded data.</param>
         /// <param name="size">The size of the downloaded data in bytes.</param>
-        void SetCompleted(Stream dataStream, long size);
+        void SetCompleted(ReadOnlyMemory<byte> data, long size);
 
         /// <summary>
         /// Sets the download as failed with the specified exception.
