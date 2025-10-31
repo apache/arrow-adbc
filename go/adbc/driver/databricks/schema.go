@@ -28,6 +28,7 @@ import (
 )
 
 const DbxSchemaTypeText = "type_text"
+const DbxSchemaTypeTextNewConvention = "DBX:type"
 
 const (
 	decimalTypeRegexRaw  = `(?i)^\s*(?:DECIMAL|DEC|NUMERIC)\s*\(\s*(\d+)\s*(?:,\s*(\d+)\s*)?\)\s*$`
@@ -176,7 +177,8 @@ func ClusterModeSchemaToArrowSchema(dbxSchema []map[string]interface{}) (*arrow.
 			Type:     arrowType,
 			Nullable: true,
 			Metadata: arrow.MetadataFrom(map[string]string{
-				DbxSchemaTypeText: colType,
+				DbxSchemaTypeText:              colType,
+				DbxSchemaTypeTextNewConvention: colType,
 			}),
 		}
 	}
@@ -196,9 +198,10 @@ func ResultSchemaToArrowSchema(dbxSchema *sql.ResultSchema) (*arrow.Schema, erro
 			Type:     arrowType,
 			Nullable: true,
 			Metadata: arrow.MetadataFrom(map[string]string{
-				"type_name":       string(col.TypeName),
-				"position":        col.Name,
-				DbxSchemaTypeText: col.TypeText,
+				"type_name":                    string(col.TypeName),
+				"position":                     col.Name,
+				DbxSchemaTypeText:              col.TypeText,
+				DbxSchemaTypeTextNewConvention: col.TypeText,
 			}),
 		}
 	}
