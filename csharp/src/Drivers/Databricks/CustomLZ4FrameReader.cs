@@ -73,7 +73,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             if (buffer != null)
             {
-                LargeBufferPool.Return(buffer, clearArray: false);
+                // Clear the buffer to prevent stale data from previous decompressions
+                // from corrupting subsequent operations. The performance overhead (~1-2ms
+                // per 4MB buffer) is negligible compared to network I/O and decompression time.
+                LargeBufferPool.Return(buffer, clearArray: true);
             }
         }
     }
