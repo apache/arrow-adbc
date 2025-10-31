@@ -432,8 +432,8 @@ void CompareArray(struct ArrowArrayView* array,
       } else if constexpr (std::is_same<T, std::vector<std::byte>>::value) {
         struct ArrowBufferView view = ArrowArrayViewGetBytesUnsafe(array, i);
         ASSERT_EQ(v->size(), view.size_bytes);
-        for (int64_t i = 0; i < view.size_bytes; i++) {
-          ASSERT_EQ((*v)[i], std::byte{view.data.as_uint8[i]});
+        for (int64_t byte_i = 0; byte_i < view.size_bytes; byte_i++) {
+          ASSERT_EQ((*v)[byte_i], std::byte{view.data.as_uint8[byte_i]});
         }
       } else if constexpr (std::is_same<T, ArrowInterval*>::value) {
         ASSERT_NE(array->buffer_views[1].data.data, nullptr);
