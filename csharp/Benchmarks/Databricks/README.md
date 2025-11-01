@@ -1,56 +1,16 @@
-# Databricks CloudFetch Memory Benchmarks
+# Databricks CloudFetch E2E Benchmark
 
-Comprehensive benchmarks for measuring memory usage and performance of the Databricks CloudFetch implementation.
+Real end-to-end benchmark for measuring memory usage and performance of the Databricks CloudFetch implementation against an actual Databricks cluster.
 
 ## Overview
 
-Two types of benchmarks:
-
-### 1. Synthetic Benchmarks (No DB Required)
-Simulate the full CloudFetch pipeline with generated test data:
-- Total memory allocations
-- GC collections (Gen0, Gen1, Gen2)
-- Large Object Heap (LOH) usage
-- Impact of different optimization strategies
-- Memory manager size tuning
-- Read patterns (including Power BI simulation)
-
-### 2. Real E2E Benchmarks (Requires Databricks)
-Test against actual Databricks cluster with real queries:
-- Full end-to-end CloudFetch flow
-- Real data from TPCDS benchmark tables
+This benchmark tests the complete CloudFetch flow with real queries against a Databricks warehouse:
+- Full end-to-end CloudFetch flow (query execution, downloads, LZ4 decompression, batch consumption)
+- Real data from Databricks tables
 - Memory usage with actual network I/O
-- Parameter tuning validation (memory manager size, etc.)
-- Power BI consumption simulation
+- Power BI consumption simulation with batch-proportional delays
 
-## Benchmarks
-
-### CloudFetchMemoryBenchmark
-
-Tests the complete pipeline with realistic scenarios:
-
-**Parameters:**
-- `ReadDelayMs`: Simulates read delays (0ms = no delay, 10ms = simulate Power BI)
-- `MemoryManagerMB`: Memory manager size limit (100MB, 200MB)
-
-**Methods:**
-1. **PreDecompressApproach** (Baseline): Pre-decompresses all data before queueing
-   - Old approach: ~4 files × 20MB = 80MB in result queue
-   - Higher memory usage but simpler implementation
-
-2. **StreamingApproach** (Optimized): Streams LZ4 decompression on-demand
-   - New approach: ~4 files × 8MB = 32MB in result queue
-   - 66% memory reduction, decompresses as ArrowStreamReader reads
-
-### CloudFetchMemoryManagerBenchmark
-
-Measures the impact of memory manager size on throughput and concurrency:
-
-**Parameters:**
-- `FileCount`: Number of files to process (5, 10, 20)
-- `MemoryManagerMB`: Memory manager size limit (50MB, 100MB, 200MB)
-
-Shows how the memory limit affects download parallelism and queueing behavior.
+## Benchmark
 
 ### CloudFetchRealE2EBenchmark
 
@@ -69,25 +29,13 @@ Shows how the memory limit affects download parallelism and queueing behavior.
   - `token`: Databricks access token
   - `query`: SQL query to execute (this will be run by the benchmark)
 
-## Running the Benchmarks
+## Running the Benchmark
 
-### Run all CloudFetch benchmarks:
+### Run the CloudFetch E2E benchmark:
 ```bash
 cd csharp
-dotnet run -c Release --project Benchmarks/Benchmarks.csproj --framework net8.0 -- --filter "*CloudFetch*"
-```
-
-### Run specific benchmark:
-```bash
-# Synthetic memory optimization comparison (no DB needed)
-dotnet run -c Release --project Benchmarks/Benchmarks.csproj --framework net8.0 -- --filter "*CloudFetchMemoryBenchmark*"
-
-# Synthetic memory manager tuning (no DB needed)
-dotnet run -c Release --project Benchmarks/Benchmarks.csproj --framework net8.0 -- --filter "*CloudFetchMemoryManager*"
-
-# Real E2E with Databricks (requires DATABRICKS_TEST_CONFIG_FILE)
 export DATABRICKS_TEST_CONFIG_FILE=/path/to/databricks-config.json
-dotnet run -c Release --project Benchmarks/Benchmarks.csproj --framework net8.0 -- --filter "*CloudFetchRealE2E*" --job dry
+dotnet run -c Release --project Benchmarks/Benchmarks.csproj --framework net8.0 -- --filter "*CloudFetchRealE2E*"
 ```
 
 ### Real E2E Benchmark Configuration
@@ -110,36 +58,24 @@ export DATABRICKS_TEST_CONFIG_FILE=/path/to/databricks-config.json
 
 **Note**: The `query` field specifies the SQL query that will be executed during the benchmark. Use a query that returns a large result set to properly test CloudFetch performance.
 
-### Run with specific parameters:
-```bash
-# Only test with 100MB memory manager and no read delay
-dotnet run -c Release --project Benchmarks/Benchmarks.csproj --framework net8.0 -- \
-  --filter "*CloudFetchMemoryBenchmark*" \
-  --job short \
-  --runtimes net8.0
-```
-
 ## Understanding the Results
 
 ### Key Metrics:
 
 - **Peak Memory (MB)**: Maximum working set memory during execution
-  - Printed to console output during benchmark execution
-  - Shows the real memory impact of each approach
-  - Pre-decompress: ~465 MB peak
-  - Streaming: ~176 MB peak (62% reduction!)
+  - Printed to console output during each benchmark iteration
+  - Shows the real memory footprint during CloudFetch operations
 
 - **Allocated**: Total managed memory allocated during the operation
-  - Lower is better
-  - Compare Pre-decompress vs Streaming to see memory savings
+  - Lower is better for memory efficiency
 
 - **Gen0/Gen1/Gen2**: Number of garbage collections
   - Gen0: Frequent, low cost (short-lived objects)
   - Gen1/Gen2: Less frequent, higher cost (longer-lived objects)
   - LOH: Part of Gen2, objects >85KB
 
-- **Mean/Median**: Average execution time
-  - Streaming may be slightly slower but uses much less memory
+- **Mean/Median**: Execution time statistics
+  - Shows the end-to-end time including query execution, CloudFetch downloads, LZ4 decompression, and batch consumption
 
 ### Example Output
 
@@ -175,13 +111,13 @@ Apple M1 Max, 1 CPU, 10 logical and 10 physical cores
 
 | Method            | ReadDelayMs | Mean    | Min     | Max     | Median  | Peak Memory (MB)          | Gen0       | Gen1       | Gen2       | Allocated |
 |------------------ |------------ |--------:|--------:|--------:|--------:|--------------------------:|-----------:|-----------:|-----------:|----------:|
-| ExecuteLargeQuery | 5           | 9.19 s  | 8.75 s  | 9.79 s  | 9.02 s  | See previous console output | 28000.0000 | 28000.0000 | 23000.0000 |   1.77 GB |
+| ExecuteLargeQuery | 5           | 9.19 s  | 8.75 s  | 9.79 s  | 9.02 s  | See previous console output | 28000.0000 | 28000.0000 | 28000.0000 |   1.78 GB |
 ```
 
 **Key Metrics:**
 - **E2E Time**: 8.75-9.79 seconds (includes query execution, CloudFetch downloads, LZ4 decompression, batch consumption)
 - **Peak Memory**: 249-262 MB (tracked via Process.WorkingSet64, printed in console)
-- **Total Allocated**: 1.77 GB managed memory
-- **GC Collections**: 28K Gen0/Gen1, 23K Gen2 collections
+- **Total Allocated**: 1.78 GB managed memory
+- **GC Collections**: 28K Gen0/Gen1/Gen2 collections
 
 **Note**: Peak memory values are printed to console during execution since BenchmarkDotNet runs each iteration in a separate process.
