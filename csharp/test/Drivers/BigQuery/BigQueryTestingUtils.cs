@@ -150,6 +150,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.BigQuery
 
             parameters.Add(BigQueryParameters.IncludePublicProjectId, testEnvironment.IncludePublicProjectId.ToString());
 
+            parameters.Add(BigQueryParameters.LargeDecimalsAsString, testEnvironment.LargeDecimalAsString.ToString());
+
             if (!string.IsNullOrEmpty(testEnvironment.LargeResultsDataset))
             {
                 parameters.Add(BigQueryParameters.LargeResultsDataset, testEnvironment.LargeResultsDataset);
