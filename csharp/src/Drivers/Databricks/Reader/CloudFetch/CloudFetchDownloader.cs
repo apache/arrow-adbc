@@ -483,56 +483,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
 
                 // Process the downloaded file data
-                MemoryStream dataStream;
-                long actualSize = fileData.Length;
+                Stream dataStream;
 
-                // If the data is LZ4 compressed, decompress it
+                // If the data is LZ4 compressed, wrap it in an LZ4Stream for on-demand decompression
+                // This avoids pre-decompressing the entire file into memory
                 if (_isLz4Compressed)
                 {
-                    try
-                    {
-                        var decompressStopwatch = Stopwatch.StartNew();
+                    // Create a MemoryStream for the compressed data
+                    var compressedStream = new MemoryStream(fileData, writable: false);
 
-                        // Use shared Lz4Utilities for decompression (consolidates logic with non-CloudFetch path)
-                        var (buffer, length) = await Lz4Utilities.DecompressLz4Async(
-                            fileData,
-                            cancellationToken).ConfigureAwait(false);
+                    // Wrap it in an LZ4Stream that will decompress chunks on-demand as ArrowStreamReader reads
+                    dataStream = LZ4Stream.Decode(compressedStream);
 
-                        // Create the dataStream from the decompressed buffer
-                        dataStream = new MemoryStream(buffer, 0, length, writable: false, publiclyVisible: true);
-                        dataStream.Position = 0;
-                        decompressStopwatch.Stop();
-
-                        // Calculate throughput metrics
-                        double compressionRatio = (double)dataStream.Length / actualSize;
-
-                        activity?.AddEvent("cloudfetch.decompression_complete", [
-                            new("offset", downloadResult.Link.StartRowOffset),
-                            new("sanitized_url", sanitizedUrl),
-                            new("decompression_time_ms", decompressStopwatch.ElapsedMilliseconds),
-                            new("compressed_size_bytes", actualSize),
-                            new("compressed_size_kb", actualSize / 1024.0),
-                            new("decompressed_size_bytes", dataStream.Length),
-                            new("decompressed_size_kb", dataStream.Length / 1024.0),
-                            new("compression_ratio", compressionRatio)
-                        ]);
-
-                        actualSize = dataStream.Length;
-                    }
-                    catch (Exception ex)
-                    {
-                        stopwatch.Stop();
-                        activity?.AddException(ex, [
-                            new("error.context", "cloudfetch.decompression"),
-                            new("offset", downloadResult.Link.StartRowOffset),
-                            new("sanitized_url", sanitizedUrl),
-                            new("elapsed_time_ms", stopwatch.ElapsedMilliseconds)
-                        ]);
-
-                        // Release the memory we acquired
-                        _memoryManager.ReleaseMemory(size);
-                        throw new InvalidOperationException($"Error decompressing data: {ex.Message}", ex);
-                    }
+                    activity?.AddEvent("cloudfetch.lz4_stream_created", [
+                        new("offset", downloadResult.Link.StartRowOffset),
+                        new("sanitized_url", sanitizedUrl),
+                        new("compressed_size_bytes", fileData.Length),
+                        new("compressed_size_kb", fileData.Length / 1024.0)
+                    ]);
                 }
                 else
                 {
@@ -541,17 +509,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
                 // Stop the stopwatch and log download completion
                 stopwatch.Stop();
-                double throughputMBps = (actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0);
+                long downloadedSize = fileData.Length;
+                double throughputMBps = (downloadedSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0);
                 activity?.AddEvent("cloudfetch.download_complete", [
                     new("offset", downloadResult.Link.StartRowOffset),
                     new("sanitized_url", sanitizedUrl),
-                    new("actual_size_bytes", actualSize),
-                    new("actual_size_kb", actualSize / 1024.0),
+                    new("downloaded_size_bytes", downloadedSize),
+                    new("downloaded_size_kb", downloadedSize / 1024.0),
+                    new("is_compressed", _isLz4Compressed),
                     new("latency_ms", stopwatch.ElapsedMilliseconds),
                     new("throughput_mbps", throughputMBps)
                 ]);
 
-                // Set the download as completed with the original size
+                // Set the download as completed with the original (compressed) size for memory tracking
                 downloadResult.SetCompleted(dataStream, size);
             }, activityName: "DownloadFile");
         }
