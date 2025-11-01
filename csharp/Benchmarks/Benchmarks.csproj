@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ProcessArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</ProcessArchitecture>
+    <StartupObject>Apache.Arrow.Adbc.Benchmarks.CloudFetchBenchmarkRunner</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,8 +15,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="K4os.Compression.LZ4" />
+    <PackageReference Include="K4os.Compression.LZ4.Streams" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
     <ProjectReference Include="..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
+    <ProjectReference Include="..\src\Drivers\Databricks\Apache.Arrow.Adbc.Drivers.Databricks.csproj" />
     <ProjectReference Include="..\test\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
   </ItemGroup>
 
