@@ -141,57 +141,47 @@ dotnet run -c Release --project Benchmarks/Benchmarks.csproj --framework net8.0 
 - **Mean/Median**: Average execution time
   - Streaming may be slightly slower but uses much less memory
 
-### Expected Results:
+### Example Output
 
-Based on the optimization work:
-- **Peak Memory**:
-  - Pre-decompress: ~465 MB
-  - Streaming: ~176 MB
-  - **Reduction: 289 MB (62%)**
-- **Total Allocations**: Streaming uses ~639x less cumulative allocations (640 MB vs 1.16 MB)
-- **GC Collections**: Streaming has fewer Gen0/Gen1/Gen2 collections
-- **Memory Manager**: 100MB limit provides good balance vs 200MB
-
-### Example Output:
-
+**Console output during benchmark execution:**
 ```
-Test data: 10 files, 200MB uncompressed → 61MB compressed
-PreDecompressApproach - Peak memory: 465.70 MB
-StreamingApproach - Peak memory: 176.16 MB
+Loaded config from: /path/to/databricks-config.json
+Hostname: adb-6436897454825492.12.azuredatabricks.net
+HTTP Path: /sql/1.0/warehouses/2f03dd43e35e2aa0
+Query: select * from main.tpcds_sf1_delta.catalog_sales
+Benchmark will test CloudFetch with 5ms per 10K rows read delay
 
-| Method                          | ReadDelayMs | MemoryManagerMB | Mean      | Allocated | Peak Memory (MB) |
-|-------------------------------- |------------ |---------------- |----------:|----------:|------------------:|
-| 'Pre-decompress (OLD approach)' | 0           | 100             | 176.21 ms | 640.04 MB | ~465 MB          |
-| 'Streaming LZ4 (NEW approach)'  | 0           | 100             |  95.53 ms |   1.16 MB | ~176 MB          |
+// Warmup
+CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 272.97 MB
+WorkloadWarmup   1: 1 op, 11566591709.00 ns, 11.5666 s/op
+
+// Actual iterations
+CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 249.11 MB
+WorkloadResult   1: 1 op, 8752445353.00 ns, 8.7524 s/op
+
+CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 261.95 MB
+WorkloadResult   2: 1 op, 9794630771.00 ns, 9.7946 s/op
+
+CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 258.39 MB
+WorkloadResult   3: 1 op, 9017280271.00 ns, 9.0173 s/op
 ```
 
-**Key Takeaway**: Streaming LZ4 reduces peak memory by 289 MB (62%) and total allocations by 639x!
+**Summary table:**
+```
+BenchmarkDotNet v0.15.4, macOS Sequoia 15.7.1 (24G231) [Darwin 24.6.0]
+Apple M1 Max, 1 CPU, 10 logical and 10 physical cores
+.NET SDK 8.0.407
+  [Host] : .NET 8.0.19 (8.0.19, 8.0.1925.36514), Arm64 RyuJIT armv8.0-a
 
-### Power BI Simulation:
+| Method            | ReadDelayMs | Mean    | Min     | Max     | Median  | Peak Memory (MB)          | Gen0       | Gen1       | Gen2       | Allocated |
+|------------------ |------------ |--------:|--------:|--------:|--------:|--------------------------:|-----------:|-----------:|-----------:|----------:|
+| ExecuteLargeQuery | 5           | 9.19 s  | 8.75 s  | 9.79 s  | 9.02 s  | See previous console output | 28000.0000 | 28000.0000 | 23000.0000 |   1.77 GB |
+```
 
-The `ReadDelayMs` parameter simulates slower consumption patterns:
-- `0ms`: Fast reading (typical programmatic access)
-- `10ms`: Simulates Power BI slower processing every 1MB
-- Shows how streaming benefits are magnified with slower consumers
+**Key Metrics:**
+- **E2E Time**: 8.75-9.79 seconds (includes query execution, CloudFetch downloads, LZ4 decompression, batch consumption)
+- **Peak Memory**: 249-262 MB (tracked via Process.WorkingSet64, printed in console)
+- **Total Allocated**: 1.77 GB managed memory
+- **GC Collections**: 28K Gen0/Gen1, 23K Gen2 collections
 
-## Implementation Details
-
-### Test Data:
-- 10 files, each ~20MB decompressed (typical CloudFetch file size)
-- Compresses to ~8MB (realistic compression ratio)
-- Mix of patterns (70% repeated, 30% random) mimics Arrow columnar data
-
-### Pipeline Simulation:
-1. **Download phase**: Files downloaded respecting memory manager limit
-2. **Queue phase**: Up to 4 files buffered in result queue
-3. **Read phase**: ArrowStreamReader consumes in 80KB chunks
-
-### Memory Manager:
-- Tracks compressed file sizes (in-flight downloads)
-- Blocks new downloads when limit reached
-- Default production value: 100MB
-
-## Related Documentation
-
-- `lz4-memory-optimization-approaches.md`: Detailed analysis of optimization approaches
-- PR #3657: Implementation of streaming LZ4 decompression
+**Note**: Peak memory values are printed to console during execution since BenchmarkDotNet runs each iteration in a separate process.
