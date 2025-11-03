@@ -53,6 +53,11 @@ def _blocking(event):
     event.wait()
 
 
+@pytest.fixture(scope="module")
+def is_freethreaded() -> bool:
+    return hasattr(sys, "_is_gil_enabled") and not getattr(sys, "_is_gil_enabled")()
+
+
 def test_sigint_fires():
     # Run the thing that fires SIGINT itself as the "blocking" call
     event = threading.Event()
@@ -95,7 +100,7 @@ def test_blocking_raise():
         _lib._blocking_call(_blocking, (), {}, lambda: None)
 
 
-def test_cancel_raise():
+def test_cancel_raise(is_freethreaded: bool) -> None:
     event = threading.Event()
 
     def _blocking(event):
@@ -104,7 +109,7 @@ def test_cancel_raise():
         # Under freethreaded python, _blocking ends before _cancel finishes
         # and raises the exception, so the exception ends up getting thrown
         # away; sleep a bit to prevent that
-        if hasattr(sys, "_is_gil_enabled") and not getattr(sys, "_is_gil_enabled")():
+        if is_freethreaded:
             time.sleep(5)
 
     def _cancel():
@@ -115,12 +120,14 @@ def test_cancel_raise():
         _lib._blocking_call(_blocking, (event,), {}, _cancel)
 
 
-def test_both_raise():
+def test_both_raise(is_freethreaded: bool) -> None:
     event = threading.Event()
 
     def _blocking(event):
         _send_sigint()
         event.wait()
+        if is_freethreaded:
+            time.sleep(5)
         raise ValueError("expected error 1")
 
     def _cancel():
