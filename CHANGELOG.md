@@ -1164,3 +1164,78 @@
 - organize Documentation steps of CONTRIBUTING.md (#3100)
 - rework driver manager references across docs (#3388)
 - **rust/core**: add simple usage of Driver Manager (#3086)
+
+## ADBC Libraries 21 (2025-11-03)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.9.0
+- C#: 0.21.0
+- Java: 0.21.0
+- R: 0.21.0
+- Rust: 0.21.0
+
+### New Features
+
+- **c/driver/postgresql**: Implement StatementGetParameterSchema (#3579)
+- **c/driver_manager**: improve error messages further (#3646)
+- **ci/linux-packages**: Add support for AlmaLinux 10 (#3514)
+- **ci/linux-packages**: Add support for Debian GNU/Linux trixie (#3513)
+- **csharp/src**: Improve efficiency of C# BigQuery and Databricks drivers (#3583)
+- **csharp/src/Drivers**: instrument tracing exporters for BigQuery/Apache drivers (#3315)
+- **csharp/src/Drivers/BigQuery**: Add support for specifying a location (#3494)
+- **csharp/src/Drivers/BigQuery**: implement AdbcStatement.Cancel on BigQuery (#3422)
+- **csharp/src/Drivers/Databricks**: Add Activity-based distributed tracing to CloudFetch pipeline (#3580)
+- **csharp/src/Drivers/Databricks**: Added support for connection param of maxBytesPerFetchRequest (#3474)
+- **csharp/src/Drivers/Databricks**: Added support for user-configurable Fetch heartbeat interval param (#3472)
+- **csharp/src/Drivers/Databricks**: Changed default value for async exec poll interval connection param (#3589)
+- **csharp/src/Drivers/Databricks**: Clarify CloudFetch memory manager behavior and set appropriate limit (#3656)
+- **csharp/src/Drivers/Databricks**: Design of SEA support for Databricks C# driver (#3576)
+- **csharp/src/Drivers/Databricks**: Improve memory utilization of cloud downloads (#3652)
+- **csharp/src/Drivers/Databricks**: Used connection param of batchSize for cloudFetch (#3518)
+- **csharp/src/Drivers/Databricks**: capture x-thriftserver-error-message header (#3558)
+- **csharp/src/Drivers/Databricks**: consolidate LZ4 decompression logic and improve resource disposal (#3649)
+- **csharp/src/Telemetry/Traces/Exporters**: refactor and improve performance of file exporter (#3397)
+- **go/adbc/driver/bigquery**: Support setting quota project for connection (#3622)
+- **go/adbc/driver/bigquery**: add `BIGQUERY:type` field metadata (#3604)
+- **go/adbc/driver/databricks**: Add Databrikcs driver written in Go (#3325)
+- **go/adbc/driver/snowflake**: Add option to disable vectorized scanner (#3555)
+- **python**: support free-threading (#3575)
+- **python/adbc_driver_manager**: add convenience methods (#3539)
+- **python/adbc_driver_manager**: simplify connect (#3537)
+- **python/adbc_driver_postgresql**: document autocommit as acceptable parameter in connect (#3606)
+
+### Bugfixes
+
+- resolve Goroutine leak in database connection close (#3491)
+- **c/driver/postgresql**: handle empty strings correctly in parameter binding (#3601)
+- **c/driver/postgresql**: handle overflow on binary-like fields (#3616)
+- **c/driver_manager**: ensure CONDA_PREFIX search builds (#3428)
+- **csharp/src**: handle HTTP authorization exception for Thrift-based drivers (#3551)
+- **csharp/src/Apache.Arrow.Adbc**: Expose extensions to package in NuGet (#3609)
+- **csharp/src/Drivers**: correct the call to TraceActivityAsync (#3592)
+- **csharp/src/Drivers/BigQuery**: correct unexpected ObjectDisposedException (#3613)
+- **csharp/src/Drivers/BigQuery**: handle dispose of Statement before Stream (#3608)
+- **csharp/src/Drivers/BigQuery**: improve selective handling of cancellation exception (#3615)
+- **csharp/src/Drivers/Databricks**: Fix HTTP handler chain ordering to enable retry before exception (#3578)
+- **csharp/src/Drivers/Databricks**: Update DirectResult MaxRows MaxBytes setting (#3489)
+- **csharp/src/Drivers/Databricks**: update error type for connection errors when possible (#3581)
+- **csharp/test/Drivers/Databricks**: Disable UseDescTableExtended by default (#3544)
+- **go/adbc/driver/bigquery**: Use DECIMAL and BIGDECIMAL defaults if necessary (#3468)
+- **go/adbc/driver/snowflake**: Retain case for GetTableSchema field names (#3471)
+- **go/adbc/driver/snowflake**: return arrow numeric type correctly when use_high_precision is false (#3295)
+- **java/driver/flight-sql**: use FlightSqlClientWithCallOptions for prepared statement operations to ensure CallOptions get set (#3586)
+- **python/adbc_driver_manager**: don't consume result for `description` (#3554)
+- **python/adbc_driver_manager**: load manifests from venv path (#3490)
+- **python/adbc_driver_manager**: update type annotations (#3603)
+- **r/adbcdrivermanager**: support `replace` and `create_append` ingest mode in `write_adbc()` (#3476)
+- **r/adbcsnowflake**: add importFrom for packageVersion (#3435)
+
+### Documentation Improvements
+
+- Fix macro name for exporting ADBC driver in README (#3493)
+- add very basic bigquery drivers page (#3452)
+- fix path case in references in bigquery.rst (#3453)
+- update docs site footer for new ASF logo (#3546)
+- **csharp/src/Drivers/Databricks**: add mitm proxy instruction (#3486)
+- **r/adbcdrivermanager**: Fix roxygen comments (#3477)
