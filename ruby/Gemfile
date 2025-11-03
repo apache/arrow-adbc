@@ -23,4 +23,6 @@ gemspec
 
 gem "bundler"
 gem "rake"
+# 3.0.0 has a breaking change
+gem "power_assert", "<3.0.0"
 gem "test-unit"
