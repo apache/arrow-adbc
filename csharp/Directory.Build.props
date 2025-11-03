@@ -30,7 +30,7 @@
     <Copyright>Copyright 2022-2025 The Apache Software Foundation</Copyright>
     <Company>The Apache Software Foundation</Company>
     <VersionPrefix>0.21.0</VersionPrefix>
-    <VersionSuffix>SNAPSHOT</VersionSuffix>
+    <VersionSuffix></VersionSuffix>
   </PropertyGroup>
 
   <PropertyGroup>

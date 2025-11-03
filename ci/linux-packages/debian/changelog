@@ -1,3 +1,9 @@
+apache-arrow-adbc (21-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- David Li <li.davidm96@gmail.com>  Mon, 03 Nov 2025 06:25:38 -0000
+
 apache-arrow-adbc (0.1.0-1) unstable; urgency=low
 
   * New upstream release.

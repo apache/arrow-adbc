@@ -21,7 +21,7 @@
 # ------------------------------------------------------------
 # Version definitions
 
-set(ADBC_VERSION "1.9.0-SNAPSHOT")
+set(ADBC_VERSION "1.9.0")
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" ADBC_BASE_VERSION "${ADBC_VERSION}")
 string(REPLACE "." ";" _adbc_version_list "${ADBC_BASE_VERSION}")
 list(GET _adbc_version_list 0 ADBC_VERSION_MAJOR)

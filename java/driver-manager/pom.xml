@@ -22,7 +22,7 @@
   <parent>
     <groupId>org.apache.arrow.adbc</groupId>
     <artifactId>arrow-adbc-java-root</artifactId>
-    <version>0.21.0-SNAPSHOT</version>
+    <version>0.21.0</version>
   </parent>
 
   <artifactId>adbc-driver-manager</artifactId>
