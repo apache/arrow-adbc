@@ -29,7 +29,7 @@
     <PackageVersion Include="Apache.Arrow.Flight" Version="22.1.0" />
     <PackageVersion Include="ApacheThrift" Version="0.22.0" />
     <PackageVersion Include="Azure.Identity" Version="1.14.2" />
-    <PackageVersion Include="BenchmarkDotNet" Version="0.15.4" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.5" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="DuckDB.NET.Bindings.Full" Version="1.4.1" />
     <PackageVersion Include="K4os.Compression.LZ4" Version="1.3.8" />
