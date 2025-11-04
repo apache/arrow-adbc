@@ -20,6 +20,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using K4os.Compression.LZ4.Streams;
+using Microsoft.IO;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -34,6 +35,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private const int DefaultBufferSize = 81920;
 
         /// <summary>
+        /// Shared RecyclableMemoryStreamManager for pooled memory stream allocation.
+        /// </summary>
+        private static readonly RecyclableMemoryStreamManager _memoryStreamManager = new RecyclableMemoryStreamManager();
+
+        /// <summary>
         /// Decompresses LZ4 compressed data into memory.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
@@ -46,6 +52,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Decompresses LZ4 compressed data into memory with a specified buffer size.
+        /// NOTE: This method uses regular MemoryStream (not RecyclableMemoryStream) because the buffer
+        /// must remain valid after the method returns for the caller to use.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
         /// <param name="bufferSize">The buffer size to use for decompression operations.</param>
@@ -55,6 +63,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             try
             {
+                // Use regular MemoryStream here because we return the buffer after disposal
+                // RecyclableMemoryStream would return the buffer to the pool, making it unsafe
                 using (var outputStream = new MemoryStream())
                 {
                     using (var inputStream = new MemoryStream(compressedData))
@@ -77,13 +87,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Asynchronously decompresses LZ4 compressed data into memory.
-        /// Returns the buffer and length as a tuple for efficient wrapping in a MemoryStream.
+        /// Returns a RecyclableMemoryStream that must be disposed by the caller.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
         /// <param name="cancellationToken">Cancellation token for the async operation.</param>
-        /// <returns>A tuple containing the decompressed buffer and its valid length.</returns>
+        /// <returns>A MemoryStream containing the decompressed data. Caller must dispose.</returns>
         /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
-        public static Task<(byte[] buffer, int length)> DecompressLz4Async(
+        public static Task<MemoryStream> DecompressLz4Async(
             byte[] compressedData,
             CancellationToken cancellationToken = default)
         {
@@ -92,21 +102,23 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Asynchronously decompresses LZ4 compressed data into memory with a specified buffer size.
-        /// Returns the buffer and length as a tuple for efficient wrapping in a MemoryStream.
+        /// Returns a RecyclableMemoryStream that must be disposed by the caller to return the buffer to the pool.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
         /// <param name="bufferSize">The buffer size to use for decompression operations.</param>
         /// <param name="cancellationToken">Cancellation token for the async operation.</param>
-        /// <returns>A tuple containing the decompressed buffer and its valid length.</returns>
+        /// <returns>A MemoryStream containing the decompressed data. Caller must dispose.</returns>
         /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
-        public static async Task<(byte[] buffer, int length)> DecompressLz4Async(
+        public static async Task<MemoryStream> DecompressLz4Async(
             byte[] compressedData,
             int bufferSize,
             CancellationToken cancellationToken = default)
         {
             try
             {
-                using (var outputStream = new MemoryStream())
+                // Use RecyclableMemoryStream for pooled memory allocation
+                var outputStream = _memoryStreamManager.GetStream();
+                try
                 {
                     using (var inputStream = new MemoryStream(compressedData))
                     using (var decompressor = LZ4Stream.Decode(inputStream))
@@ -114,11 +126,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         await decompressor.CopyToAsync(outputStream, bufferSize, cancellationToken).ConfigureAwait(false);
                     }
 
-                    // Get the underlying buffer and its valid length without copying
-                    // The buffer remains valid after MemoryStream disposal since we hold a reference to it
-                    byte[] buffer = outputStream.GetBuffer();
-                    int length = (int)outputStream.Length;
-                    return (buffer, length);
+                    // Reset position to beginning for reading
+                    outputStream.Position = 0;
+                    return outputStream;
+                }
+                catch
+                {
+                    // If an error occurs, dispose the stream to return it to the pool
+                    outputStream?.Dispose();
+                    throw;
                 }
             }
             catch (Exception ex)

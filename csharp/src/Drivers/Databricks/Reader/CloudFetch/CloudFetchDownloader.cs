@@ -483,7 +483,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
 
                 // Process the downloaded file data
-                MemoryStream dataStream;
+                Stream dataStream;
                 long actualSize = fileData.Length;
 
                 // If the data is LZ4 compressed, decompress it
@@ -493,14 +493,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     {
                         var decompressStopwatch = Stopwatch.StartNew();
 
-                        // Use shared Lz4Utilities for decompression (consolidates logic with non-CloudFetch path)
-                        var (buffer, length) = await Lz4Utilities.DecompressLz4Async(
+                        // Use shared Lz4Utilities for decompression with RecyclableMemoryStream
+                        // The returned stream must be disposed by Arrow after reading
+                        dataStream = await Lz4Utilities.DecompressLz4Async(
                             fileData,
                             cancellationToken).ConfigureAwait(false);
 
-                        // Create the dataStream from the decompressed buffer
-                        dataStream = new MemoryStream(buffer, 0, length, writable: false, publiclyVisible: true);
-                        dataStream.Position = 0;
                         decompressStopwatch.Stop();
 
                         // Calculate throughput metrics
