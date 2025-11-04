@@ -21,11 +21,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 {
     /// <summary>
     /// Tracks timing and throughput metrics for individual file downloads.
+    /// Thread-safe for concurrent access.
     /// </summary>
     internal class FileDownloadMetrics
     {
+        private readonly object _lock = new object();
         private DateTime? _downloadEndTime;
         private bool _wasCancelledAsStragler;
+
+        // Minimum elapsed time to avoid unrealistic throughput calculations
+        private const double MinimumElapsedSecondsForThroughput = 0.001;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FileDownloadMetrics"/> class.
@@ -80,41 +85,54 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <summary>
         /// Calculates the download throughput in bytes per second.
         /// Returns null if the download has not completed.
+        /// Thread-safe.
         /// </summary>
         /// <returns>The throughput in bytes per second, or null if not completed.</returns>
         public double? CalculateThroughputBytesPerSecond()
         {
-            if (!_downloadEndTime.HasValue)
+            lock (_lock)
             {
-                return null;
+                if (!_downloadEndTime.HasValue)
+                {
+                    return null;
+                }
+
+                TimeSpan elapsed = _downloadEndTime.Value - DownloadStartTime;
+                double elapsedSeconds = elapsed.TotalSeconds;
+
+                // Avoid division by zero for very fast downloads
+                if (elapsedSeconds < MinimumElapsedSecondsForThroughput)
+                {
+                    elapsedSeconds = MinimumElapsedSecondsForThroughput;
+                }
+
+                return FileSizeBytes / elapsedSeconds;
             }
-
-            TimeSpan elapsed = _downloadEndTime.Value - DownloadStartTime;
-            double elapsedSeconds = elapsed.TotalSeconds;
-
-            // Avoid division by zero for very fast downloads
-            if (elapsedSeconds < 0.001)
-            {
-                elapsedSeconds = 0.001;
-            }
-
-            return FileSizeBytes / elapsedSeconds;
         }
 
         /// <summary>
         /// Marks the download as completed and records the end time.
+        /// Thread-safe - idempotent (can be called multiple times safely).
         /// </summary>
         public void MarkDownloadCompleted()
         {
-            _downloadEndTime = DateTime.UtcNow;
+            lock (_lock)
+            {
+                if (_downloadEndTime.HasValue) return; // Already marked
+                _downloadEndTime = DateTime.UtcNow;
+            }
         }
 
         /// <summary>
         /// Marks this download as having been cancelled due to being identified as a straggler.
+        /// Thread-safe - idempotent.
         /// </summary>
         public void MarkCancelledAsStragler()
         {
-            _wasCancelledAsStragler = true;
+            lock (_lock)
+            {
+                _wasCancelledAsStragler = true;
+            }
         }
     }
 }

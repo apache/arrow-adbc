@@ -35,6 +35,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
     /// </summary>
     internal sealed class CloudFetchDownloader : ICloudFetchDownloader, IActivityTracer
     {
+        // Straggler mitigation timing constants
+        private static readonly TimeSpan StragglerMonitoringInterval = TimeSpan.FromSeconds(2);
+        private static readonly TimeSpan MetricsCleanupDelay = TimeSpan.FromSeconds(5);  // Must be > monitoring interval
+        private static readonly TimeSpan CtsDisposalDelay = TimeSpan.FromSeconds(6);  // Must be > metrics cleanup delay
+
         private readonly ITracingStatement _statement;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
         private readonly BlockingCollection<IDownloadResult> _resultQueue;
@@ -60,10 +65,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private readonly ConcurrentDictionary<long, FileDownloadMetrics>? _activeDownloadMetrics;
         private readonly ConcurrentDictionary<long, CancellationTokenSource>? _perFileDownloadCancellationTokens;
         private readonly ConcurrentDictionary<long, bool>? _alreadyCountedStragglers;  // Prevents duplicate counting of same file
+        private readonly ConcurrentDictionary<long, Task>? _metricCleanupTasks;  // Tracks cleanup tasks for proper shutdown
         private Task? _stragglerMonitoringTask;
         private CancellationTokenSource? _stragglerMonitoringCts;
         private volatile bool _hasTriggeredSequentialDownloadFallback;
-        private SemaphoreSlim _sequentialSemaphore = new SemaphoreSlim(1, 1);  // Not disposed - lightweight, safe to leave allocated
+        private SemaphoreSlim _sequentialSemaphore = new SemaphoreSlim(1, 1);
         private volatile bool _isSequentialMode;
 
         /// <summary>
@@ -81,6 +87,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="retryDelayMs">The delay between retry attempts in milliseconds.</param>
         /// <param name="maxUrlRefreshAttempts">The maximum number of URL refresh attempts.</param>
         /// <param name="urlExpirationBufferSeconds">Buffer time in seconds before URL expiration to trigger refresh.</param>
+        /// <param name="stragglerConfig">Optional configuration for straggler mitigation (null = disabled).</param>
         public CloudFetchDownloader(
             ITracingStatement statement,
             BlockingCollection<IDownloadResult> downloadQueue,
@@ -93,7 +100,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             int maxRetries = 3,
             int retryDelayMs = 500,
             int maxUrlRefreshAttempts = 3,
-            int urlExpirationBufferSeconds = 60)
+            int urlExpirationBufferSeconds = 60,
+            CloudFetchStragglerMitigationConfig? stragglerConfig = null)
         {
             _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _downloadQueue = downloadQueue ?? throw new ArgumentNullException(nameof(downloadQueue));
@@ -110,28 +118,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             _downloadSemaphore = new SemaphoreSlim(_maxParallelDownloads, _maxParallelDownloads);
             _isCompleted = false;
 
-            // Parse straggler mitigation configuration
-            var hiveStatement = _statement as IHiveServer2Statement;
-            var properties = hiveStatement?.Connection?.Properties;
-            _isStragglerMitigationEnabled = properties != null && ParseBooleanProperty(properties, DatabricksParameters.CloudFetchStragglerMitigationEnabled, defaultValue: false);
+            // Initialize straggler mitigation from config object
+            var config = stragglerConfig ?? CloudFetchStragglerMitigationConfig.Disabled;
+            _isStragglerMitigationEnabled = config.Enabled;
 
-            if (_isStragglerMitigationEnabled && properties != null)
+            if (config.Enabled)
             {
-                double stragglerMultiplier = ParseDoubleProperty(properties, DatabricksParameters.CloudFetchStragglerMultiplier, defaultValue: 1.5);
-                double stragglerQuantile = ParseDoubleProperty(properties, DatabricksParameters.CloudFetchStragglerQuantile, defaultValue: 0.6);
-                int stragglerPaddingSeconds = ParseIntProperty(properties, DatabricksParameters.CloudFetchStragglerPaddingSeconds, defaultValue: 5);
-                int maxStragglersPerQuery = ParseIntProperty(properties, DatabricksParameters.CloudFetchMaxStragglersPerQuery, defaultValue: 10);
-                bool synchronousFallbackEnabled = ParseBooleanProperty(properties, DatabricksParameters.CloudFetchSynchronousFallbackEnabled, defaultValue: false);
-
                 _stragglerDetector = new StragglerDownloadDetector(
-                    stragglerMultiplier,
-                    stragglerQuantile,
-                    TimeSpan.FromSeconds(stragglerPaddingSeconds),
-                    synchronousFallbackEnabled ? maxStragglersPerQuery : int.MaxValue);
+                    config.Multiplier,
+                    config.Quantile,
+                    config.Padding,
+                    config.SynchronousFallbackEnabled ? config.MaxStragglersBeforeFallback : int.MaxValue);
 
                 _activeDownloadMetrics = new ConcurrentDictionary<long, FileDownloadMetrics>();
                 _perFileDownloadCancellationTokens = new ConcurrentDictionary<long, CancellationTokenSource>();
                 _alreadyCountedStragglers = new ConcurrentDictionary<long, bool>();
+                _metricCleanupTasks = new ConcurrentDictionary<long, Task>();
                 _hasTriggeredSequentialDownloadFallback = false;
             }
         }
@@ -144,6 +146,27 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
         /// <inheritdoc />
         public Exception? Error => _error;
+
+        /// <summary>
+        /// Internal property to check if straggler mitigation is enabled (for testing).
+        /// </summary>
+        internal bool IsStragglerMitigationEnabled => _isStragglerMitigationEnabled;
+
+        /// <summary>
+        /// Internal property to get total stragglers detected (for testing).
+        /// </summary>
+        internal long GetTotalStragglersDetected() => _stragglerDetector?.GetTotalStragglersDetectedInQuery() ?? 0;
+
+        /// <summary>
+        /// Internal property to get count of active downloads being tracked (for testing).
+        /// </summary>
+        internal int GetActiveDownloadCount() => _activeDownloadMetrics?.Count ?? 0;
+
+        /// <summary>
+        /// Internal property to check if tracking dictionaries are initialized (for testing).
+        /// </summary>
+        internal bool AreTrackingDictionariesInitialized() => _activeDownloadMetrics != null && _perFileDownloadCancellationTokens != null;
+
 
         /// <inheritdoc />
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -219,6 +242,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 _cancellationTokenSource = null;
                 _downloadTask = null;
 
+                // Await all metric cleanup tasks before disposing resources
+                if (_metricCleanupTasks != null && _metricCleanupTasks.Count > 0)
+                {
+                    try
+                    {
+                        await Task.WhenAll(_metricCleanupTasks.Values).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // Ignore cleanup task exceptions during shutdown
+                    }
+                    _metricCleanupTasks.Clear();
+                }
+
                 // Cleanup per-file cancellation tokens
                 if (_perFileDownloadCancellationTokens != null)
                 {
@@ -229,8 +266,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     _perFileDownloadCancellationTokens.Clear();
                 }
 
-                // Note: _sequentialSemaphore is intentionally not disposed to support restart scenarios
-                // Semaphores are lightweight and safe to leave allocated
+                // Dispose sequential semaphore
+                _sequentialSemaphore?.Dispose();
             }
         }
 
@@ -358,7 +395,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         // Acquire a download slot
                         await _downloadSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                        // Capture mode atomically to avoid TOCTOU race with monitor thread
                         bool shouldAcquireSequential = _isSequentialMode;
                         bool acquiredSequential = false;
                         if (shouldAcquireSequential)
@@ -762,25 +798,30 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             }
             finally
             {
-                // Cleanup per-file cancellation token (always runs, even on exception)
+                // Delay CTS disposal to avoid race with monitoring thread
+                // Monitoring thread may still be checking this CTS, so schedule disposal after monitoring can complete
                 if (_perFileDownloadCancellationTokens != null)
                 {
                     if (_perFileDownloadCancellationTokens.TryRemove(fileOffset, out var cts))
                     {
-                        cts?.Dispose();
+                        // Schedule disposal after delay to allow monitoring thread to finish
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(CtsDisposalDelay);
+                            cts?.Dispose();
+                        });
                     }
                 }
 
-                // Remove from active metrics after a short delay to allow final detection cycle
-                // Use fire-and-forget with exception handling to prevent unobserved task exceptions
-                if (_activeDownloadMetrics != null)
+                // Track cleanup task instead of fire-and-forget to ensure proper shutdown
+                if (_activeDownloadMetrics != null && _metricCleanupTasks != null)
                 {
-                    _ = Task.Run(async () =>
+                    var cleanupTask = Task.Run(async () =>
                     {
                         try
                         {
                             // Use cancellationToken to respect shutdown - removes immediately if cancelled
-                            await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+                            await Task.Delay(MetricsCleanupDelay, cancellationToken);
                             _activeDownloadMetrics?.TryRemove(fileOffset, out _);
                         }
                         catch (OperationCanceledException)
@@ -792,7 +833,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         {
                             // Ignore other exceptions in cleanup task
                         }
+                        finally
+                        {
+                            // Always remove from tracking dictionary
+                            _metricCleanupTasks?.TryRemove(fileOffset, out _);
+                        }
                     });
+                    _metricCleanupTasks[fileOffset] = cleanupTask;
                 }
             }
             }, activityName: "DownloadFile");
@@ -837,7 +884,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 {
                     try
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(StragglerMonitoringInterval, cancellationToken).ConfigureAwait(false);
 
                         if (_activeDownloadMetrics == null || _stragglerDetector == null || _perFileDownloadCancellationTokens == null)
                         {
@@ -881,7 +928,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                                         new("offset", offset)
                                     ]);
 
-                                    cts.Cancel();
+                                    try
+                                    {
+                                        cts.Cancel();
+                                    }
+                                    catch (ObjectDisposedException)
+                                    {
+                                        // Expected race condition: CTS was disposed between TryGetValue and Cancel
+                                        // This is harmless - the download has already completed
+                                    }
                                 }
                             }
                         }
@@ -914,35 +969,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 return "cloud-storage-url";
             }
         }
-
-        // Helper methods for parsing configuration properties
-        private static bool ParseBooleanProperty(IReadOnlyDictionary<string, string> properties, string key, bool defaultValue)
-        {
-            if (properties.TryGetValue(key, out string? value) && bool.TryParse(value, out bool result))
-            {
-                return result;
-            }
-            return defaultValue;
-        }
-
-        private static int ParseIntProperty(IReadOnlyDictionary<string, string> properties, string key, int defaultValue)
-        {
-            if (properties.TryGetValue(key, out string? value) && int.TryParse(value, out int result))
-            {
-                return result;
-            }
-            return defaultValue;
-        }
-
-        private static double ParseDoubleProperty(IReadOnlyDictionary<string, string> properties, string key, double defaultValue)
-        {
-            if (properties.TryGetValue(key, out string? value) && double.TryParse(value, out double result))
-            {
-                return result;
-            }
-            return defaultValue;
-        }
-
         // IActivityTracer implementation - delegates to statement
         ActivityTrace IActivityTracer.Trace => _statement.Trace;
 
