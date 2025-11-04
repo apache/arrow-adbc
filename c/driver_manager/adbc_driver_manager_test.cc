@@ -171,6 +171,37 @@ TEST_F(DriverManager, MultiDriverTest) {
   error->release(&error.value);
 }
 
+TEST_F(DriverManager, NoDefaultEntrypoint) {
+#if !defined(ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB)
+  GTEST_SKIP() << "ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB is not defined";
+#else
+  adbc_validation::Handle<struct AdbcError> error;
+  adbc_validation::Handle<struct AdbcDriver> driver;
+  // Must fail with expected status
+  ASSERT_THAT(AdbcLoadDriver(ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB, nullptr,
+                             ADBC_VERSION_1_1_0, &driver.value, &error.value),
+              IsStatus(ADBC_STATUS_IO, &error.value));
+
+#endif  // !defined(ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB)
+}
+
+TEST_F(DriverManager, NoDefaultEntrypointFound) {
+#if !defined(ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB)
+  GTEST_SKIP() << "ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB is not defined";
+#else
+  adbc_validation::Handle<struct AdbcError> error;
+  adbc_validation::Handle<struct AdbcDriver> driver;
+  ASSERT_THAT(AdbcLoadDriver(ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB, nullptr,
+                             ADBC_VERSION_1_1_0, &driver.value, &error.value),
+              IsStatus(ADBC_STATUS_INTERNAL, &error.value));
+  // Both symbols should not be found, should be mentioned in error message
+  ASSERT_THAT(error->message,
+              ::testing::HasSubstr("(AdbcDriverNoEntrypointInit) failed"));
+  ASSERT_THAT(error->message, ::testing::HasSubstr("(AdbcDriverInit) failed"));
+
+#endif  // !defined(ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB)
+}
+
 class SqliteQuirks : public adbc_validation::DriverQuirks {
  public:
   AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,

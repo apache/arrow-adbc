@@ -40,8 +40,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cctype>
 #include <cerrno>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <string>
@@ -170,6 +172,24 @@ void SetError(struct AdbcError* error, const std::string& message) {
   error->release = ReleaseError;
 }
 
+void AppendError(struct AdbcError* error, const std::string& message) {
+  if (!error) return;
+  if (!error->release || !error->message) {
+    SetError(error, message);
+    return;
+  }
+
+  size_t original_length = std::strlen(error->message);
+  size_t combined_length = original_length + 1 + message.size() + 1;
+  char* new_message = new char[combined_length];
+  std::ignore = std::snprintf(new_message, combined_length, "%s\n%s", error->message,
+                              message.c_str());
+
+  error->release(error);
+  error->message = new_message;
+  error->release = ReleaseError;
+}
+
 // Copies src_error into error and releases src_error
 void SetError(struct AdbcError* error, struct AdbcError* src_error) {
   if (!error) return;
@@ -230,7 +250,7 @@ using char_type = char;
 /// \brief The location and entrypoint of a resolved driver.
 struct DriverInfo {
   std::string manifest_file;
-  int64_t manifest_version;
+  int64_t manifest_version = 0;
   std::string driver_name;
   std::filesystem::path lib_path;
   std::string entrypoint;
@@ -410,16 +430,14 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 
       info.lib_path = path->get();
       return ADBC_STATUS_OK;
-    } else {
-      std::string message = "Driver path not found in manifest '";
-      message += driver_manifest.string();
-      message += "' for current architecture '";
-      message += adbc::CurrentArch();
-      message += "'. Value was not a string";
-      SetError(error, std::move(message));
-      return ADBC_STATUS_INVALID_ARGUMENT;
     }
-    return ADBC_STATUS_OK;
+    std::string message = "Driver path not found in manifest '";
+    message += driver_manifest.string();
+    message += "' for current architecture '";
+    message += adbc::CurrentArch();
+    message += "'. Value was not a string";
+    SetError(error, std::move(message));
+    return ADBC_STATUS_INVALID_ARGUMENT;
   } else if (auto* path = driver.as_string()) {
     info.lib_path = path->get();
     if (info.lib_path.empty()) {
@@ -569,6 +587,7 @@ struct ManagedLibrary {
 
       // if the extension is not .toml, then just try to load the provided
       // path as if it was an absolute path to a driver library
+      info.lib_path = driver_path;
       return Load(driver_path.c_str(), {}, error);
     }
 
@@ -584,8 +603,8 @@ struct ManagedLibrary {
       }
 
       driver_path.replace_extension("");
-      info.lib_path = driver_path;
       // otherwise just try to load the provided path as if it was an absolute path
+      info.lib_path = driver_path;
       return Load(driver_path.c_str(), {}, error);
     }
 
@@ -614,6 +633,10 @@ struct ManagedLibrary {
 
     // not an absolute path, no extension. Let's search the configured paths
     // based on the options
+    // FindDriver will set info.lib_path
+    // XXX(lidavidm): the control flow in this call chain is excessively
+    // convoluted and it's hard to determine if DriverInfo is fully
+    // initialized or not in all non-error paths
     return FindDriver(driver_path, load_options, additional_search_paths, info, error);
   }
 
@@ -691,6 +714,7 @@ struct ManagedLibrary {
       // Don't pass error here - it'll be suppressed anyways
       auto status = Load(full_path.c_str(), {}, nullptr);
       if (status == ADBC_STATUS_OK) {
+        info.lib_path = full_path;
         return status;
       }
     }
@@ -941,7 +965,7 @@ struct ManagedLibrary {
       message += name;
       message += ") failed: ";
       GetWinError(&message);
-      SetError(error, message);
+      AppendError(error, message);
       return ADBC_STATUS_INTERNAL;
     }
 #else
@@ -951,7 +975,7 @@ struct ManagedLibrary {
       message += name;
       message += ") failed: ";
       message += dlerror();
-      SetError(error, message);
+      AppendError(error, message);
       return ADBC_STATUS_INTERNAL;
     }
 #endif  // defined(_WIN32)
@@ -1458,6 +1482,9 @@ std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver
   /// - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
   /// - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
   /// - proprietary_driver.dll -> AdbcProprietaryDriverInit
+
+  // N.B.(https://github.com/apache/arrow-adbc/issues/3680): sanity checks
+  assert(!driver.empty());
 
   // Potential path -> filename
   // Treat both \ and / as directory separators on all platforms for simplicity
@@ -2569,6 +2596,7 @@ AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoin
     status = library.Lookup(info.entrypoint.c_str(), &load_handle, error);
   } else {
     auto name = InternalAdbcDriverManagerDefaultEntrypoint(info.lib_path.string());
+    assert(!name.empty());
     status = library.Lookup(name.c_str(), &load_handle, error);
     if (status != ADBC_STATUS_OK) {
       status = library.Lookup(kDefaultEntrypoint, &load_handle, error);
