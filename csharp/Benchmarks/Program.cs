@@ -15,15 +15,12 @@
 * limitations under the License.
 */
 
-#if NET8_0
 using Apache.Arrow.Adbc.Tests;
-#endif
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 
 namespace Apache.Arrow.Adbc.Benchmarks
 {
-#if NET8_0
     public class ClientBenchmark
     {
         public static DuckDbFixture? DuckDb;
@@ -64,7 +61,6 @@ namespace Apache.Arrow.Adbc.Benchmarks
             }
         }
     }
-#endif
 
     public class Program
     {
@@ -76,10 +72,8 @@ namespace Apache.Arrow.Adbc.Benchmarks
             }
             finally
             {
-#if NET8_0
                 ClientBenchmark.Connection?.Dispose();
                 ClientBenchmark.DuckDb?.Dispose();
-#endif
             }
         }
     }
