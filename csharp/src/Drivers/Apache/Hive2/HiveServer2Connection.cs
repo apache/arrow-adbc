@@ -1722,8 +1722,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected TConfiguration GetTconfiguration()
         {
-            Properties.TryGetValue(ApacheParameters.MaxMessageSize, out string? maxMessageSize);
-            Properties.TryGetValue(ApacheParameters.MaxFrameSize, out string? maxFrameSize);
+            Properties.TryGetValue(ThriftTransportSizeConstants.MaxMessageSize, out string? maxMessageSize);
+            Properties.TryGetValue(ThriftTransportSizeConstants.MaxFrameSize, out string? maxFrameSize);
             var thriftConfig = new TConfiguration();
 
             if (int.TryParse(maxMessageSize, out int maxMessageSizeValue) && maxMessageSizeValue > 0)

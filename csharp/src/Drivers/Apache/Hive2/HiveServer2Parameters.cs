@@ -65,6 +65,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         public const string DisableServerCertificateValidation = "adbc.standard_options.tls.disable_server_certificate_validation";
     }
 
+    public static class  ThriftTransportSizeConstants
+    {
+        public const string MaxMessageSize = "adbc.apache.thrift.client.max.message.size";
+        public const string MaxFrameSize = "adbc.apache.thrift.client.max.frame.size";
+    }
+
     public static class HttpProxyOptions
     {
         /// <summary>
