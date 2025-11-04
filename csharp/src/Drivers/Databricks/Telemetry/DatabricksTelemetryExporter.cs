@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
-    internal sealed class DatabricksTelemetryExporter : ITelemetryExporter
+    internal sealed class DatabricksTelemetryExporter : IDatabricksTelemetryExporter
     {
         private const string TelemetryEndpoint = "/telemetry-ext";
 

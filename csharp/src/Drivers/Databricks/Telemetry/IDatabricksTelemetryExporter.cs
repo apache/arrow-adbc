@@ -22,10 +22,10 @@ using System.Threading.Tasks;
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
 {
     /// <summary>
-    /// Interface for exporting telemetry metrics to external services.
+    /// Interface for exporting telemetry metrics to Databricks telemetry service.
     /// Implementations must never throw exceptions.
     /// </summary>
-    public interface ITelemetryExporter
+    public interface IDatabricksTelemetryExporter
     {
         Task ExportAsync(
             IReadOnlyList<TelemetryMetric> metrics,
