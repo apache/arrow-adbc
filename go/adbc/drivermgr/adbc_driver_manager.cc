@@ -55,6 +55,10 @@ ADBC_EXPORT
 std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
 ADBC_EXPORT
 std::filesystem::path InternalAdbcUserConfigDir();
+#if !defined(_WIN32)
+ADBC_EXPORT
+std::filesystem::path InternalAdbcSystemConfigDir();
+#endif  // !defined(_WIN32)
 
 namespace {
 
@@ -68,7 +72,8 @@ enum class SearchPathSource {
   kConda,
   kUnset,
   kDoesNotExist,
-  kDisabled,
+  kDisabledAtCompileTime,
+  kDisabledAtRunTime,
   kOtherError,
 };
 
@@ -104,8 +109,11 @@ void AddSearchPathsToError(const SearchPaths& search_paths, std::string& error_m
         case SearchPathSource::kDoesNotExist:
           error_message += "does not exist: ";
           break;
-        case SearchPathSource::kDisabled:
+        case SearchPathSource::kDisabledAtCompileTime:
           error_message += "not enabled at build time: ";
+          break;
+        case SearchPathSource::kDisabledAtRunTime:
+          error_message += "not enabled at run time: ";
           break;
         case SearchPathSource::kOtherError:
           // Don't add any prefix
@@ -482,22 +490,14 @@ SearchPaths GetSearchPaths(const AdbcLoadFlags levels) {
     // System level behavior for Windows is to search the registry keys so we
     // only need to check for macOS and fall back to Unix-like behavior as long
     // as we're not on Windows
-#if defined(__APPLE__)
-    const std::filesystem::path system_config_dir(
-        "/Library/Application Support/ADBC/Drivers");
+#if !defined(_WIN32)
+    const std::filesystem::path system_config_dir = InternalAdbcSystemConfigDir();
     if (std::filesystem::exists(system_config_dir)) {
       paths.emplace_back(SearchPathSource::kSystem, std::move(system_config_dir));
     } else {
       paths.emplace_back(SearchPathSource::kDoesNotExist, std::move(system_config_dir));
     }
-#elif !defined(_WIN32)
-    const std::filesystem::path system_config_dir("/etc/adbc/drivers");
-    if (std::filesystem::exists(system_config_dir)) {
-      paths.emplace_back(SearchPathSource::kSystem, std::move(system_config_dir));
-    } else {
-      paths.emplace_back(SearchPathSource::kDoesNotExist, std::move(system_config_dir));
-    }
-#endif  // defined(__APPLE__)
+#endif  // !defined(_WIN32)
   }
 
   return paths;
@@ -630,7 +630,8 @@ struct ManagedLibrary {
     for (const auto& [source, search_path] : search_paths) {
       if (source == SearchPathSource::kRegistry || source == SearchPathSource::kUnset ||
           source == SearchPathSource::kDoesNotExist ||
-          source == SearchPathSource::kDisabled ||
+          source == SearchPathSource::kDisabledAtCompileTime ||
+          source == SearchPathSource::kDisabledAtRunTime ||
           source == SearchPathSource::kOtherError) {
         continue;
       }
@@ -713,7 +714,10 @@ struct ManagedLibrary {
       // First search the paths in the env var `ADBC_DRIVER_PATH`.
       // Then search the runtime application-defined additional search paths.
       search_paths = GetSearchPaths(load_options & ADBC_LOAD_FLAG_SEARCH_ENV);
-      if (search_paths.empty()) {
+      if (!(load_options & ADBC_LOAD_FLAG_SEARCH_ENV)) {
+        search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
+                                  "ADBC_DRIVER_PATH (enable ADBC_LOAD_FLAG_SEARCH_ENV)");
+      } else if (search_paths.empty()) {
         search_paths.emplace_back(SearchPathSource::kUnset, "ADBC_DRIVER_PATH");
       }
       for (const auto& path : additional_search_paths) {
@@ -736,10 +740,14 @@ struct ManagedLibrary {
                                       venv_path / "etc" / "adbc" / "drivers");
           }
         }
+      } else {
+        search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
+                                  "Conda prefix (enable ADBC_LOAD_FLAG_SEARCH_ENV)");
       }
 #else
       if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
-        search_paths.emplace_back(SearchPathSource::kDisabled, "Conda prefix");
+        search_paths.emplace_back(SearchPathSource::kDisabledAtCompileTime,
+                                  "Conda prefix");
       }
 #endif  // ADBC_CONDA_BUILD
 
@@ -776,6 +784,9 @@ struct ManagedLibrary {
         return status;
       }
       search_paths.insert(search_paths.end(), user_paths.begin(), user_paths.end());
+    } else {
+      search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
+                                "HKEY_CURRENT_USER (enable ADBC_LOAD_FLAG_SEARCH_USER)");
     }
 
     if (load_options & ADBC_LOAD_FLAG_SEARCH_SYSTEM) {
@@ -800,6 +811,10 @@ struct ManagedLibrary {
         return status;
       }
       search_paths.insert(search_paths.end(), system_paths.begin(), system_paths.end());
+    } else {
+      search_paths.emplace_back(
+          SearchPathSource::kDisabledAtRunTime,
+          "HKEY_LOCAL_MACHINE (enable ADBC_LOAD_FLAG_SEARCH_SYSTEM)");
     }
 
     info.lib_path = driver_path;
@@ -810,6 +825,26 @@ struct ManagedLibrary {
         GetSearchPaths(load_options & ~ADBC_LOAD_FLAG_SEARCH_ENV);
     auto status = SearchPathsForDriver(driver_path, more_search_paths, info, error);
     if (status == ADBC_STATUS_NOT_FOUND) {
+      if (!(load_options & ADBC_LOAD_FLAG_SEARCH_USER)) {
+        std::filesystem::path user_config_dir = InternalAdbcUserConfigDir();
+        std::string message = "user config dir ";
+        message += user_config_dir.string();
+        message += " (enable ADBC_LOAD_FLAG_SEARCH_USER)";
+        more_search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
+                                       std::move(message));
+      }
+      // Windows searches registry keys, so this only applies to other OSes
+#if !defined(_WIN32)
+      if (!(load_options & ADBC_LOAD_FLAG_SEARCH_SYSTEM)) {
+        std::filesystem::path system_config_dir = InternalAdbcSystemConfigDir();
+        std::string message = "system config dir ";
+        message += system_config_dir.string();
+        message += " (enable ADBC_LOAD_FLAG_SEARCH_SYSTEM)";
+        more_search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
+                                       std::move(message));
+      }
+#endif  // !defined(_WIN32)
+
       // If we reach here, we didn't find the driver in any of the paths
       // so let's just attempt to load it as default behavior.
       search_paths.insert(search_paths.end(), more_search_paths.begin(),
@@ -1363,6 +1398,16 @@ std::filesystem::path InternalAdbcUserConfigDir() {
 
   return config_dir;
 }
+
+#if !defined(_WIN32)
+std::filesystem::path InternalAdbcSystemConfigDir() {
+#if defined(__APPLE__)
+  return std::filesystem::path("/Library/Application Support/ADBC/Drivers");
+#else
+  return std::filesystem::path("/etc/adbc/drivers");
+#endif  // defined(__APPLE__)
+}
+#endif  // !defined(_WIN32)
 
 std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path) {
   std::vector<std::filesystem::path> result;

@@ -492,14 +492,19 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     try
                     {
                         var decompressStopwatch = Stopwatch.StartNew();
-                        dataStream = new MemoryStream();
-                        using (var inputStream = new MemoryStream(fileData))
-                        using (var decompressor = LZ4Stream.Decode(inputStream))
-                        {
-                            await decompressor.CopyToAsync(dataStream, 81920, cancellationToken).ConfigureAwait(false);
-                        }
+
+                        // Use shared Lz4Utilities for decompression (consolidates logic with non-CloudFetch path)
+                        var (buffer, length) = await Lz4Utilities.DecompressLz4Async(
+                            fileData,
+                            cancellationToken).ConfigureAwait(false);
+
+                        // Create the dataStream from the decompressed buffer
+                        dataStream = new MemoryStream(buffer, 0, length, writable: false, publiclyVisible: true);
                         dataStream.Position = 0;
                         decompressStopwatch.Stop();
+
+                        // Calculate throughput metrics
+                        double compressionRatio = (double)dataStream.Length / actualSize;
 
                         activity?.AddEvent("cloudfetch.decompression_complete", [
                             new("offset", downloadResult.Link.StartRowOffset),
@@ -509,7 +514,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                             new("compressed_size_kb", actualSize / 1024.0),
                             new("decompressed_size_bytes", dataStream.Length),
                             new("decompressed_size_kb", dataStream.Length / 1024.0),
-                            new("compression_ratio", (double)dataStream.Length / actualSize)
+                            new("compression_ratio", compressionRatio)
                         ]);
 
                         actualSize = dataStream.Length;

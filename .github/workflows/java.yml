@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['11', '17', '21', '24']
+        java: ['11', '17', '21', '25']
     steps:
       - uses: actions/checkout@v5
         with:
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['17', '21']
+        java: ['21', '25']
     steps:
       - uses: actions/checkout@v5
         with:
@@ -172,7 +172,7 @@ jobs:
           ls -laR artifacts
           mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
           tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -185,7 +185,7 @@ jobs:
           find "$VCPKG_ROOT" -name 'build-*.log' -exec cp '{}' ~/logs ';'
       - name: Upload failure logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -198,17 +198,18 @@ jobs:
       - java-jni-artifacts
     strategy:
       matrix:
-        java: ['11', '24']
         include:
-          - { os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
-          - { os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
+          - { java: '11', os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { java: '25', os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { java: '11', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
+          - { java: '25', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           path: artifacts
           pattern: jni-artifacts-*

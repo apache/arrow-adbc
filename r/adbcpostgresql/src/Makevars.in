@@ -16,7 +16,7 @@
 # under the License.
 
 CXX_STD = CXX17
-PKG_CPPFLAGS=-I../src/c -I../src/c/include -I../src/c/vendor/ -I../src/c/vendor/fmt/include @cppflags@ -DADBC_EXPORT="" -DFMT_HEADER_ONLY=1
+PKG_CPPFLAGS=-I../src/c -I../src/c/include -I../src/c/vendor/ -I../src/c/vendor/portable-snippets/include/ -I../src/c/vendor/fmt/include @cppflags@ -DADBC_EXPORT="" -DFMT_HEADER_ONLY=1
 PKG_LIBS=@libs@
 
 OBJECTS = init.o \
