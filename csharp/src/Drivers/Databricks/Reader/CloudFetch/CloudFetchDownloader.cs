@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Tracing;
 using K4os.Compression.LZ4.Streams;
+using Microsoft.IO;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 {
@@ -51,6 +52,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         private bool _isCompleted;
         private Exception? _error;
         private readonly object _errorLock = new object();
+        private static readonly RecyclableMemoryStreamManager _memoryStreamManager = new RecyclableMemoryStreamManager();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloader"/> class.
@@ -484,23 +486,67 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
                 // Process the downloaded file data
                 Stream dataStream;
+                long actualSize = fileData.Length;
 
-                // If the data is LZ4 compressed, wrap it in an LZ4Stream for on-demand decompression
-                // This avoids pre-decompressing the entire file into memory
+                // If the data is LZ4 compressed, decompress it chunk-by-chunk
                 if (_isLz4Compressed)
                 {
-                    // Create a MemoryStream for the compressed data
-                    var compressedStream = new MemoryStream(fileData, writable: false);
+                    try
+                    {
+                        var decompressStopwatch = Stopwatch.StartNew();
 
-                    // Wrap it in an LZ4Stream that will decompress chunks on-demand as ArrowStreamReader reads
-                    dataStream = LZ4Stream.Decode(compressedStream);
+                        // Create a MemoryStream for the compressed data
+                        using var compressedStream = new MemoryStream(fileData, writable: false);
 
-                    activity?.AddEvent("cloudfetch.lz4_stream_created", [
-                        new("offset", downloadResult.Link.StartRowOffset),
-                        new("sanitized_url", sanitizedUrl),
-                        new("compressed_size_bytes", fileData.Length),
-                        new("compressed_size_kb", fileData.Length / 1024.0)
-                    ]);
+                        // Create LZ4Stream for decompression
+                        using var lz4Stream = LZ4Stream.Decode(compressedStream);
+
+                        // Decompress chunk-by-chunk into a RecyclableMemoryStream
+                        var decompressedStream = _memoryStreamManager.GetStream();
+                        byte[] buffer = new byte[81920]; // 80KB chunks
+                        int bytesRead;
+
+                        while ((bytesRead = await lz4Stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
+                        {
+                            await decompressedStream.WriteAsync(buffer, 0, bytesRead, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        decompressedStream.Position = 0;
+                        dataStream = decompressedStream;
+                        decompressStopwatch.Stop();
+
+                        // Calculate throughput metrics
+                        long decompressedSize = decompressedStream.Length;
+                        double compressionRatio = (double)decompressedSize / actualSize;
+
+                        activity?.AddEvent("cloudfetch.decompression_complete", [
+                            new("offset", downloadResult.Link.StartRowOffset),
+                            new("sanitized_url", sanitizedUrl),
+                            new("decompression_time_ms", decompressStopwatch.ElapsedMilliseconds),
+                            new("compressed_size_bytes", actualSize),
+                            new("compressed_size_kb", actualSize / 1024.0),
+                            new("decompressed_size_bytes", decompressedSize),
+                            new("decompressed_size_kb", decompressedSize / 1024.0),
+                            new("compression_ratio", compressionRatio)
+                        ]);
+
+                        actualSize = decompressedSize;
+                    }
+                    catch (Exception ex)
+                    {
+                        stopwatch.Stop();
+                        activity?.AddException(ex, [
+                            new("error.context", "cloudfetch.decompression"),
+                            new("offset", downloadResult.Link.StartRowOffset),
+                            new("sanitized_url", sanitizedUrl),
+                            new("elapsed_time_ms", stopwatch.ElapsedMilliseconds)
+                        ]);
+
+                        // Release the memory we acquired
+                        _memoryManager.ReleaseMemory(size);
+                        SetError(new HiveServer2Exception($"Failed to decompress file data", ex));
+                        return;
+                    }
                 }
                 else
                 {
