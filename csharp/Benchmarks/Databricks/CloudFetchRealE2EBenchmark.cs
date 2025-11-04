@@ -29,6 +29,9 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
+#if NET472
+using System.Net;
+#endif
 
 namespace Apache.Arrow.Adbc.Benchmarks.Databricks
 {
@@ -127,6 +130,10 @@ namespace Apache.Arrow.Adbc.Benchmarks.Databricks
         [GlobalSetup]
         public void GlobalSetup()
         {
+#if NET472
+            // Enable TLS 1.2/1.3 for .NET Framework 4.7.2 (required for modern HTTPS endpoints)
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | (SecurityProtocolType)3072; // 3072 = Tls13
+#endif
             // Check if Databricks config is available
             string? configFile = Environment.GetEnvironmentVariable("DATABRICKS_TEST_CONFIG_FILE");
             if (string.IsNullOrEmpty(configFile))
