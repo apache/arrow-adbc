@@ -271,6 +271,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case ApacheParameters.BatchSize:
                     UpdateBatchSizeIfValid(key, value);
                     break;
+                case ApacheParameters.BatchSizeStopCondition:
+                    if (ApacheUtility.BooleanIsValid(key, value, out bool enableBatchSizeStopCondition))
+                    {
+                        EnableBatchSizeStopCondition = enableBatchSizeStopCondition;
+                    }
+                    break;
                 case ApacheParameters.QueryTimeoutSeconds:
                     if (ApacheUtility.QueryTimeoutIsValid(key, value, out int queryTimeoutSeconds))
                     {
@@ -351,6 +357,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
 
         public virtual long BatchSize { get; protected set; } = HiveServer2Connection.BatchSizeDefault;
+
+        public virtual bool EnableBatchSizeStopCondition { get; protected set; } = HiveServer2Connection.EnableBatchSizeStopConditionDefault;
 
         public int QueryTimeoutSeconds
         {

@@ -155,7 +155,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
 
-            TConfiguration config = new();
+            TConfiguration config = GetTconfiguration();
             THttpTransport transport = new(httpClient, config)
             {
                 // This value can only be set before the first call/request. So if a new value for query timeout

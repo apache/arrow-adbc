@@ -55,6 +55,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         long BatchSize { get; }
 
         /// <summary>
+        /// Gets the batch size for fetching results.
+        /// </summary>
+        bool EnableBatchSizeStopCondition { get; }
+
+        /// <summary>
         /// Gets the connection associated with this statement.
         /// </summary>
         HiveServer2Connection Connection { get; }
