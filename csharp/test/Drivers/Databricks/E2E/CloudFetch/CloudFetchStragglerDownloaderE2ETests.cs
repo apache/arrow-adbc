@@ -760,7 +760,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
                         var url = request.RequestUri?.ToString() ?? "";
                         if (url.Contains("file"))
                         {
-                            var offsetStr = url.Split("file")[1];
+                            var offsetStr = url.Split(new[] { "file" }, StringSplitOptions.None)[1];
                             var offset = long.Parse(offsetStr);
 
                             int delayMs;
@@ -781,7 +781,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
                         var url = request.RequestUri?.ToString() ?? "";
                         if (url.Contains("file"))
                         {
-                            var offsetStr = url.Split("file")[1];
+                            var offsetStr = url.Split(new[] { "file" }, StringSplitOptions.None)[1];
                             var offset = long.Parse(offsetStr);
                             downloadCancelledFlags[offset] = true;
                         }
@@ -1074,7 +1074,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
                         var url = request.RequestUri?.ToString() ?? "";
                         if (url.Contains("file"))
                         {
-                            var offsetStr = url.Split("file")[1];
+                            var offsetStr = url.Split(new[] { "file" }, StringSplitOptions.None)[1];
                             var offset = long.Parse(offsetStr);
 
                             int delayMs = fastDelayMs;
@@ -1096,7 +1096,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
                         var url = request.RequestUri?.ToString() ?? "";
                         if (url.Contains("file"))
                         {
-                            var offsetStr = url.Split("file")[1];
+                            var offsetStr = url.Split(new[] { "file" }, StringSplitOptions.None)[1];
                             var offset = long.Parse(offsetStr);
                             downloadCancelledFlags[offset] = true;
                         }
@@ -1125,7 +1125,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
                         var url = request.RequestUri?.ToString() ?? "";
                         if (url.Contains("file"))
                         {
-                            var offsetStr = url.Split("file")[1];
+                            var offsetStr = url.Split(new[] { "file" }, StringSplitOptions.None)[1];
                             var offset = long.Parse(offsetStr);
 
                             if (completionSources.ContainsKey(offset))
@@ -1144,7 +1144,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
                         var url = request.RequestUri?.ToString() ?? "";
                         if (url.Contains("file"))
                         {
-                            var offsetStr = url.Split("file")[1];
+                            var offsetStr = url.Split(new[] { "file" }, StringSplitOptions.None)[1];
                             var offset = long.Parse(offsetStr);
                             downloadCancelledFlags[offset] = true;
                         }
@@ -1175,7 +1175,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
 
                     if (url.Contains("file"))
                     {
-                        var offsetStr = url.Split("file")[1];
+                        var offsetStr = url.Split(new[] { "file" }, StringSplitOptions.None)[1];
                         offset = long.Parse(offsetStr);
                         concurrentDownloads[offset] = true;
 
@@ -1234,7 +1234,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
 
                     if (url.Contains("file"))
                     {
-                        var offsetStr = url.Split("file")[1];
+                        var offsetStr = url.Split(new[] { "file" }, StringSplitOptions.None)[1];
                         offset = long.Parse(offsetStr);
 
                         // Determine delay based on fast/slow indices
@@ -1296,7 +1296,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.E2E.CloudFetch
                     var url = request.RequestUri?.ToString() ?? "";
                     if (url.Contains("file"))
                     {
-                        var offsetStr = url.Split("file")[1];
+                        var offsetStr = url.Split(new[] { "file" }, StringSplitOptions.None)[1];
                         var offset = long.Parse(offsetStr);
 
                         var attempt = attemptCounts.AddOrUpdate(offset, 1, (k, v) => v + 1);
