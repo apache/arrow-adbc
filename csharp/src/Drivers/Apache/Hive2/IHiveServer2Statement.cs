@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         long BatchSize { get; }
 
         /// <summary>
-        /// Gets the batch size for fetching results.
+        /// Flag to enable/disable stopping reading based on batch size condition
         /// </summary>
         bool EnableBatchSizeStopCondition { get; }
 
