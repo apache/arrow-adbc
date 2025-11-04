@@ -37,6 +37,14 @@ This document outlines an **Activity-based telemetry design** that leverages the
 - **Privacy-first**: No PII or query data collected
 - **Server-controlled**: Feature flag support for enable/disable
 
+**Enhanced Production Requirements** (from JDBC driver experience):
+- **Feature flag caching**: Per-host caching to avoid rate limiting
+- **Circuit breaker**: Protect against telemetry endpoint failures
+- **Exception swallowing**: All telemetry exceptions caught with minimal logging
+- **Per-host telemetry client**: One client per host to prevent rate limiting
+- **Graceful shutdown**: Proper cleanup with reference counting
+- **Smart exception flushing**: Only flush terminal exceptions immediately
+
 ---
 
 ## Table of Contents
@@ -44,16 +52,25 @@ This document outlines an **Activity-based telemetry design** that leverages the
 1. [Background & Motivation](#1-background--motivation)
 2. [Architecture Overview](#2-architecture-overview)
 3. [Core Components](#3-core-components)
+    - 3.1 [FeatureFlagCache (Per-Host)](#31-featureflagcache-per-host)
+    - 3.2 [TelemetryClientManager (Per-Host)](#32-telemetryclientmanager-per-host)
+    - 3.3 [Circuit Breaker](#33-circuit-breaker)
+    - 3.4 [DatabricksActivityListener](#34-databricksactivitylistener)
+    - 3.5 [MetricsAggregator](#35-metricsaggregator)
+    - 3.6 [DatabricksTelemetryExporter](#36-databrickstelemetryexporter)
 4. [Data Collection](#4-data-collection)
 5. [Export Mechanism](#5-export-mechanism)
 6. [Configuration](#6-configuration)
 7. [Privacy & Compliance](#7-privacy--compliance)
 8. [Error Handling](#8-error-handling)
-9. [Testing Strategy](#9-testing-strategy)
-10. [Alternatives Considered](#10-alternatives-considered)
-11. [Implementation Checklist](#11-implementation-checklist)
-12. [Open Questions](#12-open-questions)
-13. [References](#13-references)
+    - 8.1 [Exception Swallowing Strategy](#81-exception-swallowing-strategy)
+    - 8.2 [Terminal vs Retryable Exceptions](#82-terminal-vs-retryable-exceptions)
+9. [Graceful Shutdown](#9-graceful-shutdown)
+10. [Testing Strategy](#10-testing-strategy)
+11. [Alternatives Considered](#11-alternatives-considered)
+12. [Implementation Checklist](#12-implementation-checklist)
+13. [Open Questions](#13-open-questions)
+14. [References](#14-references)
 
 ---
 
@@ -96,22 +113,35 @@ graph TB
     A[Driver Operations] -->|Activity.Start/Stop| B[ActivitySource]
     B -->|Activity Events| C[DatabricksActivityListener]
     C -->|Aggregate Metrics| D[MetricsAggregator]
-    D -->|Batch & Buffer| E[DatabricksTelemetryExporter]
-    E -->|HTTP POST| F[Databricks Service]
-    F --> G[Lumberjack]
+    D -->|Batch & Buffer| E[TelemetryClientManager]
+    E -->|Get Per-Host Client| F[TelemetryClient per Host]
+    F -->|Check Circuit Breaker| G[CircuitBreakerWrapper]
+    G -->|HTTP POST| H[DatabricksTelemetryExporter]
+    H --> I[Databricks Service]
+    I --> J[Lumberjack]
 
-    H[Feature Flag Service] -.->|Enable/Disable| C
+    K[FeatureFlagCache per Host] -.->|Enable/Disable| C
+    L[Connection Open] -->|Increment RefCount| E
+    L -->|Increment RefCount| K
+    M[Connection Close] -->|Decrement RefCount| E
+    M -->|Decrement RefCount| K
 
     style C fill:#e1f5fe
     style D fill:#e1f5fe
-    style E fill:#e1f5fe
+    style E fill:#ffe0b2
+    style F fill:#ffe0b2
+    style G fill:#ffccbc
+    style K fill:#c8e6c9
 ```
 
 **Key Components:**
 1. **ActivitySource** (existing): Emits activities for all operations
-2. **DatabricksActivityListener** (new): Listens to activities, extracts metrics
-3. **MetricsAggregator** (new): Aggregates by statement, batches events
-4. **DatabricksTelemetryExporter** (new): Exports to Databricks service
+2. **FeatureFlagCache** (new): Per-host caching of feature flags with reference counting
+3. **TelemetryClientManager** (new): Manages one telemetry client per host with reference counting
+4. **CircuitBreakerWrapper** (new): Protects against failing telemetry endpoint
+5. **DatabricksActivityListener** (new): Listens to activities, extracts metrics
+6. **MetricsAggregator** (new): Aggregates by statement, batches events
+7. **DatabricksTelemetryExporter** (new): Exports to Databricks service
 
 ### 2.2 Activity Flow
 
@@ -147,7 +177,196 @@ sequenceDiagram
 
 ## 3. Core Components
 
-### 3.1 DatabricksActivityListener
+### 3.1 FeatureFlagCache (Per-Host)
+
+**Purpose**: Cache feature flag values at the host level to avoid repeated API calls and rate limiting.
+
+**Location**: `Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.FeatureFlagCache`
+
+#### Rationale
+- **Per-host caching**: Feature flags cached by host (not per connection) to prevent rate limiting
+- **Reference counting**: Tracks number of connections per host for proper cleanup
+- **Automatic expiration**: Refreshes cached flags after TTL expires (15 minutes)
+- **Thread-safe**: Uses ConcurrentDictionary for concurrent access from multiple connections
+
+#### Interface
+
+```csharp
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
+{
+    /// <summary>
+    /// Singleton that manages feature flag cache per host.
+    /// Prevents rate limiting by caching feature flag responses.
+    /// </summary>
+    internal sealed class FeatureFlagCache
+    {
+        private static readonly FeatureFlagCache Instance = new();
+        public static FeatureFlagCache GetInstance() => Instance;
+
+        /// <summary>
+        /// Gets or creates a feature flag context for the host.
+        /// Increments reference count.
+        /// </summary>
+        public FeatureFlagContext GetOrCreateContext(string host);
+
+        /// <summary>
+        /// Decrements reference count for the host.
+        /// Removes context when ref count reaches zero.
+        /// </summary>
+        public void ReleaseContext(string host);
+
+        /// <summary>
+        /// Checks if telemetry is enabled for the host.
+        /// Uses cached value if available and not expired.
+        /// </summary>
+        public Task<bool> IsTelemetryEnabledAsync(
+            string host,
+            HttpClient httpClient,
+            CancellationToken ct = default);
+    }
+
+    /// <summary>
+    /// Holds feature flag state and reference count for a host.
+    /// </summary>
+    internal sealed class FeatureFlagContext
+    {
+        public bool? TelemetryEnabled { get; set; }
+        public DateTime? LastFetched { get; set; }
+        public int RefCount { get; set; }
+        public TimeSpan CacheDuration { get; } = TimeSpan.FromMinutes(15);
+
+        public bool IsExpired => LastFetched == null ||
+            DateTime.UtcNow - LastFetched.Value > CacheDuration;
+    }
+}
+```
+
+**JDBC Reference**: `DatabricksDriverFeatureFlagsContextFactory.java:27` maintains per-compute (host) feature flag contexts with reference counting.
+
+---
+
+### 3.2 TelemetryClientManager (Per-Host)
+
+**Purpose**: Manage one telemetry client per host to prevent rate limiting from concurrent connections.
+
+**Location**: `Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.TelemetryClientManager`
+
+#### Rationale
+- **One client per host**: Large customers (e.g., Celonis) open many parallel connections to the same host
+- **Prevents rate limiting**: Shared client batches events from all connections, avoiding multiple concurrent flushes
+- **Reference counting**: Tracks active connections, only closes client when last connection closes
+- **Thread-safe**: Safe for concurrent access from multiple connections
+
+#### Interface
+
+```csharp
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
+{
+    /// <summary>
+    /// Singleton factory that manages one telemetry client per host.
+    /// Prevents rate limiting by sharing clients across connections.
+    /// </summary>
+    internal sealed class TelemetryClientManager
+    {
+        private static readonly TelemetryClientManager Instance = new();
+        public static TelemetryClientManager GetInstance() => Instance;
+
+        /// <summary>
+        /// Gets or creates a telemetry client for the host.
+        /// Increments reference count.
+        /// </summary>
+        public ITelemetryClient GetOrCreateClient(
+            string host,
+            HttpClient httpClient,
+            TelemetryConfiguration config);
+
+        /// <summary>
+        /// Decrements reference count for the host.
+        /// Closes and removes client when ref count reaches zero.
+        /// </summary>
+        public Task ReleaseClientAsync(string host);
+    }
+
+    /// <summary>
+    /// Holds a telemetry client and its reference count.
+    /// </summary>
+    internal sealed class TelemetryClientHolder
+    {
+        public ITelemetryClient Client { get; }
+        public int RefCount { get; set; }
+    }
+}
+```
+
+**JDBC Reference**: `TelemetryClientFactory.java:27` maintains `ConcurrentHashMap<String, TelemetryClientHolder>` with per-host clients and reference counting.
+
+---
+
+### 3.3 Circuit Breaker
+
+**Purpose**: Implement circuit breaker pattern to protect against failing telemetry endpoint.
+
+**Location**: `Apache.Arrow.Adbc.Drivers.Databricks.Telemetry.CircuitBreaker`
+
+#### Rationale
+- **Endpoint protection**: The telemetry endpoint itself may fail or become unavailable
+- **Not just rate limiting**: Protects against 5xx errors, timeouts, network failures
+- **Resource efficiency**: Prevents wasting resources on a failing endpoint
+- **Auto-recovery**: Automatically detects when endpoint becomes healthy again
+
+#### States
+1. **Closed**: Normal operation, requests pass through
+2. **Open**: After threshold failures, all requests rejected immediately (drop events)
+3. **Half-Open**: After timeout, allows test requests to check if endpoint recovered
+
+#### Interface
+
+```csharp
+namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
+{
+    /// <summary>
+    /// Wraps telemetry exporter with circuit breaker pattern.
+    /// </summary>
+    internal sealed class CircuitBreakerTelemetryExporter : ITelemetryExporter
+    {
+        public CircuitBreakerTelemetryExporter(string host, ITelemetryExporter innerExporter);
+
+        public Task ExportAsync(
+            IReadOnlyList<TelemetryMetric> metrics,
+            CancellationToken ct = default);
+    }
+
+    /// <summary>
+    /// Singleton that manages circuit breakers per host.
+    /// </summary>
+    internal sealed class CircuitBreakerManager
+    {
+        private static readonly CircuitBreakerManager Instance = new();
+        public static CircuitBreakerManager GetInstance() => Instance;
+
+        public CircuitBreaker GetCircuitBreaker(string host);
+    }
+
+    internal sealed class CircuitBreaker
+    {
+        public CircuitBreakerConfig Config { get; }
+        public Task ExecuteAsync(Func<Task> action);
+    }
+
+    internal class CircuitBreakerConfig
+    {
+        public int FailureThreshold { get; set; } = 5; // Open after 5 failures
+        public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(1); // Try again after 1 min
+        public int SuccessThreshold { get; set; } = 2; // Close after 2 successes
+    }
+}
+```
+
+**JDBC Reference**: `CircuitBreakerTelemetryPushClient.java:15` and `CircuitBreakerManager.java:25`
+
+---
+
+### 3.4 DatabricksActivityListener
 
 **Purpose**: Listen to Activity events and extract metrics for Databricks telemetry.
 
@@ -161,12 +380,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
     /// <summary>
     /// Custom ActivityListener that aggregates metrics from Activity events
     /// and exports them to Databricks telemetry service.
+    /// All exceptions are swallowed to prevent impacting driver operations.
     /// </summary>
     public sealed class DatabricksActivityListener : IDisposable
     {
         public DatabricksActivityListener(
-            DatabricksConnection connection,
-            ITelemetryExporter exporter,
+            string host,
+            ITelemetryClient telemetryClient,
             TelemetryConfiguration config);
 
         // Start listening to activities
@@ -179,6 +399,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Telemetry
     }
 }
 ```
+
+**Constructor Change**: Takes `string host` and shared `ITelemetryClient` instead of `DatabricksConnection`.
 
 #### Activity Listener Configuration
 
@@ -215,11 +437,16 @@ private ActivityListener CreateListener()
 **Non-Blocking**:
 - All processing async
 - Never blocks Activity completion
-- Failures logged but don't propagate
+- All exceptions swallowed (logged at TRACE level only)
+
+**Exception Handling**:
+- Wraps all callbacks in try-catch
+- Never throws exceptions to Activity infrastructure
+- Logs at TRACE level only to avoid customer anxiety
 
 ---
 
-### 3.2 MetricsAggregator
+### 3.5 MetricsAggregator
 
 **Purpose**: Aggregate Activity data into metrics suitable for Databricks telemetry.
 
@@ -295,10 +522,16 @@ flowchart TD
 **Error Handling**:
 - Activity errors (tags with `error.type`) captured
 - Never throws exceptions
+- All exceptions swallowed (logged at TRACE level only)
+
+**Terminal vs Retryable Exceptions**:
+- **Terminal exceptions**: Flush immediately (auth failures, syntax errors, etc.)
+- **Retryable exceptions**: Buffer until statement completes (network errors, 429, 503, etc.)
+- Only flush retryable exceptions if statement ultimately fails
 
 ---
 
-### 3.3 DatabricksTelemetryExporter
+### 3.6 DatabricksTelemetryExporter
 
 **Purpose**: Export aggregated metrics to Databricks telemetry service.
 
@@ -927,15 +1160,47 @@ Same as original design:
 
 ## 8. Error Handling
 
-### 8.1 Error Handling Principles
+### 8.1 Exception Swallowing Strategy
 
-Same as original design:
-1. Never block driver operations
-2. Fail silently (log only)
-3. Circuit breaker for service failures
-4. No retry storms
+**Core Principle**: Every telemetry exception must be swallowed with minimal logging to avoid customer anxiety.
 
-### 8.2 Activity Listener Error Handling
+**Rationale** (from JDBC experience):
+- Customers become anxious when they see error logs, even if telemetry is non-blocking
+- Telemetry failures should never impact the driver's core functionality
+- **Critical**: Circuit breaker must catch errors **before** swallowing, otherwise it won't work
+
+#### Logging Levels
+- **TRACE**: Use for most telemetry errors (default)
+- **DEBUG**: Use only for circuit breaker state changes
+- **WARN/ERROR**: Never use for telemetry errors
+
+#### Exception Handling Layers
+
+```mermaid
+graph TD
+    A[Driver Operation] --> B[Activity Created]
+    B --> C[ActivityListener Callback]
+    C -->|Try-Catch TRACE| D[MetricsAggregator]
+    D -->|Try-Catch TRACE| E[TelemetryClient]
+    E --> F[Circuit Breaker]
+    F -->|Sees Exception| G{Track Failure}
+    G -->|After Tracking| H[Exporter]
+    H -->|Try-Catch TRACE| I[HTTP Call]
+
+    C -.->|Exception Swallowed| J[Log at TRACE]
+    D -.->|Exception Swallowed| J
+    E -.->|Exception Swallowed| J
+    F -.->|Circuit Opens| K[Log at DEBUG]
+    H -.->|Exception Swallowed| J
+
+    style C fill:#ffccbc
+    style D fill:#ffccbc
+    style E fill:#ffccbc
+    style F fill:#ffccbc
+    style H fill:#ffccbc
+```
+
+#### Activity Listener Error Handling
 
 ```csharp
 private void OnActivityStopped(Activity activity)
@@ -946,27 +1211,371 @@ private void OnActivityStopped(Activity activity)
     }
     catch (Exception ex)
     {
-        // Log but never throw - must not impact driver
-        Debug.WriteLine($"Telemetry processing error: {ex.Message}");
+        // Swallow ALL exceptions per requirement
+        // Use TRACE level to avoid customer anxiety
+        Debug.WriteLine($"[TRACE] Telemetry listener error: {ex.Message}");
     }
 }
 ```
+
+#### MetricsAggregator Error Handling
+
+```csharp
+public void ProcessActivity(Activity activity)
+{
+    try
+    {
+        // Extract metrics, buffer, flush if needed
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"[TRACE] Telemetry aggregator error: {ex.Message}");
+    }
+}
+```
+
+#### Circuit Breaker Error Handling
+
+**Important**: Circuit breaker MUST see exceptions before they are swallowed!
+
+```csharp
+public async Task ExportAsync(IReadOnlyList<TelemetryMetric> metrics)
+{
+    try
+    {
+        // Circuit breaker tracks failures BEFORE swallowing
+        await _circuitBreaker.ExecuteAsync(async () =>
+        {
+            await _innerExporter.ExportAsync(metrics);
+        });
+    }
+    catch (CircuitBreakerOpenException)
+    {
+        // Circuit is open, drop events silently
+        Debug.WriteLine($"[DEBUG] Circuit breaker OPEN - dropping telemetry");
+    }
+    catch (Exception ex)
+    {
+        // All other exceptions swallowed AFTER circuit breaker saw them
+        Debug.WriteLine($"[TRACE] Telemetry export error: {ex.Message}");
+    }
+}
+```
+
+**JDBC Reference**: `TelemetryPushClient.java:86-94` - Re-throws exception if circuit breaker enabled, allowing it to track failures before swallowing.
+
+---
+
+### 8.2 Terminal vs Retryable Exceptions
+
+**Requirement**: Do not flush exceptions immediately when they occur. Flush immediately only for **terminal exceptions**.
+
+#### Exception Classification
+
+**Terminal Exceptions** (flush immediately):
+- Authentication failures (401, 403)
+- Invalid SQL syntax errors
+- Permission denied errors
+- Resource not found errors (404)
+- Invalid request format errors (400)
+
+**Retryable Exceptions** (buffer until statement completes):
+- Network timeouts
+- Connection errors
+- Rate limiting (429)
+- Service unavailable (503)
+- Internal server errors (500, 502, 504)
+
+#### Rationale
+- Some exceptions are retryable and may succeed on retry
+- If a retryable exception is thrown twice but succeeds the third time, we'd flush twice unnecessarily
+- Only terminal (non-retryable) exceptions should trigger immediate flush
+- Statement completion should trigger flush for accumulated exceptions
+
+#### Exception Classifier
+
+```csharp
+internal static class ExceptionClassifier
+{
+    public static bool IsTerminalException(Exception ex)
+    {
+        return ex switch
+        {
+            HttpRequestException httpEx when IsTerminalHttpStatus(httpEx) => true,
+            AuthenticationException => true,
+            UnauthorizedAccessException => true,
+            SqlException sqlEx when IsSyntaxError(sqlEx) => true,
+            _ => false
+        };
+    }
+
+    private static bool IsTerminalHttpStatus(HttpRequestException ex)
+    {
+        if (ex.StatusCode.HasValue)
+        {
+            var statusCode = (int)ex.StatusCode.Value;
+            return statusCode is 400 or 401 or 403 or 404;
+        }
+        return false;
+    }
+}
+```
+
+#### Exception Buffering in MetricsAggregator
+
+```csharp
+public void RecordException(string statementId, Exception ex)
+{
+    try
+    {
+        if (ExceptionClassifier.IsTerminalException(ex))
+        {
+            // Terminal exception: flush immediately
+            var errorMetric = CreateErrorMetric(statementId, ex);
+            _ = _telemetryClient.ExportAsync(new[] { errorMetric });
+        }
+        else
+        {
+            // Retryable exception: buffer until statement completes
+            _statementContexts[statementId].Exceptions.Add(ex);
+        }
+    }
+    catch (Exception aggregatorEx)
+    {
+        Debug.WriteLine($"[TRACE] Error recording exception: {aggregatorEx.Message}");
+    }
+}
+
+public void CompleteStatement(string statementId, bool failed)
+{
+    try
+    {
+        if (_statementContexts.TryRemove(statementId, out var context))
+        {
+            // Only flush exceptions if statement ultimately failed
+            if (failed && context.Exceptions.Any())
+            {
+                var errorMetrics = context.Exceptions
+                    .Select(ex => CreateErrorMetric(statementId, ex))
+                    .ToList();
+                _ = _telemetryClient.ExportAsync(errorMetrics);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"[TRACE] Error completing statement: {ex.Message}");
+    }
+}
+```
+
+#### Usage Example
+
+```csharp
+string statementId = GetStatementId();
+
+try
+{
+    var result = await ExecuteStatementAsync(statementId);
+    _aggregator.CompleteStatement(statementId, failed: false);
+}
+catch (Exception ex)
+{
+    // Record exception (classified as terminal or retryable)
+    _aggregator.RecordException(statementId, ex);
+    _aggregator.CompleteStatement(statementId, failed: true);
+    throw; // Re-throw for application handling
+}
+```
+
+---
 
 ### 8.3 Failure Modes
 
 | Failure | Behavior |
 |---------|----------|
-| Listener throws | Caught, logged, activity continues |
-| Aggregator throws | Caught, logged, skip this activity |
-| Exporter fails | Circuit breaker, retry with backoff |
-| Circuit breaker open | Drop metrics immediately |
+| Listener throws | Caught, logged at TRACE, activity continues |
+| Aggregator throws | Caught, logged at TRACE, skip this activity |
+| Exporter fails | Circuit breaker tracks failure, then caught and logged at TRACE |
+| Circuit breaker open | Drop metrics immediately, log at DEBUG |
 | Out of memory | Disable listener, stop collecting |
+| Terminal exception | Flush immediately, log at TRACE |
+| Retryable exception | Buffer until statement completes |
 
 ---
 
-## 9. Testing Strategy
+## 9. Graceful Shutdown
 
-### 9.1 Unit Tests
+**Requirement**: Every telemetry client and HTTP client must be closed gracefully. Maintain reference counting properly to determine when to close shared resources.
+
+### 9.1 Shutdown Sequence
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Conn as DatabricksConnection
+    participant Listener as ActivityListener
+    participant Manager as TelemetryClientManager
+    participant Client as TelemetryClient (shared)
+    participant FFCache as FeatureFlagCache
+
+    App->>Conn: CloseAsync()
+
+    Conn->>Listener: StopAsync()
+    Listener->>Listener: Flush pending metrics
+    Listener->>Listener: Dispose
+
+    Conn->>Manager: ReleaseClientAsync(host)
+    Manager->>Manager: Decrement RefCount
+
+    alt RefCount == 0 (Last Connection)
+        Manager->>Client: CloseAsync()
+        Client->>Client: Flush pending events
+        Client->>Client: Shutdown executor
+        Client->>Client: Close HTTP client
+    else RefCount > 0 (Other Connections Exist)
+        Manager->>Manager: Keep client alive
+    end
+
+    Conn->>FFCache: ReleaseContext(host)
+    FFCache->>FFCache: Decrement RefCount
+
+    alt RefCount == 0
+        FFCache->>FFCache: Remove context
+    else RefCount > 0
+        FFCache->>FFCache: Keep context
+    end
+```
+
+### 9.2 Connection Close Implementation
+
+```csharp
+public sealed class DatabricksConnection : AdbcConnection
+{
+    private string? _host;
+    private DatabricksActivityListener? _activityListener;
+
+    protected override async ValueTask DisposeAsyncCore()
+    {
+        if (_host == null) return;
+
+        try
+        {
+            // Step 1: Stop activity listener and flush pending metrics
+            if (_activityListener != null)
+            {
+                await _activityListener.StopAsync();
+                _activityListener.Dispose();
+                _activityListener = null;
+            }
+
+            // Step 2: Release telemetry client (decrements ref count, closes if last)
+            await TelemetryClientManager.GetInstance().ReleaseClientAsync(_host);
+
+            // Step 3: Release feature flag context (decrements ref count)
+            FeatureFlagCache.GetInstance().ReleaseContext(_host);
+        }
+        catch (Exception ex)
+        {
+            // Swallow all exceptions per requirement
+            Debug.WriteLine($"[TRACE] Error during telemetry cleanup: {ex.Message}");
+        }
+
+        // Continue with normal connection cleanup
+        await base.DisposeAsyncCore();
+    }
+}
+```
+
+### 9.3 TelemetryClient Close Implementation
+
+```csharp
+public sealed class TelemetryClient : ITelemetryClient
+{
+    private readonly ITelemetryExporter _exporter;
+    private readonly CancellationTokenSource _cts = new();
+    private readonly Task _backgroundFlushTask;
+
+    public async Task CloseAsync()
+    {
+        try
+        {
+            // Step 1: Cancel background flush task
+            _cts.Cancel();
+
+            // Step 2: Flush all pending metrics synchronously
+            await FlushAsync(force: true);
+
+            // Step 3: Wait for background task to complete (with timeout)
+            await _backgroundFlushTask.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        catch (Exception ex)
+        {
+            // Swallow per requirement
+            Debug.WriteLine($"[TRACE] Error closing telemetry client: {ex.Message}");
+        }
+        finally
+        {
+            _cts.Dispose();
+        }
+    }
+}
+```
+
+### 9.4 Reference Counting Example
+
+**TelemetryClientHolder with Reference Counting**:
+
+```csharp
+// Connection 1 opens
+var client1 = TelemetryClientManager.GetInstance()
+    .GetOrCreateClient("host1", httpClient, config);
+// RefCount for "host1" = 1
+
+// Connection 2 opens (same host)
+var client2 = TelemetryClientManager.GetInstance()
+    .GetOrCreateClient("host1", httpClient, config);
+// RefCount for "host1" = 2
+// client1 == client2 (same instance)
+
+// Connection 1 closes
+await TelemetryClientManager.GetInstance().ReleaseClientAsync("host1");
+// RefCount for "host1" = 1
+// Client NOT closed (other connection still using it)
+
+// Connection 2 closes
+await TelemetryClientManager.GetInstance().ReleaseClientAsync("host1");
+// RefCount for "host1" = 0
+// Client IS closed and removed from cache
+```
+
+**Same logic applies to FeatureFlagCache**.
+
+### 9.5 Shutdown Contracts
+
+**TelemetryClientManager**:
+- `GetOrCreateClient()`: Atomically increments ref count
+- `ReleaseClientAsync()`: Atomically decrements ref count, closes client if zero
+- Thread-safe for concurrent access
+
+**FeatureFlagCache**:
+- `GetOrCreateContext()`: Atomically increments ref count
+- `ReleaseContext()`: Atomically decrements ref count, removes context if zero
+- Thread-safe for concurrent access
+
+**TelemetryClient.CloseAsync()**:
+- Synchronously flushes all pending metrics (blocks until complete)
+- Cancels background flush task
+- Disposes resources (HTTP client, executors, etc.)
+- Never throws exceptions
+
+**JDBC Reference**: `TelemetryClient.java:105-139` - Synchronous close with flush and executor shutdown.
+
+---
+
+## 10. Testing Strategy
+
+### 10.1 Unit Tests
 
 **DatabricksActivityListener Tests**:
 - `Listener_FiltersCorrectActivitySource`
@@ -985,7 +1594,22 @@ private void OnActivityStopped(Activity activity)
 **TelemetryExporter Tests**:
 - Same as original design (endpoints, retry, circuit breaker)
 
-### 9.2 Integration Tests
+**New Component Tests** (per-host management):
+- `FeatureFlagCache_CachesPerHost`
+- `FeatureFlagCache_ExpiresAfter15Minutes`
+- `FeatureFlagCache_RefCountingWorks`
+- `TelemetryClientManager_OneClientPerHost`
+- `TelemetryClientManager_RefCountingWorks`
+- `TelemetryClientManager_ClosesOnLastRelease`
+- `CircuitBreaker_OpensAfterFailures`
+- `CircuitBreaker_ClosesAfterSuccesses`
+- `CircuitBreaker_PerHostIsolation`
+- `ExceptionClassifier_IdentifiesTerminal`
+- `ExceptionClassifier_IdentifiesRetryable`
+- `MetricsAggregator_BuffersRetryableExceptions`
+- `MetricsAggregator_FlushesTerminalImmediately`
+
+### 10.2 Integration Tests
 
 **End-to-End with Activity**:
 - `ActivityBased_ConnectionOpen_ExportedSuccessfully`
@@ -998,7 +1622,15 @@ private void OnActivityStopped(Activity activity)
 - `ActivityBased_CorrelationIdPreserved`
 - `ActivityBased_ParentChildSpansWork`
 
-### 9.3 Performance Tests
+**New Integration Tests** (production requirements):
+- `MultipleConnections_SameHost_SharesClient`
+- `FeatureFlagCache_SharedAcrossConnections`
+- `CircuitBreaker_StopsFlushingWhenOpen`
+- `GracefulShutdown_LastConnection_ClosesClient`
+- `TerminalException_FlushedImmediately`
+- `RetryableException_BufferedUntilComplete`
+
+### 10.3 Performance Tests
 
 **Overhead Measurement**:
 - `ActivityListener_Overhead_LessThan1Percent`
@@ -1009,7 +1641,7 @@ Compare:
 - With listener but disabled: Should be ~0% overhead
 - With listener enabled: Should be < 1% overhead
 
-### 9.4 Test Coverage Goals
+### 10.4 Test Coverage Goals
 
 | Component | Unit Test Coverage | Integration Test Coverage |
 |-----------|-------------------|---------------------------|
@@ -1017,12 +1649,16 @@ Compare:
 | MetricsAggregator | > 90% | > 80% |
 | TelemetryExporter | > 90% | > 80% |
 | Activity Tag Filtering | 100% | N/A |
+| FeatureFlagCache | > 90% | > 80% |
+| TelemetryClientManager | > 90% | > 80% |
+| CircuitBreaker | > 90% | > 80% |
+| ExceptionClassifier | 100% | N/A |
 
 ---
 
-## 10. Alternatives Considered
+## 11. Alternatives Considered
 
-### 10.1 Alternative 1: Separate Telemetry System
+### 11.1 Alternative 1: Separate Telemetry System
 
 **Description**: Create a dedicated telemetry collection system parallel to Activity infrastructure, with explicit TelemetryCollector and TelemetryExporter classes.
 
@@ -1048,7 +1684,7 @@ Compare:
 
 ---
 
-### 10.2 Alternative 2: OpenTelemetry Metrics API Directly
+### 11.2 Alternative 2: OpenTelemetry Metrics API Directly
 
 **Description**: Use OpenTelemetry's Metrics API (`Meter` and `Counter`/`Histogram`) directly in driver code.
 
@@ -1073,7 +1709,7 @@ Compare:
 
 ---
 
-### 10.3 Alternative 3: Log-Based Metrics
+### 11.3 Alternative 3: Log-Based Metrics
 
 **Description**: Write structured logs at key operations and extract metrics from logs.
 
@@ -1099,7 +1735,7 @@ Compare:
 
 ---
 
-### 10.4 Why Activity-Based Approach Was Chosen
+### 11.4 Why Activity-Based Approach Was Chosen
 
 The Activity-based design was selected because it:
 
@@ -1140,9 +1776,35 @@ The Activity-based design was selected because it:
 
 ---
 
-## 11. Implementation Checklist
+## 12. Implementation Checklist
 
-### Phase 1: Tag Definition System
+### Phase 1: Feature Flag Cache & Per-Host Management
+- [ ] Create `FeatureFlagCache` singleton with per-host contexts
+- [ ] Implement `FeatureFlagContext` with reference counting
+- [ ] Add cache expiration logic (15 minute TTL)
+- [ ] Implement `FetchFeatureFlagAsync` to call feature endpoint
+- [ ] Create `TelemetryClientManager` singleton
+- [ ] Implement `TelemetryClientHolder` with reference counting
+- [ ] Add unit tests for cache behavior and reference counting
+
+### Phase 2: Circuit Breaker
+- [ ] Create `CircuitBreaker` class with state machine
+- [ ] Create `CircuitBreakerManager` singleton (per-host breakers)
+- [ ] Create `CircuitBreakerTelemetryExporter` wrapper
+- [ ] Configure failure thresholds and timeouts
+- [ ] Add DEBUG logging for state transitions
+- [ ] Add unit tests for circuit breaker logic
+
+### Phase 3: Exception Handling
+- [ ] Create `ExceptionClassifier` for terminal vs retryable
+- [ ] Update `MetricsAggregator` to buffer retryable exceptions
+- [ ] Implement immediate flush for terminal exceptions
+- [ ] Wrap all telemetry code in try-catch blocks
+- [ ] Replace all logging with TRACE/DEBUG levels only
+- [ ] Ensure circuit breaker sees exceptions before swallowing
+- [ ] Add unit tests for exception classification
+
+### Phase 4: Tag Definition System
 - [ ] Create `TagDefinitions/TelemetryTag.cs` (attribute and enums)
 - [ ] Create `TagDefinitions/ConnectionOpenEvent.cs` (connection tag definitions)
 - [ ] Create `TagDefinitions/StatementExecutionEvent.cs` (statement tag definitions)
@@ -1150,27 +1812,28 @@ The Activity-based design was selected because it:
 - [ ] Create `TagDefinitions/TelemetryTagRegistry.cs` (central registry)
 - [ ] Add unit tests for tag registry
 
-### Phase 2: Core Implementation
+### Phase 5: Core Implementation
 - [ ] Create `DatabricksActivityListener` class
-- [ ] Create `MetricsAggregator` class (using tag registry for filtering)
-- [ ] Create `DatabricksTelemetryExporter` class (reuse from original design)
+- [ ] Create `MetricsAggregator` class (with exception buffering)
+- [ ] Create `DatabricksTelemetryExporter` class
 - [ ] Add necessary tags to existing activities (using defined constants)
-- [ ] Add feature flag integration
+- [ ] Update connection to use per-host management
 
-### Phase 3: Integration
-- [ ] Initialize listener in `DatabricksConnection.OpenAsync()`
-- [ ] Stop listener in `DatabricksConnection.CloseAsync()`
+### Phase 6: Integration
+- [ ] Update `DatabricksConnection.OpenAsync()` to use managers
+- [ ] Implement graceful shutdown in `DatabricksConnection.CloseAsync()`
 - [ ] Add configuration parsing from connection string
-- [ ] Add server feature flag check
+- [ ] Wire up feature flag cache
 
-### Phase 4: Testing
-- [ ] Unit tests for ActivityListener
-- [ ] Unit tests for MetricsAggregator
-- [ ] Integration tests with real activities
+### Phase 7: Testing
+- [ ] Unit tests for all new components
+- [ ] Integration tests for per-host management
+- [ ] Integration tests for circuit breaker
+- [ ] Integration tests for graceful shutdown
 - [ ] Performance tests (overhead measurement)
-- [ ] Compatibility tests with OpenTelemetry
+- [ ] Load tests with many concurrent connections
 
-### Phase 5: Documentation
+### Phase 8: Documentation
 - [ ] Update Activity instrumentation docs
 - [ ] Document new activity tags
 - [ ] Update configuration guide
@@ -1178,9 +1841,9 @@ The Activity-based design was selected because it:
 
 ---
 
-## 12. Open Questions
+## 13. Open Questions
 
-### 12.1 Activity Tag Naming Conventions
+### 13.1 Activity Tag Naming Conventions
 
 **Question**: Should we use OpenTelemetry semantic conventions for tag names?
 
@@ -1191,7 +1854,7 @@ The Activity-based design was selected because it:
 
 This ensures compatibility with OTEL ecosystem.
 
-### 12.2 Statement Completion Detection
+### 13.2 Statement Completion Detection
 
 **Question**: How do we know when a statement is complete for aggregation?
 
@@ -1202,7 +1865,7 @@ This ensures compatibility with OTEL ecosystem.
 
 **Recommendation**: Use activity completion - cleaner and automatic.
 
-### 12.3 Performance Impact on Existing Activity Users
+### 13.3 Performance Impact on Existing Activity Users
 
 **Question**: Will adding tags impact applications that already use Activity for tracing?
 
@@ -1213,19 +1876,30 @@ This ensures compatibility with OTEL ecosystem.
 
 ---
 
-## 13. References
+## 14. References
 
-### 13.1 Related Documentation
+### 14.1 Related Documentation
 
 - [.NET Activity API](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/distributed-tracing)
 - [OpenTelemetry .NET](https://opentelemetry.io/docs/languages/net/)
 - [ActivityListener Documentation](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.activitylistener)
 
-### 13.2 Existing Code References
+### 14.2 Existing Code References
 
+**ADBC Driver**:
 - `ActivityTrace.cs`: Existing Activity helper
 - `DatabricksAdbcActivitySource`: Existing ActivitySource
 - Connection/Statement activities: Already instrumented
+
+**JDBC Driver** (reference implementation):
+- `TelemetryClient.java:15`: Main telemetry client with batching and flush
+- `TelemetryClientFactory.java:27`: Per-host client management with reference counting
+- `TelemetryClientHolder.java:5`: Reference counting holder
+- `CircuitBreakerTelemetryPushClient.java:15`: Circuit breaker wrapper
+- `CircuitBreakerManager.java:25`: Per-host circuit breaker management
+- `TelemetryPushClient.java:86-94`: Exception re-throwing for circuit breaker
+- `TelemetryHelper.java:60-71`: Feature flag checking
+- `DatabricksDriverFeatureFlagsContextFactory.java:27`: Per-host feature flag cache
 
 ---
 
