@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net472</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ProcessArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</ProcessArchitecture>
@@ -23,6 +23,9 @@
     <ProjectReference Include="..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
     <ProjectReference Include="..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
     <ProjectReference Include="..\src\Drivers\Databricks\Apache.Arrow.Adbc.Drivers.Databricks.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <ProjectReference Include="..\test\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
   </ItemGroup>
 
