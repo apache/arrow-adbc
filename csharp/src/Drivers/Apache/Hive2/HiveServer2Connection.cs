@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         internal const bool InfoVendorSql = true;
         internal const long BatchSizeDefault = 50000;
-        internal const bool EnableBatchSizeStopConditionDefault = true;
+        internal const bool EnableBatchSizeStopConditionDefault = false;
         internal const int PollTimeMillisecondsDefault = 500;
         internal static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2Connection));
         internal static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2Connection));
@@ -1722,15 +1722,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected TConfiguration GetTconfiguration()
         {
-            Properties.TryGetValue(ThriftTransportSizeConstants.MaxMessageSize, out string? maxMessageSize);
-            Properties.TryGetValue(ThriftTransportSizeConstants.MaxFrameSize, out string? maxFrameSize);
             var thriftConfig = new TConfiguration();
 
+            Properties.TryGetValue(ThriftTransportSizeConstants.MaxMessageSize, out string? maxMessageSize);
             if (int.TryParse(maxMessageSize, out int maxMessageSizeValue) && maxMessageSizeValue > 0)
             {
                 thriftConfig.MaxMessageSize = maxMessageSizeValue;
             }
 
+            Properties.TryGetValue(ThriftTransportSizeConstants.MaxFrameSize, out string? maxFrameSize);
             if (int.TryParse(maxFrameSize, out int maxFrameSizeValue) && maxFrameSizeValue > 0)
             {
                 thriftConfig.MaxFrameSize = maxFrameSizeValue;
