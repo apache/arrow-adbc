@@ -100,14 +100,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 {
                     Activity.Current?.SetTag("statement.schema.source", "arrow");
                     Activity.Current?.SetTag("statement.schema.column_count", arrowSchema.FieldsList.Count);
-                    Activity.Current?.AddEvent("statement.schema.using_arrow_schema");
                     return arrowSchema;
                 }
             }
 
             // Fallback to traditional Thrift schema
             Activity.Current?.SetTag("statement.schema.source", "thrift");
-            Activity.Current?.AddEvent("statement.schema.fallback_to_thrift");
             var thriftSchema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
             Activity.Current?.SetTag("statement.schema.column_count", thriftSchema.FieldsList.Count);
             return thriftSchema;
@@ -176,18 +174,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public override void SetOption(string key, string value)
         {
-            Activity.Current?.AddEvent("statement.set_option", [
-                new("option_key", key),
-                new("option_value", value)
-            ]);
-
             switch (key)
             {
                 case DatabricksParameters.UseCloudFetch:
                     if (bool.TryParse(value, out bool useCloudFetchValue))
                     {
                         this.useCloudFetch = useCloudFetchValue;
-                        Activity.Current?.SetTag("statement.cloudfetch.enabled", this.useCloudFetch);
                     }
                     else
                     {
@@ -198,7 +190,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     if (bool.TryParse(value, out bool canDecompressLz4Value))
                     {
                         this.canDecompressLz4 = canDecompressLz4Value;
-                        Activity.Current?.SetTag("statement.cloudfetch.can_decompress_lz4", this.canDecompressLz4);
                     }
                     else
                     {
@@ -210,8 +201,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     {
                         long maxBytesPerFileValue = DatabricksConnection.ParseBytesWithUnits(value);
                         this.maxBytesPerFile = maxBytesPerFileValue;
-                        Activity.Current?.SetTag("statement.cloudfetch.max_bytes_per_file", this.maxBytesPerFile);
-                        Activity.Current?.SetTag("statement.cloudfetch.max_bytes_per_file_mb", this.maxBytesPerFile / 1024.0 / 1024.0);
                     }
                     catch (FormatException)
                     {
@@ -223,8 +212,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     {
                         long maxBytesPerFetchRequestValue = DatabricksConnection.ParseBytesWithUnits(value);
                         this.maxBytesPerFetchRequest = maxBytesPerFetchRequestValue;
-                        Activity.Current?.SetTag("statement.cloudfetch.max_bytes_per_fetch_request", this.maxBytesPerFetchRequest);
-                        Activity.Current?.SetTag("statement.cloudfetch.max_bytes_per_fetch_request_mb", this.maxBytesPerFetchRequest / 1024.0 / 1024.0);
                     }
                     catch (FormatException)
                     {
@@ -235,7 +222,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     if (long.TryParse(value, out long batchSize) && batchSize > 0)
                     {
                         this.BatchSize = batchSize;
-                        Activity.Current?.SetTag("statement.batch_size", this.BatchSize);
                     }
                     else
                     {
