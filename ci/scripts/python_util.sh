@@ -182,6 +182,7 @@ import $component.dbapi
         # set env var so that we don't skip tests if we somehow accidentally installed pyarrow
         # GH-3679: Don't prefix with 'env' command because env on macOS is
         # "restricted" and strips DYLD_LIBRARY_PATH
-        ADBC_NO_SKIP_TESTS=1 python -m pytest -vvx --import-mode append "${test_files[@]}"
+        export ADBC_NO_SKIP_TESTS=1
+        python -m pytest -vvx --import-mode append "${test_files[@]}"
     done
 }
