@@ -50,12 +50,21 @@ This benchmark tests the complete CloudFetch flow with real queries against a Da
 
 ## Running the Benchmark
 
-### Run the CloudFetch E2E benchmark:
+### Run the CloudFetch E2E benchmark on .NET 8.0:
 ```bash
 cd csharp
 export DATABRICKS_TEST_CONFIG_FILE=/path/to/databricks-config.json
 dotnet run -c Release --project Benchmarks/Benchmarks.csproj --framework net8.0 -- --filter "*CloudFetchRealE2E*"
 ```
+
+### Run the CloudFetch E2E benchmark on .NET Framework 4.7.2 (Windows only, simulates Power BI):
+```powershell
+cd csharp
+$env:DATABRICKS_TEST_CONFIG_FILE="C:\path\to\databricks-config.json"
+dotnet run -c Release --project Benchmarks/Benchmarks.csproj --framework net472 -- --filter "*CloudFetchRealE2E*"
+```
+
+**Note**: .NET Framework 4.7.2 is only available on Windows. This target is useful for testing CloudFetch behavior in Power BI-like environments, as Power BI Desktop runs on .NET Framework 4.7.2.
 
 ### Real E2E Benchmark Configuration
 
@@ -82,8 +91,19 @@ export DATABRICKS_TEST_CONFIG_FILE=/path/to/databricks-config.json
 ### Key Metrics:
 
 - **Peak Memory (MB)**: Maximum working set memory during execution
+  - Displayed in the summary table via custom column
   - Printed to console output during each benchmark iteration
   - Shows the real memory footprint during CloudFetch operations
+  - Stored in temp file for accurate reporting across BenchmarkDotNet processes
+
+- **Total Rows**: Total number of rows processed during the benchmark
+  - Displayed in the summary table via custom column
+  - Shows the actual data volume processed
+
+- **Total Batches**: Total number of Arrow RecordBatch objects processed
+  - Displayed in the summary table via custom column
+  - Indicates how data was chunked by CloudFetch
+  - Useful for understanding batch size and network operation counts
 
 - **Allocated**: Total managed memory allocated during the operation
   - Lower is better for memory efficiency
@@ -107,36 +127,42 @@ Query: select * from main.tpcds_sf1_delta.catalog_sales
 Benchmark will test CloudFetch with 5ms per 10K rows read delay
 
 // Warmup
-CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 272.97 MB
+CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 272.97 MB, Total rows: 1,441,548, Total batches: 145
+Metrics written to: /tmp/cloudfetch_benchmark_metrics.json
 WorkloadWarmup   1: 1 op, 11566591709.00 ns, 11.5666 s/op
 
 // Actual iterations
-CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 249.11 MB
+CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 249.11 MB, Total rows: 1,441,548, Total batches: 145
+Metrics written to: /tmp/cloudfetch_benchmark_metrics.json
 WorkloadResult   1: 1 op, 8752445353.00 ns, 8.7524 s/op
 
-CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 261.95 MB
+CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 261.95 MB, Total rows: 1,441,548, Total batches: 145
+Metrics written to: /tmp/cloudfetch_benchmark_metrics.json
 WorkloadResult   2: 1 op, 9794630771.00 ns, 9.7946 s/op
 
-CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 258.39 MB
+CloudFetch E2E [Delay=5ms/10K rows] - Peak memory: 258.39 MB, Total rows: 1,441,548, Total batches: 145
+Metrics written to: /tmp/cloudfetch_benchmark_metrics.json
 WorkloadResult   3: 1 op, 9017280271.00 ns, 9.0173 s/op
 ```
 
 **Summary table:**
 ```
-BenchmarkDotNet v0.15.4, macOS Sequoia 15.7.1 (24G231) [Darwin 24.6.0]
+BenchmarkDotNet v0.15.5, macOS Sequoia 15.7.1 (24G231) [Darwin 24.6.0]
 Apple M1 Max, 1 CPU, 10 logical and 10 physical cores
 .NET SDK 8.0.407
   [Host] : .NET 8.0.19 (8.0.19, 8.0.1925.36514), Arm64 RyuJIT armv8.0-a
 
-| Method            | ReadDelayMs | Mean    | Min     | Max     | Median  | Peak Memory (MB)          | Gen0       | Gen1       | Gen2       | Allocated |
-|------------------ |------------ |--------:|--------:|--------:|--------:|--------------------------:|-----------:|-----------:|-----------:|----------:|
-| ExecuteLargeQuery | 5           | 9.19 s  | 8.75 s  | 9.79 s  | 9.02 s  | See previous console output | 28000.0000 | 28000.0000 | 28000.0000 |   1.78 GB |
+| Method            | ReadDelayMs | Mean    | Min     | Max     | Median  | Peak Memory (MB) | Total Rows | Total Batches | Gen0       | Gen1       | Gen2       | Allocated |
+|------------------ |------------ |--------:|--------:|--------:|--------:|-----------------:|-----------:|--------------:|-----------:|-----------:|-----------:|----------:|
+| ExecuteLargeQuery | 5           | 9.19 s  | 8.75 s  | 9.79 s  | 9.02 s  | 256.48           | 1,441,548  | 145           | 28000.0000 | 28000.0000 | 28000.0000 |   1.78 GB |
 ```
 
 **Key Metrics:**
 - **E2E Time**: 8.75-9.79 seconds (includes query execution, CloudFetch downloads, LZ4 decompression, batch consumption)
-- **Peak Memory**: 249-262 MB (tracked via Process.WorkingSet64, printed in console)
+- **Peak Memory**: 256.48 MB (tracked via Process.WorkingSet64, displayed via custom column)
+- **Total Rows**: 1,441,548 rows processed
+- **Total Batches**: 145 Arrow RecordBatch objects (average ~9,941 rows per batch)
 - **Total Allocated**: 1.78 GB managed memory
 - **GC Collections**: 28K Gen0/Gen1/Gen2 collections
 
-**Note**: Peak memory values are printed to console during execution since BenchmarkDotNet runs each iteration in a separate process.
+**Note**: Metrics (Peak Memory, Total Rows, Total Batches) are stored in a temporary JSON file (`/tmp/cloudfetch_benchmark_metrics.json` on Unix, `%TEMP%\cloudfetch_benchmark_metrics.json` on Windows) during benchmark execution. Custom BenchmarkDotNet columns read from this file to display accurate values in the summary table.

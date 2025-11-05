@@ -56,16 +56,137 @@ namespace Apache.Arrow.Adbc.Benchmarks.Databricks
             // Try CloudFetchRealE2EBenchmark (includes parameters in key)
             if (benchmarkCase.Descriptor.Type == typeof(CloudFetchRealE2EBenchmark))
             {
-                // Extract ReadDelayMs parameter
-                var readDelayParam = benchmarkCase.Parameters["ReadDelayMs"];
-                string key = $"ExecuteLargeQuery_{readDelayParam}";
-                if (CloudFetchRealE2EBenchmark.PeakMemoryResults.TryGetValue(key, out var peakMemoryMB))
+                try
                 {
-                    return $"{peakMemoryMB:F2}";
+                    // Extract ReadDelayMs parameter
+                    var readDelayParam = benchmarkCase.Parameters["ReadDelayMs"];
+                    string key = $"ExecuteLargeQuery_{readDelayParam}";
+
+                    // Read metrics from temp file
+                    string metricsFilePath = Path.Combine(Path.GetTempPath(), "cloudfetch_benchmark_metrics.json");
+                    if (File.Exists(metricsFilePath))
+                    {
+                        string json = File.ReadAllText(metricsFilePath);
+                        var allMetrics = JsonSerializer.Deserialize<Dictionary<string, BenchmarkMetrics>>(json);
+                        if (allMetrics != null && allMetrics.TryGetValue(key, out var metrics))
+                        {
+                            return $"{metrics.PeakMemoryMB:F2}";
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return $"Error: {ex.Message}";
                 }
             }
 
             return "See previous console output";
+        }
+
+        public string GetValue(Summary summary, BenchmarkCase benchmarkCase, SummaryStyle style)
+        {
+            return GetValue(summary, benchmarkCase);
+        }
+
+        public override string ToString() => ColumnName;
+    }
+
+    /// <summary>
+    /// Custom column to display total rows processed in the benchmark results table.
+    /// </summary>
+    public class TotalRowsColumn : IColumn
+    {
+        public string Id => nameof(TotalRowsColumn);
+        public string ColumnName => "Total Rows";
+        public string Legend => "Total number of rows processed during benchmark execution";
+        public UnitType UnitType => UnitType.Dimensionless;
+        public bool AlwaysShow => true;
+        public ColumnCategory Category => ColumnCategory.Custom;
+        public int PriorityInCategory => 1;
+        public bool IsNumeric => true;
+        public bool IsAvailable(Summary summary) => true;
+        public bool IsDefault(Summary summary, BenchmarkCase benchmarkCase) => false;
+
+        public string GetValue(Summary summary, BenchmarkCase benchmarkCase)
+        {
+            if (benchmarkCase.Descriptor.Type == typeof(CloudFetchRealE2EBenchmark))
+            {
+                try
+                {
+                    var readDelayParam = benchmarkCase.Parameters["ReadDelayMs"];
+                    string key = $"ExecuteLargeQuery_{readDelayParam}";
+
+                    string metricsFilePath = Path.Combine(Path.GetTempPath(), "cloudfetch_benchmark_metrics.json");
+                    if (File.Exists(metricsFilePath))
+                    {
+                        string json = File.ReadAllText(metricsFilePath);
+                        var allMetrics = JsonSerializer.Deserialize<Dictionary<string, BenchmarkMetrics>>(json);
+                        if (allMetrics != null && allMetrics.TryGetValue(key, out var metrics))
+                        {
+                            return $"{metrics.TotalRows:N0}";
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return $"Error: {ex.Message}";
+                }
+            }
+
+            return "N/A";
+        }
+
+        public string GetValue(Summary summary, BenchmarkCase benchmarkCase, SummaryStyle style)
+        {
+            return GetValue(summary, benchmarkCase);
+        }
+
+        public override string ToString() => ColumnName;
+    }
+
+    /// <summary>
+    /// Custom column to display total batches processed in the benchmark results table.
+    /// </summary>
+    public class TotalBatchesColumn : IColumn
+    {
+        public string Id => nameof(TotalBatchesColumn);
+        public string ColumnName => "Total Batches";
+        public string Legend => "Total number of record batches processed during benchmark execution";
+        public UnitType UnitType => UnitType.Dimensionless;
+        public bool AlwaysShow => true;
+        public ColumnCategory Category => ColumnCategory.Custom;
+        public int PriorityInCategory => 2;
+        public bool IsNumeric => true;
+        public bool IsAvailable(Summary summary) => true;
+        public bool IsDefault(Summary summary, BenchmarkCase benchmarkCase) => false;
+
+        public string GetValue(Summary summary, BenchmarkCase benchmarkCase)
+        {
+            if (benchmarkCase.Descriptor.Type == typeof(CloudFetchRealE2EBenchmark))
+            {
+                try
+                {
+                    var readDelayParam = benchmarkCase.Parameters["ReadDelayMs"];
+                    string key = $"ExecuteLargeQuery_{readDelayParam}";
+
+                    string metricsFilePath = Path.Combine(Path.GetTempPath(), "cloudfetch_benchmark_metrics.json");
+                    if (File.Exists(metricsFilePath))
+                    {
+                        string json = File.ReadAllText(metricsFilePath);
+                        var allMetrics = JsonSerializer.Deserialize<Dictionary<string, BenchmarkMetrics>>(json);
+                        if (allMetrics != null && allMetrics.TryGetValue(key, out var metrics))
+                        {
+                            return $"{metrics.TotalBatches:N0}";
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return $"Error: {ex.Message}";
+                }
+            }
+
+            return "N/A";
         }
 
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase, SummaryStyle style)
@@ -87,6 +208,16 @@ namespace Apache.Arrow.Adbc.Benchmarks.Databricks
         public string? type { get; set; }
         public string? catalog { get; set; }
         public string? schema { get; set; }
+    }
+
+    /// <summary>
+    /// Benchmark metrics captured during execution.
+    /// </summary>
+    internal class BenchmarkMetrics
+    {
+        public double PeakMemoryMB { get; set; }
+        public long TotalRows { get; set; }
+        public long TotalBatches { get; set; }
     }
 
     /// <summary>
@@ -123,6 +254,9 @@ namespace Apache.Arrow.Adbc.Benchmarks.Databricks
         private DatabricksTestConfig _testConfig = null!;
         private string _hostname = null!;
         private string _httpPath = null!;
+        private long _totalRows;
+        private long _totalBatches;
+        private static readonly string _metricsFilePath = Path.Combine(Path.GetTempPath(), "cloudfetch_benchmark_metrics.json");
 
         [Params(5)] // Read delay in milliseconds per 10K rows (5 = simulate Power BI)
         public int ReadDelayMs { get; set; }
@@ -204,13 +338,47 @@ namespace Apache.Arrow.Adbc.Benchmarks.Databricks
             _connection?.Dispose();
             _connection = null;
 
-            // Print and store peak memory for this iteration
+            // Calculate and print metrics for this iteration
             double peakMemoryMB = _peakMemoryBytes / 1024.0 / 1024.0;
-            Console.WriteLine($"CloudFetch E2E [Delay={ReadDelayMs}ms/10K rows] - Peak memory: {peakMemoryMB:F2} MB");
+            Console.WriteLine($"CloudFetch E2E [Delay={ReadDelayMs}ms/10K rows] - Peak memory: {peakMemoryMB:F2} MB, Total rows: {_totalRows:N0}, Total batches: {_totalBatches:N0}");
 
             // Store in static dictionary for the custom column (key includes parameter)
             string key = $"ExecuteLargeQuery_{ReadDelayMs}";
             PeakMemoryResults[key] = peakMemoryMB;
+
+            // Write metrics to temp file for custom columns to read
+            try
+            {
+                // Read existing metrics file if it exists
+                Dictionary<string, BenchmarkMetrics> allMetrics;
+                if (File.Exists(_metricsFilePath))
+                {
+                    string existingJson = File.ReadAllText(_metricsFilePath);
+                    allMetrics = JsonSerializer.Deserialize<Dictionary<string, BenchmarkMetrics>>(existingJson)
+                        ?? new Dictionary<string, BenchmarkMetrics>();
+                }
+                else
+                {
+                    allMetrics = new Dictionary<string, BenchmarkMetrics>();
+                }
+
+                // Add or update metrics for this benchmark run
+                allMetrics[key] = new BenchmarkMetrics
+                {
+                    PeakMemoryMB = peakMemoryMB,
+                    TotalRows = _totalRows,
+                    TotalBatches = _totalBatches
+                };
+
+                // Write back to file
+                string json = JsonSerializer.Serialize(allMetrics, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(_metricsFilePath, json);
+                Console.WriteLine($"Metrics written to: {_metricsFilePath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Failed to write metrics file: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -237,17 +405,17 @@ namespace Apache.Arrow.Adbc.Benchmarks.Databricks
             }
 
             // Read all batches and track peak memory
-            long totalRows = 0;
-            long totalBatches = 0;
+            _totalRows = 0;
+            _totalBatches = 0;
             RecordBatch? batch;
 
             while ((batch = await result.Stream.ReadNextRecordBatchAsync()) != null)
             {
-                totalRows += batch.Length;
-                totalBatches++;
+                _totalRows += batch.Length;
+                _totalBatches++;
 
                 // Track peak memory periodically
-                if (totalBatches % 10 == 0)
+                if (_totalBatches % 10 == 0)
                 {
                     TrackPeakMemory();
                 }
@@ -270,7 +438,7 @@ namespace Apache.Arrow.Adbc.Benchmarks.Databricks
             TrackPeakMemory();
 
             statement.Dispose();
-            return totalRows;
+            return _totalRows;
         }
 
         private void TrackPeakMemory()

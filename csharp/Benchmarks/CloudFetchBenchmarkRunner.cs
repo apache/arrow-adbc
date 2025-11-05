@@ -37,9 +37,11 @@ namespace Apache.Arrow.Adbc.Benchmarks
             // Enable TLS 1.2/1.3 for .NET Framework 4.7.2 (required for modern HTTPS endpoints)
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | (SecurityProtocolType)3072; // 3072 = Tls13
 #endif
-            // Configure to include the peak memory column and hide confusing error column
+            // Configure to include custom metric columns and hide confusing error column
             var config = DefaultConfig.Instance
                 .AddColumn(new PeakMemoryColumn())
+                .AddColumn(new TotalRowsColumn())
+                .AddColumn(new TotalBatchesColumn())
                 .HideColumns("Error", "StdDev");  // Hide statistical columns that are confusing with few iterations
 
             // Run only the real E2E CloudFetch benchmark
