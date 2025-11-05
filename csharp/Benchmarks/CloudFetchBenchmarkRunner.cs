@@ -19,6 +19,9 @@ using Apache.Arrow.Adbc.Benchmarks.Databricks;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
+#if NET472
+using System.Net;
+#endif
 
 namespace Apache.Arrow.Adbc.Benchmarks
 {
@@ -30,6 +33,10 @@ namespace Apache.Arrow.Adbc.Benchmarks
     {
         public static void Main(string[] args)
         {
+#if NET472
+            // Enable TLS 1.2/1.3 for .NET Framework 4.7.2 (required for modern HTTPS endpoints)
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | (SecurityProtocolType)3072; // 3072 = Tls13
+#endif
             // Configure to include the peak memory column and hide confusing error column
             var config = DefaultConfig.Instance
                 .AddColumn(new PeakMemoryColumn())
