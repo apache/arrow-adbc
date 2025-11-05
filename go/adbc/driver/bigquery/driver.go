@@ -46,6 +46,7 @@ const (
 	OptionStringAuthClientID              = "adbc.bigquery.sql.auth.client_id"
 	OptionStringAuthClientSecret          = "adbc.bigquery.sql.auth.client_secret"
 	OptionStringAuthRefreshToken          = "adbc.bigquery.sql.auth.refresh_token"
+	OptionStringAuthQuotaProject          = "adbc.bigquery.sql.auth.quota_project"
 
 	// OptionStringQueryParameterMode specifies if the query uses positional syntax ("?")
 	// or the named syntax ("@p"). It is illegal to mix positional and named syntax.

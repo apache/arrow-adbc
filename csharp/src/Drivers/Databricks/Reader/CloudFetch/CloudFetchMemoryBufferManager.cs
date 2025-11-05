@@ -23,6 +23,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 {
     /// <summary>
     /// Manages memory allocation for prefetched files.
+    ///
+    /// This manager tracks in-flight download memory based on the compressed file sizes
+    /// received from the server. It does NOT track the decompressed data size, as that
+    /// memory is naturally bounded by the result queue capacity and batch processing flow.
+    ///
+    /// The memory limit controls how many concurrent downloads can be in-flight at once,
+    /// preventing unbounded parallel downloads from exhausting system resources.
     /// </summary>
     internal sealed class CloudFetchMemoryBufferManager : ICloudFetchMemoryBufferManager
     {
@@ -63,7 +70,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 throw new ArgumentOutOfRangeException(nameof(size), "Size must be positive.");
             }
 
-            // Try to acquire memory
+            // Try to acquire memory (size is the compressed file size from the server)
             long originalValue;
             long newValue;
             do
@@ -91,6 +98,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             }
 
             // Special case: if size is greater than max memory, we'll never be able to acquire it
+            // Note: size is the compressed file size from the server
             if (size > _maxMemory)
             {
                 throw new ArgumentOutOfRangeException(nameof(size), $"Requested size ({size} bytes) exceeds maximum memory ({_maxMemory} bytes).");

@@ -44,9 +44,10 @@ type databaseImpl struct {
 	// projectID is the catalog
 	projectID string
 	// datasetID is the schema
-	datasetID string
-	tableID   string
-	location  string
+	datasetID    string
+	tableID      string
+	location     string
+	quotaProject string
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
@@ -67,6 +68,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		location:                   d.location,
 		resultRecordBufferSize:     defaultQueryResultBufferSize,
 		prefetchConcurrency:        defaultQueryPrefetchConcurrency,
+		quotaProject:               d.quotaProject,
 	}
 
 	err := conn.newClient(ctx)
@@ -96,6 +98,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.clientSecret, nil
 	case OptionStringAuthRefreshToken:
 		return d.refreshToken, nil
+	case OptionStringAuthQuotaProject:
+		return d.quotaProject, nil
 	case OptionStringLocation:
 		return d.location, nil
 	case OptionStringProjectID:
@@ -158,6 +162,8 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.clientSecret = value
 	case OptionStringAuthRefreshToken:
 		d.refreshToken = value
+	case OptionStringAuthQuotaProject:
+		d.quotaProject = value
 	case OptionStringImpersonateTargetPrincipal:
 		d.impersonateTargetPrincipal = value
 	case OptionStringImpersonateDelegates:

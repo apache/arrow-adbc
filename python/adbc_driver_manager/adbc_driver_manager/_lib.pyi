@@ -17,13 +17,13 @@
 
 # NOTE: generated with mypy's stubgen, then hand-edited to fix things
 
-import typing_extensions
-from typing import Any, ClassVar, List, Literal, Optional, Tuple, Union
-
-from typing import overload
 import enum
 import pathlib
 import typing
+from typing import overload, Any, ClassVar, List, Literal, Optional, Tuple, Union
+
+import typing_extensions
+from typing_extensions import CapsuleType
 
 INGEST_OPTION_MODE: str
 INGEST_OPTION_MODE_APPEND: str
@@ -150,11 +150,16 @@ class ArrowArrayStreamHandle:
     address: int
     is_valid: bool
     def release(self) -> None: ...
+    def __arrow_c_schema__(self) -> CapsuleType: ...
+    def __arrow_c_stream__(
+        self, requested_schema=Optional[CapsuleType]
+    ) -> CapsuleType: ...
 
 class ArrowSchemaHandle:
     address: int
     is_valid: bool
     def release(self) -> None: ...
+    def __arrow_c_schema__(self) -> CapsuleType: ...
 
 class DataError(DatabaseError): ...
 class DatabaseError(Error): ...

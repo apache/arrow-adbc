@@ -11,7 +11,7 @@ c/vendor/backward/*
 c/vendor/fmt/*
 c/vendor/sqlite3/sqlite3.c
 c/vendor/sqlite3/sqlite3.h
-c/vendor/portable-snippets/safe-math.h
+c/vendor/portable-snippets/include/portable-snippets/safe-math.h
 ci/conda/.ci_support/*
 ci/conda/.gitattributes
 ci/linux-packages/changelog

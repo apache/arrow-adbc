@@ -124,6 +124,19 @@ struct Releaser<struct AdbcDatabase> {
 };
 
 template <>
+struct Releaser<struct AdbcDriver> {
+  static void Release(struct AdbcDriver* value) {
+    if (value->release) {
+      struct AdbcError error = {};
+      auto status = value->release(value, &error);
+      if (status != ADBC_STATUS_OK) {
+        FAIL() << StatusCodeToString(status) << ": " << ToString(&error);
+      }
+    }
+  }
+};
+
+template <>
 struct Releaser<struct AdbcStatement> {
   static void Release(struct AdbcStatement* value) {
     if (value->private_data) {
