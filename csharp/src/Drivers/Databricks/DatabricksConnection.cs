@@ -590,8 +590,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             {
                 // Add retry handler for 408, 502, 503, 504 responses with Retry-After support
                 // This must be INSIDE ThriftErrorMessageHandler so retries happen before exceptions are thrown
-                baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
-                baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout);
+                baseHandler = new RetryHttpHandler(baseHandler, this, TemporarilyUnavailableRetryTimeout);
+                baseAuthHandler = new RetryHttpHandler(baseAuthHandler, this, TemporarilyUnavailableRetryTimeout);
             }
 
             // Add Thrift error message handler AFTER retry handler (OUTSIDE in the chain)
