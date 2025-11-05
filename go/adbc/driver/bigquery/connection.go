@@ -51,6 +51,7 @@ type connectionImpl struct {
 	clientID     string
 	clientSecret string
 	refreshToken string
+	quotaProject string
 
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
@@ -468,6 +469,8 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 		return c.clientSecret, nil
 	case OptionStringAuthRefreshToken:
 		return c.refreshToken, nil
+	case OptionStringAuthQuotaProject:
+		return c.quotaProject, nil
 	case OptionStringProjectID:
 		return c.catalog, nil
 	case OptionStringDatasetID:
@@ -500,6 +503,8 @@ func (c *connectionImpl) SetOption(key string, value string) error {
 		c.clientSecret = value
 	case OptionStringAuthRefreshToken:
 		c.refreshToken = value
+	case OptionStringAuthQuotaProject:
+		c.quotaProject = value
 	case OptionStringImpersonateTargetPrincipal:
 		c.impersonateTargetPrincipal = value
 	case OptionStringImpersonateDelegates:
@@ -589,6 +594,11 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			Code: adbc.StatusInvalidArgument,
 			Msg:  fmt.Sprintf("Unknown auth type: %s", c.authType),
 		}
+	}
+
+	// Set quota project id if configured
+	if c.quotaProject != "" {
+		authOptions = append(authOptions, option.WithQuotaProject(c.quotaProject))
 	}
 
 	// Then, apply impersonation if configured (as a credential transformation layer)
@@ -785,6 +795,8 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	field.Nullable = !schema.Required
 	metadata["Type"] = string(schema.Type)
 
+	richSqlType := string(schema.Type)
+
 	if schema.PolicyTags != nil {
 		policyTagList, err := json.Marshal(schema.PolicyTags)
 		if err != nil {
@@ -813,14 +825,21 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	case bigquery.RecordFieldType:
 		// create an Arrow struct for BigQuery Record fields
 		nestedFields := make([]arrow.Field, len(schema.Schema))
+		nestedRichSqlTypes := make([]string, len(schema.Schema))
 		for i, nestedFieldSchema := range schema.Schema {
 			f, err := buildField(nestedFieldSchema, level+1)
 			if err != nil {
 				return arrow.Field{}, err
 			}
 			nestedFields[i] = f
+
+			fieldRichSqlType, found := f.Metadata.GetValue("BIGQUERY:type")
+			if found {
+				nestedRichSqlTypes[i] = fmt.Sprintf("`%s` %s", f.Name, fieldRichSqlType)
+			}
 		}
 		structType := arrow.StructOf(nestedFields...)
+		richSqlType = fmt.Sprintf("STRUCT<%s>", strings.Join(nestedRichSqlTypes, ", "))
 		if structType == nil {
 			return arrow.Field{}, adbc.Error{
 				Code: adbc.StatusInvalidArgument,
@@ -878,7 +897,11 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 	// if the field is repeated, then it's a list of the type we just built
 	if schema.Repeated {
 		field.Type = arrow.ListOf(field.Type)
+		richSqlType = fmt.Sprintf("ARRAY<%s>", richSqlType)
 	}
+
+	// derive the standard type string from the field
+	metadata["BIGQUERY:type"] = richSqlType
 
 	if level == 0 {
 		metadata["DefaultValueExpression"] = schema.DefaultValueExpression

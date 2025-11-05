@@ -84,6 +84,16 @@ if(ADBC_BUILD_TESTS)
     set(TEST_LINK_LIBS adbc_driver_manager_static)
   endif()
 
+  add_library(adbc_driver_entrypoint SHARED entrypoint.c)
+  target_include_directories(adbc_driver_entrypoint SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}/c/include/)
+  target_compile_definitions(adbc_driver_entrypoint PRIVATE ADBC_EXPORTING)
+
+  add_library(adbc_driver_no_entrypoint SHARED entrypoint.c)
+  target_include_directories(adbc_driver_no_entrypoint SYSTEM
+                             PRIVATE ${REPOSITORY_ROOT}/c/include/)
+  target_compile_definitions(adbc_driver_no_entrypoint PRIVATE ADBC_EXPORTING)
+
   add_test_case(driver_manager_test
                 PREFIX
                 adbc
@@ -96,10 +106,20 @@ if(ADBC_BUILD_TESTS)
                 adbc_validation
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
+  add_dependencies(adbc-driver-manager-test adbc_driver_entrypoint
+                   adbc_driver_no_entrypoint)
+
+  target_compile_definitions(adbc-driver-manager-test
+                             PRIVATE ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB="${CMAKE_BINARY_DIR}/driver_manager/${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_entrypoint${CMAKE_SHARED_LIBRARY_SUFFIX}"
+  )
+
+  target_compile_definitions(adbc-driver-manager-test
+                             PRIVATE ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB="${CMAKE_BINARY_DIR}/driver_manager/${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_no_entrypoint${CMAKE_SHARED_LIBRARY_SUFFIX}"
+  )
 
   if(ADBC_DRIVER_SQLITE)
     target_compile_definitions(adbc-driver-manager-test
-                               PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/libadbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                               PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
     )
   endif()
   if(ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL)

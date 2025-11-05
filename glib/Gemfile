@@ -37,4 +37,6 @@ IO.pipe do |input, output|
   end
 end
 gem "red-arrow", red_arrow_version
+# 3.0.0 has a breaking change
+gem "power_assert", "<3.0.0"
 gem "test-unit"

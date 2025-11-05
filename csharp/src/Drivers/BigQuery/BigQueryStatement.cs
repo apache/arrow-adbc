@@ -120,7 +120,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     }).ConfigureAwait(false);
                 };
 
-                BigQueryResults results = await ExecuteWithRetriesAsync(getJobResults, activity).ConfigureAwait(false);
+                BigQueryResults results = await ExecuteWithRetriesAsync(getJobResults, activity, cancellationContext.CancellationToken).ConfigureAwait(false);
 
                 TokenProtectedReadClientManger clientMgr = new TokenProtectedReadClientManger(Credential);
                 clientMgr.UpdateToken = () => Task.Run(() =>
@@ -180,7 +180,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                             throw new AdbcException($"Unable to obtain result from statement [{statementIndex}]", AdbcStatusCode.InvalidData);
                         };
 
-                    results = await ExecuteWithRetriesAsync(getMultiJobResults, activity).ConfigureAwait(false);
+                    results = await ExecuteWithRetriesAsync(getMultiJobResults, activity, cancellationContext.CancellationToken).ConfigureAwait(false);
                 }
 
                 if (results?.TableReference == null)
@@ -213,7 +213,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         return await GetArrowReaders(clientMgr, table, results.TableReference.ProjectId, maxStreamCount, activity, context.CancellationToken).ConfigureAwait(false);
                     }).ConfigureAwait(false);
                 };
-                IEnumerable<IArrowReader> readers = await ExecuteWithRetriesAsync(getArrowReadersFunc, activity).ConfigureAwait(false);
+                IEnumerable<IArrowReader> readers = await ExecuteWithRetriesAsync(getArrowReadersFunc, activity, cancellationContext.CancellationToken).ConfigureAwait(false);
 
                 // Note: MultiArrowReader must dispose the cancellationContext.
                 IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers, new CancellationContext(cancellationRegistry));
@@ -287,7 +287,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         return await context.Job.GetQueryResultsAsync(getQueryResultsOptions, context.CancellationToken).ConfigureAwait(false);
                     }).ConfigureAwait(false);
                 };
-                BigQueryResults? result = await ExecuteWithRetriesAsync(getQueryResultsAsyncFunc, activity);
+                BigQueryResults? result = await ExecuteWithRetriesAsync(getQueryResultsAsyncFunc, activity, context.CancellationToken);
                 long updatedRows = result?.NumDmlAffectedRows.HasValue == true ? result.NumDmlAffectedRows.Value : -1L;
 
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, updatedRows);
@@ -562,7 +562,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
-        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity) => await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs);
+        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity, CancellationToken cancellationToken = default) =>
+            await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs, cancellationToken);
 
         private async Task<T> ExecuteCancellableJobAsync<T>(
             JobCancellationContext context,
@@ -573,8 +574,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 return await func(context).ConfigureAwait(false);
             }
-            catch (Exception ex) when (BigQueryUtils.ContainsException(ex, out OperationCanceledException? cancelledEx))
+            catch (Exception ex)
+                when (context.CancellationToken.IsCancellationRequested &&
+                    BigQueryUtils.ContainsException(ex, out OperationCanceledException? cancelledEx))
             {
+                // Note: OperationCanceledException could be thrown from the call,
+                // but we only want to handle when the cancellation was requested from the context.
                 activity?.AddException(cancelledEx!);
                 try
                 {
@@ -688,6 +693,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             readonly CancellationContext cancellationContext;
             IEnumerator<IArrowReader>? readers;
             IArrowReader? reader;
+            bool disposed;
 
             public MultiArrowReader(BigQueryStatement statement, Schema schema, IEnumerable<IArrowReader> readers, CancellationContext cancellationContext) : base(statement)
             {
@@ -706,11 +712,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 return await this.TraceActivityAsync(async activity =>
                 {
-                    using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, this.cancellationContext.CancellationToken);
                     if (this.readers == null)
                     {
                         return null;
                     }
+
+                    using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, this.cancellationContext.CancellationToken);
 
                     while (true)
                     {
@@ -719,7 +726,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         {
                             if (!this.readers.MoveNext())
                             {
-                                Dispose(); // TODO: Remove this line
+                                this.readers.Dispose();
+                                this.readers = null;
                                 return null;
                             }
                             this.reader = this.readers.Current;
@@ -741,11 +749,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 if (disposing)
                 {
-                    if (this.readers != null)
+                    if (!this.disposed)
                     {
-                        this.readers.Dispose();
-                        this.readers = null;
+                        if (this.readers != null)
+                        {
+                            this.readers.Dispose();
+                            this.readers = null;
+                        }
                         this.cancellationContext.Dispose();
+                        this.disposed = true;
                     }
                 }
 
