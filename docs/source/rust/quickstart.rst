@@ -32,6 +32,14 @@ Add a dependency on ``adbc_core`` and ``adbc_datafusion``:
 
    cargo add adbc_core adbc_datafusion
 
+.. note:: If you get a compiler error about multiple versions of arrow crates in
+          the dependency graph when you run ``cargo build``, you will have to
+          downgrade crate versions by running a command similar to:
+
+          .. code-block:: shell
+
+             cargo update -p arrow-array@56.2.0 -p arrow-schema@56.2.0 --precise 55.2.0
+
 Loading DataFusion
 ==================
 
