@@ -16,11 +16,9 @@
 */
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Arrow.Adbc.Tracing;
 using K4os.Compression.LZ4.Encoders;
 using K4os.Compression.LZ4.Streams;
 
@@ -51,7 +49,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Decompresses LZ4 compressed data into memory with a specified buffer size.
         /// Uses CustomLZ4DecoderStream with custom ArrayPool to efficiently pool 4MB+ buffers.
-        /// Pre-allocates output buffer based on compressed size to avoid MemoryStream growth reallocations.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
         /// <param name="bufferSize">The buffer size to use for decompression operations.</param>
@@ -61,12 +58,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             try
             {
-                // Estimate decompressed size based on compressed size
-                // LZ4 typically achieves 2x-4x compression ratio, so we use 4x as initial estimate
-                // with a minimum of 64KB and maximum of 8MB to handle edge cases
-                int estimatedSize = Math.Max(64 * 1024, Math.Min(compressedData.Length * 4, 8 * 1024 * 1024));
-
-                using (var outputStream = new MemoryStream(estimatedSize))
+                using (var outputStream = new MemoryStream())
                 {
                     using (var inputStream = new MemoryStream(compressedData))
                     using (var decompressor = new CustomLZ4DecoderStream(
@@ -82,15 +74,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     // The buffer remains valid after MemoryStream disposal since we hold a reference to it
                     byte[] buffer = outputStream.GetBuffer();
                     int length = (int)outputStream.Length;
-
-                    Activity.Current?.AddEvent("lz4.decompress_sync", [
-                        new("compressed_size_bytes", compressedData.Length),
-                        new("estimated_size_bytes", estimatedSize),
-                        new("actual_size_bytes", length),
-                        new("buffer_allocated_bytes", buffer.Length),
-                        new("buffer_waste_bytes", buffer.Length - length),
-                        new("compression_ratio", (double)length / compressedData.Length)
-                    ]);
 
                     return new ReadOnlyMemory<byte>(buffer, 0, length);
                 }
@@ -120,8 +103,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Asynchronously decompresses LZ4 compressed data into memory with a specified buffer size.
         /// Returns the buffer and length as a tuple for efficient wrapping in a MemoryStream.
         /// Uses CustomLZ4DecoderStream with custom ArrayPool to efficiently pool 4MB+ buffers.
-        /// Pre-allocates output buffer using LZ4 frame header's content-length if available,
-        /// otherwise estimates based on compressed size to avoid MemoryStream growth reallocations.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
         /// <param name="bufferSize">The buffer size to use for decompression operations.</param>
@@ -135,34 +116,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             try
             {
-                // First, peek at the frame header to get actual decompressed size if available
-                int estimatedSize;
-                bool usedFrameHeader;
-                using (var peekStream = new MemoryStream(compressedData))
-                using (var peekDecompressor = new CustomLZ4DecoderStream(
-                    peekStream,
-                    descriptor => descriptor.CreateDecoder(),
-                    leaveOpen: false,
-                    interactive: false))
-                {
-                    long? frameLength = peekDecompressor.Length;
-                    if (frameLength.HasValue && frameLength.Value > 0 && frameLength.Value <= int.MaxValue)
-                    {
-                        // Use exact size from LZ4 frame header
-                        estimatedSize = (int)frameLength.Value;
-                        usedFrameHeader = true;
-                    }
-                    else
-                    {
-                        // Fallback: estimate based on compressed size
-                        // LZ4 typically achieves 2x-4x compression ratio, so use 4x as estimate
-                        // Minimum 64KB, no maximum cap (let it be sized appropriately)
-                        estimatedSize = Math.Max(64 * 1024, compressedData.Length * 4);
-                        usedFrameHeader = false;
-                    }
-                }
-
-                using (var outputStream = new MemoryStream(estimatedSize))
+                using (var outputStream = new MemoryStream())
                 {
                     using (var inputStream = new MemoryStream(compressedData))
                     using (var decompressor = new CustomLZ4DecoderStream(
@@ -178,16 +132,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     // The buffer remains valid after MemoryStream disposal since we hold a reference to it
                     byte[] buffer = outputStream.GetBuffer();
                     int length = (int)outputStream.Length;
-
-                    Activity.Current?.AddEvent("lz4.decompress_async", [
-                        new("compressed_size_bytes", compressedData.Length),
-                        new("used_frame_header", usedFrameHeader),
-                        new("estimated_size_bytes", estimatedSize),
-                        new("actual_size_bytes", length),
-                        new("buffer_allocated_bytes", buffer.Length),
-                        new("buffer_waste_bytes", buffer.Length - length),
-                        new("compression_ratio", (double)length / compressedData.Length)
-                    ]);
 
                     return (buffer, length);
                 }
