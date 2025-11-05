@@ -28,6 +28,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// Custom LZ4 decoder stream that uses CustomLZ4FrameReader for buffer pooling.
     /// This replaces K4os.Compression.LZ4.Streams.LZ4DecoderStream to use our custom reader
     /// that pools 4MB+ buffers.
+    ///
+    /// Why not inherit from LZ4DecoderStream or LZ4StreamOnStreamEssentials?
+    /// - LZ4DecoderStream directly instantiates StreamLZ4FrameReader (no injection point)
+    /// - LZ4StreamOnStreamEssentials has a 'private protected' constructor (inaccessible from external assemblies)
+    ///
+    /// What features from K4os base classes are intentionally omitted:
+    /// - Timeout support: Not needed since inner stream (MemoryStream) doesn't support timeouts
+    /// - Write operations: This is a read-only decompression stream
+    /// - DisposeAsync: Optional - base Stream.DisposeAsync() calls our Dispose(bool) which is sufficient
     /// </summary>
     internal sealed class CustomLZ4DecoderStream : Stream
     {
@@ -56,9 +65,24 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             _interactive = interactive;
         }
 
-        public override bool CanRead => !_disposed;
+        public override bool CanRead => !_disposed && _inner.CanRead;
         public override bool CanSeek => false;
         public override bool CanWrite => false;
+
+        // Timeout properties are not implemented since:
+        // - The inner stream (MemoryStream in our use case) doesn't support timeouts
+        // - LZ4 decompression is CPU-bound, not I/O-bound, so timeouts don't apply
+        public override bool CanTimeout => false;
+        public override int ReadTimeout
+        {
+            get => throw new InvalidOperationException("LZ4 decoder stream does not support timeouts");
+            set => throw new InvalidOperationException("LZ4 decoder stream does not support timeouts");
+        }
+        public override int WriteTimeout
+        {
+            get => throw new InvalidOperationException("LZ4 decoder stream does not support timeouts");
+            set => throw new InvalidOperationException("LZ4 decoder stream does not support timeouts");
+        }
 
         public override long Length => _reader.GetFrameLength() ?? -1;
         public override long Position
@@ -94,21 +118,30 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         public override void Flush()
         {
-            // No-op for read-only stream
+            // No-op for read-only stream - nothing to flush since we only read
+        }
+
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            // No-op for read-only stream - nothing to flush since we only read
+            return Task.CompletedTask;
         }
 
         protected override void Dispose(bool disposing)
         {
+            // Double-dispose protection: only dispose once
             if (!_disposed)
             {
                 if (disposing)
                 {
-                    _reader.Dispose();
+                    // Dispose managed resources
+                    _reader.Dispose();  // Returns 4MB buffer to pool
                     if (!_leaveOpen)
                     {
-                        _inner?.Dispose();
+                        _inner?.Dispose();  // Dispose inner stream if we own it
                     }
                 }
+                // No unmanaged resources to clean up (no finalizer needed)
                 _disposed = true;
             }
             base.Dispose(disposing);
