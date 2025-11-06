@@ -75,7 +75,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             this.httpClient = new HttpClient();
 
-            // add the default value for now and set to true until C# has a BigDecimal
             if (this.properties.TryGetValue(BigQueryParameters.LargeDecimalsAsString, out string? sLargeDecimalsAsString) &&
                 bool.TryParse(sLargeDecimalsAsString, out bool largeDecimalsAsString))
             {
