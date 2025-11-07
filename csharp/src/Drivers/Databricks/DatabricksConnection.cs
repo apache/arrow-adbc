@@ -95,6 +95,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private HttpClient? _authHttpClient;
 
+        /// <summary>
+        /// RecyclableMemoryStreamManager for LZ4 decompression. Set by the DatabricksDatabase that creates this connection.
+        /// </summary>
+        internal Microsoft.IO.RecyclableMemoryStreamManager RecyclableMemoryStreamManager { get; set; } = null!;
+
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(MergeWithDefaultEnvironmentConfig(properties))
         {
             ValidateProperties();

@@ -29,6 +29,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     {
         readonly IReadOnlyDictionary<string, string> properties;
 
+        /// <summary>
+        /// RecyclableMemoryStreamManager for LZ4 decompression output streams.
+        /// Shared across all connections from this database to enable memory pooling.
+        /// This manager is instance-based to allow cleanup when the database is disposed.
+        /// </summary>
+        internal readonly Microsoft.IO.RecyclableMemoryStreamManager RecyclableMemoryStreamManager =
+            new Microsoft.IO.RecyclableMemoryStreamManager();
+
         public DatabricksDatabase(IReadOnlyDictionary<string, string> properties)
         {
             this.properties = properties;
@@ -44,6 +52,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                         .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 DatabricksConnection connection = new DatabricksConnection(mergedProperties);
+                // Share the RecyclableMemoryStreamManager with this connection
+                connection.RecyclableMemoryStreamManager = this.RecyclableMemoryStreamManager;
                 connection.OpenAsync().Wait();
                 connection.ApplyServerSidePropertiesAsync().Wait();
                 return connection;
