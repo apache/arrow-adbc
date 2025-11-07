@@ -51,9 +51,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     : options
                         .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                         .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                DatabricksConnection connection = new DatabricksConnection(mergedProperties);
-                // Share the LZ4 buffer pool with this connection for efficient decompression
-                connection.Lz4BufferPool = this.Lz4BufferPool;
+                // Share the LZ4 buffer pool with this connection via constructor
+                DatabricksConnection connection = new DatabricksConnection(mergedProperties, this.Lz4BufferPool);
                 connection.OpenAsync().Wait();
                 connection.ApplyServerSidePropertiesAsync().Wait();
                 return connection;
