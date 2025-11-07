@@ -95,6 +95,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private HttpClient? _authHttpClient;
 
+        /// <summary>
+        /// LZ4 buffer pool for decompression. Set by the DatabricksDatabase that creates this connection.
+        /// </summary>
+        internal System.Buffers.ArrayPool<byte> Lz4BufferPool { get; set; } = null!;
+
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(MergeWithDefaultEnvironmentConfig(properties))
         {
             ValidateProperties();

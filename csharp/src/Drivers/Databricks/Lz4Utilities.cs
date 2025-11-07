@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Buffers;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,11 +40,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Decompresses LZ4 compressed data into memory.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
+        /// <param name="bufferPool">The ArrayPool to use for buffer allocation (from DatabricksDatabase).</param>
         /// <returns>A ReadOnlyMemory containing the decompressed data.</returns>
         /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
-        public static ReadOnlyMemory<byte> DecompressLz4(byte[] compressedData)
+        public static ReadOnlyMemory<byte> DecompressLz4(byte[] compressedData, ArrayPool<byte> bufferPool)
         {
-            return DecompressLz4(compressedData, DefaultBufferSize);
+            return DecompressLz4(compressedData, DefaultBufferSize, bufferPool);
         }
 
         /// <summary>
@@ -52,9 +54,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
         /// <param name="bufferSize">The buffer size to use for decompression operations.</param>
+        /// <param name="bufferPool">The ArrayPool to use for buffer allocation (from DatabricksDatabase).</param>
         /// <returns>A ReadOnlyMemory containing the decompressed data.</returns>
         /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
-        public static ReadOnlyMemory<byte> DecompressLz4(byte[] compressedData, int bufferSize)
+        public static ReadOnlyMemory<byte> DecompressLz4(byte[] compressedData, int bufferSize, ArrayPool<byte> bufferPool)
         {
             try
             {
@@ -64,6 +67,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     using (var decompressor = new CustomLZ4DecoderStream(
                         inputStream,
                         descriptor => descriptor.CreateDecoder(),
+                        bufferPool,
                         leaveOpen: false,
                         interactive: false))
                     {
@@ -89,14 +93,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Returns the buffer and length as a tuple for efficient wrapping in a MemoryStream.
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
+        /// <param name="bufferPool">The ArrayPool to use for buffer allocation (from DatabricksDatabase).</param>
         /// <param name="cancellationToken">Cancellation token for the async operation.</param>
         /// <returns>A tuple containing the decompressed buffer and its valid length.</returns>
         /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
         public static Task<(byte[] buffer, int length)> DecompressLz4Async(
             byte[] compressedData,
+            ArrayPool<byte> bufferPool,
             CancellationToken cancellationToken = default)
         {
-            return DecompressLz4Async(compressedData, DefaultBufferSize, cancellationToken);
+            return DecompressLz4Async(compressedData, DefaultBufferSize, bufferPool, cancellationToken);
         }
 
         /// <summary>
@@ -106,12 +112,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         /// <param name="compressedData">The compressed data bytes.</param>
         /// <param name="bufferSize">The buffer size to use for decompression operations.</param>
+        /// <param name="bufferPool">The ArrayPool to use for buffer allocation (from DatabricksDatabase).</param>
         /// <param name="cancellationToken">Cancellation token for the async operation.</param>
         /// <returns>A tuple containing the decompressed buffer and its valid length.</returns>
         /// <exception cref="AdbcException">Thrown when decompression fails.</exception>
         public static async Task<(byte[] buffer, int length)> DecompressLz4Async(
             byte[] compressedData,
             int bufferSize,
+            ArrayPool<byte> bufferPool,
             CancellationToken cancellationToken = default)
         {
             try
@@ -122,6 +130,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     using (var decompressor = new CustomLZ4DecoderStream(
                         inputStream,
                         descriptor => descriptor.CreateDecoder(),
+                        bufferPool,
                         leaveOpen: false,
                         interactive: false))
                     {

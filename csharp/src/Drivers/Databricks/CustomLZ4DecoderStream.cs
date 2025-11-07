@@ -51,16 +51,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         /// <param name="inner">The inner stream containing compressed LZ4 data.</param>
         /// <param name="decoderFactory">Factory function to create the LZ4 decoder.</param>
+        /// <param name="bufferPool">The ArrayPool to use for buffer allocation (from DatabricksDatabase).</param>
         /// <param name="leaveOpen">Whether to leave the inner stream open when disposing.</param>
         /// <param name="interactive">Interactive mode - provide bytes as soon as available.</param>
         public CustomLZ4DecoderStream(
             Stream inner,
             Func<ILZ4Descriptor, ILZ4Decoder> decoderFactory,
+            System.Buffers.ArrayPool<byte> bufferPool,
             bool leaveOpen = false,
             bool interactive = false)
         {
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
-            _reader = new CustomLZ4FrameReader(inner, true, decoderFactory);
+            _reader = new CustomLZ4FrameReader(inner, true, decoderFactory, bufferPool);
             _leaveOpen = leaveOpen;
             _interactive = interactive;
         }

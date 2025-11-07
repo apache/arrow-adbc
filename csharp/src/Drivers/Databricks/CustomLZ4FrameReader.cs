@@ -32,13 +32,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     internal sealed class CustomLZ4FrameReader : StreamLZ4FrameReader
     {
-        /// <summary>
-        /// Custom ArrayPool that supports pooling of buffers up to 4MB.
-        /// This allows the 4MB buffers required by Databricks LZ4 frames to be pooled and reused.
-        /// maxArraysPerBucket=10 means we keep up to 10 buffers of each size in the pool.
-        /// </summary>
-        private static readonly ArrayPool<byte> LargeBufferPool =
-            ArrayPool<byte>.Create(maxArrayLength: 4 * 1024 * 1024, maxArraysPerBucket: 10);
+        private readonly ArrayPool<byte> _bufferPool;
 
         /// <summary>
         /// Creates a new CustomLZ4FrameReader instance.
@@ -46,12 +40,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <param name="stream">The stream to read compressed LZ4 data from.</param>
         /// <param name="leaveOpen">Whether to leave the stream open when disposing.</param>
         /// <param name="decoderFactory">Factory function to create the LZ4 decoder.</param>
+        /// <param name="bufferPool">The ArrayPool to use for buffer allocation (from DatabricksDatabase).</param>
         public CustomLZ4FrameReader(
             Stream stream,
             bool leaveOpen,
-            Func<ILZ4Descriptor, ILZ4Decoder> decoderFactory)
+            Func<ILZ4Descriptor, ILZ4Decoder> decoderFactory,
+            ArrayPool<byte> bufferPool)
             : base(stream, leaveOpen, decoderFactory)
         {
+            _bufferPool = bufferPool;
         }
 
         /// <summary>
@@ -62,7 +59,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override byte[] AllocBuffer(int size)
         {
             // Use our custom pool instead of the default BufferPool (which uses ArrayPool.Shared with 1MB limit)
-            return LargeBufferPool.Rent(size);
+            return _bufferPool.Rent(size);
         }
 
         /// <summary>
@@ -76,7 +73,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 // Clear the buffer to prevent stale data from previous decompressions
                 // from corrupting subsequent operations. The performance overhead (~1-2ms
                 // per 4MB buffer) is negligible compared to network I/O and decompression time.
-                LargeBufferPool.Return(buffer, clearArray: true);
+                _bufferPool.Return(buffer, clearArray: true);
             }
         }
     }

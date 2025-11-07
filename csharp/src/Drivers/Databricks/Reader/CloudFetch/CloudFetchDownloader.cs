@@ -33,7 +33,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
     /// </summary>
     internal sealed class CloudFetchDownloader : ICloudFetchDownloader, IActivityTracer
     {
-        private readonly ITracingStatement _statement;
+        private readonly IHiveServer2Statement _statement;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
         private readonly BlockingCollection<IDownloadResult> _resultQueue;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloader"/> class.
         /// </summary>
-        /// <param name="statement">The tracing statement for Activity context.</param>
+        /// <param name="statement">The HiveServer2 statement for Activity context.</param>
         /// <param name="downloadQueue">The queue of downloads to process.</param>
         /// <param name="resultQueue">The queue to add completed downloads to.</param>
         /// <param name="memoryManager">The memory buffer manager.</param>
@@ -68,7 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="maxUrlRefreshAttempts">The maximum number of URL refresh attempts.</param>
         /// <param name="urlExpirationBufferSeconds">Buffer time in seconds before URL expiration to trigger refresh.</param>
         public CloudFetchDownloader(
-            ITracingStatement statement,
+            IHiveServer2Statement statement,
             BlockingCollection<IDownloadResult> downloadQueue,
             BlockingCollection<IDownloadResult> resultQueue,
             ICloudFetchMemoryBufferManager memoryManager,
@@ -494,8 +494,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         var decompressStopwatch = Stopwatch.StartNew();
 
                         // Use shared Lz4Utilities for decompression (consolidates logic with non-CloudFetch path)
+                        // Pass the connection's buffer pool for efficient LZ4 decompression
+                        var connection = (DatabricksConnection)_statement.Connection;
                         var (buffer, length) = await Lz4Utilities.DecompressLz4Async(
                             fileData,
+                            connection.Lz4BufferPool,
                             cancellationToken).ConfigureAwait(false);
 
                         // Create the dataStream from the decompressed buffer
