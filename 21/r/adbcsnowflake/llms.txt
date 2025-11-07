@@ -1,0 +1,82 @@
+# adbcsnowflake
+
+The goal of adbcsnowflake is to provide a low-level developer-facing
+interface to the Arrow Database Connectivity (ADBC) Snowflake driver.
+
+## Installation
+
+You can install the released version of adbcsnowflake from
+[R-multiverse](https://community.r-multiverse.org/) with:
+
+``` r
+
+install.packages("adbcsnowflake", repos = "https://community.r-multiverse.org")
+```
+
+You can install the development version of adbcsnowflake from
+[GitHub](https://github.com/) with:
+
+``` r
+
+# install.packages("pak")
+pak::pak("apache/arrow-adbc/r/adbcsnowflake")
+```
+
+ADBC drivers for R use a relatively new feature of pkgbuild to enable
+installation from GitHub via pak. Depending on when you installed pak,
+you may need to update its internal version of pkgbuild.
+
+``` r
+
+install.packages("pkgbuild", pak:::private_lib_dir())
+pak::cache_clean()
+```
+
+## Example
+
+This is a basic example which shows you how to solve a common problem.
+For examples of `uri` values to use as a connection value, see the
+[Snowflake driver
+documentation](https://arrow.apache.org/adbc/current/driver/snowflake.html#uri-format).
+Single sign-on browser-based authentication is also supported.
+
+``` r
+
+library(adbcdrivermanager)
+
+# Use the driver manager to connect to a database. This example URI is
+# <user>:<pass>@wt78143.<aws region>.aws/SNOWFLAKE_SAMPLE_DATA/TPCH_SF1?role=ACCOUNTADMIN
+uri <- Sys.getenv("ADBC_SNOWFLAKE_TEST_URI")
+db <- adbc_database_init(adbcsnowflake::adbcsnowflake(), uri = uri)
+con <- adbc_connection_init(db)
+
+con |>
+  read_adbc("SELECT * FROM REGION ORDER BY R_REGIONKEY") |>
+  tibble::as_tibble()
+#> # A tibble: 5 × 3
+#>   R_REGIONKEY R_NAME      R_COMMENT
+#>         <dbl> <chr>       <chr>
+#> 1           0 AFRICA      "lar deposits. blithely final packages cajole. regula…
+#> 2           1 AMERICA     "hs use ironic, even requests. s"
+#> 3           2 ASIA        "ges. thinly even pinto beans ca"
+#> 4           3 EUROPE      "ly final courts cajole furiously final excuse"
+#> 5           4 MIDDLE EAST "uickly special accounts cajole carefully blithely cl…
+```
+
+``` r
+
+# Clean up
+adbc_connection_release(con)
+adbc_database_release(db)
+```
+
+# Package index
+
+## All functions
+
+- [`adbcsnowflake()`](https://arrow.apache.org/adbc/current/r/adbcsnowflake/reference/adbcsnowflake.md)
+  [`adbc_database_init(`*`<adbcsnowflake_driver_snowflake>`*`)`](https://arrow.apache.org/adbc/current/r/adbcsnowflake/reference/adbcsnowflake.md)
+  [`adbc_connection_init(`*`<adbcsnowflake_database>`*`)`](https://arrow.apache.org/adbc/current/r/adbcsnowflake/reference/adbcsnowflake.md)
+  [`adbc_statement_init(`*`<adbcsnowflake_connection>`*`)`](https://arrow.apache.org/adbc/current/r/adbcsnowflake/reference/adbcsnowflake.md)
+  : ADBC Snowflake Driver
+
