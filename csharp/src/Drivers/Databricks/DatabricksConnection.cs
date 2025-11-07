@@ -97,8 +97,25 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private HttpClient? _authHttpClient;
 
-        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(MergeWithDefaultEnvironmentConfig(properties))
+        /// <summary>
+        /// LZ4 buffer pool for decompression.
+        /// If provided by Database, this is shared across all connections for optimal pooling.
+        /// If created directly, each connection has its own pool.
+        /// </summary>
+        internal System.Buffers.ArrayPool<byte> Lz4BufferPool { get; }
+
+        public DatabricksConnection(IReadOnlyDictionary<string, string> properties)
+            : this(properties, null)
         {
+        }
+
+        internal DatabricksConnection(
+            IReadOnlyDictionary<string, string> properties,
+            System.Buffers.ArrayPool<byte>? lz4BufferPool)
+            : base(MergeWithDefaultEnvironmentConfig(properties))
+        {
+            // Use provided pool (from Database) or create new instance (for direct construction)
+            Lz4BufferPool = lz4BufferPool ?? System.Buffers.ArrayPool<byte>.Create(maxArrayLength: 4 * 1024 * 1024, maxArraysPerBucket: 10);
             ValidateProperties();
         }
 

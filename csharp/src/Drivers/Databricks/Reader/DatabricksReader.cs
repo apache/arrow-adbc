@@ -121,7 +121,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                 // If LZ4 compression is enabled, decompress the data
                 if (isLz4Compressed)
                 {
-                    dataToUse = Lz4Utilities.DecompressLz4(batch.Batch);
+                    // Pass the connection's buffer pool for efficient LZ4 decompression
+                    var connection = (DatabricksConnection)this.statement.Connection;
+                    dataToUse = Lz4Utilities.DecompressLz4(batch.Batch, connection.Lz4BufferPool);
                 }
 
                 this.reader = new SingleBatch(ArrowSerializationHelpers.DeserializeRecordBatch(this.schema, dataToUse));
