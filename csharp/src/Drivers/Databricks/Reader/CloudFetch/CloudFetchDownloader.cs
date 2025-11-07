@@ -493,12 +493,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     {
                         var decompressStopwatch = Stopwatch.StartNew();
 
-                        // Use shared Lz4Utilities for decompression with RecyclableMemoryStream
+                        // Use shared Lz4Utilities for decompression with both RecyclableMemoryStream and ArrayPool
                         // The returned stream must be disposed by Arrow after reading
                         var connection = (DatabricksConnection)_statement.Connection;
                         dataStream = await Lz4Utilities.DecompressLz4Async(
                             fileData,
                             connection.RecyclableMemoryStreamManager,
+                            connection.Lz4BufferPool,
                             cancellationToken).ConfigureAwait(false);
 
                         decompressStopwatch.Stop();

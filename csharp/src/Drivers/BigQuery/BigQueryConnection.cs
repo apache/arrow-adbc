@@ -73,9 +73,17 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             TryInitTracerProvider(out _fileActivityListener);
 
-            // add the default value for now and set to true until C# has a BigDecimal
-            this.properties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
             this.httpClient = new HttpClient();
+
+            if (this.properties.TryGetValue(BigQueryParameters.LargeDecimalsAsString, out string? sLargeDecimalsAsString) &&
+                bool.TryParse(sLargeDecimalsAsString, out bool largeDecimalsAsString))
+            {
+                this.properties[BigQueryParameters.LargeDecimalsAsString] = largeDecimalsAsString.ToString();
+            }
+            else
+            {
+                this.properties[BigQueryParameters.LargeDecimalsAsString] = BigQueryConstants.TreatLargeDecimalAsString;
+            }
 
             if (this.properties.TryGetValue(BigQueryParameters.MaximumRetryAttempts, out string? sRetryAttempts) &&
                 int.TryParse(sRetryAttempts, out int retries) &&
