@@ -51,9 +51,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                     : options
                         .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
                         .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                DatabricksConnection connection = new DatabricksConnection(mergedProperties);
-                // Share the RecyclableMemoryStreamManager with this connection
-                connection.RecyclableMemoryStreamManager = this.RecyclableMemoryStreamManager;
+                // Share the RecyclableMemoryStreamManager with this connection via constructor
+                DatabricksConnection connection = new DatabricksConnection(mergedProperties, this.RecyclableMemoryStreamManager);
                 connection.OpenAsync().Wait();
                 connection.ApplyServerSidePropertiesAsync().Wait();
                 return connection;
