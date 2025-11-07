@@ -98,6 +98,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private HttpClient? _authHttpClient;
 
         /// <summary>
+        /// RecyclableMemoryStreamManager for LZ4 decompression.
+        /// If provided by Database, this is shared across all connections for optimal pooling.
+        /// If created directly, each connection has its own pool.
+        /// </summary>
+        internal Microsoft.IO.RecyclableMemoryStreamManager RecyclableMemoryStreamManager { get; }
+
+        /// <summary>
         /// LZ4 buffer pool for decompression.
         /// If provided by Database, this is shared across all connections for optimal pooling.
         /// If created directly, each connection has its own pool.
@@ -105,15 +112,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal System.Buffers.ArrayPool<byte> Lz4BufferPool { get; }
 
         public DatabricksConnection(IReadOnlyDictionary<string, string> properties)
-            : this(properties, null)
+            : this(properties, null, null)
         {
         }
 
         internal DatabricksConnection(
             IReadOnlyDictionary<string, string> properties,
+            Microsoft.IO.RecyclableMemoryStreamManager? memoryStreamManager,
             System.Buffers.ArrayPool<byte>? lz4BufferPool)
             : base(MergeWithDefaultEnvironmentConfig(properties))
         {
+            // Use provided manager (from Database) or create new instance (for direct construction)
+            RecyclableMemoryStreamManager = memoryStreamManager ?? new Microsoft.IO.RecyclableMemoryStreamManager();
             // Use provided pool (from Database) or create new instance (for direct construction)
             Lz4BufferPool = lz4BufferPool ?? System.Buffers.ArrayPool<byte>.Create(maxArrayLength: 4 * 1024 * 1024, maxArraysPerBucket: 10);
             ValidateProperties();

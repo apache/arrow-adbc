@@ -55,7 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloader"/> class.
         /// </summary>
-        /// <param name="statement">The HiveServer2 statement for Activity context.</param>
+        /// <param name="statement">The Hive2 statement for Activity context and connection access.</param>
         /// <param name="downloadQueue">The queue of downloads to process.</param>
         /// <param name="resultQueue">The queue to add completed downloads to.</param>
         /// <param name="memoryManager">The memory buffer manager.</param>
@@ -483,7 +483,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 }
 
                 // Process the downloaded file data
-                MemoryStream dataStream;
+                Stream dataStream;
                 long actualSize = fileData.Length;
 
                 // If the data is LZ4 compressed, decompress it
@@ -493,17 +493,15 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     {
                         var decompressStopwatch = Stopwatch.StartNew();
 
-                        // Use shared Lz4Utilities for decompression (consolidates logic with non-CloudFetch path)
-                        // Pass the connection's buffer pool for efficient LZ4 decompression
+                        // Use shared Lz4Utilities for decompression with both RecyclableMemoryStream and ArrayPool
+                        // The returned stream must be disposed by Arrow after reading
                         var connection = (DatabricksConnection)_statement.Connection;
-                        var (buffer, length) = await Lz4Utilities.DecompressLz4Async(
+                        dataStream = await Lz4Utilities.DecompressLz4Async(
                             fileData,
+                            connection.RecyclableMemoryStreamManager,
                             connection.Lz4BufferPool,
                             cancellationToken).ConfigureAwait(false);
 
-                        // Create the dataStream from the decompressed buffer
-                        dataStream = new MemoryStream(buffer, 0, length, writable: false, publiclyVisible: true);
-                        dataStream.Position = 0;
                         decompressStopwatch.Stop();
 
                         // Calculate throughput metrics
