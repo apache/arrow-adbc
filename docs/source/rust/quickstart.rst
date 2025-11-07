@@ -32,13 +32,19 @@ Add a dependency on ``adbc_core`` and ``adbc_datafusion``:
 
    cargo add adbc_core adbc_datafusion
 
-.. note:: If you get a compiler error about multiple versions of arrow crates in
-          the dependency graph when you run ``cargo build``, you will have to
-          downgrade crate versions by running a command similar to:
+.. note:: If you get a compiler error (E0308, mismatched types) and a note about
+          multiple versions of the arrow crates in the dependency graph when you
+          run ``cargo build``, you can downgrade crate versions so you only have
+          one version of the arrow crates in your workspace:
 
           .. code-block:: shell
 
-             cargo update -p arrow-array@56.2.0 -p arrow-schema@56.2.0 --precise 55.2.0
+             cargo update -p arrow-array@57.0.0 -p arrow-schema@57.0.0 --precise 56.2.0
+
+          Note the exact versions in the command above may need to be changed.
+          Use ``cargo tree`` to find the versions affecting your workspace. See
+          the `Version Incompatibility Hazards <https://doc.rust-lang.org/cargo/reference/resolver.html#version-incompatibility-hazards>`__
+          in the Cargo documentation for more information.
 
 Loading DataFusion
 ==================
