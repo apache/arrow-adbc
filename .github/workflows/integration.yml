@@ -55,7 +55,7 @@ jobs:
     name: "DuckDB Integration Tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -102,7 +102,7 @@ jobs:
     name: "FlightSQL Integration Tests (Dremio and SQLite)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -129,7 +129,7 @@ jobs:
             --file ci/conda_env_cpp.txt \
             --file ci/conda_env_python.txt
           pip install pytest-error-for-skips
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # actions/setup-go@v5
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -174,7 +174,7 @@ jobs:
     name: "PostgreSQL Integration Tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -271,7 +271,7 @@ jobs:
     name: "Snowflake Integration Tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -300,7 +300,7 @@ jobs:
       - name: Work around ASAN issue (GH-1617)
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # actions/setup-go@v5
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
