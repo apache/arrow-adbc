@@ -405,6 +405,20 @@
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core<span class="w"> </span>adbc_datafusion
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you get a compiler error (E0308, mismatched types) and a note about
+multiple versions of the arrow crates in the dependency graph when you
+run <code class="docutils literal notranslate"><span class="pre">cargo</span> <span class="pre">build</span></code>, you can downgrade crate versions so you only have
+one version of the arrow crates in your workspace:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>update<span class="w"> </span>-p<span class="w"> </span>arrow-array@57.0.0<span class="w"> </span>-p<span class="w"> </span>arrow-schema@57.0.0<span class="w"> </span>--precise<span class="w"> </span><span class="m">56</span>.2.0
+</pre></div>
+</div>
+<p>Note the exact versions in the command above may need to be changed.
+Use <code class="docutils literal notranslate"><span class="pre">cargo</span> <span class="pre">tree</span></code> to find the versions affecting your workspace. See
+the <a class="reference external" href="https://doc.rust-lang.org/cargo/reference/resolver.html#version-incompatibility-hazards">Version Incompatibility Hazards</a>
+in the Cargo documentation for more information.</p>
+</div>
 </section>
 <section id="loading-datafusion">
 <h2>Loading DataFusion<a class="headerlink" href="#loading-datafusion" title="Link to this heading">¶</a></h2>
