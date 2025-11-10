@@ -19,6 +19,7 @@ import pytest
 
 import adbc_driver_manager.dbapi
 
+
 @pytest.mark.sqlite
 def test_manifest_indirect(tmp_path, monkeypatch) -> None:
     with (tmp_path / "testdriver.toml").open("w") as sink:
