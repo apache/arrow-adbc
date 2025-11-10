@@ -2015,6 +2015,31 @@ mod tests {
         }
     }
 
+    /// Regression test for https://github.com/apache/arrow-adbc/pull/3693
+    /// Ensures driver manager tests for Windows pull in Windows crates. This
+    /// can be removed/replace when more complete tests are added.
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_user_config_dir() {
+        let _ = user_config_dir().unwrap();
+    }
+
+    /// Regression test for https://github.com/apache/arrow-adbc/pull/3693
+    /// Ensures driver manager tests for Windows pull in Windows crates. This
+    /// can be removed/replace when more complete tests are added.
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_load_driver_from_registry() {
+        use std::ffi::OsStr;
+        let result = load_driver_from_registry(
+            windows_registry::CURRENT_USER,
+            OsStr::new("nonexistent_test_driver"),
+            None,
+        );
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().status, Status::NotFound);
+    }
+
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
