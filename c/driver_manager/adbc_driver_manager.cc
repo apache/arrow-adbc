@@ -1701,6 +1701,25 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
     }
   } else if (std::strcmp(key, "entrypoint") == 0) {
     args->entrypoint = value;
+  } else if (std::strcmp(key, "uri") == 0) {
+    if (!args->driver.empty()) {  // if driver is already set, just set uri
+      args->options[key] = value;
+    } else {
+      std::string_view v{value};
+      std::string::size_type pos = v.find(':');
+      if (pos == std::string::npos) {
+        SetError(error, "Invalid URI: missing scheme");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      std::string_view d = v.substr(0, pos);
+      args->driver = std::string{d};
+      if (v.at(pos + 1) != '/') {  // uri is like 'driver:scheme://...'
+        args->options["uri"] = std::string(v.substr(pos + 1));
+      } else {  // uri is like 'driver://...'
+        args->options["uri"] = std::string{v};
+      }
+    }
   } else {
     args->options[key] = value;
   }
