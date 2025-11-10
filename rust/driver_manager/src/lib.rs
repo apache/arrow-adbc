@@ -160,7 +160,7 @@ struct ManagedDriverInner {
     _library: Option<libloading::Library>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct DriverInfo {
     lib_path: std::path::PathBuf,
     entrypoint: Option<Vec<u8>>,
