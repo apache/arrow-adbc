@@ -19,7 +19,6 @@ import pytest
 
 import adbc_driver_manager.dbapi
 
-
 @pytest.mark.sqlite
 def test_manifest_indirect(tmp_path, monkeypatch) -> None:
     with (tmp_path / "testdriver.toml").open("w") as sink:
@@ -36,6 +35,27 @@ shared = "adbc_driver_sqlite"
     monkeypatch.setenv("ADBC_DRIVER_PATH", str(tmp_path))
 
     with adbc_driver_manager.dbapi.connect(driver="testdriver") as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT sqlite_version()")
+            assert cursor.fetchone() is not None
+
+
+@pytest.mark.sqlite
+def test_manifest_implicit_uri(tmp_path, monkeypatch) -> None:
+    with (tmp_path / "testdriver.toml").open("w") as sink:
+        sink.write(
+            """
+name = "my driver"
+version = "0.1.0"
+
+[Driver]
+shared = "adbc_driver_sqlite"
+            """
+        )
+
+    monkeypatch.setenv("ADBC_DRIVER_PATH", str(tmp_path))
+
+    with adbc_driver_manager.dbapi.connect(uri="sqlite:file::memory:") as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT sqlite_version()")
             assert cursor.fetchone() is not None

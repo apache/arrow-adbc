@@ -182,7 +182,7 @@ else:
 
 
 def connect(
-    driver: Union[str, pathlib.Path],
+    driver: Optional[Union[str, pathlib.Path]] = None,
     uri: Optional[str] = None,
     *,
     entrypoint: Optional[str] = None,
@@ -237,7 +237,10 @@ def connect(
     conn = None
 
     db_kwargs = dict(db_kwargs or {})
-    db_kwargs["driver"] = driver
+    if driver is None and uri is None:
+        raise ValueError("Must provide at least one of 'driver' or 'uri'")
+    if driver:
+        db_kwargs["driver"] = driver
     if uri:
         db_kwargs["uri"] = uri
     if entrypoint:
