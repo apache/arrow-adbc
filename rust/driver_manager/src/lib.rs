@@ -890,6 +890,82 @@ pub struct ManagedDatabase {
 }
 
 impl ManagedDatabase {
+    pub fn from_uri(
+        uri: &str,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+    ) -> Result<Self> {
+        let idx = uri.find(":");
+        if idx.is_none() {
+            return Err(Error::with_message_and_status(
+                format!("Invalid URI: {uri}"),
+                Status::InvalidArguments,
+            ));
+        }
+
+        let colon_pos = idx.unwrap();
+        let driver = &uri[..colon_pos];
+        if uri[colon_pos + 1] != '/' {
+            // uri is like 'driver:scheme://...'
+            uri = &uri[colon_pos + 1..];
+        }
+
+        let mut drv = ManagedDriver::load_from_name(
+            driver,
+            entrypoint,
+            version,
+            load_flags,
+            additional_search_paths,
+        )?;
+
+        new_database_with_opts(
+            &mut drv,
+            [(OptionKey::Uri, OptionValue::String(uri.to_string()))],
+        )
+    }
+
+    pub fn from_uri_with_opts(
+        uri: &str,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+        opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
+    ) -> Result<Self> {
+        let idx = uri.find(":");
+        if idx.is_none() {
+            return Err(Error::with_message_and_status(
+                format!("Invalid URI: {uri}"),
+                Status::InvalidArguments,
+            ));
+        }
+
+        let colon_pos = idx.unwrap();
+        let driver = &uri[..colon_pos];
+        if uri[colon_pos + 1] != '/' {
+            // uri is like 'driver:scheme://...'
+            uri = &uri[colon_pos + 1..];
+        }
+
+        let mut drv = ManagedDriver::load_from_name(
+            driver,
+            entrypoint,
+            version,
+            load_flags,
+            additional_search_paths,
+        )?;
+
+        new_database_with_opts(
+            &mut drv,
+            opts.into_iter().chain(std::iter::once((
+                OptionKey::Uri,
+                OptionValue::String(uri.to_string()),
+            ))),
+        )
+    }
+
     fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
         &self.inner.driver.driver
     }

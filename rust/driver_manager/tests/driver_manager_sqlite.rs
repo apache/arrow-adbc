@@ -19,7 +19,7 @@ use arrow_schema::{Field, Schema};
 
 use adbc_core::options::{AdbcVersion, OptionConnection, OptionDatabase};
 use adbc_core::{error::Status, Driver, Optionable};
-use adbc_core::{Connection, Database, Statement};
+use adbc_core::{Connection, Database, Statement, LOAD_FLAG_DEFAULT};
 use adbc_driver_manager::{ManagedDatabase, ManagedDriver};
 
 mod common;
@@ -47,6 +47,18 @@ fn test_driver() {
 fn test_database() {
     let mut driver = get_driver();
     let database = get_database(&mut driver);
+    common::test_database(&database);
+}
+
+#[test]
+fn test_database_implicit_uri() {
+    let database = ManagedDatabase::from_uri(
+        "adbc_driver_sqlite:file::memory:",
+        None,
+        AdbcVersion::V100,
+        LOAD_FLAG_DEFAULT,
+        None,
+    )?;
     common::test_database(&database);
 }
 
