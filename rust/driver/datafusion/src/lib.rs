@@ -25,9 +25,9 @@ use datafusion_substrait::logical_plan::consumer::from_substrait_plan;
 use datafusion_substrait::substrait::proto::Plan;
 use prost::Message;
 use std::fmt::Debug;
+use std::future::Future;
 use std::sync::Arc;
 use std::vec::IntoIter;
-use tokio::runtime::Runtime;
 
 use arrow_array::builder::{
     BooleanBuilder, Int32Builder, Int64Builder, ListBuilder, MapBuilder, MapFieldNames,
@@ -47,6 +47,31 @@ use adbc_core::{
     },
     schemas, Connection, Database, Driver, Optionable, Statement,
 };
+
+pub enum Runtime {
+    Handle(tokio::runtime::Handle),
+    Tokio(tokio::runtime::Runtime),
+}
+
+impl Runtime {
+    pub fn new() -> std::io::Result<Self> {
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            Ok(Self::Handle(handle))
+        } else {
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()?;
+            Ok(Self::Tokio(runtime))
+        }
+    }
+
+    pub fn block_on<F: Future>(&self, future: F) -> F::Output {
+        match self {
+            Runtime::Handle(handle) => tokio::task::block_in_place(|| handle.block_on(future)),
+            Runtime::Tokio(runtime) => runtime.block_on(future),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct SingleBatchReader {
@@ -186,10 +211,7 @@ impl Database for DataFusionDatabase {
     fn new_connection(&self) -> Result<Self::ConnectionType> {
         let ctx = SessionContext::new();
 
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
+        let runtime = Runtime::new().unwrap();
 
         Ok(DataFusionConnection {
             runtime: Arc::new(runtime),
@@ -208,10 +230,7 @@ impl Database for DataFusionDatabase {
     ) -> adbc_core::error::Result<Self::ConnectionType> {
         let ctx = SessionContext::new();
 
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
+        let runtime = Runtime::new().unwrap();
 
         let mut connection = DataFusionConnection {
             runtime: Arc::new(runtime),

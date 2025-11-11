@@ -198,3 +198,15 @@ fn test_execute_substrait() {
     assert_eq!(batch.num_rows(), 3);
     assert_eq!(batch.num_columns(), 2);
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_running_in_async() {
+    let mut connection = get_connection();
+
+    execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')");
+
+    let batch = execute_sql_query(&mut connection, "SELECT * FROM datafusion.public.example");
+
+    assert_eq!(batch.num_rows(), 3);
+    assert_eq!(batch.num_columns(), 2);
+}
