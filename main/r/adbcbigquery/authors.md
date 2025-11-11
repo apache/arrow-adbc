@@ -15,13 +15,13 @@ Source:
 [`DESCRIPTION`](https://github.com/apache/arrow-adbc/blob/main/r/adbcbigquery/DESCRIPTION)
 
 Dunnington D, Apache Arrow (2025). *adbcbigquery: 'Arrow' Database
-Connectivity ('ADBC') 'BigQuery' Driver*. R package version 0.20.0.9000,
+Connectivity ('ADBC') 'BigQuery' Driver*. R package version 0.21.0.9000,
 <https://arrow.apache.org/adbc/current/r/adbcbigquery/>.
 
     @Manual{,
       title = {adbcbigquery: 'Arrow' Database Connectivity ('ADBC') 'BigQuery' Driver},
       author = {Dewey Dunnington and {Apache Arrow}},
       year = {2025},
-      note = {R package version 0.20.0.9000},
+      note = {R package version 0.21.0.9000},
       url = {https://arrow.apache.org/adbc/current/r/adbcbigquery/},
     }

@@ -16,12 +16,12 @@ Source:
 
 Dunnington D, Apache Arrow (2025). *adbcflightsql: 'Arrow' Database
 Connectivity ('ADBC') 'FlightSQL' Driver*. R package version
-0.20.0.9000, <https://arrow.apache.org/adbc/current/r/adbcflightsql/>.
+0.21.0.9000, <https://arrow.apache.org/adbc/current/r/adbcflightsql/>.
 
     @Manual{,
       title = {adbcflightsql: 'Arrow' Database Connectivity ('ADBC') 'FlightSQL' Driver},
       author = {Dewey Dunnington and {Apache Arrow}},
       year = {2025},
-      note = {R package version 0.20.0.9000},
+      note = {R package version 0.21.0.9000},
       url = {https://arrow.apache.org/adbc/current/r/adbcflightsql/},
     }

@@ -61,7 +61,7 @@ An object of class adbc_database
 
 ``` r
 adbc_database_init(adbc_driver_void())
-#> <adbc_database at 0x5572b72151e0> 
+#> <adbc_database at 0x560da51f1b80> 
 #> List of 1
 #>  $ driver:<adbc_driver_void> List of 4
 #>   ..$ load_flags      : int 15
