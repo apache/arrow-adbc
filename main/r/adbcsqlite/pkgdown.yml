@@ -2,7 +2,7 @@ pandoc: 3.8.2.1
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles: {}
-last_built: 2025-11-11T00:31Z
+last_built: 2025-11-11T00:55Z
 urls:
   reference: https://arrow.apache.org/adbc/current/r/adbcsqlite/reference
   article: https://arrow.apache.org/adbc/current/r/adbcsqlite/articles
