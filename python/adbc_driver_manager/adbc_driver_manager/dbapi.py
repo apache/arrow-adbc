@@ -182,7 +182,7 @@ else:
 
 
 def connect(
-    driver: Optional[Union[str, pathlib.Path]] = None,
+    driver: Union[str, pathlib.Path],
     uri: Optional[str] = None,
     *,
     entrypoint: Optional[str] = None,
@@ -210,7 +210,7 @@ def connect(
 
         - Only a URI, in which case the URI scheme will be assumed to be the
           driver name and will be loaded as above.  This will happen when
-          "://" is detected in the driver name.  (It is not assumed that the
+          "://" or "::" is detected in the driver name.  (It is not assumed that the
           URI is actually a valid URI.)  The driver manager will pass the URI
           on unchanged, so this is only useful if the driver supports URIs
           where the scheme happens to be the same as the driver name (so
@@ -237,10 +237,7 @@ def connect(
     conn = None
 
     db_kwargs = dict(db_kwargs or {})
-    if driver is None and uri is None:
-        raise ValueError("Must provide at least one of 'driver' or 'uri'")
-    if driver:
-        db_kwargs["driver"] = driver
+    db_kwargs["driver"] = driver
     if uri:
         db_kwargs["uri"] = uri
     if entrypoint:
