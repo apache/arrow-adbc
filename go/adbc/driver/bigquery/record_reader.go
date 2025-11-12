@@ -35,6 +35,10 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+const (
+	MetadataKeyBigqueryQueryID = "BIGQUERY:query_id"
+)
+
 type reader struct {
 	refCount   int64
 	schema     *arrow.Schema
@@ -90,6 +94,9 @@ func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool, li
 		arrowIterator = emptyArrowIterator{iter.Schema}
 	}
 	totalRows := int64(iter.TotalRows)
+
+	// Store job ID in query for adding to metadata
+	query.JobID = job.ID()
 	return arrowIterator, totalRows, nil
 }
 
@@ -137,13 +144,15 @@ func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allo
 		}
 	}()
 
+	schema := schemaWithQueryId(rdr.Schema(), query)
+
 	bigqueryRdr = &reader{
 		refCount:   1,
 		chs:        chs,
 		curChIndex: 0,
 		err:        nil,
 		cancelFn:   cancelFn,
-		schema:     rdr.Schema(),
+		schema:     schema,
 	}
 
 	go func() {
@@ -180,7 +189,8 @@ func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, q
 		if err != nil {
 			return -1, err
 		}
-		rdrSchema(rdr.Schema())
+		schema := schemaWithQueryId(rdr.Schema(), query)
+		rdrSchema(schema)
 		group.Go(func() error {
 			defer rdr.Release()
 			for rdr.Next() && ctx.Err() == nil {
@@ -245,6 +255,14 @@ func newRecordReader(ctx context.Context, query *bigquery.Query, boundParameters
 	bigqueryRdr.err = group.Wait()
 	defer close(ch)
 	return bigqueryRdr, totalRows, nil
+}
+
+func schemaWithQueryId(schema *arrow.Schema, query *bigquery.Query) *arrow.Schema {
+	meta := schema.Metadata().ToMap()
+	meta[MetadataKeyBigqueryQueryID] = query.JobID
+	finalMeta := arrow.MetadataFrom(meta)
+
+	return arrow.NewSchema(schema.Fields(), &finalMeta)
 }
 
 func (r *reader) Retain() {
