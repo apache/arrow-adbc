@@ -941,12 +941,10 @@ impl ManagedDatabase {
             additional_search_paths,
         )?;
 
-        drv.new_database_with_opts(
-            opts.into_iter().chain(std::iter::once((
-                OptionDatabase::Uri,
-                OptionValue::String(final_uri.to_string()),
-            ))),
-        )
+        drv.new_database_with_opts(opts.into_iter().chain(std::iter::once((
+            OptionDatabase::Uri,
+            OptionValue::String(final_uri.to_string()),
+        ))))
     }
 
     fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
