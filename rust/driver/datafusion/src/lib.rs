@@ -133,6 +133,7 @@ impl RecordBatchReader for DataFusionReader {
     }
 }
 
+#[derive(Default)]
 pub struct DataFusionDriver {
     handle: Option<tokio::runtime::Handle>,
 }
