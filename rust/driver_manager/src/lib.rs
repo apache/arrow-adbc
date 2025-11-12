@@ -2019,7 +2019,6 @@ mod tests {
     /// Ensures driver manager tests for Windows pull in Windows crates. This
     /// can be removed/replace when more complete tests are added.
     #[test]
-    #[cfg(target_os = "windows")]
     fn test_user_config_dir() {
         let _ = user_config_dir().unwrap();
     }
