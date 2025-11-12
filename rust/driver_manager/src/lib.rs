@@ -121,7 +121,7 @@ use toml::de::DeTable;
 use adbc_core::{
     constants,
     error::{AdbcStatusCode, Error, Result, Status},
-    options::{self, AdbcVersion, InfoCode, OptionValue},
+    options::{self, AdbcVersion, InfoCode, OptionDatabase, OptionValue},
     Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
     LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
     LOAD_FLAG_SEARCH_USER,
@@ -897,32 +897,13 @@ impl ManagedDatabase {
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
-        let idx = uri.find(":");
-        if idx.is_none() {
-            return Err(Error::with_message_and_status(
-                format!("Invalid URI: {uri}"),
-                Status::InvalidArguments,
-            ));
-        }
-
-        let colon_pos = idx.unwrap();
-        let driver = &uri[..colon_pos];
-        if uri[colon_pos + 1] != '/' {
-            // uri is like 'driver:scheme://...'
-            uri = &uri[colon_pos + 1..];
-        }
-
-        let mut drv = ManagedDriver::load_from_name(
-            driver,
+        Self::from_uri_with_opts(
+            uri,
             entrypoint,
             version,
             load_flags,
             additional_search_paths,
-        )?;
-
-        new_database_with_opts(
-            &mut drv,
-            [(OptionKey::Uri, OptionValue::String(uri.to_string()))],
+            std::iter::empty(),
         )
     }
 
@@ -944,9 +925,12 @@ impl ManagedDatabase {
 
         let colon_pos = idx.unwrap();
         let driver = &uri[..colon_pos];
-        if uri[colon_pos + 1] != '/' {
+        let mut final_uri = uri;
+
+        let next = &uri[colon_pos..colon_pos + 1];
+        if next != ":/" && next != "::" {
             // uri is like 'driver:scheme://...'
-            uri = &uri[colon_pos + 1..];
+            final_uri = &uri[colon_pos + 1..];
         }
 
         let mut drv = ManagedDriver::load_from_name(
@@ -957,11 +941,10 @@ impl ManagedDatabase {
             additional_search_paths,
         )?;
 
-        new_database_with_opts(
-            &mut drv,
+        drv.new_database_with_opts(
             opts.into_iter().chain(std::iter::once((
-                OptionKey::Uri,
-                OptionValue::String(uri.to_string()),
+                OptionDatabase::Uri,
+                OptionValue::String(final_uri.to_string()),
             ))),
         )
     }

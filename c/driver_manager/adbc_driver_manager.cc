@@ -1691,11 +1691,18 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (std::strcmp(key, "driver") == 0) {
     std::string_view v{value};
-    std::string::size_type pos = v.find("://");
+    std::string::size_type pos = v.find(":");
     if (pos != std::string::npos) {
       std::string_view d = v.substr(0, pos);
       args->driver = std::string{d};
-      args->options["uri"] = std::string{v};
+
+      auto next = v.at(pos + 1);
+      if (next == '/' || next == ':') {
+        // uri is like 'driver://...' or 'driver:file::...'
+        args->options["uri"] = std::string{v};
+      } else {
+        args->options["uri"] = std::string(v.substr(pos + 1));
+      }
     } else {
       args->driver = value;
     }
@@ -1714,10 +1721,13 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
 
       std::string_view d = v.substr(0, pos);
       args->driver = std::string{d};
-      if (v.at(pos + 1) != '/') {  // uri is like 'driver:scheme://...'
-        args->options["uri"] = std::string(v.substr(pos + 1));
-      } else {  // uri is like 'driver://...'
+
+      auto next = v.at(pos + 1);
+      if (next == '/' || next == ':') {
+        // uri is like 'driver://...' or 'driver:file::...'
         args->options["uri"] = std::string{v};
+      } else {  // uri is like 'driver:scheme://...'
+        args->options["uri"] = std::string(v.substr(pos + 1));
       }
     }
   } else {

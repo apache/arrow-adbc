@@ -58,7 +58,7 @@ fn test_database_implicit_uri() {
         AdbcVersion::V100,
         LOAD_FLAG_DEFAULT,
         None,
-    )?;
+    ).unwrap();
     common::test_database(&database);
 }
 
