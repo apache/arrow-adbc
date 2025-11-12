@@ -26,8 +26,8 @@ use datafusion_substrait::logical_plan::producer::to_substrait_plan;
 use datafusion_substrait::substrait::proto::Plan;
 use prost::Message;
 
-fn get_connection() -> DataFusionConnection {
-    let mut driver = DataFusionDriver::default();
+fn get_connection(handle: Option<tokio::runtime::Handle>) -> DataFusionConnection {
+    let mut driver = DataFusionDriver::new(handle);
     let database = driver.new_database().unwrap();
     database.new_connection().unwrap()
 }
@@ -80,7 +80,7 @@ fn execute_substrait(connection: &mut DataFusionConnection, plan: Plan) -> Recor
 
 #[test]
 fn test_connection_options() {
-    let mut connection = get_connection();
+    let mut connection = get_connection(None);
 
     let current_catalog = connection
         .get_option_string(OptionConnection::CurrentCatalog)
@@ -119,7 +119,7 @@ fn test_connection_options() {
 
 #[test]
 fn test_get_objects_database() {
-    let mut connection = get_connection();
+    let mut connection = get_connection(None);
 
     let objects = get_objects(&connection);
 
@@ -134,7 +134,7 @@ fn test_get_objects_database() {
 
 #[test]
 fn test_execute_sql() {
-    let mut connection = get_connection();
+    let mut connection = get_connection(None);
 
     execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')");
 
@@ -146,7 +146,7 @@ fn test_execute_sql() {
 
 #[test]
 fn test_ingest() {
-    let mut connection = get_connection();
+    let mut connection = get_connection(None);
 
     execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')");
 
@@ -172,7 +172,7 @@ fn test_ingest() {
 
 #[test]
 fn test_execute_substrait() {
-    let mut connection = get_connection();
+    let mut connection = get_connection(None);
 
     execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')");
 
@@ -201,7 +201,7 @@ fn test_execute_substrait() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_running_in_async() {
-    let mut connection = get_connection();
+    let mut connection = get_connection(Some(tokio::runtime::Handle::current()));
 
     execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')");
 

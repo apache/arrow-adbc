@@ -54,8 +54,8 @@ pub enum Runtime {
 }
 
 impl Runtime {
-    pub fn new() -> std::io::Result<Self> {
-        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+    pub fn new(handle: Option<tokio::runtime::Handle>) -> std::io::Result<Self> {
+        if let Some(handle) = handle {
             Ok(Self::Handle(handle))
         } else {
             let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -133,14 +133,23 @@ impl RecordBatchReader for DataFusionReader {
     }
 }
 
-#[derive(Default)]
-pub struct DataFusionDriver {}
+pub struct DataFusionDriver {
+    handle: Option<tokio::runtime::Handle>,
+}
+
+impl DataFusionDriver {
+    pub fn new(handle: Option<tokio::runtime::Handle>) -> Self {
+        Self { handle }
+    }
+}
 
 impl Driver for DataFusionDriver {
     type DatabaseType = DataFusionDatabase;
 
     fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        Ok(Self::DatabaseType {})
+        Ok(Self::DatabaseType {
+            handle: self.handle.clone(),
+        })
     }
 
     fn new_database_with_opts(
@@ -152,7 +161,9 @@ impl Driver for DataFusionDriver {
             ),
         >,
     ) -> adbc_core::error::Result<Self::DatabaseType> {
-        let mut database = Self::DatabaseType {};
+        let mut database = Self::DatabaseType {
+            handle: self.handle.clone(),
+        };
         for (key, value) in opts {
             database.set_option(key, value)?;
         }
@@ -160,7 +171,9 @@ impl Driver for DataFusionDriver {
     }
 }
 
-pub struct DataFusionDatabase {}
+pub struct DataFusionDatabase {
+    handle: Option<tokio::runtime::Handle>,
+}
 
 impl Optionable for DataFusionDatabase {
     type Option = OptionDatabase;
@@ -211,7 +224,7 @@ impl Database for DataFusionDatabase {
     fn new_connection(&self) -> Result<Self::ConnectionType> {
         let ctx = SessionContext::new();
 
-        let runtime = Runtime::new().unwrap();
+        let runtime = Runtime::new(self.handle.clone()).unwrap();
 
         Ok(DataFusionConnection {
             runtime: Arc::new(runtime),
@@ -230,7 +243,7 @@ impl Database for DataFusionDatabase {
     ) -> adbc_core::error::Result<Self::ConnectionType> {
         let ctx = SessionContext::new();
 
-        let runtime = Runtime::new().unwrap();
+        let runtime = Runtime::new(self.handle.clone()).unwrap();
 
         let mut connection = DataFusionConnection {
             runtime: Arc::new(runtime),
