@@ -171,7 +171,14 @@ jobs:
         run: |
           rustup toolchain install nightly --component clippy
           cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)'
-      - name: Test
+      - name: Test (Default Features)
+        working-directory: rust
+        # TODO: enable snowflake tests on windows
+        run: >
+          cargo test --all-targets --workspace
+          ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
+          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
+      - name: Test (All Features)
         working-directory: rust
         # TODO: enable snowflake tests on windows
         run: >

@@ -160,7 +160,7 @@ struct ManagedDriverInner {
     _library: Option<libloading::Library>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct DriverInfo {
     lib_path: std::path::PathBuf,
     entrypoint: Option<Vec<u8>>,
@@ -2013,6 +2013,30 @@ mod tests {
         for driver in ["driver_example", "libdriver_example.so"] {
             assert_eq!(get_default_entrypoint(driver), "AdbcDriverExampleInit");
         }
+    }
+
+    /// Regression test for https://github.com/apache/arrow-adbc/pull/3693
+    /// Ensures driver manager tests for Windows pull in Windows crates. This
+    /// can be removed/replace when more complete tests are added.
+    #[test]
+    fn test_user_config_dir() {
+        let _ = user_config_dir().unwrap();
+    }
+
+    /// Regression test for https://github.com/apache/arrow-adbc/pull/3693
+    /// Ensures driver manager tests for Windows pull in Windows crates. This
+    /// can be removed/replace when more complete tests are added.
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_load_driver_from_registry() {
+        use std::ffi::OsStr;
+        let result = load_driver_from_registry(
+            windows_registry::CURRENT_USER,
+            OsStr::new("nonexistent_test_driver"),
+            None,
+        );
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().status, Status::NotFound);
     }
 
     #[test]
