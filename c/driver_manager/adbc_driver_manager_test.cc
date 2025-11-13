@@ -1119,7 +1119,7 @@ shared = "adbc_driver_sqlite")";
   test_manifest_file.close();
 
   for (const auto& uri : {
-           "sqlite:file::memory:?cache=shared",
+           "sqlite:file::memory:",
            "sqlite://:memory:",
        }) {
     for (const auto& driver_option : {"driver", "uri"}) {
