@@ -1540,6 +1540,30 @@ std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver
   return entrypoint;
 }
 
+struct ParseDriverUriResult {
+  std::string_view driver;
+  std::optional<std::string_view> uri;
+};
+
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str) {
+  std::string::size_type pos = str.find(":");
+  if (pos == std::string::npos) {
+    return std::nullopt;
+  }
+
+  std::string_view d = str.substr(0, pos);
+  if (str.size() <= pos + 1) {
+    return ParseDriverUriResult{d, std::nullopt};
+  }
+
+  if (str[pos + 1] == '/') {  // scheme is also driver
+    return ParseDriverUriResult{d, str};
+  }
+
+  // driver:scheme:.....
+  return ParseDriverUriResult{d, str.substr(pos + 1)};
+}
+
 // Direct implementations of API methods
 
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
@@ -1691,20 +1715,14 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (std::strcmp(key, "driver") == 0) {
     std::string_view v{value};
-    std::string::size_type pos = v.find(":");
-    if (pos != std::string::npos) {
-      std::string_view d = v.substr(0, pos);
-      args->driver = std::string{d};
-
-      auto next = v.at(pos + 1);
-      if (next == '/' || next == ':') {
-        // uri is like 'driver://...' or 'driver:file::...'
-        args->options["uri"] = std::string{v};
-      } else {
-        args->options["uri"] = std::string(v.substr(pos + 1));
-      }
+    auto result = InternalAdbcParseDriverUri(v);
+    if (!result) {
+      args->driver = std::string{v};
     } else {
-      args->driver = value;
+      args->driver = std::string{result->driver};
+      if (result->uri) {
+        args->options["uri"] = std::string{*result->uri};
+      }
     }
   } else if (std::strcmp(key, "entrypoint") == 0) {
     args->entrypoint = value;
@@ -1713,22 +1731,18 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
       args->options[key] = value;
     } else {
       std::string_view v{value};
-      std::string::size_type pos = v.find(':');
-      if (pos == std::string::npos) {
+      auto result = InternalAdbcParseDriverUri(v);
+      if (!result) {
         SetError(error, "Invalid URI: missing scheme");
         return ADBC_STATUS_INVALID_ARGUMENT;
       }
 
-      std::string_view d = v.substr(0, pos);
-      args->driver = std::string{d};
-
-      auto next = v.at(pos + 1);
-      if (next == '/' || next == ':') {
-        // uri is like 'driver://...' or 'driver:file::...'
-        args->options["uri"] = std::string{v};
-      } else {  // uri is like 'driver:scheme://...'
-        args->options["uri"] = std::string(v.substr(pos + 1));
+      args->driver = std::string{result->driver};
+      if (!result->uri) {
+        SetError(error, "Invalid URI: " + std::string{value});
+        return ADBC_STATUS_INVALID_ARGUMENT;
       }
+      args->options["uri"] = std::string{*result->uri};
     }
   } else {
     args->options[key] = value;

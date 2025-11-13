@@ -1111,26 +1111,32 @@ shared = "adbc_driver_postgresql")";
 }
 
 TEST_F(DriverManifest, DriverFromUri) {
-  auto filepath = temp_dir / "postgresql.toml";
+  auto filepath = temp_dir / "sqlite.toml";
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << R"([Driver]
-shared = "adbc_driver_postgresql")";
+shared = "adbc_driver_sqlite")";
   test_manifest_file.close();
 
-  // Should attempt to load the "postgresql" driver by inferring from the URI
-  std::string uri = "postgresql://a:b@localhost:9999/nonexistent";
-  adbc_validation::Handle<struct AdbcDatabase> database;
-  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "uri", uri.c_str(), &error),
-              IsOkStatus(&error));
-  std::string search_path = temp_dir.string();
-  ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-                  &database.value, search_path.data(), &error),
-              IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
-              IsStatus(ADBC_STATUS_IO, &error));
-  ASSERT_THAT(error.message, ::testing::HasSubstr("Failed to connect"));
+  for (const auto& uri : {
+           "sqlite:file::memory:?cache=shared",
+           "sqlite://:memory:",
+       }) {
+    for (const auto& driver_option : {"driver", "uri"}) {
+      SCOPED_TRACE(uri);
+      adbc_validation::Handle<struct AdbcDatabase> database;
+      ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+      ASSERT_THAT(AdbcDatabaseSetOption(&database.value, driver_option, uri, &error),
+                  IsOkStatus(&error));
+      std::string search_path = temp_dir.string();
+      ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                      &database.value, search_path.data(), &error),
+                  IsOkStatus(&error));
+      ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                  IsStatus(ADBC_STATUS_IO, &error));
+      ASSERT_THAT(error.message, ::testing::HasSubstr("Failed to connect"));
+    }
+  }
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
 }
