@@ -19,7 +19,7 @@
 mod syncify;
 
 use adbc_core::non_blocking::{
-    AsyncConnection, AsyncDatabase, AsyncDriver, AsyncOptionable, AsyncStatement,
+    AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement, LocalAsyncOptionable,
 };
 use adbc_core::{constants, options};
 use datafusion::dataframe::DataFrameWriteOptions;
@@ -170,7 +170,7 @@ impl AsyncDriver for DataFusionDriver {
 
 pub struct DataFusionDatabase {}
 
-impl AsyncOptionable for DataFusionDatabase {
+impl LocalAsyncOptionable for DataFusionDatabase {
     type Option = OptionDatabase;
 
     async fn set_option(
@@ -242,7 +242,7 @@ pub struct DataFusionConnection {
     ctx: Arc<SessionContext>,
 }
 
-impl AsyncOptionable for DataFusionConnection {
+impl LocalAsyncOptionable for DataFusionConnection {
     type Option = OptionConnection;
 
     async fn set_option(
@@ -777,7 +777,7 @@ impl AsyncConnection for DataFusionConnection {
         todo!()
     }
 
-    async fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<SingleBatchReader> {
+    async fn read_partition(&self, _partition: &[u8]) -> Result<SingleBatchReader> {
         todo!()
     }
 }
@@ -790,7 +790,7 @@ pub struct DataFusionStatement {
     ingest_target_table: Option<String>,
 }
 
-impl AsyncOptionable for DataFusionStatement {
+impl LocalAsyncOptionable for DataFusionStatement {
     type Option = OptionStatement;
 
     async fn set_option(
@@ -935,13 +935,13 @@ impl AsyncStatement for DataFusionStatement {
         todo!()
     }
 
-    async fn set_sql_query(&mut self, query: impl AsRef<str>) -> adbc_core::error::Result<()> {
-        self.sql_query = Some(query.as_ref().to_string());
+    async fn set_sql_query(&mut self, query: &str) -> adbc_core::error::Result<()> {
+        self.sql_query = Some(query.to_string());
         Ok(())
     }
 
-    async fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> adbc_core::error::Result<()> {
-        self.substrait_plan = Some(Plan::decode(plan.as_ref()).unwrap());
+    async fn set_substrait_plan(&mut self, plan: &[u8]) -> adbc_core::error::Result<()> {
+        self.substrait_plan = Some(Plan::decode(plan).unwrap());
         Ok(())
     }
 

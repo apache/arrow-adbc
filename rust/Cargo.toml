@@ -43,3 +43,4 @@ arrow-array = { version = ">=53.1.0, <58", default-features = false, features = 
 arrow-buffer = { version = ">=53.1.0, <58", default-features = false }
 arrow-schema = { version = ">=53.1.0, <58", default-features = false }
 arrow-select = { version = ">=53.1.0, <58", default-features = false }
+trait-variant = { version = "0.1.2" }
