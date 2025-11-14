@@ -16,7 +16,7 @@
 // under the License.
 
 use adbc_core::non_blocking::{
-    AsyncConnection, AsyncDatabase, AsyncDriver, AsyncOptionable, AsyncStatement,
+    AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement, LocalAsyncOptionable,
 };
 use adbc_datafusion::{DataFusionConnection, DataFusionDriver};
 use arrow_array::RecordBatch;
@@ -78,7 +78,7 @@ async fn execute_sql_query(connection: &mut DataFusionConnection, query: &str) -
 async fn execute_substrait(connection: &mut DataFusionConnection, plan: Plan) -> RecordBatch {
     let mut statement = connection.new_statement().await.unwrap();
 
-    let _ = statement.set_substrait_plan(plan.encode_to_vec()).await;
+    let _ = statement.set_substrait_plan(&plan.encode_to_vec()).await;
 
     let batches: Vec<RecordBatch> = statement
         .execute()
@@ -226,6 +226,17 @@ async fn test_running_in_async() {
     execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')").await;
 
     let batch = execute_sql_query(&mut connection, "SELECT * FROM datafusion.public.example").await;
+
+    assert_eq!(batch.num_rows(), 3);
+    assert_eq!(batch.num_columns(), 2);
+
+    let batch = tokio::spawn(async move {
+        let batch =
+            execute_sql_query(&mut connection, "SELECT * FROM datafusion.public.example").await;
+        batch
+    })
+    .await
+    .unwrap();
 
     assert_eq!(batch.num_rows(), 3);
     assert_eq!(batch.num_columns(), 2);

@@ -18,7 +18,9 @@
 use std::sync::Arc;
 
 use adbc_core::{
-    non_blocking::{AsyncConnection, AsyncDatabase, AsyncDriver, AsyncOptionable, AsyncStatement},
+    non_blocking::{
+        AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement, LocalAsyncOptionable,
+    },
     options::{OptionConnection, OptionDatabase, OptionStatement},
     Connection, Database, Driver, Optionable, Statement,
 };
