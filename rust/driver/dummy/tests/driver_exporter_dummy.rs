@@ -30,8 +30,10 @@ use adbc_core::options::{
     AdbcVersion, InfoCode, IngestMode, IsolationLevel, ObjectDepth, OptionConnection,
     OptionDatabase, OptionStatement,
 };
-use adbc_core::Statement;
-use adbc_core::{schemas, Connection, Database, Driver, Optionable};
+use adbc_core::{
+    blocking::{Connection, Database, Driver, Optionable, Statement},
+    schemas,
+};
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
 
 use adbc_dummy::{DummyConnection, DummyDatabase, DummyDriver, DummyStatement, SingleBatchReader};

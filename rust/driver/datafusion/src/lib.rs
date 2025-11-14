@@ -16,8 +16,7 @@
 // under the License.
 #![allow(refining_impl_trait)]
 
-mod syncify;
-
+use adbc_core::executor::AsyncExecutor;
 use adbc_core::non_blocking::{
     AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement, LocalAsyncOptionable,
 };
@@ -950,5 +949,26 @@ impl AsyncStatement for DataFusionStatement {
     }
 }
 
+pub struct TokioRuntime(tokio::runtime::Runtime);
+
+impl AsyncExecutor for TokioRuntime {
+    type Config = ();
+    type Error = std::io::Error;
+
+    fn new(_: Self::Config) -> std::result::Result<Self, Self::Error> {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .map(TokioRuntime)
+    }
+
+    fn block_on<F: Future>(&self, future: F) -> F::Output {
+        self.0.block_on(future)
+    }
+}
+
 #[cfg(feature = "ffi")]
-adbc_ffi::export_driver!(DataFusionDriverInit, crate::syncify::SyncDataFusionDriver);
+adbc_ffi::export_driver!(
+    DataFusionDriverInit,
+    adbc_core::blocking::SyncDriverWrapper::<TokioRuntime, DataFusionDriver>
+);

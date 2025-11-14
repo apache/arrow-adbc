@@ -22,9 +22,9 @@
 use std::fmt;
 
 use adbc_core::{
+    blocking::Database as _,
     error::Result,
     options::{OptionConnection, OptionValue},
-    Database as _,
 };
 
 #[cfg(feature = "env")]

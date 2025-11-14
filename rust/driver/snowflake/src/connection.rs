@@ -22,9 +22,9 @@
 use std::collections::HashSet;
 
 use adbc_core::{
+    blocking::Optionable,
     error::Result,
     options::{InfoCode, OptionConnection, OptionValue},
-    Optionable,
 };
 use adbc_driver_manager::ManagedConnection;
 use arrow_array::RecordBatchReader;
@@ -63,7 +63,7 @@ impl Optionable for Connection {
     }
 }
 
-impl adbc_core::Connection for Connection {
+impl adbc_core::blocking::Connection for Connection {
     type StatementType = Statement;
 
     fn new_statement(&mut self) -> Result<Self::StatementType> {
@@ -133,7 +133,7 @@ impl adbc_core::Connection for Connection {
         self.0.rollback()
     }
 
-    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader + Send> {
+    fn read_partition(&self, partition: &[u8]) -> Result<impl RecordBatchReader + Send> {
         self.0.read_partition(partition)
     }
 }

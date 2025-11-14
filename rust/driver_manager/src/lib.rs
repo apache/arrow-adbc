@@ -119,12 +119,12 @@ use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 use toml::de::DeTable;
 
 use adbc_core::{
+    blocking::{Connection, Database, Driver, Optionable, Statement},
     constants,
     error::{AdbcStatusCode, Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionDatabase, OptionValue},
-    Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
-    LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
-    LOAD_FLAG_SEARCH_USER,
+    LoadFlags, PartitionedResult, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
+    LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
 };
 use adbc_ffi::driver_method;
 
@@ -1473,13 +1473,12 @@ impl Connection for ManagedConnection {
         Ok(reader)
     }
 
-    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader> {
+    fn read_partition(&self, partition: &[u8]) -> Result<impl RecordBatchReader> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionReadPartition);
-        let partition = partition.as_ref();
         let status = unsafe {
             method(
                 connection.deref_mut(),
