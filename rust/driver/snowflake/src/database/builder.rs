@@ -490,7 +490,7 @@ impl Builder {
     pub const CLIENT_STORE_TEMP_CREDS_ENV: &str =
         "ADBC_SNOWFLAKE_SQL_CLIENT_OPTION_STORE_TEMP_CREDS";
 
-    /// See [`Self::]
+    /// See [`Self::client_identity_provider`]
     pub const CLIENT_IDENTITY_PROVIDER_ENV: &str =
         "ADBC_SNOWFLAKE_SQL_CLIENT_OPTION_IDENTITY_PROVIDER";
 

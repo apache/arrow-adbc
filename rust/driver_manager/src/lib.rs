@@ -50,7 +50,7 @@
 //! # use arrow_select::concat::concat_batches;
 //! # use adbc_core::{
 //! #     options::{AdbcVersion, OptionDatabase, OptionStatement},
-//! #     Connection, Database, Driver, Statement, Optionable
+//! #     blocking::{Connection, Database, Driver, Statement, Optionable}
 //! # };
 //! # use adbc_driver_manager::ManagedDriver;
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {

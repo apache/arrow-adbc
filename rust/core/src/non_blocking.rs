@@ -24,10 +24,10 @@ use crate::error::Result;
 use crate::options::{self, *};
 
 /// Each data partition is described by an opaque byte array and can be
-/// retrieved with [Connection::read_partition].
+/// retrieved with [AsyncConnection::read_partition].
 pub type Partitions = Vec<Vec<u8>>;
 
-/// A partitioned result set as returned by [Statement::execute_partitions].
+/// A partitioned result set as returned by [AsyncStatement::execute_partitions].
 #[derive(Debug, PartialEq, Eq)]
 pub struct PartitionedResult {
     /// The result partitions.
