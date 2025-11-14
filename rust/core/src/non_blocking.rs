@@ -148,7 +148,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> {
     ///   filter by name. May be a search pattern.
     /// - `table_type` - Only show tables matching one of the given table
     ///   types. If `None`, show tables of any type. Valid table types can be fetched
-    ///   from [Connection::get_table_types].
+    ///   from [AsyncConnection::get_table_types].
     /// - `column_name` - Only show columns with the given name. If
     ///   `None`, do not filter by name.  May be a search pattern..
     ///
@@ -326,7 +326,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> {
     ///    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
     ///    values are for implementation-specific statistics.  For the definitions
     ///    of predefined statistic types, see [options::Statistics]. To get
-    ///    driver-specific statistic names, use [Connection::get_statistic_names].
+    ///    driver-specific statistic names, use [AsyncConnection::get_statistic_names].
     /// 3. If true, then the value is approximate or best-effort.
     ///
     /// VALUE_SCHEMA is a dense union with members:
@@ -361,7 +361,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> {
 
     /// Retrieve a given partition of data.
     ///
-    /// A partition can be retrieved from [Statement::execute_partitions].
+    /// A partition can be retrieved from [AsyncStatement::execute_partitions].
     ///
     /// # Arguments
     ///
@@ -426,7 +426,7 @@ pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> {
     /// This invalidates any prior result sets.
     ///
     /// Depending on the driver, this may require first executing
-    /// [Statement::prepare].
+    /// [AsyncStatement::prepare].
     ///
     /// # Since
     ///
@@ -448,7 +448,7 @@ pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> {
     /// be an empty string. If the type cannot be determined, the type of
     /// the corresponding field will be NA (NullType).
     ///
-    /// This should be called after [Statement::prepare].
+    /// This should be called after [AsyncStatement::prepare].
     fn get_parameter_schema(&self) -> impl Future<Output = Result<Schema>> + Send;
 
     /// Turn this statement into a prepared statement to be executed multiple
@@ -459,8 +459,8 @@ pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> {
 
     /// Set the SQL query to execute.
     ///
-    /// The query can then be executed with [Statement::execute]. For queries
-    /// expected to be executed repeatedly, call [Statement::prepare] first.
+    /// The query can then be executed with [AsyncStatement::execute]. For queries
+    /// expected to be executed repeatedly, call [AsyncStatement::prepare] first.
     fn set_sql_query(
         &mut self,
         query: impl AsRef<str> + Send,
@@ -468,8 +468,8 @@ pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> {
 
     /// Set the Substrait plan to execute.
     ///
-    /// The query can then be executed with [Statement::execute]. For queries
-    /// expected to be executed repeatedly, call [Statement::prepare] first.
+    /// The query can then be executed with [AsyncStatement::execute]. For queries
+    /// expected to be executed repeatedly, call [AsyncStatement::prepare] first.
     fn set_substrait_plan(
         &mut self,
         plan: impl AsRef<[u8]> + Send,
@@ -477,7 +477,7 @@ pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> {
 
     /// Cancel execution of an in-progress query.
     ///
-    /// This can be called during [Statement::execute] (or similar), or while
+    /// This can be called during [AsyncStatement::execute] (or similar), or while
     /// consuming a result set returned from such.
     ///
     /// # Since
