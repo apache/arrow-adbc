@@ -915,23 +915,7 @@ impl ManagedDatabase {
         additional_search_paths: Option<Vec<PathBuf>>,
         opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
     ) -> Result<Self> {
-        let idx = uri.find(":");
-        if idx.is_none() {
-            return Err(Error::with_message_and_status(
-                format!("Invalid URI: {uri}"),
-                Status::InvalidArguments,
-            ));
-        }
-
-        let colon_pos = idx.unwrap();
-        let driver = &uri[..colon_pos];
-        let mut final_uri = uri;
-
-        let next = &uri[colon_pos..colon_pos + 1];
-        if next != ":/" && next != "::" {
-            // uri is like 'driver:scheme://...'
-            final_uri = &uri[colon_pos + 1..];
-        }
+        let (driver, final_uri) = parse_driver_uri(uri)?;
 
         let mut drv = ManagedDriver::load_from_name(
             driver,
@@ -1933,6 +1917,25 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     result
 }
 
+fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
+    let idx = uri.find(":").ok_or(Error::with_message_and_status(
+        format!("Invalid URI: {uri}"),
+        Status::InvalidArguments,
+    ))?;
+
+    let driver = &uri[..idx];
+    if uri.len() <= idx + 2 {
+        return Ok((driver, uri));
+    }
+    
+    if &uri[idx..idx + 2] == ":/" {        
+        // scheme is also driver
+        return Ok((driver, uri));
+    }
+
+    Ok((driver, &uri[idx + 1..]))
+}
+
 const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
     #[cfg(target_arch = "x86_64")]
     const ARCH: &str = "amd64";
@@ -2454,6 +2457,38 @@ mod tests {
             assert_eq!(search_paths, vec![system_path]);
         } else {
             assert_eq!(search_paths, Vec::<PathBuf>::new());
+        }
+    }
+
+    #[test]
+    fn test_parse_driver_uri() {
+        let cases = vec![
+            ("sqlite", Err(Status::InvalidArguments)),
+            ("sqlite:", Ok(("sqlite", "sqlite:"))),
+            ("sqlite:file::memory:", Ok(("sqlite", "file::memory:"))),
+            (
+                "sqlite:file::memory:?cache=shared",
+                Ok(("sqlite", "file::memory:?cache=shared")),
+            ),
+            (
+                "postgresql://a:b@localhost:9999/nonexistent",
+                Ok(("postgresql", "postgresql://a:b@localhost:9999/nonexistent")),
+            ),
+        ];
+
+        for (input, expected) in cases {
+            let result = parse_driver_uri(input);
+            match expected {
+                Ok((exp_driver, exp_conn)) => {
+                    let (driver, conn) = result.expect("Expected Ok result");
+                    assert_eq!(driver, exp_driver);
+                    assert_eq!(conn, exp_conn);
+                }
+                Err(exp_status) => {
+                    let err = result.expect_err("Expected Err result");
+                    assert_eq!(err.status, exp_status);
+                }
+            }
         }
     }
 }
