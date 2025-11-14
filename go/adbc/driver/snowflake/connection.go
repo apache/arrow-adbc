@@ -70,8 +70,9 @@ type connectionImpl struct {
 	db   *databaseImpl
 	ctor driver.Connector
 
-	activeTransaction bool
-	useHighPrecision  bool
+	activeTransaction     bool
+	useHighPrecision      bool
+	maxTimestampPrecision MaxTimestampPrecision
 }
 
 func escapeSingleQuoteForLike(arg string) string {
@@ -168,7 +169,10 @@ func isWildcardStr(ident string) bool {
 	return strings.ContainsAny(ident, "_%")
 }
 
-func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (rdr array.RecordReader, err error) {
+func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (reader array.RecordReader, err error) {
+	ctx, span := internal.StartSpan(ctx, "connectionImpl.GetObjects", c)
+	defer internal.EndSpan(span, err)
+
 	var (
 		pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
 		showSchemaQueryID, tableQueryID                     string
@@ -278,13 +282,14 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			catalog, dbSchema, tableName, &tableQueryID)
 	}
 
-	queryBytes, err := fs.ReadFile(queryTemplates, path.Join("queries", queryFile))
+	var queryBytes []byte
+	queryBytes, err = fs.ReadFile(queryTemplates, path.Join("queries", queryFile))
 	if err != nil {
 		return nil, err
 	}
 
 	// Need constraint subqueries to complete before we can query GetObjects
-	if err := gQueryIDs.Wait(); err != nil {
+	if err = gQueryIDs.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -315,9 +320,11 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 	}
 
 	query := string(queryBytes)
-	rows, err := conn.QueryContext(ctx, query, nvargs)
+	var rows driver.Rows
+	rows, err = conn.QueryContext(ctx, query, nvargs)
 	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
+		err = errToAdbcErr(adbc.StatusIO, err)
+		return nil, err
 	}
 	defer func() {
 		err = errors.Join(err, rows.Close())
@@ -330,7 +337,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		defer close(catalogCh)
 		dest := make([]driver.Value, len(rows.Columns()))
 		for {
-			if err := rows.Next(dest); err != nil {
+			if err = rows.Next(dest); err != nil {
 				if errors.Is(err, io.EOF) {
 					return
 				}
@@ -339,7 +346,7 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 			}
 
 			var getObjectsCatalog driverbase.GetObjectsInfo
-			if err := getObjectsCatalog.Scan(dest[0]); err != nil {
+			if err = getObjectsCatalog.Scan(dest[0]); err != nil {
 				errCh <- errToAdbcErr(adbc.StatusInvalidData, err)
 				return
 			}
@@ -363,7 +370,8 @@ func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth,
 		}
 	}()
 
-	return driverbase.BuildGetObjectsRecordReader(c.Alloc, catalogCh, errCh)
+	reader, err = driverbase.BuildGetObjectsRecordReader(c.Alloc, catalogCh, errCh)
+	return reader, err
 }
 
 // PrepareDriverInfo implements driverbase.DriverInfoPreparer.
@@ -467,11 +475,23 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 	case "DATETIME":
 		fallthrough
 	case "TIMESTAMP", "TIMESTAMP_NTZ":
-		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
+		if c.maxTimestampPrecision == Microseconds {
+			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond}
+		} else {
+			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
+		}
 	case "TIMESTAMP_LTZ":
-		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: "UTC"}
+		if c.maxTimestampPrecision == Microseconds {
+			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: "UTC"}
+		} else {
+			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: "UTC"}
+		}
 	case "TIMESTAMP_TZ":
-		field.Type = arrow.FixedWidthTypes.Timestamp_ns
+		if c.maxTimestampPrecision == Microseconds {
+			field.Type = arrow.FixedWidthTypes.Timestamp_us
+		} else {
+			field.Type = arrow.FixedWidthTypes.Timestamp_ns
+		}
 	case "GEOGRAPHY":
 		fallthrough
 	case "GEOMETRY":
@@ -486,7 +506,7 @@ func (c *connectionImpl) toArrowField(columnInfo driverbase.ColumnInfo) arrow.Fi
 	return field
 }
 
-func descToField(name, typ, isnull, primary string, comment sql.NullString) (field arrow.Field, err error) {
+func descToField(name, typ, isnull, primary string, comment sql.NullString, maxTimestampPrecision MaxTimestampPrecision) (field arrow.Field, err error) {
 	field.Name = name
 	if isnull == "Y" {
 		field.Nullable = true
@@ -554,11 +574,23 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString) (fie
 	case "DATETIME":
 		fallthrough
 	case "TIMESTAMP", "TIMESTAMP_NTZ":
-		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
+		if maxTimestampPrecision == Microseconds {
+			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond}
+		} else {
+			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond}
+		}
 	case "TIMESTAMP_LTZ":
-		field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: "UTC"}
+		if maxTimestampPrecision == Microseconds {
+			field.Type = &arrow.TimestampType{Unit: arrow.Microsecond, TimeZone: "UTC"}
+		} else {
+			field.Type = &arrow.TimestampType{Unit: arrow.Nanosecond, TimeZone: "UTC"}
+		}
 	case "TIMESTAMP_TZ":
-		field.Type = arrow.FixedWidthTypes.Timestamp_ns
+		if maxTimestampPrecision == Microseconds {
+			field.Type = arrow.FixedWidthTypes.Timestamp_us
+		} else {
+			field.Type = arrow.FixedWidthTypes.Timestamp_ns
+		}
 	default:
 		field.Type = arrow.BinaryTypes.String
 	}
@@ -604,6 +636,9 @@ func (c *connectionImpl) getStringQuery(query string) (value string, err error) 
 }
 
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (sc *arrow.Schema, err error) {
+	ctx, span := internal.StartSpan(ctx, "connectionImpl.GetTableSchema", c)
+	defer internal.EndSpan(span, err)
+
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
 		tblParts = append(tblParts, quoteTblName(*catalog))
@@ -614,9 +649,11 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	tblParts = append(tblParts, quoteTblName(tableName))
 	fullyQualifiedTable := strings.Join(tblParts, ".")
 
-	rows, err := c.cn.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable, nil)
+	var rows driver.Rows
+	rows, err = c.cn.QueryContext(ctx, `DESC TABLE `+fullyQualifiedTable, nil)
 	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
+		err = errToAdbcErr(adbc.StatusIO, err)
+		return nil, err
 	}
 	defer func() {
 		err = errors.Join(err, rows.Close())
@@ -632,22 +669,26 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	// name, type, kind, isnull, primary, unique, def, check, expr, comment, policyName, privDomain
 	dest := make([]driver.Value, len(rows.Columns()))
 	for {
-		if err := rows.Next(dest); err != nil {
+		if err = rows.Next(dest); err != nil {
 			if errors.Is(err, io.EOF) {
+				err = nil // don't return the io.EOF
 				break
 			}
-			return nil, errToAdbcErr(adbc.StatusIO, err)
+			err = errToAdbcErr(adbc.StatusIO, err)
+			return nil, err
 		}
 
 		name = dest[0].(string)
 		typ = dest[1].(string)
 		isnull = dest[3].(string)
 		primary = dest[5].(string)
-		if err := comment.Scan(dest[9]); err != nil {
-			return nil, errToAdbcErr(adbc.StatusIO, err)
+		if err = comment.Scan(dest[9]); err != nil {
+			err = errToAdbcErr(adbc.StatusIO, err)
+			return nil, err
 		}
 
-		f, err := descToField(name, typ, isnull, primary, comment)
+		var f arrow.Field
+		f, err = descToField(name, typ, isnull, primary, comment, c.maxTimestampPrecision)
 		if err != nil {
 			return nil, err
 		}
@@ -655,7 +696,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	}
 
 	sc = arrow.NewSchema(fields, nil)
-	return sc, nil
+	return sc, err
 }
 
 // Commit commits any pending transactions on this connection, it should
@@ -689,20 +730,28 @@ func (c *connectionImpl) Rollback(_ context.Context) error {
 // NewStatement initializes a new statement object tied to this connection
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	defaultIngestOptions := DefaultIngestOptions()
-	return &statement{
-		alloc:               c.db.Alloc,
-		cnxn:                c,
-		queueSize:           defaultStatementQueueSize,
-		prefetchConcurrency: defaultPrefetchConcurrency,
-		useHighPrecision:    c.useHighPrecision,
-		ingestOptions:       defaultIngestOptions,
-	}, nil
+	stmtBase := driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper)
+	stmt := &statement{
+		StatementImplBase:     stmtBase,
+		alloc:                 c.db.Alloc,
+		cnxn:                  c,
+		queueSize:             defaultStatementQueueSize,
+		prefetchConcurrency:   defaultPrefetchConcurrency,
+		useHighPrecision:      c.useHighPrecision,
+		maxTimestampPrecision: c.maxTimestampPrecision,
+		ingestOptions:         defaultIngestOptions,
+	}
+	return driverbase.NewStatement(stmt), nil
 }
 
 // Close closes this connection and releases any associated resources.
-func (c *connectionImpl) Close() error {
+func (c *connectionImpl) Close() (err error) {
+	_, span := internal.StartSpan(context.Background(), "connectionImpl.Close", c)
+	defer internal.EndSpan(span, err)
+
 	if c.cn == nil {
-		return adbc.Error{Code: adbc.StatusInvalidState}
+		err = adbc.Error{Code: adbc.StatusInvalidState}
+		return err
 	}
 
 	defer func() {
@@ -741,9 +790,6 @@ func (c *connectionImpl) SetOption(key, value string) error {
 		}
 		return nil
 	default:
-		return adbc.Error{
-			Msg:  "[Snowflake] unknown connection option " + key + ": " + value,
-			Code: adbc.StatusInvalidArgument,
-		}
+		return c.Base().SetOption(key, value)
 	}
 }

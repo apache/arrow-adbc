@@ -18,6 +18,7 @@
 package salesforce
 
 import (
+	"context"
 	"runtime/debug"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -95,8 +96,16 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 
 // NewDatabase creates a new database connection for Salesforce Data Cloud
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
 	db := &databaseImpl{
-		DatabaseImplBase: driverbase.NewDatabaseImplBase(&d.DriverImplBase),
+		DatabaseImplBase: dbBase,
 		// Defaults to the JWT Bearer Flow
 		authType:  OptionValueAuthTypeJwtBearer,
 		loginURL:  DefaultLoginURL,

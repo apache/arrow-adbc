@@ -45,7 +45,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
     private bool _hasMoreRows;
     private global::Apache.Hive.Service.Rpc.Thrift.TRowSet _results;
     private global::Apache.Hive.Service.Rpc.Thrift.TGetResultSetMetadataResp _resultSetMetadata;
-    private byte[] _responseValidation;
 
     public global::Apache.Hive.Service.Rpc.Thrift.TStatus Status { get; set; }
 
@@ -88,19 +87,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public byte[] ResponseValidation
-    {
-      get
-      {
-        return _responseValidation;
-      }
-      set
-      {
-        __isset.responseValidation = true;
-        this._responseValidation = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
@@ -108,7 +94,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       public bool hasMoreRows;
       public bool @results;
       public bool resultSetMetadata;
-      public bool responseValidation;
     }
 
     public TFetchResultsResp()
@@ -182,16 +167,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            case 3329:
-              if (field.Type == TType.String)
-              {
-                ResponseValidation = await iprot.ReadBinaryAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
             default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
@@ -256,15 +231,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await ResultSetMetadata.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if((ResponseValidation != null) && __isset.responseValidation)
-        {
-          tmp564.Name = "responseValidation";
-          tmp564.Type = TType.String;
-          tmp564.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp564, cancellationToken);
-          await oprot.WriteBinaryAsync(ResponseValidation, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -281,8 +247,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       return global::System.Object.Equals(Status, other.Status)
         && ((__isset.hasMoreRows == other.__isset.hasMoreRows) && ((!__isset.hasMoreRows) || (global::System.Object.Equals(HasMoreRows, other.HasMoreRows))))
         && ((__isset.@results == other.__isset.@results) && ((!__isset.@results) || (global::System.Object.Equals(Results, other.Results))))
-        && ((__isset.resultSetMetadata == other.__isset.resultSetMetadata) && ((!__isset.resultSetMetadata) || (global::System.Object.Equals(ResultSetMetadata, other.ResultSetMetadata))))
-        && ((__isset.responseValidation == other.__isset.responseValidation) && ((!__isset.responseValidation) || (TCollections.Equals(ResponseValidation, other.ResponseValidation))));
+        && ((__isset.resultSetMetadata == other.__isset.resultSetMetadata) && ((!__isset.resultSetMetadata) || (global::System.Object.Equals(ResultSetMetadata, other.ResultSetMetadata))));
     }
 
     public override int GetHashCode() {
@@ -303,10 +268,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((ResultSetMetadata != null) && __isset.resultSetMetadata)
         {
           hashcode = (hashcode * 397) + ResultSetMetadata.GetHashCode();
-        }
-        if((ResponseValidation != null) && __isset.responseValidation)
-        {
-          hashcode = (hashcode * 397) + ResponseValidation.GetHashCode();
         }
       }
       return hashcode;
@@ -334,11 +295,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp565.Append(", ResultSetMetadata: ");
         ResultSetMetadata.ToString(tmp565);
-      }
-      if((ResponseValidation != null) && __isset.responseValidation)
-      {
-        tmp565.Append(", ResponseValidation: ");
-        ResponseValidation.ToString(tmp565);
       }
       tmp565.Append(')');
       return tmp565.ToString();

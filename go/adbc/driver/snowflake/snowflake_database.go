@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
+	"database/sql/driver"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -31,6 +32,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/youmark/pkcs8"
@@ -45,6 +47,29 @@ var (
 		OptionValueAuthOkta:            gosnowflake.AuthTypeOkta,
 		OptionValueAuthJwt:             gosnowflake.AuthTypeJwt,
 		OptionValueAuthUserPassMFA:     gosnowflake.AuthTypeUsernamePasswordMFA,
+		OptionValueAuthPat:             gosnowflake.AuthTypePat,
+		OptionValueAuthWIF:             gosnowflake.AuthTypeWorkloadIdentityFederation,
+	}
+)
+
+type MaxTimestampPrecision uint8
+
+const (
+	// default precision
+	Nanoseconds MaxTimestampPrecision = iota
+
+	// use nanoseconds, but error if there is an overflow
+	NanosecondsNoOverflow
+
+	// use microseconds
+	Microseconds
+)
+
+var (
+	maxTimestampPrecisionMap = map[string]MaxTimestampPrecision{
+		OptionValueNanoseconds:           Nanoseconds,
+		OptionValueNanosecondsNoOverflow: NanosecondsNoOverflow,
+		OptionValueMicroseconds:          Microseconds,
 	}
 )
 
@@ -57,9 +82,9 @@ type databaseImpl struct {
 	clientSecret string
 	refreshToken string
 
-	useHighPrecision bool
-
-	defaultAppName string
+	useHighPrecision      bool
+	maxTimestampPrecision MaxTimestampPrecision
+	defaultAppName        string
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -144,6 +169,17 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil
+	case OptionMaxTimestampPrecision:
+		switch d.maxTimestampPrecision {
+		case Microseconds:
+			return OptionValueMicroseconds, nil
+		case NanosecondsNoOverflow:
+			return OptionValueNanosecondsNoOverflow, nil
+		default:
+			return OptionValueNanoseconds, nil
+		}
+	case adbc.OptionKeyTelemetryTraceParent:
+		return d.GetTraceParent(), nil
 	default:
 		val, ok := d.cfg.Params[key]
 		if ok {
@@ -172,6 +208,9 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 			Params: make(map[string]*string),
 		}
 	}
+	// XXX(https://github.com/apache/arrow-adbc/issues/2792): Snowflake
+	// has a tendency to spam the log by default, so set the log level
+	d.cfg.Tracing = "fatal"
 
 	// set default application name to track
 	// unless user overrides it
@@ -218,6 +257,8 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 		d.cfg.Protocol = v
 	case OptionHost:
 		d.cfg.Host = v
+	case OptionIdentityProvider:
+		d.cfg.WorkloadIdentityProvider = v
 	case OptionPort:
 		d.cfg.Port, err = strconv.Atoi(v)
 		if err != nil {
@@ -471,21 +512,38 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
+	case OptionMaxTimestampPrecision:
+		switch v {
+		case OptionValueNanoseconds, OptionValueNanosecondsNoOverflow, OptionValueMicroseconds:
+			d.maxTimestampPrecision = maxTimestampPrecisionMap[v]
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionMaxTimestampPrecision, v),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case adbc.OptionKeyTelemetryTraceParent:
+		d.SetTraceParent(v)
 	default:
 		d.cfg.Params[k] = &v
 	}
 	return nil
 }
 
-func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+func (d *databaseImpl) Open(ctx context.Context) (adbcConnection adbc.Connection, err error) {
+	ctx, span := internal.StartSpan(ctx, "databaseImpl.Open", d)
+	defer internal.EndSpan(span, err)
+
 	connector := gosnowflake.NewConnector(drv, *d.cfg)
 
 	ctx = gosnowflake.WithArrowAllocator(
 		gosnowflake.WithArrowBatches(ctx), d.Alloc)
 
-	cn, err := connector.Connect(ctx)
+	var cn driver.Conn
+	cn, err = connector.Connect(ctx)
 	if err != nil {
-		return nil, errToAdbcErr(adbc.StatusIO, err)
+		err = errToAdbcErr(adbc.StatusIO, err)
+		return nil, err
 	}
 
 	conn := &connectionImpl{
@@ -494,16 +552,20 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		// default enable high precision
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead
-		useHighPrecision:   d.useHighPrecision,
-		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		useHighPrecision:      d.useHighPrecision,
+		maxTimestampPrecision: d.maxTimestampPrecision,
+		ConnectionImplBase:    driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
 
-	return driverbase.NewConnectionBuilder(conn).
+	adbcConnection = driverbase.NewConnectionBuilder(conn).
 		WithAutocommitSetter(conn).
 		WithCurrentNamespacer(conn).
 		WithTableTypeLister(conn).
 		WithDriverInfoPreparer(conn).
-		Connection(), nil
+		Connection()
+
+	driverbase.SetOTelDriverInfoAttributes(d.DriverInfo, span)
+	return adbcConnection, err
 }
 
 func (d *databaseImpl) Close() error {

@@ -85,6 +85,7 @@ struct AdbcErrorDetail SnowflakeErrorGetDetail(const struct AdbcError* error,
   };
 }
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return SnowflakeErrorGetDetailCount(error);
 }
@@ -430,8 +431,9 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
-  return SnowflakeDriverInit(version, driver, error);
+  return AdbcDriverSnowflakeInit(version, driver, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 int SnowflakeArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
 int SnowflakeArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);

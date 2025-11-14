@@ -95,8 +95,16 @@ add_arrow_lib(${DRIVER_LIB_NAME}
 foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_compile_definitions(${LIB_TARGET} PRIVATE ADBC_EXPORTING)
   target_include_directories(${LIB_TARGET} SYSTEM
-                             PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
-                                     ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
+                             PRIVATE ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/include/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/driver
+                                     ${REPOSITORY_ROOT}/c/vendor/portable-snippets/include
+  )
+
+  if(NOT ADBC_DEFINE_COMMON_ENTRYPOINTS)
+    target_compile_definitions(${LIB_TARGET} PRIVATE ${ADBC_TARGET_COMPILE_DEFINITIONS})
+  endif()
 
   if(ADBC_REDSHIFT_FLAVOR)
     target_compile_definitions(${LIB_TARGET} PUBLIC ADBC_REDSHIFT_FLAVOR)
@@ -149,8 +157,12 @@ if(ADBC_BUILD_TESTS)
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgresql-copy-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-postgresql-copy-test SYSTEM
-                             PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
-                                     ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
+                             PRIVATE ${REPOSITORY_ROOT}/c/
+                                     ${REPOSITORY_ROOT}/c/include/
+                                     ${LIBPQ_INCLUDE_DIRS}
+                                     ${REPOSITORY_ROOT}/c/driver
+                                     ${REPOSITORY_ROOT}/c/vendor/portable-snippets/include
+  )
   if(ADBC_REDSHIFT_FLAVOR)
     target_include_directories(adbc-driver-postgresql-copy-test SYSTEM
                                PRIVATE ${AWSSDK_INCLUDE_DIRS})

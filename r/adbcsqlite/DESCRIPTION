@@ -1,6 +1,6 @@
 Package: adbcsqlite
 Title: 'Arrow' Database Connectivity ('ADBC') 'SQLite' Driver
-Version: 0.18.0
+Version: 0.21.0
 Authors@R: c(
       person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
              comment = c(ORCID = "0000-0002-9415-4582")),

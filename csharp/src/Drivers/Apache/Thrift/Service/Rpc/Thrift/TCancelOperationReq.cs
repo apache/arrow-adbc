@@ -42,43 +42,11 @@ namespace Apache.Hive.Service.Rpc.Thrift
 
   internal partial class TCancelOperationReq : TBase
   {
-    private short _executionVersion;
-    private bool _replacedByNextAttempt;
-
     public global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle OperationHandle { get; set; }
-
-    public short ExecutionVersion
-    {
-      get
-      {
-        return _executionVersion;
-      }
-      set
-      {
-        __isset.executionVersion = true;
-        this._executionVersion = value;
-      }
-    }
-
-    public bool ReplacedByNextAttempt
-    {
-      get
-      {
-        return _replacedByNextAttempt;
-      }
-      set
-      {
-        __isset.replacedByNextAttempt = true;
-        this._replacedByNextAttempt = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
     {
-      public bool executionVersion;
-      public bool replacedByNextAttempt;
     }
 
     public TCancelOperationReq()
@@ -114,26 +82,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 OperationHandle = new global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle();
                 await OperationHandle.ReadAsync(iprot, cancellationToken);
                 isset_operationHandle = true;
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3329:
-              if (field.Type == TType.I16)
-              {
-                ExecutionVersion = await iprot.ReadI16Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3330:
-              if (field.Type == TType.Bool)
-              {
-                ReplacedByNextAttempt = await iprot.ReadBoolAsync(cancellationToken);
               }
               else
               {
@@ -177,24 +125,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await OperationHandle.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.executionVersion)
-        {
-          tmp532.Name = "executionVersion";
-          tmp532.Type = TType.I16;
-          tmp532.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp532, cancellationToken);
-          await oprot.WriteI16Async(ExecutionVersion, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.replacedByNextAttempt)
-        {
-          tmp532.Name = "replacedByNextAttempt";
-          tmp532.Type = TType.Bool;
-          tmp532.ID = 3330;
-          await oprot.WriteFieldBeginAsync(tmp532, cancellationToken);
-          await oprot.WriteBoolAsync(ReplacedByNextAttempt, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -208,9 +138,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
     {
       if (!(that is TCancelOperationReq other)) return false;
       if (ReferenceEquals(this, other)) return true;
-      return global::System.Object.Equals(OperationHandle, other.OperationHandle)
-        && ((__isset.executionVersion == other.__isset.executionVersion) && ((!__isset.executionVersion) || (global::System.Object.Equals(ExecutionVersion, other.ExecutionVersion))))
-        && ((__isset.replacedByNextAttempt == other.__isset.replacedByNextAttempt) && ((!__isset.replacedByNextAttempt) || (global::System.Object.Equals(ReplacedByNextAttempt, other.ReplacedByNextAttempt))));
+      return global::System.Object.Equals(OperationHandle, other.OperationHandle);
     }
 
     public override int GetHashCode() {
@@ -219,14 +147,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((OperationHandle != null))
         {
           hashcode = (hashcode * 397) + OperationHandle.GetHashCode();
-        }
-        if(__isset.executionVersion)
-        {
-          hashcode = (hashcode * 397) + ExecutionVersion.GetHashCode();
-        }
-        if(__isset.replacedByNextAttempt)
-        {
-          hashcode = (hashcode * 397) + ReplacedByNextAttempt.GetHashCode();
         }
       }
       return hashcode;
@@ -239,16 +159,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp533.Append(", OperationHandle: ");
         OperationHandle.ToString(tmp533);
-      }
-      if(__isset.executionVersion)
-      {
-        tmp533.Append(", ExecutionVersion: ");
-        ExecutionVersion.ToString(tmp533);
-      }
-      if(__isset.replacedByNextAttempt)
-      {
-        tmp533.Append(", ReplacedByNextAttempt: ");
-        ReplacedByNextAttempt.ToString(tmp533);
       }
       tmp533.Append(')');
       return tmp533.ToString();

@@ -23,13 +23,13 @@
 use std::ffi::{c_int, c_void};
 use std::{fmt, sync::LazyLock};
 
-#[cfg(any(feature = "bundled", feature = "linked"))]
-use adbc_core::ffi::{FFI_AdbcDriverInitFunc, FFI_AdbcError, FFI_AdbcStatusCode};
 use adbc_core::{
-    driver_manager::ManagedDriver,
-    error::Result,
+    error::{AdbcStatusCode, Result},
     options::{AdbcVersion, OptionDatabase, OptionValue},
 };
+use adbc_driver_manager::ManagedDriver;
+#[cfg(any(feature = "bundled", feature = "linked"))]
+use adbc_ffi::{FFI_AdbcDriverInitFunc, FFI_AdbcError};
 
 use crate::Database;
 
@@ -39,7 +39,7 @@ pub use builder::*;
 static DRIVER: LazyLock<Result<ManagedDriver>> = LazyLock::new(|| {
     ManagedDriver::load_dynamic_from_name(
         "adbc_driver_snowflake",
-        Some(b"SnowflakeDriverInit"),
+        Some(b"AdbcDriverSnowflakeInit"),
         Default::default(),
     )
 });
@@ -65,9 +65,8 @@ impl fmt::Debug for Driver {
 
 #[cfg(any(feature = "bundled", feature = "linked"))]
 extern "C" {
-    #[link_name = "SnowflakeDriverInit"]
-    fn init(version: c_int, raw_driver: *mut c_void, err: *mut FFI_AdbcError)
-        -> FFI_AdbcStatusCode;
+    #[link_name = "AdbcDriverSnowflakeInit"]
+    fn init(version: c_int, raw_driver: *mut c_void, err: *mut FFI_AdbcError) -> AdbcStatusCode;
 }
 
 impl Driver {

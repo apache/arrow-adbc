@@ -62,12 +62,12 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		clientID:                   d.clientID,
 		clientSecret:               d.clientSecret,
 		refreshToken:               d.refreshToken,
-		accessTokenEndpoint:        d.accessTokenEndpoint,
-		accessTokenServerName:      d.accessTokenServerName,
 		impersonateTargetPrincipal: d.impersonateTargetPrincipal,
 		impersonateDelegates:       d.impersonateDelegates,
 		impersonateScopes:          d.impersonateScopes,
 		impersonateLifetime:        d.impersonateLifetime,
+		accessTokenEndpoint:        d.accessTokenEndpoint,
+		accessTokenServerName:      d.accessTokenServerName,
 		tableID:                    d.tableID,
 		catalog:                    d.projectID,
 		dbSchema:                   d.datasetID,
@@ -142,24 +142,20 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 
 func (d *databaseImpl) hasImpersonationOptions() bool {
 	return d.impersonateTargetPrincipal != "" ||
-		len(d.impersonateDelegates) > 0
+		len(d.impersonateDelegates) > 0 ||
+		len(d.impersonateScopes) > 0
 }
 
 func (d *databaseImpl) SetOption(key string, value string) error {
 	switch key {
 	case OptionStringAuthType:
 		switch value {
-		case OptionValueAuthTypeDefault:
-			d.authType = value
-		case OptionValueAuthTypeJSONCredentialFile:
-			d.authType = value
-		case OptionValueAuthTypeJSONCredentialString:
-			d.authType = value
-		case OptionValueAuthTypeUserAuthentication:
-			d.authType = value
-		case OptionValueAuthTypeTemporaryAccessToken:
-			d.authType = value
-		case OptionValueAuthTypeAppDefaultCredentials:
+		case OptionValueAuthTypeDefault,
+			OptionValueAuthTypeJSONCredentialFile,
+			OptionValueAuthTypeJSONCredentialString,
+			OptionValueAuthTypeUserAuthentication,
+			OptionValueAuthTypeAppDefaultCredentials,
+			OptionValueAuthTypeTemporaryAccessToken:
 			d.authType = value
 		default:
 			return adbc.Error{
@@ -177,18 +173,19 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.accessToken = value
 	case OptionStringAuthRefreshToken:
 		d.refreshToken = value
+	case OptionStringAuthQuotaProject:
+		d.quotaProject = value
+	case OptionStringImpersonateDelegates:
+		d.impersonateDelegates = strings.Split(value, ",")
+
 	case OptionStringAuthAccessTokenEndpoint:
 		d.accessTokenEndpoint = value
 	case OptionStringAuthAccessTokenServerName:
 		d.accessTokenServerName = value
-	case OptionStringAuthQuotaProject:
-		d.quotaProject = value
 	case OptionStringLocation:
 		d.location = value
 	case OptionStringImpersonateTargetPrincipal:
 		d.impersonateTargetPrincipal = value
-	case OptionStringImpersonateDelegates:
-		d.impersonateDelegates = strings.Split(value, ",")
 	case OptionStringImpersonateScopes:
 		d.impersonateScopes = strings.Split(value, ",")
 	case OptionStringImpersonateLifetime:

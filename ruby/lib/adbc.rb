@@ -17,9 +17,9 @@
 
 require "arrow"
 
-require "adbc/version"
+require_relative "adbc/version"
 
-require "adbc/loader"
+require_relative "adbc/loader"
 
 module ADBC
   class Error < StandardError
@@ -27,17 +27,3 @@ module ADBC
 end
 
 ADBC::Loader.load
-begin
-  ADBCArrow::Loader.load
-rescue GObjectIntrospection::RepositoryError
-else
-  module ADBC
-    RawConnection = Connection
-    remove_const(:Connection)
-    Connection = ADBCArrow::Connection
-
-    RawStatement = Statement
-    remove_const(:Statement)
-    Statement = ADBCArrow::Statement
-  end
-end

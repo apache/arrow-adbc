@@ -16,6 +16,7 @@
 // under the License.
 
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow.hpp>
@@ -797,6 +798,86 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadArray) {
   ASSERT_EQ(data_buffer[4], 123);
 }
 
+TEST(PostgresCopyUtilsTest, PostgresCopyReadInt2vector) {
+  ArrowBufferView data;
+  data.data.as_uint8 = kTestPgCopyInt2vector;
+  data.size_bytes = sizeof(kTestPgCopyInt2vector);
+
+  auto col_type = PostgresType(PostgresTypeId::kInt2vector);
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("empty", col_type);
+  input_type.AppendChild("len1", col_type);
+  input_type.AppendChild("len2", col_type);
+  input_type.AppendChild("len4", col_type);
+
+  PostgresCopyStreamTester tester;
+  ArrowError error;
+  ASSERT_EQ(tester.Init(input_type, &error), NANOARROW_OK) << error.message;
+  ASSERT_EQ(tester.ReadAll(&data), ENODATA);
+  ASSERT_EQ(data.data.as_uint8 - kTestPgCopyInt2vector, sizeof(kTestPgCopyInt2vector));
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get()), NANOARROW_OK);
+  ASSERT_EQ(array->length, 1);
+  ASSERT_EQ(array->n_children, 4);
+
+  for (int col = 0; col < 4; col++) {
+    ASSERT_EQ(array->children[col]->n_children, 1);
+  }
+
+  {
+    auto* child = array->children[0];
+    ASSERT_EQ(child->children[0]->length, 0);
+    auto offsets = reinterpret_cast<const int32_t*>(child->buffers[1]);
+    auto data_buffer = reinterpret_cast<const int16_t*>(child->children[0]->buffers[1]);
+    ASSERT_NE(data_buffer, nullptr);
+
+    EXPECT_EQ(offsets[0], 0);
+    EXPECT_EQ(offsets[1], 0);
+  }
+  {
+    auto* child = array->children[1];
+    ASSERT_EQ(child->children[0]->length, 1);
+    auto offsets = reinterpret_cast<const int32_t*>(child->buffers[1]);
+    auto data_buffer = reinterpret_cast<const int16_t*>(child->children[0]->buffers[1]);
+    ASSERT_NE(data_buffer, nullptr);
+
+    EXPECT_EQ(offsets[0], 0);
+    EXPECT_EQ(offsets[1], 1);
+
+    EXPECT_EQ(data_buffer[0], -32768);
+  }
+  {
+    auto* child = array->children[2];
+    ASSERT_EQ(child->children[0]->length, 2);
+    auto offsets = reinterpret_cast<const int32_t*>(child->buffers[1]);
+    auto data_buffer = reinterpret_cast<const int16_t*>(child->children[0]->buffers[1]);
+    ASSERT_NE(data_buffer, nullptr);
+
+    EXPECT_EQ(offsets[0], 0);
+    EXPECT_EQ(offsets[1], 2);
+
+    EXPECT_EQ(data_buffer[0], -32768);
+    EXPECT_EQ(data_buffer[1], 32767);
+  }
+  {
+    auto* child = array->children[3];
+    ASSERT_EQ(child->children[0]->length, 4);
+    auto offsets = reinterpret_cast<const int32_t*>(child->buffers[1]);
+    auto data_buffer = reinterpret_cast<const int16_t*>(child->children[0]->buffers[1]);
+    ASSERT_NE(data_buffer, nullptr);
+
+    EXPECT_EQ(offsets[0], 0);
+    EXPECT_EQ(offsets[1], 4);
+
+    EXPECT_EQ(data_buffer[0], -1);
+    EXPECT_EQ(data_buffer[1], 0);
+    EXPECT_EQ(data_buffer[2], 1);
+    EXPECT_EQ(data_buffer[3], 42);
+  }
+}
+
 TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyCustomRecord;
@@ -841,5 +922,60 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadCustomRecord) {
   ASSERT_DOUBLE_EQ(data_buffer2[1], 345.678);
   ASSERT_DOUBLE_EQ(data_buffer2[2], 0);
 }
+
+TEST(PostgresCopyUtilsTest, BinaryOverflow) {
+  constexpr int32_t field_size_bytes = 1024 * 1024 * 4;
+  std::vector<uint8_t> buffer(field_size_bytes);
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(NANOARROW_OK, ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_BINARY));
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_BINARY));
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayStartAppending(array.get()));
+
+  PostgresCopyBinaryFieldReader reader;
+  ASSERT_EQ(NANOARROW_OK, reader.InitSchema(schema.get()));
+  ASSERT_EQ(NANOARROW_OK, reader.InitArray(array.get()));
+  for (int i = 0; i < 511; i++) {
+    ArrowBufferView data;
+    data.size_bytes = static_cast<int64_t>(buffer.size());
+    data.data.data = buffer.data();
+    ASSERT_EQ(NANOARROW_OK, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+  }
+  ArrowBufferView data;
+  data.size_bytes = static_cast<int64_t>(buffer.size());
+  data.data.data = buffer.data();
+  ASSERT_EQ(EOVERFLOW, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+}
+
+TEST(PostgresCopyUtilsTest, JsonbOverflow) {
+  constexpr int32_t field_size_bytes = 1024 * 1024 * 4;
+  std::vector<uint8_t> buffer(field_size_bytes, 1);
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(NANOARROW_OK, ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_BINARY));
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_BINARY));
+  ASSERT_EQ(NANOARROW_OK, ArrowArrayStartAppending(array.get()));
+
+  PostgresCopyJsonbFieldReader reader;
+  ASSERT_EQ(NANOARROW_OK, reader.InitSchema(schema.get()));
+  ASSERT_EQ(NANOARROW_OK, reader.InitArray(array.get()));
+  for (int i = 0; i < 512; i++) {
+    ArrowBufferView data;
+    data.size_bytes = static_cast<int64_t>(buffer.size());
+    data.data.data = buffer.data();
+    ASSERT_EQ(NANOARROW_OK, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+  }
+  ArrowBufferView data;
+  data.size_bytes = static_cast<int64_t>(buffer.size());
+  data.data.data = buffer.data();
+  ASSERT_EQ(EOVERFLOW, reader.Read(&data, field_size_bytes, array.get(), nullptr));
+}
+
+// N.B. unfortunately testing with NUMERIC is difficult since we can't add all
+// that much to the buffer on each iteration, so the unit test takes too long
 
 }  // namespace adbcpq

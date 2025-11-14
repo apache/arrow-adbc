@@ -50,7 +50,11 @@ func NewDriver(alloc memory.Allocator) adbc.Driver {
 }
 
 func (d Driver) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	maybePanic("NewDatabase")
+	return d.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (d Driver) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	maybePanic("NewDatabaseWithContext")
 	return &database{}, nil
 }
 
@@ -161,7 +165,7 @@ func (s *statement) SetSubstraitPlan(plan []byte) error {
 	return nil
 }
 
-func (s *statement) Bind(_ context.Context, values arrow.Record) error {
+func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 	maybePanic("StatementBind")
 	values.Release()
 	return nil

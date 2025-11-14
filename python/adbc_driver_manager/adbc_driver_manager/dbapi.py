@@ -41,6 +41,7 @@ under pytest, or when the environment variable
 import abc
 import datetime
 import os
+import pathlib
 import threading
 import time
 import typing
@@ -58,7 +59,7 @@ else:
 
 import adbc_driver_manager
 
-from . import _lib
+from . import _dbapi_backend, _lib
 from ._lib import _blocking_call
 
 if typing.TYPE_CHECKING:
@@ -181,10 +182,11 @@ else:
 
 
 def connect(
+    driver: Union[str, pathlib.Path],
+    uri: Optional[str] = None,
     *,
-    driver: str,
     entrypoint: Optional[str] = None,
-    db_kwargs: Optional[Dict[str, str]] = None,
+    db_kwargs: Optional[Dict[str, Union[str, pathlib.Path]]] = None,
     conn_kwargs: Optional[Dict[str, str]] = None,
     autocommit=False,
 ) -> "Connection":
@@ -194,11 +196,30 @@ def connect(
     Parameters
     ----------
     driver
-        The driver name. For example, "adbc_driver_sqlite" will
-        attempt to load libadbc_driver_sqlite.so on Linux systems,
-        libadbc_driver_sqlite.dylib on MacOS, and
-        adbc_driver_sqlite.dll on Windows. This may also be a path to
-        the library to load.
+        The driver to use.  This can be one of several values:
+
+        - A driver name or manifest name.
+
+          For example, "adbc_driver_sqlite" will first attempt to load
+          adbc_driver_sqlite.toml from the various search paths.  Then, it
+          will try to load libadbc_driver_sqlite.so on Linux,
+          libadbc_driver_sqlite.dylib on macOS, or adbc_driver_sqlite.dll on
+          Windows.  See :doc:`/format/driver_manifests`.
+
+        - A relative or absolute path to a shared library to load.
+
+        - Only a URI, in which case the URI scheme will be assumed to be the
+          driver name and will be loaded as above.  This will happen when
+          "://" is detected in the driver name.  (It is not assumed that the
+          URI is actually a valid URI.)  The driver manager will pass the URI
+          on unchanged, so this is only useful if the driver supports URIs
+          where the scheme happens to be the same as the driver name (so
+          PostgreSQL works, but not SQLite, for example, as SQLite uses
+          ``file:`` URIs).
+    uri
+        The "uri" parameter to the database (if applicable).  This is
+        equivalent to passing it in ``db_kwargs`` but is slightly cleaner.
+        If given, takes precedence over any value in ``db_kwargs``.
     entrypoint
         The driver-specific entrypoint, if different than the default.
     db_kwargs
@@ -217,10 +238,14 @@ def connect(
 
     db_kwargs = dict(db_kwargs or {})
     db_kwargs["driver"] = driver
+    if uri:
+        db_kwargs["uri"] = uri
     if entrypoint:
         db_kwargs["entrypoint"] = entrypoint
     if conn_kwargs is None:
         conn_kwargs = {}
+    # N.B. treating uri = "postgresql://..." as driver = "postgresql", uri =
+    # "..." is handled at the C driver manager layer
 
     try:
         db = _lib.AdbcDatabase(**db_kwargs)
@@ -303,7 +328,12 @@ class Connection(_Closeable):
         conn_kwargs: Optional[Dict[str, str]] = None,
         *,
         autocommit=False,
+        backend: Optional[_dbapi_backend.DbapiBackend] = None,
     ) -> None:
+        if backend is None:
+            backend = _dbapi_backend.default_backend()
+
+        self._backend = backend
         self._closed = False
         if isinstance(db, _SharedDatabase):
             self._db = db.clone()
@@ -312,23 +342,23 @@ class Connection(_Closeable):
         self._conn = conn
         self._conn_kwargs = conn_kwargs
 
-        try:
-            self._conn.set_autocommit(False)
-        except _lib.NotSupportedError:
+        if autocommit:
+            self._autocommit = True
             self._commit_supported = False
-            if not autocommit:
+        else:
+            try:
+                self._conn.set_autocommit(False)
+            except _lib.NotSupportedError:
+                self._commit_supported = False
                 warnings.warn(
-                    "Cannot disable autocommit; conn will not be DB-API 2.0 compliant",
+                    "Cannot disable autocommit; "
+                    "conn will not be DB-API 2.0 compliant",
                     category=Warning,
                 )
-            self._autocommit = True
-        else:
-            self._autocommit = False
-            self._commit_supported = True
-
-        if autocommit and self._commit_supported:
-            self._conn.set_autocommit(True)
-            self._autocommit = True
+                self._autocommit = True
+            else:
+                self._autocommit = False
+                self._commit_supported = True
 
     def close(self) -> None:
         """
@@ -364,7 +394,7 @@ class Connection(_Closeable):
         adbc_stmt_kwargs : dict, optional
           ADBC-specific options to pass to the underlying ADBC statement.
         """
-        return Cursor(self, adbc_stmt_kwargs)
+        return Cursor(self, adbc_stmt_kwargs, dbapi_backend=self._backend)
 
     def rollback(self) -> None:
         """Explicitly rollback."""
@@ -379,6 +409,22 @@ class Connection(_Closeable):
     # ------------------------------------------------------------
     # API Extensions
     # ------------------------------------------------------------
+
+    def execute(
+        self,
+        operation: Union[bytes, str],
+        parameters=None,
+        *,
+        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> "Cursor":
+        """
+        Execute a query on a new cursor.
+
+        This is a convenience for creating a new cursor and executing a query.
+        """
+        return self.cursor(adbc_stmt_kwargs=adbc_stmt_kwargs).execute(
+            operation, parameters
+        )
 
     def adbc_cancel(self) -> None:
         """
@@ -455,8 +501,6 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
-
         if depth in ("all", "columns"):
             c_depth = _lib.GetObjectsDepth.ALL
         elif depth == "catalogs":
@@ -479,7 +523,7 @@ class Connection(_Closeable):
             ),
             self._conn.cancel,
         )
-        return pyarrow.RecordBatchReader._import_from_c(handle.address)
+        return self._backend.import_array_stream(handle)
 
     def adbc_get_table_schema(
         self,
@@ -504,8 +548,6 @@ class Connection(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
-
         handle = _blocking_call(
             self._conn.get_table_schema,
             (
@@ -516,7 +558,7 @@ class Connection(_Closeable):
             {},
             self._conn.cancel,
         )
-        return pyarrow.Schema._import_from_c(handle.address)
+        return self._backend.import_schema(handle)
 
     def adbc_get_table_types(self) -> List[str]:
         """
@@ -606,9 +648,12 @@ class Cursor(_Closeable):
         self,
         conn: Connection,
         adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+        *,
+        dbapi_backend: Optional[_dbapi_backend.DbapiBackend] = None,
     ) -> None:
         # Must be at top in case __init__ is interrupted and then __del__ is called
         self._closed = True
+        self._backend = dbapi_backend or _dbapi_backend.default_backend()
         self._conn = conn
         self._stmt = _lib.AdbcStatement(conn._conn)
         self._closed = False
@@ -617,9 +662,15 @@ class Cursor(_Closeable):
         self._results: Optional["_RowIterator"] = None
         self._arraysize = 1
         self._rowcount = -1
+        self._bind_by_name = False
 
         if adbc_stmt_kwargs:
             self._stmt.set_options(**adbc_stmt_kwargs)
+
+    def _clear(self):
+        if self._results is not None:
+            self._results.close()
+            self._results = None
 
     @property
     def arraysize(self) -> int:
@@ -669,9 +720,7 @@ class Cursor(_Closeable):
         if self._closed:
             return
 
-        if self._results is not None:
-            self._results.close()
-            self._results = None
+        self._clear()
         self._stmt.close()
         self._closed = True
 
@@ -703,14 +752,21 @@ class Cursor(_Closeable):
         if _is_arrow_data(parameters):
             self._bind(parameters)
         elif parameters:
-            _requires_pyarrow()
-            rb = pyarrow.record_batch(
-                [[param_value] for param_value in parameters],
-                names=[str(i) for i in range(len(parameters))],
-            )
+            rb = self._conn._backend.convert_bind_parameters(parameters)
             self._bind(rb)
 
-    def execute(self, operation: Union[bytes, str], parameters=None) -> None:
+            if isinstance(parameters, dict) and not self._bind_by_name:
+                self._stmt.set_options(
+                    **{adbc_driver_manager.StatementOptions.BIND_BY_NAME.value: "true"}
+                )
+                self._bind_by_name = True
+            elif not isinstance(parameters, dict) and self._bind_by_name:
+                self._stmt.set_options(
+                    **{adbc_driver_manager.StatementOptions.BIND_BY_NAME.value: "false"}
+                )
+                self._bind_by_name = False
+
+    def execute(self, operation: Union[bytes, str], parameters=None) -> "Self":
         """
         Execute a query.
 
@@ -720,17 +776,31 @@ class Cursor(_Closeable):
             The query to execute.  Pass SQL queries as strings,
             (serialized) Substrait plans as bytes.
         parameters
-            Parameters to bind.  Can be a Python sequence (to provide
-            a single set of parameters), or an Arrow record batch,
-            table, or record batch reader (to provide multiple
-            parameters, which will each be bound in turn).
+            Parameters to bind.  Can be a Python sequence (to bind a single
+            set of parameters), a Python dictionary (to bind a single set of
+            parameters by name instead of position), or an Arrow record batch,
+            table, or record batch reader (to provide multiple parameters,
+            which will each be bound in turn).
+
+            To bind by name when providing Arrow data, explicitly toggle the
+            statement option "adbc.statement.bind_by_name".
+
+            Note that providing a list of tuples is not supported (this mode
+            of usage is deprecated in DBAPI-2.0; use executemany() instead).
+
+        Returns
+        -------
+        Self
+            This cursor (to enable chaining).
         """
+        self._clear()
         self._prepare_execute(operation, parameters)
 
         handle, self._rowcount = _blocking_call(
             self._stmt.execute_query, (), {}, self._stmt.cancel
         )
-        self._results = _RowIterator(self._stmt, handle)
+        self._results = _RowIterator(self._stmt, handle, self._backend)
+        return self
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
         """
@@ -744,32 +814,61 @@ class Cursor(_Closeable):
             The query to execute.  Pass SQL queries as strings,
             (serialized) Substrait plans as bytes.
         seq_of_parameters
-            Parameters to bind.  Can be a list of Python sequences, or
-            an Arrow record batch, table, or record batch reader.  If
-            None, then the query will be executed once, else it will
-            be executed once per row.
+            Parameters to bind.  Can be a list of Python sequences, or an
+            Arrow record batch, table, or record batch reader.  If None, then
+            the query will be executed once, else it will be executed once per
+            row.  (That implies that an empty sequence is equivalent to not
+            executing the query at all.)
+
+        Notes
+        -----
+        Allowing ``None`` for parameters is outside of the DB-API
+        specification.
+
+        This does not return ``self`` as there is no result set.
         """
-        self._results = None
+        self._clear()
         if operation != self._last_query:
             self._last_query = operation
             self._stmt.set_sql_query(operation)
             self._stmt.prepare()
 
+        bind_by_name = None
         if _is_arrow_data(seq_of_parameters):
             arrow_parameters = seq_of_parameters
         elif seq_of_parameters:
-            _requires_pyarrow()
-            arrow_parameters = pyarrow.RecordBatch.from_pydict(
-                {
-                    str(col_idx): pyarrow.array(x)
-                    for col_idx, x in enumerate(map(list, zip(*seq_of_parameters)))
-                },
+            arrow_parameters, bind_by_name = (
+                self._conn._backend.convert_executemany_parameters(seq_of_parameters)
             )
         else:
-            _requires_pyarrow()
-            arrow_parameters = pyarrow.record_batch([])
+            arrow_parameters = None
 
-        self._bind(arrow_parameters)
+        if bind_by_name is not None and bind_by_name != self._bind_by_name:
+            self._stmt.set_options(
+                **{
+                    adbc_driver_manager.StatementOptions.BIND_BY_NAME.value: (
+                        "true" if bind_by_name else "false"
+                    ),
+                }
+            )
+            self._bind_by_name = bind_by_name
+
+        if arrow_parameters is not None:
+            self._bind(arrow_parameters)
+        elif seq_of_parameters is not None:
+            # arrow_parameters is None and seq_of_parameters is not None =>
+            # empty list or sequence
+
+            # NOTE(https://github.com/apache/arrow-adbc/issues/3319): If there
+            # are no parameters, don't do anything.  (We could give this to
+            # the driver to handle, but it's easier to do it here, especially
+            # in the case that Python objects are given - we would have to
+            # figure out the schema and create temporary Arrow data just to do
+            # nothing.)  Note that for C Data objects, we can't check the
+            # length so the driver might end up having to handle them after
+            # all.
+            return
+
         self._rowcount = _blocking_call(
             self._stmt.execute_update, (), {}, self._stmt.cancel
         )
@@ -906,6 +1005,7 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
 
         """
+        self._clear()
         if mode == "append":
             c_mode = _lib.INGEST_OPTION_MODE_APPEND
         elif mode == "create":
@@ -953,8 +1053,7 @@ class Cursor(_Closeable):
             self._stmt.bind_stream(data)
         elif _lib.is_pycapsule(data, b"arrow_array_stream"):
             self._stmt.bind_stream(data)
-        else:
-            _requires_pyarrow()
+        elif _has_pyarrow:
             if isinstance(data, pyarrow.dataset.Dataset):
                 data = typing.cast(pyarrow.dataset.Dataset, data).scanner().to_reader()
             elif isinstance(data, pyarrow.dataset.Scanner):
@@ -969,6 +1068,8 @@ class Cursor(_Closeable):
             else:
                 # Should be impossible from above but let's be explicit
                 raise TypeError(f"Cannot bind {type(data)}")
+        else:
+            raise TypeError(f"Cannot bind {type(data)}")
 
         self._last_query = None
         return _blocking_call(self._stmt.execute_update, (), {}, self._stmt.cancel)
@@ -994,13 +1095,13 @@ class Cursor(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
+        self._clear()
         self._prepare_execute(operation, parameters)
         partitions, schema_handle, self._rowcount = _blocking_call(
             self._stmt.execute_partitions, (), {}, self._stmt.cancel
         )
         if schema_handle and schema_handle.address:
-            schema = pyarrow.Schema._import_from_c(schema_handle.address)
+            schema = self._conn._backend.import_schema(schema_handle)
         else:
             schema = None
         return partitions, schema
@@ -1018,10 +1119,10 @@ class Cursor(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
+        self._clear()
         self._prepare_execute(operation, parameters)
         schema = _blocking_call(self._stmt.execute_schema, (), {}, self._stmt.cancel)
-        return pyarrow.Schema._import_from_c(schema.address)
+        return self._conn._backend.import_schema(schema)
 
     def adbc_prepare(self, operation: Union[bytes, str]) -> Optional["pyarrow.Schema"]:
         """
@@ -1041,7 +1142,7 @@ class Cursor(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        _requires_pyarrow()
+        self._clear()
         self._prepare_execute(operation)
 
         try:
@@ -1050,7 +1151,7 @@ class Cursor(_Closeable):
             )
         except NotSupportedError:
             return None
-        return pyarrow.Schema._import_from_c(handle.address)
+        return self._conn._backend.import_schema(handle)
 
     def adbc_read_partition(self, partition: bytes) -> None:
         """
@@ -1061,12 +1162,13 @@ class Cursor(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         _requires_pyarrow()
+        self._clear()
         self._results = None
         handle = _blocking_call(
             self._conn._conn.read_partition, (partition,), {}, self._stmt.cancel
         )
         self._rowcount = -1
-        self._results = _RowIterator(self._stmt, handle)
+        self._results = _RowIterator(self._stmt, handle, self._backend)
 
     @property
     def adbc_statement(self) -> _lib.AdbcStatement:
@@ -1089,6 +1191,7 @@ class Cursor(_Closeable):
         -----
         This is an extension and not part of the DBAPI standard.
         """
+        self._clear()
         if not self._conn._autocommit:
             self._conn.commit()
 
@@ -1185,8 +1288,8 @@ class Cursor(_Closeable):
         Fetch the result as an object implementing the Arrow PyCapsule interface.
 
         This can only be called once.  It must be called before any other
-        method that inspect the data (e.g. description, fetchone,
-        fetch_arrow_table, etc.).  Once this is called, other methods that
+        method that consume data (e.g. fetchone, fetch_arrow_table, etc.;
+        description is allowed).  Once this is called, other methods that
         inspect the data may not be called.
 
         Notes
@@ -1208,9 +1311,15 @@ class Cursor(_Closeable):
 class _RowIterator(_Closeable):
     """Track state needed to iterate over the result set."""
 
-    def __init__(self, stmt, handle: _lib.ArrowArrayStreamHandle) -> None:
+    def __init__(
+        self,
+        stmt: _lib.AdbcStatement,
+        handle: _lib.ArrowArrayStreamHandle,
+        dbapi_backend: _dbapi_backend.DbapiBackend,
+    ) -> None:
         self._stmt = stmt
         self._handle: Optional[_lib.ArrowArrayStreamHandle] = handle
+        self._backend = dbapi_backend
         self._reader: Optional["_reader.AdbcRecordBatchReader"] = None
         self._current_batch = None
         self._next_row = 0
@@ -1218,10 +1327,13 @@ class _RowIterator(_Closeable):
         self.rownumber = 0
 
     def close(self) -> None:
-        if self._reader is not None and hasattr(self._reader, "close"):
-            # Only in recent PyArrow
+        if self._reader is not None:
             self._reader.close()
-        self._reader = None
+            self._reader = None
+        elif self._handle is not None:
+            # We have an unimported stream, don't leak it
+            handle, self._handle = self._handle, None
+            handle.release()
 
     @property
     def reader(self) -> "_reader.AdbcRecordBatchReader":
@@ -1240,10 +1352,16 @@ class _RowIterator(_Closeable):
 
     @property
     def description(self) -> List[tuple]:
-        return [
-            (field.name, field.type, None, None, None, None, None)
-            for field in self.reader.schema
-        ]
+        if self._handle is None:
+            # Invalid state, or already imported into the reader
+            # (we assume PyArrow here for now)
+            return [
+                (field.name, field.type, None, None, None, None, None)
+                for field in self.reader.schema
+            ]
+        else:
+            # Not yet imported into the reader.  Do not force consumption
+            return self._backend.convert_description(self._handle.__arrow_c_schema__())
 
     def fetchone(self) -> Optional[tuple]:
         if self._current_batch is None or self._next_row >= len(self._current_batch):

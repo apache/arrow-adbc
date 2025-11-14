@@ -30,48 +30,117 @@ function adbcInjectVersionSwitcher() {
     // path;version\npath2;version2;\n...
     // Versions are sorted at generation time
 
-    versions
-        .trim()
-        .split(/\n/g)
-        .map((version) => version.split(/;/))
-        // Most recent on top
-        .reverse()
-        .forEach((version) => {
-            const el = document.createElement("a");
-            // Variable injected by template
-            el.setAttribute("href", versionsRoot + "/" + version[0]);
-            el.innerText = version[1];
-            if (version[1] === currentVersion) {
-                el.classList.toggle("active");
-            }
-            const li = document.createElement("li");
-            li.appendChild(el);
-            root.appendChild(li);
+    const parsedVersions = versions
+          .trim()
+          .split(/\n/g)
+          .map((version) => version.split(/;/))
+    // Most recent on top
+          .reverse();
+    parsedVersions.forEach((version) => {
+        const el = document.createElement("a");
+        // Variable injected by template
+        el.setAttribute("href", versionsRoot + "/" + version[0]);
+        el.innerText = version[1];
+        if (version[1] === currentVersion) {
+            el.classList.toggle("active");
+        }
+        const li = document.createElement("li");
+        li.appendChild(el);
+        root.appendChild(li);
 
-            el.addEventListener("click", (e) => {
-                e.preventDefault();
-                try {
-                    let relativePart = window.location.pathname.replace(/^\//, "");
-                    // Remove the adbc/ prefix
-                    relativePart = relativePart.replace(/^adbc[^\/]+\//, "");
-                    // Remove the version number
-                    relativePart = relativePart.replace(/^[^\/]+\//, "");
-                    const newUrl = `${el.getAttribute("href")}/${relativePart}`;
-                    window.fetch(newUrl).then((resp) => {
-                        if (resp.status === 200) {
-                            window.location.href = newUrl;
-                        } else {
-                            window.location.href = el.getAttribute("href");
-                        }
-                    }, () => {
+        el.addEventListener("click", (e) => {
+            e.preventDefault();
+            try {
+                let relativePart = window.location.pathname.replace(/^\//, "");
+                // Remove the adbc/ prefix
+                relativePart = relativePart.replace(/^adbc[^\/]+\//, "");
+                // Remove the version number
+                relativePart = relativePart.replace(/^[^\/]+\//, "");
+                const newUrl = `${el.getAttribute("href")}/${relativePart}`;
+                window.fetch(newUrl).then((resp) => {
+                    if (resp.status === 200) {
+                        window.location.href = newUrl;
+                    } else {
                         window.location.href = el.getAttribute("href");
-                    });
-                } catch (e) {
+                    }
+                }, () => {
                     window.location.href = el.getAttribute("href");
-                }
-                return false;
-            });
+                });
+            } catch (e) {
+                window.location.href = el.getAttribute("href");
+            }
+            return false;
         });
+    });
+
+    // Inject a banner warning if the user is looking at older/development
+    // version documentation
+
+    // If the user has dismissed the popup, don't show it again
+    const storageKey = "adbc-ignored-version-warnings";
+    const ignoreVersionWarnings = new Set();
+    try {
+        const savedVersions = JSON.parse(window.localStorage[storageKey]);
+        for (const version of savedVersions) {
+            ignoreVersionWarnings.add(version);
+        }
+    } catch (e) {
+        // ignore
+    }
+
+    if (ignoreVersionWarnings.has(currentVersion)) {
+        return;
+    }
+
+    let warningBanner = null;
+    const redirectUrl = `${versionsRoot}/current`;
+    let redirectText = null;
+    if (currentVersion.endsWith(" (dev)")) {
+        warningBanner = "This is documentation for an unstable development version.";
+        redirectText = "Switch to stable version";
+    } else {
+        const stableVersions = parsedVersions
+              .filter(v => v[0] === "current");
+        if (stableVersions.length > 0) {
+            const stableVersion = stableVersions[0][1].match(/^(.+) \(current\)/)[1];
+            if (currentVersion !== stableVersion) {
+                warningBanner = `This is documentation for version ${currentVersion}.`;
+                redirectText = `Switch to current stable version`;
+            }
+        }
+    }
+
+    if (warningBanner !== null) {
+        // Generate on the fly instead of depending on the template containing
+        // the right elements/styles
+        const container = document.createElement("div");
+        const text = document.createElement("span");
+        text.innerText = warningBanner + " ";
+        const button = document.createElement("a");
+        button.setAttribute("href", redirectUrl);
+        button.innerText = redirectText;
+        const hide = document.createElement("a");
+        hide.innerText = "Hide for this version";
+        const spacer = document.createTextNode(" ");
+        container.appendChild(text);
+        container.appendChild(button);
+        container.appendChild(spacer);
+        container.appendChild(hide);
+
+        hide.addEventListener("click", (e) => {
+            container.remove();
+            ignoreVersionWarnings.add(currentVersion);
+            window.localStorage[storageKey] =
+                JSON.stringify(Array.from(ignoreVersionWarnings));
+        });
+
+        container.style.background = "#f8d7da";
+        container.style.color = "#000";
+        container.style.padding = "1em";
+        container.style.textAlign = "center";
+
+        document.body.prepend(container);
+    }
 };
 
 if (document.readyState !== "loading") {

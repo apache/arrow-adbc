@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -35,8 +33,10 @@ FileToCopy = namedtuple("FileToCopy", ["source", "dest_dir"])
 files_to_copy = [
     FileToCopy("c/include/arrow-adbc/adbc.h", "arrow-adbc"),
     FileToCopy("c/driver_manager/adbc_driver_manager.cc", ""),
+    FileToCopy("c/driver_manager/current_arch.h", ""),
     FileToCopy("c/include/arrow-adbc/adbc_driver_manager.h", "arrow-adbc"),
     FileToCopy("c/vendor/backward/backward.hpp", ""),
+    FileToCopy("c/vendor/toml++/toml.hpp", "toml++"),
 ]
 
 for file_to_copy in files_to_copy:
@@ -80,16 +80,24 @@ version = get_version("adbc_driver_manager")
 # Resolve compiler flags
 
 build_type = os.environ.get("ADBC_BUILD_TYPE", "release")
+# We need to replicate the check here because we don't build via CMake
+is_conda = os.environ.get("_ADBC_IS_CONDA") == "1" or os.environ.get("CONDA_BUILD")
 
 if sys.platform == "win32":
     extra_compile_args = ["/std:c++17", "/DADBC_EXPORTING", "/D_CRT_SECURE_NO_WARNINGS"]
     if build_type == "debug":
         extra_compile_args.extend(["/DEBUG:FULL"])
+    if is_conda:
+        extra_compile_args.append("/DADBC_CONDA_BUILD=1")
+    extra_link_args = ["shell32.lib", "uuid.lib", "advapi32.lib"]
 else:
     extra_compile_args = ["-std=c++17"]
     if build_type == "debug":
         # Useful to step through driver manager code in GDB
         extra_compile_args.extend(["-ggdb", "-Og"])
+    if is_conda:
+        extra_compile_args.append("-DADBC_CONDA_BUILD=1")
+    extra_link_args = []
 
 # ------------------------------------------------------------
 # Setup
@@ -108,6 +116,7 @@ setup(
         Extension(
             name="adbc_driver_manager._lib",
             extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args,
             include_dirs=[str(source_root.joinpath("adbc_driver_manager").resolve())],
             language="c++",
             sources=[

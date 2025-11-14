@@ -24,6 +24,11 @@ Authenticate with a username and password
 
 .. recipe:: postgresql_authenticate.py
 
+Enable autocommit mode
+=======================
+
+.. recipe:: postgresql_autocommit.py
+
 .. _recipe-postgresql-create-append:
 
 Create/append to a table from an Arrow dataset
@@ -45,6 +50,13 @@ Execute a statement with bind parameters
 ========================================
 
 .. recipe:: postgresql_execute_bind.py
+
+.. _recipe-postgresql-statement-nocopy:
+
+Execute a statement without COPY
+================================
+
+.. recipe:: postgresql_execute_nocopy.py
 
 Get the Arrow schema of a table
 ===============================

@@ -19,211 +19,243 @@ package databricks
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	"github.com/databricks/databricks-sdk-go"
-	"github.com/databricks/databricks-sdk-go/service/compute"
-	"github.com/databricks/databricks-sdk-go/service/sql"
-)
-
-const (
-	ModeWarehouse = "warehouse"
-	ModeCluster   = "cluster"
+	_ "github.com/databricks/databricks-sql-go"
 )
 
 type connectionImpl struct {
 	driverbase.ConnectionImplBase
 
-	client *databricks.WorkspaceClient
-	// Default Catalog name (optional)
-	catalog string
-	// Default Schema name (optional)
+	// Connection settings
+	catalog  string
 	dbSchema string
 
-	// Warehouse or Cluster Mode
-	mode string
-
-	// Context ID for commands to be executed on a cluster
-	contextId string
+	// Database connection
+	conn *sql.Conn
 }
 
-func sanitizeSchema(schema string) (string, error) {
-	// TODO(felipecrv): sanitize databricks schemas
-	return schema, nil
-}
-
-func (conn *connectionImpl) StatementExecution() sql.StatementExecutionInterface {
-	if conn.client == nil {
-		return nil
+func (c *connectionImpl) Close() error {
+	if c.conn == nil {
+		return adbc.Error{Code: adbc.StatusInvalidState}
 	}
-	return conn.client.StatementExecution
+	defer func() {
+		c.conn = nil
+	}()
+	return c.conn.Close()
 }
 
-func (conn *connectionImpl) CommandExecution() compute.CommandExecutionInterface {
-	if conn.client == nil {
-		return nil
-	}
-	return conn.client.CommandExecution
-}
-
-// driverbase.CurrentNamespacer {{{
-
-func (conn *connectionImpl) GetCurrentCatalog() (string, error) {
-	return conn.catalog, nil
-}
-
-func (conn *connectionImpl) GetCurrentDbSchema() (string, error) {
-	return conn.dbSchema, nil
-}
-
-func (conn *connectionImpl) SetCurrentCatalog(value string) error {
-	conn.catalog = value
-	return nil
-}
-
-func (conn *connectionImpl) SetCurrentDbSchema(value string) error {
-	sanitized, err := sanitizeSchema(value)
-	if err != nil {
-		return err
-	}
-	conn.dbSchema = sanitized
-	return nil
-}
-
-// }}}
-
-// driverbase.TableTypeLister {{{
-
-func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
-	// TODO(felipecrv): implement ListTableTypes
-	return []string{
-		"TABLE",
-		"VIEW",
+func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
+	return &statementImpl{
+		conn: c,
 	}, nil
 }
 
-// }}}
-
-// driverbase.AutocommitSetter {{{
-
-func (conn *connectionImpl) SetAutocommit(enabled bool) error {
-	if enabled {
-		return nil
+func (c *connectionImpl) SetAutocommit(autocommit bool) error {
+	// Databricks SQL doesn't support explicit transaction control in the same way
+	// as traditional databases. Most operations are implicitly committed.
+	if !autocommit {
+		return adbc.Error{
+			Code: adbc.StatusNotImplemented,
+			Msg:  "disabling autocommit is not supported",
+		}
 	}
-	return NewAdbcError(
-		"SetAutocommit to `false` is not yet implemented",
-		adbc.StatusNotImplemented,
-	)
-}
-
-// }}}
-
-// driverbase.DbObjectsEnumerator {{{
-
-func (conn *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) ([]string, error) {
-	catalogPattern, err := internal.PatternToRegexp(catalogFilter)
-	if err != nil {
-		return nil, err
-	}
-	if catalogPattern == nil {
-		catalogPattern = internal.AcceptAll
-	}
-
-	res := make([]string, 0)
-	// TODO: implement GetCatalogs
-	// for _, catalog := range conn.client.Catalogs() {
-	//   if catalogPattern.MatchString(catalog) {
-	//     res = append(res, catalog)
-	//   }
-	// }
-	return res, nil
-}
-
-func (conn *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) ([]string, error) {
-	schemaPattern, err := internal.PatternToRegexp(schemaFilter)
-	if err != nil {
-		return nil, err
-	}
-	if schemaPattern == nil {
-		schemaPattern = internal.AcceptAll
-	}
-
-	res := make([]string, 0)
-	// TODO: implement GetDBSchemasForCatalog
-	return res, nil
-}
-
-func (conn *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) ([]driverbase.TableInfo, error) {
-	tablePattern, err := internal.PatternToRegexp(tableFilter)
-	if err != nil {
-		return nil, err
-	}
-	if tablePattern == nil {
-		tablePattern = internal.AcceptAll
-	}
-
-	res := make([]driverbase.TableInfo, 0)
-	// TODO: implement GetTablesForDBSchema
-	return res, nil
-}
-
-// NewStatement initializes a new statement object tied to this connection
-func (conn *connectionImpl) NewStatement() (adbc.Statement, error) {
-	if conn.mode == ModeWarehouse {
-		return NewStatement(conn)
-	}
-	err := conn.ensureClusterContext()
-	if err != nil {
-		return nil, err
-	}
-
-	return NewCommand(conn)
-}
-
-// Close closes this connection and releases any associated resources.
-func (conn *connectionImpl) Close() error {
-	// TODO: think about the consequences of this to statements and readers
-	conn.client = nil
-	conn.Closed = true
 	return nil
 }
 
-func (conn *connectionImpl) ensureClusterContext() error {
-	// If the context already exists, don't create a new one and assume the cluster is running
-	if conn.contextId != "" {
-		return nil
+// CurrentNamespacer interface implementation
+func (c *connectionImpl) GetCurrentCatalog() (string, error) {
+	return c.catalog, nil
+}
+
+func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
+	return c.dbSchema, nil
+}
+
+func (c *connectionImpl) SetCurrentCatalog(catalog string) error {
+	if catalog == "" {
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "catalog cannot be empty",
+		}
 	}
-	// Otherwise, check the cluster state, if it's not running, start it
-	cluster, err := conn.client.Clusters.Get(context.Background(), compute.GetClusterRequest{
-		ClusterId: conn.client.Config.ClusterID,
-	})
+	if c.conn == nil {
+		return adbc.Error{
+			Code: adbc.StatusInvalidState,
+			Msg:  "failed to set catalog: connection is nil",
+		}
+	}
+	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
+	_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE CATALOG `%s`", escapedCatalog))
 	if err != nil {
-		return err
+		return adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to set catalog: %v", err),
+		}
 	}
-	if cluster.State != compute.StateRunning {
-		// Start() is idempotent, so it's safe to call it if the cluster is already running or pending
-		wait, err := conn.client.Clusters.Start(context.Background(), compute.StartCluster{
-			ClusterId: conn.client.Config.ClusterID,
-		})
-		if err != nil {
-			return err
+	c.catalog = catalog
+	return nil
+}
+
+func (c *connectionImpl) SetCurrentDbSchema(schema string) error {
+	if schema == "" {
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "schema cannot be empty",
 		}
-		_, err = wait.Get()
-		if err != nil {
-			return err
+	}
+	if c.conn == nil {
+		return adbc.Error{
+			Code: adbc.StatusInvalidState,
+			Msg:  "failed to set db schema: connection is nil",
 		}
+	}
+	escapedSchema := strings.ReplaceAll(schema, "`", "``")
+	_, err := c.conn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA `%s`", escapedSchema))
+	if err != nil {
+		return adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to set schema: %v", err),
+		}
+	}
+	c.dbSchema = schema
+	return nil
+}
+
+// TableTypeLister interface implementation
+func (c *connectionImpl) ListTableTypes(ctx context.Context) ([]string, error) {
+	// Databricks supports these table types
+	return []string{"TABLE", "VIEW", "EXTERNAL_TABLE", "MANAGED_TABLE", "STREAMING_TABLE", "MATERIALIZED_VIEW"}, nil
+}
+
+// Transaction methods (Databricks has limited transaction support)
+func (c *connectionImpl) Commit(ctx context.Context) error {
+	// Most operations are auto-committed.
+	return adbc.Error{
+		Code: adbc.StatusNotImplemented,
+		Msg:  "Commit is not supported",
+	}
+}
+
+func (c *connectionImpl) Rollback(ctx context.Context) error {
+	// Databricks SQL doesn't support explicit transactions in the traditional sense.
+	// Most operations are auto-committed.
+	return adbc.Error{
+		Code: adbc.StatusNotImplemented,
+		Msg:  "rollback is not supported",
+	}
+}
+
+// DbObjectsEnumerator interface implementation
+func (c *connectionImpl) GetCatalogs(ctx context.Context, catalogFilter *string) (catalogs []string, err error) {
+	query := "SHOW CATALOGS"
+	if catalogFilter != nil {
+		escapedFilter := strings.ReplaceAll(*catalogFilter, "'", "''")
+		query += fmt.Sprintf(" LIKE '%s'", escapedFilter)
+	}
+	var rows *sql.Rows
+	rows, err = c.conn.QueryContext(ctx, query)
+	if err != nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to query catalogs: %v", err),
+		}
+	}
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
+
+	for rows.Next() {
+		var catalog string
+		if err := rows.Scan(&catalog); err != nil {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  fmt.Sprintf("failed to scan catalog: %v", err),
+			}
+		}
+		catalogs = append(catalogs, catalog)
 	}
 
-	// Create a new context if it doesn't exist
-	res, err := conn.client.CommandExecution.Create(context.Background(), compute.CreateContext{
-		ClusterId: conn.client.Config.ClusterID,
-		Language:  compute.LanguageSql,
-	})
-	if err != nil {
-		return err
+	return catalogs, errors.Join(err, rows.Err())
+}
+
+func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog string, schemaFilter *string) (schemas []string, err error) {
+	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
+	query := fmt.Sprintf("SHOW SCHEMAS IN `%s`", escapedCatalog)
+	if schemaFilter != nil {
+		escapedFilter := strings.ReplaceAll(*schemaFilter, "'", "''")
+		query += fmt.Sprintf(" LIKE '%s'", escapedFilter)
 	}
-	conn.contextId = res.ContextId
-	return nil
+
+	var rows *sql.Rows
+	rows, err = c.conn.QueryContext(ctx, query)
+	if err != nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to query schemas: %v", err),
+		}
+	}
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
+	for rows.Next() {
+		var schema string
+		if err := rows.Scan(&schema); err != nil {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  fmt.Sprintf("failed to scan schema: %v", err),
+			}
+		}
+		schemas = append(schemas, schema)
+	}
+
+	err = errors.Join(err, rows.Err())
+	return schemas, err
+}
+
+func (c *connectionImpl) GetTablesForDBSchema(ctx context.Context, catalog string, schema string, tableFilter *string, columnFilter *string, includeColumns bool) (tables []driverbase.TableInfo, err error) {
+	escapedCatalog := strings.ReplaceAll(catalog, "`", "``")
+	escapedSchema := strings.ReplaceAll(schema, "`", "``")
+	query := fmt.Sprintf("SHOW TABLES IN `%s`.`%s`", escapedCatalog, escapedSchema)
+	if tableFilter != nil {
+		escapedFilter := strings.ReplaceAll(*tableFilter, "'", "''")
+		query += fmt.Sprintf(" LIKE '%s'", escapedFilter)
+	}
+
+	var rows *sql.Rows
+	rows, err = c.conn.QueryContext(ctx, query)
+	if err != nil {
+		return nil, adbc.Error{
+			Code: adbc.StatusInternal,
+			Msg:  fmt.Sprintf("failed to query tables: %v", err),
+		}
+	}
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
+	for rows.Next() {
+		var database, tableName, isTemporary string
+		if err := rows.Scan(&database, &tableName, &isTemporary); err != nil {
+			return nil, adbc.Error{
+				Code: adbc.StatusInternal,
+				Msg:  fmt.Sprintf("failed to scan table: %v", err),
+			}
+		}
+
+		tableInfo := driverbase.TableInfo{
+			TableName:        tableName,
+			TableType:        "TABLE", // Default to TABLE, could be improved with more detailed queries
+			TableColumns:     nil,     // Schema would need separate query
+			TableConstraints: nil,     // Constraints would need separate query
+		}
+
+		tables = append(tables, tableInfo)
+	}
+
+	return tables, errors.Join(err, rows.Err())
 }

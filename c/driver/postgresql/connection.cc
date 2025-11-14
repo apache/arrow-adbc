@@ -181,8 +181,8 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
         some_constraints_(conn, ConstraintsQuery()) {}
 
   // Allow Redshift to execute this query without constraints
-  // TODO(paleolimbot): Investigate to see if we can simplify the constraits query so that
-  // it works on both!
+  // TODO(paleolimbot): Investigate to see if we can simplify the constraints query so
+  // that it works on both!
   void SetEnableConstraints(bool enable_constraints) {
     enable_constraints_ = enable_constraints;
   }
@@ -463,7 +463,7 @@ AdbcStatusCode PostgresConnection::Cancel(struct AdbcError* error) {
   // > The return value is 1 if the cancel request was successfully dispatched
   // > and 0 if not.
   if (PQcancel(cancel_, errbuf, sizeof(errbuf)) != 1) {
-    SetError(error, "[libpq] Failed to cancel operation: %s", errbuf);
+    InternalAdbcSetError(error, "[libpq] Failed to cancel operation: %s", errbuf);
     return ADBC_STATUS_UNKNOWN;
   }
   return ADBC_STATUS_OK;
@@ -471,7 +471,7 @@ AdbcStatusCode PostgresConnection::Cancel(struct AdbcError* error) {
 
 AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
   if (autocommit_) {
-    SetError(error, "%s", "[libpq] Cannot commit when autocommit is enabled");
+    InternalAdbcSetError(error, "%s", "[libpq] Cannot commit when autocommit is enabled");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -526,7 +526,8 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
           RAISE_STATUS(error, result_helper.Execute());
           auto it = result_helper.begin();
           if (it == result_helper.end()) {
-            SetError(error, "[libpq] PostgreSQL returned no rows for '%s'", stmt);
+            InternalAdbcSetError(error, "[libpq] PostgreSQL returned no rows for '%s'",
+                                 stmt);
             return ADBC_STATUS_INTERNAL;
           }
           const char* server_version_num = (*it)[0].data;
@@ -620,8 +621,8 @@ AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
     RAISE_STATUS(error, result_helper.Execute());
     auto it = result_helper.begin();
     if (it == result_helper.end()) {
-      SetError(error,
-               "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA()'");
+      InternalAdbcSetError(
+          error, "[libpq] PostgreSQL returned no rows for 'SELECT CURRENT_SCHEMA()'");
       return ADBC_STATUS_INTERNAL;
     }
     output = (*it)[0].data;
@@ -813,7 +814,8 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
     for (PqResultRow row : result_helper) {
       auto reltuples = row[5].ParseDouble();
       if (!reltuples) {
-        SetError(error, "[libpq] Invalid double value in reltuples: '%s'", row[5].data);
+        InternalAdbcSetError(error, "[libpq] Invalid double value in reltuples: '%s'",
+                             row[5].data);
         return ADBC_STATUS_INTERNAL;
       }
 
@@ -837,7 +839,8 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
 
       auto null_frac = row[2].ParseDouble();
       if (!null_frac) {
-        SetError(error, "[libpq] Invalid double value in null_frac: '%s'", row[2].data);
+        InternalAdbcSetError(error, "[libpq] Invalid double value in null_frac: '%s'",
+                             row[2].data);
         return ADBC_STATUS_INTERNAL;
       }
 
@@ -862,7 +865,8 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
 
       auto average_byte_width = row[3].ParseDouble();
       if (!average_byte_width) {
-        SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[3].data);
+        InternalAdbcSetError(error, "[libpq] Invalid double value in avg_width: '%s'",
+                             row[3].data);
         return ADBC_STATUS_INTERNAL;
       }
 
@@ -888,7 +892,8 @@ AdbcStatusCode PostgresConnectionGetStatisticsImpl(PGconn* conn, const char* db_
 
       auto n_distinct = row[4].ParseDouble();
       if (!n_distinct) {
-        SetError(error, "[libpq] Invalid double value in avg_width: '%s'", row[4].data);
+        InternalAdbcSetError(error, "[libpq] Invalid double value in avg_width: '%s'",
+                             row[4].data);
         return ADBC_STATUS_INTERNAL;
       }
 
@@ -938,13 +943,14 @@ AdbcStatusCode PostgresConnection::GetStatistics(const char* catalog,
                                                  struct AdbcError* error) {
   // Simplify our jobs here
   if (!approximate) {
-    SetError(error, "[libpq] Exact statistics are not implemented");
+    InternalAdbcSetError(error, "[libpq] Exact statistics are not implemented");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   } else if (!db_schema) {
-    SetError(error, "[libpq] Must request statistics for a single schema");
+    InternalAdbcSetError(error, "[libpq] Must request statistics for a single schema");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   } else if (catalog && std::strcmp(catalog, PQdb(conn_)) != 0) {
-    SetError(error, "[libpq] Can only request statistics for current catalog");
+    InternalAdbcSetError(error,
+                         "[libpq] Can only request statistics for current catalog");
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
@@ -1060,8 +1066,9 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
 
     PostgresType pg_type;
     if (type_resolver_->FindWithDefault(pg_oid, &pg_type) != NANOARROW_OK) {
-      SetError(error, "%s%d%s%s%s%" PRIu32, "Error resolving type code for column #",
-               row_counter + 1, " (\"", colname, "\")  with oid ", pg_oid);
+      InternalAdbcSetError(error, "%s%d%s%s%s%" PRIu32,
+                           "Error resolving type code for column #", row_counter + 1,
+                           " (\"", colname, "\")  with oid ", pg_oid);
       final_status = ADBC_STATUS_NOT_IMPLEMENTED;
       break;
     }
@@ -1092,7 +1099,7 @@ AdbcStatusCode PostgresConnection::GetTableTypes(struct AdbcConnection* connecti
 AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
                                         struct AdbcError* error) {
   if (!database || !database->private_data) {
-    SetError(error, "[libpq] Must provide an initialized AdbcDatabase");
+    InternalAdbcSetError(error, "[libpq] Must provide an initialized AdbcDatabase");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   database_ =
@@ -1103,7 +1110,7 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
 
   cancel_ = PQgetCancel(conn_);
   if (!cancel_) {
-    SetError(error, "[libpq] Could not initialize PGcancel");
+    InternalAdbcSetError(error, "[libpq] Could not initialize PGcancel");
     return ADBC_STATUS_UNKNOWN;
   }
 
@@ -1130,7 +1137,8 @@ AdbcStatusCode PostgresConnection::Release(struct AdbcError* error) {
 
 AdbcStatusCode PostgresConnection::Rollback(struct AdbcError* error) {
   if (autocommit_) {
-    SetError(error, "%s", "[libpq] Cannot rollback when autocommit is enabled");
+    InternalAdbcSetError(error, "%s",
+                         "[libpq] Cannot rollback when autocommit is enabled");
     return ADBC_STATUS_INVALID_STATE;
   }
 
@@ -1144,7 +1152,8 @@ AdbcStatusCode PostgresConnection::Rollback(struct AdbcError* error) {
 
   PGresult* result = PQexec(conn_, "ROLLBACK AND CHAIN");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    SetError(error, "%s%s", "[libpq] Failed to rollback: ", PQerrorMessage(conn_));
+    InternalAdbcSetError(error, "%s%s",
+                         "[libpq] Failed to rollback: ", PQerrorMessage(conn_));
     PQclear(result);
     return ADBC_STATUS_IO;
   }
@@ -1161,7 +1170,8 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
       autocommit = false;
     } else {
-      SetError(error, "%s%s%s%s", "[libpq] Invalid value for option ", key, ": ", value);
+      InternalAdbcSetError(error, "%s%s%s%s", "[libpq] Invalid value for option ", key,
+                           ": ", value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
@@ -1175,8 +1185,8 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
 
       PGresult* result = PQexec(conn_, query);
       if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-        SetError(error, "%s%s",
-                 "[libpq] Failed to update autocommit: ", PQerrorMessage(conn_));
+        InternalAdbcSetError(error, "%s%s", "[libpq] Failed to update autocommit: ",
+                             PQerrorMessage(conn_));
         PQclear(result);
         return ADBC_STATUS_IO;
       }
@@ -1193,7 +1203,8 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     // PostgreSQL doesn't accept a parameter here
     char* value_esc = PQescapeIdentifier(conn_, value, strlen(value));
     if (!value_esc) {
-      SetError(error, "[libpq] Could not escape identifier: %s", PQerrorMessage(conn_));
+      InternalAdbcSetError(error, "[libpq] Could not escape identifier: %s",
+                           PQerrorMessage(conn_));
       return ADBC_STATUS_INTERNAL;
     }
     std::string query = fmt::format("SET search_path TO {}", value_esc);
@@ -1203,26 +1214,26 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     RAISE_STATUS(error, result_helper.Execute());
     return ADBC_STATUS_OK;
   }
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresConnection::SetOptionBytes(const char* key, const uint8_t* value,
                                                   size_t length,
                                                   struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresConnection::SetOptionDouble(const char* key, double value,
                                                    struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresConnection::SetOptionInt(const char* key, int64_t value,
                                                 struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 

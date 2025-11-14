@@ -22,11 +22,11 @@
 use std::{collections::HashSet, ffi::c_int, sync::Arc};
 
 use adbc_core::{
-    driver_manager::ManagedDatabase,
     error::{Error, Result, Status},
     options::{AdbcVersion, InfoCode, OptionConnection, OptionDatabase, OptionValue},
     Connection as _, Database as _, Optionable,
 };
+use adbc_driver_manager::ManagedDatabase;
 use arrow_array::{
     cast::AsArray,
     types::{Int64Type, UInt32Type},
@@ -43,7 +43,7 @@ pub use builder::*;
 pub struct Database(pub(crate) ManagedDatabase);
 
 impl Database {
-    fn get_info(&mut self, info_code: InfoCode) -> Result<Arc<dyn Array>> {
+    fn get_info(&self, info_code: InfoCode) -> Result<Arc<dyn Array>> {
         self.new_connection()?
             .get_info(Some(HashSet::from_iter([info_code])))?
             .next()
@@ -115,7 +115,7 @@ impl Database {
     }
 
     /// Returns the [`AdbcVersion`] reported by the driver.
-    pub fn adbc_version(&mut self) -> Result<AdbcVersion> {
+    pub fn adbc_version(&self) -> Result<AdbcVersion> {
         self.new_connection()?
             .get_info(Some(HashSet::from_iter([InfoCode::DriverAdbcVersion])))?
             .next()
@@ -168,12 +168,12 @@ impl Optionable for Database {
 impl adbc_core::Database for Database {
     type ConnectionType = Connection;
 
-    fn new_connection(&mut self) -> Result<Self::ConnectionType> {
+    fn new_connection(&self) -> Result<Self::ConnectionType> {
         self.0.new_connection().map(Connection)
     }
 
     fn new_connection_with_opts(
-        &mut self,
+        &self,
         opts: impl IntoIterator<Item = (OptionConnection, OptionValue)>,
     ) -> Result<Self::ConnectionType> {
         self.0.new_connection_with_opts(opts).map(Connection)

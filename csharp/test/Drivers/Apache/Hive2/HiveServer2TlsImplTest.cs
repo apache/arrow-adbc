@@ -26,8 +26,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
     public class HiveServer2TlsImplTest
     {
         [SkippableTheory]
-        [MemberData(nameof(GetSslOptionsTestData))]
-        internal void TestValidateTlsOptions(Dictionary<string, string>? dataTypeConversion, TlsProperties expected, Type? exceptionType = default)
+        [MemberData(nameof(GetHttpTlsOptionsTestData))]
+        internal void TestValidateHttpTlsOptions(Dictionary<string, string>? dataTypeConversion, TlsProperties expected, Type? exceptionType = default)
         {
             if (exceptionType == default)
                 Assert.Equivalent(expected, HiveServer2TlsImpl.GetHttpTlsOptions(dataTypeConversion ?? new Dictionary<string, string>()));
@@ -35,8 +35,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
                 Assert.Throws(exceptionType, () => HiveServer2TlsImpl.GetHttpTlsOptions(dataTypeConversion ?? new Dictionary<string, string>()));
         }
 
-        public static IEnumerable<object?[]> GetSslOptionsTestData()
+        [SkippableTheory]
+        [MemberData(nameof(GetStandardTlsOptionsTestData))]
+        internal void TestValidateStandardTlsOptions(Dictionary<string, string>? dataTypeConversion, TlsProperties expected, Type? exceptionType = default)
         {
+            if (exceptionType == default)
+                Assert.Equivalent(expected, HiveServer2TlsImpl.GetStandardTlsOptions(dataTypeConversion ?? new Dictionary<string, string>()));
+            else
+                Assert.Throws(exceptionType, () => HiveServer2TlsImpl.GetStandardTlsOptions(dataTypeConversion ?? new Dictionary<string, string>()));
+        }
+
+        public static IEnumerable<object?[]> GetHttpTlsOptionsTestData()
+        {
+            // Tls is enabled by default
+            yield return new object?[] { new Dictionary<string, string> {  }, new TlsProperties { IsTlsEnabled = true } };
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "abc" } }, new TlsProperties { IsTlsEnabled = true } };
+
             yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "False" } }, new TlsProperties { IsTlsEnabled = false } };
             yield return new object?[] { new Dictionary<string, string> { { AdbcOptions.Uri, "https://arrow.apache.org" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false } };
             // uri takes precedence over ssl option
@@ -50,10 +64,28 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "True" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false, AllowSelfSigned = false, AllowHostnameMismatch = false } };
             yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "tRUe" }, { HttpTlsOptions.AllowSelfSigned, "true" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false, AllowSelfSigned = true, AllowHostnameMismatch = false } };
             yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "TruE" }, { HttpTlsOptions.AllowSelfSigned, "True" }, { HttpTlsOptions.AllowHostnameMismatch, "True" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false, AllowSelfSigned = true, AllowHostnameMismatch = true } };
-            // certificate path is ignored if self signed is not allowed
-            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "True" }, { HttpTlsOptions.AllowSelfSigned, "False" }, { HttpTlsOptions.AllowHostnameMismatch, "True" }, { HttpTlsOptions.TrustedCertificatePath, "" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false, AllowSelfSigned = false, AllowHostnameMismatch = true } };
             // invalid certificate path
             yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "True" }, { HttpTlsOptions.AllowSelfSigned, "True" }, { HttpTlsOptions.AllowHostnameMismatch, "True" }, { HttpTlsOptions.TrustedCertificatePath, "" } }, null, typeof(FileNotFoundException) };
+        }
+
+        public static IEnumerable<object?[]> GetStandardTlsOptionsTestData()
+        {
+            // Tls is enabled by default
+            yield return new object?[] { new Dictionary<string, string> { }, new TlsProperties { IsTlsEnabled = true } };
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "abc" } }, new TlsProperties { IsTlsEnabled = true } };
+
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "False" } }, new TlsProperties { IsTlsEnabled = false } };
+            // other ssl options are ignored if disableServerCertificateValidation is set to true
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "True" }, { StandardTlsOptions.DisableServerCertificateValidation, "True" }, { StandardTlsOptions.AllowSelfSigned, "True" }, { StandardTlsOptions.AllowHostnameMismatch, "True" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = true } };
+            // other ssl options are ignored if ssl is disabled
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "False" }, { StandardTlsOptions.AllowSelfSigned, "True" }, { StandardTlsOptions.AllowHostnameMismatch, "True" } }, new TlsProperties { IsTlsEnabled = false } };
+            // case insensitive boolean string parsing
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "false" } }, new TlsProperties { IsTlsEnabled = false } };
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "True" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false, AllowSelfSigned = false, AllowHostnameMismatch = false } };
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "tRUe" }, { StandardTlsOptions.AllowSelfSigned, "true" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false, AllowSelfSigned = true, AllowHostnameMismatch = false } };
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "TruE" }, { StandardTlsOptions.AllowSelfSigned, "True" }, { StandardTlsOptions.AllowHostnameMismatch, "True" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false, AllowSelfSigned = true, AllowHostnameMismatch = true } };
+            // invalid certificate path
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "True" }, { StandardTlsOptions.AllowSelfSigned, "True" }, { StandardTlsOptions.AllowHostnameMismatch, "True" }, { StandardTlsOptions.TrustedCertificatePath, "" } }, null, typeof(FileNotFoundException) };
         }
     }
 }

@@ -25,6 +25,8 @@ on:
       - "java/**"
       - ".github/workflows/java.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "java/**"
       - ".github/workflows/java.yml"
@@ -46,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['11', '17', '21', '24']
+        java: ['11', '17', '21', '25']
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # actions/checkout@v4
         with:
@@ -72,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['17', '21']
+        java: ['21', '25']
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # actions/checkout@v4
         with:
@@ -146,6 +148,9 @@ jobs:
       - name: Build artifacts (macOS)
         if: matrix.os == 'macOS'
         run: |
+          # XXX(https://github.com/apache/arrow-adbc/issues/3382)
+          sudo xcode-select -s "/Applications/Xcode_16.app"
+
           export ADBC_BUILD_STATIC=ON
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
@@ -173,6 +178,18 @@ jobs:
           retention-days: 7
           path: |
             artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz
+      - name: Assemble logs
+        if: failure()
+        run: |
+          mkdir ~/logs
+          find "$VCPKG_ROOT" -name 'build-*.log' -exec cp '{}' ~/logs ';'
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: ~/logs
 
   java-jni:
     name: "Java ${{ matrix.java }} JNI/${{ matrix.os }} ${{ matrix.arch }}"
@@ -181,10 +198,11 @@ jobs:
       - java-jni-artifacts
     strategy:
       matrix:
-        java: ['11', '24']
         include:
-          - { os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
-          - { os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
+          - { java: '11', os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { java: '25', os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { java: '11', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
+          - { java: '25', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # actions/checkout@v4
         with:

@@ -413,10 +413,9 @@ func (s *stmt) CheckNamedValue(val *driver.NamedValue) error {
 	return nil
 }
 
-func arrFromVal(val any) arrow.Array {
+func arrFromVal(val any, dt arrow.DataType) (arrow.Array, error) {
 	var (
 		buffers = make([]*memory.Buffer, 2)
-		dt      arrow.DataType
 	)
 	switch v := val.(type) {
 	case bool:
@@ -459,17 +458,65 @@ func arrFromVal(val any) arrow.Array {
 		dt = arrow.PrimitiveTypes.Date64
 		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
 	case []byte:
-		dt = arrow.BinaryTypes.Binary
-		buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
+		if dt == nil || dt.ID() == arrow.BINARY {
+			dt = arrow.BinaryTypes.Binary
+			buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
+		} else if dt.ID() == arrow.LARGE_BINARY {
+			dt = arrow.BinaryTypes.LargeBinary
+			buffers[1] = memory.NewBufferBytes(arrow.Int64Traits.CastToBytes([]int64{0, int64(len(v))}))
+		}
 		buffers = append(buffers, memory.NewBufferBytes(v))
 	case string:
-		dt = arrow.BinaryTypes.String
-		buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
-
+		if dt == nil || dt.ID() == arrow.STRING {
+			dt = arrow.BinaryTypes.String
+			buffers[1] = memory.NewBufferBytes(arrow.Int32Traits.CastToBytes([]int32{0, int32(len(v))}))
+		} else if dt.ID() == arrow.LARGE_STRING {
+			dt = arrow.BinaryTypes.LargeString
+			buffers[1] = memory.NewBufferBytes(arrow.Int64Traits.CastToBytes([]int64{0, int64(len(v))}))
+		}
 		buf := unsafe.Slice(unsafe.StringData(v), len(v))
 		buffers = append(buffers, memory.NewBufferBytes(buf))
+	case arrow.Time32:
+		if dt == nil || dt.ID() != arrow.TIME32 {
+			return nil, errors.New("can only create array from arrow.Time32 with a provided parameter schema")
+		}
+
+		buffers[1] = memory.NewBufferBytes((*[4]byte)(unsafe.Pointer(&v))[:])
+	case arrow.Time64:
+		if dt == nil || dt.ID() != arrow.TIME64 {
+			return nil, errors.New("can only create array from arrow.Time64 with a provided parameter schema")
+		}
+
+		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
+	case arrow.Timestamp:
+		if dt == nil || dt.ID() != arrow.TIMESTAMP {
+			return nil, errors.New("can only create array from arrow.Timestamp with a provided parameter schema")
+		}
+
+		buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&v))[:])
+	case time.Time:
+		if dt == nil {
+			return nil, errors.New("can only create array from time.Time with a provided parameter schema")
+		}
+
+		switch dt.ID() {
+		case arrow.DATE32:
+			val := arrow.Date32FromTime(v)
+			buffers[1] = memory.NewBufferBytes((*[4]byte)(unsafe.Pointer(&val))[:])
+		case arrow.DATE64:
+			val := arrow.Date64FromTime(v)
+			buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&val))[:])
+		case arrow.TIMESTAMP:
+			val, err := arrow.TimestampFromTime(v, dt.(*arrow.TimestampType).Unit)
+			if err != nil {
+				return nil, fmt.Errorf("could not convert time.Time to arrow.Timestamp: %v", err)
+			}
+			buffers[1] = memory.NewBufferBytes((*[8]byte)(unsafe.Pointer(&val))[:])
+		default:
+			return nil, fmt.Errorf("time.Time with type %s unsupported", dt)
+		}
 	default:
-		panic(fmt.Sprintf("unsupported type %T", val))
+		return nil, fmt.Errorf("unsupported type %T", val)
 	}
 	for _, b := range buffers {
 		if b != nil {
@@ -478,10 +525,10 @@ func arrFromVal(val any) arrow.Array {
 	}
 	data := array.NewData(dt, 1, buffers, nil, 0, 0)
 	defer data.Release()
-	return array.MakeFromData(data)
+	return array.MakeFromData(data), nil
 }
 
-func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) arrow.Record {
+func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) (arrow.RecordBatch, error) {
 	fields := make([]arrow.Field, len(values))
 	cols := make([]arrow.Array, len(values))
 	if schema == nil {
@@ -492,13 +539,16 @@ func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) arrow.R
 			} else {
 				f.Name = v.Name
 			}
-			arr := arrFromVal(v.Value)
+			arr, err := arrFromVal(v.Value, nil)
+			if err != nil {
+				return nil, err
+			}
 			defer arr.Release()
 			f.Type = arr.DataType()
 			cols[v.Ordinal-1] = arr
 		}
 
-		return array.NewRecord(arrow.NewSchema(fields, nil), cols, 1)
+		return array.NewRecordBatch(arrow.NewSchema(fields, nil), cols, 1), nil
 	}
 
 	for _, v := range values {
@@ -514,17 +564,25 @@ func createBoundRecord(values []driver.NamedValue, schema *arrow.Schema) arrow.R
 
 		f := &fields[idx]
 		f.Name = name
-		arr := arrFromVal(v.Value)
+		arr, err := arrFromVal(v.Value, f.Type)
+		if err != nil {
+			return nil, err
+		}
 		defer arr.Release()
 		f.Type = arr.DataType()
 		cols[idx] = arr
 	}
-	return array.NewRecord(arrow.NewSchema(fields, nil), cols, 1)
+	return array.NewRecordBatch(arrow.NewSchema(fields, nil), cols, 1), nil
 }
 
 func (s *stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	if len(args) > 0 {
-		if err := s.stmt.Bind(ctx, createBoundRecord(args, s.paramSchema)); err != nil {
+		rec, err := createBoundRecord(args, s.paramSchema)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := s.stmt.Bind(ctx, rec); err != nil {
 			return nil, err
 		}
 	}
@@ -539,7 +597,12 @@ func (s *stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (drive
 
 func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	if len(args) > 0 {
-		if err := s.stmt.Bind(ctx, createBoundRecord(args, s.paramSchema)); err != nil {
+		rec, err := createBoundRecord(args, s.paramSchema)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := s.stmt.Bind(ctx, rec); err != nil {
 			return nil, err
 		}
 	}
@@ -555,7 +618,7 @@ func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driv
 type rows struct {
 	rdr          array.RecordReader
 	curRow       int64
-	curRecord    arrow.Record
+	curRecord    arrow.RecordBatch
 	rowsAffected int64
 	stmt         *stmt
 }
@@ -591,7 +654,7 @@ func (r *rows) Next(dest []driver.Value) error {
 			}
 			return io.EOF
 		}
-		r.curRecord = r.rdr.Record()
+		r.curRecord = r.rdr.RecordBatch()
 		r.curRow = 0
 		if r.curRecord.NumRows() == 0 {
 			r.curRecord = nil

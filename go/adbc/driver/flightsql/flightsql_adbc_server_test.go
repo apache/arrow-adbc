@@ -124,7 +124,7 @@ func (suite *ServerBasedTests) TearDownSuite() {
 	suite.s.Shutdown()
 }
 
-func (suite *ServerBasedTests) generateCertOption() grpc.ServerOption {
+func (suite *ServerBasedTests) generateCertOption() (*tls.Config, string) {
 	// Generate a self-signed certificate in-process for testing
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	suite.Require().NoError(err)
@@ -156,9 +156,7 @@ func (suite *ServerBasedTests) generateCertOption() grpc.ServerOption {
 
 	suite.Require().NoError(err)
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
-	tlsCreds := credentials.NewTLS(tlsConfig)
-
-	return grpc.Creds(tlsCreds)
+	return tlsConfig, string(certBytes)
 }
 
 func (suite *ServerBasedTests) openAndExecuteQuery(query string) {
@@ -343,6 +341,7 @@ type OAuthTests struct {
 
 	oauthServer     *httptest.Server
 	mockOAuthServer *MockOAuthServer
+	pemCert         string
 }
 
 // MockOAuthServer simulates an OAuth 2.0 server for testing
@@ -421,12 +420,18 @@ func oauthTestUnary(ctx context.Context, req interface{}, info *grpc.UnaryServer
 }
 
 func (suite *OAuthTests) SetupSuite() {
+
+	tlsConfig, pemCertString := suite.generateCertOption()
+	suite.pemCert = pemCertString
+
 	suite.mockOAuthServer = &MockOAuthServer{}
-	suite.oauthServer = httptest.NewServer(http.HandlerFunc(suite.mockOAuthServer.handleTokenRequest))
+	suite.oauthServer = httptest.NewUnstartedServer(http.HandlerFunc(suite.mockOAuthServer.handleTokenRequest))
+	suite.oauthServer.TLS = tlsConfig
+	suite.oauthServer.StartTLS()
 
 	suite.setupFlightServer(&AuthnTestServer{}, []flight.ServerMiddleware{
 		{Unary: oauthTestUnary},
-	}, suite.generateCertOption())
+	}, grpc.Creds(credentials.NewTLS(tlsConfig)))
 }
 
 func (suite *OAuthTests) TearDownSuite() {
@@ -451,7 +456,7 @@ func (suite *OAuthTests) TestTokenExchangeFlow() {
 		driver.OptionKeySubjectToken:     "test-subject-token",
 		driver.OptionKeySubjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
 		driver.OptionKeyTokenURI:         suite.oauthServer.URL,
-		driver.OptionSSLSkipVerify:       adbc.OptionValueEnabled,
+		driver.OptionSSLRootCerts:        suite.pemCert,
 	})
 	suite.Require().NoError(err)
 
@@ -465,7 +470,7 @@ func (suite *OAuthTests) TestClientCredentialsFlow() {
 		driver.OptionKeyClientId:     "test-client",
 		driver.OptionKeyClientSecret: "test-secret",
 		driver.OptionKeyTokenURI:     suite.oauthServer.URL,
-		driver.OptionSSLSkipVerify:   adbc.OptionValueEnabled,
+		driver.OptionSSLRootCerts:    suite.pemCert,
 	})
 	suite.Require().NoError(err)
 
@@ -1727,7 +1732,7 @@ func (ts *TimeoutTests) TestDontTimeout() {
 	defer rr.Release()
 
 	ts.True(rr.Next())
-	rec := rr.Record()
+	rec := rr.RecordBatch()
 
 	sc := arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
 	expected, _, err := array.RecordFromJSON(memory.DefaultAllocator, sc, strings.NewReader(`[{"a": 5}]`))
@@ -1909,7 +1914,7 @@ var (
 
 func (server *DataTypeTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
 	var schema *arrow.Schema
-	var record arrow.Record
+	var record arrow.RecordBatch
 	var err error
 
 	cmd := string(tkt.GetStatementHandle())
@@ -2036,7 +2041,7 @@ func (server *MultiTableTestServer) DoGetTables(ctx context.Context, cmd flights
 	bldr.Field(4).(*array.BinaryBuilder).AppendValues([][]byte{buf1, buf2}, nil)
 	defer bldr.Release()
 
-	rec := bldr.NewRecord()
+	rec := bldr.NewRecordBatch()
 
 	ch := make(chan flight.StreamChunk)
 	go func() {
@@ -2382,12 +2387,12 @@ func (srv *GetObjectsTestServer) DoGetTables(ctx context.Context, cmd flightsql.
 	tablesRecord, _, _ := array.RecordFromJSON(srv.Alloc, schema_ref.Tables, strings.NewReader(jsonStr))
 	defer tablesRecord.Release()
 
-	tablesRecordWithSchema := array.NewRecord(schema_ref.TablesWithIncludedSchema, append(tablesRecord.Columns(), schemaCol), tablesRecord.NumRows())
+	tablesRecordWithSchema := array.NewRecordBatch(schema_ref.TablesWithIncludedSchema, append(tablesRecord.Columns(), schemaCol), tablesRecord.NumRows())
 	defer tablesRecordWithSchema.Release()
 
 	ch := make(chan flight.StreamChunk)
 
-	rdr, err := array.NewRecordReader(schema_ref.TablesWithIncludedSchema, []arrow.Record{tablesRecordWithSchema})
+	rdr, err := array.NewRecordReader(schema_ref.TablesWithIncludedSchema, []arrow.RecordBatch{tablesRecordWithSchema})
 	go flight.StreamChunksFromReader(rdr, ch)
 	return schema_ref.TablesWithIncludedSchema, ch, err
 }
@@ -2408,7 +2413,7 @@ func (srv *GetObjectsTestServer) DoGetDBSchemas(ctx context.Context, cmd flights
 	}
 	defer dbSchemas.Release()
 
-	batch := array.NewRecord(schema, []arrow.Array{catalogs, dbSchemas}, 1)
+	batch := array.NewRecordBatch(schema, []arrow.Array{catalogs, dbSchemas}, 1)
 	ch <- flight.StreamChunk{Data: batch}
 	close(ch)
 	return schema, ch, nil
@@ -2555,7 +2560,7 @@ func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
 
 			suite.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
 			suite.True(rdr.Next())
-			rec := rdr.Record()
+			rec := rdr.RecordBatch()
 			suite.Greater(rec.NumRows(), int64(0))
 			var (
 				foundExpected        = false

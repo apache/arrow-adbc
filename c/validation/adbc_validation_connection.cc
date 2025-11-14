@@ -981,13 +981,13 @@ void ConnectionTest::TestMetadataGetObjectsPrimaryKey() {
       << "could not initialize the AdbcGetObjectsData object";
 
   // Test primary key
-  struct AdbcGetObjectsTable* table =
-      AdbcGetObjectsDataGetTableByName(*get_objects_data, quirks()->catalog().c_str(),
-                                       quirks()->db_schema().c_str(), "adbc_pkey_test");
+  struct AdbcGetObjectsTable* table = InternalAdbcGetObjectsDataGetTableByName(
+      *get_objects_data, quirks()->catalog().c_str(), quirks()->db_schema().c_str(),
+      "adbc_pkey_test");
   ASSERT_NE(table, nullptr) << "could not find adbc_pkey_test table";
 
   ASSERT_EQ(table->n_table_columns, 1);
-  struct AdbcGetObjectsColumn* column = AdbcGetObjectsDataGetColumnByName(
+  struct AdbcGetObjectsColumn* column = InternalAdbcGetObjectsDataGetColumnByName(
       *get_objects_data, quirks()->catalog().c_str(), quirks()->db_schema().c_str(),
       "adbc_pkey_test", "id");
   ASSERT_NE(column, nullptr) << "could not find id column on adbc_pkey_test table";
@@ -1000,7 +1000,7 @@ void ConnectionTest::TestMetadataGetObjectsPrimaryKey() {
   ConstraintTest(constraint, "PRIMARY KEY", {"id"});
 
   // Test composite primary key
-  struct AdbcGetObjectsTable* composite_table = AdbcGetObjectsDataGetTableByName(
+  struct AdbcGetObjectsTable* composite_table = InternalAdbcGetObjectsDataGetTableByName(
       *get_objects_data, quirks()->catalog().c_str(), quirks()->db_schema().c_str(),
       "adbc_composite_pkey_test");
   ASSERT_NE(composite_table, nullptr) << "could not find adbc_composite_pkey_test table";
@@ -1013,7 +1013,7 @@ void ConnectionTest::TestMetadataGetObjectsPrimaryKey() {
   const char* parent_2_column_names[2] = {"id_primary_col1", "id_primary_col2"};
   struct AdbcGetObjectsColumn* parent_2_column;
   for (int column_name_index = 0; column_name_index < 2; column_name_index++) {
-    parent_2_column = AdbcGetObjectsDataGetColumnByName(
+    parent_2_column = InternalAdbcGetObjectsDataGetColumnByName(
         *get_objects_data, quirks()->catalog().c_str(), quirks()->db_schema().c_str(),
         "adbc_composite_pkey_test", parent_2_column_names[column_name_index]);
     ASSERT_NE(parent_2_column, nullptr)
@@ -1104,7 +1104,7 @@ void ConnectionTest::TestMetadataGetObjectsForeignKey() {
       << "could not initialize the AdbcGetObjectsData object";
 
   // Test child table
-  struct AdbcGetObjectsTable* child_table = AdbcGetObjectsDataGetTableByName(
+  struct AdbcGetObjectsTable* child_table = InternalAdbcGetObjectsDataGetTableByName(
       *get_objects_data, quirks()->catalog().c_str(), quirks()->db_schema().c_str(),
       "adbc_fkey_child_test");
   ASSERT_NE(child_table, nullptr) << "could not find adbc_fkey_child_test table";
@@ -1115,7 +1115,7 @@ void ConnectionTest::TestMetadataGetObjectsForeignKey() {
   const char* child_column_names[3] = {"id_child_col1", "id_child_col2", "id_child_col3"};
   struct AdbcGetObjectsColumn* child_column;
   for (int column_index = 0; column_index < 2; column_index++) {
-    child_column = AdbcGetObjectsDataGetColumnByName(
+    child_column = InternalAdbcGetObjectsDataGetColumnByName(
         *get_objects_data, quirks()->catalog().c_str(), quirks()->db_schema().c_str(),
         "adbc_fkey_child_test", child_column_names[column_index]);
     ASSERT_NE(child_column, nullptr)

@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
+using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -39,6 +41,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Maximum bytes per file for CloudFetch.
+        /// The value can be specified with unit suffixes: B (bytes), KB (kilobytes), MB (megabytes), GB (gigabytes).
+        /// If no unit is specified, the value is treated as bytes.
         /// Default value is 20MB if not specified.
         /// </summary>
         public const string MaxBytesPerFile = "adbc.databricks.cloudfetch.max_bytes_per_file";
@@ -62,6 +66,18 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public const string CloudFetchTimeoutMinutes = "adbc.databricks.cloudfetch.timeout_minutes";
 
         /// <summary>
+        /// Buffer time in seconds before URL expiration to trigger refresh.
+        /// Default value is 60 seconds if not specified.
+        /// </summary>
+        public const string CloudFetchUrlExpirationBufferSeconds = "adbc.databricks.cloudfetch.url_expiration_buffer_seconds";
+
+        /// <summary>
+        /// Maximum number of URL refresh attempts for CloudFetch downloads.
+        /// Default value is 3 if not specified.
+        /// </summary>
+        public const string CloudFetchMaxUrlRefreshAttempts = "adbc.databricks.cloudfetch.max_url_refresh_attempts";
+
+        /// <summary>
         /// Whether to enable the use of direct results when executing queries.
         /// Default value is true if not specified.
         /// </summary>
@@ -78,10 +94,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// <summary>
         /// Prefix for server-side properties. Properties with this prefix will be passed to the server
         /// by executing a "set key=value" query when opening a session.
-        /// For example, a property with key "adbc.databricks.SSP_use_cached_result"
+        /// For example, a property with key "adbc.databricks.ssp_use_cached_result"
         /// and value "true" will result in executing "set use_cached_result=true" on the server.
         /// </summary>
-        public const string ServerSidePropertyPrefix = "adbc.databricks.SSP_";
+        public const string ServerSidePropertyPrefix = "adbc.databricks.ssp_";
+
         /// Controls whether to retry requests that receive a 503 response with a Retry-After header.
         /// Default value is true (enabled). Set to false to disable retry behavior.
         /// </summary>
@@ -116,6 +133,129 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string CloudFetchPrefetchEnabled = "adbc.databricks.cloudfetch.prefetch_enabled";
+
+        /// <summary>
+        /// Maximum bytes per fetch request when retrieving query results from servers.
+        /// The value can be specified with unit suffixes: B (bytes), KB (kilobytes), MB (megabytes), GB (gigabytes).
+        /// If no unit is specified, the value is treated as bytes.
+        /// Default value is 400MB if not specified.
+        /// </summary>
+        public const string MaxBytesPerFetchRequest = "adbc.databricks.max_bytes_per_fetch_request";
+
+        /// <summary>
+        /// The OAuth grant type to use for authentication.
+        /// Supported values:
+        /// - "access_token": Use a pre-generated Databricks personal access token (default)
+        /// - "client_credentials": Use OAuth client credentials flow for m2m authentication
+        /// When using "client_credentials", the driver will automatically handle token acquisition,
+        /// renewal, and authentication with the Databricks service.
+        /// </summary>
+        public const string OAuthGrantType = "adbc.databricks.oauth.grant_type";
+
+        /// <summary>
+        /// The OAuth client ID for client credentials flow.
+        /// Required when grant_type is "client_credentials".
+        /// This is the client ID you obtained when registering your application with Databricks.
+        /// </summary>
+        public const string OAuthClientId = "adbc.databricks.oauth.client_id";
+
+        /// <summary>
+        /// The OAuth client secret for client credentials flow.
+        /// Required when grant_type is "client_credentials".
+        /// This is the client secret you obtained when registering your application with Databricks.
+        /// </summary>
+        public const string OAuthClientSecret = "adbc.databricks.oauth.client_secret";
+
+        /// <summary>
+        /// The OAuth scope for client credentials flow.
+        /// Optional when grant_type is "client_credentials".
+        /// Default value is "sql" if not specified.
+        /// </summary>
+        public const string OAuthScope = "adbc.databricks.oauth.scope";
+
+        /// <summary>
+        /// Whether to use multiple catalogs.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string EnableMultipleCatalogSupport = "adbc.databricks.enable_multiple_catalog_support";
+
+        /// <summary>
+        /// Whether to enable primary key foreign key metadata call.
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string EnablePKFK = "adbc.databricks.enable_pk_fk";
+
+        /// <summary>
+        /// Whether to use query DESC TABLE EXTENDED to get extended column metadata when the current DBR supports it
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string UseDescTableExtended = "adbc.databricks.use_desc_table_extended";
+
+        /// <summary>
+        /// Whether to enable RunAsync flag in Thrift operation
+        /// Default value is true if not specified.
+        /// </summary>
+        public const string EnableRunAsyncInThriftOp = "adbc.databricks.enable_run_async_thrift";
+
+        /// <summary>
+        /// Whether to propagate trace parent headers in HTTP requests.
+        /// Default value is true if not specified.
+        /// When enabled, the driver will add W3C Trace Context headers to all HTTP requests.
+        /// </summary>
+        public const string TracePropagationEnabled = "adbc.databricks.trace_propagation.enabled";
+
+        /// <summary>
+        /// The name of the HTTP header to use for trace parent propagation.
+        /// Default value is "traceparent" (W3C standard) if not specified.
+        /// This allows customization for systems that use different header names.
+        /// </summary>
+        public const string TraceParentHeaderName = "adbc.databricks.trace_propagation.header_name";
+
+        /// <summary>
+        /// Whether to include trace state header in HTTP requests.
+        /// Default value is false if not specified.
+        /// When enabled, the driver will also propagate the tracestate header if available.
+        /// </summary>
+        public const string TraceStateEnabled = "adbc.databricks.trace_propagation.state_enabled";
+
+        /// <summary>
+        /// The minutes before token expiration when we should start renewing the token.
+        /// Default value is 0 (disabled) if not specified.
+        /// </summary>
+        public const string TokenRenewLimit = "adbc.databricks.token_renew_limit";
+
+        /// <summary>
+        /// The client ID of the service principal when using workload identity federation.
+        /// Default value is empty if not specified.
+        /// </summary>
+        public const string IdentityFederationClientId = "adbc.databricks.identity_federation_client_id";
+
+        /// <summary>
+        /// Controls whether driver configuration takes precedence over passed-in properties during configuration merging.
+        /// When "true": Environment/driver config properties override passed-in constructor properties.
+        /// When "false" (default): Passed-in constructor properties override environment/driver config properties.
+        /// This property can be set either in the environment configuration file or in passed-in properties.
+        /// When set in both places, the value in passed-in properties takes precedence.
+        /// Default value is false if not specified.
+        /// </summary>
+        public const string DriverConfigTakePrecedence = "adbc.databricks.driver_config_take_precedence";
+
+        /// <summary>
+        /// The interval in seconds for heartbeat polling during long-running operations.
+        /// This prevents queries from timing out by periodically checking operation status.
+        /// Default value is 60 seconds if not specified.
+        /// Must be a positive integer value.
+        /// </summary>
+        public const string FetchHeartbeatInterval = "adbc.databricks.fetch_heartbeat_interval";
+
+        /// <summary>
+        /// The timeout in seconds for operation status polling requests.
+        /// This controls how long to wait for each individual polling request to complete.
+        /// Default value is 30 seconds if not specified.
+        /// Must be a positive integer value.
+        /// </summary>
+        public const string OperationStatusRequestTimeout = "adbc.databricks.operation_status_request_timeout";
+
     }
 
     /// <summary>
@@ -123,6 +263,42 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
     /// </summary>
     public class DatabricksConstants
     {
+        /// <summary>
+        /// Default heartbeat interval in seconds for long-running operations.
+        /// </summary>
+        public const int DefaultOperationStatusPollingIntervalSeconds = 60;
 
+        /// <summary>
+        /// Default timeout in seconds for operation status polling requests.
+        /// </summary>
+        public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
+
+        /// <summary>
+        /// Default async execution poll interval in milliseconds.
+        /// </summary>
+        public const int DefaultAsyncExecPollIntervalMs = 100;
+
+        /// <summary>
+        /// OAuth grant type constants
+        /// </summary>
+        public static class OAuthGrantTypes
+        {
+            /// <summary>
+            /// Use a pre-generated Databricks personal access token for authentication.
+            /// When using this grant type, you must provide the token via the
+            /// adbc.spark.oauth.access_token parameter.
+            /// </summary>
+            public const string AccessToken = "access_token";
+
+            /// <summary>
+            /// Use OAuth client credentials flow for m2m authentication.
+            /// When using this grant type, you must provide:
+            /// - adbc.databricks.oauth.client_id: The OAuth client ID
+            /// - adbc.databricks.oauth.client_secret: The OAuth client secret
+            /// The driver will automatically handle token acquisition, renewal, and
+            /// authentication with the Databricks service.
+            /// </summary>
+            public const string ClientCredentials = "client_credentials";
+        }
     }
 }

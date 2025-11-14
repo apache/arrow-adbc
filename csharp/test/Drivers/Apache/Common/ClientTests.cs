@@ -45,7 +45,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         {
             Skip.IfNot(Utils.CanExecuteTestConfig(TestConfigVariable));
         }
-
+        internal virtual string FormatTableName => TestConfiguration.Metadata.Table;
         /// <summary>
         /// Validates if the client execute updates.
         /// </summary>
@@ -73,7 +73,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
         {
             using (Adbc.Client.AdbcConnection adbcConnection = GetAdbcConnection())
             {
-                Tests.ClientTests.CanClientGetSchema(adbcConnection, TestConfiguration, $"SELECT * FROM {TestConfiguration.Metadata.Table}");
+                Tests.ClientTests.CanClientGetSchema(adbcConnection, TestConfiguration, $"SELECT * FROM {FormatTableName}");
             }
         }
 
@@ -102,7 +102,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 Tests.ClientTests.CanClientExecuteQuery(
                     adbcConnection,
                     TestConfiguration,
-                    customQuery: $"SELECT * FROM {TestConfiguration.Metadata.Table} WHERE FALSE",
+                    customQuery: $"SELECT * FROM {FormatTableName} WHERE FALSE",
                     expectedResultsCount: 0);
             }
         }
@@ -211,7 +211,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Common
                 int timeout = 99;
                 using AdbcCommand cmd = adbcConnection.CreateCommand();
 
-                // setting the timout before the property value
+                // setting the timeout before the property value
                 Assert.Throws<InvalidOperationException>(() =>
                 {
                     cmd.CommandTimeout = 1;

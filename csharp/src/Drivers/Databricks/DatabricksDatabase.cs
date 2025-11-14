@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Apache.Arrow.Adbc.Drivers.Apache;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks
 {
@@ -32,17 +33,33 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         {
             this.properties = properties;
         }
+
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
         {
-            IReadOnlyDictionary<string, string> mergedProperties = options == null
-                ? properties
-                : options
-                    .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
-                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            DatabricksConnection connection = new DatabricksConnection(mergedProperties);
-            connection.OpenAsync().Wait();
-            connection.ApplyServerSidePropertiesAsync().Wait();
-            return connection;
+            try
+            {
+                IReadOnlyDictionary<string, string> mergedProperties = options == null
+                    ? properties
+                    : options
+                        .Concat(properties.Where(x => !options.Keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
+                        .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                DatabricksConnection connection = new DatabricksConnection(mergedProperties);
+                connection.OpenAsync().Wait();
+                connection.ApplyServerSidePropertiesAsync().Wait();
+                return connection;
+            }
+            catch (AggregateException ae)
+            {
+                // Unwrap AggregateException to AdbcException if possible
+                // to better conform to the ADBC standard
+                if (ApacheUtility.ContainsException(ae, out AdbcException? adbcException) && adbcException != null)
+                {
+                    // keep the entire chain, but throw the AdbcException
+                    throw new AdbcException(adbcException.Message, adbcException.Status, ae);
+                }
+
+                throw;
+            }
         }
     }
 }

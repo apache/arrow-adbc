@@ -85,6 +85,7 @@ struct AdbcErrorDetail DatabricksErrorGetDetail(const struct AdbcError* error,
   };
 }
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return DatabricksErrorGetDetailCount(error);
 }
@@ -430,8 +431,9 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
-  return DatabricksDriverInit(version, driver, error);
+  return AdbcDriverDatabricksInit(version, driver, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 int DatabricksArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
 int DatabricksArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);

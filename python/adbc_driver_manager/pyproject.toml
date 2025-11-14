@@ -19,23 +19,27 @@
 name = "adbc-driver-manager"
 description = "A generic entrypoint for ADBC drivers."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = ["LICENSE.txt", "NOTICE.txt"]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = ["version"]
 dependencies = ["typing-extensions"]
 
 [project.optional-dependencies]
 dbapi = ["pandas", "pyarrow>=14.0.1"]
-test = ["duckdb", "pandas", "pyarrow>=14.0.1", "pytest"]
+test = ["duckdb", "pandas", "polars", "pyarrow>=14.0.1", "pytest"]
 
 [project.urls]
 homepage = "https://arrow.apache.org/adbc/"
 repository = "https://github.com/apache/arrow-adbc"
 
 [build-system]
-requires = ["Cython", "setuptools >= 61.0.0"]
+requires = ["Cython >= 3.1.0", "setuptools >= 77.0.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+enable = ["cpython-freethreading"]
 
 [tool.pytest.ini_options]
 markers = [
@@ -47,6 +51,5 @@ markers = [
 xfail_strict = true
 
 [tool.setuptools]
-license-files = ["LICENSE.txt", "NOTICE.txt"]
 packages = ["adbc_driver_manager"]
 py-modules = ["adbc_driver_manager"]

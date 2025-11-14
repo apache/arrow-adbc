@@ -18,16 +18,23 @@
 cmake_minimum_required(VERSION 3.18)
 get_filename_component(REPOSITORY_ROOT ".." ABSOLUTE)
 list(APPEND CMAKE_MODULE_PATH "${REPOSITORY_ROOT}/c/cmake_modules/")
-include(AdbcDefines)
-include(BuildUtils)
+include(AdbcVersion)
 project(adbc
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include(AdbcDefines)
+include(BuildUtils)
 
 include(CTest)
+
+set(ADBC_TARGET_COMPILE_DEFINITIONS)
+if(NOT ADBC_DEFINE_COMMON_ENTRYPOINTS)
+  message(STATUS "Defining ADBC_NO_COMMON_ENTRYPOINTS")
+  set(ADBC_TARGET_COMPILE_DEFINITIONS "ADBC_NO_COMMON_ENTRYPOINTS")
+endif()
 
 if(ADBC_WITH_VENDORED_FMT)
   add_subdirectory(vendor/fmt EXCLUDE_FROM_ALL)
@@ -58,6 +65,8 @@ if(ADBC_INTEGRATION_DUCKDB)
 endif()
 
 if(ADBC_DRIVER_FLIGHTSQL)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/flightsql.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/flightsql)
 endif()
 
@@ -69,18 +78,26 @@ if(ADBC_DRIVER_MANAGER)
 endif()
 
 if(ADBC_DRIVER_POSTGRESQL)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/postgresql.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/postgresql)
 endif()
 
 if(ADBC_DRIVER_SQLITE)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/sqlite.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/sqlite)
 endif()
 
 if(ADBC_DRIVER_SNOWFLAKE)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/snowflake.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/snowflake)
 endif()
 
 if(ADBC_DRIVER_BIGQUERY)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/bigquery.h"
+          DESTINATION include/arrow-adbc/driver)
   add_subdirectory(driver/bigquery)
 endif()
 

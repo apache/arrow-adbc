@@ -22,7 +22,7 @@
   <parent>
     <groupId>org.apache.arrow.adbc</groupId>
     <artifactId>arrow-adbc-java-root</artifactId>
-    <version>0.18.0</version>
+    <version>0.21.0</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
@@ -35,12 +35,12 @@
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
-      <version>3.2.0</version>
+      <version>3.2.2</version>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
-      <version>4.30.2</version>
+      <version>4.33.0</version>
     </dependency>
 
     <!-- Arrow -->

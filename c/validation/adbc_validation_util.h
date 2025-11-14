@@ -242,9 +242,9 @@ struct StreamReader {
 struct GetObjectsReader {
   explicit GetObjectsReader(struct ArrowArrayView* array_view) {
     // TODO: this swallows any construction errors
-    get_objects_data_ = AdbcGetObjectsDataInit(array_view);
+    get_objects_data_ = InternalAdbcGetObjectsDataInit(array_view);
   }
-  ~GetObjectsReader() { AdbcGetObjectsDataDelete(get_objects_data_); }
+  ~GetObjectsReader() { InternalAdbcGetObjectsDataDelete(get_objects_data_); }
 
   struct AdbcGetObjectsData* operator*() { return get_objects_data_; }
   struct AdbcGetObjectsData* operator->() { return get_objects_data_; }

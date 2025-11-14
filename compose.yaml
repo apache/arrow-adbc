@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-version: '3.9'
-
 services:
   # These reuse Arrow's images for simplicity. You won't be able to
   # build the image from here.
@@ -34,6 +32,7 @@ services:
 
   # Build/test with latest Clang
   cpp-clang-latest:
+    image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
     build:
       context: .
       dockerfile: ci/docker/cpp-clang-latest.dockerfile
@@ -41,9 +40,12 @@ services:
         GO: ${GO}
     volumes:
       - .:/adbc:delegated
+    environment:
+      ADBC_CMAKE_ARGS: "-DADBC_CXXFLAGS=-Wdocumentation -DADBC_BUILD_WARNING_LEVEL=CHECKIN"
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/clang-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/clang-latest'"
 
   cpp-gcc-latest:
+    image: ${REPO}:${ARCH}-cpp-gcc-latest-adbc
     build:
       context: .
       dockerfile: ci/docker/cpp-gcc-latest.dockerfile
@@ -52,7 +54,24 @@ services:
         GO: ${GO}
     volumes:
       - .:/adbc:delegated
+    environment:
+      ADBC_CMAKE_ARGS: "-DADBC_BUILD_WARNING_LEVEL=CHECKIN"
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/gcc-latest && env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_SQLITE=1 /adbc/ci/scripts/cpp_test.sh /adbc/build/gcc-latest'"
+
+  # Build and dynamically load shared drivers missing the common entrypoints
+  cpp-shared-no-common-entrypoints-test:
+    image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
+    volumes:
+      - .:/adbc:delegated
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_shared_no_common_entrypoints_test.sh /adbc /adbc/build/shared-test/build /adbc/build/shared-test/local'"
+
+  # Test building and installing the static libraries, then try linking to them.
+  cpp-static-test:
+    image: ${REPO}:${ARCH}-cpp-clang-latest-adbc
+    volumes:
+      - .:/adbc:delegated
+    command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_static_test.sh /adbc /adbc/build/static-test/build /adbc/build/static-test/local'"
+
 
   ############################ Documentation ###################################
 
@@ -70,10 +89,11 @@ services:
   ################################### Java ###################################
 
   java-dist:
-    image: ${ARCH}/maven:${MAVEN}-jdk-${JDK}
+    image: ${ARCH}/maven:${MAVEN}-eclipse-temurin-${JDK}
     volumes:
       - .:/adbc:delegated
-    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && /adbc/ci/scripts/java_test.sh /adbc'"
+    # N.B. never run JNI tests as we won't have the drivers built
+    command: "/bin/bash -c '/adbc/ci/scripts/java_build.sh /adbc /adbc/dist && env BUILD_JNI=OFF /adbc/ci/scripts/java_test.sh /adbc'"
 
   # Build the JNI and driver libraries
   java-jni:
@@ -81,6 +101,14 @@ services:
     volumes:
       - .:/adbc:delegated
     command: "/bin/bash -c 'env CMAKE_BUILD_TYPE=Release /adbc/ci/scripts/java_jni_build.sh /adbc /adbc/dist /adbc/local'"
+
+  ############################### Python #####################################
+
+  python-venv:
+    image: ${ARCH}/python:${PYTHON}
+    volumes:
+      - .:/adbc:delegated
+    command: "/bin/bash -c 'apt update && apt install -y libsqlite3-dev build-essential cmake git && git config --global --add safe.directory /adbc && env BUILD_ALL=0 BUILD_DRIVER_SQLITE=1 ADBC_BUILD_TESTS=OFF ADBC_USE_ASAN=OFF ADBC_USE_UBSAN=OFF /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/venv && /adbc/ci/scripts/python_venv_test.sh /adbc /adbc/build/venv-test /adbc/build/venv/driver/sqlite/libadbc_driver_sqlite.so'"
 
   ############################ Python conda ##################################
 
@@ -98,11 +126,11 @@ services:
     command: "/bin/bash -c '/adbc/ci/scripts/python_conda_test.sh /adbc /adbc/build'"
 
   python-debug:
-    image: ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+    image: ${REPO}:${ARCH}-python-debug-adbc
     build:
       context: .
       cache_from:
-        - ${REPO}:${ARCH}-python-${PYTHON}-debug-adbc
+        - ${REPO}:${ARCH}-python-debug-adbc
       dockerfile: ci/docker/python-debug.dockerfile
       args:
         ARCH: ${ARCH}
@@ -143,32 +171,31 @@ services:
   # relocate on a separate image so that we can use a newer docker for cibuildwheel
 
   python-wheel-manylinux-build:
-    image: ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
+    image: ghcr.io/apache/arrow-adbc:manylinux${MANYLINUX}-go${GO}-python${PYTHON}-vcpkg${VCPKG}
     build:
       context: .
-      cache_from:
-        - ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}-adbc
       dockerfile: ci/docker/python-wheel-manylinux.dockerfile
       args:
-        ARCH: ${ARCH}
         GO: ${GO}
         MANYLINUX: ${MANYLINUX}
         PYTHON: ${PYTHON}
-        REPO: ${REPO}
         VCPKG: ${VCPKG}
+      platforms:
+        - linux/amd64
+        - linux/arm64
     volumes:
       - .:/adbc
     # Must set safe.directory so go/miniver won't error when calling git
     command: "'git config --global --add safe.directory /adbc && /adbc/ci/scripts/python_wheel_unix_build.sh ${ARCH} /adbc /adbc/build'"
 
   python-wheel-manylinux-relocate:
-    image: ${REPO}:adbc-python-${PYTHON}-wheel-relocate
-    platform: ${PLATFORM}
+    image: ghcr.io/apache/arrow-adbc:python${PYTHON}
     build:
       context: .
-      cache_from:
-        - ${REPO}:adbc-python-${PYTHON}-wheel-relocate
       dockerfile: ci/docker/python-wheel-manylinux-relocate.dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - .:/adbc
@@ -181,6 +208,13 @@ services:
     volumes:
       - .:/adbc:delegated
     command: /adbc/ci/scripts/python_wheel_unix_test.sh /adbc
+
+  python-wheel-manylinux-freethreaded-test:
+    image: ghcr.io/astral-sh/uv:trixie-slim
+    platform: ${PLATFORM}
+    volumes:
+      - .:/adbc:delegated
+    command: bash -c 'uv venv --python ${PYTHON} && source ./.venv/bin/activate && python -m ensurepip && PYTHON_GIL=0 /adbc/ci/scripts/python_wheel_unix_test.sh /adbc'
 
   ###################### Test database environments ############################
 
@@ -275,6 +309,20 @@ services:
       retries: 5
     ports:
       - "5432:5432"
+
+  spiceai-test:
+    container_name: adbc-spiceai
+    build:
+      context: .
+      dockerfile: ci/docker/spiceai-init.dockerfile
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8090/v1/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "50051:50051"
+      - "8090:8090"
 
   ################################ Verification ################################
 

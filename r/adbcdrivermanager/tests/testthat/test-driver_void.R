@@ -19,3 +19,69 @@ test_that("void driver init function works", {
   expect_s3_class(adbc_driver_void(), "adbc_driver")
   expect_s3_class(adbc_driver_void()$driver_init_func, "adbc_driver_init_func")
 })
+
+test_that("drivers can be loaded by name/entrypoint", {
+  shared <- adbcdrivermanager_shared()
+  driver <- adbc_driver(shared, "AdbcTestVoidDriverInit")
+  expect_s3_class(driver, "adbc_driver")
+  expect_identical(driver$name, shared)
+})
+
+test_that("drivers are loaded using load_flags", {
+  # Linux, at least in GitHub CI, doesn't allow loading by relative path
+  # with either flag configuration.
+  skip_on_os("linux")
+
+  shared <- adbcdrivermanager_shared()
+
+  withr::with_dir(dirname(shared), {
+    expect_s3_class(
+      adbc_driver(basename(shared), "AdbcTestVoidDriverInit"),
+      "adbc_driver"
+    )
+
+    # Check that load_flags are used when test-loading the driver
+    expect_error(
+      adbc_driver(
+        basename(shared),
+        load_flags = adbc_load_flags(allow_relative_paths = FALSE)
+      ),
+      "Driver path is relative and relative paths are not allowed"
+    )
+
+    # Check that load_flags are passed to the database
+    drv <- adbc_driver(basename(shared), "AdbcTestVoidDriverInit")
+    drv$load_flags <- adbc_load_flags(allow_relative_paths = FALSE)
+    expect_error(
+      adbc_database_init(drv),
+      "Driver path is relative and relative paths are not allowed"
+    )
+  })
+})
+
+test_that("drivers can be loaded by manifest path", {
+  toml_content <- sprintf("
+manifest_version = 1
+
+name = 'Void Driver'
+
+[ADBC]
+version = 'v1.1.0'
+
+[Driver]
+entrypoint = 'AdbcTestVoidDriverInit'
+
+[Driver.shared]
+%s = '%s'
+
+  ", current_arch(), adbcdrivermanager_shared())
+
+  td <- tempfile()
+  toml_path <- file.path(td, "void.toml")
+  on.exit(unlink(td))
+  dir.create(td)
+  writeLines(toml_content, toml_path)
+
+  drv <- adbc_driver(toml_path)
+  expect_s3_class(adbc_database_init(drv), "adbc_database")
+})

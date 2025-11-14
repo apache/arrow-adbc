@@ -20,11 +20,11 @@
 //!
 
 use adbc_core::{
-    driver_manager::ManagedStatement,
     error::Result,
     options::{OptionStatement, OptionValue},
     Optionable, PartitionedResult,
 };
+use adbc_driver_manager::ManagedStatement;
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 

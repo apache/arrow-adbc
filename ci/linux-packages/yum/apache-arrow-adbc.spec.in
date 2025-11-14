@@ -352,7 +352,7 @@ Documentation for Apache Arrow GLib integration.
 %{_docdir}/adbc-arrow-glib/
 
 %changelog
-* Fri May 02 2025 David Li <li.davidm96@gmail.com> - 18-1
+* Mon Nov 03 2025 David Li <li.davidm96@gmail.com> - 21-1
 - New upstream release.
 
 * Thu Apr 27 2023 Matt Topol <matt@voltrondata.com> - 0.4.0-1

@@ -37,6 +37,7 @@ main() {
     local maven_profiles="apache-release"
     if [[ "${BUILD_JNI}" == "ON" ]]; then
         maven_profiles="${maven_profiles},jni"
+        echo "(*) Building JNI libraries"
     fi
 
     echo "=== Build ==="

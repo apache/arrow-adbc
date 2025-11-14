@@ -32,30 +32,44 @@ script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${script_dir}/python_util.sh"
 
 echo "=== (${PYTHON_VERSION}) Installing wheels ==="
+
+PYTHON_TAG=cp$(python -c "import sysconfig; print(sysconfig.get_python_version().replace('.', ''))")
+PYTHON_FLAGS=$(python -c "import sysconfig; print(sysconfig.get_config_var('abiflags'))")
+
 for component in ${COMPONENTS}; do
     if [[ "${component}" = "adbc_driver_manager" ]]; then
-        PYTHON_TAG=cp$(python -c "import sysconfig; print(sysconfig.get_python_version().replace('.', ''))")
+        # Don't pick up cp313-cp313t when we wanted cp313-cp313 or vice versa (for example)
+        WHEEL_TAG="${PYTHON_TAG}-${PYTHON_TAG}${PYTHON_FLAGS}"
     else
-        PYTHON_TAG=py3
+        WHEEL_TAG=py3-none
     fi
 
     if [[ -d ${source_dir}/python/${component}/repaired_wheels/ ]]; then
-        pip install --no-deps --force-reinstall \
-            ${source_dir}/python/${component}/repaired_wheels/*-${PYTHON_TAG}-*.whl
+        python -m pip install --no-deps --force-reinstall \
+            ${source_dir}/python/${component}/repaired_wheels/*-${WHEEL_TAG}-*.whl
     elif [[ -d ${source_dir}/python/${component}/dist/ ]]; then
-        pip install --no-deps --force-reinstall \
-            ${source_dir}/python/${component}/dist/*-${PYTHON_TAG}-*.whl
+        python -m pip install --no-deps --force-reinstall \
+            ${source_dir}/python/${component}/dist/*-${WHEEL_TAG}-*.whl
     else
         echo "NOTE: assuming wheels are already installed"
     fi
 done
-pip install importlib-resources pytest pyarrow pandas polars protobuf
 
+python -m pip install importlib-resources pytest pyarrow pandas protobuf
+if [[ -z "${PYTHON_FLAGS}" ]]; then
+    # polars does not support freethreading and will try to build from source
+    python -m pip install polars
+fi
 
 echo "=== (${PYTHON_VERSION}) Testing wheels ==="
 test_packages
 
-echo "=== (${PYTHON_VERSION}) Testing wheels (no PyArrow) ==="
-pip uninstall -y pyarrow
-export PYTEST_ADDOPTS="${PYTEST_ADDOPTS} -k pyarrowless"
-test_packages_pyarrowless
+if [[ -z "${PYTHON_FLAGS}" ]]; then
+    echo "=== (${PYTHON_VERSION}) Testing wheels (no PyArrow) ==="
+    python -m pip uninstall -y pyarrow
+    export PYTEST_ADDOPTS="${PYTEST_ADDOPTS} -k pyarrowless"
+    test_packages_pyarrowless
+else
+    echo "Freethreading build, skipping pyarrowless tests"
+    echo "(polars does not yet support freethreading)"
+fi

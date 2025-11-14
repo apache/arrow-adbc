@@ -16,6 +16,7 @@
 # under the License.
 
 # cython: language_level = 3
+# cython: freethreading_compatible=True
 
 """Low-level ADBC API."""
 
@@ -23,6 +24,7 @@ import enum
 import functools
 import threading
 import os
+import pathlib
 import typing
 import sys
 import warnings
@@ -370,10 +372,29 @@ cdef class ArrowSchemaHandle:
     cdef:
         CArrowSchema schema
 
+    def __del__(self):
+        self.release()
+
     @property
     def address(self) -> int:
         """The address of the ArrowSchema."""
         return <uintptr_t> &self.schema
+
+    @property
+    def is_valid(self) -> bool:
+        """Check validility (object has non-NULL release pointer)."""
+        return self.schema.release != NULL
+
+    def release(self):
+        """Release this schema without having to import it.
+
+        No-op if already released (if ``not self.is_valid``).
+
+        Postcondition: ``not self.is_valid``.
+        """
+        if self.schema.release != NULL:
+            self.schema.release(&self.schema)
+            self.schema.release = NULL
 
     def __arrow_c_schema__(self) -> object:
         """Consume this object to get a PyCapsule."""
@@ -398,6 +419,25 @@ cdef class ArrowArrayHandle:
     cdef:
         CArrowArray array
 
+    def __del__(self):
+        self.release()
+
+    @property
+    def is_valid(self) -> bool:
+        """Check validility (object has non-NULL release pointer)."""
+        return self.array.release != NULL
+
+    def release(self):
+        """Release this array without having to import it.
+
+        No-op if already released (if ``not self.is_valid``).
+
+        Postcondition: ``not self.is_valid``.
+        """
+        if self.array.release != NULL:
+            self.array.release(&self.array)
+            self.array.release = NULL
+
     @property
     def address(self) -> int:
         """
@@ -415,10 +455,51 @@ cdef class ArrowArrayStreamHandle:
     cdef:
         CArrowArrayStream stream
 
+    def __del__(self):
+        self.release()
+
     @property
     def address(self) -> int:
         """The address of the ArrowArrayStream."""
         return <uintptr_t> &self.stream
+
+    @property
+    def is_valid(self) -> bool:
+        """Check validility (object has non-NULL release pointer)."""
+        return self.stream.release != NULL
+
+    def release(self):
+        """Release this stream without having to import it.
+
+        No-op if already released (if ``not self.is_valid``).
+
+        Postcondition: ``not self.is_valid``.
+        """
+        if self.stream.release != NULL:
+            self.stream.release(&self.stream)
+            self.stream.release = NULL
+
+    def __arrow_c_schema__(self) -> object:
+        """Get a PyCapsule without consuming this object."""
+        cdef const char* err = NULL
+
+        if not self.is_valid:
+            raise ValueError("ArrowArrayStreamHandle already consumed")
+
+        cdef CArrowSchema* allocated = <CArrowSchema*> malloc(sizeof(CArrowSchema))
+        allocated.release = NULL
+        capsule = PyCapsule_New(
+            <void*>allocated, "arrow_schema", &pycapsule_schema_deleter,
+        )
+        rc = self.stream.get_schema(&self.stream, allocated)
+        if rc != 0:
+            err = self.stream.get_last_error(&self.stream)
+            if err == NULL:
+                raise RuntimeError(f"Failed to get schema: ({rc})")
+            else:
+                s = err.decode()
+                raise RuntimeError(f"Failed to get schema: ({rc}) {s}")
+        return capsule
 
     def __arrow_c_stream__(self, requested_schema=None) -> object:
         """Consume this object to get a PyCapsule."""
@@ -479,21 +560,44 @@ cdef class AdbcDatabase(_AdbcHandle):
             status = AdbcDatabaseNew(&self.database, &c_error)
         check_error(status, &c_error)
 
+        # N.B. these calls are handled by the driver manager and do not do
+        # synchronous I/O, so there is no need to constantly release/acquire
+        # the GIL
+
+        # by default, allow searching for manifests and relative paths
+        status = AdbcDriverManagerDatabaseSetLoadFlags(
+            &self.database, CAdbcLoadFlagDefault, &c_error)
+        check_error(status, &c_error)
+
         for key, value in kwargs.items():
             if key == "init_func":
                 status = AdbcDriverManagerDatabaseSetInitFunc(
                     &self.database, <CAdbcDriverInitFunc> (<uintptr_t> value), &c_error)
+            elif key == "load_flags":
+                status = AdbcDriverManagerDatabaseSetLoadFlags(
+                    &self.database, <CAdbcLoadFlags> (value), &c_error)
             elif key is None:
                 raise ValueError("key cannot be None")
             elif value is None:
                 raise ValueError(f"value for key '{key}' cannot be None")
             else:
                 key = _to_bytes(key, "key")
+                if isinstance(value, pathlib.Path):
+                    value = str(value)
                 value = _to_bytes(value, "value")
                 c_key = key
                 c_value = value
                 status = AdbcDatabaseSetOption(
                     &self.database, c_key, c_value, &c_error)
+            check_error(status, &c_error)
+
+        # check if we're running in a venv
+        if sys.prefix != sys.base_prefix:
+            # if we're in a venv, add the venv prefix to the search path list
+            status = AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                &self.database, _to_bytes(os.path.join(sys.prefix, "etc/adbc/drivers"),
+                                          "sys.prefix"),
+                &c_error)
             check_error(status, &c_error)
 
         with nogil:
@@ -535,17 +639,20 @@ cdef class AdbcDatabase(_AdbcHandle):
             (see bytes.decode).
         """
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef size_t c_len = 0
+        cdef char* c_buf = NULL
 
         buf = bytearray(1024)
         while True:
             c_len = len(buf)
-            check_error(
-                AdbcDatabaseGetOption(
-                    &self.database, c_key, buf, &c_len, &c_error),
-                &c_error)
+            c_buf = buf
+            with nogil:
+                status = AdbcDatabaseGetOption(
+                    &self.database, c_key, c_buf, &c_len, &c_error)
+            check_error(status, &c_error)
             if c_len <= len(buf):
                 # Entire value read
                 break
@@ -566,17 +673,20 @@ cdef class AdbcDatabase(_AdbcHandle):
     def get_option_bytes(self, key: str) -> bytes:
         """Get the value of a binary option."""
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef size_t c_len = 0
+        cdef uint8_t* c_buf = NULL
 
         buf = bytearray(1024)
         while True:
             c_len = len(buf)
-            check_error(
-                AdbcDatabaseGetOptionBytes(
-                    &self.database, c_key, buf, &c_len, &c_error),
-                &c_error)
+            c_buf = buf
+            with nogil:
+                status = AdbcDatabaseGetOptionBytes(
+                    &self.database, c_key, c_buf, &c_len, &c_error)
+            check_error(status, &c_error)
             if c_len <= len(buf):
                 # Entire value read
                 break
@@ -594,25 +704,27 @@ cdef class AdbcDatabase(_AdbcHandle):
     def get_option_float(self, key: str) -> float:
         """Get the value of a floating-point option."""
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef double c_value = 0.0
-        check_error(
-            AdbcDatabaseGetOptionDouble(
-                &self.database, c_key, &c_value, &c_error),
-            &c_error)
+        with nogil:
+            status = AdbcDatabaseGetOptionDouble(
+                &self.database, c_key, &c_value, &c_error)
+        check_error(status, &c_error)
         return c_value
 
     def get_option_int(self, key: str) -> int:
         """Get the value of an integer option."""
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef int64_t c_value = 0
-        check_error(
-            AdbcDatabaseGetOptionInt(
-                &self.database, c_key, &c_value, &c_error),
-            &c_error)
+        with nogil:
+            status = AdbcDatabaseGetOptionInt(
+                &self.database, c_key, &c_value, &c_error)
+        check_error(status, &c_error)
         return c_value
 
     def set_options(self, **kwargs) -> None:
@@ -630,6 +742,9 @@ cdef class AdbcDatabase(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         cdef char* c_key = NULL
         cdef char* c_value = NULL
+        cdef size_t c_value_len = 0
+        cdef double c_double
+        cdef int64_t c_int
         for key, value in kwargs.items():
             key = _to_bytes(key, "option key")
             c_key = key
@@ -654,15 +769,21 @@ cdef class AdbcDatabase(_AdbcHandle):
                     &self.database, c_key, c_value, &c_error)
             elif isinstance(value, bytes):
                 c_value = value
-                status = AdbcDatabaseSetOptionBytes(
-                    &self.database, c_key, <const uint8_t*> c_value,
-                    len(value), &c_error)
+                c_value_len = len(value)
+                with nogil:
+                    status = AdbcDatabaseSetOptionBytes(
+                        &self.database, c_key, <const uint8_t*> c_value,
+                        c_value_len, &c_error)
             elif isinstance(value, float):
-                status = AdbcDatabaseSetOptionDouble(
-                    &self.database, c_key, value, &c_error)
+                c_double = value
+                with nogil:
+                    status = AdbcDatabaseSetOptionDouble(
+                        &self.database, c_key, c_double, &c_error)
             elif isinstance(value, int):
-                status = AdbcDatabaseSetOptionInt(
-                    &self.database, c_key, value, &c_error)
+                c_int = value
+                with nogil:
+                    status = AdbcDatabaseSetOptionInt(
+                        &self.database, c_key, c_int, &c_error)
             else:
                 raise ValueError(
                     f"Unsupported type {type(value)} for value {value!r} "
@@ -708,9 +829,11 @@ cdef class AdbcConnection(_AdbcHandle):
             value = value.encode("utf-8")
             c_key = key
             c_value = value
-            status = AdbcConnectionSetOption(&self.connection, c_key, c_value, &c_error)
-            if status != ADBC_STATUS_OK:
-                AdbcConnectionRelease(&self.connection, NULL)
+            with nogil:
+                status = AdbcConnectionSetOption(
+                    &self.connection, c_key, c_value, &c_error)
+                if status != ADBC_STATUS_OK:
+                    AdbcConnectionRelease(&self.connection, NULL)
             check_error(status, &c_error)
 
         with nogil:
@@ -839,17 +962,20 @@ cdef class AdbcConnection(_AdbcHandle):
             (see bytes.decode).
         """
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef size_t c_len = 0
+        cdef char* c_buf = NULL
 
         buf = bytearray(1024)
         while True:
             c_len = len(buf)
-            check_error(
-                AdbcConnectionGetOption(
-                    &self.connection, c_key, buf, &c_len, &c_error),
-                &c_error)
+            c_buf = buf
+            with nogil:
+                status = AdbcConnectionGetOption(
+                    &self.connection, c_key, c_buf, &c_len, &c_error)
+            check_error(status, &c_error)
             if c_len <= len(buf):
                 # Entire value read
                 break
@@ -870,17 +996,20 @@ cdef class AdbcConnection(_AdbcHandle):
     def get_option_bytes(self, key: str) -> bytes:
         """Get the value of a binary option."""
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef size_t c_len = 0
+        cdef uint8_t* c_buf = NULL
 
         buf = bytearray(1024)
         while True:
             c_len = len(buf)
-            check_error(
-                AdbcConnectionGetOptionBytes(
-                    &self.connection, c_key, buf, &c_len, &c_error),
-                &c_error)
+            c_buf = buf
+            with nogil:
+                status = AdbcConnectionGetOptionBytes(
+                    &self.connection, c_key, c_buf, &c_len, &c_error)
+            check_error(status, &c_error)
             if c_len <= len(buf):
                 # Entire value read
                 break
@@ -898,25 +1027,27 @@ cdef class AdbcConnection(_AdbcHandle):
     def get_option_float(self, key: str) -> float:
         """Get the value of a floating-point option."""
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef double c_value = 0.0
-        check_error(
-            AdbcConnectionGetOptionDouble(
-                &self.connection, c_key, &c_value, &c_error),
-            &c_error)
+        with nogil:
+            status = AdbcConnectionGetOptionDouble(
+                &self.connection, c_key, &c_value, &c_error)
+        check_error(status, &c_error)
         return c_value
 
     def get_option_int(self, key: str) -> int:
         """Get the value of an integer option."""
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef int64_t c_value = 0
-        check_error(
-            AdbcConnectionGetOptionInt(
-                &self.connection, c_key, &c_value, &c_error),
-            &c_error)
+        with nogil:
+            status = AdbcConnectionGetOptionInt(
+                &self.connection, c_key, &c_value, &c_error)
+        check_error(status, &c_error)
         return c_value
 
     def get_table_schema(self, catalog, db_schema, table_name) -> ArrowSchemaHandle:
@@ -990,7 +1121,10 @@ cdef class AdbcConnection(_AdbcHandle):
     def rollback(self) -> None:
         """Rollback the current transaction."""
         cdef CAdbcError c_error = empty_error()
-        check_error(AdbcConnectionRollback(&self.connection, &c_error), &c_error)
+        cdef CAdbcStatusCode status
+        with nogil:
+            status = AdbcConnectionRollback(&self.connection, &c_error)
+        check_error(status, &c_error)
 
     def set_autocommit(self, bint enabled) -> None:
         """Toggle whether autocommit is enabled."""
@@ -1023,19 +1157,24 @@ cdef class AdbcConnection(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         cdef char* c_key = NULL
         cdef char* c_value = NULL
+        cdef size_t c_value_len
+        cdef double c_double
+        cdef int64_t c_int
         for key, value in kwargs.items():
             key = _to_bytes(key, "option key")
             c_key = key
 
             if value is None:
                 c_value = NULL
-                status = AdbcConnectionSetOption(
-                    &self.connection, c_key, c_value, &c_error)
+                with nogil:
+                    status = AdbcConnectionSetOption(
+                        &self.connection, c_key, c_value, &c_error)
             elif isinstance(value, str):
                 value = _to_bytes(value, "option value")
                 c_value = value
-                status = AdbcConnectionSetOption(
-                    &self.connection, c_key, c_value, &c_error)
+                with nogil:
+                    status = AdbcConnectionSetOption(
+                        &self.connection, c_key, c_value, &c_error)
             elif isinstance(value, bool):
                 if value:
                     value = ADBC_OPTION_VALUE_ENABLED
@@ -1043,19 +1182,26 @@ cdef class AdbcConnection(_AdbcHandle):
                     value = ADBC_OPTION_VALUE_DISABLED
                 value = _to_bytes(value, "option value")
                 c_value = value
-                status = AdbcConnectionSetOption(
-                    &self.connection, c_key, c_value, &c_error)
+                with nogil:
+                    status = AdbcConnectionSetOption(
+                        &self.connection, c_key, c_value, &c_error)
             elif isinstance(value, bytes):
                 c_value = value
-                status = AdbcConnectionSetOptionBytes(
-                    &self.connection, c_key, <const uint8_t*> c_value,
-                    len(value), &c_error)
+                c_value_len = len(value)
+                with nogil:
+                    status = AdbcConnectionSetOptionBytes(
+                        &self.connection, c_key, <const uint8_t*> c_value,
+                        c_value_len, &c_error)
             elif isinstance(value, float):
-                status = AdbcConnectionSetOptionDouble(
-                    &self.connection, c_key, value, &c_error)
+                c_double = value
+                with nogil:
+                    status = AdbcConnectionSetOptionDouble(
+                        &self.connection, c_key, c_double, &c_error)
             elif isinstance(value, int):
-                status = AdbcConnectionSetOptionInt(
-                    &self.connection, c_key, value, &c_error)
+                c_int = value
+                with nogil:
+                    status = AdbcConnectionSetOptionInt(
+                        &self.connection, c_key, c_int, &c_error)
             else:
                 raise ValueError(
                     f"Unsupported type {type(value)} for value {value!r} "
@@ -1345,17 +1491,20 @@ cdef class AdbcStatement(_AdbcHandle):
             (see bytes.decode).
         """
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef size_t c_len = 0
+        cdef char* c_buf = NULL
 
         buf = bytearray(1024)
         while True:
             c_len = len(buf)
-            check_error(
-                AdbcStatementGetOption(
-                    &self.statement, c_key, buf, &c_len, &c_error),
-                &c_error)
+            c_buf = buf
+            with nogil:
+                status = AdbcStatementGetOption(
+                    &self.statement, c_key, c_buf, &c_len, &c_error)
+            check_error(status, &c_error)
             if c_len <= len(buf):
                 # Entire value read
                 break
@@ -1376,17 +1525,20 @@ cdef class AdbcStatement(_AdbcHandle):
     def get_option_bytes(self, key: str) -> bytes:
         """Get the value of a binary option."""
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef size_t c_len = 0
+        cdef uint8_t* c_buf = NULL
 
         buf = bytearray(1024)
         while True:
             c_len = len(buf)
-            check_error(
-                AdbcStatementGetOptionBytes(
-                    &self.statement, c_key, buf, &c_len, &c_error),
-                &c_error)
+            c_buf = buf
+            with nogil:
+                status = AdbcStatementGetOptionBytes(
+                    &self.statement, c_key, c_buf, &c_len, &c_error)
+            check_error(status, &c_error)
             if c_len <= len(buf):
                 # Entire value read
                 break
@@ -1404,25 +1556,27 @@ cdef class AdbcStatement(_AdbcHandle):
     def get_option_float(self, key: str) -> float:
         """Get the value of a floating-point option."""
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef double c_value = 0.0
-        check_error(
-            AdbcStatementGetOptionDouble(
-                &self.statement, c_key, &c_value, &c_error),
-            &c_error)
+        with nogil:
+            status = AdbcStatementGetOptionDouble(
+                &self.statement, c_key, &c_value, &c_error)
+        check_error(status, &c_error)
         return c_value
 
     def get_option_int(self, key: str) -> int:
         """Get the value of an integer option."""
         cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
         key_bytes = _to_bytes(key, "key")
         cdef char* c_key = key_bytes
         cdef int64_t c_value = 0
-        check_error(
-            AdbcStatementGetOptionInt(
-                &self.statement, c_key, &c_value, &c_error),
-            &c_error)
+        with nogil:
+            status = AdbcStatementGetOptionInt(
+                &self.statement, c_key, &c_value, &c_error)
+        check_error(status, &c_error)
         return c_value
 
     def get_parameter_schema(self) -> ArrowSchemaHandle:
@@ -1478,19 +1632,24 @@ cdef class AdbcStatement(_AdbcHandle):
         cdef CAdbcError c_error = empty_error()
         cdef char* c_key = NULL
         cdef char* c_value = NULL
+        cdef size_t c_value_len
+        cdef double c_double
+        cdef int64_t c_int
         for key, value in kwargs.items():
             key = _to_bytes(key, "option key")
             c_key = key
 
             if value is None:
                 c_value = NULL
-                status = AdbcStatementSetOption(
-                    &self.statement, c_key, c_value, &c_error)
+                with nogil:
+                    status = AdbcStatementSetOption(
+                        &self.statement, c_key, c_value, &c_error)
             elif isinstance(value, str):
                 value = _to_bytes(value, "option value")
                 c_value = value
-                status = AdbcStatementSetOption(
-                    &self.statement, c_key, c_value, &c_error)
+                with nogil:
+                    status = AdbcStatementSetOption(
+                        &self.statement, c_key, c_value, &c_error)
             elif isinstance(value, bool):
                 if value:
                     value = ADBC_OPTION_VALUE_ENABLED
@@ -1498,19 +1657,26 @@ cdef class AdbcStatement(_AdbcHandle):
                     value = ADBC_OPTION_VALUE_DISABLED
                 value = _to_bytes(value, "option value")
                 c_value = value
-                status = AdbcStatementSetOption(
-                    &self.statement, c_key, c_value, &c_error)
+                with nogil:
+                    status = AdbcStatementSetOption(
+                        &self.statement, c_key, c_value, &c_error)
             elif isinstance(value, bytes):
                 c_value = value
-                status = AdbcStatementSetOptionBytes(
-                    &self.statement, c_key, <const uint8_t*> c_value,
-                    len(value), &c_error)
+                c_value_len = len(value)
+                with nogil:
+                    status = AdbcStatementSetOptionBytes(
+                        &self.statement, c_key, <const uint8_t*> c_value,
+                        c_value_len, &c_error)
             elif isinstance(value, float):
-                status = AdbcStatementSetOptionDouble(
-                    &self.statement, c_key, value, &c_error)
+                c_double = value
+                with nogil:
+                    status = AdbcStatementSetOptionDouble(
+                        &self.statement, c_key, c_double, &c_error)
             elif isinstance(value, int):
-                status = AdbcStatementSetOptionInt(
-                    &self.statement, c_key, value, &c_error)
+                c_int = value
+                with nogil:
+                    status = AdbcStatementSetOptionInt(
+                        &self.statement, c_key, c_int, &c_error)
             else:
                 raise ValueError(
                     f"Unsupported type {type(value)} for value {value!r} "

@@ -39,8 +39,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
 
+        protected readonly HiveServer2ProxyConfigurator _proxyConfigurator;
+
         public SparkHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            _proxyConfigurator = HiveServer2ProxyConfigurator.FromProperties(properties);
         }
 
         protected override void ValidateAuthentication()
@@ -50,7 +53,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(SparkParameters.AuthType, out string? authType);
-            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             if (!SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue))
             {
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
@@ -85,14 +87,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     break;
 
                 case SparkAuthType.OAuth:
-                    if (string.IsNullOrWhiteSpace(access_token))
-                        throw new ArgumentException(
-                            $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' but parameter '{SparkParameters.AccessToken}' is not set. Please provide a value for '{SparkParameters.AccessToken}'.",
-                            nameof(Properties));
+                    ValidateOAuthParameters();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
+        }
+
+        protected virtual void ValidateOAuthParameters()
+        {
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
+            if (string.IsNullOrWhiteSpace(access_token))
+                throw new ArgumentException(
+                    $"Parameter '{SparkParameters.AuthType}' is set to '{SparkAuthTypeConstants.OAuth}' but parameter '{SparkParameters.AccessToken}' is not set. Please provide a value for '{SparkParameters.AccessToken}'.",
+                    nameof(Properties));
         }
 
         protected override void ValidateConnection()
@@ -139,11 +147,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(
+            T statement,
+            Schema schema,
+            IResponse response,
+            TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, response, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected virtual HttpMessageHandler CreateHttpHandler()
         {
-            return HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
+            return HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
         }
 
         protected override TTransport CreateTransport()
@@ -157,14 +169,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             {
                 throw new ArgumentOutOfRangeException(SparkParameters.AuthType, authType, $"Unsupported {SparkParameters.AuthType} value.");
             }
-            Properties.TryGetValue(SparkParameters.Token, out string? token);
-            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
-            Properties.TryGetValue(AdbcOptions.Username, out string? username);
-            Properties.TryGetValue(AdbcOptions.Password, out string? password);
             Properties.TryGetValue(AdbcOptions.Uri, out string? uri);
 
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, SparkParameters.HostName, TlsOptions.IsTlsEnabled);
-            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, token, username, password, access_token);
+            AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue);
 
             HttpClient httpClient = new(CreateHttpHandler());
             httpClient.BaseAddress = baseAddress;
@@ -185,8 +193,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return transport;
         }
 
-        private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType, string? token, string? username, string? password, string? access_token)
+        protected virtual AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
         {
+            Properties.TryGetValue(SparkParameters.Token, out string? token);
+            Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
+            Properties.TryGetValue(AdbcOptions.Username, out string? username);
+            Properties.TryGetValue(AdbcOptions.Password, out string? password);
             if (!string.IsNullOrEmpty(token) && (authType == SparkAuthType.Empty || authType == SparkAuthType.Token))
             {
                 return new AuthenticationHeaderValue(BearerAuthenticationScheme, token);
@@ -229,34 +241,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             return req;
         }
 
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected internal override Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            GetResultSetMetadataAsync(response.OperationHandle, Client, cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTableTypesResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetColumnsResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetTablesResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetCatalogsResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected override Task<TRowSet> GetRowSetAsync(TGetSchemasResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-        protected internal override Task<TRowSet> GetRowSetAsync(TGetPrimaryKeysResp response, CancellationToken cancellationToken = default) =>
-            FetchResultsAsync(response.OperationHandle, cancellationToken: cancellationToken);
-
         internal override SchemaParser SchemaParser => new HiveServer2SchemaParser();
 
         internal override SparkServerType ServerType => SparkServerType.Http;
 
-        protected override int ColumnMapIndexOffset => 1;
+        public override string AssemblyVersion => s_assemblyVersion;
+
+        public override string AssemblyName => s_assemblyName;
+
+        protected override IEnumerable<TProtocolVersion> FallbackProtocolVersions => new[]
+        {
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V8,
+            TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V7
+        };
 
         private string GetUserAgent()
         {

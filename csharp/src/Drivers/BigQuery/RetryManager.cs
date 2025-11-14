@@ -17,6 +17,8 @@
 */
 
 using System;
+using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
@@ -29,8 +31,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         public static async Task<T> ExecuteWithRetriesAsync<T>(
             ITokenProtectedResource tokenProtectedResource,
             Func<Task<T>> action,
+            Activity? activity,
             int maxRetries = 5,
-            int initialDelayMilliseconds = 200)
+            int initialDelayMilliseconds = 200,
+            CancellationToken cancellationToken = default)
         {
             if (action == null)
             {
@@ -47,8 +51,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     T result = await action();
                     return result;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
                 {
+                    // Note: OperationCanceledException could be thrown from the call,
+                    // but we only want to break out when the cancellation was requested from the caller.
+                    activity?.AddBigQueryTag("retry_attempt", retryCount);
+                    activity?.AddException(ex);
+
                     retryCount++;
                     if (retryCount >= maxRetries)
                     {
@@ -56,18 +65,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         {
                             if (tokenProtectedResource?.TokenRequiresUpdate(ex) == true)
                             {
-                                throw new AdbcException($"Cannot update access token after {maxRetries} tries", AdbcStatusCode.Unauthenticated, ex);
+                                activity?.AddBigQueryTag("update_token.status", "Expired");
+                                throw new AdbcException($"Cannot update access token after {maxRetries} tries. Last exception: {ex.GetType().Name}: {ex.Message}", AdbcStatusCode.Unauthenticated, ex);
                             }
                         }
 
-                        throw new AdbcException($"Cannot execute {action.Method.Name} after {maxRetries} tries", AdbcStatusCode.UnknownError, ex);
+                        throw new AdbcException($"Cannot execute {action.Method.Name} after {maxRetries} tries. Last exception: {ex.GetType().Name}: {ex.Message}", AdbcStatusCode.UnknownError, ex);
                     }
 
                     if ((tokenProtectedResource?.UpdateToken != null))
                     {
                         if (tokenProtectedResource.TokenRequiresUpdate(ex) == true)
                         {
+                            activity?.AddBigQueryTag("update_token.status", "Required");
                             await tokenProtectedResource.UpdateToken();
+                            activity?.AddBigQueryTag("update_token.status", "Completed");
                         }
                     }
 

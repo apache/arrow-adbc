@@ -156,7 +156,8 @@ AdbcStatusCode DatabricksStatementSetSubstraitPlan(struct AdbcStatement* stmt,
                                                    const uint8_t* plan, size_t length,
                                                    struct AdbcError* err);
 
-AdbcStatusCode DatabricksDriverInit(int version, void* rawDriver, struct AdbcError* err);
+AdbcStatusCode AdbcDriverDatabricksInit(int version, void* rawDriver,
+                                        struct AdbcError* err);
 
 static inline void DatabrickserrRelease(struct AdbcError* error) {
   if (error->release) {

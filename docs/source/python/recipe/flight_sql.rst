@@ -19,12 +19,12 @@
 Flight SQL Recipes
 ==================
 
-Some of these recipes are written againt a demo Flight SQL service backed by
+Some of these recipes are written against a demo Flight SQL service backed by
 SQLite.  You can run it yourself as follows:
 
 .. code-block:: shell
 
-   $ go install github.com/apache/arrow/go/v${ARROW_MAJOR_VERSION}/arrow/flight/flightsql/example/cmd/sqlite_flightsql_server@latest
+   $ go install github.com/apache/arrow-go/v${ARROW_MAJOR_VERSION}/arrow/flight/flightsql/example/cmd/sqlite_flightsql_server@latest
    $ sqlite_flightsql_server -host 0.0.0.0 -port 8080
 
 Other recipes work using the OSS version of Dremio_:

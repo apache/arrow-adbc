@@ -124,10 +124,3 @@ class PostgresDatabase {
   std::array<int, 3> redshift_server_version_{};
 };
 }  // namespace adbcpq
-
-extern "C" {
-/// For applications that want to use the driver struct directly, this gives
-/// them access to the Init routine.
-ADBC_EXPORT
-AdbcStatusCode PostgresqlDriverInit(int, void*, struct AdbcError*);
-}

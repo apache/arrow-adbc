@@ -20,9 +20,9 @@
 project(
     'adbc-glib',
     'c',
-    default_options: ['c_std=c99'],
+    default_options: ['c_std=c99', 'cpp_std=c++17'],
     license: 'Apache-2.0',
-    version: '1.6.0',
+    version: '1.9.0',
 )
 
 version_numbers = meson.project_version().split('-')[0].split('.')
@@ -87,6 +87,10 @@ else
         '--cflags-end',
     ]
 endif
+
+python = import('python')
+python3 = python.find_installation('python3')
+generate_version_header_py = meson.project_source_root() / 'tool' / 'generate-version-header.py'
 
 subdir('adbc-glib')
 arrow_glib = dependency('arrow-glib', required: generate_vapi)

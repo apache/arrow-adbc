@@ -19,28 +19,14 @@
 JDBC Adapter
 ============
 
-**Available for:** Java
+.. adbc_driver_status:: ../../../java/driver/jdbc/README.md
 
 The JDBC Adapter provides access to any database with a JDBC driver.
 
 Installation
 ============
 
-.. tab-set::
-
-   .. tab-item:: Java
-      :sync: java
-
-      Add a dependency on ``org.apache.arrow.adbc:adbc-driver-flight-sql``.
-
-      For Maven users:
-
-      .. code-block:: xml
-
-         <dependency>
-           <groupId>org.apache.arrow.adbc</groupId>
-           <artifactId>adbc-driver-jdbc</artifactId>
-         </dependency>
+.. adbc_driver_installation:: ../../../java/driver/jdbc/README.md
 
 Usage
 =====
@@ -63,5 +49,5 @@ or an instance of a ``javax.sql.DataSource`` as the
 Supported Features
 ==================
 
-The Flight SQL driver generally supports features defined in the ADBC
+The JDBC Adapter generally supports features defined in the ADBC
 API specification 1.0.0.

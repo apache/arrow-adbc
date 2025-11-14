@@ -445,10 +445,19 @@ type driverImpl struct {
 }
 
 func (drv *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
+	return drv.NewDatabaseWithContext(context.Background(), opts)
+}
+
+func (drv *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &drv.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
 	db := driverbase.NewDatabase(
-		&databaseImpl{DatabaseImplBase: driverbase.NewDatabaseImplBase(&drv.DriverImplBase),
-			drv:        drv,
-			useHelpers: drv.useHelpers,
+		&databaseImpl{
+			DatabaseImplBase: dbBase,
+			drv:              drv,
+			useHelpers:       drv.useHelpers,
 		})
 	db.SetLogger(slog.New(drv.handler))
 	return db, nil
@@ -505,6 +514,67 @@ type connectionImpl struct {
 
 	currentCatalog  string
 	currentDbSchema string
+}
+
+func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
+	stmt := &statement{
+		StatementImplBase: driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper),
+		cnxn:              c,
+	}
+	return driverbase.NewStatement(stmt), nil
+}
+
+type statement struct {
+	driverbase.StatementImplBase
+	cnxn *connectionImpl
+}
+
+func (base *statement) Base() *driverbase.StatementImplBase {
+	return &base.StatementImplBase
+}
+
+func (base *statement) Bind(ctx context.Context, values arrow.RecordBatch) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Bind")
+}
+
+func (base *statement) BindStream(ctx context.Context, stream array.RecordReader) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "BindStream")
+}
+
+func (base *statement) Close() error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Close")
+}
+
+func (base *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
+	return nil, adbc.Partitions{}, 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecutePartitions")
+}
+
+func (base *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	return nil, 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteQuery")
+}
+
+func (base *statement) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	return nil, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteSchema")
+}
+
+func (base *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
+	return 0, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "ExecuteUpdate")
+}
+
+func (base *statement) GetParameterSchema() (*arrow.Schema, error) {
+	return nil, base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "GetParameterSchema")
+}
+
+func (base *statement) Prepare(ctx context.Context) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "Prepare")
+}
+
+func (base *statement) SetSqlQuery(query string) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetSqlQuery")
+}
+
+func (base statement) SetSubstraitPlan(plan []byte) error {
+	return base.Base().ErrorHelper.Errorf(adbc.StatusNotImplemented, "SetSubstraitPlan")
 }
 
 var dbObjects = map[string]map[string][]driverbase.TableInfo{
@@ -702,9 +772,9 @@ func messagesEqual(expected, actual logMessage) bool {
 func tableFromRecordReader(rdr array.RecordReader) arrow.Table {
 	defer rdr.Release()
 
-	recs := make([]arrow.Record, 0)
+	recs := make([]arrow.RecordBatch, 0)
 	for rdr.Next() {
-		rec := rdr.Record()
+		rec := rdr.RecordBatch()
 		rec.Retain()
 		defer rec.Release()
 		recs = append(recs, rec)

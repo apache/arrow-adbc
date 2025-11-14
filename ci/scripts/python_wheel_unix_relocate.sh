@@ -56,7 +56,7 @@ fi
 echo "=== Relocating wheels ==="
 # https://github.com/pypa/pip/issues/7555
 # Get the latest pip so we have in-tree-build by default
-python -m pip install --upgrade pip auditwheel 'cibuildwheel>=2.21.2' delocate setuptools wheel
+python -m pip install --upgrade pip auditwheel 'cibuildwheel>3' delocate setuptools wheel
 
 # Build with Cython debug info
 export ADBC_BUILD_TYPE="debug"
@@ -79,6 +79,16 @@ for component in $COMPONENTS; do
     python setup.py sdist
     if [[ "$component" = "adbc_driver_manager" ]]; then
         python -m cibuildwheel --output-dir repaired_wheels/ dist/$component-*.tar.gz
+
+        for wheel in repaired_wheels/*.whl; do
+            if [[ "$(uname)" = "Linux" ]]; then
+                # We only check 2_17, though in principle everything should work on 2014
+                if ! [[ $(basename "${wheel}") == *manylinux_2_17* ]]; then
+                    echo "Wheel does not support manylinux_2_17: ${wheel}"
+                    exit 1
+                fi
+            fi
+        done
     else
         python -m pip wheel --no-deps -w dist -vvv .
 

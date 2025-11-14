@@ -37,7 +37,7 @@ class DremioFlightSqlQuirks : public adbc_validation::DriverQuirks {
     const char* user_raw = std::getenv("ADBC_DREMIO_FLIGHTSQL_USER");
     const char* pass_raw = std::getenv("ADBC_DREMIO_FLIGHTSQL_PASS");
     if (!uri_raw || !user_raw || !pass_raw) {
-      SetError(error, "Missing required environment variables");
+      InternalAdbcSetError(error, "Missing required environment variables");
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
     EXPECT_THAT(AdbcDatabaseSetOption(database, "uri", uri_raw, error),

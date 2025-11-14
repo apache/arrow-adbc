@@ -16,7 +16,7 @@
 // under the License.
 
 /// This integration test compares the output of the dummy driver when it's used
-/// directly using the Rust API (native) and trough the exported driver via the
+/// directly using the Rust API (native) and through the exported driver via the
 /// driver manager (exported). That allows us to test that data correctly round-trip
 /// between C and Rust.
 use std::ops::Deref;
@@ -26,15 +26,13 @@ use arrow_array::{Array, Float64Array, Int64Array, RecordBatch, RecordBatchReade
 use arrow_schema::{DataType, Field, Schema};
 use arrow_select::concat::concat_batches;
 
-use adbc_core::driver_manager::{
-    ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement,
-};
 use adbc_core::options::{
     AdbcVersion, InfoCode, IngestMode, IsolationLevel, ObjectDepth, OptionConnection,
     OptionDatabase, OptionStatement,
 };
 use adbc_core::Statement;
 use adbc_core::{schemas, Connection, Database, Driver, Optionable};
+use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
 
 use adbc_dummy::{DummyConnection, DummyDatabase, DummyDriver, DummyStatement, SingleBatchReader};
 
@@ -73,7 +71,7 @@ fn get_exported() -> (
         AdbcVersion::V110,
     )
     .unwrap();
-    let mut database = driver.new_database().unwrap();
+    let database = driver.new_database().unwrap();
     let mut connection = database.new_connection().unwrap();
     let statement = connection.new_statement().unwrap();
     (driver, database, connection, statement)
@@ -81,7 +79,7 @@ fn get_exported() -> (
 
 fn get_native() -> (DummyDriver, DummyDatabase, DummyConnection, DummyStatement) {
     let mut driver = DummyDriver {};
-    let mut database = driver.new_database().unwrap();
+    let database = driver.new_database().unwrap();
     let mut connection = database.new_connection().unwrap();
     let statement = connection.new_statement().unwrap();
     (driver, database, connection, statement)
@@ -197,7 +195,7 @@ fn test_database_options() {
 
 #[test]
 fn test_connection_options() {
-    let (_, mut database, _, _) = get_exported();
+    let (_, database, _, _) = get_exported();
 
     // Pre-init options
     let options = [

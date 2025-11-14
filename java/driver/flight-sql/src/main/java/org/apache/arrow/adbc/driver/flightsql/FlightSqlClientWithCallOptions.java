@@ -58,6 +58,10 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
     return client.execute(query, transaction, combine(options));
   }
 
+  public FlightInfo executePrepared(PreparedStatement statement, CallOption... options) {
+    return statement.execute(combine(options));
+  }
+
   public FlightInfo executeSubstrait(SubstraitPlan plan, CallOption... options) {
     return client.executeSubstrait(plan, combine(options));
   }
@@ -92,6 +96,10 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
 
   public long executeUpdate(String query, Transaction transaction, CallOption... options) {
     return client.executeUpdate(query, transaction, combine(options));
+  }
+
+  public long executePreparedUpdate(PreparedStatement statement, CallOption... options) {
+    return statement.executeUpdate(combine(options));
   }
 
   public long executeSubstraitUpdate(SubstraitPlan plan, CallOption... options) {

@@ -32,6 +32,8 @@ add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
            adbc-driver-flightsql
            SHARED_LINK_FLAGS
            ${LDFLAGS}
+           DEFINES
+           ${ADBC_TARGET_COMPILE_DEFINITIONS}
            OUTPUTS
            ADBC_LIBRARIES)
 

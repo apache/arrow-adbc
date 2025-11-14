@@ -42,7 +42,15 @@ namespace Apache.Arrow.Adbc.C
         /// </summary>
         /// <param name="file">The path to the driver to load</param>
         /// <param name="entryPoint">The name of the entry point. If not provided, the name AdbcDriverInit will be used.</param>
-        public static AdbcDriver Load(string file, string? entryPoint = null)
+        public static AdbcDriver Load(string file, string? entryPoint = null) => Load(file, false, entryPoint);
+
+        /// <summary>
+        /// Loads an <see cref="AdbcDriver"/> from the file system.
+        /// </summary>
+        /// <param name="file">The path to the driver to load</param>
+        /// <param name="canUnload">Whether the driver can be safely unloaded</param>
+        /// <param name="entryPoint">The name of the entry point. If not provided, the name AdbcDriverInit will be used.</param>
+        public static AdbcDriver Load(string file, bool canUnload, string? entryPoint = null)
         {
             if (file == null)
             {
@@ -66,7 +74,7 @@ namespace Apache.Arrow.Adbc.C
                 IntPtr export = NativeLibrary.GetExport(library, entryPoint);
                 if (export == IntPtr.Zero)
                 {
-                    NativeLibrary.Free(library);
+                    if (canUnload) { NativeLibrary.Free(library); }
                     throw new ArgumentException($"Unable to find {entryPoint} export", nameof(file));
                 }
 
@@ -88,14 +96,14 @@ namespace Apache.Arrow.Adbc.C
 
                     ValidateDriver(ref driver, version);
 
-                    ImportedAdbcDriver result = new ImportedAdbcDriver(library, driver, version);
+                    ImportedAdbcDriver result = new ImportedAdbcDriver(library, driver, version, canUnload);
                     library = IntPtr.Zero;
                     return result;
                 }
             }
             finally
             {
-                if (library != IntPtr.Zero) { NativeLibrary.Free(library); }
+                if (library != IntPtr.Zero && canUnload) { NativeLibrary.Free(library); }
             }
         }
 
@@ -199,14 +207,16 @@ namespace Apache.Arrow.Adbc.C
             private CAdbcDriver _nativeDriver;
             private int _version;
             private int _references;
+            private bool _canUnload;
             private bool _disposed;
 
-            public ImportedAdbcDriver(IntPtr library, CAdbcDriver nativeDriver, int version)
+            public ImportedAdbcDriver(IntPtr library, CAdbcDriver nativeDriver, int version, bool canUnload)
             {
                 _library = library;
                 _nativeDriver = nativeDriver;
                 _version = version;
                 _references = 1;
+                _canUnload = canUnload;
             }
 
             ~ImportedAdbcDriver()
@@ -260,7 +270,7 @@ namespace Apache.Arrow.Adbc.C
                             caller.Call(_nativeDriver.release, ref _nativeDriver);
                         }
 
-                        NativeLibrary.Free(_library);
+                        if (_canUnload) { NativeLibrary.Free(_library); }
                         _library = IntPtr.Zero;
                     }
                 }
@@ -1010,7 +1020,7 @@ namespace Apache.Arrow.Adbc.C
 #else
                             Marshal.GetDelegateForFunctionPointer<StatementGetParameterSchema>(Driver.StatementGetParameterSchema)
 #endif
-                            (statement, caller.CreateSchema(), & caller._error));
+                            (statement, caller.CreateSchema(), &caller._error));
                     }
                     return caller.ImportSchema();
                 }

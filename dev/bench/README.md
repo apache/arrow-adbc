@@ -39,4 +39,4 @@ Snowflake driver.
 It can be built by simply using `cmake` as long as you have unixODBC or
 another ODBC library that can be found by `cmake` for building. After
 building the mainprog, it can be run with a single argument being the ODBC
-DSN to use such as "DSN=snowflake;UID=<username>;PWD=<passsword>;".
+DSN to use such as "DSN=snowflake;UID=<username>;PWD=<password>;".

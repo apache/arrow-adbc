@@ -46,7 +46,7 @@ fn bad_input<T>() -> Result<T> {
     Err(invalid_arg("invalid duration (valid durations are a sequence of decimal numbers, each with optional fraction and a unit suffix, such as 300ms, 1.5h, 2h45m, valid time units are ns, us, ms, s, m, h)"))
 }
 
-/// Parse the given string to a [`Duration`], returning an eror when parsing
+/// Parse the given string to a [`Duration`], returning an error when parsing
 /// fails.
 ///
 /// Following the logic of <https://pkg.go.dev/time#ParseDuration>, except this

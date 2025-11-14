@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 #include <arrow-adbc/adbc.h>
 #include <nanoarrow/nanoarrow.h>
 #include <sqlite3.h>
@@ -33,6 +35,7 @@ struct ADBC_EXPORT AdbcSqliteBinder {
   struct ArrowSchema schema;
   struct ArrowArrayStream params;
   enum ArrowType* types;
+  int* param_indices;
 
   // Scratch space
   struct ArrowArray array;
@@ -41,28 +44,30 @@ struct ADBC_EXPORT AdbcSqliteBinder {
 };
 
 ADBC_EXPORT
-AdbcStatusCode AdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
-                                              struct ArrowArrayStream* values,
-                                              struct AdbcError* error);
+AdbcStatusCode InternalAdbcSqliteBinderSetArrayStream(struct AdbcSqliteBinder* binder,
+                                                      struct ArrowArrayStream* values,
+                                                      bool bind_by_name,
+                                                      struct AdbcError* error);
 ADBC_EXPORT
-AdbcStatusCode AdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder, sqlite3* conn,
-                                        sqlite3_stmt* stmt, char* finished,
-                                        struct AdbcError* error);
+AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
+                                                sqlite3* conn, sqlite3_stmt* stmt,
+                                                char* finished, struct AdbcError* error);
 ADBC_EXPORT
-void AdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder);
+void InternalAdbcSqliteBinderRelease(struct AdbcSqliteBinder* binder);
 
 /// \brief Initialize an ArrowArrayStream from a sqlite3_stmt.
 /// \param[in] db The SQLite connection.
 /// \param[in] stmt The SQLite statement.
 /// \param[in] binder Query parameters to bind, if provided.
-/// \param[in] infer_rows How many rows to read to infer the Arrow schema.
+/// \param[in] batch_size How many rows to read to infer the Arrow schema.
 /// \param[out] stream The stream to export to.
 /// \param[out] error Error details, if needed.
 ADBC_EXPORT
-AdbcStatusCode AdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
-                                      struct AdbcSqliteBinder* binder, size_t batch_size,
-                                      struct ArrowArrayStream* stream,
-                                      struct AdbcError* error);
+AdbcStatusCode InternalAdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
+                                              struct AdbcSqliteBinder* binder,
+                                              size_t batch_size,
+                                              struct ArrowArrayStream* stream,
+                                              struct AdbcError* error);
 
 #ifdef __cplusplus
 }

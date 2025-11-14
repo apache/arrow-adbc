@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -72,20 +70,8 @@ function build_drivers {
 
     echo "=== Setup VCPKG ==="
 
-    pushd "${VCPKG_ROOT}"
-    # XXX: patch an odd issue where the path of some file is inconsistent between builds
-    patch -N -p1 < "${source_dir}/ci/vcpkg/0001-Work-around-inconsistent-path.patch" || true
-
-    # XXX: make vcpkg retry downloads https://github.com/microsoft/vcpkg/discussions/20583
-    patch -N -p1 < "${source_dir}/ci/vcpkg/0002-Retry-downloads.patch" || true
-    popd
-
     # Need to install sqlite3 to make CMake be able to find it below
-    "${VCPKG_ROOT}/vcpkg" install sqlite3 \
-          --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
-          --triplet "${VCPKG_DEFAULT_TRIPLET}"
-
-    "${VCPKG_ROOT}/vcpkg" install libpq \
+    "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
@@ -93,8 +79,6 @@ function build_drivers {
     mkdir -p ${build_dir}
     pushd ${build_dir}
     cmake \
-        -DADBC_BUILD_SHARED=ON \
-        -DADBC_BUILD_STATIC=ON \
         -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_INSTALL_PREFIX=${build_dir} \
@@ -103,6 +87,8 @@ function build_drivers {
         ${CMAKE_ARGUMENTS} \
         -DVCPKG_OVERLAY_TRIPLETS="${VCPKG_OVERLAY_TRIPLETS}" \
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
+        -DADBC_BUILD_SHARED=ON \
+        -DADBC_BUILD_STATIC=ON \
         -DADBC_DRIVER_BIGQUERY=ON \
         -DADBC_DRIVER_FLIGHTSQL=ON \
         -DADBC_DRIVER_MANAGER=ON \
@@ -147,8 +133,12 @@ function setup_build_vars {
         export CIBW_BUILD='*-manylinux_*'
         export CIBW_PLATFORM="linux"
     fi
-    # No PyPy, no Python 3.8
-    export CIBW_SKIP="pp* cp38-* ${CIBW_SKIP}"
+    # No PyPy, no Python 3.8, no Python 3.9
+    export CIBW_SKIP="pp* cp38-* cp39-* ${CIBW_SKIP}"
+    # Make sure our manylinux version doesn't creep up (this only matters for
+    # the driver manager)
+    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014"
+    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux2014"
 }
 
 function test_packages {
@@ -189,6 +179,7 @@ import $component.dbapi
         fi
 
         # --import-mode required, else tries to import from the source dir instead of installed package
-        python -m pytest -vvx --import-mode append "${test_files[@]}"
+        # set env var so that we don't skip tests if we somehow accidentally installed pyarrow
+        env ADBC_NO_SKIP_TESTS=1 python -m pytest -vvx --import-mode append "${test_files[@]}"
     done
 }

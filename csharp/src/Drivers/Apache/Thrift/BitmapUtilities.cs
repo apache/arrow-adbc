@@ -50,7 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Thrift
             {
                 nulls[i] = (byte)~nulls[i];
             }
-            // Handle remaing bits
+            // Handle remaining bits
             if (remainingBits > 0)
             {
                 int lastByteIndex = requiredBytes - 1;

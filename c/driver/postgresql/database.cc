@@ -79,8 +79,8 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
   if (open_connections_ != 0) {
-    SetError(error, "%s%" PRId32 "%s", "[libpq] Database released with ",
-             open_connections_, " open connections");
+    InternalAdbcSetError(error, "%s%" PRId32 "%s", "[libpq] Database released with ",
+                         open_connections_, " open connections");
     return ADBC_STATUS_INVALID_STATE;
   }
   return ADBC_STATUS_OK;
@@ -146,25 +146,25 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
     return ADBC_STATUS_OK;
   }
 #endif  // ADBC_REDSHIFT_FLAVOR
-  SetError(error, "%s%s", "[libpq] Unknown database option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown database option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresDatabase::SetOptionBytes(const char* key, const uint8_t* value,
                                                 size_t length, struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresDatabase::SetOptionDouble(const char* key, double value,
                                                  struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
 AdbcStatusCode PostgresDatabase::SetOptionInt(const char* key, int64_t value,
                                               struct AdbcError* error) {
-  SetError(error, "%s%s", "[libpq] Unknown option ", key);
+  InternalAdbcSetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
@@ -198,8 +198,9 @@ AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error)
   if (uri_.empty()) {
     std::optional<std::string> param_error = params_.Validate();
     if (param_error.has_value()) {
-      SetError(error, "%s%s",
-               "[libpq] Must set database option 'uri' or valid connection parameters "
+      InternalAdbcSetError(
+        error, "%s%s",
+          "[libpq] Must set database option 'uri' or valid connection parameters "
                "before creating a connection. Parameter validation error: ",
                param_error.value().c_str());
       return ADBC_STATUS_INVALID_STATE;
@@ -214,7 +215,8 @@ AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error)
     *conn = PQconnectdbParams(keywords.data(), values.data(), 0);
   }
   if (PQstatus(*conn) != CONNECTION_OK) {
-    SetError(error, "%s%s", "[libpq] Failed to connect: ", PQerrorMessage(*conn));
+    InternalAdbcSetError(error, "%s%s",
+                         "[libpq] Failed to connect: ", PQerrorMessage(*conn));
     PQfinish(*conn);
     *conn = nullptr;
     return ADBC_STATUS_IO;
@@ -227,7 +229,7 @@ AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* err
   PQfinish(*conn);
   *conn = nullptr;
   if (--open_connections_ < 0) {
-    SetError(error, "%s", "[libpq] Open connection count underflowed");
+    InternalAdbcSetError(error, "%s", "[libpq] Open connection count underflowed");
     return ADBC_STATUS_INTERNAL;
   }
   return ADBC_STATUS_OK;

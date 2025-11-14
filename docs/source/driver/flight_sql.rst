@@ -19,7 +19,7 @@
 Flight SQL Driver
 =================
 
-**Available for:** C/C++, GLib/Ruby, Go, Java, Python, R
+.. adbc_driver_status:: ../../../c/driver/flightsql/README.md
 
 The Flight SQL Driver provides access to any database implementing a
 :doc:`arrow:format/FlightSql` compatible endpoint.
@@ -27,56 +27,7 @@ The Flight SQL Driver provides access to any database implementing a
 Installation
 ============
 
-.. tab-set::
-
-   .. tab-item:: C/C++
-      :sync: cpp
-
-      For conda-forge users:
-
-      .. code-block:: shell
-
-         mamba install libadbc-driver-flightsql
-
-   .. tab-item:: Go
-      :sync: go
-
-      .. code-block:: shell
-
-         go get github.com/apache/arrow-adbc/go/adbc
-
-   .. tab-item:: Java
-      :sync: java
-
-      Add a dependency on ``org.apache.arrow.adbc:adbc-driver-flight-sql``.
-
-      For Maven users:
-
-      .. code-block:: xml
-
-         <dependency>
-           <groupId>org.apache.arrow.adbc</groupId>
-           <artifactId>adbc-driver-flight-sql</artifactId>
-         </dependency>
-
-   .. tab-item:: Python
-      :sync: python
-
-      .. code-block:: shell
-
-         # For conda-forge
-         mamba install adbc-driver-flightsql
-
-         # For pip
-         pip install adbc_driver_flightsql
-
-   .. tab-item:: R
-      :sync: r
-
-      .. code-block:: r
-
-         # install.packages("pak")
-         pak::pak("apache/arrow-adbc/r/adbcflightsql")
+.. adbc_driver_installation:: ../../../c/driver/flightsql/README.md
 
 Usage
 =====
@@ -223,7 +174,7 @@ The options used for creating the Flight RPC client can be customized.
 ``adbc.flight.sql.client_option.with_max_msg_size``
     The maximum message size to accept from the server.  The driver
     defaults to 16 MiB since Flight services tend to return larger
-    reponse payloads.  Should be a positive integer number of bytes.
+    response payloads.  Should be a positive integer number of bytes.
 
     Python: :attr:`adbc_driver_flightsql.DatabaseOptions.WITH_MAX_MSG_SIZE`
 

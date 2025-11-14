@@ -183,9 +183,9 @@ func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 		var err error
 		switch flow {
 		case ClientCredentials:
-			d.oauthToken, err = newClientCredentials(cnOptions)
+			d.oauthToken, err = newClientCredentials(cnOptions, &tlsConfig)
 		case TokenExchange:
-			d.oauthToken, err = newTokenExchangeFlow(cnOptions)
+			d.oauthToken, err = newTokenExchangeFlow(cnOptions, &tlsConfig)
 		default:
 			return adbc.Error{
 				Msg:  fmt.Sprintf("oauth flow not implemented: %s", flow),
@@ -494,7 +494,13 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			if err != nil {
 				d.Logger.Debug("failed to close client", "error", err.Error())
 			}
-		}).Build()
+		}).PurgeVisitorFunc(func(_ interface{}, client interface{}) {
+		conn := client.(*flightsql.Client)
+		err := conn.Close()
+		if err != nil {
+			d.Logger.Debug("failed to close client", "error", err.Error())
+		}
+	}).Build()
 
 	var cnxnSupport support
 
@@ -511,7 +517,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			defer rdr.Release()
 
 			for rdr.Next() {
-				rec := rdr.Record()
+				rec := rdr.RecordBatch()
 				codes := rec.Column(0).(*array.Uint32)
 				values := rec.Column(1).(*array.DenseUnion)
 				int32Value := values.Field(int32code).(*array.Int32)

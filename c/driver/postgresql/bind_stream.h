@@ -201,9 +201,11 @@ struct BindStream {
                                   int result_format) {
     param_buffer->size_bytes = 0;
     int64_t last_offset = 0;
+    std::vector<bool> is_null_param(array_view->n_children);
 
     for (int64_t col = 0; col < array_view->n_children; col++) {
-      if (!ArrowArrayViewIsNull(array_view->children[col], current_row)) {
+      is_null_param[col] = ArrowArrayViewIsNull(array_view->children[col], current_row);
+      if (!is_null_param[col]) {
         // Note that this Write() call currently writes the (int32_t) byte size of the
         // field in addition to the serialized value.
         UNWRAP_NANOARROW(
@@ -215,7 +217,7 @@ struct BindStream {
 
       int64_t param_length = param_buffer->size_bytes - last_offset - sizeof(int32_t);
       if (param_length > (std::numeric_limits<int>::max)()) {
-        return Status::Internal("Paramter ", col, "serialized to >2GB of binary");
+        return Status::Internal("Parameter ", col, "serialized to >2GB of binary");
       }
 
       param_lengths[col] = static_cast<int>(param_length);
@@ -225,7 +227,7 @@ struct BindStream {
     last_offset = 0;
     for (int64_t col = 0; col < array_view->n_children; col++) {
       last_offset += sizeof(int32_t);
-      if (param_lengths[col] == 0) {
+      if (is_null_param[col]) {
         param_values[col] = nullptr;
       } else {
         param_values[col] = reinterpret_cast<char*>(param_buffer->data) + last_offset;

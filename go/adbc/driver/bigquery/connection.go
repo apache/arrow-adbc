@@ -54,16 +54,16 @@ type connectionImpl struct {
 	refreshToken          string
 	accessTokenEndpoint   string
 	accessTokenServerName string
-	quotaProject          string
 
-	// the default location to use for all BigQuery requests
-	location string
+	quotaProject string
 
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
 	impersonateScopes          []string
 	impersonateLifetime        time.Duration
 
+	// the default location to use for all BigQuery requests
+	location string
 	// catalog is the same as the project id in BigQuery
 	catalog string
 	// dbSchema is the same as the dataset id in BigQuery
@@ -580,7 +580,9 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			Msg:  "ProjectID is empty",
 		}
 	}
+
 	authOptions := []option.ClientOption{}
+
 	// First, establish base authentication
 	switch c.authType {
 	case OptionValueAuthTypeJSONCredentialFile:
@@ -613,7 +615,6 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 			}
 		}
 		authOptions = append(authOptions, option.WithTokenSource(c))
-
 	case OptionValueAuthTypeTemporaryAccessToken:
 		if c.accessToken == "" {
 			return adbc.Error{
@@ -627,8 +628,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 				TokenType:   "Bearer",
 			}),
 		))
-	case OptionValueAuthTypeAppDefaultCredentials:
-	case OptionValueAuthTypeDefault:
+	case OptionValueAuthTypeAppDefaultCredentials, OptionValueAuthTypeDefault, "":
 		// Use Application Default Credentials (default behavior)
 		// No additional options needed - ADC is used by default
 	default:
@@ -696,13 +696,13 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 	}
 
 	c.client = client
-
 	return nil
 }
 
 func (c *connectionImpl) hasImpersonationOptions() bool {
 	return c.impersonateTargetPrincipal != "" ||
-		len(c.impersonateDelegates) > 0
+		len(c.impersonateDelegates) > 0 ||
+		len(c.impersonateScopes) > 0
 }
 
 var (

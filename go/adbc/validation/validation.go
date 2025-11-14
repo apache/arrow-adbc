@@ -71,7 +71,7 @@ type DriverQuirks interface {
 	// Expected Metadata responses
 	GetMetadata(adbc.InfoCode) interface{}
 	// Create a sample table from an arrow record
-	CreateSampleTable(tableName string, r arrow.Record) error
+	CreateSampleTable(tableName string, r arrow.RecordBatch) error
 	// Field Metadata for Sample Table for comparison
 	SampleTableSchemaMetadata(tblName string, dt arrow.DataType) arrow.Metadata
 	// have the driver drop a table with the correct SQL syntax
@@ -175,7 +175,8 @@ func (c *ConnectionTests) TestCloseConnTwice() {
 }
 
 func (c *ConnectionTests) TestConcurrent() {
-	cnxn, _ := c.DB.Open(context.Background())
+	cnxn, err := c.DB.Open(context.Background())
+	c.Require().NoError(err)
 	cnxn2, err := c.DB.Open(context.Background())
 	c.Require().NoError(err)
 
@@ -188,7 +189,8 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 	// even if not supported, drivers should act as if autocommit
 	// is enabled, and return INVALID_STATE if the client tries to
 	// commit or rollback
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	if getset, ok := cnxn.(adbc.GetSetOptions); ok {
@@ -199,7 +201,7 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 
 	expectedCode := adbc.StatusInvalidState
 	var adbcError adbc.Error
-	err := cnxn.Commit(ctx)
+	err = cnxn.Commit(ctx)
 	c.ErrorAs(err, &adbcError)
 	c.Equal(expectedCode, adbcError.Code)
 	err = cnxn.Rollback(ctx)
@@ -215,7 +217,8 @@ func (c *ConnectionTests) TestAutocommitDefault() {
 
 func (c *ConnectionTests) TestAutocommitToggle() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	if !c.Quirks.SupportsTransactions() {
@@ -251,7 +254,8 @@ func (c *ConnectionTests) TestAutocommitToggle() {
 
 func (c *ConnectionTests) TestMetadataCurrentCatalog() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 	getset, ok := cnxn.(adbc.GetSetOptions)
 
@@ -271,7 +275,8 @@ func (c *ConnectionTests) TestMetadataCurrentCatalog() {
 
 func (c *ConnectionTests) TestMetadataCurrentDbSchema() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 	getset, ok := cnxn.(adbc.GetSetOptions)
 
@@ -291,7 +296,8 @@ func (c *ConnectionTests) TestMetadataCurrentDbSchema() {
 
 func (c *ConnectionTests) TestMetadataGetInfo() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	info := []adbc.InfoCode{
@@ -312,7 +318,7 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 		adbc.GetInfoSchema, rdr.Schema())
 
 	for rdr.Next() {
-		rec := rdr.Record()
+		rec := rdr.RecordBatch()
 		codeCol := rec.Column(0).(*array.Uint32)
 		valUnion := rec.Column(1).(*array.DenseUnion)
 		for i := 0; i < int(rec.NumRows()); i++ {
@@ -349,7 +355,8 @@ func (c *ConnectionTests) TestMetadataGetInfo() {
 
 func (c *ConnectionTests) TestMetadataGetStatistics() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	if c.Quirks.SupportsStatistics() {
@@ -383,7 +390,8 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 	defer rec.Release()
 
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.Require().NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	c.Require().NoError(c.Quirks.CreateSampleTable("sample_test", rec))
@@ -403,7 +411,8 @@ func (c *ConnectionTests) TestMetadataGetTableSchema() {
 
 func (c *ConnectionTests) TestMetadataGetTableTypes() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	rdr, err := cnxn.GetTableTypes(ctx)
@@ -416,7 +425,8 @@ func (c *ConnectionTests) TestMetadataGetTableTypes() {
 
 func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 	ctx := context.Background()
-	cnxn, _ := c.DB.Open(ctx)
+	cnxn, err := c.DB.Open(ctx)
+	c.NoError(err)
 	defer CheckedClose(c.T(), cnxn)
 
 	ingestCatalogName := c.Quirks.Catalog()
@@ -552,7 +562,7 @@ func (c *ConnectionTests) TestMetadataGetObjectsColumns() {
 
 			c.Truef(adbc.GetObjectsSchema.Equal(rdr.Schema()), "expected: %s\ngot: %s", adbc.GetObjectsSchema, rdr.Schema())
 			c.True(rdr.Next())
-			rec := rdr.Record()
+			rec := rdr.RecordBatch()
 			var (
 				foundCatalog         = false
 				foundDbSchema        = false
@@ -744,7 +754,7 @@ func (s *StatementTests) TestSqlPartitionedInts() {
 	s.Len(sc.Fields(), 1)
 
 	s.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	s.EqualValues(1, rec.NumCols())
 	s.EqualValues(1, rec.NumRows())
 
@@ -804,7 +814,7 @@ func (s *StatementTests) TestSQLPrepareSelectParams() {
 	defer bldr.Release()
 	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
 	bldr.Field(1).(*array.StringBuilder).AppendValues([]string{"", "", "bar"}, []bool{true, false, true})
-	batch := bldr.NewRecord()
+	batch := bldr.NewRecordBatch()
 	defer batch.Release()
 
 	s.Require().NoError(stmt.Bind(s.ctx, batch))
@@ -815,7 +825,7 @@ func (s *StatementTests) TestSQLPrepareSelectParams() {
 
 	var nrows int64
 	for rdr.Next() {
-		rec := rdr.Record()
+		rec := rdr.RecordBatch()
 		s.Require().NotNil(rec)
 		s.EqualValues(2, rec.NumCols())
 
@@ -853,7 +863,7 @@ func (s *StatementTests) TestSQLPrepareSelectNoParams() {
 	s.Len(sc.Fields(), 1)
 
 	s.True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	s.EqualValues(1, rec.NumCols())
 	s.EqualValues(1, rec.NumRows())
 
@@ -885,7 +895,7 @@ func (s *StatementTests) TestSqlPrepareErrorParamCountMismatch() {
 	defer batchbldr.Release()
 	bldr := batchbldr.Field(0).(*array.Int64Builder)
 	bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
-	batch := batchbldr.NewRecord()
+	batch := batchbldr.NewRecordBatch()
 	defer batch.Release()
 
 	s.NoError(stmt.Bind(s.ctx, batch))
@@ -907,7 +917,7 @@ func (s *StatementTests) TestSqlIngestInts() {
 	defer batchbldr.Release()
 	bldr := batchbldr.Field(0).(*array.Int64Builder)
 	bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
-	batch := batchbldr.NewRecord()
+	batch := batchbldr.NewRecordBatch()
 	defer batch.Release()
 
 	stmt, err := s.Cnxn.NewStatement()
@@ -934,7 +944,7 @@ func (s *StatementTests) TestSqlIngestInts() {
 
 	s.Truef(schema.Equal(utils.RemoveSchemaMetadata(rdr.Schema())), "expected: %s\n got: %s", schema, rdr.Schema())
 	s.Require().True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	s.EqualValues(3, rec.NumRows())
 	s.EqualValues(1, rec.NumCols())
 
@@ -958,7 +968,7 @@ func (s *StatementTests) TestSqlIngestAppend() {
 	defer batchbldr.Release()
 	bldr := batchbldr.Field(0).(*array.Int64Builder)
 	bldr.AppendValues([]int64{42}, []bool{true})
-	batch := batchbldr.NewRecord()
+	batch := batchbldr.NewRecordBatch()
 	defer batch.Release()
 
 	// ingest and create table
@@ -977,7 +987,7 @@ func (s *StatementTests) TestSqlIngestAppend() {
 
 	// now append
 	bldr.AppendValues([]int64{-42, 0}, []bool{true, false})
-	batch2 := batchbldr.NewRecord()
+	batch2 := batchbldr.NewRecordBatch()
 	defer batch2.Release()
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
@@ -1005,7 +1015,7 @@ func (s *StatementTests) TestSqlIngestAppend() {
 
 	s.Truef(schema.Equal(utils.RemoveSchemaMetadata(rdr.Schema())), "expected: %s\n got: %s", schema, rdr.Schema())
 	s.Require().True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	s.EqualValues(3, rec.NumRows())
 	s.EqualValues(1, rec.NumCols())
 
@@ -1032,7 +1042,7 @@ func (s *StatementTests) TestSqlIngestReplace() {
 	defer batchbldr.Release()
 	bldr := batchbldr.Field(0).(*array.Int64Builder)
 	bldr.AppendValues([]int64{42}, []bool{true})
-	batch := batchbldr.NewRecord()
+	batch := batchbldr.NewRecordBatch()
 	defer batch.Release()
 
 	// ingest and create table
@@ -1056,7 +1066,7 @@ func (s *StatementTests) TestSqlIngestReplace() {
 	defer batchbldr2.Release()
 	bldr2 := batchbldr2.Field(0).(*array.Int64Builder)
 	bldr2.AppendValues([]int64{42}, []bool{true})
-	batch2 := batchbldr2.NewRecord()
+	batch2 := batchbldr2.NewRecordBatch()
 	defer batch2.Release()
 
 	s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
@@ -1079,7 +1089,7 @@ func (s *StatementTests) TestSqlIngestReplace() {
 
 	s.Truef(schema.Equal(utils.RemoveSchemaMetadata(rdr.Schema())), "expected: %s\n got: %s", schema, rdr.Schema())
 	s.Require().True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	s.EqualValues(1, rec.NumRows())
 	s.EqualValues(1, rec.NumCols())
 	col, ok := rec.Column(0).(*array.Int64)
@@ -1104,7 +1114,7 @@ func (s *StatementTests) TestSqlIngestCreateAppend() {
 	defer batchbldr.Release()
 	bldr := batchbldr.Field(0).(*array.Int64Builder)
 	bldr.AppendValues([]int64{42}, []bool{true})
-	batch := batchbldr.NewRecord()
+	batch := batchbldr.NewRecordBatch()
 	defer batch.Release()
 
 	// ingest and create table
@@ -1144,7 +1154,7 @@ func (s *StatementTests) TestSqlIngestCreateAppend() {
 
 	s.Truef(schema.Equal(utils.RemoveSchemaMetadata(rdr.Schema())), "expected: %s\n got: %s", schema, rdr.Schema())
 	s.Require().True(rdr.Next())
-	rec := rdr.Record()
+	rec := rdr.RecordBatch()
 	s.EqualValues(2, rec.NumRows())
 	s.EqualValues(1, rec.NumCols())
 	col, ok := rec.Column(0).(*array.Int64)
@@ -1189,7 +1199,7 @@ func (s *StatementTests) TestSqlIngestErrors() {
 		defer batchbldr.Release()
 		bldr := batchbldr.Field(0).(*array.Int64Builder)
 		bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
-		batch := batchbldr.NewRecord()
+		batch := batchbldr.NewRecordBatch()
 		defer batch.Release()
 
 		s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
@@ -1217,7 +1227,7 @@ func (s *StatementTests) TestSqlIngestErrors() {
 		defer batchbldr.Release()
 		bldr := batchbldr.Field(0).(*array.Int64Builder)
 		bldr.AppendValues([]int64{42, -42, 0}, []bool{true, true, false})
-		batch := batchbldr.NewRecord()
+		batch := batchbldr.NewRecordBatch()
 		defer batch.Release()
 
 		s.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bulk_ingest"))
@@ -1242,7 +1252,7 @@ func (s *StatementTests) TestSqlIngestErrors() {
 		defer batchbldr.Release()
 		batchbldr.Field(0).AppendNull()
 		batchbldr.Field(1).AppendNull()
-		batch = batchbldr.NewRecord()
+		batch = batchbldr.NewRecordBatch()
 		defer batch.Release()
 
 		if !s.Quirks.SupportsBulkIngest(adbc.OptionValueIngestModeCreate) {

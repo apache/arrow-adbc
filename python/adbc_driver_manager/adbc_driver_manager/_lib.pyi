@@ -17,12 +17,13 @@
 
 # NOTE: generated with mypy's stubgen, then hand-edited to fix things
 
-import typing_extensions
-from typing import Any, ClassVar, Dict, List, Literal, Optional, Tuple, Union
-
-from typing import overload
 import enum
+import pathlib
 import typing
+from typing import overload, Any, ClassVar, List, Literal, Optional, Tuple, Union
+
+import typing_extensions
+from typing_extensions import CapsuleType
 
 INGEST_OPTION_MODE: str
 INGEST_OPTION_MODE_APPEND: str
@@ -71,7 +72,7 @@ class AdbcConnection(_AdbcHandle):
     def set_options(self, **kwargs: Union[bytes, float, int, str, None]) -> None: ...
 
 class AdbcDatabase(_AdbcHandle):
-    def __init__(self, **kwargs: str) -> None: ...
+    def __init__(self, **kwargs: Union[str, pathlib.Path]) -> None: ...
     def close(self) -> None: ...
     def get_option(
         self,
@@ -141,13 +142,24 @@ class AdbcStatusCode(enum.IntEnum):
     UNKNOWN = ...
 
 class ArrowArrayHandle:
-    address: Any
+    address: int
+    is_valid: bool
+    def release(self) -> None: ...
 
 class ArrowArrayStreamHandle:
-    address: Any
+    address: int
+    is_valid: bool
+    def release(self) -> None: ...
+    def __arrow_c_schema__(self) -> CapsuleType: ...
+    def __arrow_c_stream__(
+        self, requested_schema=Optional[CapsuleType]
+    ) -> CapsuleType: ...
 
 class ArrowSchemaHandle:
-    address: Any
+    address: int
+    is_valid: bool
+    def release(self) -> None: ...
+    def __arrow_c_schema__(self) -> CapsuleType: ...
 
 class DataError(DatabaseError): ...
 class DatabaseError(Error): ...

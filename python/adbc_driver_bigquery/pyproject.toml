@@ -19,9 +19,10 @@
 name = "adbc-driver-bigquery"
 description = "An ADBC driver for working with BigQuery."
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = ["LICENSE.txt", "NOTICE.txt"]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = ["version"]
 dependencies = [
     "adbc-driver-manager",
@@ -37,12 +38,11 @@ homepage = "https://arrow.apache.org/adbc/"
 repository = "https://github.com/apache/arrow-adbc"
 
 [build-system]
-requires = ["setuptools >= 61.0.0"]
+requires = ["setuptools >= 77.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-license-files = ["LICENSE.txt", "NOTICE.txt"]
 packages = ["adbc_driver_bigquery"]
 py-modules = ["adbc_driver_bigquery"]
 

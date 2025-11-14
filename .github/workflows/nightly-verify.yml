@@ -116,7 +116,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # actions/checkout@v4
         with:
@@ -139,7 +139,7 @@ jobs:
         run: |
           mv apache-arrow-adbc-${{ env.VERSION }}-rc0/KEYS .
 
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         # The Unix script will set up conda itself
         if: matrix.os == 'windows-latest'
         with:
@@ -165,6 +165,9 @@ jobs:
           # Rust uses a lot of disk space, free up some space
           # https://github.com/actions/runner-images/issues/2840
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          # Required for macOS
+          export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
+          echo "CXXFLAGS=${CXXFLAGS}"
           ./arrow-adbc/dev/release/verify-release-candidate.sh $VERSION 0
 
       - name: Verify
@@ -201,10 +204,23 @@ jobs:
           pushd arrow-adbc
           docker compose run --rm cpp-gcc-latest
 
-      - name: python-debug
+      - name: cpp-shared-no-common-entrypoints-test
         run: |
           pushd arrow-adbc
-          docker compose run -e PYTHON=3.12 --rm python-debug
+          docker compose run --rm cpp-shared-no-common-entrypoints-test
+
+      - name: cpp-static-test
+        run: |
+          pushd arrow-adbc
+          docker compose run --rm cpp-static-test
+
+      - name: python-debug
+        run: |
+          # Need to set this or ASAN inside the container gets stuck
+          # printing a loop of DEADLYSIGNAL
+          sudo sysctl vm.mmap_rnd_bits=28
+          pushd arrow-adbc
+          docker compose run -e PYTHON=3.13 --rm python-debug
 
   source-verify-docker:
     name: "Verify Source (OS)/${{ matrix.os }} ${{ matrix.version }}"
@@ -224,6 +240,12 @@ jobs:
           path: arrow-adbc
           persist-credentials: false
           submodules: recursive
+
+      - name: Clean up disk space
+        run: |
+          # Rust uses a lot of disk space, free up some space
+          # https://github.com/actions/runner-images/issues/2840
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
       - name: Verify
         env:

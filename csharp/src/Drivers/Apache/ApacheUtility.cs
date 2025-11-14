@@ -16,6 +16,9 @@
 */
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache
@@ -30,7 +33,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             Milliseconds
         }
 
+        public static CancellationTokenSource GetCancellationTokenSource(int timeout, TimeUnit timeUnit)
+        {
+            TimeSpan timeSpan = CalculateTimeSpan(timeout, timeUnit);
+            return new CancellationTokenSource(timeSpan);
+        }
+
         public static CancellationToken GetCancellationToken(int timeout, TimeUnit timeUnit)
+        {
+            TimeSpan timeSpan = CalculateTimeSpan(timeout, timeUnit);
+            var cts = new CancellationTokenSource(timeSpan);
+            return cts.Token;
+        }
+
+        private static TimeSpan CalculateTimeSpan(int timeout, TimeUnit timeUnit)
         {
             TimeSpan span;
 
@@ -52,13 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 }
             }
 
-            return GetCancellationToken(span);
-        }
-
-        private static CancellationToken GetCancellationToken(TimeSpan timeSpan)
-        {
-            var cts = new CancellationTokenSource(timeSpan);
-            return cts.Token;
+            return span;
         }
 
         public static bool QueryTimeoutIsValid(string key, string value, out int queryTimeoutSeconds)
@@ -88,18 +98,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
 
         public static bool ContainsException<T>(Exception exception, out T? containedException) where T : Exception
         {
-            if (exception is AggregateException aggregateException)
-            {
-                foreach (Exception? ex in aggregateException.InnerExceptions)
-                {
-                    if (ex is T ce)
-                    {
-                        containedException = ce;
-                        return true;
-                    }
-                }
-            }
-
             Exception? e = exception;
             while (e != null)
             {
@@ -107,6 +105,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                 {
                     containedException = ce;
                     return true;
+                }
+                else if (e is AggregateException aggregateException)
+                {
+                    foreach (Exception? ex in aggregateException.InnerExceptions)
+                    {
+                        if (ContainsException(ex, out T? inner))
+                        {
+                            containedException = inner;
+                            return true;
+                        }
+                    }
                 }
                 e = e.InnerException;
             }
@@ -117,22 +126,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
 
         public static bool ContainsException(Exception exception, Type? exceptionType, out Exception? containedException)
         {
-            if (exception == null || exceptionType == null)
+            if (exceptionType == null)
             {
                 containedException = null;
                 return false;
-            }
-
-            if (exception is AggregateException aggregateException)
-            {
-                foreach (Exception? ex in aggregateException.InnerExceptions)
-                {
-                    if (exceptionType.IsInstanceOfType(ex))
-                    {
-                        containedException = ex;
-                        return true;
-                    }
-                }
             }
 
             Exception? e = exception;
@@ -143,11 +140,39 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
                     containedException = e;
                     return true;
                 }
+                else if (e is AggregateException aggregateException)
+                {
+                    foreach (Exception? ex in aggregateException.InnerExceptions)
+                    {
+                        if (ContainsException(ex, exceptionType, out Exception? inner))
+                        {
+                            containedException = inner;
+                            return true;
+                        }
+                    }
+                }
                 e = e.InnerException;
             }
 
             containedException = null;
             return false;
         }
+
+        internal static string FormatExceptionMessage(Exception exception)
+        {
+            if (exception is AggregateException aEx)
+            {
+                AggregateException flattenedEx = aEx.Flatten();
+                IEnumerable<string> messages = flattenedEx.InnerExceptions.Select((ex, index) => $"({index + 1}) {ex.Message}");
+                string fullMessage = $"{flattenedEx.Message}: {string.Join(", ", messages)}";
+                return fullMessage;
+            }
+
+            return exception.Message;
+        }
+
+        internal static string GetAssemblyName(Type type) => type.Assembly.GetName().Name!;
+
+        internal static string GetAssemblyVersion(Type type) => FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion ?? string.Empty;
     }
 }

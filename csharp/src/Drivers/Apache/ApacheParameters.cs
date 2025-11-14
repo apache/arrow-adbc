@@ -75,5 +75,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
         /// The table name (or pattern) of the foreign (child) table for GetCrossReference metadata command query.
         /// </summary>
         public const string ForeignTableName = "adbc.get_metadata.foreign_target_table";
+
+        /// <summary>
+        /// Whether to escape pattern wildcard characters (_ and %) to treat as literal rather than wildcard. Default to false.
+        /// </summary>
+        public const string EscapePatternWildcards = "adbc.get_metadata.escape_pattern_wildcards";
     }
 }

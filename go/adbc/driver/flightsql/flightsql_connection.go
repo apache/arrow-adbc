@@ -648,7 +648,7 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 		}
 
 		for rdr.Next() {
-			rec := rdr.Record()
+			rec := rdr.RecordBatch()
 			field := rec.Column(0).(*array.Uint32)
 			info := rec.Column(1).(*array.DenseUnion)
 
@@ -742,7 +742,7 @@ func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string
 
 	catalogs := make([]string, 0, numCatalogs)
 	for rdr.Next() {
-		arr := rdr.Record().Column(0).(*array.String)
+		arr := rdr.RecordBatch().Column(0).(*array.String)
 		for i := 0; i < arr.Len(); i++ {
 			// XXX: force copy since accessor is unsafe
 			catalogName := string([]byte(arr.Value(i)))
@@ -781,9 +781,9 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 
 	for rdr.Next() {
 		// Nullable
-		catalog := rdr.Record().Column(0).(*array.String)
+		catalog := rdr.RecordBatch().Column(0).(*array.String)
 		// Non-nullable
-		dbSchema := rdr.Record().Column(1).(*array.String)
+		dbSchema := rdr.RecordBatch().Column(1).(*array.String)
 
 		for i := 0; i < catalog.Len(); i++ {
 			catalogName := ""
@@ -834,11 +834,11 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 
 	for rdr.Next() {
 		// Nullable
-		catalog := rdr.Record().Column(0).(*array.String)
-		dbSchema := rdr.Record().Column(1).(*array.String)
+		catalog := rdr.RecordBatch().Column(0).(*array.String)
+		dbSchema := rdr.RecordBatch().Column(1).(*array.String)
 		// Non-nullable
-		tableName := rdr.Record().Column(2).(*array.String)
-		tableType := rdr.Record().Column(3).(*array.String)
+		tableName := rdr.RecordBatch().Column(2).(*array.String)
+		tableType := rdr.RecordBatch().Column(3).(*array.String)
 
 		for i := 0; i < catalog.Len(); i++ {
 			catalogName := ""
@@ -856,7 +856,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 
 			var schema *arrow.Schema
 			if includeSchema {
-				reader, err := ipc.NewReader(bytes.NewReader(rdr.Record().Column(4).(*array.Binary).Value(i)))
+				reader, err := ipc.NewReader(bytes.NewReader(rdr.RecordBatch().Column(4).(*array.Binary).Value(i)))
 				if err != nil {
 					return nil, adbc.Error{
 						Msg:  err.Error(),
@@ -1131,6 +1131,7 @@ func (c *connectionImpl) Close() error {
 		}
 	}
 
+	c.clientCache.Purge()
 	err = c.cl.Close()
 	c.cl = nil
 	return adbcFromFlightStatus(err, "Close")

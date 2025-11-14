@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="readme.md">
+      <Pack>true</Pack>
+      <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Exporter.Console" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="System.Threading.Channels" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+    <ProjectReference Include="..\Listeners\Apache.Arrow.Adbc.Telemetry.Traces.Listeners.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -27,7 +27,7 @@ G_BEGIN_DECLS
 
 /**
  * GADBCError:
- * @GADBC_ERROR_OK No error.
+ * @GADBC_ERROR_OK: No error.
  * @GADBC_ERROR_UNKNOWN: An unknown error occurred.
  *   May indicate a driver-side or database-side error.
  * @GADBC_ERROR_NOT_IMPLEMENTED: The operation is not implemented or supported.

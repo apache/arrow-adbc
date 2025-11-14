@@ -40,6 +40,13 @@ $ mamba create -n adbc --file ci/conda_env_cpp.txt
 $ mamba activate adbc
 ```
 
+Also you can add dependencies to an existing environment as follows:
+
+```shell
+$ mamba activate adbc
+$ mamba install --file ci/conda_env_cpp.txt
+```
+
 (For other Conda distributions, you will likely need `create ... -c
 conda-forge --file ...`).
 
@@ -90,10 +97,11 @@ You can use CMake presets to build and test:
 
 ```shell
 $ mkdir build
-$ cd build
+$ pushd build
 $ cmake ../c --preset debug
+$ cmake --build .
 # ctest reads presets from PWD
-$ cd ../c
+$ pushd ../c
 $ ctest --preset debug --test-dir ../build
 ```
 
@@ -102,7 +110,7 @@ postgres driver may be built together as follows:
 
 ```shell
 $ mkdir build
-$ cd build
+$ pushd build
 $ export CMAKE_EXPORT_COMPILE_COMMANDS=ON
 $ cmake ../c -DADBC_DRIVER_POSTGRESQL=ON -DADBC_DRIVER_MANAGER=ON
 $ make -j
@@ -132,7 +140,7 @@ For example, to build and run tests for the SQLite3 driver:
 
 ```shell
 $ mkdir build
-$ cd build
+$ pushd build
 # You may need to set -DCMAKE_PREFIX_PATH such that googletest can be found
 $ cmake ../c -DADBC_BUILD_TESTS=ON -DADBC_DRIVER_SQLITE=ON
 $ make -j
@@ -190,7 +198,7 @@ $ meson test -C build
 Make sure [.NET Core is installed](https://dotnet.microsoft.com/en-us/download).
 
 ```shell
-$ cd csharp
+$ pushd csharp
 $ dotnet build
 ```
 
@@ -202,8 +210,8 @@ A list of dependencies for Conda (conda-forge) is included, and can be
 used as follows:
 
 ```shell
-$ conda create -n adbc -c conda-forge --file ci/conda_env_docs.txt
-$ conda activate adbc
+$ mamba create -n adbc --file ci/conda_env_docs.txt
+$ mamba activate adbc
 # Mermaid must be installed separately
 # While "global", it will end up in your Conda environment
 $ npm install -g @mermaid-js/mermaid-cli
@@ -212,32 +220,57 @@ $ npm install -g @mermaid-js/mermaid-cli
 To build the HTML documentation:
 
 ```shell
-$ pushd c/apidoc
-$ doxygen
-$ popd
-
-# Optionally: to also build the Python documentation
-$ pushd python/adbc_driver_manager
-$ pip install -e .[test]
-$ popd
-
-$ cd docs
+$ pushd docs
 $ make html
 ```
 
-The output can be found in `build/`.
+The output can be found in `build/`.  This does not generate API references
+and results in some warnings, but it is not a problem if you're not working
+with the API documentation.
 
 Some documentations are maintained as [Mermaid][mermaid] diagrams, which must
 be rendered and checked in.  This can be done as follows:
 
 ```shell
-cd docs
-make -f mermaid.makefile -j all
+$ pushd docs
+$ make -f mermaid.makefile -j all
 # Check in the updated files
 ```
 
 [mermaid]: https://mermaid.js.org/
 [sphinx]: https://www.sphinx-doc.org/en/master/
+
+#### Building more complete documentation
+
+You can remove the warnings of `make html` and generate the Python API
+reference as follows:
+
+```shell
+$ mamba create -n adbc \
+  --file ci/conda_env_docs.txt \
+  --file ci/conda_env_cpp.txt \
+  --file ci/conda_env_python.txt \
+  --file ci/conda_env_java.txt
+$ mamba activate adbc
+$ env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 ./ci/scripts/python_build.sh $(pwd) $(pwd)/build
+$ pushd docs
+$ make html
+```
+
+For a more complete build, you can use the following script:
+
+```shell
+$ ./ci/scripts/docs_build.sh "$(pwd)"
+```
+
+This generates all available API references, and also runs doctests.
+
+To generate the R API reference, you need to run the following additionally:
+
+```shell
+$ mamba install --file ci/conda_env_r.txt
+$ ./ci/scripts/r_build.sh $(pwd)
+```
 
 ### GLib
 
@@ -260,8 +293,8 @@ A list of dependencies for Conda (conda-forge) is included, and can be
 used as follows:
 
 ```shell
-$ conda create -n adbc -c conda-forge --file ci/conda_env_glib.txt
-$ conda activate adbc
+$ mamba create -n adbc --file ci/conda_env_glib.txt
+$ mamba activate adbc
 ```
 
 
@@ -272,7 +305,7 @@ $ conda activate adbc
 Go libraries are a standard Go project.
 
 ```shell
-$ cd go/adbc
+$ pushd go/adbc
 $ go build -v ./...
 $ go test -v ./...
 ```
@@ -282,7 +315,7 @@ $ go test -v ./...
 The Java components are a standard Maven project.
 
 ```shell
-$ cd java/
+$ pushd java/
 # Build and run tests
 $ mvn clean install
 ```
@@ -331,6 +364,10 @@ export BUILD_DRIVER_MANAGER=ON
 export BUILD_DRIVER_SQLITE=ON
 ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build $(pwd)/local
 
+# Ensure JAVA_HOME is set.
+# If it's not set, you can find it like so:
+# java -XshowSettings:properties -version 2>&1 >/dev/null | grep java.home
+
 # Build the JNI libraries
 ./ci/scripts/java_jni_build.sh $(pwd) $(pwd)/java/build $(pwd)/local
 ```
@@ -360,7 +397,8 @@ individual READMEs for additional dependencies.  In general, that
 means all projects can be built as follows:
 
 ```shell
-$ cd python/adbc_driver_manager
+$ mamba install --file ci/conda_env_python.txt
+$ pushd python/adbc_driver_manager
 $ pip install -e .
 ```
 
@@ -400,7 +438,7 @@ The Ruby libraries are bindings around the GLib libraries.
 The Rust components are a standard Rust project.
 
 ```shell
-$ cd rust
+$ pushd rust
 # Build and run tests
 $ cargo test
 ```
@@ -424,22 +462,34 @@ linters, formatters, and other analysis.  For example:
 # Install pre-commit
 $ pip install pre-commit
 # or alternatively
-$ conda install -c conda-forge --file ci/conda_env_dev.txt
+$ mamba install --file ci/conda_env_dev.txt
 # Set up hooks
 $ pre-commit install
 # Run manually
 $ pre-commit run
-Check Xml............................................(no files to check)Skipped
-Check Yaml...........................................(no files to check)Skipped
-Fix End of Files.....................................(no files to check)Skipped
-Trim Trailing Whitespace.............................(no files to check)Skipped
-clang-format.........................................(no files to check)Skipped
-cmake-format.........................................(no files to check)Skipped
-cpplint..............................................(no files to check)Skipped
-Google Java Formatter................................(no files to check)Skipped
-black................................................(no files to check)Skipped
-flake8...............................................(no files to check)Skipped
-isort................................................(no files to check)Skipped
+check xml.................................................................(no files to check)Skipped
+check yaml................................................................(no files to check)Skipped
+fix end of files..........................................................(no files to check)Skipped
+Mixed line endings (LF)...................................................(no files to check)Skipped
+Mixed line endings (CRLF).................................................(no files to check)Skipped
+trim trailing whitespace..................................................(no files to check)Skipped
+clang-format..............................................................(no files to check)Skipped
+cmake-format..............................................................(no files to check)Skipped
+cpplint...................................................................(no files to check)Skipped
+golangci-lint.............................................................(no files to check)Skipped
+Go Formatter..............................................................(no files to check)Skipped
+Google (or Palantir) Java Formatter.......................................(no files to check)Skipped
+black.....................................................................(no files to check)Skipped
+flake8....................................................................(no files to check)Skipped
+isort.....................................................................(no files to check)Skipped
+cython-lint...............................................................(no files to check)Skipped
+Vala-Lint.................................................................(no files to check)Skipped
+meson.....................................................................(no files to check)Skipped
+Check for unapproved licenses.............................................(no files to check)Skipped
+Ensure CGO adbc.h is syncd................................................(no files to check)Skipped
+Ensure GitHub Actions and pre-commit hooks are pinned to a specific SHA...(no files to check)Skipped
+rustfmt...................................................................(no files to check)Skipped
+codespell.................................................................(no files to check)Skipped
 # Hooks automatically run on commit
 $ git commit
 ```
@@ -484,7 +534,7 @@ $ go install github.com/google/go-licenses@latest
 You can generate the LICENSE.txt with the following command:
 
 ```shell
-$ cd go/adbc && go-licenses report ./... \
+$ pushd go/adbc && go-licenses report ./... \
   --ignore github.com/apache/arrow-adbc/go/adbc \
   --ignore github.com/apache/arrow/go/v11 \
   --ignore github.com/apache/arrow/go/v12 \

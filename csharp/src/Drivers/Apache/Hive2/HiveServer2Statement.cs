@@ -17,9 +17,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
@@ -27,7 +29,7 @@ using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 {
-    internal class HiveServer2Statement : AdbcStatement
+    internal class HiveServer2Statement : TracingStatement, IHiveServer2Statement
     {
         private const string GetPrimaryKeysCommandName = "getprimarykeys";
         private const string GetCrossReferenceCommandName = "getcrossreference";
@@ -35,15 +37,28 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const string GetSchemasCommandName = "getschemas";
         private const string GetTablesCommandName = "gettables";
         private const string GetColumnsCommandName = "getcolumns";
+        private const string GetColumnsExtendedCommandName = "getcolumnsextended";
         private const string SupportedMetadataCommands =
             GetCatalogsCommandName + "," +
             GetSchemasCommandName + "," +
             GetTablesCommandName + "," +
             GetColumnsCommandName + "," +
             GetPrimaryKeysCommandName + "," +
-            GetCrossReferenceCommandName;
+            GetCrossReferenceCommandName + "," +
+            GetColumnsExtendedCommandName;
+
+        // Add constants for PK and FK field names and prefixes
+        protected static readonly string[] PrimaryKeyFields = new[] { "COLUMN_NAME" };
+        protected static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME", "FK_NAME", "KEQ_SEQ" };
+        protected const string PrimaryKeyPrefix = "PK_";
+        protected const string ForeignKeyPrefix = "FK_";
+
+        // Lock to ensure consistent access to TokenSource
+        private readonly object _tokenSourceLock = new();
+        private CancellationTokenSource? _executeTokenSource;
 
         internal HiveServer2Statement(HiveServer2Connection connection)
+            : base(connection)
         {
             Connection = connection;
             ValidateOptions(connection.Properties);
@@ -54,150 +69,196 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             statement.QueryTimeout = QueryTimeoutSeconds;
         }
 
+        /// <summary>
+        /// Gets the schema from metadata response. Base implementation uses traditional Thrift schema.
+        /// Subclasses can override to support Arrow schema parsing.
+        /// </summary>
+        /// <param name="metadata">The metadata response containing schema information</param>
+        /// <returns>The Arrow schema</returns>
+        protected virtual Schema GetSchemaFromMetadata(TGetResultSetMetadataResp metadata)
+        {
+            return Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+        }
+
         public override QueryResult ExecuteQuery()
         {
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            CancellationTokenSource ts = SetTokenSource();
             try
             {
-                return ExecuteQueryAsyncInternal(cancellationToken).Result;
+                return ExecuteQueryAsyncInternal(ts.Token).Result;
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            catch (Exception ex) when (IsCancellation(ex, ts.Token))
             {
-                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
+                throw new TimeoutException("The query execution timed out or was cancelled. Consider increasing the query timeout value.", ex);
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+            }
+            finally
+            {
+                DisposeTokenSource();
             }
         }
 
         public override UpdateResult ExecuteUpdate()
         {
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            CancellationTokenSource ts = SetTokenSource();
             try
             {
-                return ExecuteUpdateAsyncInternal(cancellationToken).Result;
+                return ExecuteUpdateAsyncInternal(ts.Token).Result;
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            catch (Exception ex) when (IsCancellation(ex, ts.Token))
             {
-                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
+                throw new TimeoutException("The query execution timed out or was cancelled. Consider increasing the query timeout value.", ex);
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+            }
+            finally
+            {
+                DisposeTokenSource();
             }
         }
 
         private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
         {
-            if (IsMetadataCommand)
+            return await this.TraceActivityAsync(async activity =>
             {
-                return await ExecuteMetadataCommandQuery(cancellationToken);
-            }
+                if (IsMetadataCommand)
+                {
+                    return await ExecuteMetadataCommandQuery(cancellationToken);
+                }
 
-            _directResults = null;
+                // this could either:
+                // take QueryTimeoutSeconds * 3
+                // OR
+                // take QueryTimeoutSeconds (but this could be restricting)
+                IResponse response = await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
 
-            // this could either:
-            // take QueryTimeoutSeconds * 3
-            // OR
-            // take QueryTimeoutSeconds (but this could be restricting)
-            await ExecuteStatementAsync(cancellationToken); // --> get QueryTimeout +
-
-            TGetResultSetMetadataResp metadata;
-            if (_directResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
-            {
-                // The initial response has result data so we don't need to poll
-                metadata = _directResults.ResultSetMetadata;
-            }
-            else
-            {
-                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
-            }
-            // Store metadata for use in readers
-            Schema schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
-            return new QueryResult(-1, Connection.NewReader(this, schema, metadata));
+                TGetResultSetMetadataResp metadata;
+                if (response.DirectResults?.OperationStatus?.OperationState == TOperationState.FINISHED_STATE)
+                {
+                    // The initial response has result data so we don't need to poll
+                    metadata = response.DirectResults.ResultSetMetadata;
+                }
+                else
+                {
+                    try
+                    {
+                        await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
+                        metadata = await HiveServer2Connection.GetResultSetMetadataAsync(response.OperationHandle!, Connection.Client, cancellationToken);
+                    }
+                    catch (Exception ex) when (IsCancellation(ex, cancellationToken))
+                    {
+                        // If the operation was cancelled, we need to cancel the operation on the server
+                        await CancelOperationAsync(activity, response.OperationHandle);
+                        throw;
+                    }
+                }
+                Schema schema = GetSchemaFromMetadata(metadata);
+                return new QueryResult(-1, Connection.NewReader(this, schema, response, metadata));
+            });
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            CancellationTokenSource ts = SetTokenSource();
             try
             {
-                return await ExecuteQueryAsyncInternal(cancellationToken);
+                return await ExecuteQueryAsyncInternal(ts.Token);
             }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
+            catch (Exception ex) when (IsCancellation(ex, ts.Token))
             {
-                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
+                throw new TimeoutException("The query execution timed out or was cancelled. Consider increasing the query timeout value.", ex);
             }
             catch (Exception ex) when (ex is not HiveServer2Exception)
             {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
+                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+            }
+            finally
+            {
+                DisposeTokenSource();
             }
         }
 
-        public async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
+        private async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
         {
-            const string NumberOfAffectedRowsColumnName = "num_affected_rows";
-            QueryResult queryResult = await ExecuteQueryAsyncInternal(cancellationToken);
-            if (queryResult.Stream == null)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new AdbcException("no data found");
-            }
-
-            using IArrowArrayStream stream = queryResult.Stream;
-
-            // Check if the affected rows columns are returned in the result.
-            Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
-            if (affectedRowsField != null && affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
-            {
-                throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
-            }
-
-            // The default is -1.
-            if (affectedRowsField == null) return new UpdateResult(-1);
-
-            long? affectedRows = null;
-            while (true)
-            {
-                using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync(cancellationToken);
-                if (nextBatch == null) { break; }
-                Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
-                // Note: should only have one item, but iterate for completeness
-                for (int i = 0; i < numOfModifiedArray.Length; i++)
+                long? affectedRows = null;
+                try
                 {
-                    // Note: handle the case where the affected rows are zero (0).
-                    affectedRows = (affectedRows ?? 0) + numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
-                }
-            }
+                    const string NumberOfAffectedRowsColumnName = "num_affected_rows";
+                    QueryResult queryResult = await ExecuteQueryAsyncInternal(cancellationToken);
+                    if (queryResult.Stream == null)
+                    {
+                        throw new AdbcException("no data found");
+                    }
 
-            // If no altered rows, i.e. DDC statements, then -1 is the default.
-            return new UpdateResult(affectedRows ?? -1);
+                    using IArrowArrayStream stream = queryResult.Stream;
+
+                    // Check if the affected rows columns are returned in the result.
+                    Field affectedRowsField = stream.Schema.GetFieldByName(NumberOfAffectedRowsColumnName);
+                    if (affectedRowsField != null && affectedRowsField.DataType.TypeId != Types.ArrowTypeId.Int64)
+                    {
+                        throw new AdbcException($"Unexpected data type for column: '{NumberOfAffectedRowsColumnName}'", new ArgumentException(NumberOfAffectedRowsColumnName));
+                    }
+
+                    // The default is -1.
+                    if (affectedRowsField == null)
+                    {
+                        affectedRows = -1;
+                        return new UpdateResult(affectedRows.Value);
+                    }
+
+                    while (true)
+                    {
+                        using RecordBatch nextBatch = await stream.ReadNextRecordBatchAsync(cancellationToken);
+                        if (nextBatch == null) { break; }
+                        Int64Array numOfModifiedArray = (Int64Array)nextBatch.Column(NumberOfAffectedRowsColumnName);
+                        // Note: should only have one item, but iterate for completeness
+                        for (int i = 0; i < numOfModifiedArray.Length; i++)
+                        {
+                            // Note: handle the case where the affected rows are zero (0).
+                            affectedRows = (affectedRows ?? 0) + numOfModifiedArray.GetValue(i).GetValueOrDefault(0);
+                        }
+                    }
+
+                    // If no altered rows, i.e. DDC statements, then -1 is the default.
+                    affectedRows ??= -1;
+                    return new UpdateResult(affectedRows.Value);
+                }
+                finally
+                {
+                    activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1);
+                }
+            });
         }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
-            CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-            try
+            return await this.TraceActivityAsync(async _ =>
             {
-                return await ExecuteUpdateAsyncInternal(cancellationToken);
-            }
-            catch (Exception ex)
-                when (ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
-                     (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested))
-            {
-                throw new TimeoutException("The query execution timed out. Consider increasing the query timeout value.", ex);
-            }
-            catch (Exception ex) when (ex is not HiveServer2Exception)
-            {
-                throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ex.Message}'", ex);
-            }
+                CancellationTokenSource ts = SetTokenSource();
+                try
+                {
+                    return await ExecuteUpdateAsyncInternal(ts.Token);
+                }
+                catch (Exception ex) when (IsCancellation(ex, ts.Token))
+                {
+                    throw new TimeoutException("The query execution timed out or was cancelled. Consider increasing the query timeout value.", ex);
+                }
+                catch (Exception ex) when (ex is not HiveServer2Exception)
+                {
+                    throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
+                }
+                finally
+                {
+                    DisposeTokenSource();
+                }
+            });
         }
 
         public override void SetOption(string key, string value)
@@ -246,48 +307,52 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 case ApacheParameters.ForeignTableName:
                     this.ForeignTableName = value;
                     break;
+                case ApacheParameters.EscapePatternWildcards:
+                    if (ApacheUtility.BooleanIsValid(key, value, out bool escapePatternWildcards))
+                    {
+                        this.EscapePatternWildcards = escapePatternWildcards;
+                    }
+                    break;
                 default:
                     throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
             }
         }
 
-        protected async Task ExecuteStatementAsync(CancellationToken cancellationToken = default)
+        protected async Task<IResponse> ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
-            if (Connection.SessionHandle == null)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new InvalidOperationException("Invalid session");
-            }
-
-            TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
-            SetStatementProperties(executeRequest);
-            TExecuteStatementResp executeResponse = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
-            if (executeResponse.Status.StatusCode == TStatusCode.ERROR_STATUS)
-            {
-                throw new HiveServer2Exception(executeResponse.Status.ErrorMessage)
-                    .SetSqlState(executeResponse.Status.SqlState)
-                    .SetNativeError(executeResponse.Status.ErrorCode);
-            }
-            OperationHandle = executeResponse.OperationHandle;
-
-            // Capture direct results if they're available
-            if (executeResponse.DirectResults != null)
-            {
-                _directResults = executeResponse.DirectResults;
-
-                if (!string.IsNullOrEmpty(_directResults.OperationStatus?.DisplayMessage))
+                if (Connection.SessionHandle == null)
                 {
-                    throw new HiveServer2Exception(_directResults.OperationStatus!.DisplayMessage)
-                        .SetSqlState(_directResults.OperationStatus.SqlState)
-                        .SetNativeError(_directResults.OperationStatus.ErrorCode);
+                    throw new InvalidOperationException("Invalid session");
                 }
-            }
+
+                activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
+                TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
+                SetStatementProperties(executeRequest);
+                IResponse response = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
+                HiveServer2Connection.HandleThriftResponse(response.Status!, activity);
+                activity?.AddTag(SemanticConventions.Db.Response.OperationId, response.OperationHandle!.OperationId.Guid, "N");
+
+                // Capture direct results if they're available
+                if (response.DirectResults != null)
+                {
+                    if (!string.IsNullOrEmpty(response.DirectResults.OperationStatus.DisplayMessage))
+                    {
+                        throw new HiveServer2Exception(response.DirectResults.OperationStatus.DisplayMessage)
+                            .SetSqlState(response.DirectResults.OperationStatus.SqlState)
+                            .SetNativeError(response.DirectResults.OperationStatus.ErrorCode);
+                    }
+                }
+                return response;
+            });
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
 
-        protected internal long BatchSize { get; private set; } = HiveServer2Connection.BatchSizeDefault;
+        public virtual long BatchSize { get; protected set; } = HiveServer2Connection.BatchSizeDefault;
 
-        protected internal int QueryTimeoutSeconds
+        public int QueryTimeoutSeconds
         {
             // Coordinate updates with the connection
             get => Connection.QueryTimeoutSeconds;
@@ -303,14 +368,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected internal string? ForeignCatalogName { get; set; }
         protected internal string? ForeignSchemaName { get; set; }
         protected internal string? ForeignTableName { get; set; }
-        protected internal TSparkDirectResults? _directResults { get; set; }
+        protected internal bool EscapePatternWildcards { get; set; } = false;
 
         public HiveServer2Connection Connection { get; private set; }
 
-        public TOperationHandle? OperationHandle { get; private set; }
-
         // Keep the original Client property for internal use
-        public TCLIService.Client Client => Connection.Client;
+        public TCLIService.IAsync Client => Connection.Client;
+
+        public override string AssemblyName => HiveServer2Connection.s_assemblyName;
+
+        public override string AssemblyVersion => HiveServer2Connection.s_assemblyVersion;
 
         private void UpdatePollTimeIfValid(string key, string value) => PollTimeMilliseconds = !string.IsNullOrEmpty(key) && int.TryParse(value, result: out int pollTimeMilliseconds) && pollTimeMilliseconds >= 0
             ? pollTimeMilliseconds
@@ -320,17 +387,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             ? batchSize
             : throw new ArgumentOutOfRangeException(key, value, $"The value '{value}' for option '{key}' is invalid. Must be a numeric value greater than zero.");
 
-        public override void Dispose()
+        private string? EscapePatternWildcardsInName(string? name)
         {
-            if (OperationHandle != null)
-            {
-                CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
-                TCloseOperationReq request = new TCloseOperationReq(OperationHandle);
-                Connection.Client.CloseOperation(request, cancellationToken).Wait();
-                OperationHandle = null;
-            }
-
-            base.Dispose();
+            if (!EscapePatternWildcards || name == null)
+                return name;
+            // Escape both _ and %
+            return name.Replace("_", "\\_").Replace("%", "\\%");
         }
 
         protected void ValidateOptions(IReadOnlyDictionary<string, string> properties)
@@ -360,14 +422,38 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 GetColumnsCommandName => await GetColumnsAsync(cancellationToken),
                 GetPrimaryKeysCommandName => await GetPrimaryKeysAsync(cancellationToken),
                 GetCrossReferenceCommandName => await GetCrossReferenceAsync(cancellationToken),
+                GetColumnsExtendedCommandName => await GetColumnsExtendedAsync(cancellationToken),
                 null or "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
                 _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {SupportedMetadataCommands}"),
             };
         }
-
-        private async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
+        // This method is for internal use only and is not available for external use.
+        // It retrieves cross-reference data where the current table is treated as a foreign table.
+        // This is used in GetColumnsExtendedAsync to fetch foreign key relationships.
+        /// Note: Unlike other metadata queries, this method does not escape underscores in names
+        /// since the backend treats these as exact match queries rather than pattern matches.
+        protected virtual async Task<QueryResult> GetCrossReferenceAsForeignTableAsync(CancellationToken cancellationToken = default)
         {
-            TGetCrossReferenceResp resp = await Connection.GetCrossReferenceAsync(
+            IResponse response = await Connection.GetCrossReferenceAsync(
+                null,
+                null,
+                null,
+                CatalogName,
+                SchemaName,
+                TableName,
+                cancellationToken);
+
+            return await GetQueryResult(response, cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets the cross reference (foreign key) information for the specified tables.
+        /// Note: Unlike other metadata queries, this method does not escape underscores in names
+        /// since the backend treats these as exact match queries rather than pattern matches.
+        /// </summary>
+        protected virtual async Task<QueryResult> GetCrossReferenceAsync(CancellationToken cancellationToken = default)
+        {
+            IResponse response = await Connection.GetCrossReferenceAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
@@ -375,93 +461,80 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 ForeignSchemaName,
                 ForeignTableName,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
-        private async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Gets the primary key information for the specified table.
+        /// Note: Unlike other metadata queries, this method does not escape underscores in names
+        /// since the backend treats these as exact match queries rather than pattern matches.
+        /// </summary>
+        protected virtual async Task<QueryResult> GetPrimaryKeysAsync(CancellationToken cancellationToken = default)
         {
-            TGetPrimaryKeysResp resp = await Connection.GetPrimaryKeysAsync(
+            IResponse response = await Connection.GetPrimaryKeysAsync(
                 CatalogName,
                 SchemaName,
                 TableName,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
-        private async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetCatalogsAsync(CancellationToken cancellationToken = default)
         {
-            TGetCatalogsResp resp = await Connection.GetCatalogsAsync(cancellationToken);
-            OperationHandle = resp.OperationHandle;
+            IResponse response = await Connection.GetCatalogsAsync(cancellationToken);
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
-        private async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetSchemasAsync(CancellationToken cancellationToken = default)
         {
-            TGetSchemasResp resp = await Connection.GetSchemasAsync(
-                CatalogName,
-                SchemaName,
+            IResponse response = await Connection.GetSchemasAsync(
+                EscapePatternWildcardsInName(CatalogName),
+                EscapePatternWildcardsInName(SchemaName),
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
-        private async Task<QueryResult> GetTablesAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetTablesAsync(CancellationToken cancellationToken = default)
         {
             List<string>? tableTypesList = this.TableTypes?.Split(',').ToList();
-            TGetTablesResp resp = await Connection.GetTablesAsync(
-                CatalogName,
-                SchemaName,
-                TableName,
+            IResponse response = await Connection.GetTablesAsync(
+                EscapePatternWildcardsInName(CatalogName),
+                EscapePatternWildcardsInName(SchemaName),
+                EscapePatternWildcardsInName(TableName),
                 tableTypesList,
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
 
-            return await GetQueryResult(resp.DirectResults, cancellationToken);
+            return await GetQueryResult(response, cancellationToken);
         }
 
-        private async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
+        protected virtual async Task<QueryResult> GetColumnsAsync(CancellationToken cancellationToken = default)
         {
-            TGetColumnsResp resp = await Connection.GetColumnsAsync(
-                CatalogName,
-                SchemaName,
-                TableName,
-                ColumnName,
+            IResponse response = await Connection.GetColumnsAsync(
+                EscapePatternWildcardsInName(CatalogName),
+                EscapePatternWildcardsInName(SchemaName),
+                EscapePatternWildcardsInName(TableName),
+                EscapePatternWildcardsInName(ColumnName),
                 cancellationToken);
-            OperationHandle = resp.OperationHandle;
-
-            // Common variables declared upfront
-            TGetResultSetMetadataResp metadata;
-            Schema schema;
-            TRowSet rowSet;
 
             // For GetColumns, we need to enhance the result with BASE_TYPE_NAME
-            if (Connection.AreResultsAvailableDirectly && resp.DirectResults?.ResultSet?.Results != null)
-            {
-                // Get data from direct results
-                metadata = resp.DirectResults.ResultSetMetadata;
-                schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
-                rowSet = resp.DirectResults.ResultSet.Results;
-            }
-            else
+            if (!Connection.TryGetDirectResults(response.DirectResults, out TGetResultSetMetadataResp? metadata, out TRowSet? rowSet))
             {
                 // Poll and fetch results
-                await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
+                await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
 
                 // Get metadata
-                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(OperationHandle!, Connection.Client, cancellationToken);
-                schema = Connection.SchemaParser.GetArrowSchema(metadata.Schema, Connection.DataTypeConversion);
+                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(response.OperationHandle!, Connection.Client, cancellationToken);
 
                 // Fetch the results
-                rowSet = await Connection.FetchResultsAsync(OperationHandle!, BatchSize, cancellationToken);
+                rowSet = await Connection.FetchResultsAsync(response.OperationHandle!, BatchSize, cancellationToken);
             }
 
             // Common processing for both paths
+            Schema schema = Connection.SchemaParser.GetArrowSchema(metadata!.Schema, Connection.DataTypeConversion);
             int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
             int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
             IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
@@ -473,28 +546,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
             TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
-            return Connection.SchemaParser.GetArrowSchema(response.Schema, Connection.DataTypeConversion);
+            return GetSchemaFromMetadata(response);
         }
 
-        private async Task<QueryResult> GetQueryResult(TSparkDirectResults? directResults, CancellationToken cancellationToken)
+        private async Task<QueryResult> GetQueryResult(IResponse response, CancellationToken cancellationToken)
         {
-            Schema schema;
-            if (Connection.AreResultsAvailableDirectly && directResults?.ResultSet?.Results != null)
+            if (Connection.TryGetDirectResults(response.DirectResults, out QueryResult? result))
             {
-                TGetResultSetMetadataResp resultSetMetadata = directResults.ResultSetMetadata;
-                schema = Connection.SchemaParser.GetArrowSchema(resultSetMetadata.Schema, Connection.DataTypeConversion);
-                TRowSet rowSet = directResults.ResultSet.Results;
-                int columnCount = HiveServer2Reader.GetColumnCount(rowSet);
-                int rowCount = HiveServer2Reader.GetRowCount(rowSet, columnCount);
-                IReadOnlyList<IArrowArray> data = HiveServer2Reader.GetArrowArrayData(rowSet, columnCount, schema, Connection.DataTypeConversion);
-
-                return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(schema, data));
+                return result!;
             }
 
-            await HiveServer2Connection.PollForResponseAsync(OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
-            schema = await GetResultSetSchemaAsync(OperationHandle!, Connection.Client, cancellationToken);
+            await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
+            Schema schema = await GetResultSetSchemaAsync(response.OperationHandle!, Connection.Client, cancellationToken);
 
-            return new QueryResult(-1, Connection.NewReader(this, schema));
+            return new QueryResult(-1, Connection.NewReader(this, schema, response));
         }
 
         protected internal QueryResult EnhanceGetColumnsResult(Schema originalSchema, IReadOnlyList<IArrowArray> originalData,
@@ -587,5 +652,452 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             return new QueryResult(rowCount, new HiveServer2Connection.HiveInfoArrowStream(enhancedSchema, enhancedData));
         }
+
+        // Helper method to read all batches from a stream
+        private async Task<(List<RecordBatch> Batches, Schema Schema, int TotalRows)> ReadAllBatchesAsync(
+            IArrowArrayStream stream, CancellationToken cancellationToken)
+        {
+            List<RecordBatch> batches = new List<RecordBatch>();
+            int totalRows = 0;
+            Schema schema = stream.Schema;
+
+            // Read all batches
+            while (true)
+            {
+                var batch = await stream.ReadNextRecordBatchAsync(cancellationToken);
+                if (batch == null) break;
+
+                if (batch.Length > 0)
+                {
+                    batches.Add(batch);
+                    totalRows += batch.Length;
+                }
+                else
+                {
+                    batch.Dispose();
+                }
+            }
+
+            return (batches, schema, totalRows);
+        }
+
+        protected virtual async Task<QueryResult> GetColumnsExtendedAsync(CancellationToken cancellationToken = default)
+        {
+            // 1. Get all three results at once
+            var columnsResult = await GetColumnsAsync(cancellationToken);
+            if (columnsResult.Stream == null)
+            {
+                // TODO: Add log or throw
+                return columnsResult;
+            }
+
+            var pkResult = await GetPrimaryKeysAsync(cancellationToken);
+
+            // For FK lookup, we need to pass in the current catalog/schema/table as the foreign table
+            var fkResult = await GetCrossReferenceAsForeignTableAsync(cancellationToken);
+
+            // 2. Read all batches into memory
+            List<RecordBatch> columnsBatches;
+            int totalRows;
+            Schema columnsSchema;
+            StringArray? columnNames = null;
+            int colNameIndex = -1;
+
+            // Extract column data
+            using (var stream = columnsResult.Stream)
+            {
+                colNameIndex = stream.Schema.GetFieldIndex("COLUMN_NAME");
+                if (colNameIndex < 0)
+                {
+                    // TODO: Add log or throw
+                    return columnsResult; // Can't match without column names
+                }
+
+                var batchResult = await ReadAllBatchesAsync(stream, cancellationToken);
+                columnsBatches = batchResult.Batches;
+                columnsSchema = batchResult.Schema;
+                totalRows = batchResult.TotalRows;
+
+                if (columnsBatches.Count == 0)
+                {
+                    // Return empty result with complete schema
+                    return CreateEmptyExtendedColumnsResult(columnsSchema);
+                }
+
+                // Create column names array from all batches using ArrayDataConcatenator.Concatenate
+                List<ArrayData> columnNameArrayDataList = columnsBatches.Select(batch =>
+                    batch.Column(colNameIndex).Data).ToList();
+                ArrayData? concatenatedColumnNames = ArrayDataConcatenator.Concatenate(columnNameArrayDataList);
+                columnNames = (StringArray)ArrowArrayFactory.BuildArray(concatenatedColumnNames!);
+            }
+
+            // 3. Create combined schema and prepare data
+            var allFields = new List<Field>(columnsSchema.FieldsList);
+            var combinedData = new List<IArrowArray>();
+
+            // 4. Add all columns data by combining all batches
+            for (int colIdx = 0; colIdx < columnsSchema.FieldsList.Count; colIdx++)
+            {
+                if (columnsBatches.Count == 0)
+                    continue;
+
+                var field = columnsSchema.GetFieldByIndex(colIdx);
+
+                // Collect arrays for this column from all batches
+                var columnArrays = new List<IArrowArray>();
+                foreach (var batch in columnsBatches)
+                {
+                    columnArrays.Add(batch.Column(colIdx));
+                }
+
+                List<ArrayData> arrayDataList = columnArrays.Select(arr => arr.Data).ToList();
+                ArrayData? concatenatedData = ArrayDataConcatenator.Concatenate(arrayDataList);
+                IArrowArray array = ArrowArrayFactory.BuildArray(concatenatedData);
+                combinedData.Add(array);
+            }
+
+            // 5. Process PK and FK data using helper methods with selected fields
+            await ProcessRelationshipDataSafe(pkResult, PrimaryKeyPrefix, "COLUMN_NAME",
+                PrimaryKeyFields, // Selected PK fields
+                columnNames, totalRows,
+                allFields, combinedData, cancellationToken);
+
+            await ProcessRelationshipDataSafe(fkResult, ForeignKeyPrefix, "FKCOLUMN_NAME",
+                ForeignKeyFields, // Selected FK fields
+                columnNames, totalRows,
+                allFields, combinedData, cancellationToken);
+
+            // 6. Return the combined result
+            var combinedSchema = new Schema(allFields, columnsSchema.Metadata);
+
+            return new QueryResult(totalRows, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
+        }
+
+        // Helper method to create an empty result with the complete extended columns schema
+        protected static QueryResult CreateEmptyExtendedColumnsResult(Schema baseSchema)
+        {
+            // Create the complete schema with all fields
+            var allFields = new List<Field>(baseSchema.FieldsList);
+            // Add PK fields
+            foreach (var field in PrimaryKeyFields)
+            {
+                allFields.Add(new Field(PrimaryKeyPrefix + field, StringType.Default, true));
+            }
+            // Add FK fields
+            foreach (var field in ForeignKeyFields)
+            {
+                IArrowType fieldType = field != "KEQ_SEQ" ? StringType.Default : Int32Type.Default;
+                allFields.Add(new Field(ForeignKeyPrefix + field, fieldType, true));
+            }
+
+            var combinedSchema = new Schema(allFields, baseSchema.Metadata);
+
+            // Create empty arrays for all fields
+            var combinedData = new List<IArrowArray>();
+            foreach (var field in allFields)
+            {
+                switch (field.DataType.TypeId)
+                {
+                    case ArrowTypeId.String:
+                        combinedData.Add(new StringArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Int8:
+                        combinedData.Add(new Int8Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Int16:
+                        combinedData.Add(new Int16Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Int32:
+                        combinedData.Add(new Int32Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Int64:
+                        combinedData.Add(new Int64Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Boolean:
+                        combinedData.Add(new BooleanArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Float:
+                        combinedData.Add(new FloatArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Double:
+                        combinedData.Add(new DoubleArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Date32:
+                        combinedData.Add(new Date32Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Date64:
+                        combinedData.Add(new Date64Array.Builder().Build());
+                        break;
+                    case ArrowTypeId.Timestamp:
+                        combinedData.Add(new TimestampArray.Builder().Build());
+                        break;
+                    case ArrowTypeId.Decimal128:
+                        combinedData.Add(new Decimal128Array.Builder((Decimal128Type)field.DataType).Build());
+                        break;
+                    default:
+                        throw AdbcException.NotImplemented(
+                            $"Data type '{field.DataType}' is not supported for empty extended columns result.");
+                }
+            }
+
+            return new QueryResult(0, new HiveServer2Connection.HiveInfoArrowStream(combinedSchema, combinedData));
+        }
+
+        /**
+         * Process relationship data (primary/foreign keys) from query results and add to the output.
+         * This method handles data from PK/FK queries and correlates it with column data.
+         *
+         * How it works:
+         * 1. Add relationship columns to the schema (PK/FK columns with prefixed names)
+         * 2. Read relationship data from source records
+         * 3. Build a mapping of column names to their relationship values
+         * 4. Create arrays for each field, aligning values with the main column result
+         */
+        private async Task ProcessRelationshipDataSafe(QueryResult result, string prefix, string relationColNameField,
+            string[] includeFields, StringArray colNames, int rowCount,
+            List<Field> allFields, List<IArrowArray> combinedData, CancellationToken cancellationToken)
+        {
+            // STEP 1: Add relationship fields to the output schema
+            // Each field name is prefixed (e.g., "PK_" for primary keys, "FK_" for foreign keys)
+            if (result.Stream != null)
+            {
+                var schema = result.Stream.Schema;
+                foreach (var fieldName in includeFields)
+                {
+                    int fieldIndex = schema.GetFieldIndex(fieldName);
+                    IArrowType arrowType = StringType.Default; // fallback
+                    if (fieldIndex >= 0)
+                    {
+                        arrowType = schema.GetFieldByIndex(fieldIndex).DataType;
+                    }
+                    allFields.Add(new Field(prefix + fieldName, arrowType, true));
+                }
+            }
+            else
+            {
+                // fallback: if no stream, add as string
+                foreach (var fieldName in includeFields)
+                {
+                    allFields.Add(new Field(prefix + fieldName, StringType.Default, true));
+                }
+            }
+
+            // STEP 2: Create a dictionary to map column names to their relationship values
+            // Structure: Dictionary<fieldName, Dictionary<columnName, relationshipValue>>
+            // For primary keys - only columns that are PKs are stored:
+            // {"COLUMN_NAME": {"id": "id"}}
+            // For foreign keys - only columns that are FKs are stored:
+            // {"FKCOLUMN_NAME": {"DOLocationId": "LocationId"}}
+            var relationData = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
+
+            // STEP 3: Extract relationship data from the query result
+            if (result.Stream != null)
+            {
+                using (var stream = result.Stream)
+                {
+                    // Find the column index that contains our key values (e.g., COLUMN_NAME for PK or FKCOLUMN_NAME for FK)
+                    int keyColIndex = stream.Schema.GetFieldIndex(relationColNameField);
+                    if (keyColIndex >= 0)
+                    {
+                        // STEP 3.1: Process each record batch from the relationship data source
+                        while (true)
+                        {
+                            var batch = await stream.ReadNextRecordBatchAsync(cancellationToken);
+                            if (batch == null) break;
+
+                            // STEP 3.2: Map field names to their column indices for quick lookup
+                            Dictionary<string, int> fieldIndices = new Dictionary<string, int>();
+                            foreach (var fieldName in includeFields)
+                            {
+                                int index = stream.Schema.GetFieldIndex(fieldName);
+                                if (index >= 0) fieldIndices[fieldName] = index;
+                            }
+
+                            // STEP 3.3: Process each row in the batch
+                            for (int i = 0; i < batch.Length; i++)
+                            {
+                                // Get the key column value (e.g., column name this relationship applies to)
+                                StringArray keyCol = (StringArray)batch.Column(keyColIndex);
+                                if (keyCol.IsNull(i)) continue;
+
+                                string keyValue = keyCol.GetString(i);
+
+                                if (string.IsNullOrEmpty(keyValue)) continue;
+
+                                // STEP 3.4: For each included field, extract its value and store in our map
+                                foreach (var pair in fieldIndices)
+                                {
+                                    // Ensure we have an entry for this field
+                                    if (!relationData.TryGetValue(pair.Key, out var fieldData))
+                                    {
+                                        fieldData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                                        relationData[pair.Key] = fieldData;
+                                    }
+                                    // Store the relationship value: columnName -> value
+                                    IArrowArray fieldArray = batch.Column(pair.Value);
+                                    if (fieldArray is Int32Array int32ArrayField)
+                                    {
+                                        var val = int32ArrayField.GetValue(i);
+                                        relationData[pair.Key][keyValue] = val.GetValueOrDefault();
+                                    }
+                                    else
+                                    {
+                                        // Default: treat as string array
+                                        var stringArrayFallback = (StringArray)fieldArray;
+                                        relationData[pair.Key][keyValue] = stringArrayFallback.GetString(i);
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // STEP 4: Build Arrow arrays for each relationship field
+            foreach (var fieldName in includeFields)
+            {
+                var fieldData = relationData.ContainsKey(fieldName) ? relationData[fieldName] : null;
+                IArrowType arrowType = StringType.Default;
+                if (result.Stream != null)
+                {
+                    int fieldIndex = result.Stream.Schema.GetFieldIndex(fieldName);
+                    if (fieldIndex >= 0)
+                        arrowType = result.Stream.Schema.GetFieldByIndex(fieldIndex).DataType;
+                }
+
+                if (arrowType.TypeId == ArrowTypeId.Int32)
+                {
+                    var builder = new Int32Array.Builder();
+                    for (int i = 0; i < colNames.Length; i++)
+                    {
+                        string? colName = colNames.GetString(i);
+                        if (!string.IsNullOrEmpty(colName) && fieldData != null && fieldData.TryGetValue(colName!, out var fieldValue))
+                        {
+                            if (fieldValue is int intVal)
+                            {
+                                builder.Append(intVal);
+                            }
+                            else if (fieldValue is string strVal && int.TryParse(strVal, out int parsed))
+                            {
+                                builder.Append(parsed);
+                            }
+                            else
+                            {
+                                builder.AppendNull();
+                            }
+                        }
+                        else
+                        {
+                            builder.AppendNull();
+                        }
+                    }
+                    combinedData.Add(builder.Build());
+                }
+                else
+                {
+                    var builder = new StringArray.Builder();
+                    for (int i = 0; i < colNames.Length; i++)
+                    {
+                        string? colName = colNames.GetString(i);
+                        string? value = null;
+                        if (!string.IsNullOrEmpty(colName) &&
+                            fieldData != null &&
+                            fieldData.TryGetValue(colName!, out var fieldValue))
+                        {
+                            value = (string?)fieldValue;
+                        }
+                        builder.Append(value);
+                    }
+                    combinedData.Add(builder.Build());
+                }
+            }
+        }
+
+        /// <inheritdoc/>
+        public virtual bool HasDirectResults(IResponse response) => response?.DirectResults?.ResultSet != null && response.DirectResults.ResultSetMetadata != null;
+
+        /// <inheritdoc/>
+        public bool TryGetDirectResults(IResponse response, out TSparkDirectResults? directResults)
+        {
+            if (HasDirectResults(response))
+            {
+                directResults = response!.DirectResults;
+                return true;
+            }
+            directResults = null;
+            return false;
+        }
+
+        /// <inheritdoc/>
+        public override void Cancel()
+        {
+            this.TraceActivity(_ =>
+            {
+                // This will cancel any operation using the current token source
+                CancelTokenSource();
+            });
+        }
+
+        private async Task CancelOperationAsync(Activity? activity, TOperationHandle? operationHandle)
+        {
+            if (operationHandle == null)
+            {
+                return;
+            }
+            using CancellationTokenSource cancellationTokenSource = ApacheUtility.GetCancellationTokenSource(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+            try
+            {
+                activity?.AddEvent(
+                    "db.operation.cancel_operation.starting",
+                    [new(SemanticConventions.Db.Operation.OperationId, new Guid(operationHandle.OperationId.Guid).ToString("N"))]);
+                TCancelOperationReq req = new(operationHandle);
+                TCancelOperationResp resp = await Client.CancelOperation(req, cancellationTokenSource.Token);
+                HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
+                activity?.AddEvent(
+                    "db.operation.cancel_operation.completed",
+                    [new(SemanticConventions.Db.Response.StatusCode, resp.Status.StatusCode.ToString())]);
+            }
+            catch (Exception ex)
+            {
+                activity?.AddException(ex);
+            }
+        }
+
+        private CancellationTokenSource SetTokenSource()
+        {
+            lock (_tokenSourceLock)
+            {
+                if (_executeTokenSource != null)
+                {
+                    throw new InvalidOperationException("Simultaneous query or update execution is not allowed. Ensure to complete the query or update before starting a new one.");
+                }
+
+                _executeTokenSource = ApacheUtility.GetCancellationTokenSource(QueryTimeoutSeconds, ApacheUtility.TimeUnit.Seconds);
+                return _executeTokenSource;
+            }
+        }
+
+        private void CancelTokenSource()
+        {
+            lock (_tokenSourceLock)
+            {
+                // Cancel any running execution
+                _executeTokenSource?.Cancel();
+            }
+        }
+
+        private void DisposeTokenSource()
+        {
+            lock (_tokenSourceLock)
+            {
+                _executeTokenSource?.Dispose();
+                _executeTokenSource = null;
+            }
+        }
+
+        private static bool IsCancellation(Exception ex, CancellationToken cancellationToken) =>
+            ApacheUtility.ContainsException(ex, out OperationCanceledException? _) ||
+            (ApacheUtility.ContainsException(ex, out TTransportException? _) && cancellationToken.IsCancellationRequested);
     }
 }

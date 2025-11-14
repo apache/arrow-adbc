@@ -31,8 +31,8 @@ Installation
 DBAPI (PEP 249)-style API
 =========================
 
-If PyArrow is installed, ADBC provides a high-level API in the style
-of the DBAPI standard.
+If either PyArrow or Polars are installed, ADBC provides a high-level API in the
+style of the DBAPI standard.
 
 .. testcleanup:: dbapi
 
@@ -73,6 +73,7 @@ row-oriented DBAPI interface:
    :skipif: adbc_driver_sqlite is None
 
    >>> cursor.execute("SELECT 1, 2.0, 'Hello, world!'")
+   <adbc_driver_manager.dbapi.Cursor ...>
    >>> cursor.fetchone()
    (1, 2.0, 'Hello, world!')
    >>> cursor.fetchone()
@@ -83,6 +84,7 @@ We can also get the results as Arrow data via a non-standard method:
    :skipif: adbc_driver_sqlite is None
 
    >>> cursor.execute("SELECT 1, 2.0, 'Hello, world!'")
+   <adbc_driver_manager.dbapi.Cursor ...>
    >>> cursor.fetch_arrow_table()
    pyarrow.Table
    1: int64
@@ -102,6 +104,7 @@ We can bind parameters in our queries:
    :skipif: adbc_driver_sqlite is None
 
    >>> cursor.execute("SELECT ? + 1 AS the_answer", parameters=(41,))
+   <adbc_driver_manager.dbapi.Cursor ...>
    >>> cursor.fetch_arrow_table()
    pyarrow.Table
    the_answer: int64
@@ -123,6 +126,7 @@ table of Arrow data into a new database table:
    >>> cursor.adbc_ingest("sample", table)
    2
    >>> cursor.execute("SELECT COUNT(DISTINCT ints) FROM sample")
+   <adbc_driver_manager.dbapi.Cursor ...>
    >>> cursor.fetchall()
    [(2,)]
 
@@ -135,6 +139,7 @@ We can also append to an existing table:
    >>> cursor.adbc_ingest("sample", table, mode="append")
    2
    >>> cursor.execute("SELECT COUNT(DISTINCT ints) FROM sample")
+   <adbc_driver_manager.dbapi.Cursor ...>
    >>> cursor.fetchall()
    [(3,)]
 

@@ -25,12 +25,8 @@
 //!
 //! Read more about ADBC at <https://arrow.apache.org/adbc/>
 //!
-//! This library currently provides:
-//! - An abstract Rust API to be implemented by vendor-specific drivers.
-//! - A driver manager which implements this same API, but dynamically loads
-//!   drivers internally and forwards calls appropriately using the [C API](https://github.com/apache/arrow-adbc/blob/main/adbc.h).
-//! - A driver exporter that takes an implementation of the abstract API and
-//!   turns it into an object file that implements the C API.
+//! The `core` library currently provides the basic types shared by vendor-specific drivers,
+//! the driver manager, and the driver exporter.
 //!
 //! # Native Rust drivers
 //!
@@ -42,29 +38,9 @@
 //!
 //! For drivers implemented in Rust, using these will be more efficient and
 //! safe, since it avoids the overhead of going through C FFI.
-//!
-//! # Driver Manager
-//!
-//! The [driver_manager] module allows loading drivers exposing the C API,
-//! either from an initialization function (link-time, either static or dynamic)
-//! or by dynamically finding such a function in a dynamic library (run-time).
-//! The driver manager is gated behind the `driver_manager` feature flag.
-//!
-//! # Driver Exporter
-//!
-//! The driver exporter allows exposing native Rust drivers as C drivers to be
-//! used by other langages via their own driver manager. Once you have an
-//! implementation of [Driver], provided that it also implements [Default], you
-//! can build it as an object file implementing the C API with the
-//! [export_driver] macro.
 
-mod driver_exporter;
-#[doc(hidden)]
-pub use driver_exporter::FFIDriver;
-#[cfg(feature = "driver_manager")]
-pub mod driver_manager;
+pub mod constants;
 pub mod error;
-pub mod ffi;
 pub mod options;
 pub mod schemas;
 
@@ -75,6 +51,17 @@ use arrow_schema::Schema;
 
 use error::Result;
 use options::{OptionConnection, OptionDatabase, OptionStatement, OptionValue};
+
+pub type LoadFlags = u32;
+
+pub const LOAD_FLAG_SEARCH_ENV: LoadFlags = 1 << 1;
+pub const LOAD_FLAG_SEARCH_USER: LoadFlags = 1 << 2;
+pub const LOAD_FLAG_SEARCH_SYSTEM: LoadFlags = 1 << 3;
+pub const LOAD_FLAG_ALLOW_RELATIVE_PATHS: LoadFlags = 1 << 4;
+pub const LOAD_FLAG_DEFAULT: LoadFlags = LOAD_FLAG_SEARCH_ENV
+    | LOAD_FLAG_SEARCH_USER
+    | LOAD_FLAG_SEARCH_SYSTEM
+    | LOAD_FLAG_ALLOW_RELATIVE_PATHS;
 
 /// Ability to configure an object by setting/getting options.
 pub trait Optionable {
@@ -121,11 +108,11 @@ pub trait Database: Optionable<Option = OptionDatabase> {
     type ConnectionType: Connection;
 
     /// Allocate and initialize a new connection without pre-init options.
-    fn new_connection(&mut self) -> Result<Self::ConnectionType>;
+    fn new_connection(&self) -> Result<Self::ConnectionType>;
 
     /// Allocate and initialize a new connection with pre-init options.
     fn new_connection_with_opts(
-        &mut self,
+        &self,
         opts: impl IntoIterator<Item = (options::OptionConnection, OptionValue)>,
     ) -> Result<Self::ConnectionType>;
 }

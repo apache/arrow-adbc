@@ -44,16 +44,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
   {
     private global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle _operationHandle;
     private global::Apache.Hive.Service.Rpc.Thrift.TSparkDirectResults _directResults;
-    private bool _executionRejected;
-    private double _maxClusterCapacity;
-    private double _queryCost;
-    private global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf _sessionConf;
-    private double _currentClusterLoad;
-    private global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType _idempotencyType;
-    private bool _remoteResultCacheEnabled;
-    private bool _isServerless;
-    private List<global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle> _operationHandles;
-    private Dictionary<string, double> _queryStats;
 
     public global::Apache.Hive.Service.Rpc.Thrift.TStatus Status { get; set; }
 
@@ -83,156 +73,12 @@ namespace Apache.Hive.Service.Rpc.Thrift
       }
     }
 
-    public bool ExecutionRejected
-    {
-      get
-      {
-        return _executionRejected;
-      }
-      set
-      {
-        __isset.executionRejected = true;
-        this._executionRejected = value;
-      }
-    }
-
-    public double MaxClusterCapacity
-    {
-      get
-      {
-        return _maxClusterCapacity;
-      }
-      set
-      {
-        __isset.maxClusterCapacity = true;
-        this._maxClusterCapacity = value;
-      }
-    }
-
-    public double QueryCost
-    {
-      get
-      {
-        return _queryCost;
-      }
-      set
-      {
-        __isset.queryCost = true;
-        this._queryCost = value;
-      }
-    }
-
-    public global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf SessionConf
-    {
-      get
-      {
-        return _sessionConf;
-      }
-      set
-      {
-        __isset.sessionConf = true;
-        this._sessionConf = value;
-      }
-    }
-
-    public double CurrentClusterLoad
-    {
-      get
-      {
-        return _currentClusterLoad;
-      }
-      set
-      {
-        __isset.currentClusterLoad = true;
-        this._currentClusterLoad = value;
-      }
-    }
-
-    /// <summary>
-    ///
-    /// <seealso cref="global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType"/>
-    /// </summary>
-    public global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType IdempotencyType
-    {
-      get
-      {
-        return _idempotencyType;
-      }
-      set
-      {
-        __isset.idempotencyType = true;
-        this._idempotencyType = value;
-      }
-    }
-
-    public bool RemoteResultCacheEnabled
-    {
-      get
-      {
-        return _remoteResultCacheEnabled;
-      }
-      set
-      {
-        __isset.remoteResultCacheEnabled = true;
-        this._remoteResultCacheEnabled = value;
-      }
-    }
-
-    public bool IsServerless
-    {
-      get
-      {
-        return _isServerless;
-      }
-      set
-      {
-        __isset.isServerless = true;
-        this._isServerless = value;
-      }
-    }
-
-    public List<global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle> OperationHandles
-    {
-      get
-      {
-        return _operationHandles;
-      }
-      set
-      {
-        __isset.operationHandles = true;
-        this._operationHandles = value;
-      }
-    }
-
-    public Dictionary<string, double> QueryStats
-    {
-      get
-      {
-        return _queryStats;
-      }
-      set
-      {
-        __isset.queryStats = true;
-        this._queryStats = value;
-      }
-    }
-
 
     public Isset __isset;
     public struct Isset
     {
       public bool operationHandle;
       public bool directResults;
-      public bool executionRejected;
-      public bool maxClusterCapacity;
-      public bool queryCost;
-      public bool sessionConf;
-      public bool currentClusterLoad;
-      public bool idempotencyType;
-      public bool remoteResultCacheEnabled;
-      public bool isServerless;
-      public bool operationHandles;
-      public bool queryStats;
     }
 
     public TExecuteStatementResp()
@@ -296,130 +142,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
                 await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               }
               break;
-            case 3329:
-              if (field.Type == TType.Bool)
-              {
-                ExecutionRejected = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3330:
-              if (field.Type == TType.Double)
-              {
-                MaxClusterCapacity = await iprot.ReadDoubleAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3331:
-              if (field.Type == TType.Double)
-              {
-                QueryCost = await iprot.ReadDoubleAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3332:
-              if (field.Type == TType.Struct)
-              {
-                SessionConf = new global::Apache.Hive.Service.Rpc.Thrift.TDBSqlSessionConf();
-                await SessionConf.ReadAsync(iprot, cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3333:
-              if (field.Type == TType.Double)
-              {
-                CurrentClusterLoad = await iprot.ReadDoubleAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3334:
-              if (field.Type == TType.I32)
-              {
-                IdempotencyType = (global::Apache.Hive.Service.Rpc.Thrift.TOperationIdempotencyType)await iprot.ReadI32Async(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3335:
-              if (field.Type == TType.Bool)
-              {
-                RemoteResultCacheEnabled = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3336:
-              if (field.Type == TType.Bool)
-              {
-                IsServerless = await iprot.ReadBoolAsync(cancellationToken);
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3337:
-              if (field.Type == TType.List)
-              {
-                {
-                  var _list429 = await iprot.ReadListBeginAsync(cancellationToken);
-                  OperationHandles = new List<global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle>(_list429.Count);
-                  for(int _i430 = 0; _i430 < _list429.Count; ++_i430)
-                  {
-                    global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle _elem431;
-                    _elem431 = new global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle();
-                    await _elem431.ReadAsync(iprot, cancellationToken);
-                    OperationHandles.Add(_elem431);
-                  }
-                  await iprot.ReadListEndAsync(cancellationToken);
-                }
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
-            case 3344:
-              if (field.Type == TType.Map)
-              {
-                {
-                  var _map432 = await iprot.ReadMapBeginAsync(cancellationToken);
-                  QueryStats = new Dictionary<string, double>(_map432.Count);
-                  for(int _i433 = 0; _i433 < _map432.Count; ++_i433)
-                  {
-                    string _key434;
-                    double _val435;
-                    _key434 = await iprot.ReadStringAsync(cancellationToken);
-                    _val435 = await iprot.ReadDoubleAsync(cancellationToken);
-                    QueryStats[_key434] = _val435;
-                  }
-                  await iprot.ReadMapEndAsync(cancellationToken);
-                }
-              }
-              else
-              {
-                await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
-              }
-              break;
             default:
               await TProtocolUtil.SkipAsync(iprot, field.Type, cancellationToken);
               break;
@@ -475,107 +197,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
           await DirectResults.WriteAsync(oprot, cancellationToken);
           await oprot.WriteFieldEndAsync(cancellationToken);
         }
-        if(__isset.executionRejected)
-        {
-          tmp437.Name = "executionRejected";
-          tmp437.Type = TType.Bool;
-          tmp437.ID = 3329;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await oprot.WriteBoolAsync(ExecutionRejected, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.maxClusterCapacity)
-        {
-          tmp437.Name = "maxClusterCapacity";
-          tmp437.Type = TType.Double;
-          tmp437.ID = 3330;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await oprot.WriteDoubleAsync(MaxClusterCapacity, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.queryCost)
-        {
-          tmp437.Name = "queryCost";
-          tmp437.Type = TType.Double;
-          tmp437.ID = 3331;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await oprot.WriteDoubleAsync(QueryCost, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((SessionConf != null) && __isset.sessionConf)
-        {
-          tmp437.Name = "sessionConf";
-          tmp437.Type = TType.Struct;
-          tmp437.ID = 3332;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await SessionConf.WriteAsync(oprot, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.currentClusterLoad)
-        {
-          tmp437.Name = "currentClusterLoad";
-          tmp437.Type = TType.Double;
-          tmp437.ID = 3333;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await oprot.WriteDoubleAsync(CurrentClusterLoad, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.idempotencyType)
-        {
-          tmp437.Name = "idempotencyType";
-          tmp437.Type = TType.I32;
-          tmp437.ID = 3334;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await oprot.WriteI32Async((int)IdempotencyType, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.remoteResultCacheEnabled)
-        {
-          tmp437.Name = "remoteResultCacheEnabled";
-          tmp437.Type = TType.Bool;
-          tmp437.ID = 3335;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await oprot.WriteBoolAsync(RemoteResultCacheEnabled, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if(__isset.isServerless)
-        {
-          tmp437.Name = "isServerless";
-          tmp437.Type = TType.Bool;
-          tmp437.ID = 3336;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await oprot.WriteBoolAsync(IsServerless, cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((OperationHandles != null) && __isset.operationHandles)
-        {
-          tmp437.Name = "operationHandles";
-          tmp437.Type = TType.List;
-          tmp437.ID = 3337;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await oprot.WriteListBeginAsync(new TList(TType.Struct, OperationHandles.Count), cancellationToken);
-          foreach (global::Apache.Hive.Service.Rpc.Thrift.TOperationHandle _iter438 in OperationHandles)
-          {
-            await _iter438.WriteAsync(oprot, cancellationToken);
-          }
-          await oprot.WriteListEndAsync(cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
-        if((QueryStats != null) && __isset.queryStats)
-        {
-          tmp437.Name = "queryStats";
-          tmp437.Type = TType.Map;
-          tmp437.ID = 3344;
-          await oprot.WriteFieldBeginAsync(tmp437, cancellationToken);
-          await oprot.WriteMapBeginAsync(new TMap(TType.String, TType.Double, QueryStats.Count), cancellationToken);
-          foreach (string _iter439 in QueryStats.Keys)
-          {
-            await oprot.WriteStringAsync(_iter439, cancellationToken);
-            await oprot.WriteDoubleAsync(QueryStats[_iter439], cancellationToken);
-          }
-          await oprot.WriteMapEndAsync(cancellationToken);
-          await oprot.WriteFieldEndAsync(cancellationToken);
-        }
         await oprot.WriteFieldStopAsync(cancellationToken);
         await oprot.WriteStructEndAsync(cancellationToken);
       }
@@ -591,17 +212,7 @@ namespace Apache.Hive.Service.Rpc.Thrift
       if (ReferenceEquals(this, other)) return true;
       return global::System.Object.Equals(Status, other.Status)
         && ((__isset.operationHandle == other.__isset.operationHandle) && ((!__isset.operationHandle) || (global::System.Object.Equals(OperationHandle, other.OperationHandle))))
-        && ((__isset.directResults == other.__isset.directResults) && ((!__isset.directResults) || (global::System.Object.Equals(DirectResults, other.DirectResults))))
-        && ((__isset.executionRejected == other.__isset.executionRejected) && ((!__isset.executionRejected) || (global::System.Object.Equals(ExecutionRejected, other.ExecutionRejected))))
-        && ((__isset.maxClusterCapacity == other.__isset.maxClusterCapacity) && ((!__isset.maxClusterCapacity) || (global::System.Object.Equals(MaxClusterCapacity, other.MaxClusterCapacity))))
-        && ((__isset.queryCost == other.__isset.queryCost) && ((!__isset.queryCost) || (global::System.Object.Equals(QueryCost, other.QueryCost))))
-        && ((__isset.sessionConf == other.__isset.sessionConf) && ((!__isset.sessionConf) || (global::System.Object.Equals(SessionConf, other.SessionConf))))
-        && ((__isset.currentClusterLoad == other.__isset.currentClusterLoad) && ((!__isset.currentClusterLoad) || (global::System.Object.Equals(CurrentClusterLoad, other.CurrentClusterLoad))))
-        && ((__isset.idempotencyType == other.__isset.idempotencyType) && ((!__isset.idempotencyType) || (global::System.Object.Equals(IdempotencyType, other.IdempotencyType))))
-        && ((__isset.remoteResultCacheEnabled == other.__isset.remoteResultCacheEnabled) && ((!__isset.remoteResultCacheEnabled) || (global::System.Object.Equals(RemoteResultCacheEnabled, other.RemoteResultCacheEnabled))))
-        && ((__isset.isServerless == other.__isset.isServerless) && ((!__isset.isServerless) || (global::System.Object.Equals(IsServerless, other.IsServerless))))
-        && ((__isset.operationHandles == other.__isset.operationHandles) && ((!__isset.operationHandles) || (TCollections.Equals(OperationHandles, other.OperationHandles))))
-        && ((__isset.queryStats == other.__isset.queryStats) && ((!__isset.queryStats) || (TCollections.Equals(QueryStats, other.QueryStats))));
+        && ((__isset.directResults == other.__isset.directResults) && ((!__isset.directResults) || (global::System.Object.Equals(DirectResults, other.DirectResults))));
     }
 
     public override int GetHashCode() {
@@ -618,46 +229,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
         if((DirectResults != null) && __isset.directResults)
         {
           hashcode = (hashcode * 397) + DirectResults.GetHashCode();
-        }
-        if(__isset.executionRejected)
-        {
-          hashcode = (hashcode * 397) + ExecutionRejected.GetHashCode();
-        }
-        if(__isset.maxClusterCapacity)
-        {
-          hashcode = (hashcode * 397) + MaxClusterCapacity.GetHashCode();
-        }
-        if(__isset.queryCost)
-        {
-          hashcode = (hashcode * 397) + QueryCost.GetHashCode();
-        }
-        if((SessionConf != null) && __isset.sessionConf)
-        {
-          hashcode = (hashcode * 397) + SessionConf.GetHashCode();
-        }
-        if(__isset.currentClusterLoad)
-        {
-          hashcode = (hashcode * 397) + CurrentClusterLoad.GetHashCode();
-        }
-        if(__isset.idempotencyType)
-        {
-          hashcode = (hashcode * 397) + IdempotencyType.GetHashCode();
-        }
-        if(__isset.remoteResultCacheEnabled)
-        {
-          hashcode = (hashcode * 397) + RemoteResultCacheEnabled.GetHashCode();
-        }
-        if(__isset.isServerless)
-        {
-          hashcode = (hashcode * 397) + IsServerless.GetHashCode();
-        }
-        if((OperationHandles != null) && __isset.operationHandles)
-        {
-          hashcode = (hashcode * 397) + TCollections.GetHashCode(OperationHandles);
-        }
-        if((QueryStats != null) && __isset.queryStats)
-        {
-          hashcode = (hashcode * 397) + TCollections.GetHashCode(QueryStats);
         }
       }
       return hashcode;
@@ -680,56 +251,6 @@ namespace Apache.Hive.Service.Rpc.Thrift
       {
         tmp440.Append(", DirectResults: ");
         DirectResults.ToString(tmp440);
-      }
-      if(__isset.executionRejected)
-      {
-        tmp440.Append(", ExecutionRejected: ");
-        ExecutionRejected.ToString(tmp440);
-      }
-      if(__isset.maxClusterCapacity)
-      {
-        tmp440.Append(", MaxClusterCapacity: ");
-        MaxClusterCapacity.ToString(tmp440);
-      }
-      if(__isset.queryCost)
-      {
-        tmp440.Append(", QueryCost: ");
-        QueryCost.ToString(tmp440);
-      }
-      if((SessionConf != null) && __isset.sessionConf)
-      {
-        tmp440.Append(", SessionConf: ");
-        SessionConf.ToString(tmp440);
-      }
-      if(__isset.currentClusterLoad)
-      {
-        tmp440.Append(", CurrentClusterLoad: ");
-        CurrentClusterLoad.ToString(tmp440);
-      }
-      if(__isset.idempotencyType)
-      {
-        tmp440.Append(", IdempotencyType: ");
-        IdempotencyType.ToString(tmp440);
-      }
-      if(__isset.remoteResultCacheEnabled)
-      {
-        tmp440.Append(", RemoteResultCacheEnabled: ");
-        RemoteResultCacheEnabled.ToString(tmp440);
-      }
-      if(__isset.isServerless)
-      {
-        tmp440.Append(", IsServerless: ");
-        IsServerless.ToString(tmp440);
-      }
-      if((OperationHandles != null) && __isset.operationHandles)
-      {
-        tmp440.Append(", OperationHandles: ");
-        OperationHandles.ToString(tmp440);
-      }
-      if((QueryStats != null) && __isset.queryStats)
-      {
-        tmp440.Append(", QueryStats: ");
-        QueryStats.ToString(tmp440);
       }
       tmp440.Append(')');
       return tmp440.ToString();

@@ -141,6 +141,67 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Spark
                         parameters.Add(HttpTlsOptions.TrustedCertificatePath, tlsOptions.TrustedCertificatePath!);
                     }
                 }
+
+                // Add proxy configuration if provided
+                if (testConfiguration.HttpOptions.Proxy != null)
+                {
+                    ProxyTestConfiguration proxyOptions = testConfiguration.HttpOptions.Proxy;
+                    if (!string.IsNullOrEmpty(proxyOptions.UseProxy))
+                    {
+                        parameters.Add(HttpProxyOptions.UseProxy, proxyOptions.UseProxy!);
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyHost))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyHost, proxyOptions.ProxyHost!);
+                    }
+                    if (proxyOptions.ProxyPort.HasValue)
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyPort, proxyOptions.ProxyPort.Value.ToString());
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyAuth))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyAuth, proxyOptions.ProxyAuth!);
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyUid))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyUID, proxyOptions.ProxyUid!);
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyPwd))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyPWD, proxyOptions.ProxyPwd!);
+                    }
+                    if (!string.IsNullOrEmpty(proxyOptions.ProxyIgnoreList))
+                    {
+                        parameters.Add(HttpProxyOptions.ProxyIgnoreList, proxyOptions.ProxyIgnoreList!);
+                    }
+                }
+            }
+            if (testConfiguration.StandardOptions != null)
+            {
+                if (testConfiguration.StandardOptions.Tls != null)
+                {
+                    TlsTestConfiguration tlsOptions = testConfiguration.StandardOptions.Tls;
+                    if (tlsOptions.Enabled.HasValue)
+                    {
+                        parameters.Add(StandardTlsOptions.IsTlsEnabled, tlsOptions.Enabled.Value.ToString());
+                    }
+                    if (tlsOptions.AllowSelfSigned.HasValue)
+                    {
+                        parameters.Add(StandardTlsOptions.AllowSelfSigned, tlsOptions.AllowSelfSigned.Value.ToString());
+                    }
+                    if (tlsOptions.AllowHostnameMismatch.HasValue)
+                    {
+                        parameters.Add(StandardTlsOptions.AllowHostnameMismatch, tlsOptions.AllowHostnameMismatch.Value.ToString());
+                    }
+                    if (tlsOptions.DisableServerCertificateValidation.HasValue)
+                    {
+                        parameters.Add(StandardTlsOptions.DisableServerCertificateValidation, tlsOptions.DisableServerCertificateValidation.Value.ToString());
+                    }
+                    if (!string.IsNullOrEmpty(tlsOptions.TrustedCertificatePath))
+                    {
+                        parameters.Add(StandardTlsOptions.TrustedCertificatePath, tlsOptions.TrustedCertificatePath!);
+                    }
+                }
             }
 
             return parameters;

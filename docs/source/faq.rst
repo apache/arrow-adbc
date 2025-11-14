@@ -174,7 +174,7 @@ And then what is the "ADBC JDBC driver"?
 The ADBC JDBC driver, or a hypothetical ADBC ODBC driver, adapts the
 JDBC API to the ADBC API, so that an ADBC user can interact with
 databases that have JDBC APIs available.  While this doesn't give you
-the best possible performance (you're paying for tranposing the data
+the best possible performance (you're paying for transposing the data
 back and forth!), it does save you the hassle of writing those
 conversions yourself.
 

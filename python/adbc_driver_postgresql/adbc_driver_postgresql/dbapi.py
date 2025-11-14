@@ -98,6 +98,8 @@ def connect(
     uri: str,
     db_kwargs: typing.Optional[typing.Dict[str, str]] = None,
     conn_kwargs: typing.Optional[typing.Dict[str, str]] = None,
+    *,
+    autocommit: bool = False,
     **kwargs,
 ) -> "Connection":
     """
@@ -113,6 +115,11 @@ def connect(
         Connection-specific parameters.  (ADBC differentiates between
         a 'database' object shared between multiple 'connection'
         objects.)
+    autocommit : bool
+        Enable autocommit mode. If True, transactions are automatically
+        committed after each statement. Defaults to False.
+    **kwargs
+        Additional keyword arguments passed to the Connection constructor.
     """
     db = None
     conn = None
@@ -121,7 +128,7 @@ def connect(
         db = adbc_driver_postgresql.connect(uri, db_kwargs=db_kwargs)
         conn = adbc_driver_manager.AdbcConnection(db, **(conn_kwargs or {}))
         return adbc_driver_manager.dbapi.Connection(
-            db, conn, conn_kwargs=conn_kwargs, **kwargs
+            db, conn, conn_kwargs=conn_kwargs, autocommit=autocommit, **kwargs
         )
     except Exception:
         if conn:

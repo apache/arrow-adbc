@@ -64,6 +64,10 @@ foreach(LIB_TARGET ${ADBC_LIBRARIES})
   target_include_directories(${LIB_TARGET} SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${SQLite3_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
+
+  if(NOT ADBC_DEFINE_COMMON_ENTRYPOINTS)
+    target_compile_definitions(${LIB_TARGET} PRIVATE ${ADBC_TARGET_COMPILE_DEFINITIONS})
+  endif()
 endforeach()
 
 include(CheckTypeSize)

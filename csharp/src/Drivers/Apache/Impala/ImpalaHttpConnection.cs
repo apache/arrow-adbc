@@ -38,8 +38,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
     {
         private const string BasicAuthenticationScheme = "Basic";
 
+        private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
+
         public ImpalaHttpConnection(IReadOnlyDictionary<string, string> properties) : base(properties)
         {
+            _proxyConfigurator = HiveServer2ProxyConfigurator.FromProperties(properties);
         }
 
         protected override void ValidateAuthentication()
@@ -122,7 +125,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             TlsOptions = HiveServer2TlsImpl.GetHttpTlsOptions(Properties);
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null) =>
+            new HiveServer2Reader(statement, schema, response, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         protected override TTransport CreateTransport()
         {
@@ -142,7 +146,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             Uri baseAddress = GetBaseAddress(uri, hostName, path, port, ImpalaParameters.HostName, TlsOptions.IsTlsEnabled);
             AuthenticationHeaderValue? authenticationHeaderValue = GetAuthenticationHeaderValue(authTypeValue, username, password);
 
-            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions);
+            HttpClientHandler httpClientHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
             HttpClient httpClient = new(httpClientHandler);
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
@@ -202,5 +206,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         internal override ImpalaServerType ServerType => ImpalaServerType.Http;
 
         protected override int ColumnMapIndexOffset => 0;
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

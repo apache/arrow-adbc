@@ -18,6 +18,7 @@
 package snowflake
 
 import (
+	"context"
 	"errors"
 	"maps"
 	"net/http"
@@ -73,6 +74,16 @@ const (
 	// with a scale of 0 will be returned as Int64 columns, and a non-zero
 	// scale will return a Float64 column.
 	OptionUseHighPrecision = "adbc.snowflake.sql.client_option.use_high_precision"
+	// OptionMaxTimestampPrecision controls the behavior of Timestamp values with
+	// Nanosecond precision. Native Go behavior is these values will overflow to an
+	// unpredictable value when the year is before year 1677 or after 2262. This option
+	// can control the behavior of the `timestamp_ltz`, `timestamp_ntz`, and `timestamp_tz` types.
+	//
+	// Valid values are
+	// `nanoseconds`: Use default behavior for nanoseconds.
+	// `nanoseconds_error_on_overflow`: Throws an error when the value will overflow to enforce integrity of the data.
+	// `microseconds`: Limits the max Timestamp precision to microseconds, which is safe for all values.
+	OptionMaxTimestampPrecision = "adbc.snowflake.sql.client_option.max_timestamp_precision"
 
 	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
 	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"
@@ -103,6 +114,9 @@ const (
 	// When true, the ID token is cached in the credential manager. True by default
 	// on Windows/OSX, false for Linux
 	OptionClientStoreTempCred = "adbc.snowflake.sql.client_option.store_temp_creds"
+	// Specify the identity provider to utilize for generating a workload identity
+	// federation attestation. Must be set when using OptionValueAuthWIF.
+	OptionIdentityProvider = "adbc.snowflake.sql.client_option.identity_provider"
 
 	OptionClientId     = "adbc.snowflake.sql.client_option.client_id"
 	OptionClientSecret = "adbc.snowflake.sql.client_option.client_secret"
@@ -121,6 +135,17 @@ const (
 	OptionValueAuthJwt = "auth_jwt"
 	// use a username and password with mfa
 	OptionValueAuthUserPassMFA = "auth_mfa"
+	// use a programmatic access token
+	OptionValueAuthPat = "auth_pat"
+	// use Workload Identity Federation for auth, must also use option to specify the provider
+	OptionValueAuthWIF = "auth_wif"
+
+	// Use default behavior for nanoseconds.
+	OptionValueNanoseconds = "nanoseconds"
+	// throws an error when the value will overflow to enforce integrity of the data.
+	OptionValueNanosecondsNoOverflow = "nanoseconds_error_on_overflow"
+	// use a max of microseconds precision for timestamps
+	OptionValueMicroseconds = "microseconds"
 )
 
 // SQLSTATE codes
@@ -221,6 +246,7 @@ type Driver interface {
 
 	// NewDatabaseWithOptions creates a new Snowflake database with the provided options.
 	NewDatabaseWithOptions(map[string]string, ...Option) (adbc.Database, error)
+	NewDatabaseWithOptionsContext(context.Context, map[string]string, ...Option) (adbc.Database, error)
 }
 
 var _ Driver = (*driverImpl)(nil)
@@ -241,21 +267,40 @@ func NewDriver(alloc memory.Allocator) Driver {
 }
 
 func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) {
-	return d.NewDatabaseWithOptions(opts)
+	return d.NewDatabaseWithContext(context.Background(), opts)
 }
 
-func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, optFuncs ...Option) (adbc.Database, error) {
+func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
+	return d.NewDatabaseWithOptionsContext(ctx, opts)
+}
+
+func (d *driverImpl) NewDatabaseWithOptions(
+	opts map[string]string,
+	optFuncs ...Option,
+) (adbc.Database, error) {
+	return d.NewDatabaseWithOptionsContext(context.Background(), opts, optFuncs...)
+}
+
+func (d *driverImpl) NewDatabaseWithOptionsContext(
+	ctx context.Context,
+	opts map[string]string,
+	optFuncs ...Option,
+) (adbc.Database, error) {
 	opts = maps.Clone(opts)
 
-	dbImplBase := driverbase.NewDatabaseImplBase(&d.DriverImplBase)
-	dv, _ := dbImplBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
+	if err != nil {
+		return nil, err
+	}
+	dv, _ := dbBase.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	driverVersion := dv.(string)
 	defaultAppName := "[ADBC][Go-" + driverVersion + "]"
 
 	db := &databaseImpl{
-		DatabaseImplBase: dbImplBase,
-		useHighPrecision: true,
-		defaultAppName:   defaultAppName,
+		DatabaseImplBase:      dbBase,
+		useHighPrecision:      true,
+		defaultAppName:        defaultAppName,
+		maxTimestampPrecision: Nanoseconds,
 	}
 	if err := db.SetOptions(opts); err != nil {
 		return nil, err

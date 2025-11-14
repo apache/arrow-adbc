@@ -364,8 +364,8 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.Snowflake
         /// Validates if the driver can call GetObjects with GetObjectsDepth as Tables with TableName as a Special Character.
         /// </summary>
         [SkippableTheory, Order(3)]
-        [InlineData(@"ADBCDEMO_DB",@"PUBLIC","MyIdentifier")]
-        [InlineData(@"ADBCDEMO'DB", @"PUBLIC'SCHEMA","my.identifier")]
+        [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "MyIdentifier")]
+        [InlineData(@"ADBCDEMO'DB", @"PUBLIC'SCHEMA", "my.identifier")]
         [InlineData(@"ADBCDEM""DB", @"PUBLIC""SCHEMA", "my.identifier")]
         [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "my identifier")]
         [InlineData(@"ADBCDEMO_DB", @"PUBLIC", "My 'Identifier'")]

@@ -31,6 +31,8 @@ on:
       - "ruby/**"
       - ".github/workflows/native-unix.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "c/**"
       - "ci/**"
@@ -66,9 +68,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
         include:
-          - os: macos-13
+          - os: macos-15-intel
             goarch: x64
           - os: macos-latest
             goarch: arm64
@@ -95,7 +97,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -154,7 +156,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -173,7 +175,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -194,7 +196,10 @@ jobs:
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_POSTGRESQL: "1"
           BUILD_DRIVER_SQLITE: "1"
+          ADBC_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
         run: |
+          # Ensure the CONDA_PREFIX searching in driver manager is tested
+          export CONDA_BUILD=1
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
       - name: Test
         env:
@@ -290,7 +295,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -317,7 +322,7 @@ jobs:
       matrix:
         # N.B. no macos-latest here since conda-forge does not package
         # arrow-c-glib for M1
-        os: ["macos-13", "ubuntu-latest"]
+        os: ["macos-15-intel", "ubuntu-latest"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -336,7 +341,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -390,7 +395,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -399,7 +404,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193  # v2.1.10
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -431,7 +436,7 @@ jobs:
           popd
       - name: Go Test
         env:
-          SNOWFLAKE_DATABASE: ADBC_TESTING
+          SNOWFLAKE_DATABASE: ARROW_OSS_DB
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
         run: |
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
@@ -443,9 +448,9 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
         include:
-          - os: macos-13
+          - os: macos-15-intel
             goarch: x64
           - os: macos-latest
             goarch: arm64
@@ -461,7 +466,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193  # v2.1.10
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
         continue-on-error: true # if auth fails, bigquery driver tests should skip
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -477,7 +482,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -538,8 +543,8 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["macos-13", "macos-latest", "ubuntu-latest"]
-        python: ["3.9", "3.12"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
+        python: ["3.10", "3.14"]
     env:
       # Required for macOS
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
@@ -561,7 +566,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -647,6 +652,13 @@ jobs:
       - name: Typecheck Python
         run: |
           ./ci/scripts/python_typecheck.sh "$(pwd)"
+      - name: Run Python Docker-based integration tests
+        if: runner.os == 'Linux'
+        run: |
+          # Self-contained tests using docker-compose
+
+          # Test that the driver manager can load manifests installed into a venv
+          docker compose run python-venv
 
   python-docs:
     name: "Documentation ${{ matrix.python }} (Conda/${{ matrix.os }})"
@@ -656,7 +668,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest"]
-        python: ["3.12"]
+        python: ["3.14"]
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # actions/checkout@v4
         with:
@@ -671,7 +683,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@505e6394dae86d6a5c7fbb6e3fb8938e3e863830  # v3.1.1
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -732,7 +744,8 @@ jobs:
             docs/source/python/recipe/*.py
       - name: Test Recipes (Python)
         run: |
-          docker compose up --detach --wait dremio dremio-init flightsql-sqlite-test postgres-test
+          docker compose up --detach --wait dremio flightsql-sqlite-test postgres-test
+          docker compose run --rm dremio-init
           export ADBC_CPP_RECIPE_BIN=~/local/bin
           # Needed for the combined C++/Python driver example
           export LD_LIBRARY_PATH=~/local/lib

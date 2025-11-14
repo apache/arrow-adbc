@@ -26,76 +26,76 @@
 #include "utils.h"
 
 TEST(TestStringBuilder, TestBasic) {
-  struct StringBuilder str;
+  struct InternalAdbcStringBuilder str;
   int ret;
-  ret = StringBuilderInit(&str, /*initial_size=*/64);
+  ret = InternalAdbcStringBuilderInit(&str, /*initial_size=*/64);
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 64);
 
-  ret = StringBuilderAppend(&str, "%s", "BASIC TEST");
+  ret = InternalAdbcStringBuilderAppend(&str, "%s", "BASIC TEST");
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");
 
-  StringBuilderReset(&str);
+  InternalAdbcStringBuilderReset(&str);
 }
 
 TEST(TestStringBuilder, TestBoundary) {
-  struct StringBuilder str;
+  struct InternalAdbcStringBuilder str;
   int ret;
-  ret = StringBuilderInit(&str, /*initial_size=*/10);
+  ret = InternalAdbcStringBuilderInit(&str, /*initial_size=*/10);
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 10);
 
-  ret = StringBuilderAppend(&str, "%s", "BASIC TEST");
+  ret = InternalAdbcStringBuilderAppend(&str, "%s", "BASIC TEST");
   EXPECT_EQ(ret, 0);
   // should resize to include \0
   EXPECT_EQ(str.capacity, 11);
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");
 
-  StringBuilderReset(&str);
+  InternalAdbcStringBuilderReset(&str);
 }
 
 TEST(TestStringBuilder, TestMultipleAppends) {
-  struct StringBuilder str;
+  struct InternalAdbcStringBuilder str;
   int ret;
-  ret = StringBuilderInit(&str, /*initial_size=*/2);
+  ret = InternalAdbcStringBuilderInit(&str, /*initial_size=*/2);
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 2);
 
-  ret = StringBuilderAppend(&str, "%s", "BASIC");
+  ret = InternalAdbcStringBuilderAppend(&str, "%s", "BASIC");
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 6);
   EXPECT_EQ(str.size, 5);
   EXPECT_STREQ(str.buffer, "BASIC");
 
-  ret = StringBuilderAppend(&str, "%s", " TEST");
+  ret = InternalAdbcStringBuilderAppend(&str, "%s", " TEST");
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(str.capacity, 11);
   EXPECT_EQ(str.size, 10);
   EXPECT_STREQ(str.buffer, "BASIC TEST");
 
-  StringBuilderReset(&str);
+  InternalAdbcStringBuilderReset(&str);
 }
 
 TEST(ErrorDetails, Adbc100) {
   struct AdbcError error;
   std::memset(&error, 0, ADBC_ERROR_1_1_0_SIZE);
 
-  SetError(&error, "My message");
+  InternalAdbcSetError(&error, "My message");
 
   ASSERT_EQ(nullptr, error.private_data);
   ASSERT_EQ(nullptr, error.private_driver);
 
   {
     std::string detail = "detail";
-    AppendErrorDetail(&error, "key", reinterpret_cast<const uint8_t*>(detail.data()),
-                      detail.size());
+    InternalAdbcAppendErrorDetail(
+        &error, "key", reinterpret_cast<const uint8_t*>(detail.data()), detail.size());
   }
 
-  ASSERT_EQ(0, CommonErrorGetDetailCount(&error));
-  struct AdbcErrorDetail detail = CommonErrorGetDetail(&error, 0);
+  ASSERT_EQ(0, InternalAdbcCommonErrorGetDetailCount(&error));
+  struct AdbcErrorDetail detail = InternalAdbcCommonErrorGetDetail(&error, 0);
   ASSERT_EQ(nullptr, detail.key);
   ASSERT_EQ(nullptr, detail.value);
   ASSERT_EQ(0, detail.value_length);
@@ -105,29 +105,29 @@ TEST(ErrorDetails, Adbc100) {
 
 TEST(ErrorDetails, Adbc110) {
   struct AdbcError error = ADBC_ERROR_INIT;
-  SetError(&error, "My message");
+  InternalAdbcSetError(&error, "My message");
 
   ASSERT_NE(nullptr, error.private_data);
   ASSERT_EQ(nullptr, error.private_driver);
 
   {
     std::string detail = "detail";
-    AppendErrorDetail(&error, "key", reinterpret_cast<const uint8_t*>(detail.data()),
-                      detail.size());
+    InternalAdbcAppendErrorDetail(
+        &error, "key", reinterpret_cast<const uint8_t*>(detail.data()), detail.size());
   }
 
-  ASSERT_EQ(1, CommonErrorGetDetailCount(&error));
-  struct AdbcErrorDetail detail = CommonErrorGetDetail(&error, 0);
+  ASSERT_EQ(1, InternalAdbcCommonErrorGetDetailCount(&error));
+  struct AdbcErrorDetail detail = InternalAdbcCommonErrorGetDetail(&error, 0);
   ASSERT_STREQ("key", detail.key);
   ASSERT_EQ("detail", std::string_view(reinterpret_cast<const char*>(detail.value),
                                        detail.value_length));
 
-  detail = CommonErrorGetDetail(&error, -1);
+  detail = InternalAdbcCommonErrorGetDetail(&error, -1);
   ASSERT_EQ(nullptr, detail.key);
   ASSERT_EQ(nullptr, detail.value);
   ASSERT_EQ(0, detail.value_length);
 
-  detail = CommonErrorGetDetail(&error, 2);
+  detail = InternalAdbcCommonErrorGetDetail(&error, 2);
   ASSERT_EQ(nullptr, detail.key);
   ASSERT_EQ(nullptr, detail.value);
   ASSERT_EQ(0, detail.value_length);
@@ -139,7 +139,7 @@ TEST(ErrorDetails, Adbc110) {
 
 TEST(ErrorDetails, RoundTripValues) {
   struct AdbcError error = ADBC_ERROR_INIT;
-  SetError(&error, "My message");
+  InternalAdbcSetError(&error, "My message");
 
   struct Detail {
     std::string key;
@@ -152,13 +152,13 @@ TEST(ErrorDetails, RoundTripValues) {
   };
 
   for (const auto& detail : details) {
-    AppendErrorDetail(&error, detail.key.c_str(), detail.value.data(),
-                      detail.value.size());
+    InternalAdbcAppendErrorDetail(&error, detail.key.c_str(), detail.value.data(),
+                                  detail.value.size());
   }
 
-  ASSERT_EQ(details.size(), CommonErrorGetDetailCount(&error));
+  ASSERT_EQ(details.size(), InternalAdbcCommonErrorGetDetailCount(&error));
   for (int i = 0; i < static_cast<int>(details.size()); i++) {
-    struct AdbcErrorDetail detail = CommonErrorGetDetail(&error, i);
+    struct AdbcErrorDetail detail = InternalAdbcCommonErrorGetDetail(&error, i);
     ASSERT_EQ(details[i].key, detail.key);
     ASSERT_EQ(details[i].value.size(), detail.value_length);
     ASSERT_THAT(std::vector<uint8_t>(detail.value, detail.value + detail.value_length),
@@ -209,42 +209,45 @@ TEST(AdbcGetObjectsData, GetObjectsByName) {
   mock_table.table_constraints = constraints;
   mock_table.n_table_constraints = 2;
 
-  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema",
-                                             "table"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog",
+                                                     "mock_schema", "table"),
             &mock_table);
-  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema",
-                                             "table_suffix"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog",
+                                                     "mock_schema", "table_suffix"),
             &mock_table_suffix);
-  EXPECT_EQ(AdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog", "mock_schema",
-                                             "nonexistent"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetTableByName(&mock_data, "mock_catalog",
+                                                     "mock_schema", "nonexistent"),
             nullptr);
 
-  EXPECT_EQ(AdbcGetObjectsDataGetCatalogByName(&mock_data, "mock_catalog"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetCatalogByName(&mock_data, "mock_catalog"),
             &mock_catalog);
-  EXPECT_EQ(AdbcGetObjectsDataGetCatalogByName(&mock_data, "nonexistent"), nullptr);
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetCatalogByName(&mock_data, "nonexistent"),
+            nullptr);
 
-  EXPECT_EQ(AdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog", "mock_schema"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog",
+                                                      "mock_schema"),
             &mock_schema);
-  EXPECT_EQ(AdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog", "nonexistent"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetSchemaByName(&mock_data, "mock_catalog",
+                                                      "nonexistent"),
             nullptr);
 
-  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema",
-                                              "table", "column"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog",
+                                                      "mock_schema", "table", "column"),
             &mock_column);
-  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema",
-                                              "table", "column_suffix"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetColumnByName(
+                &mock_data, "mock_catalog", "mock_schema", "table", "column_suffix"),
             &mock_column_suffix);
-  EXPECT_EQ(AdbcGetObjectsDataGetColumnByName(&mock_data, "mock_catalog", "mock_schema",
-                                              "table", "nonexistent"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetColumnByName(
+                &mock_data, "mock_catalog", "mock_schema", "table", "nonexistent"),
             nullptr);
 
-  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(&mock_data, "mock_catalog",
-                                                  "mock_schema", "table", "constraint"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetConstraintByName(
+                &mock_data, "mock_catalog", "mock_schema", "table", "constraint"),
             &mock_constraint);
-  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetConstraintByName(
                 &mock_data, "mock_catalog", "mock_schema", "table", "constraint_suffix"),
             &mock_constraint_suffix);
-  EXPECT_EQ(AdbcGetObjectsDataGetConstraintByName(&mock_data, "mock_catalog",
-                                                  "mock_schema", "table", "nonexistent"),
+  EXPECT_EQ(InternalAdbcGetObjectsDataGetConstraintByName(
+                &mock_data, "mock_catalog", "mock_schema", "table", "nonexistent"),
             nullptr);
 }

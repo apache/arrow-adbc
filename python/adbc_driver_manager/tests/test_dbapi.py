@@ -15,22 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pathlib
+
 import pandas
-import polars
-import polars.testing
 import pyarrow
 import pyarrow.dataset
 import pytest
 from pandas.testing import assert_frame_equal
 
 from adbc_driver_manager import dbapi
-
-
-@pytest.fixture
-def sqlite():
-    """Dynamically load the SQLite driver."""
-    with dbapi.connect(driver="adbc_driver_sqlite") as conn:
-        yield conn
 
 
 def test_type_objects():
@@ -251,6 +244,30 @@ def test_query_fetch_arrow(sqlite):
 
 
 @pytest.mark.sqlite
+def test_query_fetch_arrow_3543(sqlite):
+    # Regression test for https://github.com/apache/arrow-adbc/issues/3543
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
+
+        # This should not consume the result
+        assert cur.description == [
+            ("1", dbapi.NUMBER, None, None, None, None, None),
+            ("foo", dbapi.STRING, None, None, None, None, None),
+            ("2.0", dbapi.NUMBER, None, None, None, None, None),
+        ]
+
+        capsule = cur.fetch_arrow().__arrow_c_stream__()
+        reader = pyarrow.RecordBatchReader._import_from_c_capsule(capsule)
+        assert reader.read_all() == pyarrow.table(
+            {
+                "1": [1],
+                "foo": ["foo"],
+                "2.0": [2.0],
+            }
+        )
+
+
+@pytest.mark.sqlite
 def test_query_fetch_arrow_table(sqlite):
     with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
@@ -280,22 +297,6 @@ def test_query_fetch_df(sqlite):
 
 
 @pytest.mark.sqlite
-def test_query_fetch_polars(sqlite):
-    with sqlite.cursor() as cur:
-        cur.execute("SELECT 1, 'foo' AS foo, 2.0")
-        polars.testing.assert_frame_equal(
-            cur.fetch_polars(),
-            polars.DataFrame(
-                {
-                    "1": [1],
-                    "foo": ["foo"],
-                    "2.0": [2.0],
-                }
-            ),
-        )
-
-
-@pytest.mark.sqlite
 @pytest.mark.parametrize(
     "parameters",
     [
@@ -310,6 +311,42 @@ def test_execute_parameters(sqlite, parameters):
     with sqlite.cursor() as cur:
         cur.execute("SELECT ? + 1, ?", parameters)
         assert cur.fetchall() == [(2.0, 2)]
+
+
+@pytest.mark.sqlite
+def test_execute_parameters_name(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT @a + 1, @b", {"@b": 2, "@a": 1})
+        assert cur.fetchall() == [(2, 2)]
+
+        # Ensure the state of the cursor isn't affected
+        cur.execute("SELECT ?2 + 1, ?1", [2, 1])
+        assert cur.fetchall() == [(2, 2)]
+
+        cur.execute("SELECT @a + 1, @b + @b", {"@b": 2, "@a": 1})
+        assert cur.fetchall() == [(2, 4)]
+
+        data = pyarrow.record_batch([[1.0], [2]], names=["float", "int"])
+        cur.adbc_ingest("ingest_tester", data)
+        cur.execute("SELECT * FROM ingest_tester")
+        assert cur.fetchall() == [(1.0, 2)]
+
+
+@pytest.mark.sqlite
+def test_executemany_parameters_name(sqlite):
+    with sqlite.cursor() as cur:
+        cur.execute("CREATE TABLE executemany_params (a, b)")
+
+        cur.executemany(
+            "INSERT INTO executemany_params VALUES (@a, @b)",
+            [{"@b": 2, "@a": 1}, {"@b": 3, "@a": 2}],
+        )
+        cur.executemany(
+            "INSERT INTO executemany_params VALUES (?, ?)", [(3, 4), (4, 5)]
+        )
+
+        cur.execute("SELECT * FROM executemany_params ORDER BY a ASC")
+        assert cur.fetchall() == [(1, 2), (2, 3), (3, 4), (4, 5)]
 
 
 @pytest.mark.sqlite
@@ -334,6 +371,38 @@ def test_executemany_parameters(sqlite, parameters):
         cur.executemany("INSERT INTO executemany VALUES (? * 2, ?)", parameters)
         cur.execute("SELECT * FROM executemany ORDER BY int ASC")
         assert cur.fetchall() == [(2, "a"), (6, None)]
+
+
+@pytest.mark.sqlite
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        [],
+        pyarrow.record_batch([[]], schema=pyarrow.schema([("v", pyarrow.int64())])),
+        pyarrow.table([[]], schema=pyarrow.schema([("v", pyarrow.int64())])),
+    ],
+)
+def test_executemany_empty(sqlite, parameters):
+    # Regression test for https://github.com/apache/arrow-adbc/issues/3319
+    with sqlite.cursor() as cur:
+        # With an empty sequence, it should be the same as not executing the
+        # query at all.
+        cur.execute("DROP TABLE IF EXISTS executemany")
+        cur.execute("CREATE TABLE executemany (v)")
+        cur.executemany("INSERT INTO executemany VALUES (?)", parameters)
+        cur.execute("SELECT * FROM executemany")
+        assert cur.fetchall() == []
+
+
+@pytest.mark.sqlite
+def test_executemany_none(sqlite):
+    # Regression test for https://github.com/apache/arrow-adbc/issues/3319
+    with sqlite.cursor() as cur:
+        # With None, it should be the same as executing the query once.
+        cur.execute("DROP TABLE IF EXISTS executemany")
+        cur.execute("CREATE TABLE executemany (v)")
+        with pytest.raises(sqlite.Error):
+            cur.executemany("INSERT INTO executemany VALUES (?)", None)
 
 
 @pytest.mark.sqlite
@@ -431,3 +500,111 @@ def test_close_warning(sqlite):
     ):
         conn = dbapi.connect(driver="adbc_driver_sqlite")
         del conn
+
+
+def _execute_schema(cursor):
+    try:
+        cursor.adbc_execute_schema("select 1")
+    except dbapi.NotSupportedError:
+        pass
+
+
+@pytest.mark.sqlite
+@pytest.mark.parametrize(
+    "op",
+    [
+        pytest.param(lambda cursor: cursor.execute("SELECT 1"), id="execute"),
+        pytest.param(
+            lambda cursor: cursor.executemany("SELECT ?", [[1]]), id="executemany"
+        ),
+        pytest.param(
+            lambda cursor: cursor.adbc_ingest(
+                "test_release",
+                pyarrow.table([[1]], names=["ints"]),
+                mode="create_append",
+            ),
+            id="ingest",
+        ),
+        pytest.param(_execute_schema, id="execute_schema"),
+        pytest.param(lambda cursor: cursor.adbc_prepare("select 1"), id="prepare"),
+        pytest.param(
+            lambda cursor: cursor.executescript("select 1"), id="executescript"
+        ),
+    ],
+)
+def test_release(sqlite, op) -> None:
+    # Regression test. Ensure that subsequent operations free results of
+    # earlier operations.
+    with sqlite.cursor() as cur:
+        cur.execute("select 1")
+        # Do _not_ fetch the data so it is never imported.
+        assert cur._results._handle.is_valid
+        handle = cur._results._handle
+
+        op(cur)
+        if handle:
+            # The original handle (if it exists) should have been released
+            assert not handle.is_valid
+
+
+def test_driver_path():
+    with pytest.raises(
+        dbapi.ProgrammingError,
+        match="(dlopen|LoadLibraryExW).*failed:",
+    ):
+        with dbapi.connect(driver=pathlib.Path("/tmp/thisdriverdoesnotexist")):
+            pass
+
+
+@pytest.mark.sqlite
+def test_dbapi_extensions(sqlite):
+    with sqlite.execute("SELECT ?", (1,)) as cur:
+        assert cur.fetchone() == (1,)
+        assert cur.fetchone() is None
+
+        assert cur.execute("SELECT 2").fetchall() == [(2,)]
+
+    with sqlite.cursor() as cur:
+        assert cur.execute("SELECT 1").fetchall() == [(1,)]
+        assert cur.execute("SELECT 42").fetchall() == [(42,)]
+
+
+@pytest.mark.sqlite
+def test_connect(tmp_path: pathlib.Path, monkeypatch) -> None:
+    with dbapi.connect(driver="adbc_driver_sqlite") as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            assert cur.fetchone() == (1,)
+
+    # https://github.com/apache/arrow-adbc/issues/3517: allow positional
+    # argument
+    with dbapi.connect("adbc_driver_sqlite") as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            assert cur.fetchone() == (1,)
+
+    # https://github.com/apache/arrow-adbc/issues/3517: allow URI argument
+    db = tmp_path / "test.db"
+    with dbapi.connect("adbc_driver_sqlite", db.as_uri()) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE foo (a)")
+            cur.execute("INSERT INTO foo VALUES (1)")
+        conn.commit()
+
+    with dbapi.connect(driver="adbc_driver_sqlite", uri=db.as_uri()) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM foo")
+            assert cur.fetchone() == (1,)
+
+    monkeypatch.setenv("ADBC_DRIVER_PATH", tmp_path)
+    with (tmp_path / "foobar.toml").open("w") as f:
+        f.write(
+            """
+[Driver]
+shared = "adbc_driver_foobar"
+        """
+        )
+    # Just check that the driver gets detected and loaded (should fail)
+    with pytest.raises(dbapi.ProgrammingError, match="NOT_FOUND"):
+        with dbapi.connect("foobar://localhost:5439"):
+            pass

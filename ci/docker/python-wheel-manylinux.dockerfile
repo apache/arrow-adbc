@@ -15,24 +15,66 @@
 # specific language governing permissions and limitations
 # under the License.
 
-ARG ARCH
 ARG MANYLINUX
-ARG PYTHON
-ARG REPO
-ARG VCPKG
+FROM quay.io/pypa/manylinux${MANYLINUX}:latest
 
-FROM ${REPO}:${ARCH}-python-${PYTHON}-wheel-manylinux-${MANYLINUX}-vcpkg-${VCPKG}
-
-ARG ARCH
+ARG CMAKE=4.1.2
 ARG GO
+ARG NINJA=1.13.1
+ARG PYTHON
+ARG VCPKG
+ARG TARGETPLATFORM
 
+SHELL ["/bin/bash", "-i", "-c"]
+ENTRYPOINT ["/bin/bash", "-i", "-c"]
+
+# -------------------- System Dependencies --------------------
+# Some of these dependencies are needed to build things like OpenSSL in vcpkg
+RUN ulimit -n 1024 && yum install -y autoconf curl git flex perl-IPC-Cmd unzip wget yum-utils zip
 # docker is aliased to podman by AlmaLinux, but we want real Docker
 # (podman is just too different)
-RUN yum remove -y docker ; yum install -y yum-utils
+RUN ulimit -n 1024 && yum remove -y docker
 RUN yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-RUN yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-# arm64v8 -> arm64
-RUN wget --no-verbose https://go.dev/dl/go${GO}.linux-${ARCH/v8/}.tar.gz && \
-    tar -C /usr/local -xzf go${GO}.linux-${ARCH/v8/}.tar.gz && \
-    rm go${GO}.linux-${ARCH/v8/}.tar.gz
+RUN ulimit -n 1024 && yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# -------------------- Python --------------------
+RUN PYTHON_ROOT=$(find /opt/python -name cp${PYTHON/./}-cp${PYTHON/./}) && \
+    echo "export PATH=$PYTHON_ROOT/bin:\$PATH" >> /etc/profile.d/python.sh
+ENV PATH="/opt/python/cp${PYTHON/./}-cp${PYTHON/./}/bin:${PATH}"
+
+# -------------------- CMake, Go --------------------
+RUN mkdir -p /.cache/go-build                         \
+    && chmod 777 /.cache/go-build                     \
+    && git config --global --add safe.directory /adbc \
+    && cp /root/.gitconfig /.gitconfig                \
+    && chmod 777 /.gitconfig
+
+RUN if [[ ${TARGETPLATFORM} == "linux/amd64" ]]; then                                                           \
+        export ARCH="amd64" CMAKE_ARCH=x86_64;                                                                  \
+    elif [[ ${TARGETPLATFORM} == "linux/arm64" ]]; then                                                         \
+        export ARCH="arm64" CMAKE_ARCH=aarch64;                                                                 \
+    else                                                                                                        \
+        echo "Unsupported platform: ${TARGETPLATFORM}";                                                         \
+        exit 1;                                                                                                 \
+    fi &&                                                                                                       \
+    wget --no-verbose -O cmake.tar.gz                                                                           \
+      https://github.com/Kitware/CMake/releases/download/v${CMAKE}/cmake-${CMAKE}-linux-${CMAKE_ARCH}.tar.gz && \
+    wget --no-verbose -O go.tar.gz https://go.dev/dl/go${GO}.linux-${ARCH}.tar.gz &&                            \
+    tar -C /usr/local -xzf cmake.tar.gz &&                                                                      \
+    tar -C /usr/local -xzf go.tar.gz &&                                                                         \
+    rm -f cmake.tar.gz go.tar.gz
+
 ENV PATH="/usr/local/go/bin:${PATH}"
+
+# -------------------- Ninja --------------------
+RUN mkdir -p /tmp/ninja &&                                                                   \
+    wget --no-verbose -O - "https://github.com/ninja-build/ninja/archive/v${NINJA}.tar.gz" | \
+      tar -xzf - --directory /tmp/ninja --strip-components=1 &&                              \
+    pushd /tmp/ninja &&                                                                      \
+    ./configure.py --bootstrap &&                                                            \
+    mv ninja "/usr/local/bin" &&                                                             \
+    rm -rf /tmp/ninja
+
+# -------------------- vcpkg --------------------
+ADD ci/scripts/install_vcpkg.sh /
+RUN /install_vcpkg.sh /opt/vcpkg ${VCPKG} && rm -f /install_vcpkg.sh

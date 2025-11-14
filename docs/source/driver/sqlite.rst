@@ -19,7 +19,7 @@
 SQLite Driver
 =============
 
-**Available for:** C/C++, GLib/Ruby, Go, Python, R
+.. adbc_driver_status:: ../../../c/driver/sqlite/README.md
 
 The SQLite driver provides access to SQLite databases.
 
@@ -30,44 +30,7 @@ not received attention to optimization.
 Installation
 ============
 
-.. tab-set::
-
-   .. tab-item:: C/C++
-      :sync: cpp
-
-      For conda-forge users:
-
-      .. code-block:: shell
-
-         mamba install libadbc-driver-sqlite
-
-   .. tab-item:: Go
-      :sync: go
-
-      Install the C/C++ package and use the Go driver manager.
-      Requires CGO.
-
-      .. code-block:: shell
-
-         go get github.com/apache/arrow-adbc/go/adbc/drivermgr
-
-   .. tab-item:: Python
-      :sync: python
-
-      .. code-block:: shell
-
-         # For conda-forge
-         mamba install adbc-driver-sqlite
-
-         # For pip
-         pip install adbc_driver_sqlite
-
-   .. tab-item:: R
-      :sync: r
-
-      .. code-block:: r
-
-         install.packages("adbcsqlite")
+.. adbc_driver_installation:: ../../../c/driver/sqlite/README.md
 
 Usage
 =====
@@ -279,6 +242,6 @@ Driver-specific options:
 Software Versions
 =================
 
-For Python wheels, the shipped version of SQLite is 3.40.1.  For conda-forge
+For Python wheels, the shipped version of SQLite is 3.50.4.  For conda-forge
 packages, the version of sqlite is the same as the version of sqlite in your
 Conda environment.

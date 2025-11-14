@@ -32,9 +32,9 @@ cdef extern from "arrow-adbc/adbc.h" nogil:
     cdef struct CArrowArray"ArrowArray":
         CArrowArrayRelease release
 
-    ctypedef int (*CArrowArrayStreamGetLastError)(void*)
+    ctypedef char* (*CArrowArrayStreamGetLastError)(void*)
     ctypedef int (*CArrowArrayStreamGetNext)(void*, CArrowArray*)
-    ctypedef char* (*CArrowArrayStreamGetSchema)(void*, CArrowSchema*)
+    ctypedef int (*CArrowArrayStreamGetSchema)(void*, CArrowSchema*)
     ctypedef void (*CArrowArrayStreamRelease)(void*)
 
     cdef struct CArrowArrayStream"ArrowArrayStream":
@@ -291,3 +291,14 @@ cdef object convert_error(CAdbcStatusCode status, CAdbcError* error)
 
 cdef extern from "arrow-adbc/adbc_driver_manager.h":
     const char* CAdbcStatusCodeMessage"AdbcStatusCodeMessage"(CAdbcStatusCode code)
+
+    ctypedef uint32_t CAdbcLoadFlags"AdbcLoadFlags"
+    cdef CAdbcLoadFlags CAdbcLoadFlagDefault"ADBC_LOAD_FLAG_DEFAULT"
+    CAdbcStatusCode AdbcDriverManagerDatabaseSetLoadFlags(
+        CAdbcDatabase* database,
+        CAdbcLoadFlags flags,
+        CAdbcError* error)
+    CAdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+        CAdbcDatabase* database,
+        const char* path_list,
+        CAdbcError* error)

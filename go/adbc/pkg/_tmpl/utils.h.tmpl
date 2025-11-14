@@ -81,7 +81,7 @@ AdbcStatusCode {{.Prefix}}StatementSetOptionInt(struct AdbcStatement*, const cha
 AdbcStatusCode {{.Prefix}}StatementSetSqlQuery(struct AdbcStatement* stmt, const char* query, struct AdbcError* err);
 AdbcStatusCode {{.Prefix}}StatementSetSubstraitPlan(struct AdbcStatement* stmt, const uint8_t* plan, size_t length, struct AdbcError* err);
 
-AdbcStatusCode {{.Prefix}}DriverInit(int version, void* rawDriver, struct AdbcError* err);
+AdbcStatusCode AdbcDriver{{.Prefix}}Init(int version, void* rawDriver, struct AdbcError* err);
 
 static inline void {{.Prefix}}errRelease(struct AdbcError* error) {
   if (error->release) {

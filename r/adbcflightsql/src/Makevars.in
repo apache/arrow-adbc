@@ -16,16 +16,22 @@
 # under the License.
 
 PKG_CPPFLAGS=-I$(CURDIR)/src -DADBC_EXPORT=""
-PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_flightsql -lresolv @libs@
+PKG_LIBS=-L$(CURDIR)/go -ladbc_driver_flightsql @libs@
 
 CGO_CC = @cc@
 CGO_CXX = @cxx@
 CGO_CFLAGS = $(ALL_CPPFLAGS)
 GOMAXPROCS = @nproc@
 
-.PHONY: all gostatic
-all: $(SHLIB)
+.PHONY: all purify gostatic
+all: purify
 $(SHLIB): gostatic
+
+# R CMD check issues a warning for this `.a` file.
+# We remove this file after SHLIB generation to suppress the warning.
+# <https://github.com/apache/arrow-adbc/issues/3059>
+purify: $(SHLIB)
+	rm -Rf "$(CURDIR)/go/libadbc_driver_flightsql.a"
 
 gostatic:
 		(cd "$(CURDIR)/go/adbc"; GOMAXPROCS=$(GOMAXPROCS) GOPATH="$(CURDIR)/.go-path" GOCACHE="$(CURDIR)/.go-cache" GOFLAGS=-modcacherw CC="$(CGO_CC)" CXX="$(CGO_CXX)" CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(PKG_LIBS)" "@gobin@" build -v -tags driverlib -o $(CURDIR)/go/libadbc_driver_flightsql.a -buildmode=c-archive "./pkg/flightsql")

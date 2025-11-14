@@ -18,6 +18,8 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -95,7 +97,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
         {
             Properties.TryGetValue(ImpalaParameters.DataTypeConv, out string? dataTypeConv);
             DataTypeConversion = DataTypeConversionParser.Parse(dataTypeConv);
-            Properties.TryGetValue(ImpalaParameters.TLSOptions, out string? tlsOptions);
+            TlsOptions = HiveServer2TlsImpl.GetStandardTlsOptions(Properties);
         }
 
         protected override TTransport CreateTransport()
@@ -103,12 +105,53 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             // Assumption: hostName and port have already been validated.
             Properties.TryGetValue(ImpalaParameters.HostName, out string? hostName);
             Properties.TryGetValue(ImpalaParameters.Port, out string? port);
+            Properties.TryGetValue(ImpalaParameters.AuthType, out string? authType);
+            if (!ImpalaAuthTypeParser.TryParse(authType, out ImpalaAuthType authTypeValue))
+            {
+                throw new ArgumentOutOfRangeException(ImpalaParameters.AuthType, authType, $"Unsupported {ImpalaParameters.AuthType} value.");
+            }
 
             // Delay the open connection until later.
             bool connectClient = false;
-            TSocketTransport transport = new(hostName!, int.Parse(port!), connectClient, config: new());
-            TBufferedTransport bufferedTransport = new TBufferedTransport(transport);
-            return bufferedTransport;
+            TTransport transport;
+            if (TlsOptions.IsTlsEnabled)
+            {
+                RemoteCertificateValidationCallback certValidator = (sender, cert, chain, errors) => HiveServer2TlsImpl.ValidateCertificate(cert, errors, TlsOptions);
+                if (IPAddress.TryParse(hostName!, out var address))
+                {
+                    transport = new TTlsSocketTransport(address!, int.Parse(port!), config: new(), 0, null, certValidator: certValidator);
+                }
+                else
+                {
+                    transport = new TTlsSocketTransport(hostName!, int.Parse(port!), config: new(), 0, null, certValidator: certValidator);
+                }
+            }
+            else
+            {
+                transport = new TSocketTransport(hostName!, int.Parse(port!), connectClient, config: new());
+            }
+
+            TBufferedTransport bufferedTransport = new(transport);
+            switch (authTypeValue)
+            {
+                case ImpalaAuthType.None:
+                    return bufferedTransport;
+
+                case ImpalaAuthType.Basic:
+                    Properties.TryGetValue(AdbcOptions.Username, out string? username);
+                    Properties.TryGetValue(AdbcOptions.Password, out string? password);
+                    if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                    {
+                        throw new InvalidOperationException("Username and password must be provided for this authentication type.");
+                    }
+
+                    PlainSaslMechanism saslMechanism = new(username, password);
+                    TSaslTransport saslTransport = new(bufferedTransport, saslMechanism, config: new());
+                    return new TFramedTransport(saslTransport);
+
+                default:
+                    throw new NotSupportedException($"Authentication type '{authTypeValue}' is not supported.");
+            }
         }
 
         protected override async Task<TProtocol> CreateProtocolAsync(TTransport transport, CancellationToken cancellationToken = default)
@@ -150,10 +193,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
             return request;
         }
 
-        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, TGetResultSetMetadataResp? metadataResp = null) => new HiveServer2Reader(statement, schema, dataTypeConversion: statement.Connection.DataTypeConversion);
+        internal override IArrowArrayStream NewReader<T>(T statement, Schema schema, IResponse response, TGetResultSetMetadataResp? metadataResp = null) =>
+            new HiveServer2Reader(statement, schema, response, dataTypeConversion: statement.Connection.DataTypeConversion);
 
         internal override ImpalaServerType ServerType => ImpalaServerType.Standard;
 
         protected override int ColumnMapIndexOffset => 0;
+
+        public override string AssemblyName => s_assemblyName;
+
+        public override string AssemblyVersion => s_assemblyVersion;
     }
 }

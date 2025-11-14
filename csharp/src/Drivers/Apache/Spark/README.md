@@ -19,6 +19,10 @@
 
 # Spark Driver
 
+![Vendor: Apache Spark](https://img.shields.io/badge/vendor-Apache%20Spark-blue?style=flat-square)
+![Implementation: C#](https://img.shields.io/badge/language-C%23-violet?style=flat-square)
+![Status: Experimental](https://img.shields.io/badge/status-experimental-red?style=flat-square)
+
 ## Database and Connection Properties
 
 Properties should be passed in the call to `SparkDriver.Open`,
@@ -27,7 +31,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | Property               | Description | Default |
 | :---                   | :---        | :---    |
 | `adbc.spark.type`      | (Required) Indicates the Spark server type. Currently only `http` (future: `standard`) | |
-| `adbc.spark.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only`, `basic`, and `token`. This property is optional. The authentication type can be inferred from `token`, `username`, and `password`. If a `token` value is provided, token authentication is used. Otherwise, if both `username` and `password` values are provided, basic authentication is used. | |
+| `adbc.spark.auth_type` | An indicator of the intended type of authentication. Allowed values: `none`, `username_only`, `basic`, `token`, and `auth_type`. This property is optional. The authentication type can be inferred from `token`, `username`, and `password`. If a `token` value is provided, token authentication is used. Otherwise, if both `username` and `password` values are provided, basic authentication is used. If `auth_type` is provided, token authentication is used by default, unless the driver or configuration explicitly overrides this behavior (e.g., in drivers like DatabricksDriver, which may support other grant types) | |
 | `adbc.spark.host`      | Host name for the data source. Do not include scheme or port number. Example: `sparkserver.region.cloudapp.azure.com` |  |
 | `adbc.spark.port`      | The port number the data source listens on for a new connections. | `443` |
 | `adbc.spark.path`      | The URI path on the data source server. Example: `sql/protocolv1/o/0123456789123456/01234-0123456-source` | |
@@ -54,6 +58,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`.
 | `adbc.http_options.tls.allow_self_signed` | If self signed tls/ssl certificate needs to be allowed or not. One of `True`, `False` | `False` |
 | `adbc.http_options.tls.allow_hostname_mismatch` | If hostname mismatch is allowed for ssl. One of `True`, `False` | `False` |
 | `adbc.http_options.tls.trusted_certificate_path` | The full path of the tls/ssl certificate .pem file containing custom CA certificates for verifying the server when connecting over TLS | `` |
+| `adbc.telemetry.trace_parent` | The [trace parent](https://www.w3.org/TR/trace-context/#traceparent-header) identifier for an existing [trace context](https://www.w3.org/TR/trace-context/) \(span/activity\) in a tracing system. This option is most likely to be set using `Statement.SetOption` to set the trace parent for driver interaction with a specific `Statement`. However, it can also be set using `Driver.Open`, `Database.Connect` or `Connection.SetOption` to set the trace parent for all interactions with the driver on that specific `Connection`. |  |
 
 ## Timeout Configuration
 
@@ -61,7 +66,7 @@ Timeouts have a hierarchy to their behavior. As specified above, the `adbc.spark
 
 The `adbc.apache.statement.query_timeout_s` is analogous to a CommandTimeout for any subsequent calls to the server for requests, including metadata calls and executing queries.
 
-The `adbc.apache.statement.polltime_ms` specifies the time between polls to the service, up to the limit specifed by `adbc.apache.statement.query_timeout_s`.
+The `adbc.apache.statement.polltime_ms` specifies the time between polls to the service, up to the limit specified by `adbc.apache.statement.query_timeout_s`.
 
 ## Spark Types
 
@@ -116,3 +121,62 @@ adbc.spark.path = "/sparkhive2"
 adbc.spark.host = $"{clusterHostName}"
 username = $"{clusterUserName}"
 password = $"{clusterPassword}"
+
+## Tracing Support
+
+OpenTelemetry tracing is now supported.
+
+One of the following exporters can be enabled via the environment variable `OTEL_TRACES_EXPORTER`.
+If the environment variable is not set or empty, it behaves the same as for `none`.
+
+| Exporter | Description |
+| :--| : -- |
+| `none` | No exporter is activated |
+| `otlp` | The [OpenTelemetry Protocol (OTLP)](https://opentelemetry.io/docs/specs/otlp/) exporter is activated with default settings. |
+| `console` | The console exporter is activated which writes human-readable trace information to `stdout` |
+| `adbcfile` | The ADBC file exporter is activated. It writes trace information into files stored in the local application data folder. This folder is `~\AppData\Local\Apache.Arrow.Adbc\traces` (Windows) or `~/.local/share/Apache.Arrow.Adbc/traces` (MacOS/Linux) |
+
+### Configuring the OTLP Exporter
+
+When the `otlp` exporter is activated, it uses the default settings.
+
+To override default settings, set the appropriate environment variables for *traces* as detailed in [OTLP Exporter Configuration](https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/).
+
+A typical use case scenario is to [install](https://opentelemetry.io/docs/collector/installation/) and [configure](https://opentelemetry.io/docs/collector/configuration/) an [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/).
+The Collector can be configure to receive trace messages from the driver and export them in various ways.
+
+*Note*: By default, the OTL exporter and Collector use unencrypted communication on `localhost`.
+Ensure to set the [environment variable](https://opentelemetry.io/docs/specs/otel/protocol/exporter/) `OTEL_EXPORTER_OTLP_INSECURE` to `true`, in this scenario.
+
+Ensure to follow [Collector configuration best practices](https://opentelemetry.io/docs/security/config-best-practices/).
+
+## Tracing
+
+### Tracing Exporters
+
+To enable tracing messages to be observed, a tracing exporter needs to be activated.
+Use either the environment variable `OTEL_TRACES_EXPORTER` or the parameter `adbc.traces.exporter` to select one of the
+supported exporters. The parameter has precedence over the environment variable. The parameter must be set before
+the connection is initialized.
+
+The following exporters are supported:
+
+| Exporter | Description |
+| --- | --- |
+| `adbcfile` | Exports traces to rotating files in a folder. |
+
+#### File Exporter (adbcfile)
+
+Rotating trace files are written to a folder. The file names are created with the following pattern:
+`apache.arrow.adbc.drivers.bigquery-<YYYY-MM-DD-HH-mm-ss-fff>-<process-id>.log`.
+
+The folder used depends on the platform.
+
+| Platform | Folder |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%/Apache.Arrow.Adbc/Traces` |
+| macOS   | `$HOME/Library/Application Support/Apache.Arrow.Adbc/Traces` |
+| Linux   | `$HOME/.local/share/Apache.Arrow.Adbc/Traces` |
+
+By default, up to 999 files of maximum size 1024 KB are written to
+the trace folder.

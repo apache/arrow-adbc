@@ -27,11 +27,11 @@ sys.path.append(str(Path("./ext").resolve()))
 
 project = "ADBC"
 copyright = """2022–2025 The Apache Software Foundation.  Apache Arrow, Arrow,
-Apache, the Apache feather logo, and the Apache Arrow project logo are either
+Apache, the Apache logo, and the Apache Arrow project logo are either
 registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "18"
+release = "21"
 # Needed to generate version switcher
 version = release
 
@@ -40,6 +40,8 @@ version = release
 
 exclude_patterns = []
 extensions = [
+    # misc directives
+    "adbc_misc",
     # recipe directive
     "sphinx_recipe",
     # generic directives to enable intersphinx for java
@@ -56,15 +58,18 @@ templates_path = ["_templates"]
 
 
 def on_missing_reference(app, env, node, contnode):
-    if str(contnode) == "polars.DataFrame":
+    if str(contnode) in {
         # Polars does something odd with Sphinx such that polars.DataFrame
         # isn't xrefable; suppress the warning.
-        return contnode
-    elif str(contnode) == "CapsuleType":
+        "polars.DataFrame",
         # CapsuleType is only in 3.13+
+        "CapsuleType",
+        # Internal API
+        "DbapiBackend",
+    }:
         return contnode
-    else:
-        return None
+
+    return None
 
 
 def setup(app):
@@ -144,6 +149,7 @@ intersphinx_mapping = {
     "arrow": ("https://arrow.apache.org/docs/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "polars": ("https://docs.pola.rs/api/python/stable/", None),
+    "python": ("https://docs.python.org/3", None),
 }
 
 # Add env vars like ADBC_INTERSPHINX_MAPPING_adbc_java = url;path
