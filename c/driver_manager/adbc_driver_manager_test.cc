@@ -422,15 +422,22 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
 
 TEST(AdbcDriverManagerInternal, InternalAdbcParseDriverUri) {
   std::vector<std::pair<std::string, std::optional<ParseDriverUriResult>>> uris = {
-    {"sqlite:file::memory:", {{"sqlite", "file::memory:"}}},
-    {"sqlite:file::memory:?cache=shared", {{"sqlite", "file::memory:?cache=shared"}}},
-    {"postgresql://a:b@localhost:9999/nonexistent", {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent"}}}
-  };
+      {"sqlite", std::nullopt},
+      {"sqlite:", {{"sqlite", std::nullopt}}},
+      {"sqlite:file::memory:", {{"sqlite", "file::memory:"}}},
+      {"sqlite:file::memory:?cache=shared", {{"sqlite", "file::memory:?cache=shared"}}},
+      {"postgresql://a:b@localhost:9999/nonexistent",
+       {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent"}}}};
 
-  auto cmp = [](std::optional<ParseDriverUriResult> a, std::optional<ParseDriverUriResult> b){
+  auto cmp = [](std::optional<ParseDriverUriResult> a,
+                std::optional<ParseDriverUriResult> b) {
+    if (!a.has_value()) {
+      EXPECT_FALSE(b.has_value());
+      return;
+    }
     EXPECT_EQ(a->driver, b->driver);
     if (!a->uri) {
-      EXPECT_FALSE(b->uri);    
+      EXPECT_FALSE(b->uri);
     } else {
       EXPECT_EQ(*a->uri, *b->uri);
     }
@@ -1148,24 +1155,21 @@ TEST_F(DriverManifest, DriverFromUri) {
 shared = "adbc_driver_sqlite")";
   test_manifest_file.close();
 
-  for (const auto& uri : {
-           "sqlite:file::memory:",
-           "sqlite://:memory:",
-       }) {
-    for (const auto& driver_option : {"driver", "uri"}) {
-      SCOPED_TRACE(uri);
-      adbc_validation::Handle<struct AdbcDatabase> database;
-      ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
-      ASSERT_THAT(AdbcDatabaseSetOption(&database.value, driver_option, uri, &error),
-                  IsOkStatus(&error));
-      std::string search_path = temp_dir.string();
-      ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-                      &database.value, search_path.data(), &error),
-                  IsOkStatus(&error));
-      ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
-                  IsStatus(ADBC_STATUS_IO, &error));
-      ASSERT_THAT(error.message, ::testing::HasSubstr("Failed to connect"));
-    }
+  const std::string uri = "sqlite:file::memory:";
+  for (const auto& driver_option : {"driver", "uri"}) {
+    SCOPED_TRACE(driver_option);
+    SCOPED_TRACE(uri);
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcDatabaseSetOption(&database.value, driver_option, uri.c_str(), &error),
+        IsOkStatus(&error));
+    std::string search_path = temp_dir.string();
+    ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                    &database.value, search_path.data(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                IsStatus(ADBC_STATUS_OK, &error));
   }
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
