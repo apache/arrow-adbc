@@ -210,7 +210,7 @@ def connect(
 
         - Only a URI, in which case the URI scheme will be assumed to be the
           driver name and will be loaded as above.  This will happen when
-          "://" or "::" is detected in the driver name.  (It is not assumed that the
+          "://" is detected in the driver name.  (It is not assumed that the
           URI is actually a valid URI.)  The driver manager will pass the URI
           on unchanged, so this is only useful if the driver supports URIs
           where the scheme happens to be the same as the driver name (so
