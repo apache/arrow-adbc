@@ -1,124 +1,72 @@
-// Licensed to the Apache Software Foundation (ASF) under one
-// or more contributor license agreements.  See the NOTICE file
-// distributed with this work for additional information
-// regarding copyright ownership.  The ASF licenses this file
-// to you under the Apache License, Version 2.0 (the
-// "License"); you may not use this file except in compliance
-// with the License.  You may obtain a copy of the License at
-//
-//   http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing,
-// software distributed under the License is distributed on an
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, either express or implied.  See the License for the
-// specific language governing permissions and limitations
-// under the License.
-
-//! ADBC: Arrow Database Connectivity
-//!
-//! ADBC is a set of APIs and libraries for [Arrow](https://arrow.apache.org/)-native
-//! access to databases. Execute SQL and [Substrait](https://substrait.io/)
-//! queries, query database catalogs, and more, all using Arrow data to
-//! eliminate unnecessary data copies, speed up access, and make it more
-//! convenient to build analytical applications.
-//!
-//! Read more about ADBC at <https://arrow.apache.org/adbc/>
-//!
-//! The `core` library currently provides the basic types shared by vendor-specific drivers,
-//! the driver manager, and the driver exporter.
-//!
-//! # Native Rust drivers
-//!
-//! Native Rust drivers will implement the abstract API consisting of the traits:
-//! - [Driver]
-//! - [Database]
-//! - [Connection]
-//! - [Statement]
-//!
-//! For drivers implemented in Rust, using these will be more efficient and
-//! safe, since it avoids the overhead of going through C FFI.
-
-pub mod constants;
-pub mod error;
-pub mod non_blocking;
-pub mod options;
-pub mod schemas;
-
-use std::collections::HashSet;
-
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 
-use error::Result;
-use options::{OptionConnection, OptionDatabase, OptionStatement, OptionValue};
+use std::collections::HashSet;
+use std::future::Future;
 
-pub type LoadFlags = u32;
-
-pub const LOAD_FLAG_SEARCH_ENV: LoadFlags = 1 << 1;
-pub const LOAD_FLAG_SEARCH_USER: LoadFlags = 1 << 2;
-pub const LOAD_FLAG_SEARCH_SYSTEM: LoadFlags = 1 << 3;
-pub const LOAD_FLAG_ALLOW_RELATIVE_PATHS: LoadFlags = 1 << 4;
-pub const LOAD_FLAG_DEFAULT: LoadFlags = LOAD_FLAG_SEARCH_ENV
-    | LOAD_FLAG_SEARCH_USER
-    | LOAD_FLAG_SEARCH_SYSTEM
-    | LOAD_FLAG_ALLOW_RELATIVE_PATHS;
+use crate::error::Result;
+use crate::options::{self, *};
+use crate::PartitionedResult;
 
 /// Ability to configure an object by setting/getting options.
-pub trait Optionable {
-    type Option: AsRef<str>;
+pub trait AsyncOptionable {
+    type Option: AsRef<str> + Send;
 
     /// Set a post-init option.
-    fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()>;
+    fn set_option(
+        &mut self,
+        key: Self::Option,
+        value: OptionValue,
+    ) -> impl Future<Output = Result<()>> + Send;
 
     /// Get a string option value by key.
-    fn get_option_string(&self, key: Self::Option) -> Result<String>;
+    fn get_option_string(&self, key: Self::Option) -> impl Future<Output = Result<String>>;
 
     /// Get a bytes option value by key.
-    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>>;
+    fn get_option_bytes(&self, key: Self::Option) -> impl Future<Output = Result<Vec<u8>>>;
 
     /// Get an integer option value by key.
-    fn get_option_int(&self, key: Self::Option) -> Result<i64>;
+    fn get_option_int(&self, key: Self::Option) -> impl Future<Output = Result<i64>>;
 
     /// Get a float option value by key.
-    fn get_option_double(&self, key: Self::Option) -> Result<f64>;
+    fn get_option_double(&self, key: Self::Option) -> impl Future<Output = Result<f64>>;
 }
 
-/// A handle to an ADBC driver.
-pub trait Driver {
-    type DatabaseType: Database;
+/// A handle to an async ADBC driver.
+pub trait AsyncDriver {
+    type DatabaseType: AsyncDatabase + Send;
 
     /// Allocate and initialize a new database without pre-init options.
-    fn new_database(&mut self) -> Result<Self::DatabaseType>;
+    fn new_database(&mut self) -> impl Future<Output = Result<Self::DatabaseType>> + Send;
 
     /// Allocate and initialize a new database with pre-init options.
     fn new_database_with_opts(
         &mut self,
-        opts: impl IntoIterator<Item = (OptionDatabase, OptionValue)>,
-    ) -> Result<Self::DatabaseType>;
+        opts: Vec<(options::OptionDatabase, OptionValue)>,
+    ) -> impl Future<Output = Result<Self::DatabaseType>> + Send;
 }
 
-/// A handle to an ADBC database.
+/// A handle to an async ADBC database.
 ///
 /// Databases hold state shared by multiple connections. This typically means
 /// configuration and caches. For in-memory databases, it provides a place to
 /// hold ownership of the in-memory database.
 ///
 /// Databases must be kept alive as long as any connections exist.
-pub trait Database: Optionable<Option = OptionDatabase> {
-    type ConnectionType: Connection;
+pub trait AsyncDatabase: AsyncOptionable<Option = OptionDatabase> {
+    type ConnectionType: AsyncConnection + Send;
 
     /// Allocate and initialize a new connection without pre-init options.
-    fn new_connection(&self) -> Result<Self::ConnectionType>;
+    fn new_connection(&self) -> impl Future<Output = Result<Self::ConnectionType>> + Send;
 
     /// Allocate and initialize a new connection with pre-init options.
     fn new_connection_with_opts(
         &self,
-        opts: impl IntoIterator<Item = (options::OptionConnection, OptionValue)>,
-    ) -> Result<Self::ConnectionType>;
+        opts: Vec<(options::OptionConnection, OptionValue)>,
+    ) -> impl Future<Output = Result<Self::ConnectionType>> + Send;
 }
 
-/// A handle to an ADBC connection.
+/// A handle to an async ADBC connection.
 ///
 /// Connections provide methods for query execution, managing prepared
 /// statements, using transactions, and so on.
@@ -128,14 +76,14 @@ pub trait Database: Optionable<Option = OptionDatabase> {
 /// Connections should start in autocommit mode. They can be moved out by
 /// setting [options::OptionConnection::AutoCommit] to "false". Turning off
 /// autocommit allows customizing the isolation level.
-pub trait Connection: Optionable<Option = OptionConnection> {
-    type StatementType: Statement;
+pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> {
+    type StatementType: AsyncStatement + Send;
 
     /// Allocate and initialize a new statement.
-    fn new_statement(&mut self) -> Result<Self::StatementType>;
+    fn new_statement(&mut self) -> impl Future<Output = Result<Self::StatementType>> + Send;
 
     /// Cancel the in-progress operation on a connection.
-    fn cancel(&mut self) -> Result<()>;
+    fn cancel(&mut self) -> impl Future<Output = Result<()>> + Send;
 
     /// Get metadata about the database/driver.
     ///
@@ -165,7 +113,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     fn get_info(
         &self,
         codes: Option<HashSet<options::InfoCode>>,
-    ) -> Result<impl RecordBatchReader + Send>;
+    ) -> impl Future<Output = Result<impl RecordBatchReader + Send>>;
 
     /// Get a hierarchical view of all catalogs, database schemas, tables, and
     /// columns.
@@ -273,7 +221,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send>;
+    ) -> impl Future<Output = Result<impl RecordBatchReader + Send>> + Send;
 
     /// Get the Arrow schema of a table.
     ///
@@ -287,7 +235,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
         catalog: Option<&str>,
         db_schema: Option<&str>,
         table_name: &str,
-    ) -> Result<Schema>;
+    ) -> impl Future<Output = Result<Schema>> + Send;
 
     /// Get a list of table types in the database.
     ///
@@ -298,7 +246,8 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// Field Name     | Field Type
     /// ---------------|--------------
     /// table_type     | utf8 not null
-    fn get_table_types(&self) -> Result<impl RecordBatchReader + Send>;
+    fn get_table_types(&self)
+        -> impl Future<Output = Result<impl RecordBatchReader + Send>> + Send;
 
     /// Get the names of statistics specific to this driver.
     ///
@@ -313,7 +262,9 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     ///
     /// # Since
     /// ADBC API revision 1.1.0
-    fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send>;
+    fn get_statistic_names(
+        &self,
+    ) -> impl Future<Output = Result<impl RecordBatchReader + Send>> + Send;
 
     /// Get statistics about the data distribution of table(s).
     ///
@@ -379,17 +330,17 @@ pub trait Connection: Optionable<Option = OptionConnection> {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> Result<impl RecordBatchReader + Send>;
+    ) -> impl Future<Output = Result<impl RecordBatchReader + Send>> + Send;
 
     /// Commit any pending transactions. Only used if autocommit is disabled.
     ///
     /// Behavior is undefined if this is mixed with SQL transaction statements.
-    fn commit(&mut self) -> Result<()>;
+    fn commit(&mut self) -> impl Future<Output = Result<()>> + Send;
 
     /// Roll back any pending transactions. Only used if autocommit is disabled.
     ///
     /// Behavior is undefined if this is mixed with SQL transaction statements.
-    fn rollback(&mut self) -> Result<()>;
+    fn rollback(&mut self) -> impl Future<Output = Result<()>> + Send;
 
     /// Retrieve a given partition of data.
     ///
@@ -398,10 +349,13 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// # Arguments
     ///
     /// - `partition` - The partition descriptor.
-    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader + Send>;
+    fn read_partition(
+        &self,
+        partition: impl AsRef<[u8]> + Send,
+    ) -> impl Future<Output = Result<impl RecordBatchReader + Send>> + Send;
 }
 
-/// A handle to an ADBC statement.
+/// A handle to an async ADBC statement.
 ///
 /// A statement is a container for all state needed to execute a database query,
 /// such as the query itself, parameters for prepared statements, driver
@@ -417,16 +371,19 @@ pub trait Connection: Optionable<Option = OptionConnection> {
 /// Multiple statements may be created from a single connection.
 /// However, the driver may block or error if they are used concurrently
 /// (whether from a single thread or multiple threads).
-pub trait Statement: Optionable<Option = OptionStatement> {
+pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> {
     /// Bind Arrow data. This can be used for bulk inserts or prepared
     /// statements.
-    fn bind(&mut self, batch: RecordBatch) -> Result<()>;
+    fn bind(&mut self, batch: RecordBatch) -> impl Future<Output = Result<()>> + Send;
 
     /// Bind Arrow data. This can be used for bulk inserts or prepared
     /// statements.
     // TODO(alexandreyc): should we use a generic here instead of a trait object?
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567750972
-    fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()>;
+    fn bind_stream(
+        &mut self,
+        reader: Box<dyn RecordBatchReader + Send>,
+    ) -> impl Future<Output = Result<()>> + Send;
 
     /// Execute a statement and get the results.
     ///
@@ -434,7 +391,7 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     // TODO(alexandreyc): is the Send bound absolutely necessary? same question
     // for all methods that return an impl RecordBatchReader
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567748242
-    fn execute(&mut self) -> Result<impl RecordBatchReader + Send>;
+    fn execute(&mut self) -> impl Future<Output = Result<impl RecordBatchReader + Send>> + Send;
 
     /// Execute a statement that doesn’t have a result set and get the number
     /// of affected rows.
@@ -445,7 +402,7 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     ///
     /// Will return the number of rows affected. If the affected row count is
     /// unknown or unsupported by the database, will return `None`.
-    fn execute_update(&mut self) -> Result<Option<i64>>;
+    fn execute_update(&mut self) -> impl Future<Output = Result<Option<i64>>> + Send;
 
     /// Get the schema of the result set of a query without executing it.
     ///
@@ -457,10 +414,10 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// # Since
     ///
     /// ADBC API revision 1.1.0
-    fn execute_schema(&mut self) -> Result<Schema>;
+    fn execute_schema(&mut self) -> impl Future<Output = Result<Schema>> + Send;
 
     /// Execute a statement and get the results as a partitioned result set.
-    fn execute_partitions(&mut self) -> Result<PartitionedResult>;
+    fn execute_partitions(&mut self) -> impl Future<Output = Result<PartitionedResult>> + Send;
 
     /// Get the schema for bound parameters.
     ///
@@ -475,25 +432,31 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// the corresponding field will be NA (NullType).
     ///
     /// This should be called after [Statement::prepare].
-    fn get_parameter_schema(&self) -> Result<Schema>;
+    fn get_parameter_schema(&self) -> impl Future<Output = Result<Schema>> + Send;
 
     /// Turn this statement into a prepared statement to be executed multiple
     /// times.
     ///
     /// This invalidates any prior result sets.
-    fn prepare(&mut self) -> Result<()>;
+    fn prepare(&mut self) -> impl Future<Output = Result<()>> + Send;
 
     /// Set the SQL query to execute.
     ///
     /// The query can then be executed with [Statement::execute]. For queries
     /// expected to be executed repeatedly, call [Statement::prepare] first.
-    fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()>;
+    fn set_sql_query(
+        &mut self,
+        query: impl AsRef<str> + Send,
+    ) -> impl Future<Output = Result<()>> + Send;
 
     /// Set the Substrait plan to execute.
     ///
     /// The query can then be executed with [Statement::execute]. For queries
     /// expected to be executed repeatedly, call [Statement::prepare] first.
-    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()>;
+    fn set_substrait_plan(
+        &mut self,
+        plan: impl AsRef<[u8]> + Send,
+    ) -> impl Future<Output = Result<()>>;
 
     /// Cancel execution of an in-progress query.
     ///
@@ -503,20 +466,5 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// # Since
     ///
     /// ADBC API revision 1.1.0
-    fn cancel(&mut self) -> Result<()>;
-}
-
-/// Each data partition is described by an opaque byte array and can be
-/// retrieved with [Connection::read_partition].
-pub type Partitions = Vec<Vec<u8>>;
-
-/// A partitioned result set as returned by [Statement::execute_partitions].
-#[derive(Debug, PartialEq, Eq)]
-pub struct PartitionedResult {
-    /// The result partitions.
-    pub partitions: Partitions,
-    /// The schema of the result set.
-    pub schema: Schema,
-    /// The number of rows affected if known, else -1.
-    pub rows_affected: i64,
+    fn cancel(&mut self) -> impl Future<Output = Result<()>>;
 }

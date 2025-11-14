@@ -14,10 +14,14 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
 #![allow(refining_impl_trait)]
 
-use adbc_core::constants;
+mod syncify;
+
+use adbc_core::non_blocking::{
+    AsyncConnection, AsyncDatabase, AsyncDriver, AsyncOptionable, AsyncStatement,
+};
+use adbc_core::{constants, options};
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::datasource::TableType;
 use datafusion::prelude::*;
@@ -45,7 +49,7 @@ use adbc_core::{
     options::{
         InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement, OptionValue,
     },
-    schemas, Connection, Database, Driver, Optionable, Statement,
+    schemas,
 };
 
 pub enum Runtime {
@@ -134,52 +138,42 @@ impl RecordBatchReader for DataFusionReader {
 }
 
 #[derive(Default)]
-pub struct DataFusionDriver {
-    handle: Option<tokio::runtime::Handle>,
-}
+pub struct DataFusionDriver {}
 
 impl DataFusionDriver {
-    pub fn new(handle: Option<tokio::runtime::Handle>) -> Self {
-        Self { handle }
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
-impl Driver for DataFusionDriver {
+impl AsyncDriver for DataFusionDriver {
     type DatabaseType = DataFusionDatabase;
 
-    fn new_database(&mut self) -> Result<Self::DatabaseType> {
-        Ok(Self::DatabaseType {
-            handle: self.handle.clone(),
-        })
+    async fn new_database(&mut self) -> Result<Self::DatabaseType> {
+        Ok(Self::DatabaseType {})
     }
 
-    fn new_database_with_opts(
+    async fn new_database_with_opts(
         &mut self,
-        opts: impl IntoIterator<
-            Item = (
-                adbc_core::options::OptionDatabase,
-                adbc_core::options::OptionValue,
-            ),
-        >,
+        opts: Vec<(
+            adbc_core::options::OptionDatabase,
+            adbc_core::options::OptionValue,
+        )>,
     ) -> adbc_core::error::Result<Self::DatabaseType> {
-        let mut database = Self::DatabaseType {
-            handle: self.handle.clone(),
-        };
+        let mut database = Self::DatabaseType {};
         for (key, value) in opts {
-            database.set_option(key, value)?;
+            database.set_option(key, value).await?;
         }
         Ok(database)
     }
 }
 
-pub struct DataFusionDatabase {
-    handle: Option<tokio::runtime::Handle>,
-}
+pub struct DataFusionDatabase {}
 
-impl Optionable for DataFusionDatabase {
+impl AsyncOptionable for DataFusionDatabase {
     type Option = OptionDatabase;
 
-    fn set_option(
+    async fn set_option(
         &mut self,
         key: Self::Option,
         _value: adbc_core::options::OptionValue,
@@ -190,28 +184,28 @@ impl Optionable for DataFusionDatabase {
         ))
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    async fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    async fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    async fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    async fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
@@ -219,40 +213,25 @@ impl Optionable for DataFusionDatabase {
     }
 }
 
-impl Database for DataFusionDatabase {
+impl AsyncDatabase for DataFusionDatabase {
     type ConnectionType = DataFusionConnection;
 
-    fn new_connection(&self) -> Result<Self::ConnectionType> {
+    async fn new_connection(&self) -> Result<Self::ConnectionType> {
         let ctx = SessionContext::new();
 
-        let runtime = Runtime::new(self.handle.clone()).unwrap();
-
-        Ok(DataFusionConnection {
-            runtime: Arc::new(runtime),
-            ctx: Arc::new(ctx),
-        })
+        Ok(DataFusionConnection { ctx: Arc::new(ctx) })
     }
 
-    fn new_connection_with_opts(
+    async fn new_connection_with_opts(
         &self,
-        opts: impl IntoIterator<
-            Item = (
-                adbc_core::options::OptionConnection,
-                adbc_core::options::OptionValue,
-            ),
-        >,
+        opts: Vec<(options::OptionConnection, OptionValue)>,
     ) -> adbc_core::error::Result<Self::ConnectionType> {
         let ctx = SessionContext::new();
 
-        let runtime = Runtime::new(self.handle.clone()).unwrap();
-
-        let mut connection = DataFusionConnection {
-            runtime: Arc::new(runtime),
-            ctx: Arc::new(ctx),
-        };
+        let mut connection = DataFusionConnection { ctx: Arc::new(ctx) };
 
         for (key, value) in opts {
-            connection.set_option(key, value)?;
+            connection.set_option(key, value).await?;
         }
 
         Ok(connection)
@@ -260,14 +239,13 @@ impl Database for DataFusionDatabase {
 }
 
 pub struct DataFusionConnection {
-    runtime: Arc<Runtime>,
     ctx: Arc<SessionContext>,
 }
 
-impl Optionable for DataFusionConnection {
+impl AsyncOptionable for DataFusionConnection {
     type Option = OptionConnection;
 
-    fn set_option(
+    async fn set_option(
         &mut self,
         key: Self::Option,
         value: adbc_core::options::OptionValue,
@@ -275,10 +253,8 @@ impl Optionable for DataFusionConnection {
         match key.as_ref() {
             constants::ADBC_CONNECTION_OPTION_CURRENT_CATALOG => match value {
                 OptionValue::String(value) => {
-                    self.runtime.block_on(async {
-                        let query = format!("SET datafusion.catalog.default_catalog = {value}");
-                        self.ctx.sql(query.as_str()).await.unwrap();
-                    });
+                    let query = format!("SET datafusion.catalog.default_catalog = {value}");
+                    self.ctx.sql(query.as_str()).await.unwrap();
                     Ok(())
                 }
                 _ => Err(Error::with_message_and_status(
@@ -288,10 +264,8 @@ impl Optionable for DataFusionConnection {
             },
             constants::ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA => match value {
                 OptionValue::String(value) => {
-                    self.runtime.block_on(async {
-                        let query = format!("SET datafusion.catalog.default_schema = {value}");
-                        self.ctx.sql(query.as_str()).await.unwrap();
-                    });
+                    let query = format!("SET datafusion.catalog.default_schema = {value}");
+                    self.ctx.sql(query.as_str()).await.unwrap();
                     Ok(())
                 }
                 _ => Err(Error::with_message_and_status(
@@ -306,7 +280,7 @@ impl Optionable for DataFusionConnection {
         }
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    async fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
         match key.as_ref() {
             constants::ADBC_CONNECTION_OPTION_CURRENT_CATALOG => Ok(self
                 .ctx
@@ -329,21 +303,21 @@ impl Optionable for DataFusionConnection {
         }
     }
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    async fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    async fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    async fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
@@ -470,16 +444,15 @@ impl GetObjectsBuilder {
         }
     }
 
-    pub fn build(
+    pub async fn build(
         &mut self,
-        runtime: &Runtime,
         ctx: &SessionContext,
         depth: &ObjectDepth,
     ) -> Result<RecordBatch> {
         let mut catalogs = ctx.catalog_names();
         self.catalog_names.append(&mut catalogs);
 
-        self.catalog_names.iter().for_each(|cat| {
+        for cat in &self.catalog_names {
             let catalog_provider = ctx.catalog(cat).unwrap();
             let schema_names = catalog_provider.schema_names();
             self.catalog_db_schema_names
@@ -488,35 +461,33 @@ impl GetObjectsBuilder {
             self.catalog_db_schema_offsets
                 .push(self.catalog_db_schema_offsets.last().unwrap() + schema_names.len() as i32);
 
-            schema_names.iter().for_each(|schema| {
+            for schema in &schema_names {
                 let schema_provider = catalog_provider.schema(schema).unwrap();
                 let table_names = schema_provider.table_names();
                 self.table_names.append(&mut table_names.clone());
                 self.table_offsets
                     .push(self.table_offsets.last().unwrap() + table_names.len() as i32);
 
-                table_names.iter().for_each(|t| {
-                    runtime.block_on(async {
-                        let table_provider = schema_provider.table(t).await.unwrap().unwrap();
-                        let table_type = match table_provider.table_type() {
-                            TableType::Base => "Base",
-                            TableType::View => "View",
-                            TableType::Temporary => "Temporary",
-                        };
-                        self.table_types.push(table_type.to_string());
+                for t in &table_names {
+                    let table_provider = schema_provider.table(t).await.unwrap().unwrap();
+                    let table_type = match table_provider.table_type() {
+                        TableType::Base => "Base",
+                        TableType::View => "View",
+                        TableType::Temporary => "Temporary",
+                    };
+                    self.table_types.push(table_type.to_string());
 
-                        let schema = table_provider.schema();
-                        let num_fields = schema.fields().len();
+                    let schema = table_provider.schema();
+                    let num_fields = schema.fields().len();
 
-                        schema.fields().iter().for_each(|f| {
-                            self.column_names.push(f.name().clone());
-                        });
-                        self.column_offsets
-                            .push(self.column_offsets.last().unwrap() + num_fields as i32);
+                    schema.fields().iter().for_each(|f| {
+                        self.column_names.push(f.name().clone());
                     });
-                });
-            });
-        });
+                    self.column_offsets
+                        .push(self.column_offsets.last().unwrap() + num_fields as i32);
+                }
+            }
+        }
 
         //////////////////////////////////////////////////////
 
@@ -721,12 +692,11 @@ impl GetObjectsBuilder {
     }
 }
 
-impl Connection for DataFusionConnection {
+impl AsyncConnection for DataFusionConnection {
     type StatementType = DataFusionStatement;
 
-    fn new_statement(&mut self) -> adbc_core::error::Result<Self::StatementType> {
+    async fn new_statement(&mut self) -> adbc_core::error::Result<Self::StatementType> {
         Ok(DataFusionStatement {
-            runtime: self.runtime.clone(),
             ctx: self.ctx.clone(),
             sql_query: None,
             substrait_plan: None,
@@ -735,11 +705,11 @@ impl Connection for DataFusionConnection {
         })
     }
 
-    fn cancel(&mut self) -> adbc_core::error::Result<()> {
+    async fn cancel(&mut self) -> adbc_core::error::Result<()> {
         todo!()
     }
 
-    fn get_info(
+    async fn get_info(
         &self,
         codes: Option<std::collections::HashSet<adbc_core::options::InfoCode>>,
     ) -> Result<impl RecordBatchReader + Send> {
@@ -758,7 +728,7 @@ impl Connection for DataFusionConnection {
         Ok(reader)
     }
 
-    fn get_objects(
+    async fn get_objects(
         &self,
         depth: adbc_core::options::ObjectDepth,
         _catalog: Option<&str>,
@@ -767,12 +737,12 @@ impl Connection for DataFusionConnection {
         _table_type: Option<Vec<&str>>,
         _column_name: Option<&str>,
     ) -> Result<impl RecordBatchReader + Send> {
-        let batch = GetObjectsBuilder::new().build(&self.runtime, &self.ctx, &depth)?;
+        let batch = GetObjectsBuilder::new().build(&self.ctx, &depth).await?;
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
     }
 
-    fn get_table_schema(
+    async fn get_table_schema(
         &self,
         _catalog: Option<&str>,
         _db_schema: Option<&str>,
@@ -781,15 +751,15 @@ impl Connection for DataFusionConnection {
         todo!()
     }
 
-    fn get_table_types(&self) -> Result<SingleBatchReader> {
+    async fn get_table_types(&self) -> Result<SingleBatchReader> {
         todo!()
     }
 
-    fn get_statistic_names(&self) -> Result<SingleBatchReader> {
+    async fn get_statistic_names(&self) -> Result<SingleBatchReader> {
         todo!()
     }
 
-    fn get_statistics(
+    async fn get_statistics(
         &self,
         _catalog: Option<&str>,
         _db_schema: Option<&str>,
@@ -799,21 +769,20 @@ impl Connection for DataFusionConnection {
         todo!()
     }
 
-    fn commit(&mut self) -> adbc_core::error::Result<()> {
+    async fn commit(&mut self) -> adbc_core::error::Result<()> {
         todo!()
     }
 
-    fn rollback(&mut self) -> adbc_core::error::Result<()> {
+    async fn rollback(&mut self) -> adbc_core::error::Result<()> {
         todo!()
     }
 
-    fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<SingleBatchReader> {
+    async fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<SingleBatchReader> {
         todo!()
     }
 }
 
 pub struct DataFusionStatement {
-    runtime: Arc<Runtime>,
     ctx: Arc<SessionContext>,
     sql_query: Option<String>,
     substrait_plan: Option<Plan>,
@@ -821,10 +790,10 @@ pub struct DataFusionStatement {
     ingest_target_table: Option<String>,
 }
 
-impl Optionable for DataFusionStatement {
+impl AsyncOptionable for DataFusionStatement {
     type Option = OptionStatement;
 
-    fn set_option(
+    async fn set_option(
         &mut self,
         key: Self::Option,
         value: adbc_core::options::OptionValue,
@@ -847,7 +816,7 @@ impl Optionable for DataFusionStatement {
         }
     }
 
-    fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
+    async fn get_option_string(&self, key: Self::Option) -> adbc_core::error::Result<String> {
         match key.as_ref() {
             constants::ADBC_INGEST_OPTION_TARGET_TABLE => {
                 let target_table = self.ingest_target_table.clone();
@@ -866,21 +835,21 @@ impl Optionable for DataFusionStatement {
         }
     }
 
-    fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
+    async fn get_option_bytes(&self, key: Self::Option) -> adbc_core::error::Result<Vec<u8>> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
+    async fn get_option_int(&self, key: Self::Option) -> adbc_core::error::Result<i64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
         ))
     }
 
-    fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
+    async fn get_option_double(&self, key: Self::Option) -> adbc_core::error::Result<f64> {
         Err(Error::with_message_and_status(
             format!("Unrecognized option: {key:?}"),
             Status::NotFound,
@@ -888,104 +857,98 @@ impl Optionable for DataFusionStatement {
     }
 }
 
-impl Statement for DataFusionStatement {
-    fn bind(&mut self, batch: arrow_array::RecordBatch) -> adbc_core::error::Result<()> {
+impl AsyncStatement for DataFusionStatement {
+    async fn bind(&mut self, batch: arrow_array::RecordBatch) -> adbc_core::error::Result<()> {
         self.bound_record_batch.replace(batch);
         Ok(())
     }
 
-    fn bind_stream(
+    async fn bind_stream(
         &mut self,
         _reader: Box<dyn arrow_array::RecordBatchReader + Send>,
     ) -> adbc_core::error::Result<()> {
         todo!()
     }
 
-    fn execute(&mut self) -> Result<impl RecordBatchReader + Send> {
-        self.runtime.block_on(async {
-            let df = if self.sql_query.is_some() {
-                self.ctx
-                    .sql(&self.sql_query.clone().unwrap())
+    async fn execute(&mut self) -> Result<impl RecordBatchReader + Send> {
+        let df = if self.sql_query.is_some() {
+            self.ctx
+                .sql(&self.sql_query.clone().unwrap())
+                .await
+                .unwrap()
+        } else {
+            let plan =
+                from_substrait_plan(&self.ctx.state(), &self.substrait_plan.clone().unwrap())
                     .await
-                    .unwrap()
-            } else {
-                let plan =
-                    from_substrait_plan(&self.ctx.state(), &self.substrait_plan.clone().unwrap())
-                        .await
-                        .unwrap();
-                self.ctx.execute_logical_plan(plan).await.unwrap()
-            };
+                    .unwrap();
+            self.ctx.execute_logical_plan(plan).await.unwrap()
+        };
 
-            Ok(DataFusionReader::new(df).await)
-        })
+        Ok(DataFusionReader::new(df).await)
     }
 
-    fn execute_update(&mut self) -> adbc_core::error::Result<Option<i64>> {
+    async fn execute_update(&mut self) -> adbc_core::error::Result<Option<i64>> {
         if self.sql_query.is_some() {
-            self.runtime.block_on(async {
-                let _ = self
-                    .ctx
-                    .sql(&self.sql_query.clone().unwrap())
-                    .await
-                    .unwrap();
-            });
+            let _ = self
+                .ctx
+                .sql(&self.sql_query.clone().unwrap())
+                .await
+                .unwrap();
         } else if let Some(batch) = self.bound_record_batch.take() {
-            self.runtime.block_on(async {
-                let table = match self.ingest_target_table.clone() {
-                    Some(table) => table,
-                    None => todo!(),
-                };
+            let table = match self.ingest_target_table.clone() {
+                Some(table) => table,
+                None => todo!(),
+            };
 
-                self.ctx
-                    .read_batch(batch)
-                    .unwrap()
-                    .write_table(table.as_str(), DataFrameWriteOptions::new())
-                    .await
-                    .unwrap();
-            });
+            self.ctx
+                .read_batch(batch)
+                .unwrap()
+                .write_table(table.as_str(), DataFrameWriteOptions::new())
+                .await
+                .unwrap();
         }
 
         Ok(Some(0))
     }
 
-    fn execute_schema(&mut self) -> adbc_core::error::Result<arrow_schema::Schema> {
-        self.runtime.block_on(async {
-            let df = self
-                .ctx
-                .sql(&self.sql_query.clone().unwrap())
-                .await
-                .unwrap();
+    async fn execute_schema(&mut self) -> adbc_core::error::Result<arrow_schema::Schema> {
+        let df = self
+            .ctx
+            .sql(&self.sql_query.clone().unwrap())
+            .await
+            .unwrap();
 
-            Ok(df.schema().as_arrow().clone())
-        })
+        Ok(df.schema().as_arrow().clone())
     }
 
-    fn execute_partitions(&mut self) -> adbc_core::error::Result<adbc_core::PartitionedResult> {
+    async fn execute_partitions(
+        &mut self,
+    ) -> adbc_core::error::Result<adbc_core::PartitionedResult> {
         todo!()
     }
 
-    fn get_parameter_schema(&self) -> adbc_core::error::Result<arrow_schema::Schema> {
+    async fn get_parameter_schema(&self) -> adbc_core::error::Result<arrow_schema::Schema> {
         todo!()
     }
 
-    fn prepare(&mut self) -> adbc_core::error::Result<()> {
+    async fn prepare(&mut self) -> adbc_core::error::Result<()> {
         todo!()
     }
 
-    fn set_sql_query(&mut self, query: impl AsRef<str>) -> adbc_core::error::Result<()> {
+    async fn set_sql_query(&mut self, query: impl AsRef<str>) -> adbc_core::error::Result<()> {
         self.sql_query = Some(query.as_ref().to_string());
         Ok(())
     }
 
-    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> adbc_core::error::Result<()> {
+    async fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> adbc_core::error::Result<()> {
         self.substrait_plan = Some(Plan::decode(plan.as_ref()).unwrap());
         Ok(())
     }
 
-    fn cancel(&mut self) -> adbc_core::error::Result<()> {
+    async fn cancel(&mut self) -> adbc_core::error::Result<()> {
         todo!()
     }
 }
 
 #[cfg(feature = "ffi")]
-adbc_ffi::export_driver!(DataFusionDriverInit, DataFusionDriver);
+adbc_ffi::export_driver!(DataFusionDriverInit, crate::syncify::SyncDataFusionDriver);
