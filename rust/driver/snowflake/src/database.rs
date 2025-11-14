@@ -22,9 +22,9 @@
 use std::{collections::HashSet, ffi::c_int, sync::Arc};
 
 use adbc_core::{
+    blocking::{Connection as _, Database as _, Optionable},
     error::{Error, Result, Status},
     options::{AdbcVersion, InfoCode, OptionConnection, OptionDatabase, OptionValue},
-    Connection as _, Database as _, Optionable,
 };
 use adbc_driver_manager::ManagedDatabase;
 use arrow_array::{
@@ -165,7 +165,7 @@ impl Optionable for Database {
     }
 }
 
-impl adbc_core::Database for Database {
+impl adbc_core::blocking::Database for Database {
     type ConnectionType = Connection;
 
     fn new_connection(&self) -> Result<Self::ConnectionType> {

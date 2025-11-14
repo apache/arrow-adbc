@@ -29,12 +29,13 @@ use arrow_buffer::{OffsetBuffer, ScalarBuffer};
 use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef, UnionFields};
 
 use adbc_core::{
+    blocking::{Connection, Database, Driver, Optionable, Statement},
     constants,
     error::{Error, Result, Status},
     options::{
         InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement, OptionValue,
     },
-    schemas, Connection, Database, Driver, Optionable, PartitionedResult, Statement,
+    schemas, PartitionedResult,
 };
 
 #[derive(Debug)]
@@ -783,7 +784,7 @@ impl Connection for DummyConnection {
         Ok(reader)
     }
 
-    fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader> {
+    fn read_partition(&self, _partition: &[u8]) -> Result<impl RecordBatchReader> {
         let batch = get_table_data();
         let reader = SingleBatchReader::new(batch);
         Ok(reader)

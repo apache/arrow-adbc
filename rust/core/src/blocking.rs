@@ -15,87 +15,76 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use std::collections::HashSet;
+use std::sync::Arc;
+
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 
-use std::collections::HashSet;
-
 use crate::error::Result;
-use crate::options::{self, *};
-
-/// Each data partition is described by an opaque byte array and can be
-/// retrieved with [Connection::read_partition].
-pub type Partitions = Vec<Vec<u8>>;
-
-/// A partitioned result set as returned by [Statement::execute_partitions].
-#[derive(Debug, PartialEq, Eq)]
-pub struct PartitionedResult {
-    /// The result partitions.
-    pub partitions: Partitions,
-    /// The schema of the result set.
-    pub schema: Schema,
-    /// The number of rows affected if known, else -1.
-    pub rows_affected: i64,
-}
+use crate::executor::AsyncExecutor;
+use crate::non_blocking::PartitionedResult;
+use crate::options::{self, OptionConnection, OptionDatabase, OptionStatement, OptionValue};
+use crate::{
+    LocalAsyncConnection, LocalAsyncDatabase, LocalAsyncDriver, LocalAsyncOptionable,
+    LocalAsyncStatement,
+};
 
 /// Ability to configure an object by setting/getting options.
-#[trait_variant::make(AsyncOptionable: Send)]
-pub trait LocalAsyncOptionable {
+pub trait Optionable {
     type Option: AsRef<str>;
 
     /// Set a post-init option.
-    async fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()>;
+    fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()>;
 
     /// Get a string option value by key.
-    async fn get_option_string(&self, key: Self::Option) -> Result<String>;
+    fn get_option_string(&self, key: Self::Option) -> Result<String>;
 
     /// Get a bytes option value by key.
-    async fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>>;
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>>;
 
     /// Get an integer option value by key.
-    async fn get_option_int(&self, key: Self::Option) -> Result<i64>;
+    fn get_option_int(&self, key: Self::Option) -> Result<i64>;
 
     /// Get a float option value by key.
-    async fn get_option_double(&self, key: Self::Option) -> Result<f64>;
+    fn get_option_double(&self, key: Self::Option) -> Result<f64>;
 }
 
-/// A handle to an async ADBC driver.
-#[trait_variant::make(AsyncDriver: Send)]
-pub trait LocalAsyncDriver {
-    type DatabaseType: LocalAsyncDatabase;
+/// A handle to an ADBC driver.
+pub trait Driver {
+    type DatabaseType: Database;
 
     /// Allocate and initialize a new database without pre-init options.
-    async fn new_database(&mut self) -> Result<Self::DatabaseType>;
+    fn new_database(&mut self) -> Result<Self::DatabaseType>;
 
     /// Allocate and initialize a new database with pre-init options.
-    async fn new_database_with_opts(
+    fn new_database_with_opts(
         &mut self,
-        opts: Vec<(options::OptionDatabase, OptionValue)>,
+        opts: impl IntoIterator<Item = (OptionDatabase, OptionValue)>,
     ) -> Result<Self::DatabaseType>;
 }
 
-/// A handle to an async ADBC database.
+/// A handle to an ADBC database.
 ///
 /// Databases hold state shared by multiple connections. This typically means
 /// configuration and caches. For in-memory databases, it provides a place to
 /// hold ownership of the in-memory database.
 ///
 /// Databases must be kept alive as long as any connections exist.
-#[trait_variant::make(AsyncDatabase: Send)]
-pub trait LocalAsyncDatabase: LocalAsyncOptionable<Option = OptionDatabase> {
-    type ConnectionType: LocalAsyncConnection + Send;
+pub trait Database: Optionable<Option = OptionDatabase> {
+    type ConnectionType: Connection;
 
     /// Allocate and initialize a new connection without pre-init options.
-    async fn new_connection(&self) -> Result<Self::ConnectionType>;
+    fn new_connection(&self) -> Result<Self::ConnectionType>;
 
     /// Allocate and initialize a new connection with pre-init options.
-    async fn new_connection_with_opts(
+    fn new_connection_with_opts(
         &self,
-        opts: Vec<(options::OptionConnection, OptionValue)>,
+        opts: impl IntoIterator<Item = (options::OptionConnection, OptionValue)>,
     ) -> Result<Self::ConnectionType>;
 }
 
-/// A handle to an async ADBC connection.
+/// A handle to an ADBC connection.
 ///
 /// Connections provide methods for query execution, managing prepared
 /// statements, using transactions, and so on.
@@ -105,15 +94,14 @@ pub trait LocalAsyncDatabase: LocalAsyncOptionable<Option = OptionDatabase> {
 /// Connections should start in autocommit mode. They can be moved out by
 /// setting [options::OptionConnection::AutoCommit] to "false". Turning off
 /// autocommit allows customizing the isolation level.
-#[trait_variant::make(AsyncConnection: Send)]
-pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> {
-    type StatementType: LocalAsyncStatement;
+pub trait Connection: Optionable<Option = OptionConnection> {
+    type StatementType: Statement;
 
     /// Allocate and initialize a new statement.
-    async fn new_statement(&mut self) -> Result<Self::StatementType>;
+    fn new_statement(&mut self) -> Result<Self::StatementType>;
 
     /// Cancel the in-progress operation on a connection.
-    async fn cancel(&mut self) -> Result<()>;
+    fn cancel(&mut self) -> Result<()>;
 
     /// Get metadata about the database/driver.
     ///
@@ -140,7 +128,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     /// int32_bitmask (3)           | int32
     /// string_list (4)             | list\<utf8\>
     /// int32_to_int32_list_map (5) | map\<int32, list\<int32\>\>
-    async fn get_info(
+    fn get_info(
         &self,
         codes: Option<HashSet<options::InfoCode>>,
     ) -> Result<impl RecordBatchReader + Send>;
@@ -161,7 +149,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     ///   filter by name. May be a search pattern.
     /// - `table_type` - Only show tables matching one of the given table
     ///   types. If `None`, show tables of any type. Valid table types can be fetched
-    ///   from [AsyncConnection::get_table_types].
+    ///   from [Connection::get_table_types].
     /// - `column_name` - Only show columns with the given name. If
     ///   `None`, do not filter by name.  May be a search pattern..
     ///
@@ -243,7 +231,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     /// | fk_table                 | utf8 not null           |
     /// | fk_column_name           | utf8 not null           |
     ///
-    async fn get_objects(
+    fn get_objects(
         &self,
         depth: options::ObjectDepth,
         catalog: Option<&str>,
@@ -260,7 +248,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     /// - `catalog` - The catalog (or `None` if not applicable).
     /// - `db_schema` - The database schema (or `None` if not applicable).
     /// - `table_name` - The table name.
-    async fn get_table_schema(
+    fn get_table_schema(
         &self,
         catalog: Option<&str>,
         db_schema: Option<&str>,
@@ -276,7 +264,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     /// Field Name     | Field Type
     /// ---------------|--------------
     /// table_type     | utf8 not null
-    async fn get_table_types(&self) -> Result<impl RecordBatchReader + Send>;
+    fn get_table_types(&self) -> Result<impl RecordBatchReader + Send>;
 
     /// Get the names of statistics specific to this driver.
     ///
@@ -291,7 +279,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     ///
     /// # Since
     /// ADBC API revision 1.1.0
-    async fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send>;
+    fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send>;
 
     /// Get statistics about the data distribution of table(s).
     ///
@@ -336,7 +324,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     ///    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
     ///    values are for implementation-specific statistics.  For the definitions
     ///    of predefined statistic types, see [options::Statistics]. To get
-    ///    driver-specific statistic names, use [AsyncConnection::get_statistic_names].
+    ///    driver-specific statistic names, use [Connection::get_statistic_names].
     /// 3. If true, then the value is approximate or best-effort.
     ///
     /// VALUE_SCHEMA is a dense union with members:
@@ -351,7 +339,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     /// # Since
     ///
     /// ADBC API revision 1.1.0
-    async fn get_statistics(
+    fn get_statistics(
         &self,
         catalog: Option<&str>,
         db_schema: Option<&str>,
@@ -362,27 +350,24 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     /// Commit any pending transactions. Only used if autocommit is disabled.
     ///
     /// Behavior is undefined if this is mixed with SQL transaction statements.
-    async fn commit(&mut self) -> Result<()>;
+    fn commit(&mut self) -> Result<()>;
 
     /// Roll back any pending transactions. Only used if autocommit is disabled.
     ///
     /// Behavior is undefined if this is mixed with SQL transaction statements.
-    async fn rollback(&mut self) -> Result<()>;
+    fn rollback(&mut self) -> Result<()>;
 
     /// Retrieve a given partition of data.
     ///
-    /// A partition can be retrieved from [AsyncStatement::execute_partitions].
+    /// A partition can be retrieved from [Statement::execute_partitions].
     ///
     /// # Arguments
     ///
     /// - `partition` - The partition descriptor.
-    async fn read_partition(
-        &self,
-        partition: &[u8],
-    ) -> Result<impl RecordBatchReader + Send + 'static>;
+    fn read_partition(&self, partition: &[u8]) -> Result<impl RecordBatchReader + Send>;
 }
 
-/// A handle to an async ADBC statement.
+/// A handle to an ADBC statement.
 ///
 /// A statement is a container for all state needed to execute a database query,
 /// such as the query itself, parameters for prepared statements, driver
@@ -398,17 +383,16 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
 /// Multiple statements may be created from a single connection.
 /// However, the driver may block or error if they are used concurrently
 /// (whether from a single thread or multiple threads).
-#[trait_variant::make(AsyncStatement: Send)]
-pub trait LocalAsyncStatement: LocalAsyncOptionable<Option = OptionStatement> {
+pub trait Statement: Optionable<Option = OptionStatement> {
     /// Bind Arrow data. This can be used for bulk inserts or prepared
     /// statements.
-    async fn bind(&mut self, batch: RecordBatch) -> Result<()>;
+    fn bind(&mut self, batch: RecordBatch) -> Result<()>;
 
     /// Bind Arrow data. This can be used for bulk inserts or prepared
     /// statements.
     // TODO(alexandreyc): should we use a generic here instead of a trait object?
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567750972
-    async fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()>;
+    fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()>;
 
     /// Execute a statement and get the results.
     ///
@@ -416,7 +400,7 @@ pub trait LocalAsyncStatement: LocalAsyncOptionable<Option = OptionStatement> {
     // TODO(alexandreyc): is the Send bound absolutely necessary? same question
     // for all methods that return an impl RecordBatchReader
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567748242
-    async fn execute(&mut self) -> Result<impl RecordBatchReader + Send>;
+    fn execute(&mut self) -> Result<impl RecordBatchReader + Send>;
 
     /// Execute a statement that doesn’t have a result set and get the number
     /// of affected rows.
@@ -427,22 +411,22 @@ pub trait LocalAsyncStatement: LocalAsyncOptionable<Option = OptionStatement> {
     ///
     /// Will return the number of rows affected. If the affected row count is
     /// unknown or unsupported by the database, will return `None`.
-    async fn execute_update(&mut self) -> Result<Option<i64>>;
+    fn execute_update(&mut self) -> Result<Option<i64>>;
 
     /// Get the schema of the result set of a query without executing it.
     ///
     /// This invalidates any prior result sets.
     ///
     /// Depending on the driver, this may require first executing
-    /// [AsyncStatement::prepare].
+    /// [Statement::prepare].
     ///
     /// # Since
     ///
     /// ADBC API revision 1.1.0
-    async fn execute_schema(&mut self) -> Result<Schema>;
+    fn execute_schema(&mut self) -> Result<Schema>;
 
     /// Execute a statement and get the results as a partitioned result set.
-    async fn execute_partitions(&mut self) -> Result<PartitionedResult>;
+    fn execute_partitions(&mut self) -> Result<PartitionedResult>;
 
     /// Get the schema for bound parameters.
     ///
@@ -456,34 +440,354 @@ pub trait LocalAsyncStatement: LocalAsyncOptionable<Option = OptionStatement> {
     /// be an empty string. If the type cannot be determined, the type of
     /// the corresponding field will be NA (NullType).
     ///
-    /// This should be called after [AsyncStatement::prepare].
-    async fn get_parameter_schema(&self) -> Result<Schema>;
+    /// This should be called after [Statement::prepare].
+    fn get_parameter_schema(&self) -> Result<Schema>;
 
     /// Turn this statement into a prepared statement to be executed multiple
     /// times.
     ///
     /// This invalidates any prior result sets.
-    async fn prepare(&mut self) -> Result<()>;
+    fn prepare(&mut self) -> Result<()>;
 
     /// Set the SQL query to execute.
     ///
-    /// The query can then be executed with [AsyncStatement::execute]. For queries
-    /// expected to be executed repeatedly, call [AsyncStatement::prepare] first.
-    async fn set_sql_query(&mut self, query: &str) -> Result<()>;
+    /// The query can then be executed with [Statement::execute]. For queries
+    /// expected to be executed repeatedly, call [Statement::prepare] first.
+    fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()>;
 
     /// Set the Substrait plan to execute.
     ///
-    /// The query can then be executed with [AsyncStatement::execute]. For queries
-    /// expected to be executed repeatedly, call [AsyncStatement::prepare] first.
-    async fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<()>;
+    /// The query can then be executed with [Statement::execute]. For queries
+    /// expected to be executed repeatedly, call [Statement::prepare] first.
+    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()>;
 
     /// Cancel execution of an in-progress query.
     ///
-    /// This can be called during [AsyncStatement::execute] (or similar), or while
+    /// This can be called during [Statement::execute] (or similar), or while
     /// consuming a result set returned from such.
     ///
     /// # Since
     ///
     /// ADBC API revision 1.1.0
-    async fn cancel(&mut self) -> Result<()>;
+    fn cancel(&mut self) -> Result<()>;
+}
+
+pub struct SyncDriverWrapper<A, D> {
+    inner: D,
+    executor: Arc<A>,
+}
+
+impl<A: AsyncExecutor, D: Default> Default for SyncDriverWrapper<A, D> {
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+            executor: Arc::new(A::new(Default::default()).expect("failed to create executor")),
+        }
+    }
+}
+
+impl<A, D> Driver for SyncDriverWrapper<A, D>
+where
+    A: AsyncExecutor,
+    D: LocalAsyncDriver,
+    D::DatabaseType: LocalAsyncDatabase + LocalAsyncOptionable<Option = OptionDatabase>,
+    <D::DatabaseType as LocalAsyncDatabase>::ConnectionType:
+        LocalAsyncConnection + LocalAsyncOptionable<Option = OptionConnection>,
+    <<D::DatabaseType as LocalAsyncDatabase>::ConnectionType as LocalAsyncConnection>::StatementType: LocalAsyncOptionable<Option = OptionStatement>,
+{
+    type DatabaseType = SyncDatabaseWrapper<A, D::DatabaseType>;
+
+    fn new_database(&mut self) -> Result<Self::DatabaseType> {
+        let db = self.executor.block_on(self.inner.new_database())?;
+
+        Ok(SyncDatabaseWrapper { inner: db, executor: self.executor.clone() })
+    }
+
+    fn new_database_with_opts(
+        &mut self,
+        opts: impl IntoIterator<Item = (OptionDatabase, OptionValue)>,
+    ) -> Result<Self::DatabaseType> {
+        let db = self.executor.block_on(self.inner.new_database_with_opts(opts.into_iter().collect()))?;
+
+        Ok(SyncDatabaseWrapper { inner: db, executor: self.executor.clone() })
+    }
+}
+
+pub struct SyncDatabaseWrapper<A, DB> {
+    inner: DB,
+    executor: Arc<A>,
+}
+
+impl<A, DB> Optionable for SyncDatabaseWrapper<A, DB>
+where
+    A: AsyncExecutor,
+    DB: LocalAsyncOptionable<Option = OptionDatabase>,
+{
+    type Option = OptionDatabase;
+
+    fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
+        self.executor.block_on(self.inner.set_option(key, value))
+    }
+
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
+        self.executor.block_on(self.inner.get_option_string(key))
+    }
+
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
+        self.executor.block_on(self.inner.get_option_bytes(key))
+    }
+
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
+        self.executor.block_on(self.inner.get_option_int(key))
+    }
+
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
+        self.executor.block_on(self.inner.get_option_double(key))
+    }
+}
+
+impl<A, DB> Database for SyncDatabaseWrapper<A, DB>
+where
+    A: AsyncExecutor,
+    DB: LocalAsyncDatabase + LocalAsyncOptionable<Option = OptionDatabase>,
+    DB::ConnectionType: LocalAsyncConnection + LocalAsyncOptionable<Option = OptionConnection>,
+    <DB::ConnectionType as LocalAsyncConnection>::StatementType:
+        LocalAsyncOptionable<Option = OptionStatement>,
+{
+    type ConnectionType = SyncConnectionWrapper<A, DB::ConnectionType>;
+
+    fn new_connection(&self) -> Result<Self::ConnectionType> {
+        let conn = self.executor.block_on(self.inner.new_connection())?;
+
+        Ok(SyncConnectionWrapper {
+            inner: conn,
+            executor: self.executor.clone(),
+        })
+    }
+
+    fn new_connection_with_opts(
+        &self,
+        opts: impl IntoIterator<Item = (options::OptionConnection, OptionValue)>,
+    ) -> Result<Self::ConnectionType> {
+        let conn = self.executor.block_on(
+            self.inner
+                .new_connection_with_opts(opts.into_iter().collect()),
+        )?;
+
+        Ok(SyncConnectionWrapper {
+            inner: conn,
+            executor: self.executor.clone(),
+        })
+    }
+}
+
+pub struct SyncConnectionWrapper<A, Conn> {
+    inner: Conn,
+    executor: Arc<A>,
+}
+
+impl<A, Conn> Optionable for SyncConnectionWrapper<A, Conn>
+where
+    A: AsyncExecutor,
+    Conn: LocalAsyncOptionable<Option = OptionConnection>,
+{
+    type Option = OptionConnection;
+
+    fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
+        self.executor.block_on(self.inner.set_option(key, value))
+    }
+
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
+        self.executor.block_on(self.inner.get_option_string(key))
+    }
+
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
+        self.executor.block_on(self.inner.get_option_bytes(key))
+    }
+
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
+        self.executor.block_on(self.inner.get_option_int(key))
+    }
+
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
+        self.executor.block_on(self.inner.get_option_double(key))
+    }
+}
+
+impl<A, Conn> Connection for SyncConnectionWrapper<A, Conn>
+where
+    A: AsyncExecutor,
+    Conn: LocalAsyncConnection + LocalAsyncOptionable<Option = OptionConnection>,
+    Conn::StatementType: LocalAsyncOptionable<Option = OptionStatement>,
+{
+    type StatementType = SyncStatementWrapper<A, Conn::StatementType>;
+
+    fn new_statement(&mut self) -> Result<Self::StatementType> {
+        let stmt = self.executor.block_on(self.inner.new_statement())?;
+
+        Ok(SyncStatementWrapper {
+            inner: stmt,
+            executor: self.executor.clone(),
+        })
+    }
+
+    fn cancel(&mut self) -> Result<()> {
+        self.executor.block_on(self.inner.cancel())
+    }
+
+    fn get_info(
+        &self,
+        codes: Option<HashSet<options::InfoCode>>,
+    ) -> Result<impl RecordBatchReader + Send> {
+        self.executor.block_on(self.inner.get_info(codes))
+    }
+
+    fn get_objects(
+        &self,
+        depth: options::ObjectDepth,
+        catalog: Option<&str>,
+        db_schema: Option<&str>,
+        table_name: Option<&str>,
+        table_type: Option<Vec<&str>>,
+        column_name: Option<&str>,
+    ) -> Result<impl RecordBatchReader + Send> {
+        self.executor.block_on(self.inner.get_objects(
+            depth,
+            catalog,
+            db_schema,
+            table_name,
+            table_type,
+            column_name,
+        ))
+    }
+
+    fn get_table_schema(
+        &self,
+        catalog: Option<&str>,
+        db_schema: Option<&str>,
+        table_name: &str,
+    ) -> Result<Schema> {
+        self.executor
+            .block_on(self.inner.get_table_schema(catalog, db_schema, table_name))
+    }
+
+    fn get_table_types(&self) -> Result<impl RecordBatchReader + Send> {
+        self.executor.block_on(self.inner.get_table_types())
+    }
+
+    fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send> {
+        self.executor.block_on(self.inner.get_statistic_names())
+    }
+
+    fn get_statistics(
+        &self,
+        catalog: Option<&str>,
+        db_schema: Option<&str>,
+        table_name: Option<&str>,
+        approximate: bool,
+    ) -> Result<impl RecordBatchReader + Send> {
+        self.executor.block_on(self.inner.get_statistics(
+            catalog,
+            db_schema,
+            table_name,
+            approximate,
+        ))
+    }
+
+    fn commit(&mut self) -> Result<()> {
+        self.executor.block_on(self.inner.commit())
+    }
+
+    fn rollback(&mut self) -> Result<()> {
+        self.executor.block_on(self.inner.rollback())
+    }
+
+    fn read_partition(&self, partition: &[u8]) -> Result<impl RecordBatchReader + Send> {
+        self.executor.block_on(self.inner.read_partition(partition))
+    }
+}
+
+pub struct SyncStatementWrapper<A, T> {
+    inner: T,
+    executor: Arc<A>,
+}
+
+impl<A, Stmt> Optionable for SyncStatementWrapper<A, Stmt>
+where
+    A: AsyncExecutor,
+    Stmt: LocalAsyncOptionable<Option = OptionStatement>,
+{
+    type Option = OptionStatement;
+
+    fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
+        self.executor.block_on(self.inner.set_option(key, value))
+    }
+
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
+        self.executor.block_on(self.inner.get_option_string(key))
+    }
+
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
+        self.executor.block_on(self.inner.get_option_bytes(key))
+    }
+
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
+        self.executor.block_on(self.inner.get_option_int(key))
+    }
+
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
+        self.executor.block_on(self.inner.get_option_double(key))
+    }
+}
+
+impl<A, Stmt> Statement for SyncStatementWrapper<A, Stmt>
+where
+    A: AsyncExecutor,
+    Stmt: LocalAsyncStatement + LocalAsyncOptionable<Option = OptionStatement>,
+{
+    fn bind(&mut self, batch: RecordBatch) -> Result<()> {
+        self.executor.block_on(self.inner.bind(batch))
+    }
+
+    fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
+        self.executor.block_on(self.inner.bind_stream(reader))
+    }
+
+    fn execute(&mut self) -> Result<impl RecordBatchReader + Send> {
+        self.executor.block_on(self.inner.execute())
+    }
+
+    fn execute_update(&mut self) -> Result<Option<i64>> {
+        self.executor.block_on(self.inner.execute_update())
+    }
+
+    fn execute_schema(&mut self) -> Result<Schema> {
+        self.executor.block_on(self.inner.execute_schema())
+    }
+
+    fn execute_partitions(&mut self) -> Result<PartitionedResult> {
+        self.executor.block_on(self.inner.execute_partitions())
+    }
+
+    fn get_parameter_schema(&self) -> Result<Schema> {
+        self.executor.block_on(self.inner.get_parameter_schema())
+    }
+
+    fn prepare(&mut self) -> Result<()> {
+        self.executor.block_on(self.inner.prepare())
+    }
+
+    fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()> {
+        self.executor
+            .block_on(self.inner.set_sql_query(query.as_ref()))
+    }
+
+    fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()> {
+        self.executor
+            .block_on(self.inner.set_substrait_plan(plan.as_ref()))
+    }
+
+    fn cancel(&mut self) -> Result<()> {
+        self.executor.block_on(self.inner.cancel())
+    }
 }
