@@ -17,9 +17,9 @@
 
 use arrow_schema::{Field, Schema};
 
+use adbc_core::blocking::{Connection, Database, Driver, Optionable, Statement};
+use adbc_core::error::Status;
 use adbc_core::options::{AdbcVersion, OptionConnection, OptionDatabase};
-use adbc_core::{error::Status, Driver, Optionable};
-use adbc_core::{Connection, Database, Statement};
 use adbc_driver_manager::{ManagedDatabase, ManagedDriver};
 
 mod common;
