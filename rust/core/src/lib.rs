@@ -31,10 +31,10 @@
 //! # Native Rust drivers
 //!
 //! Native Rust drivers will implement the abstract API consisting of the traits:
-//! - [Driver]
-//! - [Database]
-//! - [Connection]
-//! - [Statement]
+//! - [AsyncDriver]
+//! - [AsyncDatabase]
+//! - [AsyncConnection]
+//! - [AsyncStatement]
 //!
 //! For drivers implemented in Rust, using these will be more efficient and
 //! safe, since it avoids the overhead of going through C FFI.
