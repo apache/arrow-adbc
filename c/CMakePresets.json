@@ -39,6 +39,44 @@
                 "ADBC_USE_ASAN": "OFF",
                 "ADBC_USE_UBSAN": "OFF"
             }
+        },
+        {
+            "name": "vcpkg",
+            "hidden": true,
+            "generator": "Ninja",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "ADBC_BUILD_TESTS": "ON",
+                "ADBC_DRIVER_FLIGHTSQL": "ON",
+                "ADBC_DRIVER_MANAGER": "ON",
+                "ADBC_DRIVER_POSTGRESQL": "ON",
+                "ADBC_DRIVER_SNOWFLAKE": "ON",
+                "ADBC_DRIVER_SQLITE": "ON",
+                "ADBC_BUILD_SHARED": "ON",
+                "ADBC_BUILD_STATIC": "OFF",
+                "ADBC_USE_ASAN": "OFF",
+                "ADBC_USE_UBSAN": "OFF"
+            }
+        },
+        {
+            "name": "windows-debug",
+            "displayName": "Windows x64 Debug",
+            "inherits": "vcpkg",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "windows-release",
+            "displayName": "Windows x64 Release",
+            "inherits": "vcpkg",
+            "binaryDir": "${sourceDir}/build-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
         }
     ],
     "testPresets": [
