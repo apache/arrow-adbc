@@ -1927,8 +1927,8 @@ fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
     if uri.len() <= idx + 2 {
         return Ok((driver, uri));
     }
-    
-    if &uri[idx..idx + 2] == ":/" {        
+
+    if &uri[idx..idx + 2] == ":/" {
         // scheme is also driver
         return Ok((driver, uri));
     }
