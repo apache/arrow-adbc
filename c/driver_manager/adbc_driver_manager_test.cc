@@ -40,6 +40,13 @@ std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& filena
 std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
 std::filesystem::path InternalAdbcUserConfigDir();
 
+struct ParseDriverUriResult {
+  std::string_view driver;
+  std::optional<std::string_view> uri;
+};
+
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str);
+
 // Tests of the SQLite example driver, except using the driver manager
 
 namespace adbc {
@@ -411,6 +418,29 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
 
   auto output = InternalAdbcParsePath(joined.str());
   EXPECT_THAT(output, ::testing::ElementsAreArray(paths));
+}
+
+TEST(AdbcDriverManagerInternal, InternalAdbcParseDriverUri) {
+  std::vector<std::pair<std::string, std::optional<ParseDriverUriResult>>> uris = {
+    {"sqlite:file::memory:", {{"sqlite", "file::memory:"}}},
+    {"sqlite:file::memory:?cache=shared", {{"sqlite", "file::memory:?cache=shared"}}},
+    {"postgresql://a:b@localhost:9999/nonexistent", {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent"}}}
+  };
+
+  auto cmp = [](std::optional<ParseDriverUriResult> a, std::optional<ParseDriverUriResult> b){
+    EXPECT_EQ(a->driver, b->driver);
+    if (!a->uri) {
+      EXPECT_FALSE(b->uri);    
+    } else {
+      EXPECT_EQ(*a->uri, *b->uri);
+    }
+  };
+
+  for (const auto& [uri, expected] : uris) {
+    std::string_view uri_view = uri;
+    auto result = InternalAdbcParseDriverUri(uri_view);
+    cmp(result, expected);
+  }
 }
 
 class DriverManifest : public ::testing::Test {

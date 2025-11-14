@@ -62,6 +62,14 @@ ADBC_EXPORT
 std::filesystem::path InternalAdbcSystemConfigDir();
 #endif  // !defined(_WIN32)
 
+struct ParseDriverUriResult {
+  std::string_view driver;
+  std::optional<std::string_view> uri;
+};
+
+ADBC_EXPORT
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str);
+
 namespace {
 
 /// \brief Where a search path came from (for error reporting)
@@ -1540,11 +1548,7 @@ std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver
   return entrypoint;
 }
 
-struct ParseDriverUriResult {
-  std::string_view driver;
-  std::optional<std::string_view> uri;
-};
-
+ADBC_EXPORT
 std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str) {
   std::string::size_type pos = str.find(":");
   if (pos == std::string::npos) {
