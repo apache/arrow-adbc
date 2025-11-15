@@ -25,7 +25,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
 {
     /// <summary>
     /// HTTP message handler that performs mandatory token exchange for non-Databricks tokens.
-    /// Uses a non-blocking approach to exchange tokens in the background.
+    /// Blocks requests while exchanging tokens to ensure the exchanged token is used.
+    /// Falls back to the original token if the exchange fails.
     /// </summary>
     internal class MandatoryTokenExchangeDelegatingHandler : DelegatingHandler
     {
@@ -34,8 +35,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         private readonly ITokenExchangeClient _tokenExchangeClient;
         private string? _currentToken;
         private string? _lastSeenToken;
-
-        protected Task? _pendingTokenTask = null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MandatoryTokenExchangeDelegatingHandler"/> class.
@@ -65,12 +64,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 return false;
             }
 
-            // If we already have a pending token task, don't start another exchange
-            if (_pendingTokenTask != null)
-            {
-                return false;
-            }
-
             // If we can't parse the token as JWT, default to use existing token
             if (!JwtTokenDecoder.TryGetIssuer(bearerToken, out string issuer))
             {
@@ -86,22 +79,21 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         }
 
         /// <summary>
-        /// Starts token exchange in the background if needed.
+        /// Performs token exchange if needed.
         /// </summary>
         /// <param name="bearerToken">The bearer token to potentially exchange.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        private void StartTokenExchangeIfNeeded(string bearerToken, CancellationToken cancellationToken)
+        private async Task PerformTokenExchangeIfNeeded(string bearerToken, CancellationToken cancellationToken)
         {
-            if (_lastSeenToken == bearerToken)
-            {
-                return;
-            }
-
             bool needsExchange;
             lock (_tokenLock)
             {
-                needsExchange = NeedsTokenExchange(bearerToken);
+                if (_lastSeenToken == bearerToken)
+                {
+                    return;
+                }
 
+                needsExchange = NeedsTokenExchange(bearerToken);
                 _lastSeenToken = bearerToken;
             }
 
@@ -110,32 +102,22 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 return;
             }
 
-            // Start token exchange in the background
-            _pendingTokenTask = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    TokenExchangeResponse response = await _tokenExchangeClient.ExchangeTokenAsync(
-                        bearerToken,
-                        _identityFederationClientId,
-                        cancellationToken);
+                TokenExchangeResponse response = await _tokenExchangeClient.ExchangeTokenAsync(
+                    bearerToken,
+                    _identityFederationClientId,
+                    cancellationToken);
 
-                    lock (_tokenLock)
-                    {
-                        _currentToken = response.AccessToken;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Mandatory token exchange failed: {ex.Message}");
-                }
-            }, cancellationToken).ContinueWith(_ =>
-            {
                 lock (_tokenLock)
                 {
-                    _pendingTokenTask = null;
+                    _currentToken = response.AccessToken;
                 }
-            }, TaskScheduler.Default);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Mandatory token exchange failed: {ex.Message}. Continuing with original token.");
+            }
         }
 
         /// <summary>
@@ -149,7 +131,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             string? bearerToken = request.Headers.Authorization?.Parameter;
             if (!string.IsNullOrEmpty(bearerToken))
             {
-                StartTokenExchangeIfNeeded(bearerToken!, cancellationToken);
+                await PerformTokenExchangeIfNeeded(bearerToken!, cancellationToken);
 
                 string tokenToUse;
                 lock (_tokenLock)
@@ -163,27 +145,5 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
             return await base.SendAsync(request, cancellationToken);
         }
 
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                // Wait for any pending token task to complete to avoid leaking tasks
-                if (_pendingTokenTask != null)
-                {
-                    try
-                    {
-                        // Try to wait for the task to complete, but don't block indefinitely
-                        _pendingTokenTask.Wait(TimeSpan.FromSeconds(10));
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log any exceptions during disposal
-                        System.Diagnostics.Debug.WriteLine($"Exception during token task cleanup: {ex.Message}");
-                    }
-                }
-            }
-
-            base.Dispose(disposing);
-        }
     }
 }
