@@ -36,7 +36,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
         private string? _currentToken;
         private string? _lastSeenToken;
         private Task? _pendingExchange = null;
-        private string? _tokenBeingExchanged = null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MandatoryTokenExchangeDelegatingHandler"/> class.
@@ -119,7 +118,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
 
                 // Start new exchange for our token
                 _lastSeenToken = bearerToken;
-                _tokenBeingExchanged = bearerToken;
                 _pendingExchange = DoExchangeAsync(bearerToken, cancellationToken);
                 exchangeToAwait = _pendingExchange;
             }
@@ -155,7 +153,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Auth
                 lock (_tokenLock)
                 {
                     _pendingExchange = null;
-                    _tokenBeingExchanged = null;
                 }
             }
         }
