@@ -776,7 +776,8 @@ AdbcStatusCode PostgresStatement::GetParameterSchema(struct ArrowSchema* schema,
 
   ArrowSchemaInit(schema);
 
-  RAISE_NA(param_types.SetSchema(schema, std::string(connection_->VendorName())));
+  CHECK_NA(INTERNAL, param_types.SetSchema(schema, std::string(connection_->VendorName())),
+           error);
 
   return ADBC_STATUS_OK;
 }
