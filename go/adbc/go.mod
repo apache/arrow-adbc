@@ -49,7 +49,7 @@ require (
 	modernc.org/sqlite v1.39.1
 )
 
-replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.0
+replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.1
 
 require (
 	cloud.google.com/go v0.121.6 // indirect
