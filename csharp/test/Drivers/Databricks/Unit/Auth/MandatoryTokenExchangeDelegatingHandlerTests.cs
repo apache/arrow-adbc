@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -125,7 +126,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
         }
 
         [Fact]
-        public async Task SendAsync_WithExternalToken_StartsTokenExchangeInBackground()
+        public async Task SendAsync_WithExternalToken_BlocksUntilTokenExchangeCompletes()
         {
             var tokenExchangeDelay = TimeSpan.FromMilliseconds(500);
             var handler = new MandatoryTokenExchangeDelegatingHandler(
@@ -165,23 +166,20 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
 
             var httpClient = new HttpClient(handler);
 
-            // First request should use original token and start background exchange
+            // First request should block until token exchange completes, then use exchanged token
             var startTime = DateTime.UtcNow;
             var response = await httpClient.SendAsync(request);
             var requestDuration = DateTime.UtcNow - startTime;
 
             Assert.Equal(expectedResponse, response);
-            Assert.True(requestDuration < tokenExchangeDelay,
-                $"Request took {requestDuration.TotalMilliseconds}ms, which is longer than the token exchange delay of {tokenExchangeDelay.TotalMilliseconds}ms");
+            Assert.True(requestDuration >= tokenExchangeDelay,
+                $"Request took {requestDuration.TotalMilliseconds}ms, which is shorter than the token exchange delay of {tokenExchangeDelay.TotalMilliseconds}ms. Expected blocking behavior.");
 
             Assert.NotNull(capturedRequest);
             Assert.Equal("Bearer", capturedRequest.Headers.Authorization?.Scheme);
-            Assert.Equal(_externalToken, capturedRequest.Headers.Authorization?.Parameter); // First request uses original token
+            Assert.Equal(_exchangedToken, capturedRequest.Headers.Authorization?.Parameter); // First request uses exchanged token
 
-            // Wait for background task to complete
-            await Task.Delay(tokenExchangeDelay + TimeSpan.FromMilliseconds(1000));
-
-            // Make a second request - this should use the exchanged token
+            // Make a second request - this should also use the exchanged token (cached)
             var request2 = new HttpRequestMessage(HttpMethod.Get, "https://example.com/2");
             request2.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _externalToken);
             HttpRequestMessage? capturedRequest2 = null;
@@ -198,8 +196,9 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
 
             Assert.NotNull(capturedRequest2);
             Assert.Equal("Bearer", capturedRequest2.Headers.Authorization?.Scheme);
-            Assert.Equal(_exchangedToken, capturedRequest2.Headers.Authorization?.Parameter); // Second request uses exchanged token
+            Assert.Equal(_exchangedToken, capturedRequest2.Headers.Authorization?.Parameter); // Second request uses cached exchanged token
 
+            // Token exchange should only be called once
             _mockTokenExchangeClient.Verify(
                 x => x.ExchangeTokenAsync(_externalToken, _identityFederationClientId, It.IsAny<CancellationToken>()),
                 Times.Once);
@@ -396,11 +395,15 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
                 ExpiryTime = DateTime.UtcNow.AddHours(1)
             };
 
-            // Add a small delay to token exchange to simulate concurrent access
+            var exchangeCallCount = 0;
+            var capturedRequests = new System.Collections.Concurrent.ConcurrentBag<HttpRequestMessage>();
+
+            // Add a delay to token exchange to ensure concurrent requests arrive while exchange is in progress
             _mockTokenExchangeClient
                 .Setup(x => x.ExchangeTokenAsync(_externalToken, _identityFederationClientId, It.IsAny<CancellationToken>()))
                 .Returns(async () =>
                 {
+                    Interlocked.Increment(ref exchangeCallCount);
                     await Task.Delay(200);
                     return tokenExchangeResponse;
                 });
@@ -410,6 +413,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
                     "SendAsync",
                     ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((req, ct) => capturedRequests.Add(req))
                 .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
 
             var httpClient = new HttpClient(handler);
@@ -424,13 +428,22 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
 
             await Task.WhenAll(tasks);
 
-            // Wait for any background token exchange to complete
-            await Task.Delay(1000);
-
             // Token exchange should only be called once despite concurrent requests
             _mockTokenExchangeClient.Verify(
                 x => x.ExchangeTokenAsync(_externalToken, _identityFederationClientId, It.IsAny<CancellationToken>()),
                 Times.Once);
+
+            Assert.Equal(1, exchangeCallCount);
+
+            // All requests should have been sent
+            Assert.Equal(3, capturedRequests.Count);
+
+            // All concurrent requests should use the exchanged token
+            // (they all wait for the same _pendingExchange task)
+            foreach (var request in capturedRequests)
+            {
+                Assert.Equal(_exchangedToken, request.Headers.Authorization?.Parameter);
+            }
         }
 
         [Fact]
