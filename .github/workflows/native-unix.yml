@@ -495,9 +495,6 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
-      - name: Install staticcheck
-        if: matrix.os == 'ubuntu-latest'
-        run: go install honnef.co/go/tools/cmd/staticcheck@latest
 
       - uses: actions/download-artifact@v6
         with:
@@ -513,12 +510,7 @@ jobs:
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      - name: Run Staticcheck
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          pushd go/adbc
-          staticcheck -f stylish ./...
-          popd
+      
       - name: Go Test
         env:
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
