@@ -510,7 +510,7 @@ jobs:
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/${{ matrix.goarch }}/bin:$PATH
           ./ci/scripts/go_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
-      
+
       - name: Go Test
         env:
           SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
