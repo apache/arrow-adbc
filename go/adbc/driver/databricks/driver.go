@@ -32,6 +32,7 @@ package databricks
 import (
 	"context"
 	"runtime/debug"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
@@ -42,7 +43,6 @@ const (
 	// Connection options
 	OptionServerHostname = "databricks.server_hostname"
 	OptionHTTPPath       = "databricks.http_path"
-	OptionAccessToken    = "databricks.access_token"
 	OptionPort           = "databricks.port"
 	OptionCatalog        = "databricks.catalog"
 	OptionSchema         = "databricks.schema"
@@ -57,14 +57,25 @@ const (
 	OptionSSLMode     = "databricks.ssl_mode"
 	OptionSSLRootCert = "databricks.ssl_root_cert"
 
-	// OAuth options (for future expansion)
-	OptionOAuthClientID     = "databricks.oauth.client_id"
-	OptionOAuthClientSecret = "databricks.oauth.client_secret"
-	OptionOAuthRefreshToken = "databricks.oauth.refresh_token"
+	// Auth: Type
+	OptionAuthType                     = "databricks.auth_type"
+	OptionValueAuthTypeOAuthM2M        = "oauth-m2m"
+	OptionValueAuthTypeExternalBrowser = "external-browser"
+	OptionValueAuthTypePAT             = "pat"
+
+	// Auth: OAuth
+	OptionOAuthClientID          = "databricks.oauth.client_id"
+	OptionOAuthClientSecret      = "databricks.oauth.client_secret"
+	OptionOAuthRefreshToken      = "databricks.oauth.refresh_token"
+	OptionExternalBrowserTimeout = "databricks.oauth.external_browser.timeout"
+
+	// Auth: PAT
+	OptionAccessToken = "databricks.access_token"
 
 	// Default values
-	DefaultPort    = 443
-	DefaultSSLMode = "require"
+	DefaultPort                   = 443
+	DefaultSSLMode                = "require"
+	DefaultExternalBrowserTimeout = 1 * time.Minute
 )
 
 var (

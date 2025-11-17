@@ -34,6 +34,8 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	dbsql "github.com/databricks/databricks-sql-go"
+	"github.com/databricks/databricks-sql-go/auth/oauth/m2m"
+	"github.com/databricks/databricks-sql-go/auth/oauth/u2m"
 )
 
 const (
@@ -52,7 +54,6 @@ type databaseImpl struct {
 	// Connection parameters
 	serverHostname string
 	httpPath       string
-	accessToken    string
 	port           int
 	catalog        string
 	schema         string
@@ -69,10 +70,15 @@ type databaseImpl struct {
 	sslCertPool *x509.CertPool
 	sslInsecure bool
 
-	// OAuth options (for future expansion)
+	// Auth
+	authType string
+
+	accessToken string
+
 	oauthClientID     string
 	oauthClientSecret string
 	oauthRefreshToken string
+	oauthU2MTimeout   time.Duration
 }
 
 func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
@@ -90,18 +96,58 @@ func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
 		}
 	}
 
-	// FIXME: Support other auth methods
-	if d.accessToken == "" {
-		return nil, adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  "access token is required",
-		}
-	}
-
 	opts := []dbsql.ConnOption{
-		dbsql.WithAccessToken(d.accessToken),
 		dbsql.WithServerHostname(d.serverHostname),
 		dbsql.WithHTTPPath(d.httpPath),
+	}
+
+	// Handle Auth configurations and validate based on user selected auth type
+	switch d.authType {
+	case OptionValueAuthTypePAT:
+		if d.accessToken == "" {
+			return nil, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("access token is required when using auth type '%s'. Set this via '%s'.", OptionValueAuthTypePAT, OptionAccessToken),
+			}
+		}
+		opts = append(opts, dbsql.WithAccessToken(d.accessToken))
+	case OptionValueAuthTypeOAuthM2M:
+		if d.oauthClientID == "" {
+			return nil, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("client ID is required when using auth type '%s'. Set this via '%s'.", OptionValueAuthTypeOAuthM2M, OptionOAuthClientID),
+			}
+		}
+		if d.oauthClientSecret == "" {
+			return nil, adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("client secret is required when using auth type '%s'. Set this via '%s'.", OptionValueAuthTypeOAuthM2M, OptionOAuthClientSecret),
+			}
+		}
+		authenticator := m2m.NewAuthenticator(
+			d.oauthClientID,
+			d.oauthClientSecret,
+			d.serverHostname,
+		)
+		opts = append(opts, dbsql.WithAuthenticator(authenticator))
+	case OptionValueAuthTypeExternalBrowser:
+		timeout := d.oauthU2MTimeout
+		if timeout == 0 {
+			timeout = DefaultExternalBrowserTimeout
+		}
+		authenticator, err := u2m.NewAuthenticator(d.serverHostname, timeout)
+		if err != nil {
+			return nil, adbc.Error{
+				Code: adbc.StatusInvalidState,
+				Msg:  fmt.Sprintf("failed to initialize authenticator: %v", err),
+			}
+		}
+		opts = append(opts, dbsql.WithAuthenticator(authenticator))
+	default:
+		return nil, adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  fmt.Sprintf("missing required option: '%s'", OptionAuthType),
+		}
 	}
 
 	// Validate and set custom port
@@ -296,6 +342,8 @@ func (d *databaseImpl) SetOption(key, value string) error {
 	// We need to re-initialize the db/connection pool if options change
 	d.needsRefresh = true
 	switch key {
+	case OptionAuthType:
+		d.authType = value
 	case OptionServerHostname:
 		d.serverHostname = value
 	case OptionHTTPPath:
@@ -412,6 +460,17 @@ func (d *databaseImpl) SetOption(key, value string) error {
 		d.oauthClientSecret = value
 	case OptionOAuthRefreshToken:
 		d.oauthRefreshToken = value
+	case OptionExternalBrowserTimeout:
+		if value != "" {
+			timeout, err := time.ParseDuration(value)
+			if err != nil {
+				return adbc.Error{
+					Code: adbc.StatusInvalidArgument,
+					Msg:  fmt.Sprintf("invalid external browser auth timeout: %v", err),
+				}
+			}
+			d.oauthU2MTimeout = timeout
+		}
 	default:
 		return d.DatabaseImplBase.SetOption(key, value)
 	}
