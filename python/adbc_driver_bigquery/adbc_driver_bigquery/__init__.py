@@ -224,7 +224,9 @@ def connect(
         Initial database connection parameters.
     """
     kwargs = (db_kwargs or {}).copy()
-    return adbc_driver_manager.AdbcDatabase(driver=_driver_path(), **kwargs)
+    dpath = _driver_path()
+    print(f"Using BigQuery ADBC driver at: {dpath}")
+    return adbc_driver_manager.AdbcDatabase(driver=dpath, **kwargs)
 
 
 @functools.lru_cache
