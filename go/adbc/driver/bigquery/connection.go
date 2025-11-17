@@ -531,9 +531,13 @@ func (c *connectionImpl) SetOption(key string, value string) error {
 	case OptionStringImpersonateTargetPrincipal:
 		c.impersonateTargetPrincipal = value
 	case OptionStringImpersonateDelegates:
-		c.impersonateDelegates = strings.Split(value, ",")
+		if value != "" {
+			c.impersonateDelegates = strings.Split(value, ",")
+		}
 	case OptionStringImpersonateScopes:
-		c.impersonateScopes = strings.Split(value, ",")
+		if value != "" {
+			c.impersonateScopes = strings.Split(value, ",")
+		}
 	case OptionStringImpersonateLifetime:
 		dur, err := time.ParseDuration(value)
 		if err != nil {
@@ -701,8 +705,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 
 func (c *connectionImpl) hasImpersonationOptions() bool {
 	return c.impersonateTargetPrincipal != "" ||
-		len(c.impersonateDelegates) > 0 ||
-		len(c.impersonateScopes) > 0
+		len(c.impersonateDelegates) > 0
 }
 
 var (
