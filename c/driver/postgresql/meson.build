@@ -28,7 +28,7 @@ adbc_postgres_driver_lib = library(
         'result_reader.cc',
         'statement.cc',
     ],
-    include_directories: [include_dir, c_dir],
+    include_directories: [include_dir, c_dir, vendor_dir],
     link_with: [adbc_common_lib, adbc_framework_lib],
     dependencies: [nanoarrow_dep, fmt_dep, libpq_dep],
 )
