@@ -64,7 +64,7 @@ foreach name, conf : postgres_tests
     exc = executable(
         'adbc-' + name + '-test',
         sources: conf['sources'],
-        include_directories: [include_dir, driver_dir, c_dir],
+        include_directories: [include_dir, driver_dir, c_dir, safe_math_dir],
         link_with: [adbc_common_lib, adbc_postgres_driver_lib],
         dependencies: [libpq_dep, adbc_validation_dep],
     )
