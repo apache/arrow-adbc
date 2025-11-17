@@ -56,7 +56,7 @@ shared = "adbc_driver_sqlite"
 
     monkeypatch.setenv("ADBC_DRIVER_PATH", str(tmp_path))
 
-    with adbc_driver_manager.dbapi.connect(uri="sqlite:file::memory:") as conn:
+    with adbc_driver_manager.dbapi.connect("sqlite:file::memory:") as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT sqlite_version()")
             assert cursor.fetchone() is not None
