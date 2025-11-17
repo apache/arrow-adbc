@@ -429,6 +429,11 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParseDriverUri) {
       {"postgresql://a:b@localhost:9999/nonexistent",
        {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent"}}}};
 
+#ifdef _WIN32
+  uris.push_back(
+      {"C:\\path\\to\\database.db", {{"C:\\path\\to\\database.db", std::nullopt}}});
+#endif
+
   auto cmp = [](std::optional<ParseDriverUriResult> a,
                 std::optional<ParseDriverUriResult> b) {
     if (!a.has_value()) {

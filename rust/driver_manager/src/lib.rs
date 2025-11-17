@@ -1928,6 +1928,15 @@ fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
         return Ok((driver, uri));
     }
 
+    #[cfg(target_os = "windows")]
+    if idx == 1
+        && &uri[0..1].chars().next().unwrap().is_ascii_alphabetic()
+        && &uri[idx..idx + 2] == ":\\"
+    {
+        // Windows drive letter, not a scheme
+        return Ok((uri, ""));
+    }
+
     if &uri[idx..idx + 2] == ":/" {
         // scheme is also driver
         return Ok((driver, uri));
@@ -2473,6 +2482,11 @@ mod tests {
             (
                 "postgresql://a:b@localhost:9999/nonexistent",
                 Ok(("postgresql", "postgresql://a:b@localhost:9999/nonexistent")),
+            ),
+            #[cfg(target_os = "windows")]
+            (
+                "C:\\path\\to\\database.db",
+                Ok(("C:\\path\\to\\database.db", "")),
             ),
         ];
 
