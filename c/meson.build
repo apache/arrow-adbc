@@ -46,7 +46,7 @@ driver_dir = include_directories('driver')
 nanoarrow_dep = dependency('nanoarrow')
 fmt_dep = dependency('fmt')
 safe_math_dir = include_directories(
-    'vendor/portable-snippets/include/portable-snippets',
+    'vendor/portable-snippets/include',
 )
 
 if get_option('tests').enabled()
