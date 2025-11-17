@@ -19,7 +19,7 @@ project(
     'arrow-adbc',
     'c',
     'cpp',
-    version: '1.9.0-SNAPSHOT',
+    version: '1.10.0-SNAPSHOT',
     license: 'Apache-2.0',
     meson_version: '>=1.3.0',
     default_options: [
@@ -45,6 +45,7 @@ install_headers('include/arrow-adbc/adbc.h', subdir: 'arrow-adbc')
 driver_dir = include_directories('driver')
 nanoarrow_dep = dependency('nanoarrow')
 fmt_dep = dependency('fmt')
+safe_math_dir = include_directories('vendor/portable-snippets/include')
 
 if get_option('tests').enabled()
     gtest_main_dep = dependency('gtest_main')
