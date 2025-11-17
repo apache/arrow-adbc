@@ -37,7 +37,7 @@
     <PackageVersion Include="Google.Cloud.BigQuery.Storage.V1" Version="3.17.0" />
     <PackageVersion Include="Google.Cloud.BigQuery.V2" Version="3.11.0" />
     <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.1" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="OpenTelemetry" Version="1.12.0" />
