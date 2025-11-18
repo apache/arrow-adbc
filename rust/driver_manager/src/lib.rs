@@ -1929,9 +1929,8 @@ fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
     }
 
     #[cfg(target_os = "windows")]
-    match std::fs::exists(uri) {
-        Ok(true) => return Ok((uri, "")),
-        _ => {}
+    if let Ok(true) = std::fs::exists(uri) {
+        return Ok((uri, ""));
     }
 
     if &uri[idx..idx + 2] == ":/" {
