@@ -1929,12 +1929,9 @@ fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
     }
 
     #[cfg(target_os = "windows")]
-    if idx == 1
-        && &uri[0..1].chars().next().unwrap().is_ascii_alphabetic()
-        && &uri[idx..idx + 2] == ":\\"
-    {
-        // Windows drive letter, not a scheme
-        return Ok((uri, ""));
+    match std::fs::exists(uri) {
+        Ok(true) => return Ok((uri, "")),
+        _ => {}
     }
 
     if &uri[idx..idx + 2] == ":/" {

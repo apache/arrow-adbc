@@ -1561,9 +1561,8 @@ std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view&
   }
 
 #ifdef _WIN32
-  if (pos == 1 && ((d[0] >= 'A' && d[0] <= 'Z') || (d[0] >= 'a' && d[0] <= 'z')) &&
-      str[pos + 1] == '\\') {
-    // Windows drive letter, not a scheme
+  if (std::filesystem::exists(std::filesystem::path(str))) {
+    // No scheme, just a path
     return ParseDriverUriResult{str, std::nullopt};
   }
 #endif
