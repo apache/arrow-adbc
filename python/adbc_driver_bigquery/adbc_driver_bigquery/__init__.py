@@ -223,7 +223,7 @@ def connect(
     db_kwargs : dict, optional
         Initial database connection parameters.
     """
-    kwargs = (db_kwargs or {}).copy()    
+    kwargs = (db_kwargs or {}).copy()
     return adbc_driver_manager.AdbcDatabase(driver=_driver_path(), **kwargs)
 
 
