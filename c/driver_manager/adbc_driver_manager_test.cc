@@ -430,8 +430,14 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParseDriverUri) {
        {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent"}}}};
 
 #ifdef _WIN32
-  uris.push_back(
-      {"C:\\path\\to\\database.db", {{"C:\\path\\to\\database.db", std::nullopt}}});
+  auto temp_dir = std::filesystem::temp_directory_path() / "adbc_driver_manager_tests";
+  std::filesystem::create_directories(temp_dir);
+  std::string temp_driver_path = temp_dir.string() + "\\driver.dll";
+  std::ofstream temp_driver_file(temp_driver_path);
+  temp_driver_file << "placeholder";
+  temp_driver_file.close();
+
+  uris.push_back({temp_driver_path, {{temp_driver_path, std::nullopt}}});
 #endif
 
   auto cmp = [](std::optional<ParseDriverUriResult> a,
@@ -453,6 +459,10 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParseDriverUri) {
     auto result = InternalAdbcParseDriverUri(uri_view);
     cmp(result, expected);
   }
+
+#ifdef _WIN32
+  std::filesystem::remove_all(temp_dir);
+#endif
 }
 
 class DriverManifest : public ::testing::Test {
