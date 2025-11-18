@@ -27,7 +27,7 @@
     <ItemGroup>
       <ProjectReference Include="..\..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
       <ProjectReference Include="..\..\..\..\src\Drivers\Interop\Snowflake\Apache.Arrow.Adbc.Drivers.Interop.Snowflake.csproj" />
-      <ProjectReference Include="..\..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
+      <ProjectReference Include="..\..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Testing.csproj" />
     </ItemGroup>
     <ItemGroup>
      <None Update="Resources\snowflakeconfig.json">
