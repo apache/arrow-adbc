@@ -2480,11 +2480,6 @@ mod tests {
                 "postgresql://a:b@localhost:9999/nonexistent",
                 Ok(("postgresql", "postgresql://a:b@localhost:9999/nonexistent")),
             ),
-            #[cfg(target_os = "windows")]
-            (
-                "C:\\path\\to\\database.db",
-                Ok(("C:\\path\\to\\database.db", "")),
-            ),
         ];
 
         for (input, expected) in cases {
@@ -2501,5 +2496,30 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_driver_uri_windows_file() {
+        let tmp_dir = Builder::new()
+            .prefix("adbc_tests")
+            .tempdir()
+            .expect("Failed to create temporary directory for driver manager manifest test");
+
+        let temp_db_path = tmp_dir.path().join("test.dll");
+        if let Some(parent) = temp_db_path.parent() {
+            std::fs::create_dir_all(parent)
+                .expect("Failed to create parent directory for manifest");
+        }
+        std::fs::write(&temp_db_path, b"").expect("Failed to create temporary database file");
+
+        let (driver, conn) = parse_driver_uri(temp_db_path.to_str().unwrap()).unwrap();
+
+        assert_eq!(driver, temp_db_path.to_str().unwrap());
+        assert_eq!(conn, "");
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
     }
 }
