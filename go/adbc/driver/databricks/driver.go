@@ -46,6 +46,7 @@ const (
 	OptionPort           = "databricks.port"
 	OptionCatalog        = "databricks.catalog"
 	OptionSchema         = "databricks.schema"
+	OptionUserAgent      = "databricks.user_agent"
 
 	// Query options
 	OptionQueryTimeout        = "databricks.query.timeout"

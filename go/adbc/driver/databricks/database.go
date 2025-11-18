@@ -57,6 +57,7 @@ type databaseImpl struct {
 	port           int
 	catalog        string
 	schema         string
+	user_agent     string
 
 	// Query options
 	queryTimeout        time.Duration
@@ -99,6 +100,7 @@ func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
 	opts := []dbsql.ConnOption{
 		dbsql.WithServerHostname(d.serverHostname),
 		dbsql.WithHTTPPath(d.httpPath),
+		dbsql.WithUserAgentEntry(d.user_agent),
 	}
 
 	// Handle Auth configurations and validate based on user selected auth type
@@ -291,6 +293,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.catalog, nil
 	case OptionSchema:
 		return d.schema, nil
+	case OptionUserAgent:
+		return d.user_agent, nil
 	case OptionQueryTimeout:
 		if d.queryTimeout > 0 {
 			return d.queryTimeout.String(), nil
@@ -363,6 +367,8 @@ func (d *databaseImpl) SetOption(key, value string) error {
 		d.catalog = value
 	case OptionSchema:
 		d.schema = value
+	case OptionUserAgent:
+		d.user_agent = value
 	case OptionQueryTimeout:
 		if value != "" {
 			timeout, err := time.ParseDuration(value)
