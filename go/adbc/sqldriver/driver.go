@@ -647,9 +647,9 @@ func (r *rows) Close() error {
 	r.rdr.Release()
 	r.rdr = nil
 
-	r.stmt.Close()
+	err := r.stmt.Close()
 	r.stmt = nil
-	return nil
+	return err
 }
 
 func (r *rows) Next(dest []driver.Value) error {
