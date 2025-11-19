@@ -12,7 +12,6 @@
     <PackageReference Include="System.Text.Json" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\test\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Testing.csproj" />
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
     <ProjectReference Include="..\..\Telemetry\Traces\Listeners\Apache.Arrow.Adbc.Telemetry.Traces.Listeners.csproj" />
   </ItemGroup>
