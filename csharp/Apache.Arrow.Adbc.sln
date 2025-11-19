@@ -4,7 +4,7 @@ VisualStudioVersion = 17.4.33403.182
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc", "src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj", "{232F2EC7-5FD3-4E0B-89FF-317A15CF698F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Tests", "test\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj", "{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Arrow.Adbc.Testing", "test\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Testing.csproj", "{00C143BA-F1CF-4117-9DE6-E73DC4D208F8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{5BD04C26-CE52-4893-8C1A-479705195CEF}"
 EndProject
