@@ -24,6 +24,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
     {
         public const string PollTimeMilliseconds = "adbc.apache.statement.polltime_ms";
         public const string BatchSize = "adbc.apache.statement.batch_size";
+        public const string BatchSizeStopCondition = "adbc.apache.statement.batch_size_stop_condition";
         public const string QueryTimeoutSeconds = "adbc.apache.statement.query_timeout_s";
 
         /// <summary>
