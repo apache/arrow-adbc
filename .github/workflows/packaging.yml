@@ -63,7 +63,7 @@ jobs:
     # For cron: only run on the main repo, not forks
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -381,7 +381,7 @@ jobs:
         with:
           name: source
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           repository: apache/arrow
           path: arrow
@@ -1158,7 +1158,7 @@ jobs:
       run:
         shell: bash -l -eo pipefail {0}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -1197,7 +1197,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' && (github.event.schedule || inputs.upload_artifacts)
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install Python
         uses: actions/setup-python@v6
         with:
@@ -1221,7 +1221,7 @@ jobs:
       - python-windows
       - python-sdist
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true

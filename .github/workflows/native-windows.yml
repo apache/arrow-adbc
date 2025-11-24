@@ -64,7 +64,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -120,7 +120,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -188,7 +188,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -256,7 +256,7 @@ jobs:
         os: ["windows-latest"]
         python: ["3.10", "3.14"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
