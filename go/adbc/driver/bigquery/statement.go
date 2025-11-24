@@ -31,11 +31,14 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	dataprocPB "cloud.google.com/go/dataproc/v2/apiv1/dataprocpb"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/ipc"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"github.com/stretchr/testify/assert/yaml"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // todos for bigqueryConfig
@@ -64,6 +67,25 @@ type statement struct {
 	ingestPath          string
 	ingestFileDelimiter string
 	explicitSchema      []*bigquery.FieldSchema
+
+	// DataProc Fields
+	dataprocRegion         string
+	dataprocProject        string
+	dataprocPoolingTimeout int
+
+	// DataProc Create Batch fields
+	createBatchReqParent   string
+	createBatchReqBatchYML string
+	createBatchReqBatchId  string
+
+	// DataProc Submit Job fields
+	submitJobReqClusterName string
+	submitJobReqGCSPath     string
+
+	// GCS fields
+	writeGCSBucket     string
+	writeGCSObjectName string
+	writeGCSContent    string
 
 	// Field that contains Table.update columns descriptions
 	updateTableColumnsDescription string
@@ -173,6 +195,26 @@ func (st *statement) GetOption(key string) (string, error) {
 		return st.updateTableColumnsDescription, nil
 	case OptionJsonAuthorizeViewToDatasets:
 		return st.authorizeViewToDatasets, nil
+	case OptionStringDataprocReqRegion:
+		return st.dataprocRegion, nil
+	case OptionStringDataprocReqProject:
+		return st.dataprocProject, nil
+	case OptionStringCreateBatchReqParent:
+		return st.createBatchReqParent, nil
+	case OptionStringCreateBatchReqBatchYML:
+		return st.createBatchReqBatchYML, nil
+	case OptionStringCreateBatchReqBatchId:
+		return st.createBatchReqBatchId, nil
+	case OptionStringDataprocSubmitJobReqClusterName:
+		return st.submitJobReqClusterName, nil
+	case OptionStringDataprocSubmitJobReqGCSPath:
+		return st.submitJobReqGCSPath, nil
+	case OptionStringWriteGCSBucket:
+		return st.writeGCSBucket, nil
+	case OptionStringWriteGCSObjectName:
+		return st.writeGCSObjectName, nil
+	case OptionStringWriteGCSContent:
+		return st.writeGCSContent, nil
 
 	default:
 		val, err := st.cnxn.GetOption(key)
@@ -195,6 +237,8 @@ func (st *statement) GetOptionInt(key string) (int64, error) {
 		return int64(st.resultRecordBufferSize), nil
 	case OptionIntQueryPrefetchConcurrency:
 		return int64(st.prefetchConcurrency), nil
+	case OptionIntDataprocReqPoolingTimeout:
+		return int64(st.dataprocPoolingTimeout), nil
 	default:
 		val, err := st.cnxn.GetOptionInt(key)
 		if err == nil {
@@ -302,8 +346,36 @@ func (st *statement) SetOption(key string, v string) error {
 		st.ingestPath = v
 	case OptionStringIngestFileDelimiter:
 		st.ingestFileDelimiter = v
+	case OptionStringDataprocReqRegion:
+		st.dataprocRegion = v
+	case OptionStringDataprocReqProject:
+		st.dataprocProject = v
+	case OptionStringCreateBatchReqParent:
+		st.createBatchReqParent = v
+	case OptionStringCreateBatchReqBatchYML:
+		st.createBatchReqBatchYML = v
+	case OptionStringCreateBatchReqBatchId:
+		st.createBatchReqBatchId = v
+	case OptionStringDataprocSubmitJobReqClusterName:
+		st.submitJobReqClusterName = v
+	case OptionStringDataprocSubmitJobReqGCSPath:
+		st.submitJobReqGCSPath = v
+	case OptionStringWriteGCSBucket:
+		st.writeGCSBucket = v
+	case OptionStringWriteGCSObjectName:
+		st.writeGCSObjectName = v
+	case OptionStringWriteGCSContent:
+		st.writeGCSContent = v
 	case OptionJsonUpdateTableColumnsDescription:
 		st.updateTableColumnsDescription = v
+	case OptionIntDataprocReqPoolingTimeout:
+		val, err := strconv.ParseInt(v, 10, strconv.IntSize)
+		if err == nil {
+			st.dataprocPoolingTimeout = int(val)
+		} else {
+			return err
+		}
+		return nil
 	case OptionJsonAuthorizeViewToDatasets:
 		st.authorizeViewToDatasets = v
 	case OptionBoolQueryLinkFailedJob:
@@ -336,6 +408,9 @@ func (st *statement) SetOptionInt(key string, value int64) error {
 	case OptionIntQueryPrefetchConcurrency:
 		st.prefetchConcurrency = int(value)
 		return nil
+	case OptionIntDataprocReqPoolingTimeout:
+		st.dataprocPoolingTimeout = int(value)
+		return nil
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -363,6 +438,18 @@ func (st *statement) SetSqlQuery(query string) error {
 func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
 	if st.ingestPath != "" {
 		return st.executeIngest(ctx)
+	}
+
+	if st.createBatchReqParent != "" {
+		return st.executeDataprocCreateBatch(ctx)
+	}
+
+	if st.submitJobReqClusterName != "" {
+		return st.executeSubmitJobAsOperation(ctx)
+	}
+
+	if st.writeGCSBucket != "" {
+		return st.writeToGCS(ctx)
 	}
 
 	if st.updateTableColumnsDescription != "" {
@@ -1120,6 +1207,117 @@ func (st *statement) executeIngest(ctx context.Context) (array.RecordReader, int
 	}
 
 	return reader, 0, nil
+}
+
+func (st *statement) executeDataprocCreateBatch(ctx context.Context) (array.RecordReader, int64, error) {
+	var intermediate map[string]any
+	if err := yaml.Unmarshal([]byte(st.createBatchReqBatchYML), &intermediate); err != nil {
+		return nil, -1, fmt.Errorf("failed to parse batch YAML: %w", err)
+	}
+
+	jsonBytes, err := json.Marshal(intermediate)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to parse batch YAML: %w", err)
+	}
+
+	batch := &dataprocPB.Batch{}
+	if err := protojson.Unmarshal(jsonBytes, batch); err != nil {
+		return nil, -1, fmt.Errorf("failed to unmarshal JSON to batch proto: %w", err)
+	}
+
+	client, err := st.cnxn.newDataprocBatchClient(ctx, st.dataprocRegion)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to create Dataproc client: %w", err)
+	}
+	defer client.Close()
+
+	req := &dataprocPB.CreateBatchRequest{
+		Parent:  st.createBatchReqParent,
+		Batch:   batch,
+		BatchId: st.createBatchReqBatchId,
+	}
+
+	op, err := client.CreateBatch(ctx, req)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to create batch: %w", err)
+	}
+
+	waitCtx, cancel := context.WithTimeout(ctx, time.Duration(st.dataprocPoolingTimeout)*time.Second)
+	defer cancel()
+
+	if _, err := op.Wait(waitCtx); err != nil {
+		return nil, -1, fmt.Errorf("batch failed or timed out: %w", err)
+	}
+
+	return emptyResult()
+}
+
+func (st *statement) executeSubmitJobAsOperation(ctx context.Context) (array.RecordReader, int64, error) {
+	client, err := st.cnxn.newJobControllerClient(ctx, st.dataprocRegion)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to create Dataproc JobController client: %w", err)
+	}
+	defer client.Close()
+
+	req := &dataprocPB.SubmitJobRequest{
+		ProjectId: st.dataprocProject,
+		Region:    st.dataprocRegion,
+		Job: &dataprocPB.Job{
+			Placement: &dataprocPB.JobPlacement{
+				ClusterName: st.submitJobReqClusterName,
+			},
+			TypeJob: &dataprocPB.Job_PysparkJob{
+				PysparkJob: &dataprocPB.PySparkJob{
+					MainPythonFileUri: st.submitJobReqGCSPath,
+				},
+			},
+		},
+	}
+
+	op, err := client.SubmitJobAsOperation(ctx, req)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to submit Dataproc job: %w", err)
+	}
+
+	waitCtx, cancel := context.WithTimeout(ctx, time.Duration(st.dataprocPoolingTimeout)*time.Second)
+	defer cancel()
+
+	resp, err := op.Wait(waitCtx)
+	if err != nil {
+		return nil, -1, fmt.Errorf("dataproc job failed or timed out: %w", err)
+	}
+
+	if resp.GetStatus() != nil && resp.GetStatus().GetState() == dataprocPB.JobStatus_ERROR {
+		return nil, -1, fmt.Errorf("dataproc job error: %s", resp.GetStatus().GetDetails())
+	}
+
+	return emptyResult()
+}
+
+func (st *statement) writeToGCS(ctx context.Context) (array.RecordReader, int64, error) {
+	// Create GCS client
+	client, err := st.cnxn.newGCSClient(ctx)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to create GCS client: %w", err)
+	}
+	defer client.Close()
+
+	// Get the bucket handle
+	bucket := client.Bucket(st.writeGCSBucket)
+	object := bucket.Object(st.writeGCSObjectName)
+
+	// Upload the string
+	wc := object.NewWriter(ctx)
+
+	if _, err := wc.Write([]byte(st.writeGCSContent)); err != nil {
+		return nil, -1, fmt.Errorf("failed to write to GCS object: %w", err)
+	}
+
+	if err := wc.Close(); err != nil {
+		return nil, -1, fmt.Errorf("failed to close GCS writer: %w", err)
+	}
+
+	return emptyResult()
 }
 
 // executeUpdateTableColumnsDescription updates the table columns descriptions

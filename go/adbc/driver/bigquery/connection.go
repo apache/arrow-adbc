@@ -33,6 +33,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	dataproc "cloud.google.com/go/dataproc/v2/apiv1"
+	"cloud.google.com/go/storage"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
@@ -577,14 +579,7 @@ func (c *connectionImpl) SetOptionInt(key string, value int64) error {
 	}
 }
 
-func (c *connectionImpl) newClient(ctx context.Context) error {
-	if c.catalog == "" {
-		return adbc.Error{
-			Code: adbc.StatusInvalidArgument,
-			Msg:  "ProjectID is empty",
-		}
-	}
-
+func (c *connectionImpl) authOptions(ctx context.Context) ([]option.ClientOption, error) {
 	authOptions := []option.ClientOption{}
 
 	// First, establish base authentication
@@ -595,19 +590,19 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		authOptions = append(authOptions, option.WithCredentialsJSON([]byte(c.credentials)))
 	case OptionValueAuthTypeUserAuthentication:
 		if c.clientID == "" {
-			return adbc.Error{
+			return nil, adbc.Error{
 				Code: adbc.StatusInvalidArgument,
 				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientID),
 			}
 		}
 		if c.clientSecret == "" {
-			return adbc.Error{
+			return nil, adbc.Error{
 				Code: adbc.StatusInvalidArgument,
 				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthClientSecret),
 			}
 		}
 		if c.refreshToken == "" {
-			return adbc.Error{
+			return nil, adbc.Error{
 				Code: adbc.StatusInvalidArgument,
 				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthRefreshToken),
 			}
@@ -621,7 +616,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		authOptions = append(authOptions, option.WithTokenSource(c))
 	case OptionValueAuthTypeTemporaryAccessToken:
 		if c.accessToken == "" {
-			return adbc.Error{
+			return nil, adbc.Error{
 				Code: adbc.StatusInvalidArgument,
 				Msg:  fmt.Sprintf("The `%s` parameter is empty", OptionStringAuthAccessToken),
 			}
@@ -636,7 +631,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		// Use Application Default Credentials (default behavior)
 		// No additional options needed - ADC is used by default
 	default:
-		return adbc.Error{
+		return nil, adbc.Error{
 			Code: adbc.StatusInvalidArgument,
 			Msg:  fmt.Sprintf("Unknown auth type: %s", c.authType),
 		}
@@ -650,7 +645,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 	// Then, apply impersonation if configured (as a credential transformation layer)
 	if c.hasImpersonationOptions() {
 		if c.impersonateTargetPrincipal == "" {
-			return adbc.Error{
+			return nil, adbc.Error{
 				Code: adbc.StatusInvalidArgument,
 				Msg:  fmt.Sprintf("The `%s` parameter is empty for impersonation", OptionStringImpersonateTargetPrincipal),
 			}
@@ -672,7 +667,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		}
 		tokenSource, err := impersonate.CredentialsTokenSource(ctx, impCfg)
 		if err != nil {
-			return adbc.Error{
+			return nil, adbc.Error{
 				Code: adbc.StatusInvalidArgument,
 				Msg:  fmt.Sprintf("failed to create impersonated token source: %s", err.Error()),
 			}
@@ -683,6 +678,22 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 
 	if len(c.impersonateScopes) != 0 {
 		authOptions = append(authOptions, option.WithScopes(c.impersonateScopes...))
+	}
+
+	return authOptions, nil
+}
+
+func (c *connectionImpl) newClient(ctx context.Context) error {
+	if c.catalog == "" {
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "ProjectID is empty",
+		}
+	}
+
+	authOptions, err := c.authOptions(ctx)
+	if err != nil {
+		return err
 	}
 
 	client, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
@@ -701,6 +712,52 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 
 	c.client = client
 	return nil
+}
+
+func (c *connectionImpl) newDataprocBatchClient(ctx context.Context, computeRegion string) (*dataproc.BatchControllerClient, error) {
+	authOptions, err := c.authOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	authOptions = append(authOptions, option.WithEndpoint(fmt.Sprintf("%s-dataproc.googleapis.com:443", computeRegion)))
+
+	client, err := dataproc.NewBatchControllerClient(ctx, authOptions...)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func (c *connectionImpl) newJobControllerClient(ctx context.Context, computeRegion string) (*dataproc.JobControllerClient, error) {
+	authOptions, err := c.authOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	authOptions = append(authOptions, option.WithEndpoint(fmt.Sprintf("%s-dataproc.googleapis.com:443", computeRegion)))
+
+	client, err := dataproc.NewJobControllerClient(ctx, authOptions...)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func (c *connectionImpl) newGCSClient(ctx context.Context) (*storage.Client, error) {
+	authOptions, err := c.authOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := storage.NewClient(ctx, authOptions...)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
 
 func (c *connectionImpl) hasImpersonationOptions() bool {
