@@ -17,10 +17,8 @@
 #![allow(refining_impl_trait)]
 
 use adbc_core::executor::AsyncExecutor;
-use adbc_core::non_blocking::{
-    AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement, LocalAsyncOptionable,
-};
-use adbc_core::{constants, options};
+use adbc_core::non_blocking::{AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement};
+use adbc_core::{constants, options, AsyncOptionable};
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::datasource::TableType;
 use datafusion::prelude::*;
@@ -169,7 +167,7 @@ impl AsyncDriver for DataFusionDriver {
 
 pub struct DataFusionDatabase {}
 
-impl LocalAsyncOptionable for DataFusionDatabase {
+impl AsyncOptionable for DataFusionDatabase {
     type Option = OptionDatabase;
 
     async fn set_option(
@@ -241,7 +239,7 @@ pub struct DataFusionConnection {
     ctx: Arc<SessionContext>,
 }
 
-impl LocalAsyncOptionable for DataFusionConnection {
+impl AsyncOptionable for DataFusionConnection {
     type Option = OptionConnection;
 
     async fn set_option(
@@ -789,7 +787,7 @@ pub struct DataFusionStatement {
     ingest_target_table: Option<String>,
 }
 
-impl LocalAsyncOptionable for DataFusionStatement {
+impl AsyncOptionable for DataFusionStatement {
     type Option = OptionStatement;
 
     async fn set_option(

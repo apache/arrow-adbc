@@ -47,6 +47,8 @@ pub mod non_blocking;
 pub mod options;
 pub mod schemas;
 
+pub use non_blocking::*;
+
 pub type LoadFlags = u32;
 
 pub const LOAD_FLAG_SEARCH_ENV: LoadFlags = 1 << 1;
@@ -58,4 +60,17 @@ pub const LOAD_FLAG_DEFAULT: LoadFlags = LOAD_FLAG_SEARCH_ENV
     | LOAD_FLAG_SEARCH_SYSTEM
     | LOAD_FLAG_ALLOW_RELATIVE_PATHS;
 
-pub use non_blocking::*;
+/// Each data partition is described by an opaque byte array and can be
+/// retrieved with [AsyncConnection::read_partition].
+pub type Partitions = Vec<Vec<u8>>;
+
+/// A partitioned result set as returned by [AsyncStatement::execute_partitions].
+#[derive(Debug, PartialEq, Eq)]
+pub struct PartitionedResult {
+    /// The result partitions.
+    pub partitions: Partitions,
+    /// The schema of the result set.
+    pub schema: arrow_schema::Schema,
+    /// The number of rows affected if known, else -1.
+    pub rows_affected: i64,
+}

@@ -36,7 +36,6 @@ default = []
 [dependencies]
 arrow-array.workspace = true
 arrow-schema.workspace = true
-trait-variant.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
