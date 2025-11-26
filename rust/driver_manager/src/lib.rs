@@ -50,7 +50,7 @@
 //! # use arrow_select::concat::concat_batches;
 //! # use adbc_core::{
 //! #     options::{AdbcVersion, OptionDatabase, OptionStatement},
-//! #     blocking::{Connection, Database, Driver, Statement, Optionable}
+//! #     sync::{Connection, Database, Driver, Statement, Optionable}
 //! # };
 //! # use adbc_driver_manager::ManagedDriver;
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -119,10 +119,10 @@ use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 use toml::de::DeTable;
 
 use adbc_core::{
-    blocking::{Connection, Database, Driver, Optionable, Statement},
     constants,
     error::{AdbcStatusCode, Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionDatabase, OptionValue},
+    sync::{Connection, Database, Driver, Optionable, Statement},
     LoadFlags, PartitionedResult, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
     LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
 };

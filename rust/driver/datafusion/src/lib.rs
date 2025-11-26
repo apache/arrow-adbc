@@ -968,5 +968,5 @@ impl AsyncExecutor for TokioRuntime {
 #[cfg(feature = "ffi")]
 adbc_ffi::export_driver!(
     DataFusionDriverInit,
-    adbc_core::blocking::SyncDriverWrapper::<TokioRuntime, DataFusionDriver>
+    adbc_core::sync::SyncDriverWrapper::<TokioRuntime, DataFusionDriver>
 );

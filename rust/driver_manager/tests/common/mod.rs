@@ -19,7 +19,7 @@ use std::collections::HashSet;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use adbc_core::blocking::{Connection, Database, Driver, Optionable, Statement};
+use adbc_core::sync::{Connection, Database, Driver, Optionable, Statement};
 use adbc_core::error::Status;
 use adbc_core::options::{
     InfoCode, IngestMode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement,
