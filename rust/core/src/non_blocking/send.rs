@@ -160,7 +160,7 @@ impl<T: AsyncDatabase> super::LocalAsyncDatabase for T {
 /// # Autocommit
 ///
 /// Connections should start in autocommit mode. They can be moved out by
-/// setting [options::OptionConnection::AutoCommit] to "false". Turning off
+/// setting [crate::options::OptionConnection::AutoCommit] to "false". Turning off
 /// autocommit allows customizing the isolation level.
 pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
     type StatementType: AsyncStatement;
@@ -396,7 +396,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
     /// 2. A dictionary-encoded statistic name (although we do not use the Arrow
     ///    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
     ///    values are for implementation-specific statistics.  For the definitions
-    ///    of predefined statistic types, see [options::Statistics]. To get
+    ///    of predefined statistic types, see [crate::options::Statistics]. To get
     ///    driver-specific statistic names, use [AsyncConnection::get_statistic_names].
     /// 3. If true, then the value is approximate or best-effort.
     ///
