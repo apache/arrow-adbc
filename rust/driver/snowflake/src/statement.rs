@@ -20,9 +20,9 @@
 //!
 
 use adbc_core::{
-    sync::Optionable,
     error::Result,
     options::{OptionStatement, OptionValue},
+    sync::Optionable,
     PartitionedResult,
 };
 use adbc_driver_manager::ManagedStatement;
