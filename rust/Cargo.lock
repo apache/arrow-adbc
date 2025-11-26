@@ -8,6 +8,7 @@ version = "0.22.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
+ "futures",
 ]
 
 [[package]]
@@ -22,6 +23,7 @@ dependencies = [
  "arrow-select",
  "datafusion",
  "datafusion-substrait",
+ "futures",
  "prost",
  "tokio",
 ]

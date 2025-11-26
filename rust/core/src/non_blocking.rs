@@ -17,6 +17,8 @@
 
 pub mod local;
 pub mod send;
+pub mod stream;
 
 pub use local::*;
 pub use send::*;
+pub use stream::*;

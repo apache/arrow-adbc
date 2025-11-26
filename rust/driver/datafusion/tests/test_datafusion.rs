@@ -15,9 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use std::pin::Pin;
+
 use adbc_core::non_blocking::{
     AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement, LocalAsyncOptionable,
 };
+use adbc_core::RecordBatchStream;
 use adbc_datafusion::{DataFusionConnection, DataFusionDriver};
 use arrow_array::RecordBatch;
 use datafusion::prelude::*;
@@ -26,7 +29,18 @@ use adbc_core::options::{OptionConnection, OptionStatement, OptionValue};
 use arrow_select::concat::concat_batches;
 use datafusion_substrait::logical_plan::producer::to_substrait_plan;
 use datafusion_substrait::substrait::proto::Plan;
+use futures::StreamExt;
 use prost::Message;
+
+async fn read_all_record_batches(
+    mut reader: Pin<Box<dyn RecordBatchStream + Send>>,
+) -> adbc_core::error::Result<Vec<RecordBatch>> {
+    let mut batches = Vec::new();
+    while let Some(batch) = reader.next().await {
+        batches.push(batch?);
+    }
+    Ok(batches)
+}
 
 async fn get_connection() -> DataFusionConnection {
     let mut driver = DataFusionDriver::default();
@@ -46,7 +60,7 @@ async fn get_objects(connection: &DataFusionConnection) -> RecordBatch {
         )
         .await;
 
-    let batches: Vec<RecordBatch> = objects.unwrap().map(|b| b.unwrap()).collect();
+    let batches = read_all_record_batches(objects.unwrap()).await.unwrap();
 
     let schema = batches.first().unwrap().schema();
 
@@ -63,12 +77,9 @@ async fn execute_sql_query(connection: &mut DataFusionConnection, query: &str) -
     let mut statement = connection.new_statement().await.unwrap();
     let _ = statement.set_sql_query(query).await;
 
-    let batches: Vec<RecordBatch> = statement
-        .execute()
+    let batches = read_all_record_batches(statement.execute().await.unwrap())
         .await
-        .unwrap()
-        .map(|b| b.unwrap())
-        .collect();
+        .unwrap();
 
     let schema = batches.first().unwrap().schema();
 
@@ -80,12 +91,9 @@ async fn execute_substrait(connection: &mut DataFusionConnection, plan: Plan) ->
 
     let _ = statement.set_substrait_plan(&plan.encode_to_vec()).await;
 
-    let batches: Vec<RecordBatch> = statement
-        .execute()
+    let batches = read_all_record_batches(statement.execute().await.unwrap())
         .await
-        .unwrap()
-        .map(|b| b.unwrap())
-        .collect();
+        .unwrap();
 
     let schema = batches.first().unwrap().schema();
 
