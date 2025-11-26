@@ -275,6 +275,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         // Acquire a download slot
                         await _downloadSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
+                        // Acquire memory for this download (FIFO - acquired in sequential loop)
+                        long size = downloadResult.Size;
+                        await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
+
                         // Start the download task
                         Task downloadTask = DownloadFileAsync(downloadResult, cancellationToken)
                             .ContinueWith(t =>
@@ -385,9 +389,6 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     new("expected_size_bytes", size),
                     new("expected_size_kb", size / 1024.0)
             ]);
-
-                // Acquire memory before downloading
-                await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
 
                 // Retry logic for downloading files
                 for (int retry = 0; retry < _maxRetries; retry++)
