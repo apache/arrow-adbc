@@ -37,9 +37,9 @@ mod tests {
     use std::{collections::HashSet, ops::Deref, sync::LazyLock};
 
     use adbc_core::{
-        blocking::{Connection as _, Statement as _},
         error::{Error, Result},
         options::AdbcVersion,
+        sync::{Connection as _, Statement as _},
     };
     use adbc_snowflake::{connection, database, driver, Connection, Database, Driver, Statement};
     use arrow_array::{cast::AsArray, types::Decimal128Type};

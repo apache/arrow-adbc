@@ -25,9 +25,9 @@ use std::env;
 use std::{fmt, path::PathBuf, str::FromStr, time::Duration};
 
 use adbc_core::{
-    blocking::Driver as _,
     error::{Error, Result, Status},
     options::{OptionDatabase, OptionValue},
+    sync::Driver as _,
 };
 use url::{Host, Url};
 

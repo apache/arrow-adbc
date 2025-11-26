@@ -30,7 +30,7 @@
 ```rust
 use adbc_core::driver_manager::ManagedDriver;
 use adbc_core::options::AdbcVersion;
-use adbc_core::blocking::{Connection, Database, Driver, Statement};
+use adbc_core::sync::{Connection, Database, Driver, Statement};
 use arrow_cast::pretty::print_batches;
 use arrow_array::RecordBatch;
 

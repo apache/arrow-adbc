@@ -20,7 +20,7 @@
 //!
 
 use adbc_core::{
-    blocking::Optionable,
+    sync::Optionable,
     error::Result,
     options::{OptionStatement, OptionValue},
     PartitionedResult,
@@ -56,7 +56,7 @@ impl Optionable for Statement {
     }
 }
 
-impl adbc_core::blocking::Statement for Statement {
+impl adbc_core::sync::Statement for Statement {
     fn bind(&mut self, batch: RecordBatch) -> Result<()> {
         self.0.bind(batch)
     }

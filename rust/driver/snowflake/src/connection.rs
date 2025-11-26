@@ -22,9 +22,9 @@
 use std::collections::HashSet;
 
 use adbc_core::{
-    blocking::Optionable,
     error::Result,
     options::{InfoCode, OptionConnection, OptionValue},
+    sync::Optionable,
 };
 use adbc_driver_manager::ManagedConnection;
 use arrow_array::RecordBatchReader;
@@ -63,7 +63,7 @@ impl Optionable for Connection {
     }
 }
 
-impl adbc_core::blocking::Connection for Connection {
+impl adbc_core::sync::Connection for Connection {
     type StatementType = Statement;
 
     fn new_statement(&mut self) -> Result<Self::StatementType> {

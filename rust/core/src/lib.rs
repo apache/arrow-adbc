@@ -39,13 +39,13 @@
 //! For drivers implemented in Rust, using these will be more efficient and
 //! safe, since it avoids the overhead of going through C FFI.
 
-pub mod blocking;
 pub mod constants;
 pub mod error;
 pub mod executor;
 pub mod non_blocking;
 pub mod options;
 pub mod schemas;
+pub mod sync;
 
 pub use non_blocking::*;
 

@@ -29,10 +29,10 @@ use super::{
     types::ErrorPrivateData, utils::get_opt_name, FFI_AdbcConnection, FFI_AdbcDatabase,
     FFI_AdbcDriver, FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
 };
-use adbc_core::blocking::{Connection, Database, Driver, Optionable, Statement};
 use adbc_core::constants::ADBC_STATUS_OK;
 use adbc_core::error::{AdbcStatusCode, Error, Result, Status};
 use adbc_core::options::{InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionValue};
+use adbc_core::sync::{Connection, Database, Driver, Optionable, Statement};
 
 type DatabaseType<DriverType> = <DriverType as Driver>::DatabaseType;
 type ConnectionType<DriverType> =

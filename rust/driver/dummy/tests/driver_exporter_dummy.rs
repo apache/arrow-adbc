@@ -31,8 +31,8 @@ use adbc_core::options::{
     OptionDatabase, OptionStatement,
 };
 use adbc_core::{
-    blocking::{Connection, Database, Driver, Optionable, Statement},
     schemas,
+    sync::{Connection, Database, Driver, Optionable, Statement},
 };
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
 
