@@ -18,7 +18,7 @@
 
 use adbc_core::executor::AsyncExecutor;
 use adbc_core::non_blocking::{AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement};
-use adbc_core::{constants, options, AsyncOptionable};
+use adbc_core::{constants, options, AsyncOptionable, RecordBatchStream};
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::datasource::TableType;
 use datafusion::prelude::*;
@@ -27,16 +27,16 @@ use datafusion_substrait::substrait::proto::Plan;
 use prost::Message;
 use std::fmt::Debug;
 use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
-use std::vec::IntoIter;
 
 use arrow_array::builder::{
     BooleanBuilder, Int32Builder, Int64Builder, ListBuilder, MapBuilder, MapFieldNames,
     StringBuilder, UInt32Builder,
 };
 use arrow_array::{
-    ArrayRef, BooleanArray, Int16Array, Int32Array, ListArray, RecordBatch, RecordBatchReader,
-    StringArray, StructArray, UnionArray,
+    ArrayRef, BooleanArray, Int16Array, Int32Array, ListArray, RecordBatch, StringArray,
+    StructArray, UnionArray,
 };
 use arrow_buffer::{OffsetBuffer, ScalarBuffer};
 use arrow_schema::{ArrowError, DataType, Field, SchemaRef};
@@ -90,22 +90,25 @@ impl SingleBatchReader {
     }
 }
 
-impl Iterator for SingleBatchReader {
+impl futures::Stream for SingleBatchReader {
     type Item = std::result::Result<RecordBatch, ArrowError>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        Ok(self.batch.take()).transpose()
+    fn poll_next(
+        self: Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        std::task::Poll::Ready(Ok(self.get_mut().batch.take()).transpose())
     }
 }
 
-impl RecordBatchReader for SingleBatchReader {
+impl RecordBatchStream for SingleBatchReader {
     fn schema(&self) -> SchemaRef {
         self.schema.clone()
     }
 }
 
 pub struct DataFusionReader {
-    batches: IntoIter<RecordBatch>,
+    reader: datafusion::execution::SendableRecordBatchStream,
     schema: SchemaRef,
 }
 
@@ -114,21 +117,29 @@ impl DataFusionReader {
         let schema = df.schema().as_arrow().clone();
 
         Self {
-            batches: df.collect().await.unwrap().into_iter(),
+            reader: df.execute_stream().await.unwrap(),
             schema: schema.into(),
         }
     }
 }
 
-impl Iterator for DataFusionReader {
+impl futures::Stream for DataFusionReader {
     type Item = std::result::Result<RecordBatch, ArrowError>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.batches.next().map(Ok)
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        match self.get_mut().reader.as_mut().poll_next(cx) {
+            std::task::Poll::Ready(item) => {
+                std::task::Poll::Ready(item.map(|batch| batch.map_err(|e| e.into())))
+            }
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
     }
 }
 
-impl RecordBatchReader for DataFusionReader {
+impl RecordBatchStream for DataFusionReader {
     fn schema(&self) -> SchemaRef {
         self.schema.clone()
     }
@@ -709,7 +720,7 @@ impl AsyncConnection for DataFusionConnection {
     async fn get_info(
         &self,
         codes: Option<std::collections::HashSet<adbc_core::options::InfoCode>>,
-    ) -> Result<impl RecordBatchReader + Send> {
+    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
         let mut get_info_builder = GetInfoBuilder::new();
 
         codes.unwrap().into_iter().for_each(|f| match f {
@@ -722,7 +733,7 @@ impl AsyncConnection for DataFusionConnection {
 
         let batch = get_info_builder.finish()?;
         let reader = SingleBatchReader::new(batch);
-        Ok(reader)
+        Ok(Box::pin(reader))
     }
 
     async fn get_objects(
@@ -733,10 +744,10 @@ impl AsyncConnection for DataFusionConnection {
         _table_name: Option<&str>,
         _table_type: Option<Vec<&str>>,
         _column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send> {
+    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
         let batch = GetObjectsBuilder::new().build(&self.ctx, &depth).await?;
         let reader = SingleBatchReader::new(batch);
-        Ok(reader)
+        Ok(Box::pin(reader))
     }
 
     async fn get_table_schema(
@@ -748,11 +759,11 @@ impl AsyncConnection for DataFusionConnection {
         todo!()
     }
 
-    async fn get_table_types(&self) -> Result<SingleBatchReader> {
+    async fn get_table_types(&self) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
         todo!()
     }
 
-    async fn get_statistic_names(&self) -> Result<SingleBatchReader> {
+    async fn get_statistic_names(&self) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
         todo!()
     }
 
@@ -762,7 +773,7 @@ impl AsyncConnection for DataFusionConnection {
         _db_schema: Option<&str>,
         _table_name: Option<&str>,
         _approximate: bool,
-    ) -> Result<SingleBatchReader> {
+    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
         todo!()
     }
 
@@ -774,7 +785,10 @@ impl AsyncConnection for DataFusionConnection {
         todo!()
     }
 
-    async fn read_partition(&self, _partition: &[u8]) -> Result<SingleBatchReader> {
+    async fn read_partition(
+        &self,
+        _partition: &[u8],
+    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
         todo!()
     }
 }
@@ -862,12 +876,12 @@ impl AsyncStatement for DataFusionStatement {
 
     async fn bind_stream(
         &mut self,
-        _reader: Box<dyn arrow_array::RecordBatchReader + Send>,
+        _reader: Pin<Box<dyn RecordBatchStream + Send>>,
     ) -> adbc_core::error::Result<()> {
         todo!()
     }
 
-    async fn execute(&mut self) -> Result<impl RecordBatchReader + Send> {
+    async fn execute(&mut self) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
         let df = if self.sql_query.is_some() {
             self.ctx
                 .sql(&self.sql_query.clone().unwrap())
@@ -881,7 +895,7 @@ impl AsyncStatement for DataFusionStatement {
             self.ctx.execute_logical_plan(plan).await.unwrap()
         };
 
-        Ok(DataFusionReader::new(df).await)
+        Ok(Box::pin(DataFusionReader::new(df).await))
     }
 
     async fn execute_update(&mut self) -> adbc_core::error::Result<Option<i64>> {

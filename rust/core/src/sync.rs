@@ -16,10 +16,12 @@
 // under the License.
 
 use std::collections::HashSet;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use arrow_array::{RecordBatch, RecordBatchReader};
-use arrow_schema::Schema;
+use arrow_schema::{Schema, SchemaRef};
+use futures::StreamExt;
 
 use crate::error::Result;
 use crate::executor::AsyncExecutor;
@@ -471,9 +473,49 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     fn cancel(&mut self) -> Result<()>;
 }
 
+pub struct SyncRecordBatchStream<A> {
+    executor: Arc<A>,
+    inner: Pin<Box<dyn crate::RecordBatchStream + Send>>,
+}
+
 pub struct SyncDriverWrapper<A, D> {
     inner: D,
     executor: Arc<A>,
+}
+
+impl<A: AsyncExecutor> Iterator for SyncRecordBatchStream<A> {
+    type Item = std::result::Result<RecordBatch, arrow_schema::ArrowError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.executor.block_on(self.inner.next())
+    }
+}
+
+impl<A: AsyncExecutor> RecordBatchReader for SyncRecordBatchStream<A> {
+    fn schema(&self) -> SchemaRef {
+        self.inner.schema()
+    }
+}
+
+pub struct WrapperRecordBatchReader {
+    inner: Box<dyn RecordBatchReader + Send>,
+}
+
+impl futures::Stream for WrapperRecordBatchReader {
+    type Item = std::result::Result<RecordBatch, arrow_schema::ArrowError>;
+
+    fn poll_next(
+        self: Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        std::task::Poll::Ready(self.get_mut().inner.next())
+    }
+}
+
+impl crate::RecordBatchStream for WrapperRecordBatchReader {
+    fn schema(&self) -> arrow_schema::SchemaRef {
+        self.inner.schema()
+    }
 }
 
 impl<A: AsyncExecutor, D: Default> Default for SyncDriverWrapper<A, D> {
@@ -638,7 +680,12 @@ where
         &self,
         codes: Option<HashSet<options::InfoCode>>,
     ) -> Result<impl RecordBatchReader + Send> {
-        self.executor.block_on(self.inner.get_info(codes))
+        let reader = self.executor.block_on(self.inner.get_info(codes))?;
+
+        Ok(SyncRecordBatchStream {
+            executor: self.executor.clone(),
+            inner: reader,
+        })
     }
 
     fn get_objects(
@@ -650,14 +697,19 @@ where
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
     ) -> Result<impl RecordBatchReader + Send> {
-        self.executor.block_on(self.inner.get_objects(
+        let reader = self.executor.block_on(self.inner.get_objects(
             depth,
             catalog,
             db_schema,
             table_name,
             table_type,
             column_name,
-        ))
+        ))?;
+
+        Ok(SyncRecordBatchStream {
+            executor: self.executor.clone(),
+            inner: reader,
+        })
     }
 
     fn get_table_schema(
@@ -671,11 +723,21 @@ where
     }
 
     fn get_table_types(&self) -> Result<impl RecordBatchReader + Send> {
-        self.executor.block_on(self.inner.get_table_types())
+        let reader = self.executor.block_on(self.inner.get_table_types())?;
+
+        Ok(SyncRecordBatchStream {
+            executor: self.executor.clone(),
+            inner: reader,
+        })
     }
 
     fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send> {
-        self.executor.block_on(self.inner.get_statistic_names())
+        let reader = self.executor.block_on(self.inner.get_statistic_names())?;
+
+        Ok(SyncRecordBatchStream {
+            executor: self.executor.clone(),
+            inner: reader,
+        })
     }
 
     fn get_statistics(
@@ -685,12 +747,17 @@ where
         table_name: Option<&str>,
         approximate: bool,
     ) -> Result<impl RecordBatchReader + Send> {
-        self.executor.block_on(self.inner.get_statistics(
+        let reader = self.executor.block_on(self.inner.get_statistics(
             catalog,
             db_schema,
             table_name,
             approximate,
-        ))
+        ))?;
+
+        Ok(SyncRecordBatchStream {
+            executor: self.executor.clone(),
+            inner: reader,
+        })
     }
 
     fn commit(&mut self) -> Result<()> {
@@ -702,7 +769,14 @@ where
     }
 
     fn read_partition(&self, partition: &[u8]) -> Result<impl RecordBatchReader + Send> {
-        self.executor.block_on(self.inner.read_partition(partition))
+        let reader = self
+            .executor
+            .block_on(self.inner.read_partition(partition))?;
+
+        Ok(SyncRecordBatchStream {
+            executor: self.executor.clone(),
+            inner: reader,
+        })
     }
 }
 
@@ -749,11 +823,19 @@ where
     }
 
     fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
-        self.executor.block_on(self.inner.bind_stream(reader))
+        self.executor.block_on(
+            self.inner
+                .bind_stream(Box::pin(WrapperRecordBatchReader { inner: reader })),
+        )
     }
 
     fn execute(&mut self) -> Result<impl RecordBatchReader + Send> {
-        self.executor.block_on(self.inner.execute())
+        let reader = self.executor.block_on(self.inner.execute())?;
+
+        Ok(SyncRecordBatchStream {
+            executor: self.executor.clone(),
+            inner: reader,
+        })
     }
 
     fn execute_update(&mut self) -> Result<Option<i64>> {

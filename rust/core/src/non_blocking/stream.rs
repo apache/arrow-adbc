@@ -15,12 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::{fmt::Debug, future::Future};
-
-pub trait AsyncExecutor: Sized + Send + Sync {
-    type Config: Default;
-    type Error: Debug;
-
-    fn new(config: Self::Config) -> Result<Self, Self::Error>;
-    fn block_on<F: Future>(&self, future: F) -> F::Output;
+/// Trait for types that stream [RecordBatch]
+///
+/// See [`SendableRecordBatchStream`] for more details.
+pub trait RecordBatchStream:
+    futures::Stream<Item = Result<arrow_array::RecordBatch, arrow_schema::ArrowError>>
+{
+    /// Returns the schema of this `RecordBatchStream`.
+    ///
+    /// Implementation of this trait should guarantee that all `RecordBatch`'s returned by this
+    /// stream should have the same schema as returned from this method.
+    fn schema(&self) -> arrow_schema::SchemaRef;
 }
