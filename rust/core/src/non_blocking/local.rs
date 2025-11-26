@@ -89,7 +89,7 @@ pub trait LocalAsyncDatabase: LocalAsyncOptionable<Option = OptionDatabase> {
 /// # Autocommit
 ///
 /// Connections should start in autocommit mode. They can be moved out by
-/// setting [options::OptionConnection::AutoCommit] to "false". Turning off
+/// setting [crate::options::OptionConnection::AutoCommit] to "false". Turning off
 /// autocommit allows customizing the isolation level.
 #[allow(async_fn_in_trait)]
 pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> {
@@ -147,7 +147,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     ///   filter by name. May be a search pattern.
     /// - `table_type` - Only show tables matching one of the given table
     ///   types. If `None`, show tables of any type. Valid table types can be fetched
-    ///   from [AsyncConnection::get_table_types].
+    ///   from [LocalAsyncConnection::get_table_types].
     /// - `column_name` - Only show columns with the given name. If
     ///   `None`, do not filter by name.  May be a search pattern..
     ///
@@ -320,8 +320,8 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     /// 2. A dictionary-encoded statistic name (although we do not use the Arrow
     ///    dictionary type). Values in [0, 1024) are reserved for ADBC.  Other
     ///    values are for implementation-specific statistics.  For the definitions
-    ///    of predefined statistic types, see [options::Statistics]. To get
-    ///    driver-specific statistic names, use [AsyncConnection::get_statistic_names].
+    ///    of predefined statistic types, see [crate::options::Statistics]. To get
+    ///    driver-specific statistic names, use [LocalAsyncConnection::get_statistic_names].
     /// 3. If true, then the value is approximate or best-effort.
     ///
     /// VALUE_SCHEMA is a dense union with members:
@@ -356,7 +356,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
 
     /// Retrieve a given partition of data.
     ///
-    /// A partition can be retrieved from [AsyncStatement::execute_partitions].
+    /// A partition can be retrieved from [LocalAsyncStatement::execute_partitions].
     ///
     /// # Arguments
     ///
@@ -419,7 +419,7 @@ pub trait LocalAsyncStatement: LocalAsyncOptionable<Option = OptionStatement> {
     /// This invalidates any prior result sets.
     ///
     /// Depending on the driver, this may require first executing
-    /// [AsyncStatement::prepare].
+    /// [LocalAsyncStatement::prepare].
     ///
     /// # Since
     ///
@@ -441,7 +441,7 @@ pub trait LocalAsyncStatement: LocalAsyncOptionable<Option = OptionStatement> {
     /// be an empty string. If the type cannot be determined, the type of
     /// the corresponding field will be NA (NullType).
     ///
-    /// This should be called after [AsyncStatement::prepare].
+    /// This should be called after [LocalAsyncStatement::prepare].
     async fn get_parameter_schema(&self) -> Result<Schema>;
 
     /// Turn this statement into a prepared statement to be executed multiple
@@ -452,19 +452,19 @@ pub trait LocalAsyncStatement: LocalAsyncOptionable<Option = OptionStatement> {
 
     /// Set the SQL query to execute.
     ///
-    /// The query can then be executed with [AsyncStatement::execute]. For queries
-    /// expected to be executed repeatedly, call [AsyncStatement::prepare] first.
+    /// The query can then be executed with [LocalAsyncStatement::execute]. For queries
+    /// expected to be executed repeatedly, call [LocalAsyncStatement::prepare] first.
     async fn set_sql_query(&mut self, query: &str) -> Result<()>;
 
     /// Set the Substrait plan to execute.
     ///
-    /// The query can then be executed with [AsyncStatement::execute]. For queries
-    /// expected to be executed repeatedly, call [AsyncStatement::prepare] first.
+    /// The query can then be executed with [LocalAsyncStatement::execute]. For queries
+    /// expected to be executed repeatedly, call [LocalAsyncStatement::prepare] first.
     async fn set_substrait_plan(&mut self, plan: &[u8]) -> Result<()>;
 
     /// Cancel execution of an in-progress query.
     ///
-    /// This can be called during [AsyncStatement::execute] (or similar), or while
+    /// This can be called during [LocalAsyncStatement::execute] (or similar), or while
     /// consuming a result set returned from such.
     ///
     /// # Since

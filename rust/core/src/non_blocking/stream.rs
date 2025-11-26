@@ -15,9 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-/// Trait for types that stream [RecordBatch]
-///
-/// See [`SendableRecordBatchStream`] for more details.
+/// Trait for types that stream [arrow_array::RecordBatch]
 pub trait RecordBatchStream:
     futures::Stream<Item = Result<arrow_array::RecordBatch, arrow_schema::ArrowError>>
 {
