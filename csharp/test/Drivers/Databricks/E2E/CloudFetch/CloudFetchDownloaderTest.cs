@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -25,6 +26,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 using Moq;
 using Moq.Protected;
@@ -65,6 +67,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
                         ExpiryTime = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeMilliseconds()
                     };
                 });
+
+            // Set up activity tracing - CloudFetchDownloader implements IActivityTracer
+            // and delegates to _statement.Trace and _statement.TraceParent (CloudFetchDownloader.cs:605-607)
+            _mockStatement.Setup(s => s.Trace).Returns(new ActivityTrace());
+            _mockStatement.Setup(s => s.TraceParent).Returns((string?)null);
         }
 
         [Fact]
@@ -626,6 +633,152 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.CloudFetch
 
             // Cleanup
             await downloader.StopAsync();
+        }
+
+        [Fact]
+        public async Task Downloader_WithFIFO_ProcessesFilesInOrder()
+        {
+            // This test verifies FIFO (First-In-First-Out) ordering behavior when memory is limited:
+            // 1. maxParallelDownloads=3 allows up to 3 concurrent downloads
+            // 2. Memory acquisition blocks until enough memory is available (CloudFetchDownloader.cs:280)
+            // 3. When memory is limited, files wait and are processed in FIFO order
+            // 4. Results are added to result queue immediately after memory acquisition (CloudFetchDownloader.cs:324)
+            //
+            // This test verifies that file 3 does NOT start downloading before file 2 by checking
+            // the actual order downloads are initiated and items appear in resultQueue.
+
+            // Track download start order (when HTTP request is actually made)
+            var downloadStartOrder = new List<long>();
+            var downloadStartLock = new object();
+
+            byte[] testContent = new byte[10];
+            var mockHttpHandler = new Mock<HttpMessageHandler>();
+            mockHttpHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync((HttpRequestMessage request, CancellationToken token) =>
+                {
+                    // Track when download actually starts
+                    var url = request.RequestUri?.ToString() ?? "";
+                    long size = url.Contains("test1") ? 100 : url.Contains("test2") ? 200 : 300;
+                    lock (downloadStartLock)
+                    {
+                        downloadStartOrder.Add(size);
+                    }
+                    // Simulate download time
+                    Thread.Sleep(20);
+                    return new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.OK,
+                        Content = new ByteArrayContent(testContent)
+                    };
+                });
+
+            var httpClient = new HttpClient(mockHttpHandler.Object);
+
+            // Track memory acquisition order
+            var memoryAcquisitionOrder = new List<long>();
+            var memoryLock = new SemaphoreSlim(1, 1); // Only allow one memory acquisition at a time
+
+            // Mock memory manager to control memory availability
+            var mockMemoryManager = new Mock<ICloudFetchMemoryBufferManager>();
+            mockMemoryManager.Setup(m => m.AcquireMemoryAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+                .Returns(async (long size, CancellationToken token) =>
+                {
+                    // Acquire lock to ensure only one file gets memory at a time
+                    await memoryLock.WaitAsync(token);
+                    memoryAcquisitionOrder.Add(size);
+                    // Add small delay to simulate memory acquisition
+                    await Task.Delay(10, token);
+                    memoryLock.Release();
+                });
+
+            // Create three download results with different sizes to verify ordering
+            var downloadResult1 = CreateMockDownloadResult(100, "http://test1.com").Object;
+            var downloadResult2 = CreateMockDownloadResult(200, "http://test2.com").Object;
+            var downloadResult3 = CreateMockDownloadResult(300, "http://test3.com").Object;
+
+            // Create downloader with maxParallelDownloads=3
+            var downloader = new CloudFetchDownloader(
+                _mockStatement.Object,
+                _downloadQueue,
+                _resultQueue,
+                mockMemoryManager.Object,
+                httpClient,
+                _mockResultFetcher.Object,
+                3, // Allow up to 3 parallel downloads
+                false,
+                1,
+                10);
+
+            await downloader.StartAsync(CancellationToken.None);
+
+            // Add all three downloads to the queue
+            _downloadQueue.Add(downloadResult1);
+            _downloadQueue.Add(downloadResult2);
+            _downloadQueue.Add(downloadResult3);
+            _downloadQueue.Add(EndOfResultsGuard.Instance);
+
+            // Wait for all downloads to complete
+            // Each download takes: 10ms (memory acquisition) + 20ms (HTTP download) = 30ms
+            // Sequential: 3 * 30ms = 90ms minimum, add buffer for test overhead
+            await Task.Delay(300);
+
+            // Verify items appear in resultQueue in FIFO order
+            // Note: resultQueue is populated at CloudFetchDownloader.cs:324 immediately after memory acquisition
+            var queueItems = new List<long>();
+            foreach (var item in _resultQueue)
+            {
+                if (item != EndOfResultsGuard.Instance)
+                {
+                    queueItems.Add(item.Size);
+                }
+            }
+
+            // Verify memory was acquired in FIFO order
+            Assert.Equal(3, memoryAcquisitionOrder.Count);
+            Assert.Equal(100, memoryAcquisitionOrder[0]);
+            Assert.Equal(200, memoryAcquisitionOrder[1]);
+            Assert.Equal(300, memoryAcquisitionOrder[2]);
+
+            // Verify downloads started in FIFO order (file 3 did NOT start before file 2)
+            Assert.Equal(3, downloadStartOrder.Count);
+            Assert.Equal(100, downloadStartOrder[0]);
+            Assert.Equal(200, downloadStartOrder[1]);
+            Assert.Equal(300, downloadStartOrder[2]);
+
+            // Verify items appeared in resultQueue in FIFO order
+            Assert.Equal(3, queueItems.Count);
+            Assert.Equal(100, queueItems[0]);
+            Assert.Equal(200, queueItems[1]);
+            Assert.Equal(300, queueItems[2]);
+
+            await downloader.StopAsync();
+            Assert.False(downloader.HasError);
+        }
+
+        private Mock<IDownloadResult> CreateMockDownloadResult(long size, string url)
+        {
+            var link = new TSparkArrowResultLink
+            {
+                FileLink = url,
+                BytesNum = size,
+                ExpiryTime = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeMilliseconds()
+            };
+
+            var mock = new Mock<IDownloadResult>();
+            mock.Setup(r => r.Link).Returns(link);
+            mock.Setup(r => r.Size).Returns(size);
+            mock.Setup(r => r.RefreshAttempts).Returns(0);
+            mock.Setup(r => r.IsExpiredOrExpiringSoon(It.IsAny<int>())).Returns(false);
+            mock.Setup(r => r.SetCompleted(It.IsAny<Stream>(), It.IsAny<long>()))
+                .Callback<Stream, long>((stream, size) =>
+                {
+                    // Capture the stream but don't need to do anything with it for this test
+                });
+            return mock;
         }
 
         private static Mock<HttpMessageHandler> CreateMockHttpMessageHandler(
