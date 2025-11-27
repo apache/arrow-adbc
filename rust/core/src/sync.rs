@@ -25,11 +25,11 @@ use futures::StreamExt;
 
 use crate::error::Result;
 use crate::executor::AsyncExecutor;
-use crate::options::{self, OptionConnection, OptionDatabase, OptionStatement, OptionValue};
-use crate::{
+use crate::non_blocking::{
     LocalAsyncConnection, LocalAsyncDatabase, LocalAsyncDriver, LocalAsyncOptionable,
     LocalAsyncStatement,
 };
+use crate::options::{self, OptionConnection, OptionDatabase, OptionStatement, OptionValue};
 
 /// Ability to configure an object by setting/getting options.
 pub trait Optionable {
@@ -475,7 +475,7 @@ pub trait Statement: Optionable<Option = OptionStatement> {
 
 pub struct SyncRecordBatchStream<A> {
     executor: Arc<A>,
-    inner: Pin<Box<dyn crate::RecordBatchStream + Send>>,
+    inner: Pin<Box<dyn crate::non_blocking::RecordBatchStream + Send>>,
 }
 
 pub struct SyncDriverWrapper<A, D> {
@@ -512,7 +512,7 @@ impl futures::Stream for WrapperRecordBatchReader {
     }
 }
 
-impl crate::RecordBatchStream for WrapperRecordBatchReader {
+impl crate::non_blocking::RecordBatchStream for WrapperRecordBatchReader {
     fn schema(&self) -> arrow_schema::SchemaRef {
         self.inner.schema()
     }

@@ -22,7 +22,7 @@ use std::collections::HashSet;
 use std::pin::Pin;
 
 use crate::error::Result;
-use crate::{options::*, RecordBatchStream};
+use crate::options::*;
 
 /// Ability to configure an object by setting/getting options.
 pub trait AsyncOptionable: Send {
@@ -201,7 +201,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
     fn get_info(
         &self,
         codes: Option<HashSet<InfoCode>>,
-    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn RecordBatchStream + Send>>>> + Send;
+    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn super::RecordBatchStream + Send>>>> + Send;
 
     /// Get a hierarchical view of all catalogs, database schemas, tables, and
     /// columns.
@@ -308,7 +308,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn RecordBatchStream + Send>>>> + Send;
+    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn super::RecordBatchStream + Send>>>> + Send;
 
     /// Get the Arrow schema of a table.
     ///
@@ -335,7 +335,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
     /// table_type     | utf8 not null
     fn get_table_types(
         &self,
-    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn RecordBatchStream + Send>>>> + Send;
+    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn super::RecordBatchStream + Send>>>> + Send;
 
     /// Get the names of statistics specific to this driver.
     ///
@@ -352,7 +352,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
     /// ADBC API revision 1.1.0
     fn get_statistic_names(
         &self,
-    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn RecordBatchStream + Send>>>> + Send;
+    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn super::RecordBatchStream + Send>>>> + Send;
 
     /// Get statistics about the data distribution of table(s).
     ///
@@ -418,7 +418,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn RecordBatchStream + Send>>>> + Send;
+    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn super::RecordBatchStream + Send>>>> + Send;
 
     /// Commit any pending transactions. Only used if autocommit is disabled.
     ///
@@ -440,7 +440,7 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
     fn read_partition(
         &self,
         partition: &[u8],
-    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn RecordBatchStream + Send>>>> + Send;
+    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn super::RecordBatchStream + Send>>>> + Send;
 }
 
 impl<T: AsyncConnection> super::LocalAsyncConnection for T {
@@ -457,7 +457,7 @@ impl<T: AsyncConnection> super::LocalAsyncConnection for T {
     async fn get_info(
         &self,
         codes: Option<HashSet<InfoCode>>,
-    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
+    ) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>> {
         <Self as AsyncConnection>::get_info(self, codes).await
     }
 
@@ -469,7 +469,7 @@ impl<T: AsyncConnection> super::LocalAsyncConnection for T {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
+    ) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>> {
         <Self as AsyncConnection>::get_objects(
             self,
             depth,
@@ -491,11 +491,11 @@ impl<T: AsyncConnection> super::LocalAsyncConnection for T {
         <Self as AsyncConnection>::get_table_schema(self, catalog, db_schema, table_name).await
     }
 
-    async fn get_table_types(&self) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
+    async fn get_table_types(&self) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>> {
         <Self as AsyncConnection>::get_table_types(self).await
     }
 
-    async fn get_statistic_names(&self) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
+    async fn get_statistic_names(&self) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>> {
         <Self as AsyncConnection>::get_statistic_names(self).await
     }
 
@@ -505,7 +505,7 @@ impl<T: AsyncConnection> super::LocalAsyncConnection for T {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
+    ) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>> {
         <Self as AsyncConnection>::get_statistics(self, catalog, db_schema, table_name, approximate)
             .await
     }
@@ -521,7 +521,7 @@ impl<T: AsyncConnection> super::LocalAsyncConnection for T {
     async fn read_partition(
         &self,
         partition: &[u8],
-    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
+    ) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>> {
         <Self as AsyncConnection>::read_partition(self, partition).await
     }
 }
@@ -538,7 +538,7 @@ pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> + Send {
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567750972
     fn bind_stream(
         &mut self,
-        reader: Pin<Box<dyn RecordBatchStream + Send>>,
+        reader: Pin<Box<dyn super::RecordBatchStream + Send>>,
     ) -> impl core::future::Future<Output = Result<()>> + Send;
 
     /// Execute a statement and get the results.
@@ -549,7 +549,7 @@ pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> + Send {
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567748242
     fn execute(
         &mut self,
-    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn RecordBatchStream + Send>>>> + Send;
+    ) -> impl core::future::Future<Output = Result<Pin<Box<dyn super::RecordBatchStream + Send>>>> + Send;
 
     /// Execute a statement that doesn’t have a result set and get the number
     /// of affected rows.
@@ -634,11 +634,14 @@ impl<T: AsyncStatement> super::LocalAsyncStatement for T {
         <Self as AsyncStatement>::bind(self, batch).await
     }
 
-    async fn bind_stream(&mut self, reader: Pin<Box<dyn RecordBatchStream + Send>>) -> Result<()> {
+    async fn bind_stream(
+        &mut self,
+        reader: Pin<Box<dyn super::RecordBatchStream + Send>>,
+    ) -> Result<()> {
         <Self as AsyncStatement>::bind_stream(self, reader).await
     }
 
-    async fn execute(&mut self) -> Result<Pin<Box<dyn RecordBatchStream + Send>>> {
+    async fn execute(&mut self) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>> {
         <Self as AsyncStatement>::execute(self).await
     }
 

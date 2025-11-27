@@ -34,9 +34,7 @@ use adbc_core::{
     options::{
         InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement, OptionValue,
     },
-    schemas,
-    sync::{Connection, Database, Driver, Optionable, Statement},
-    PartitionedResult,
+    schemas, Connection, Database, Driver, Optionable, PartitionedResult, Statement,
 };
 
 #[derive(Debug)]

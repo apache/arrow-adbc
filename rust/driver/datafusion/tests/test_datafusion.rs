@@ -17,10 +17,10 @@
 
 use std::pin::Pin;
 
+use adbc_core::non_blocking::RecordBatchStream;
 use adbc_core::non_blocking::{
     AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement, LocalAsyncOptionable,
 };
-use adbc_core::RecordBatchStream;
 use adbc_datafusion::{DataFusionConnection, DataFusionDriver};
 use arrow_array::RecordBatch;
 use datafusion::prelude::*;

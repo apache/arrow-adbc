@@ -47,7 +47,7 @@ pub mod options;
 pub mod schemas;
 pub mod sync;
 
-pub use non_blocking::*;
+pub use sync::*;
 
 pub type LoadFlags = u32;
 

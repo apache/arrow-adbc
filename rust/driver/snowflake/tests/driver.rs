@@ -39,7 +39,7 @@ mod tests {
     use adbc_core::{
         error::{Error, Result},
         options::AdbcVersion,
-        sync::{Connection as _, Statement as _},
+        Connection as _, Statement as _,
     };
     use adbc_snowflake::{connection, database, driver, Connection, Database, Driver, Statement};
     use arrow_array::{cast::AsArray, types::Decimal128Type};
