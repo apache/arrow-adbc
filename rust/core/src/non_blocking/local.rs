@@ -22,7 +22,7 @@ use std::collections::HashSet;
 use std::pin::Pin;
 
 use crate::error::Result;
-use crate::{options::*, RecordBatchStream};
+use crate::options::*;
 
 /// Ability to configure an object by setting/getting options.
 #[allow(async_fn_in_trait)]
@@ -129,7 +129,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     async fn get_info(
         &self,
         codes: Option<HashSet<InfoCode>>,
-    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>>;
+    ) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>>;
 
     /// Get a hierarchical view of all catalogs, database schemas, tables, and
     /// columns.
@@ -236,7 +236,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>>;
+    ) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>>;
 
     /// Get the Arrow schema of a table.
     ///
@@ -261,7 +261,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     /// Field Name     | Field Type
     /// ---------------|--------------
     /// table_type     | utf8 not null
-    async fn get_table_types(&self) -> Result<Pin<Box<dyn RecordBatchStream + Send>>>;
+    async fn get_table_types(&self) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>>;
 
     /// Get the names of statistics specific to this driver.
     ///
@@ -276,7 +276,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     ///
     /// # Since
     /// ADBC API revision 1.1.0
-    async fn get_statistic_names(&self) -> Result<Pin<Box<dyn RecordBatchStream + Send>>>;
+    async fn get_statistic_names(&self) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>>;
 
     /// Get statistics about the data distribution of table(s).
     ///
@@ -342,7 +342,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>>;
+    ) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>>;
 
     /// Commit any pending transactions. Only used if autocommit is disabled.
     ///
@@ -364,7 +364,7 @@ pub trait LocalAsyncConnection: LocalAsyncOptionable<Option = OptionConnection> 
     async fn read_partition(
         &self,
         partition: &[u8],
-    ) -> Result<Pin<Box<dyn RecordBatchStream + Send>>>;
+    ) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>>;
 }
 
 /// A handle to an async ADBC statement.
@@ -393,7 +393,10 @@ pub trait LocalAsyncStatement: LocalAsyncOptionable<Option = OptionStatement> {
     /// statements.
     // TODO(alexandreyc): should we use a generic here instead of a trait object?
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567750972
-    async fn bind_stream(&mut self, reader: Pin<Box<dyn RecordBatchStream + Send>>) -> Result<()>;
+    async fn bind_stream(
+        &mut self,
+        reader: Pin<Box<dyn super::RecordBatchStream + Send>>,
+    ) -> Result<()>;
 
     /// Execute a statement and get the results.
     ///
@@ -401,7 +404,7 @@ pub trait LocalAsyncStatement: LocalAsyncOptionable<Option = OptionStatement> {
     // TODO(alexandreyc): is the Send bound absolutely necessary? same question
     // for all methods that return an impl RecordBatchReader
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567748242
-    async fn execute(&mut self) -> Result<Pin<Box<dyn RecordBatchStream + Send>>>;
+    async fn execute(&mut self) -> Result<Pin<Box<dyn super::RecordBatchStream + Send>>>;
 
     /// Execute a statement that doesn’t have a result set and get the number
     /// of affected rows.

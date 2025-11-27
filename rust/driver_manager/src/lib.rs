@@ -122,9 +122,9 @@ use adbc_core::{
     constants,
     error::{AdbcStatusCode, Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionDatabase, OptionValue},
-    sync::{Connection, Database, Driver, Optionable, Statement},
-    LoadFlags, PartitionedResult, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV,
-    LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
+    Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
+    LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
+    LOAD_FLAG_SEARCH_USER,
 };
 use adbc_ffi::driver_method;
 

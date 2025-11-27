@@ -18,7 +18,11 @@
 
 use adbc_core::executor::AsyncExecutor;
 use adbc_core::non_blocking::{AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement};
-use adbc_core::{constants, options, AsyncOptionable, RecordBatchStream};
+use adbc_core::{
+    constants,
+    non_blocking::{AsyncOptionable, RecordBatchStream},
+    options,
+};
 use datafusion::dataframe::DataFrameWriteOptions;
 use datafusion::datasource::TableType;
 use datafusion::prelude::*;
@@ -982,5 +986,5 @@ impl AsyncExecutor for TokioRuntime {
 #[cfg(feature = "ffi")]
 adbc_ffi::export_driver!(
     DataFusionDriverInit,
-    adbc_core::sync::SyncDriverWrapper::<TokioRuntime, DataFusionDriver>
+    adbc_core::SyncDriverWrapper::<TokioRuntime, DataFusionDriver>
 );

@@ -22,8 +22,7 @@
 use adbc_core::{
     error::Result,
     options::{OptionStatement, OptionValue},
-    sync::Optionable,
-    PartitionedResult,
+    Optionable, PartitionedResult,
 };
 use adbc_driver_manager::ManagedStatement;
 use arrow_array::{RecordBatch, RecordBatchReader};
@@ -56,7 +55,7 @@ impl Optionable for Statement {
     }
 }
 
-impl adbc_core::sync::Statement for Statement {
+impl adbc_core::Statement for Statement {
     fn bind(&mut self, batch: RecordBatch) -> Result<()> {
         self.0.bind(batch)
     }
