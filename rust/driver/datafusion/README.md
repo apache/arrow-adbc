@@ -27,7 +27,7 @@
 
 ## Example Usage
 
-```
+```rust
 use adbc_core::driver_manager::ManagedDriver;
 use adbc_core::options::AdbcVersion;
 use adbc_core::{Connection, Database, Driver, Statement};

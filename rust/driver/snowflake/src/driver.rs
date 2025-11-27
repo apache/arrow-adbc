@@ -153,7 +153,7 @@ impl Driver {
     }
 }
 
-impl adbc_core::Driver for Driver {
+impl adbc_core::sync::Driver for Driver {
     type DatabaseType = Database;
 
     fn new_database(&mut self) -> Result<Self::DatabaseType> {
