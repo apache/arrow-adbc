@@ -1082,6 +1082,33 @@ TEST_F(PostgresStatementTest, TransactionStatus) {
   }
 }
 
+TEST_F(PostgresStatementTest, IsolationLevels) {
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_ISOLATION_LEVEL,
+                                      ADBC_OPTION_ISOLATION_LEVEL_SERIALIZABLE, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "SELECT current_setting('transaction_isolation')", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+
+  ASSERT_EQ(reader.array->length, 1);
+  ArrowStringView view = ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
+  std::string_view isolation_level(view.data, static_cast<size_t>(view.size_bytes));
+  ASSERT_EQ(isolation_level, "serializable");
+}
+
 TEST_F(PostgresStatementTest, SqlIngestSchema) {
   const std::string schema_name = "testschema";
 
