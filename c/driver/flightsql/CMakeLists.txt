@@ -66,7 +66,7 @@ if(ADBC_BUILD_TESTS)
 
   if(ADBC_TEST_LINKAGE STREQUAL "shared")
     # The go build is not copying the DLL to the test location, causing the test to fail on Windows.
-    if(MSVC)
+    if(WIN32)
       add_custom_command(TARGET adbc-driver-flightsql-test
                          POST_BUILD
                          COMMAND ${CMAKE_COMMAND} -E copy_if_different
